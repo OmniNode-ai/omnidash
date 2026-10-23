@@ -1,7 +1,8 @@
 import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
 import { formatDashboardUsd } from '@/lib/dashboard-currency';
 import { useEffect, useId, useState } from 'react';
-import { ChartNoAxesCombined, CircleDollarSign, Gauge, Layers, RotateCcw, ScanLine, Timer, type LucideIcon } from 'lucide-react';
+import { RotateCcw, ScanLine } from 'lucide-react';
+import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { Link } from 'wouter';
 import { workflowHref } from '@/navigation/workflow-url-state';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
@@ -41,8 +42,8 @@ function useChartRange(keys: readonly string[]) {
   };
 }
 
-function ChartHeading({ title, detail, icon: Icon = ChartNoAxesCombined }: { title: string; detail: string; icon?: LucideIcon }) {
-  return <div className="local-chart-heading"><span className="local-chart-symbol" aria-hidden="true"><Icon size={17} /></span>
+function ChartHeading({ title, detail, concept }: { title: string; detail: string; concept: string }) {
+  return <div className="local-chart-heading"><span className="local-chart-symbol" aria-hidden="true"><ConceptIcon concept={concept} label={title} size={17} /></span>
     <div><h3>{title}</h3><p>{detail}</p></div><ScanLine size={16} className="local-chart-inspect-icon" aria-hidden="true" /></div>;
 }
 
@@ -275,7 +276,7 @@ function SpendChartFigure({ group, title, colourPlaces }: { group: SpendByDayGro
   });
   return (
     <figure className="local-chart" aria-label={`${title} vs ${group.baseline}`} data-motion={motion.reduced ? 'reduced' : 'full'}>
-      <ChartHeading title="Daily comparison" detail={`Daily values · ${group.baseline}`} />
+      <ChartHeading concept="spend-daily" title="Daily comparison" detail={`Daily values · ${group.baseline}`} />
       <div className="local-chart-legend" role="group" aria-label="Series shown">
         {all.map(({ series, colour }) => (
           <button
@@ -554,7 +555,7 @@ export function RunDurationChart({ runs, onOpen, title = 'Duration per run' }: {
   };
   return (
     <figure className="local-chart local-chart--runs" aria-label={title} data-motion={motion.reduced ? 'reduced' : 'full'}>
-      <ChartHeading title={title} detail="Explore the listed runs" icon={Timer} />
+      <ChartHeading title={title} detail="Explore the listed runs" concept="duration" />
       <div className="local-chart-legend" role="group" aria-label="Statuses shown">
         {statuses.map((status) => (
           <button type="button" className="local-chart-toggle" aria-pressed={!hidden.has(status)} key={status} onClick={() => toggle(status)}>
@@ -622,7 +623,7 @@ export function RunTokensChart({ runs, onOpen, title = 'Tokens per run' }: { run
   };
   return (
     <figure className="local-chart local-chart--runs" aria-label={title} data-motion={motion.reduced ? 'reduced' : 'full'}>
-      <ChartHeading title={title} detail="Explore the listed runs" icon={Layers} />
+      <ChartHeading title={title} detail="Explore the listed runs" concept="tokens" />
       <div className="local-chart-legend" role="group" aria-label="Series shown">
         {all.map((series) => (
           <button type="button" className="local-chart-toggle" data-field-tone={series.key === 'tokensIn' ? 'tokens-in' : 'tokens-out'} aria-pressed={!hidden.has(series.key)} key={series.key} onClick={() => toggle(series.key)}>
@@ -675,7 +676,7 @@ export function RunMetricChart({ runs, onOpen, metric }: {
     }],
   };
   return <figure className={`local-chart local-chart--runs local-chart--${metric}`} aria-label={title} data-motion={motion.reduced ? 'reduced' : 'full'}>
-    <ChartHeading title={title} detail={cost ? 'Recorded cost · USD' : 'Recorded quality score · original scale'} icon={cost ? CircleDollarSign : Gauge} />
+    <ChartHeading title={title} detail={cost ? 'Recorded cost · USD' : 'Recorded quality score · original scale'} concept={cost ? 'cost' : 'score'} />
     <div className="local-chart-coverage">
       <span>{formatDashboardCount(recordedCount)} of {formatDashboardCount(runs.length)} recorded</span>
       {recordedCount < runs.length && <span>{formatDashboardCount(runs.length - recordedCount)} not recorded</span>}

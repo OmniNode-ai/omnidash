@@ -1,7 +1,7 @@
 import '@/styles/field-identity.css';
 
 /** Display identity only: labels select a color, never a value or verdict. */
-const TONES: Readonly<Record<string, string>> = {
+export const FIELD_TONES: Readonly<Record<string, string>> = {
   passed: 'pass', pass: 'pass', failed: 'fail', fail: 'fail', cause: 'fail',
   checks: 'count', delegations: 'delegations', 'agent calls': 'calls', 'measured runs': 'count',
   'quality pass': 'pass', 'pass rate': 'pass',
@@ -9,7 +9,7 @@ const TONES: Readonly<Record<string, string>> = {
   'required bar': 'threshold', 'required threshold': 'threshold', 'average required bar': 'threshold',
   model: 'model', 'requested model': 'model', 'routed model': 'model', 'active model': 'model',
   age: 'age', 'created at': 'age', 'written at': 'age', created: 'age', minted: 'age',
-  run: 'identity', correlation: 'identity', tenant: 'tenant', session: 'session',
+  run: 'identity', correlation: 'identity', 'receipt id': 'identity', tenant: 'tenant', session: 'session',
   duration: 'duration', latency: 'duration', 'avg gen latency': 'duration',
   cost: 'cost', 'local cost': 'cost', 'actual spend': 'cost', 'est. cost': 'cost',
   'recorded cost (usd)': 'cost', 'local / delegated cost': 'cost',
@@ -24,7 +24,8 @@ const TONES: Readonly<Record<string, string>> = {
   'baseline spend': 'baseline', 'avg saving / call': 'saving-average', compression: 'compression', 'cache hit rate': 'cache',
   quality: 'quality', 'quality gate': 'quality', 'pipeline events': 'events', 'generation rows': 'generation',
   'delegation rows': 'delegations', correlations: 'identity', 'ws invalidation': 'transport', 'contract pass': 'contract',
-  'tier-routed': 'routing', 'not tier-routed': 'unrouted', 'all runs': 'delegations',
+  'tier-routed': 'routing', 'not tier-routed': 'unrouted', 'without a tier': 'unrouted', 'all runs': 'delegations',
+  harness: 'tier-harness', 'provider call': 'step-provider-call',
   'finish reason': 'completion', truncated: 'completion', 'quality detail': 'score',
 };
 
@@ -34,9 +35,9 @@ export function fieldTone(label: unknown, value?: unknown): string | undefined {
   if (['status', 'outcome', 'terminal state', 'terminal ok'].includes(key)) {
     if (value === true || ['passed', 'succeeded', 'true'].includes(String(value))) return 'pass';
     if (value === false || ['failed', 'false'].includes(String(value))) return 'fail';
-    return undefined;
+    return 'unavailable';
   }
-  return TONES[key];
+  return FIELD_TONES[key];
 }
 
 /** A recorded zero is a value; null and explicit unavailable labels are not. */

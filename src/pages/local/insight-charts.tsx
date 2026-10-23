@@ -1,11 +1,9 @@
 import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
-import { modelColor } from '@/lib/dashboard-colors';
+import { modelColor, tierColor, tierConcept } from '@/lib/dashboard-colors';
+import { modelIdentityStyle } from '@/components/dashboard/model-identity';
 import { formatDashboardUsd } from '@/lib/dashboard-currency';
 import { createContext, useContext, useId, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
-import {
-  ArrowDown, ArrowDownUp, ArrowUp, CalendarClock, ChartColumnStacked, CircleHelp, CodeXml, FileText, FlaskConical, GitPullRequest, Globe,
-  Hourglass, LayoutGrid, ScrollText, TrendingUp, TriangleAlert, Trophy, ChartBarBig, ChartPie, Network,
-} from 'lucide-react';
+import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { causeHref, useSharedRunFilter } from './run-filter';
 import { Link } from 'wouter';
 import {
@@ -34,23 +32,20 @@ const RANGES = [
 const PASS = 'var(--ins-pass)';
 const FAIL = 'var(--ins-fail)';
 const UNKNOWN = 'var(--ins-unknown)';
-const PALETTE = ['var(--ins-series-1)', 'var(--ins-series-2)', 'var(--ins-series-3)', 'var(--ins-series-4)', 'var(--ins-series-5)', 'var(--ins-series-6)', 'var(--ins-series-7)', 'var(--ins-series-8)'];
 const DURATION_RAMP = ['var(--ins-pass)', 'var(--ins-ramp-2)', 'var(--ins-ramp-3)', 'var(--ins-series-5)', 'var(--ins-series-5)', 'var(--ins-series-7)', 'var(--ins-fail)', 'var(--ins-fail-strong)'];
 
-const TASK_LOOK: Record<string, { icon: ReactNode; color: string }> = {
-  document: { icon: <FileText size={14} />, color: 'var(--ins-series-8)' },
-  code_generation: { icon: <CodeXml size={14} />, color: 'var(--ins-series-4)' },
-  research: { icon: <Globe size={14} />, color: 'var(--ins-series-6)' },
-  summarization: { icon: <ScrollText size={14} />, color: 'var(--ins-series-5)' },
-  code_review: { icon: <GitPullRequest size={14} />, color: 'var(--ins-series-3)' },
-  review: { icon: <GitPullRequest size={14} />, color: 'var(--ins-series-3)' },
-  test: { icon: <FlaskConical size={14} />, color: 'var(--ins-series-7)' },
+const TASK_CONCEPT: Readonly<Record<string, string>> = {
+  document: 'task-document', code_generation: 'task-code-generation', research: 'task-research',
+  summarization: 'task-summarization', code_review: 'task-code-review', review: 'task-code-review', test: 'task-test',
 };
-const OTHER_TASK = { icon: <CircleHelp size={14} />, color: UNKNOWN };
+function taskLook(task: string) {
+  const concept = TASK_CONCEPT[task] ?? 'task-other';
+  return { concept, color: `var(--field-${concept})`, icon: <ConceptIcon concept={concept} label={readable(task)} size={14} /> };
+}
 
-/** A task type's own icon in its own colour (OMN-21166 AC27), for the run tables. Decorative: the name is beside it. */
+/** A task type's canonical icon and colour, with its readable name beside it. */
 export function TaskIcon({ task }: { task: string }) {
-  const look = TASK_LOOK[task] ?? OTHER_TASK;
+  const look = taskLook(task);
   return <span className="local-task-icon" style={{ '--ins-swatch': look.color } as CSSProperties} aria-hidden="true">{look.icon}</span>;
 }
 
@@ -88,14 +83,14 @@ function dayCounts(day: InsightDay): string {
   return parts.join(', ');
 }
 
-function ChartCard({ title, icon, accent, note, delay, children }: {
-  title: string; icon: ReactNode; accent: string; note?: string; delay: number; children: ReactNode;
+function ChartCard({ title, concept, note, delay, children }: {
+  title: string; concept: string; note?: string; delay: number; children: ReactNode;
 }) {
   const id = useId();
   return (
-    <figure className="local-chart ins-card od-card" aria-labelledby={id} style={{ '--ins-accent': accent, animationDelay: `${delay}ms` } as CSSProperties}>
+    <figure className="local-chart ins-card od-card" aria-labelledby={id} style={{ '--ins-accent': `var(--field-${concept})`, animationDelay: `${delay}ms` } as CSSProperties}>
       <div className="ins-card-head">
-        <h3 id={id} className="ins-title"><span className="ins-badge" aria-hidden="true">{icon}</span>{title}</h3>
+        <h3 id={id} className="ins-title"><span className="ins-badge" aria-hidden="true"><ConceptIcon concept={concept} label={title} size={16} /></span>{title}</h3>
         {note && <span className="ins-note">{note}</span>}
       </div>
       {children}
@@ -119,7 +114,7 @@ function RunsPerDay({ days }: { days: InsightDay[] }) {
     return current[key] && !current[other] ? current : { ...current, [key]: !current[key] };
   });
   return (
-    <ChartCard title="Runs per day" icon={<ChartColumnStacked size={16} />} accent="var(--ins-series-2)" delay={0}>
+    <ChartCard title="Runs per day" concept="runs-daily" delay={0}>
       <div className="ins-toggles" role="group" aria-label="Series">
         <button type="button" className="ins-toggle" data-field-tone="pass" aria-pressed={show.passed} onClick={() => toggle('passed')} style={{ '--ins-swatch': PASS } as CSSProperties}>Passed</button>
         <button type="button" className="ins-toggle" data-field-tone="fail" aria-pressed={show.failed} onClick={() => toggle('failed')} style={{ '--ins-swatch': FAIL } as CSSProperties}>Failed</button>
@@ -177,7 +172,7 @@ function PassRateTrend({ days }: { days: InsightDay[] }) {
   const active = hover === null ? null : days[hover]!;
   const x = hover === null ? 0 : days.length > 1 ? (hover / (days.length - 1)) * 100 : 50;
   return (
-    <ChartCard title="Pass rate per day" icon={<TrendingUp size={16} />} accent={PASS} delay={60}>
+    <ChartCard title="Pass rate per day" concept="pass-rate-daily" delay={60}>
       <Readout active={active !== null} text={active ? <>{dayLabel(active.day)} · <span data-field-tone="pass" data-field-unavailable={active.passRate === null}>{active.passRate === null ? 'no verdicts' : `${active.passRate.toFixed(1)}% passed`}</span> · <span data-field-tone="basis">{verdictCoverage(active.passed + active.failed, active.runs)}</span></> : `Scale from ${min}% to 100%`} />
       <div className="ins-plot">
         <svg viewBox="0 0 600 120" preserveAspectRatio="none" role="img" aria-label="Pass rate per day">
@@ -232,7 +227,7 @@ function ActivityHeatmap({ runs, days, window }: { runs: InsightRun[]; days: rea
     cells.current[nextRow * 24 + nextHour]?.focus();
   };
   return (
-    <ChartCard title="When runs happen" icon={<CalendarClock size={16} />} accent="var(--ins-series-2)" note={`${rangeLabel}, by UTC hour`} delay={120}>
+    <ChartCard title="When runs happen" concept="activity-hourly" note={`${rangeLabel}, by UTC hour`} delay={120}>
       <Readout testId="activity-hour-readout" active={hover !== null} text={hover ? <>{weekday(grid.days[hover[0]]!)} {String(hover[1]).padStart(2, '0')}:00 UTC · <span data-field-tone="count">{count(grid.counts[hover[0]]![hover[1]]!)} runs</span></> : <>Busiest hour: <span data-field-tone="count">{count(grid.max)} runs</span></>} />
       <p id={helpId} className="sr-only">Use arrow keys to inspect hours and days. Home and End move to the first and last hour. Tab leaves the chart.</p>
       <div className="ins-heat" role="group" aria-describedby={helpId} aria-label={`Runs by UTC hour ${selectedWindowLabel} (${rangeLabel}); busiest hour has ${count(grid.max)} runs`}>
@@ -260,10 +255,10 @@ function TaskMix({ runs }: { runs: InsightRun[] }) {
   const groups = countBy(runs, 'task');
   const max = Math.max(1, ...groups.map(group => group.runs));
   return (
-    <ChartCard title="Tasks" icon={<LayoutGrid size={16} />} accent="var(--ins-series-4)" note="Runs and pass rate" delay={180}>
+    <ChartCard title="Tasks" concept="task" note="Runs and pass rate" delay={180}>
       <ul className="ins-list" aria-label="Tasks">
         {groups.map((group, index) => {
-          const look = TASK_LOOK[group.key] ?? OTHER_TASK;
+          const look = taskLook(group.key);
           const judged = group.passed + group.failed;
           return (
             <li key={group.key} className="ins-list-row" style={{ '--ins-swatch': look.color } as CSSProperties}>
@@ -287,7 +282,7 @@ function DurationHistogram({ runs }: { runs: InsightRun[] }) {
   const name = (index: number) => durationBucketLabel(index);
   const median = summary(runs).medianLatency;
   return (
-    <ChartCard title="How long runs take" icon={<Hourglass size={16} />} accent="var(--ins-series-5)" note={`${count(unrecorded)} not recorded`} delay={240}>
+    <ChartCard title="How long runs take" concept="duration" note={`${count(unrecorded)} not recorded`} delay={240}>
       <Readout active={hover !== null} text={hover === null ? (median === null ? 'No durations recorded' : <>Median <span data-field-tone="duration">{duration(median)}</span></>) : <><span data-field-tone="duration">{name(hover)}</span> · <span data-field-tone="count">{count(buckets[hover]!)} runs</span></>} />
       <div className="ins-bars ins-bars--short" role="group" aria-label="Duration buckets" onMouseLeave={() => setHover(null)}>
         {buckets.map((runsInBucket, index) => (
@@ -305,20 +300,20 @@ function DurationHistogram({ runs }: { runs: InsightRun[] }) {
 function ModelScoreboard({ runs }: { runs: InsightRun[] }) {
   const groups = countBy(runs, 'model');
   return (
-    <ChartCard title="Model scoreboard" icon={<Trophy size={16} />} accent="var(--ins-series-7)" note="Pass rate" delay={300}>
+    <ChartCard title="Model scoreboard" concept="quality-model" note="Pass rate" delay={300}>
       <ul className="ins-rings" aria-label="Pass rate by model">
         {groups.map(group => {
           const judged = group.passed + group.failed;
           const rate = judged ? (group.passed / judged) * 100 : null;
           const color = modelColor(group.key);
           return (
-            <li key={group.key} className="ins-ring" style={{ '--ins-swatch': color } as CSSProperties}>
+            <li key={group.key} data-semantic-concept={`model:${group.key}`} data-semantic-label={group.key} className="ins-ring" style={{ '--ins-swatch': color } as CSSProperties}>
               <svg viewBox="0 0 42 42" width={60} height={60} aria-hidden="true">
                 <circle cx="21" cy="21" r="15.915" fill="none" className="ins-ring-track" strokeWidth={4.5} />
                 {rate !== null && <circle className="od-ring" cx="21" cy="21" r="15.915" fill="none" stroke={color} strokeWidth={4.5} strokeLinecap="round" strokeDasharray={`${rate.toFixed(2)} ${(100 - rate).toFixed(2)}`} transform="rotate(-90 21 21)" />}
               </svg>
               <span className="ins-ring-text">
-                <span className="ins-ring-name" data-field-tone="model" data-field-unavailable={group.key === NOT_RECORDED}>{group.key}</span>
+                <span className="ins-ring-name local-model-identity" style={modelIdentityStyle(group.key)} data-field-tone="model" data-field-unavailable={group.key === NOT_RECORDED}>{group.key}</span>
                 <span className="ins-ring-rate" data-field-tone="pass" data-field-unavailable={rate === null}>{rate === null ? 'No verdicts' : `${Math.round(rate)}% passed`}</span>
                 <span className="ins-ring-runs" data-field-tone="count">{count(group.runs)} runs</span>
                 <span className="ins-ring-coverage" data-field-tone="basis">{verdictCoverage(judged, group.runs)}</span>
@@ -347,7 +342,7 @@ function FailureCauses({ runs, onInspectFailure }: { runs: InsightRun[]; onInspe
   const shared = useSharedRunFilter();
   const max = Math.max(1, ...list.map(entry => entry.count));
   return (
-    <ChartCard title="Why runs failed" icon={<TriangleAlert size={16} />} accent={FAIL} delay={360}>
+    <ChartCard title="Why runs failed" concept="failures" delay={360}>
       {list.length === 0 ? <p className="ins-empty">No failed runs in this window</p> : (
         <ul className="ins-list" aria-label="Failure causes">
           {list.map((entry, index) => (
@@ -378,14 +373,14 @@ function VolumeBars({ runs, field }: { runs: InsightRun[]; field: 'model' | 'tie
   const [selected, setSelected] = useState<string | null>(null);
   const maximum = Math.max(1, ...groups.map(group => group.runs));
   const active = groups.find(group => group.key === selected);
-  return <ChartCard title={field === 'model' ? 'Runs by model' : 'Runs by tier'} icon={field === 'model' ? <ChartBarBig size={16} /> : <Network size={16} />}
-    accent={field === 'model' ? 'var(--ins-series-1)' : 'var(--ins-series-6)'} note="Counted from returned runs" delay={120}>
-    <p className="ins-readout" role="status">{active ? <><span data-field-tone={field === 'model' ? 'model' : 'tier'} data-field-unavailable={active.key === NOT_RECORDED}>{active.key}</span>: <span data-field-tone="count">{count(active.runs)} runs</span> · {(active.runs / runs.length * 100).toFixed(1)}% of this window</> : 'Select a bar to inspect its count and share'}</p>
+  return <ChartCard title={field === 'model' ? 'Runs by model' : 'Runs by tier'} concept={field === 'model' ? 'runs-model' : 'runs-tier'} note="Counted from returned runs" delay={120}>
+    <p className="ins-readout" role="status">{active ? <><span style={{ '--field-ink': field === 'model' ? modelColor(active.key) : tierColor(active.key) } as CSSProperties} data-field-tone={field === 'model' ? 'model' : 'tier'} data-field-unavailable={active.key === NOT_RECORDED}>{active.key}</span>: <span data-field-tone="count">{count(active.runs)} runs</span> · {(active.runs / runs.length * 100).toFixed(1)}% of this window</> : 'Select a bar to inspect its count and share'}</p>
     <div className="overview-volume-bars">
-      {groups.map((group, index) => <button type="button" key={group.key} aria-pressed={selected === group.key}
+      {groups.map(group => <button type="button" key={group.key} aria-pressed={selected === group.key}
+        data-semantic-concept={field === 'model' ? `model:${group.key}` : tierConcept(group.key) ? `field:${tierConcept(group.key)}` : `tier:${group.key}`} data-semantic-label={group.key}
         aria-label={`${group.key}: ${count(group.runs)} ${group.runs === 1 ? 'run' : 'runs'}`} onClick={() => setSelected(group.key)}
-        style={{ '--ins-swatch': field === 'model' ? modelColor(group.key) : PALETTE[index % PALETTE.length] } as CSSProperties}>
-        <span className="overview-volume-label" data-field-tone={field === 'model' ? 'model' : 'tier'} data-field-unavailable={group.key === NOT_RECORDED}>{group.key}</span><strong data-field-tone="count">{count(group.runs)}</strong>
+        style={{ '--ins-swatch': field === 'model' ? modelColor(group.key) : tierColor(group.key) } as CSSProperties}>
+        <span className="overview-volume-label" style={{ color: field === 'model' ? modelColor(group.key) : tierColor(group.key), '--field-ink': field === 'model' ? modelColor(group.key) : tierColor(group.key) } as CSSProperties} data-field-tone={field === 'model' ? 'model' : 'tier'} data-field-unavailable={group.key === NOT_RECORDED}>{group.key}</span><strong data-field-tone="count">{count(group.runs)}</strong>
         <span className="overview-volume-track" aria-hidden="true"><span style={{ width: `${group.runs / maximum * 100}%` }} /></span>
       </button>)}
     </div>
@@ -397,7 +392,7 @@ function OutcomeComposition({ runs }: { runs: InsightRun[] }) {
   const [selected, setSelected] = useState<number | null>(null);
   const segments = [{ label: 'Passed', value: totals.passed, color: PASS }, { label: 'Failed', value: totals.failed, color: FAIL }, { label: 'Not recorded', value: totals.unrecorded, color: UNKNOWN }];
   let offset = 0;
-  return <ChartCard title="Run outcomes" icon={<ChartPie size={16} />} accent="var(--ins-series-3)" note="Returned-run composition" delay={180}>
+  return <ChartCard title="Run outcomes" concept="run-outcome" note="Returned-run composition" delay={180}>
     <div className="overview-outcomes">
       <svg viewBox="0 0 120 120" className="overview-outcome-donut" aria-hidden="true">
         {segments.map((segment, index) => {
@@ -420,8 +415,8 @@ function OutcomeComposition({ runs }: { runs: InsightRun[] }) {
   </ChartCard>;
 }
 
-function ChartSection({ title, children }: { title: string; children: ReactNode }) {
-  return <section className="overview-chart-section" aria-label={title}><h3 className="local-dashboard-caption overview-chart-heading">{title}</h3><div className="overview-chart-row">{children}</div></section>;
+function ChartSection({ title, concept, children }: { title: string; concept: string; children: ReactNode }) {
+  return <section className="overview-chart-section" aria-label={title}><h3 className="local-dashboard-caption overview-chart-heading"><ConceptIcon concept={concept} label={title} size={16} />{title}</h3><div className="overview-chart-row">{children}</div></section>;
 }
 
 function TokensPerDay({ days }: { days: InsightDay[] }) {
@@ -432,10 +427,10 @@ function TokensPerDay({ days }: { days: InsightDay[] }) {
   const label = (day: InsightDay) => `${dayLabel(day.day)}: ${side(day.tokensIn, day.tokensInUnmeasured, 'in')}, ${side(day.tokensOut, day.tokensOutUnmeasured, 'out')}`;
   const active = hover === null ? null : days[hover]!;
   return (
-    <ChartCard title="Tokens per day" icon={<ArrowDownUp size={16} />} accent="var(--field-tokens-daily)" delay={420}>
+    <ChartCard title="Tokens per day" concept="tokens-daily" delay={420}>
       <ul className="ins-token-legend" aria-label="Token series">
-        <li data-field-tone="tokens-in"><ArrowDown size={14} aria-hidden="true" /><span>Tokens in</span></li>
-        <li data-field-tone="tokens-out"><ArrowUp size={14} aria-hidden="true" /><span>Tokens out</span></li>
+        <li data-field-tone="tokens-in"><ConceptIcon concept="tokens-in" size={14} /><span>Tokens in</span></li>
+        <li data-field-tone="tokens-out"><ConceptIcon concept="tokens-out" size={14} /><span>Tokens out</span></li>
       </ul>
       <Readout active={active !== null} text={active ? <>{dayLabel(active.day)} · <span data-field-tone="tokens-in" data-field-unavailable={active.tokensIn === null}>{side(active.tokensIn, active.tokensInUnmeasured, 'in')}</span>, <span data-field-tone="tokens-out" data-field-unavailable={active.tokensOut === null}>{side(active.tokensOut, active.tokensOutUnmeasured, 'out')}</span></> : <><span data-field-tone="tokens-in">Tokens in</span> and <span data-field-tone="tokens-out">out</span>, per UTC day</>} />
       <div className="ins-bars" role="group" aria-label="Tokens per day" onMouseLeave={() => setHover(null)}>
@@ -533,8 +528,8 @@ function windowCaption(window: ActivityWindow): string {
   return `${window.start} through ${window.end} UTC`;
 }
 
-function ChartHeading({ title, detail }: { title: string; detail: string }) {
-  return <div className="ins-card-head"><h3 className="ins-title">{title}</h3><span className="ins-note">{detail}</span></div>;
+function ChartHeading({ title, concept, detail }: { title: string; concept: string; detail: string }) {
+  return <div className="ins-card-head"><h3 className="ins-title"><ConceptIcon concept={concept} label={title} size={16} />{title}</h3><span className="ins-note">{detail}</span></div>;
 }
 
 function usd(value: number | null): string {
@@ -630,9 +625,9 @@ function MoneyWindowCharts({ rows, now, days, unavailable }: { rows: readonly un
   const dateLabel = (day: string) => new Date(`${day}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
   const detail = (day: typeof data.days[number]) => `${dateLabel(day.day)} · Paid ${usd(day.spend)} · Saved ${usd(day.saved)} · All-cloud ${usd(day.counterfactual)}`;
   return (
-    <ChartSection title="Daily paid vs all-cloud">
+    <ChartSection concept="spend-daily" title="Daily paid vs all-cloud">
       <figure className="local-chart ins-money-chart" aria-label="Spend vs all-cloud">
-        <ChartHeading title="Spend vs all-cloud" detail={`${days === 1 ? 'Today (UTC)' : `Last ${days} UTC days`} · ${data.baseline ?? 'baseline not recorded'}`} />
+        <ChartHeading concept="spend-daily" title="Spend vs all-cloud" detail={`${days === 1 ? 'Today (UTC)' : `Last ${days} UTC days`} · ${data.baseline ?? 'baseline not recorded'}`} />
         {selected && <p className="ins-readout" role="status">{detail(selected)}</p>}
         <div className="ins-money-bars" role="group" aria-label="Spend vs all-cloud by UTC day" onMouseLeave={() => setActiveSpend(null)}>
           {data.days.map((day, index) => <button key={day.day} type="button" className="ins-money-day" aria-label={detail(day)} onMouseEnter={() => setActiveSpend(index)} onFocus={() => setActiveSpend(index)}>
@@ -649,7 +644,7 @@ function MoneyWindowCharts({ rows, now, days, unavailable }: { rows: readonly un
         <figcaption>Saved uses the served daily savings value. {data.windowComplete ? 'Returned rows cover the selected window.' : 'The returned rows do not cover the full selected window.'}{data.days.some(day => day.served && day.saved === null) ? ' At least one served day has no recorded savings value.' : ''}</figcaption>
       </figure>
       <figure className="local-chart ins-cumulative-chart" aria-label="Cumulative savings">
-        <ChartHeading title="Cumulative savings" detail={`${days === 1 ? 'Today (UTC)' : `Last ${days} UTC days`} · ${data.baseline ?? 'baseline not recorded'}`} />
+        <ChartHeading concept="savings" title="Cumulative savings" detail={`${days === 1 ? 'Today (UTC)' : `Last ${days} UTC days`} · ${data.baseline ?? 'baseline not recorded'}`} />
         <p className="ins-readout" role="status">{activeCumulative === null ? `${data.windowComplete && data.saved !== null ? 'Window total' : 'Served rows only · cumulative incomplete'}: ${usd(data.cumulativeSaved[data.cumulativeSaved.length - 1] ?? null)}` : `${dateLabel(data.days[activeCumulative]!.day)} · cumulative ${usd(data.cumulativeSaved[activeCumulative] ?? null)}${!data.days[activeCumulative]!.served ? ' · no served day row; total carried forward' : data.days[activeCumulative]!.saved === null ? ' · savings value not recorded; cumulative unavailable' : ''}`}</p>
         <div className="ins-bars ins-bars--short" role="group" aria-label="Cumulative savings by UTC day" onMouseLeave={() => setActiveCumulative(null)}>
           {data.cumulativeSaved.map((value, index) => <button key={data.days[index]!.day} type="button" className="ins-bar" aria-label={`${dateLabel(data.days[index]!.day)}: cumulative ${usd(value)}${!data.days[index]!.served ? ', no served day row; prior total carried forward' : data.days[index]!.saved === null ? ', savings value not recorded' : ''}`} onMouseEnter={() => setActiveCumulative(index)} onFocus={() => setActiveCumulative(index)}>
@@ -746,12 +741,12 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
       {emptyMessage !== null ? <p className="local-dashboard-empty ins-empty" role="status" aria-label="Insights">{emptyMessage}</p> : (
         <div className="overview-chart-sections">
           {view !== 'analysis' && <RunWindowKpis runs={runs} decisions={decisions} now={now} days={window.kind === 'days' ? window.days : MAX_ALL_TIME_DAYS} label={windowCaption(window)} comparisonEnabled={window.kind === 'days'} />}
-          {view !== 'analysis' && <ChartSection title="Activity over time"><RunsPerDay days={chartDays} /><TokensPerDay days={chartDays} /></ChartSection>}
+          {view !== 'analysis' && <ChartSection concept="activity" title="Activity over time"><RunsPerDay days={chartDays} /><TokensPerDay days={chartDays} /></ChartSection>}
           {view !== 'summary' && <>
-          <ChartSection title="Routing and workload"><VolumeBars runs={runs} field="model" /><VolumeBars runs={runs} field="tier" /><TaskMix runs={runs} /></ChartSection>
-          <ChartSection title="Quality and outcomes"><OutcomeComposition runs={runs} /><PassRateTrend days={chartDays} /><FailureCauses runs={runs} onInspectFailure={onInspectFailure} /></ChartSection>
-          <ChartSection title="Performance by model"><DurationHistogram runs={runs} /><ModelScoreboard runs={runs} /></ChartSection>
-          <ChartSection title="Activity by UTC hour"><ActivityHeatmap runs={runs} days={chartDaysList} window={window} /></ChartSection>
+          <ChartSection concept="routing-workload" title="Routing and workload"><VolumeBars runs={runs} field="model" /><VolumeBars runs={runs} field="tier" /><TaskMix runs={runs} /></ChartSection>
+          <ChartSection concept="quality-outcomes" title="Quality and outcomes"><OutcomeComposition runs={runs} /><PassRateTrend days={chartDays} /><FailureCauses runs={runs} onInspectFailure={onInspectFailure} /></ChartSection>
+          <ChartSection concept="performance-model" title="Performance by model"><DurationHistogram runs={runs} /><ModelScoreboard runs={runs} /></ChartSection>
+          <ChartSection concept="activity-hourly" title="Activity by UTC hour"><ActivityHeatmap runs={runs} days={chartDaysList} window={window} /></ChartSection>
           </>}
         </div>
       )}

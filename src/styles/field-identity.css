@@ -2,20 +2,20 @@
 :root {
   --field-pass: #166534; --field-fail: #b91c1c; --field-count: #1d4ed8;
   --field-score: #a21caf; --field-threshold: #854d0e; --field-model: #6d28d9;
-  --field-age: #0369a1; --field-identity: #0f6c7a; --field-duration: #92400e;
-  --field-cost: #065f46; --field-savings: #0f766e; --field-backend: #9a3412;
+  --field-age: #0369a1; --field-identity: #0f6c7a; --field-duration: #7c4808;
+  --field-cost: #92400e; --field-savings: #0f766e; --field-backend: #9a3412;
   --field-host: #475569; --field-tokens-in: #075985; --field-tokens-out: #7e22ce;
-  --field-tokens: #0e7490; --field-basis: #3f6212; --field-task: #6b21a8;
+  --field-tokens: #7425bd; --field-basis: #3f6212; --field-task: #6b21a8;
   --field-tier: #9f1239; --field-queue: #7c5700; --field-execution: #713f12;
   --field-completion: #6b537d; --field-unavailable: #555b61;
 }
 [data-theme="dark"] {
   --field-pass: #86efac; --field-fail: #fca5a5; --field-count: #93c5fd;
   --field-score: #f0abfc; --field-threshold: #fde68a; --field-model: #c4b5fd;
-  --field-age: #7dd3fc; --field-identity: #67d8cf; --field-duration: #fcd34d;
-  --field-cost: #6ee7b7; --field-savings: #5eead4; --field-backend: #fdba74;
+  --field-age: #7dd3fc; --field-identity: #67d8cf; --field-duration: #edc978;
+  --field-cost: #fcd34d; --field-savings: #5eead4; --field-backend: #fdba74;
   --field-host: #cbd5e1; --field-tokens-in: #38bdf8; --field-tokens-out: #a78bfa;
-  --field-tokens: #a5f3fc; --field-basis: #bef264; --field-task: #d8b4fe;
+  --field-tokens: #d2a8ff; --field-basis: #bef264; --field-task: #d8b4fe;
   --field-tier: #fda4af; --field-queue: #e3bc72; --field-execution: #fef08a;
   --field-completion: #d2b8dd; --field-unavailable: #b5b9c0;
 }
@@ -68,7 +68,7 @@
 
 /* Distinct concepts keep their own identity in both themes. */
 :root {
-  --field-calls: #9f4514;
+  --field-calls: #2452b8;
   --field-tenant: #6d4c41;
   --field-session: #4e6282;
   --field-baseline: #62621b;
@@ -97,7 +97,7 @@
   --field-path: #567349;
 }
 [data-theme="dark"] {
-  --field-calls: #edb08c;
+  --field-calls: #a0c7ff;
   --field-tenant: #d6b7a8;
   --field-session: #a8bddf;
   --field-baseline: #d1ce83;
@@ -168,3 +168,189 @@
 .ev-root[data-destination="delegation-evidence"] .kpi[data-tone="green"][data-field-tone][data-field-unavailable] { --kpi-accent: var(--field-pass); }
 .ev-root[data-destination="delegation-evidence"] .kpi[data-tone="purple"][data-field-tone][data-field-unavailable] { --kpi-accent: var(--field-savings); }
 .ev-root[data-destination="delegation-evidence"] .kpi[data-tone="amber"][data-field-tone][data-field-unavailable] { --kpi-accent: var(--field-tokens); }
+
+/* Canonical heading, tier and recorded-step identities (OMN-21308). */
+:root {
+  --field-run-outcome: oklch(46% 0.11 186.88835);
+  --field-routing-model: oklch(46% 0.11 137.28867);
+  --field-tokens-completion: oklch(46% 0.11 213.13815);
+  --field-timing: oklch(46% 0.11 254.78945);
+  --field-run-details: oklch(46% 0.11 341.04062);
+  --field-stage-timing: oklch(46% 0.11 8.44187);
+  --field-answer: oklch(46% 0.11 186.32868);
+  --field-routing-flow: oklch(46% 0.11 233.71179);
+  --field-token-flow: oklch(46% 0.11 184.04561);
+  --field-quality-comparison: oklch(46% 0.11 142.82768);
+  --field-tier-local: oklch(46% 0.11 319.27073);
+  --field-tier-harness: oklch(46% 0.11 245.13082);
+  --field-tier-cheap-frontier: oklch(46% 0.11 32.92579);
+  --field-tier-cheap-cloud: oklch(46% 0.11 342.60582);
+  --field-tier-cloud: oklch(46% 0.11 85.57109);
+  --field-tier-claude: oklch(46% 0.11 342.88881);
+  --field-tier-frontier: oklch(46% 0.11 214.21902);
+  --field-tier-customer-keys: oklch(46% 0.11 273.45957);
+  --field-tier-other: oklch(46% 0.11 68.76212);
+  --field-step-request: oklch(46% 0.11 341.29383);
+  --field-step-routing: oklch(46% 0.11 93.67875);
+  --field-step-provider-call: oklch(46% 0.11 164.34756);
+  --field-step-quality: oklch(46% 0.11 23.92721);
+  --field-step-terminal: oklch(46% 0.11 323.60437);
+  --field-step-other: oklch(46% 0.11 26.53757);
+}
+[data-theme="dark"] {
+  --field-run-outcome: oklch(79% 0.11 186.88835);
+  --field-routing-model: oklch(79% 0.11 137.28867);
+  --field-tokens-completion: oklch(79% 0.11 213.13815);
+  --field-timing: oklch(79% 0.11 254.78945);
+  --field-run-details: oklch(79% 0.11 341.04062);
+  --field-stage-timing: oklch(79% 0.11 8.44187);
+  --field-answer: oklch(79% 0.11 186.32868);
+  --field-routing-flow: oklch(79% 0.11 233.71179);
+  --field-token-flow: oklch(79% 0.11 184.04561);
+  --field-quality-comparison: oklch(79% 0.11 142.82768);
+  --field-tier-local: oklch(79% 0.11 319.27073);
+  --field-tier-harness: oklch(79% 0.11 245.13082);
+  --field-tier-cheap-frontier: oklch(79% 0.11 32.92579);
+  --field-tier-cheap-cloud: oklch(79% 0.11 342.60582);
+  --field-tier-cloud: oklch(79% 0.11 85.57109);
+  --field-tier-claude: oklch(79% 0.11 342.88881);
+  --field-tier-frontier: oklch(79% 0.11 214.21902);
+  --field-tier-customer-keys: oklch(79% 0.11 273.45957);
+  --field-tier-other: oklch(79% 0.11 68.76212);
+  --field-step-request: oklch(79% 0.11 341.29383);
+  --field-step-routing: oklch(79% 0.11 93.67875);
+  --field-step-provider-call: oklch(79% 0.11 164.34756);
+  --field-step-quality: oklch(79% 0.11 23.92721);
+  --field-step-terminal: oklch(79% 0.11 323.60437);
+  --field-step-other: oklch(79% 0.11 26.53757);
+}
+[data-field-tone="run-outcome"] { --field-ink: var(--field-run-outcome); }
+[data-field-tone="routing-model"] { --field-ink: var(--field-routing-model); }
+[data-field-tone="tokens-completion"] { --field-ink: var(--field-tokens-completion); }
+[data-field-tone="timing"] { --field-ink: var(--field-timing); }
+[data-field-tone="run-details"] { --field-ink: var(--field-run-details); }
+[data-field-tone="stage-timing"] { --field-ink: var(--field-stage-timing); }
+[data-field-tone="answer"] { --field-ink: var(--field-answer); }
+[data-field-tone="routing-flow"] { --field-ink: var(--field-routing-flow); }
+[data-field-tone="token-flow"] { --field-ink: var(--field-token-flow); }
+[data-field-tone="quality-comparison"] { --field-ink: var(--field-quality-comparison); }
+[data-field-tone="tier-local"] { --field-ink: var(--field-tier-local); }
+[data-field-tone="tier-harness"] { --field-ink: var(--field-tier-harness); }
+[data-field-tone="tier-cheap-frontier"] { --field-ink: var(--field-tier-cheap-frontier); }
+[data-field-tone="tier-cheap-cloud"] { --field-ink: var(--field-tier-cheap-cloud); }
+[data-field-tone="tier-cloud"] { --field-ink: var(--field-tier-cloud); }
+[data-field-tone="tier-claude"] { --field-ink: var(--field-tier-claude); }
+[data-field-tone="tier-frontier"] { --field-ink: var(--field-tier-frontier); }
+[data-field-tone="tier-customer-keys"] { --field-ink: var(--field-tier-customer-keys); }
+[data-field-tone="tier-other"] { --field-ink: var(--field-tier-other); }
+[data-field-tone="step-request"] { --field-ink: var(--field-step-request); }
+[data-field-tone="step-routing"] { --field-ink: var(--field-step-routing); }
+[data-field-tone="step-provider-call"] { --field-ink: var(--field-step-provider-call); }
+[data-field-tone="step-quality"] { --field-ink: var(--field-step-quality); }
+[data-field-tone="step-terminal"] { --field-ink: var(--field-step-terminal); }
+[data-field-tone="step-other"] { --field-ink: var(--field-step-other); }
+[data-field-tone="unavailable"] { --field-ink: var(--field-unavailable); }
+svg.field-icon[data-field-tone] { color: var(--field-ink); }
+.local-dashboard-page .local-dashboard-panel > h2 > svg.field-icon[data-field-tone] { color: var(--field-ink); }
+/* Deferred cloud-key identity is retained when that mode is served. */
+:root { --field-cloud-keys: #6b5c75; }
+[data-theme="dark"] { --field-cloud-keys: #c5aecf; }
+[data-field-tone="cloud-keys"] { --field-ink: var(--field-cloud-keys); }
+:root { --field-recorded-rows: #2f6084; }
+[data-theme="dark"] { --field-recorded-rows: #9fc9de; }
+[data-field-tone="recorded-rows"] { --field-ink: var(--field-recorded-rows); }
+/* A success or failure keeps its outcome colour on timeline dots and labels. */
+.local-dashboard-page { --status-ok: var(--field-pass); --status-bad: var(--field-fail); }
+
+/* Shared chart-heading concepts. */
+:root {
+  --field-runs-daily: oklch(46% 0.11 330.96068);
+  --field-pass-rate-daily: oklch(46% 0.11 52.2194);
+  --field-activity-hourly: oklch(46% 0.11 63.33065);
+  --field-quality-model: oklch(46% 0.11 108.83459);
+  --field-failures: oklch(46% 0.11 258.69749);
+  --field-runs-model: oklch(46% 0.11 358.16801);
+  --field-runs-tier: oklch(46% 0.11 64.96998);
+  --field-spend-model: oklch(46% 0.11 182.38678);
+  --field-cost-per-run: oklch(46% 0.11 133.12544);
+  --field-tokens-model: oklch(46% 0.11 290.94511);
+  --field-cost-route: oklch(46% 0.11 313.46716);
+  --field-activity: oklch(46% 0.11 228.04225);
+  --field-routing-workload: oklch(46% 0.11 101.12764);
+  --field-quality-outcomes: oklch(46% 0.11 2.39929);
+  --field-performance-model: oklch(46% 0.11 315.56473);
+}
+[data-theme="dark"] {
+  --field-runs-daily: oklch(79% 0.11 330.96068);
+  --field-pass-rate-daily: oklch(79% 0.11 52.2194);
+  --field-activity-hourly: oklch(79% 0.11 63.33065);
+  --field-quality-model: oklch(79% 0.11 108.83459);
+  --field-failures: oklch(79% 0.11 258.69749);
+  --field-runs-model: oklch(79% 0.11 358.16801);
+  --field-runs-tier: oklch(79% 0.11 64.96998);
+  --field-spend-model: oklch(79% 0.11 182.38678);
+  --field-cost-per-run: oklch(79% 0.11 133.12544);
+  --field-tokens-model: oklch(79% 0.11 290.94511);
+  --field-cost-route: oklch(79% 0.11 313.46716);
+  --field-activity: oklch(79% 0.11 228.04225);
+  --field-routing-workload: oklch(79% 0.11 101.12764);
+  --field-quality-outcomes: oklch(79% 0.11 2.39929);
+  --field-performance-model: oklch(79% 0.11 315.56473);
+}
+[data-field-tone="runs-daily"] { --field-ink: var(--field-runs-daily); }
+[data-field-tone="pass-rate-daily"] { --field-ink: var(--field-pass-rate-daily); }
+[data-field-tone="activity-hourly"] { --field-ink: var(--field-activity-hourly); }
+[data-field-tone="quality-model"] { --field-ink: var(--field-quality-model); }
+[data-field-tone="failures"] { --field-ink: var(--field-failures); }
+[data-field-tone="runs-model"] { --field-ink: var(--field-runs-model); }
+[data-field-tone="runs-tier"] { --field-ink: var(--field-runs-tier); }
+[data-field-tone="spend-model"] { --field-ink: var(--field-spend-model); }
+[data-field-tone="cost-per-run"] { --field-ink: var(--field-cost-per-run); }
+[data-field-tone="tokens-model"] { --field-ink: var(--field-tokens-model); }
+[data-field-tone="cost-route"] { --field-ink: var(--field-cost-route); }
+[data-field-tone="activity"] { --field-ink: var(--field-activity); }
+[data-field-tone="routing-workload"] { --field-ink: var(--field-routing-workload); }
+[data-field-tone="quality-outcomes"] { --field-ink: var(--field-quality-outcomes); }
+[data-field-tone="performance-model"] { --field-ink: var(--field-performance-model); }
+
+/* Task labels use the same identity in chips and chart legends. */
+:root {
+  --field-task-document: oklch(46% 0.11 165.02155);
+  --field-task-code-generation: oklch(46% 0.11 255.98927);
+  --field-task-research: oklch(46% 0.11 116.13087);
+  --field-task-summarization: oklch(46% 0.11 161.84054);
+  --field-task-code-review: oklch(46% 0.11 132.93971);
+  --field-task-test: oklch(46% 0.11 281.15629);
+  --field-task-other: oklch(46% 0.11 310.2113);
+}
+[data-theme="dark"] {
+  --field-task-document: oklch(79% 0.11 165.02155);
+  --field-task-code-generation: oklch(79% 0.11 255.98927);
+  --field-task-research: oklch(79% 0.11 116.13087);
+  --field-task-summarization: oklch(79% 0.11 161.84054);
+  --field-task-code-review: oklch(79% 0.11 132.93971);
+  --field-task-test: oklch(79% 0.11 281.15629);
+  --field-task-other: oklch(79% 0.11 310.2113);
+}
+[data-field-tone="task-document"] { --field-ink: var(--field-task-document); }
+[data-field-tone="task-code-generation"] { --field-ink: var(--field-task-code-generation); }
+[data-field-tone="task-research"] { --field-ink: var(--field-task-research); }
+[data-field-tone="task-summarization"] { --field-ink: var(--field-task-summarization); }
+[data-field-tone="task-code-review"] { --field-ink: var(--field-task-code-review); }
+[data-field-tone="task-test"] { --field-ink: var(--field-task-test); }
+[data-field-tone="task-other"] { --field-ink: var(--field-task-other); }
+
+:root {
+  --field-tier-mix: oklch(46% 0.11 351.38394);
+  --field-usage-analysis: oklch(46% 0.11 169.12599);
+  --field-load-slow: var(--field-threshold);
+  --field-load-error: var(--field-fail);
+}
+[data-theme="dark"] {
+  --field-tier-mix: oklch(79% 0.11 351.38394);
+  --field-usage-analysis: oklch(79% 0.11 169.12599);
+}
+[data-field-tone="tier-mix"] { --field-ink: var(--field-tier-mix); }
+[data-field-tone="usage-analysis"] { --field-ink: var(--field-usage-analysis); }
+[data-field-tone="load-slow"] { --field-ink: var(--field-load-slow); }
+[data-field-tone="load-error"] { --field-ink: var(--field-load-error); }

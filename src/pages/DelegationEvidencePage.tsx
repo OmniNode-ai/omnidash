@@ -49,6 +49,7 @@ import type {
 import { runBreakdownText, runModelledCell } from '@/pages/LocalDashboardPage';
 import { overviewRunCount } from '@/lib/dashboard-overview-count';
 import { modelColor } from '@/lib/dashboard-colors';
+import { modelIdentityStyle } from '@/components/dashboard/model-identity';
 
 const recordedMoney = (value: unknown) => isUnavailableField(value) || !Number.isFinite(Number(value))
   ? 'Not recorded' : formatUsd(value);
@@ -221,7 +222,7 @@ function ModelRouting() {
     <Panel title="MODEL ROUTING" sub={`${formatDashboardCount(agg.total_delegations)} delegations by selected model (aggregate)`}>
       {entries.map(([model, count]) => (
         <div className="barrow" key={model}>
-          <div className="lab" title={model}>{model}</div>
+          <div className="lab local-model-identity" title={model} style={modelIdentityStyle(model)}>{model}</div>
           <div className="val">{formatDashboardCount(count)} · {fmtPct(count / agg.total_delegations)}</div>
           <div className="track2 bar-track">
             <div className="bar-fill" style={{ width: `${Math.max(3, (count / max) * 100)}%`, background: modelColor(model) }} />
@@ -338,11 +339,11 @@ function TokenUsage() {
         <div data-field-tone="tokens-out"><div className="note">Completion</div><div className="mono ev-token-num">{formatFullCount(t.total_completion_tokens)}</div></div>
         <div data-field-tone="cost"><div className="note">Est. cost</div><div className="mono ev-token-num c-amber">{formatUsd(t.total_estimated_cost_usd)}</div></div>
       </div>
-      {models.map((m, i) => (
+      {models.map(m => (
         <div className="barrow" key={m.model_id}>
-          <div className="lab" title={m.model_name}>{m.model_name.length > 26 ? `${m.model_name.slice(0, 24)}…` : m.model_name}</div>
+          <div className="lab local-model-identity" title={m.model_name} style={modelIdentityStyle(m.model_id)}>{m.model_name.length > 26 ? `${m.model_name.slice(0, 24)}…` : m.model_name}</div>
           <div className="val">{formatDashboardCount(m.total_tokens)} {m.token_provenance === 'measured' ? <span className="c-green">●</span> : <span className="dim3">○</span>}</div>
-          <div className="track2 bar-track"><div className={`bar-fill m-${['blue', 'green', 'amber', 'purple', 'teal'][i % 5]}`} style={{ width: `${Math.max(2, (m.total_tokens / max) * 100)}%` }} /></div>
+          <div className="track2 bar-track"><div className="bar-fill" data-model-id={m.model_id} style={{ width: `${Math.max(2, (m.total_tokens / max) * 100)}%`, background: modelColor(m.model_id) }} /></div>
         </div>
       ))}
     </Panel>
@@ -391,7 +392,7 @@ function RecentDelegations({ decisions }: { decisions: DelegationDecisionRow[] }
   const cols: DataColumn<DelegationDecisionRow>[] = [
     { key: 'correlation_id', label: 'Correlation', render: (r) => <span className="mono c-blue">{shortId(r.correlation_id)}</span> },
     { key: 'task_type', label: 'Task', grow: true, render: (r) => r.task_type },
-    { key: 'model_name', label: 'Model', truncate: true, render: (r) => <span className="mono">{r.model_name.length > 22 ? `${r.model_name.slice(0, 20)}…` : r.model_name}</span> },
+    { key: 'model_name', label: 'Model', truncate: true, render: (r) => <span className="mono local-model-identity" style={modelIdentityStyle(r.model_name)}>{r.model_name.length > 22 ? `${r.model_name.slice(0, 20)}…` : r.model_name}</span> },
     { key: 'state', label: 'State', render: (r) => <StateBadge passed={r.quality_gate_passed} /> },
     { key: 'tokens', label: 'Tokens', num: true, render: (r) => formatDashboardCount(r.tokens_to_compliance) },
     { key: 'latency_ms', label: 'Latency', num: true, render: (r) => fmtLatency(r.latency_ms) },
