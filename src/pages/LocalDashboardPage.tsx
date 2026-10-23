@@ -322,11 +322,13 @@ export function OverviewAggregateCard({ component, config, rows, window }: {
  * the line goes rather than repeat it (and the compact first screen keeps its height).
  */
 function runBreakdownParts(row: Record<string, unknown>): Array<{ label: string; count: string }> | null {
+  // By field, never by position: measured stays whenever it is served (a measured 0 is a value); estimated and unknown
+  // only when above 0, and the line only when one of them is.
   const served = ([['measured_run_count', 'measured'], ['estimated_run_count', 'estimated'], ['unknown_run_count', 'unknown']] as const)
     .filter(([field]) => !isMissing(row[field]) && Number.isFinite(Number(row[field])));
-  if (!served.some(([field], index) => index > 0 && Number(row[field]) > 0)) return null;
+  if (!served.some(([field, label]) => label !== 'measured' && Number(row[field]) > 0)) return null;
   return served
-    .filter(([field], index) => index === 0 || Number(row[field]) > 0)
+    .filter(([field, label]) => label === 'measured' || Number(row[field]) > 0)
     .map(([field, label]) => ({ label, count: formatDashboardCount(row[field]) }));
 }
 

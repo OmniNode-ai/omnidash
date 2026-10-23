@@ -59,6 +59,29 @@ test('AC46 estimated absent: measured and unknown only', async ({ page }) => {
   await expect(spans.nth(1)).toHaveText('3 unknown');
 });
 
+test('AC46 measured absent: estimated and unknown only', async ({ page }) => {
+  const { card, spans } = await classes(page, { estimated_run_count: 2, unknown_run_count: 3 });
+  await expect(spans).toHaveCount(2, MISSING);
+  await expect(spans.nth(0)).toHaveText('2 estimated');
+  await expect(spans.nth(1)).toHaveText('3 unknown');
+  await expect(card.locator('[data-run-class="measured"]')).toHaveCount(0);
+});
+
+test('AC46 unknown absent: measured and estimated only', async ({ page }) => {
+  const { card, spans } = await classes(page, { measured_run_count: 9, estimated_run_count: 2 });
+  await expect(spans).toHaveCount(2, MISSING);
+  await expect(spans.nth(0)).toHaveText('9 measured');
+  await expect(spans.nth(1)).toHaveText('2 estimated');
+  await expect(card.locator('[data-run-class="unknown"]')).toHaveCount(0);
+});
+
+test('AC46 measured absent and estimated 0: a zero estimated is still left out', async ({ page }) => {
+  const { card, spans } = await classes(page, { estimated_run_count: 0, unknown_run_count: 3 });
+  await expect(spans).toHaveCount(1, MISSING);
+  await expect(spans.nth(0)).toHaveText('3 unknown');
+  await expect(card).not.toContainText('0 estimated');
+});
+
 test('AC46 unknown 0: measured and estimated only, no 0 unknown', async ({ page }) => {
   const { card, spans } = await classes(page, { measured_run_count: 9, estimated_run_count: 2, unknown_run_count: 0 });
   await expect(spans).toHaveCount(2, MISSING);

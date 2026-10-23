@@ -370,7 +370,7 @@
     },
     {
       "id": "dod-omn21166-ac46-run-classes",
-      "description": "AC46 (part 9): under Measured runs the run breakdown draws measured, estimated and unknown as separate labelled spans, each in its own shared field tone (run-measured, run-estimated, and the not-measured tone for unknown), with three distinct colours in light and dark and unknown never in the failed tone; an absent class, a zero unknown and a malformed count are left out, a measured 0 is a value, and a row with only measured runs draws no line (control). Fails on dev c87eb615, where the breakdown was one caption string.",
+      "description": "AC46 (part 9): under Measured runs the run breakdown draws measured, estimated and unknown as separate labelled spans, each in its own shared field tone (run-measured, run-estimated, and the not-measured tone for unknown), with three distinct colours in light and dark and unknown never in the failed tone; each class absent (measured, estimated, unknown), a zero estimated when measured is absent, a zero unknown and a malformed count are left out, a measured 0 is a value, and a row with only measured runs draws no line (control). Fails on dev c87eb615, where the breakdown was one caption string.",
       "source": "manual",
       "binds_ac": [
         "AC46"
@@ -404,6 +404,21 @@
         {
           "check_type": "test_passes",
           "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-run-classes-ac46.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC46 only measured runs served\"",
+          "cwd": "${OMNI_HOME}/omnidash"
+        },
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-run-classes-ac46.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC46 measured absent: estimated\"",
+          "cwd": "${OMNI_HOME}/omnidash"
+        },
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-run-classes-ac46.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC46 unknown absent\"",
+          "cwd": "${OMNI_HOME}/omnidash"
+        },
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-run-classes-ac46.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC46 measured absent and estimated 0\"",
           "cwd": "${OMNI_HOME}/omnidash"
         }
       ]
