@@ -252,14 +252,14 @@ function QualityGate() {
   return (
     <Panel title="QUALITY GATE" sub="deterministic checks">
       <div className="ev-qg-stats">
-        <span className="stat-inline"><span className="big c-amber">{fmtPct(q.overall_pass_rate)}</span><span className="note">pass rate</span></span>
-        <span className="stat-inline" data-field-tone="pass"><span className="big c-green">{formatDashboardCount(q.total_passed)}</span><span className="note">pass</span></span>
-        <span className="stat-inline" data-field-tone="fail"><span className="big c-red">{formatDashboardCount(q.total_failed)}</span><span className="note">fail</span></span>
+        <span className="stat-inline"><span className="big c-amber" style={{ color: 'var(--field-pass)' }}>{fmtPct(q.overall_pass_rate)}</span><span className="note">pass rate</span></span>
+        <span className="stat-inline" data-field-tone="pass"><span className="big c-green" style={{ color: 'var(--field-pass)' }}>{formatDashboardCount(q.total_passed)}</span><span className="note">pass</span></span>
+        <span className="stat-inline" data-field-tone="fail"><span className="big c-red" style={{ color: 'var(--field-fail)' }}>{formatDashboardCount(q.total_failed)}</span><span className="note">fail</span></span>
         <span className="stat-inline"><span className="big">{fmtPct(q.escalation_rate)}</span><span className="note">escalation</span></span>
       </div>
       <div className="bar-track ev-qg-bar">
-        <div className="bar-fill m-green" style={{ width: total > 0 ? `${(q.total_passed / total) * 100}%` : '0%' }} />
-        <div className="bar-fill m-red" style={{ width: total > 0 ? `${(q.total_failed / total) * 100}%` : '0%' }} />
+        <div className="bar-fill m-green" data-field-tone="pass" data-semantic-concept="field:pass" data-semantic-label="Passed checks" style={{ background: 'var(--field-pass)', width: total > 0 ? `${(q.total_passed / total) * 100}%` : '0%' }} />
+        <div className="bar-fill m-red" data-field-tone="fail" data-semantic-concept="field:fail" data-semantic-label="Failed checks" style={{ background: 'var(--field-fail)', width: total > 0 ? `${(q.total_failed / total) * 100}%` : '0%' }} />
       </div>
       <div className="divider" />
       <div className="section-label">Escalation reasons</div>
@@ -292,9 +292,12 @@ function SavingsPanel({ overview, unavailable }: { overview: CostSavingsOverview
   const saved = overview?.total_savings_usd;
   const width = (value: unknown) => finite(value) && finite(cloud) && Number(cloud) > 0
     ? `${Math.max(0, Math.min(100, (Number(value) / Number(cloud)) * 100))}%` : null;
-  const bar = (label: string, value: unknown, tone: string, labelClass = '') => (
-    <div className="barrow"><div className={`lab ${labelClass}`.trim()}>{label}</div><div className={`val ${labelClass}`.trim()}>{finite(value) ? formatUsd(value) : 'Not measured'}</div>
-      <div className="track2 bar-track">{width(value) && <div className={`bar-fill ${tone}`} style={{ width: width(value)! }} />}</div></div>
+  const bar = (label: string, value: unknown, concept: 'baseline' | 'cost' | 'savings', tone: string, labelClass = '') => (
+    <div className="barrow" data-field-tone={concept} data-semantic-concept={`field:${concept}`} data-semantic-label={label}>
+      <div className={`lab ${labelClass}`.trim()} style={{ color: 'var(--field-ink)' }}>{label}</div>
+      <div className={`val ${labelClass}`.trim()} style={{ color: finite(value) ? 'var(--field-ink)' : 'var(--field-unavailable)' }}>{finite(value) ? formatUsd(value) : 'Not measured'}</div>
+      <div className="track2 bar-track">{width(value) && <div className={`bar-fill ${tone}`} style={{ width: width(value)!, background: 'var(--field-ink)' }} />}</div>
+    </div>
   );
   return (
     <Panel
@@ -302,15 +305,15 @@ function SavingsPanel({ overview, unavailable }: { overview: CostSavingsOverview
       sub={s?.baseline_model || 'Baseline model not recorded'}
       right={s && pricingLabel(s.pricing_manifest_version) ? <span className="src-tag">{pricingLabel(s.pricing_manifest_version)}</span> : undefined}
     >
-      <span className="stat-inline ev-savings-hero">
-        <span className="big c-amber">{overview ? servedUsd(saved) : unavailable}</span>
+      <span className="stat-inline ev-savings-hero" data-field-tone="savings">
+        <span className="big c-amber" style={{ color: overview && finite(saved) ? 'var(--field-savings)' : 'var(--field-unavailable)' }}>{overview ? servedUsd(saved) : unavailable}</span>
         <span className="note">cumulative savings (modelled) over {overview ? servedCount(overview.measured_run_count) : 'Not measured'} measured runs</span>
       </span>
       {/* The money source does not serve an unpriced count; the separate savings population cannot fill it. */}
       <p className="note">Unpriced runs not recorded</p>
-      {bar('Cloud baseline cost', cloud, 'm-blue')}
-      {bar('Local / delegated cost', local, 'm-green')}
-      {bar('Saved', saved, 'm-green', 'c-green')}
+      {bar('Cloud baseline cost', cloud, 'baseline', 'm-blue')}
+      {bar('Local / delegated cost', local, 'cost', 'm-green')}
+      {bar('Saved', saved, 'savings', 'm-green', 'c-green')}
     </Panel>
   );
 }

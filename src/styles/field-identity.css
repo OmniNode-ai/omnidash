@@ -164,7 +164,7 @@
 .ev-root .kpi[data-field-tone] .k-v > .ev-kpi-sm { color: inherit; }
 
 /* Card identity remains distinct when its value is unavailable; the value still reads in the unavailable ink. */
-.ev-root[data-destination="delegation-evidence"] .kpi[data-tone="blue"][data-field-tone][data-field-unavailable] { --kpi-accent: var(--field-count); }
+.ev-root[data-destination="delegation-evidence"] .kpi[data-tone="blue"][data-field-tone][data-field-unavailable] { --kpi-accent: var(--field-delegations); }
 .ev-root[data-destination="delegation-evidence"] .kpi[data-tone="green"][data-field-tone][data-field-unavailable] { --kpi-accent: var(--field-pass); }
 .ev-root[data-destination="delegation-evidence"] .kpi[data-tone="purple"][data-field-tone][data-field-unavailable] { --kpi-accent: var(--field-savings); }
 .ev-root[data-destination="delegation-evidence"] .kpi[data-tone="amber"][data-field-tone][data-field-unavailable] { --kpi-accent: var(--field-tokens); }

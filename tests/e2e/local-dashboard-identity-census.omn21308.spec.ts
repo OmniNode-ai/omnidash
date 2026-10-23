@@ -16,7 +16,10 @@ const destinations: AppPage[] = ['local-overview', 'local-runs', 'local-workflow
   'local-usage', 'local-credentials', 'local-api-keys', 'delegation-evidence',
   'experiments', 'sea-control', 'event-bus', 'lab'];
 const routing = chartRows[prefix + 'delegation.model-routing.v1'][0] as Record<string, unknown>;
-const rows = { ...chartRows, [prefix + 'delegation.model-routing.v1']: [{ ...routing,
+const rows = { ...chartRows, [prefix + 'cost.savings-overview.v1']: [{ window: 'all', captured_at: '2026-10-17T10:00:00Z',
+  total_baseline_cost_usd: '10.0000', total_cost_usd: '2.0000', total_savings_usd: '8.0000',
+  run_count: 10, measured_run_count: 10, tokens_total: 1000,
+}], [prefix + 'delegation.model-routing.v1']: [{ ...routing,
   by_tier: { ...routing.by_tier as object, local_call_share: .6, local_call_count: 6, total_call_count: 10 },
 }], [prefix + 'topic-activity.v1']: [{
   topic: 'onex.evt.identity.sample.v1', sampled_at: '2026-10-17T10:00:00Z',
@@ -36,6 +39,7 @@ type Reading = {
   shapeMatches: boolean; declaredIconMatches: boolean;
   paintMatches?: boolean; labelCorroborated?: boolean;
   contrast?: number; contrastThreshold?: number; renderedForeground?: string; contrastUnmeasured?: string;
+  canonicalFieldColor?: string; canonicalFieldColorMatches?: boolean;
   geometryPaint?: Array<{ tag: string; stroke: string; fill: string; opacity: string; strokeOpacity: string; fillOpacity: string; strokeWidth: string; visible: boolean }>;
 };
 type State = { destination: AppPage; theme: string; developer: boolean;
@@ -157,6 +161,11 @@ async function collect(page: Page): Promise<Reading[]> {
       const values = [luminance(front), luminance(back)].sort((a, b) => b - a);
       return { renderedForeground: rgbString(front), contrast: (values[0]! + .05) / (values[1]! + .05), contrastThreshold: threshold };
     };
+    const fieldColor = (tone: string) => {
+      const probe = document.createElement('span'); probe.style.color = `var(--field-${tone})`;
+      body.append(probe); const color = rgbString(rgba(getComputedStyle(probe).color)); probe.remove();
+      return color;
+    };
     const readings: Reading[] = [];
     for (const svg of body.querySelectorAll('svg.lucide')) {
       const drawnLabel = visibleLabelFor(svg);
@@ -252,8 +261,8 @@ async function collect(page: Page): Promise<Reading[]> {
       const legendButton = el.closest('.usage-model-legend button');
       const modelName = clean(el.getAttribute('data-model-id')
         || el.closest('.ins-ring')?.querySelector('.ins-ring-name')?.textContent
-        || el.closest('.barrow')?.querySelector('.lab')?.getAttribute('title')
-        || el.closest('.barrow')?.querySelector('.lab')?.textContent
+        || el.closest('.barrow')?.querySelector('.lab.local-model-identity')?.getAttribute('title')
+        || el.closest('.barrow')?.querySelector('.lab.local-model-identity')?.textContent
         || el.closest('.overview-volume-bars > button')?.querySelector('[data-field-tone="model"]')?.textContent
         || (el.matches('.usage-model-swatch') ? el.closest('button')?.textContent : '')
         || tokenLegend?.textContent?.replace(/: [\d,\s]+$/, '')
@@ -266,20 +275,31 @@ async function collect(page: Page): Promise<Reading[]> {
       // meaning. It is not an icon+colour pair: numeric heatmap intensity and
       // chart backgrounds are not new semantic identities. AC3's focused tests
       // compare actual model marks to legends; this census keeps the raw paint.
-      const qualityTone = el.matches('.ev-qg-bar > .bar-fill.m-green') ? 'pass'
+      const qualityTone = el.closest('.ev-qg-bar') && (field === 'pass' || field === 'fail') ? field
+        : el.matches('.ev-qg-bar > .bar-fill.m-green') ? 'pass'
         : el.matches('.ev-qg-bar > .bar-fill.m-red') ? 'fail' : '';
       const qualityLabel = qualityTone ? clean(el.closest('.ev-qg-bar')?.parentElement
         ?.querySelector(`[data-field-tone="${qualityTone}"] .note`)?.textContent) : '';
-      const graphicConcept = structural ? '' : concept || (qualityTone && qualityLabel ? `field:${qualityTone}` : modelName ? `model:${modelName}` : tierName ? `tier:${tierName}`
+      // Exact retained Savings-panel labels preserve the legacy falsifier;
+      // arbitrary .barrow labels never make a money figure a model identity.
+      const financeLabel = el.closest('[data-panel-title="SAVINGS vs CLOUD BASELINE"]')
+        ? clean(el.closest('.barrow')?.querySelector('.lab')?.textContent) : '';
+      const financeTones: Record<string, string> = { 'Cloud baseline cost': 'baseline', 'Local / delegated cost': 'cost', Saved: 'savings' };
+      const financeTone = financeTones[financeLabel] ?? '';
+      const boundField = financeTone || (qualityTone && qualityLabel ? qualityTone : '')
+        || (el.matches('.bar-fill') && ['pass', 'fail', 'baseline', 'cost', 'savings'].includes(field ?? '') ? field! : '');
+      const graphicConcept = structural ? '' : concept || (boundField ? `field:${boundField}` : modelName ? `model:${modelName}` : tierName ? `tier:${tierName}`
         : el.matches('.ins-heat-cell') ? 'metric:activity-by-hour'
         : label ? `chart:${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}` : '');
       for (const [paintKind, color] of paints) {
         if (['none', 'transparent', 'rgba(0, 0, 0, 0)'].includes(color!)) continue;
         const visibleTierLabel = tier ? clean([...body.querySelectorAll('button')].find(button => button.getAttribute('aria-label') === `Inspect ${tier}`)?.textContent) : '';
         const backing = backgroundFor(el instanceof SVGElement ? el : el.parentElement);
+        const canonicalFieldColor = boundField ? fieldColor(boundField) : undefined;
         readings.push({ medium: 'graphic', kind: graphicConcept ? 'semantic' : structural ? 'decoration' : 'unmapped',
-          concept: graphicConcept || (structural ? `decoration:${structural}` : ''), label: qualityLabel || label || modelName || tierName || visibleTierLabel || structural || '',
+          concept: graphicConcept || (structural ? `decoration:${structural}` : ''), label: financeLabel || qualityLabel || label || modelName || tierName || visibleTierLabel || structural || '',
           icon: '', signature: '', color: color!, background: backing,
+          ...(canonicalFieldColor ? { canonicalFieldColor, canonicalFieldColorMatches: CSS.supports('color', color!) && rgbString(rgba(color!)) === canonicalFieldColor } : {}),
           ...(graphicConcept.startsWith('model:') ? contrastFor(color!, backing, 3) : {}),
           selector: `${el.tagName}.${[...el.classList].join('.')}:${paintKind}`,
           unavailable: el.closest('[data-field-unavailable="true"]') !== null,
@@ -358,6 +378,7 @@ function defects(states: State[]): string[] {
       if (!row.label) errors.add(`${at}: semantic icon lacks a readable label`);
       if (row.contrast !== undefined && row.contrastThreshold !== undefined && row.contrast < row.contrastThreshold)
         errors.add(`${at}: ${row.medium} contrast ${row.contrast.toFixed(3)} is below ${row.contrastThreshold}`);
+      if (row.canonicalFieldColorMatches === false) errors.add(`${at}: graphic paint differs from canonical ${row.concept} field colour ${row.canonicalFieldColor}`);
       if (row.medium !== 'icon') continue;
       if (!row.paintMatches) errors.add(`${at}: child geometry paint or visibility differs from canonical icon`);
       if (!row.labelCorroborated) errors.add(`${at}: semantic label is not corroborated by visible text`);
@@ -561,6 +582,14 @@ test('AC4 eleven-destination light/dark icon census includes expanded and Develo
           source: process.env.OMNIDASH_TEST_SOURCE_SHA ?? 'UNVERIFIED: source SHA not provided', readings });
         writeFileSync(info.outputPath('identity-census.json'), JSON.stringify({ data: 'governed response fixtures', states, defects: defects(states) }, null, 2));
         await page.screenshot({ path: info.outputPath(`${destination}-${theme}-developer-${developer}.png`), fullPage: true });
+        if (destination === 'delegation-evidence') {
+          for (const tone of ['pass', 'fail', 'baseline', 'cost', 'savings']) {
+            expect(readings.some(row => row.medium === 'graphic' && row.concept === `field:${tone}` && row.canonicalFieldColor !== undefined),
+              `finite Evidence ${tone} bar is present and compared with canonical field ink`).toBe(true);
+          }
+          expect(readings.some(row => row.concept === 'model:Cloud baseline cost' || row.concept === 'model:Local / delegated cost' || row.concept === 'model:Saved'),
+            'financial labels are never recorded as model identities').toBe(false);
+        }
       }
     }
   }
