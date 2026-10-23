@@ -80,6 +80,10 @@
         {
           "id": "AC45",
           "statement": "AC45: The All calls and All-time aggregate captions are gone from the headline cards; the All time / Today switch still names the window and typed missing states remain."
+        },
+        {
+          "id": "AC47",
+          "statement": "AC47: Under Tokens processed, input and output show only from fields the Overview aggregate itself serves for the same tenant, window and population as its tokens_total; a missing direction reads Not measured and nothing is borrowed from delegation.token-usage."
         }
       ]
     }
@@ -331,6 +335,31 @@
         {
           "check_type": "test_passes",
           "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-headline-cleanup.spec.ts --project=chromium --workers=1 --retries=0",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
+    },
+    {
+      "id": "dod-omn21166-ac47-token-directions",
+      "description": "AC47 (part 9): under Tokens processed, input and output come only from the Overview aggregate's own row, on the savings-overview and the metering source alike; a direction the row does not serve reads Not measured, and a served delegation.token-usage row with other counts never appears there, beside a served-directions control. Behaviour already on dev c01586dd, so this binding uses the pinned gate's governed TEST_ONLY_DIFF path; lab mutants on that commit (a missing direction shown as 0, input borrowed from the total, directions always Not measured) each fail their own case and only that case.",
+      "source": "manual",
+      "binds_ac": [
+        "AC47"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-token-directions-ac47.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC47 the aggregate serves a total but no directions\"",
+          "cwd": "${OMNI_HOME}/omnidash"
+        },
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-token-directions-ac47.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC47 the aggregate serves its directions\"",
+          "cwd": "${OMNI_HOME}/omnidash"
+        },
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-token-directions-ac47.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC47 the metering aggregate serves no directions\"",
           "cwd": "${OMNI_HOME}/omnidash"
         }
       ]
