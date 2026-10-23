@@ -2309,7 +2309,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
         data-component={component.component_id}
         data-kind={component.component_kind}
         data-field-tone={component.component_kind === 'metric_card' ? fieldTone(component.title) : undefined}
-        aria-busy={credentialProviders ? undefined : pending}
+        aria-busy={credentialProviders ? 'false' : pending}
         key={component.component_id}
       >
         <h2 data-page-heading={pageName !== 'overview' || ['overview-quality', 'overview-insights', 'overview-spend-by-day', 'overview-last-run', 'overview-recent-runs', 'overview-tier-mix'].includes(component.component_id) ? '' : undefined} tabIndex={-1}>{PanelIcon && <PanelIcon size={14} aria-hidden="true" />}{pageName === 'overview' && component.component_id === 'overview-insights' ? 'Activity trends' : component.title}</h2>
