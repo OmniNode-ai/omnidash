@@ -16,19 +16,20 @@ requirements:
     acceptance:
       - id: AC3
         statement: "AC3: omnidash, omniweb, omniui and omnipulse each run the check on pull requests and the merge queue
-          with a committed shrink-only baseline of today's files, and refuse a planted file -- falsifier: the
-          planted-sample output in each rollout PR body"
+          with a committed shrink-only baseline of today's files, and refuse a planted file -- falsifier:
+          tests/ci/test_canonical_file_shape_omn21332.py exercises this repository's workflow, planted samples and baseline ratchet"
 emergency_bypass:
   enabled: false
   justification: ""
   follow_up_ticket_id: ""
 dod_evidence:
   - id: dod-omn21332-omnidash-ac3
-    description: The workflow runs on pull_request and merge_group and the baseline is committed.
+    description: Execute the workflow's planted samples and verify event coverage, canonical admission, noncanonical
+      refusal, baseline growth refusal and stale-entry refusal with the workflow's pinned validator.
     source: manual
     checks:
-      - check_type: command
-        check_value: test -s .onex_ratchets/canonical_file_shape_baseline.txt && grep -q "merge_group:" .github/workflows/canonical-file-shape.yml
+      - check_type: test_passes
+        check_value: env PYTHONDONTWRITEBYTECODE=1 uv run --no-project --with pytest --with pyyaml --with uv python -m pytest tests/ci/test_canonical_file_shape_omn21332.py -q --noconftest -p no:cacheprovider -c /dev/null
         cwd: ${OMNI_HOME}/omnidash
     binds_ac:
       - AC3
