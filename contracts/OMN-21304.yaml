@@ -131,7 +131,9 @@ dod_evidence:
       0 ms; run A alone shows its steps (control). Lab mutant on dev 890eb79a: removing the current-load guards fails
       it. With run A's answer held too, B shows its own answer and none of A's, and going back to A shows A's steps,
       answer and model. The separate, unstacked, never-summed timings and their Not recorded and measured-zero states
-      are the existing run-timing unit cases T1 to T6, bound here as well. Behaviour already on the base, so this
+      are the existing run-timing unit cases T1 to T6, and a run's cost taken only from the session with the same id
+      (with a wrong session listed first, and a missing session) is the existing runs and provenance unit cases; both
+      are bound here as well. Behaviour already on the base, so this
       binding uses the pinned gate's governed TEST_ONLY_DIFF path.
     source: "manual"
     binds_ac: ["AC2"]
@@ -142,3 +144,5 @@ dod_evidence:
         check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty-ac12.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC2 the same run read without a switch\""
       - check_type: "test_passes"
         check_value: "npx vitest run src/pages/LocalDashboardPage.omn21015.run-timing.test.tsx"
+      - check_type: "test_passes"
+        check_value: "npx vitest run src/pages/LocalDashboardPage.runs.test.tsx src/pages/LocalDashboardPage.provenance.test.tsx"
