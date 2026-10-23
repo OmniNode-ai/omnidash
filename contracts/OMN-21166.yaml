@@ -276,6 +276,21 @@
           "cwd": "${OMNI_HOME}/omnidash"
         }
       ]
+    },
+    {
+      "id": "dod-omn21166-ac26-window-switch-align",
+      "description": "AC26, the Overview time-window switch only: the Figures for label, its All time / Today switch and Explore runs share one centre line within 1px at 1440x900 in both themes. On dev 890eb79a the label sat 13.85px low because the shared filters rule aligns toolbars to the row's end.",
+      "source": "manual",
+      "binds_ac": [
+        "AC26"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "test -d node_modules || npm ci --no-audit --no-fund; npx playwright test tests/e2e/local-dashboard-omn21166-window-switch-align.spec.ts --project=chromium --workers=1 --retries=0",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
     }
   ],
   "emergency_bypass": {

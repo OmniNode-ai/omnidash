@@ -161,6 +161,14 @@ dod_evidence:
       - check_type: "test_passes"
         check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/pages/local/access.omn21015.test.tsx"
         cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn21015-ac4-usage-table-lint"
+    description: "AC4, by-model table: the share and tier cases in UsageByModelDayWidget.omn21015.test.tsx pass and the file is lint-clean. On dev 97c43e4d ESLint refuses two unused bindings in case S5, which also fails the all-files lint hook for every branch; the same case now builds its older row by filtering the two keys out."
+    source: "manual"
+    binds_ac: ["AC4"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx eslint tests/dashboard/usage/UsageByModelDayWidget.omn21015.test.tsx && npx vitest run tests/dashboard/usage/UsageByModelDayWidget.omn21015.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
 emergency_bypass:
   enabled: false
   justification: ""
