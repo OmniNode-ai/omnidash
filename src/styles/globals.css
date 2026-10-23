@@ -81,10 +81,10 @@
     --font-brand: "Poppins", var(--font-sans);
 
     /* ===== TYPE SCALE =====
-       8-step scale covering observed usage (10px ... 22px). Authored in
+       Semantic sizes with a 12px readability floor (12px ... 22px). Authored in
        rem so a future root-size override scales the whole app. */
-    --text-xs:   0.625rem;   /* 10px — microlabels: column headers, pills, tiny chips */
-    --text-sm:   0.6875rem;  /* 11px — status rows, pagination text */
+    --text-xs:   0.75rem;    /* 12px — column headers, pills, small chips */
+    --text-sm:   0.75rem;    /* 12px — status rows, pagination text */
     --text-md:   0.75rem;    /* 12px — dense data rows (EventStream, RoutingDecisionTable) */
     --text-lg:   0.8125rem;  /* 13px — form inputs, empty-state prose */
     --text-xl:   0.875rem;   /* 14px — body default */
