@@ -22,9 +22,12 @@ CALLER = REPO_ROOT / ".github" / "workflows" / "call-repo-evidence-gate.yml"
 CI = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 MANIFEST = REPO_ROOT / ".github" / "required-checks.yaml"
 
-# Squash commit of omnibase_core#1932 on dev, also used by the
-# omnibase_infra, omnimarket and omniclaude callers.
-RECEIPT_GATE_PIN = "4e4f5e0404d364e296c5d37db6aa3ab9e07f8ffa"
+# Squash commit of omnibase_core#2085 on dev (OMN-21166), the first receipt-gate
+# that takes check-timeout-seconds; omnibase_core#1932's 4e4f5e04 did not.
+RECEIPT_GATE_PIN = "ba76a6f0797ef2c9b7696b90cc8a03e5b799ec61"
+# Seconds each dod_verify check may run; at the verifier's 30 s default the
+# browser checks were killed before reaching a verdict.
+CHECK_TIMEOUT_SECONDS = "300"
 VERIFIER_FLOOR = (0, 4, 310)
 CONTRACT = REPO_ROOT / "contracts" / "OMN-20073.yaml"
 
@@ -103,6 +106,14 @@ def test_caller_pins_the_current_receipt_gate_and_verifier() -> None:
     assert _job()["uses"].endswith(f"receipt-gate.yml@{RECEIPT_GATE_PIN}")
     version = tuple(int(part) for part in inputs["verifier-version"].split("."))
     assert version >= VERIFIER_FLOOR
+
+
+def test_caller_gives_each_check_a_browser_sized_timeout() -> None:
+    # A quoted whole number of seconds within the reusable's 1 to 900 range; an
+    # unquoted or out-of-range value is refused there, and an absent one keeps 30 s.
+    timeout = _job()["with"].get("check-timeout-seconds")
+    assert timeout == CHECK_TIMEOUT_SECONDS
+    assert isinstance(timeout, str) and timeout.isdigit() and 1 <= int(timeout) <= 900
 
 
 def test_repo_contract_for_the_pr_ticket_names_a_falsifier_per_criterion() -> None:
