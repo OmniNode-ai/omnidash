@@ -26,6 +26,9 @@ requirements:
         statement: "AC4: A full walk of the eleven destinations at 1440x900 in light and dark records every icon and colour shown with the concept it stands for, and lists none shared by two concepts -- falsifier: the walk record, produced by an npx playwright test that collects each drawn icon and colour with its label, failing on any pair used for two concepts"
 evidence_requirements:
   - kind: "tests"
+    description: "AC1 supplemental Usage input/output bars use their canonical field colours in light and dark. AC4 collector control rejects conflicting non-icon field graphics; actual token bars are compared against canonical colours. Covers these follow-up defects only, not the complete ticket."
+    command: "if ! test -d node_modules; then npm ci --no-audit --no-fund || exit $?; fi; source_sha=\"${OMNIDASH_TEST_SOURCE_SHA:-}\"; if [ -z \"$source_sha\" ]; then source_root=\"${OMNI_HOME:+$OMNI_HOME/omnidash}\"; source_sha=\"$(git -C \"${source_root:-.}\" rev-parse HEAD)\" || exit $?; fi; OMNIDASH_TEST_SOURCE_SHA=\"$source_sha\" node node_modules/playwright/cli.js test tests/e2e/local-dashboard-identity-census.omn21308.spec.ts --project=chromium --workers=1 --retries=0 --trace=on --grep 'non-icon field|Usage token-direction'"
+  - kind: "tests"
     description: "AC1 supplemental Evidence field-colour consistency in light and dark: actual quality pass/fail statistics and bars, baseline cost, actual cost and savings bars, and the savings hero use their shared canonical concept colours. This focused check compares existing visible labels and rendered paint; it does not claim the full icon registry or eleven-destination census."
     command: "if ! test -d node_modules; then npm ci --no-audit --no-fund || exit $?; fi; node node_modules/playwright/cli.js test tests/e2e/evidence-concept-colours.omn21308.spec.ts --project=chromium --workers=1 --retries=0 --trace=on"
   - kind: "tests"
@@ -48,6 +51,14 @@ emergency_bypass:
   justification: ""
   follow_up_ticket_id: ""
 dod_evidence:
+  - id: "dod-omn21308-ac1-ac4-token-graphics"
+    description: "AC1 supplemental Usage input/output bars use their canonical field colours in light and dark. AC4 collector control rejects conflicting non-icon field graphics; actual token bars are compared against canonical colours. Covers these follow-up defects only, not the complete ticket."
+    source: "manual"
+    binds_ac: ["AC1","AC4"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "if ! test -d node_modules; then npm ci --no-audit --no-fund || exit $?; fi; source_sha=\"${OMNIDASH_TEST_SOURCE_SHA:-}\"; if [ -z \"$source_sha\" ]; then source_root=\"${OMNI_HOME:+$OMNI_HOME/omnidash}\"; source_sha=\"$(git -C \"${source_root:-.}\" rev-parse HEAD)\" || exit $?; fi; OMNIDASH_TEST_SOURCE_SHA=\"$source_sha\" node node_modules/playwright/cli.js test tests/e2e/local-dashboard-identity-census.omn21308.spec.ts --project=chromium --workers=1 --retries=0 --trace=on --grep 'non-icon field|Usage token-direction'"
+        cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn21308-ac1-evidence-field-colours"
     description: "AC1 supplemental Evidence field-colour consistency in light and dark: actual quality pass/fail statistics and bars, baseline cost, actual cost and savings bars, and the savings hero use their shared canonical concept colours. This focused check compares existing visible labels and rendered paint; it does not claim the full icon registry or eleven-destination census."
     source: "manual"
