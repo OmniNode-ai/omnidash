@@ -70,7 +70,12 @@ async function panelsOf(pageName: 'overview' | 'runs' | 'workflow' | 'credential
   render(<LocalDashboardPage pageName={pageName} />);
   await waitFor(() => {
     const panels = screen.getAllByRole('article');
-    for (const panel of panels) expect(panel).toHaveAttribute('aria-busy', 'false');
+    // A panel is settled when neither it nor a region inside it is busy (OMN-20816 scopes the Credentials panel's busy
+    // state to its key-reference region, so the provider list is never shown as waiting on credential data).
+    for (const panel of panels) {
+      expect(panel).toHaveAttribute('aria-busy', 'false');
+      expect(panel.querySelector('[aria-busy="true"]')).toBeNull();
+    }
   });
   return screen.getAllByRole('article');
 }
