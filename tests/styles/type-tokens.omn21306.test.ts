@@ -3,6 +3,8 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&');
+
 describe('Phase 1: 12 px token floor', () => {
   let css = '';
   beforeAll(() => { css = readFileSync(resolve(__dirname, '../../src/styles/globals.css'), 'utf-8'); });
@@ -12,9 +14,7 @@ describe('Phase 1: 12 px token floor', () => {
   ];
   for (const [name, value] of tokens) {
     it(`declares ${name} = ${value}`, () => {
-      const en = name.replace(/[-]/g, '\\-');
-      const ev = value.replace(/[()]/g, '\\$&').replace(/[.]/g, '\\.');
-      const pattern = new RegExp(`${en}\\s*:\\s*${ev}\\s*;`);
+      const pattern = new RegExp(`${escapeRegExp(name)}\\s*:\\s*${escapeRegExp(value)}\\s*;`);
       expect(css).toMatch(pattern);
     });
   }
