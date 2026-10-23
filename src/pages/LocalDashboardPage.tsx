@@ -1832,9 +1832,7 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns, acti
       ? <QualityPanel row={row} />
       : <TierMixPanel row={row} compact={component.component_id === 'overview-tier-mix'} />;
   }
-  // OMN-20816: the models delegation can use, read-only from `onex dashboard`'s GET /models (keys change in the
-  // terminal), above the served key references.
-  if (component.component_id === 'credentials-keys') return <><ModelKeys /><CredentialsTable rows={rows} /></>;
+  if (component.component_id === 'credentials-keys') return <CredentialsTable rows={rows} />;
   // Usage analysis and the raw row table are separate declared components so the analysis does not duplicate rows.
   if (component.component_id === 'usage-insights') return <UsageInsights usageRows={rows}
     decisionRows={rawRowsFor(component, snapshots, 1)} routingRows={rawRowsFor(component, snapshots, 2)} />;
@@ -2258,20 +2256,10 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
       && component.data_bindings?.[0]?.projection_topic !== LEGACY_OVERVIEW_TOPIC
       // OMN-21166: the trends follow the window themselves.
       && component.component_id !== 'overview-insights';
-    return (
-      <article
-        className="local-dashboard-panel"
-        data-width={String(pageName === 'overview' && component.component_id === 'overview-spend-by-day' ? 12
-          : pageName === 'overview' && ['overview-quality', 'overview-last-run'].includes(component.component_id) ? 6
-          : pageName === 'overview' && ['overview-recent-runs', 'overview-tier-mix'].includes(component.component_id) ? 6 : widget?.width ?? 12)}
-        data-component={component.component_id}
-        data-kind={component.component_kind}
-        data-field-tone={component.component_kind === 'metric_card' ? fieldTone(component.title) : undefined}
-        aria-busy={pending}
-        key={component.component_id}
-      >
-        <h2 data-page-heading={pageName !== 'overview' || ['overview-quality', 'overview-insights', 'overview-spend-by-day', 'overview-last-run', 'overview-recent-runs', 'overview-tier-mix'].includes(component.component_id) ? '' : undefined} tabIndex={-1}>{PanelIcon && <PanelIcon size={14} aria-hidden="true" />}{pageName === 'overview' && component.component_id === 'overview-insights' ? 'Activity trends' : component.title}</h2>
-        {outsideWindow && <p className="local-dashboard-caption">{OUTSIDE_WINDOW_NOTE}</p>}
+    // GET /models has its own loading/error state; credential projection availability
+    // must only gate the key-reference region, including its aria-busy state.
+    const credentialProviders = component.component_id === 'credentials-keys';
+    const readContent = <>
         {pending ? <p className="local-dashboard-caption" role="status">Loading data…</p>
           : unbound && component.component_kind !== 'metric_card' ? <PendingState componentId={component.component_id} />
           : component.component_id === 'workflow-run-path' ? (
@@ -2311,6 +2299,23 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
               : <p className="local-dashboard-empty">Not measured</p>;
           })()}
         {!pending && <WidgetReadState component={component} snapshots={snapshots} now={now} interval={interval} />}
+    </>;
+    return (
+      <article
+        className="local-dashboard-panel"
+        data-width={String(pageName === 'overview' && component.component_id === 'overview-spend-by-day' ? 12
+          : pageName === 'overview' && ['overview-quality', 'overview-last-run'].includes(component.component_id) ? 6
+          : pageName === 'overview' && ['overview-recent-runs', 'overview-tier-mix'].includes(component.component_id) ? 6 : widget?.width ?? 12)}
+        data-component={component.component_id}
+        data-kind={component.component_kind}
+        data-field-tone={component.component_kind === 'metric_card' ? fieldTone(component.title) : undefined}
+        aria-busy={credentialProviders ? undefined : pending}
+        key={component.component_id}
+      >
+        <h2 data-page-heading={pageName !== 'overview' || ['overview-quality', 'overview-insights', 'overview-spend-by-day', 'overview-last-run', 'overview-recent-runs', 'overview-tier-mix'].includes(component.component_id) ? '' : undefined} tabIndex={-1}>{PanelIcon && <PanelIcon size={14} aria-hidden="true" />}{pageName === 'overview' && component.component_id === 'overview-insights' ? 'Activity trends' : component.title}</h2>
+        {outsideWindow && <p className="local-dashboard-caption">{OUTSIDE_WINDOW_NOTE}</p>}
+        {credentialProviders && <ModelKeys />}
+        {credentialProviders ? <div aria-busy={pending}>{readContent}</div> : readContent}
       </article>
     );
   };
