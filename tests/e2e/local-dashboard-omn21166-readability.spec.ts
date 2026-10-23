@@ -32,8 +32,8 @@ test('recent runs remain readable and retain all fields at desktop and narrow wi
 });
 
 // OMN-21166 (Chrome walk, 2026-10-18): 9 to 11px text survived in table headers, the tier mix, as-of lines, the
-// header and the toolbar. Every visible text on Overview and Usage is at least 12px; the scan names what is not. Runs
-// is left out: its 18 columns fit the page with no sideways scroll only at its compact 10 to 11px type.
+// header and the toolbar. This retained check covers Overview and Usage content.
+// OMN-21306 adds the whole-shell, SVG and mobile-label census for all eleven destinations in both themes.
 test('no visible text on Overview or Usage is smaller than 12px', async ({ page }) => {
   await serveCharts(page);
   for (const path of ['/overview', '/usage']) {

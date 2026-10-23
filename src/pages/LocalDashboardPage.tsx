@@ -1263,7 +1263,7 @@ export function TierMixPanel({ row, compact = false }: { row: Row | null; compac
       {/* The bar and the table show the same served tiers; the bar's widths are the served shares. */}
       <TierShareChart byTier={byTier} variant={compact ? 'donut' : 'bars'} />
       <details className="local-routing-details local-tier-details">
-      <summary><span className="local-routing-summary-label"><Waypoints size={15} aria-hidden="true" />Full routing breakdown</span></summary>
+      <summary><span className="local-routing-summary-label">Full routing breakdown</span></summary>
       <div className="local-dashboard-table-wrap local-dashboard-table-wrap--fit">
         <table>
           <thead><tr><th><span><Route size={13} aria-hidden="true" />Tier</span></th><th><span><Rows3 size={13} aria-hidden="true" />Runs</span></th><th><span><ChartLine size={13} aria-hidden="true" />Share of tier-routed</span></th><th><span><CircleDollarSign size={13} aria-hidden="true" />Cost</span></th></tr></thead>

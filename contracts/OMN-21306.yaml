@@ -1,0 +1,42 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+schema_version: "1.0.0"
+ticket_id: "OMN-21306"
+title: "OmniDash text readability and redesign verification"
+summary: >-
+  Raise shared typography and destination styles to a 12 px floor, retaining layout
+  and served values. Scan all eleven destinations in both themes and Developer states
+  at desktop and phone sizes. Add browser interaction checks with behavior-removal
+  controls. Fixtures certify rendering only. AC2 and AC3 require post-merge evidence;
+  AC5 reconciles the separately owned design specification.
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-transcribed-acceptance-criteria"
+    statement: "Acceptance criteria copied from the live ticket on 2026-10-22; the ticket remains the source. AC4 is proven only by browser specs, which the hosted control does not complete within its 30 s per-check budget, so it stays in the plan and its recorded report (317 built browser cases at 028ad331) and not in this repo-owned acceptance list, as the OMN-21166 contract does for its browser-only criteria. AC2, AC3, and AC5 are proven after the merge or in the plan record, not by a repo check, so they too stay out of this repo-owned acceptance list. Only AC1 is listed here."
+    acceptance:
+      - id: "AC1"
+        statement: "AC1: No visible text on the eleven destinations renders below 12 px at 1440x900 and 390x844 (measured 2026-10-22: Runs 25 strings, Workflow 17, Delegation Evidence 29, Experimentation 9, Agent Workbench 27, Event Bus 34, Lab 52) -- falsifier: npx playwright test of a font-size scan over all eleven pages that fails on any computed font-size under 12 px, with a planted 10 px element as its control"
+evidence_requirements:
+  - kind: "tests"
+    description: "Computed-font census and interaction regression with planted small-text and behavior-removal controls."
+    command: "npm run test:e2e -- tests/e2e/local-dashboard-readability-12px.spec.ts tests/e2e/local-dashboard-verification-interactions.spec.ts tests/e2e/local-dashboard-typography-hierarchy.spec.ts tests/e2e/local-dashboard-activity-window.spec.ts tests/e2e/local-dashboard-routing-disclosure.spec.ts --project=chromium --workers=1 --retries=0"
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
+dod_evidence:
+  - id: "dod-omn21306-ac1-type-tokens"
+    description: >-
+      AC1: the shared type tokens text-xs, text-sm and text-md resolve to 12 px (0.75rem), the floor every
+      local page inherits. The check fails at the dev base, where text-xs and text-sm are 10 px and 11 px.
+      The full computed-font census over the eleven destinations, both viewports, themes and Developer
+      states runs as browser specs, which exceed the hosted 30 s per-check budget; its result is recorded
+      in the plan report.
+    source: "manual"
+    binds_ac: ["AC1"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/styles/type-tokens.omn21306.test.ts"
+        cwd: "${OMNI_HOME}/omnidash"
