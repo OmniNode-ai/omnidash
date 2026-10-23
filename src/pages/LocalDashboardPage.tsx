@@ -2,7 +2,7 @@ import { formatDashboardCount, formatFullCount, wholeCount } from '@/lib/dashboa
 import { dailyMeteringTokens } from '@/lib/daily-metering-tokens';
 import { DailyMeteringTokens } from '@/components/dashboard/usage/DailyMeteringTokens';
 import { TokenDirections } from '@/components/dashboard/usage/TokenDirections';
-import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { Fragment, useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { tierColor, tierConcept } from '@/lib/dashboard-colors';
 import { Link, useLocation, useSearch } from 'wouter';
 import {
@@ -321,19 +321,33 @@ export function OverviewAggregateCard({ component, config, rows, window }: {
  * serve is left out, never shown as 0. When no run is estimated or unknown the figure already is the measured count, so
  * the line goes rather than repeat it (and the compact first screen keeps its height).
  */
-export function runBreakdownText(row: Record<string, unknown>): string | null {
+function runBreakdownParts(row: Record<string, unknown>): Array<{ label: string; count: string }> | null {
   const served = ([['measured_run_count', 'measured'], ['estimated_run_count', 'estimated'], ['unknown_run_count', 'unknown']] as const)
     .filter(([field]) => !isMissing(row[field]) && Number.isFinite(Number(row[field])));
   if (!served.some(([field], index) => index > 0 && Number(row[field]) > 0)) return null;
   return served
     .filter(([field], index) => index === 0 || Number(row[field]) > 0)
-    .map(([field, label]) => `${formatDashboardCount(row[field])} ${label}`)
-    .join(' · ');
+    .map(([field, label]) => ({ label, count: formatDashboardCount(row[field]) }));
 }
 
+export function runBreakdownText(row: Record<string, unknown>): string | null {
+  return runBreakdownParts(row)?.map(({ label, count }) => `${count} ${label}`).join(' · ') ?? null;
+}
+
+/**
+ * OMN-21166 part 9 AC46: each run class is its own labelled count in its own shared field tone, so no two classes share
+ * a colour and the label, not the colour, carries the meaning. Unknown is no measurement: it reads in the not-measured
+ * tone, never the failed one.
+ */
 function RunBreakdown({ row }: { row: Record<string, unknown> }) {
-  const text = runBreakdownText(row);
-  return text ? <p className="local-dashboard-caption">{text}</p> : null;
+  const parts = runBreakdownParts(row);
+  if (!parts) return null;
+  return <p className="local-dashboard-caption local-run-classes">
+    {parts.map(({ label, count }, index) => <Fragment key={label}>
+      {index > 0 && ' · '}
+      <span className="local-run-class" data-run-class={label} data-field-tone={`run-${label}`}>{count} {label}</span>
+    </Fragment>)}
+  </p>;
 }
 
 /** Said on an Overview panel whose exposure serves no row per window, while today is the chosen window. */

@@ -82,6 +82,10 @@
           "statement": "AC45: The All calls and All-time aggregate captions are gone from the headline cards; the All time / Today switch still names the window and typed missing states remain."
         },
         {
+          "id": "AC46",
+          "statement": "AC46: The run breakdown shows measured, estimated and unknown as separate labelled counts, each in its own semantic colour from the shared identity (OMN-21308) in both themes; unknown means no measurement, never a failed run, and colour never carries meaning alone."
+        },
+        {
           "id": "AC47",
           "statement": "AC47: Under Tokens processed, input and output show only from fields the Overview aggregate itself serves for the same tenant, window and population as its tokens_total; a missing direction reads Not measured and nothing is borrowed from delegation.token-usage."
         }
@@ -360,6 +364,46 @@
         {
           "check_type": "test_passes",
           "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-token-directions-ac47.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC47 the metering aggregate serves no directions\"",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
+    },
+    {
+      "id": "dod-omn21166-ac46-run-classes",
+      "description": "AC46 (part 9): under Measured runs the run breakdown draws measured, estimated and unknown as separate labelled spans, each in its own shared field tone (run-measured, run-estimated, and the not-measured tone for unknown), with three distinct colours in light and dark and unknown never in the failed tone; an absent class, a zero unknown and a malformed count are left out, a measured 0 is a value, and a row with only measured runs draws no line (control). Fails on dev c87eb615, where the breakdown was one caption string.",
+      "source": "manual",
+      "binds_ac": [
+        "AC46"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-run-classes-ac46.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC46 all three classes served\"",
+          "cwd": "${OMNI_HOME}/omnidash"
+        },
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-run-classes-ac46.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC46 estimated absent\"",
+          "cwd": "${OMNI_HOME}/omnidash"
+        },
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-run-classes-ac46.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC46 unknown 0\"",
+          "cwd": "${OMNI_HOME}/omnidash"
+        },
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-run-classes-ac46.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC46 measured 0 is a value\"",
+          "cwd": "${OMNI_HOME}/omnidash"
+        },
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-run-classes-ac46.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC46 a malformed count is left out\"",
+          "cwd": "${OMNI_HOME}/omnidash"
+        },
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-run-classes-ac46.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC46 only measured runs served\"",
           "cwd": "${OMNI_HOME}/omnidash"
         }
       ]
