@@ -1452,16 +1452,19 @@ export function RunTimeline({ steps }: { steps: readonly unknown[] }) {
         const kind = String(row.step_kind ?? '');
         const failing = !isMissing(named) && row.step_sequence === named;
         const candidates = Array.isArray(row.candidates) ? row.candidates.map(String) : [];
-        // OMN-21304 AC3: a routing decision's reason and candidates are what the step is for, so when the row records
-        // neither they read not recorded rather than vanish. Other steps keep leaving an absent detail out.
+        // OMN-21304 AC3: a routing decision's reason, candidates and confidence are what the step is for, so when the
+        // row records none of them they read not recorded rather than vanish; a measured confidence of 0 stays a value.
+        // Other steps keep leaving an absent detail out.
         const routing = kind === 'routing_decision';
         const unrecordedRouting: Array<[string, string]> = routing ? [
           ...(isMissing(row.reason) ? [['reason', 'not recorded'] as [string, string]] : []),
           ...(candidates.length === 0 ? [['candidates', 'not recorded'] as [string, string]] : []),
+          ...(isMissing(row.confidence) ? [['confidence', 'not recorded'] as [string, string]] : []),
         ] : [];
         // Each served detail under its own name; a detail the row does not carry is left out, never shown empty.
         const details: Array<[string, string]> = [
           ...unrecordedRouting,
+          ...(routing && !isMissing(row.confidence) ? [['confidence', String(row.confidence)] as [string, string]] : []),
           ...(isMissing(row.failure_cause) ? [] : [['cause', String(row.failure_cause)] as [string, string]]),
           ...(isMissing(row.backend_id) ? [] : [['backend', String(row.backend_id)] as [string, string]]),
           ...(isMissing(row.model_id) ? [] : [['model', String(row.model_id)] as [string, string]]),
