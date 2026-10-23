@@ -22,11 +22,18 @@ class CensusSourceCommand(unittest.TestCase):
 
     def run_case(self, explicit, missing=False):
         contract = (ROOT / "contracts/OMN-21308.yaml").read_text()
-        commands = [json.loads(line.split(": ", 1)[1]) for line in contract.splitlines()
-                    if line.strip().startswith(("command:", "check_value:"))
+        def commands_for(key):
+            return [json.loads(line.split(": ", 1)[1]) for line in contract.splitlines()
+                    if line.strip().startswith(key)
                     and "local-dashboard-identity-census.omn21308.spec.ts" in line]
-        self.assertEqual(len(commands), 2)
-        self.assertEqual(commands[0], commands[1])
+        commands = commands_for("command:")
+        self.assertTrue(commands, "at least one census command must be verified")
+        self.assertCountEqual(commands, commands_for("check_value:"))
+        for command in commands:
+            with self.subTest(command=command):
+                self.run_command(command, explicit, missing)
+
+    def run_command(self, command, explicit, missing):
         with tempfile.TemporaryDirectory(prefix="omn21308-source-") as tmp:
             home = Path(tmp) / "original"
             repo = home / "omnidash"
@@ -46,7 +53,7 @@ class CensusSourceCommand(unittest.TestCase):
             if explicit:
                 env["OMNIDASH_TEST_SOURCE_SHA"] = SHA
                 env["OMNI_HOME"] = str(Path(tmp) / "absent")
-            result = subprocess.run(["bash", "-e", "-o", "pipefail", "-c", commands[0]],
+            result = subprocess.run(["bash", "-e", "-o", "pipefail", "-c", command],
                                     cwd=stage, env=env, text=True, capture_output=True)
             if missing:
                 self.assertNotEqual(result.returncode, 0)

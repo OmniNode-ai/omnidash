@@ -162,9 +162,16 @@ async function collect(page: Page): Promise<Reading[]> {
       return { renderedForeground: rgbString(front), contrast: (values[0]! + .05) / (values[1]! + .05), contrastThreshold: threshold };
     };
     const fieldColor = (tone: string) => {
+      if (!getComputedStyle(body).getPropertyValue(`--field-${tone}`).trim()) return undefined;
       const probe = document.createElement('span'); probe.style.color = `var(--field-${tone})`;
       body.append(probe); const color = rgbString(rgba(getComputedStyle(probe).color)); probe.remove();
       return color;
+    };
+    const compareFieldPaint = (concept: string, color: string, unavailable: boolean) => {
+      if (!concept.startsWith('field:')) return {};
+      const canonicalFieldColor = fieldColor(unavailable ? 'unavailable' : concept.slice('field:'.length));
+      return { canonicalFieldColor, canonicalFieldColorMatches: canonicalFieldColor !== undefined
+        && CSS.supports('color', color) && rgbString(rgba(color)) === canonicalFieldColor };
     };
     const readings: Reading[] = [];
     for (const svg of body.querySelectorAll('svg.lucide')) {
@@ -295,14 +302,14 @@ async function collect(page: Page): Promise<Reading[]> {
         if (['none', 'transparent', 'rgba(0, 0, 0, 0)'].includes(color!)) continue;
         const visibleTierLabel = tier ? clean([...body.querySelectorAll('button')].find(button => button.getAttribute('aria-label') === `Inspect ${tier}`)?.textContent) : '';
         const backing = backgroundFor(el instanceof SVGElement ? el : el.parentElement);
-        const canonicalFieldColor = boundField ? fieldColor(boundField) : undefined;
+        const unavailable = el.closest('[data-field-unavailable="true"]') !== null;
         readings.push({ medium: 'graphic', kind: graphicConcept ? 'semantic' : structural ? 'decoration' : 'unmapped',
           concept: graphicConcept || (structural ? `decoration:${structural}` : ''), label: financeLabel || qualityLabel || label || modelName || tierName || visibleTierLabel || structural || '',
           icon: '', signature: '', color: color!, background: backing,
-          ...(canonicalFieldColor ? { canonicalFieldColor, canonicalFieldColorMatches: CSS.supports('color', color!) && rgbString(rgba(color!)) === canonicalFieldColor } : {}),
+          ...compareFieldPaint(graphicConcept, color!, unavailable),
           ...(graphicConcept.startsWith('model:') ? contrastFor(color!, backing, 3) : {}),
           selector: `${el.tagName}.${[...el.classList].join('.')}:${paintKind}`,
-          unavailable: el.closest('[data-field-unavailable="true"]') !== null,
+          unavailable,
           shapeMatches: true, declaredIconMatches: true });
       }
     }
@@ -351,12 +358,14 @@ async function collect(page: Page): Promise<Reading[]> {
               : outcome === 'failed' ? 'field:fail' : 'field:unavailable';
           }
         }
+        const unavailable = el.closest('[data-field-unavailable="true"]') !== null;
         readings.push({ medium: 'graphic', kind: action ? 'action' : concept ? 'semantic' : structural ? 'decoration' : 'unmapped',
           concept: action || concept || (structural ? `decoration:${structural}` : ''),
           label: clean(semantic?.getAttribute('data-semantic-label') || el.getAttribute('aria-label') || el.textContent || labelFor(el)),
           icon: '', signature: '', color, background: backgroundFor(el),
+          ...(!action && !structural ? compareFieldPaint(concept, color, unavailable) : {}),
           selector: `${el.tagName}.${[...el.classList].join('.')}${pseudo}`,
-          unavailable: el.closest('[data-field-unavailable="true"]') !== null,
+          unavailable,
           shapeMatches: true, declaredIconMatches: true });
       }
     }
@@ -379,17 +388,19 @@ function defects(states: State[]): string[] {
       if (row.contrast !== undefined && row.contrastThreshold !== undefined && row.contrast < row.contrastThreshold)
         errors.add(`${at}: ${row.medium} contrast ${row.contrast.toFixed(3)} is below ${row.contrastThreshold}`);
       if (row.canonicalFieldColorMatches === false) errors.add(`${at}: graphic paint differs from canonical ${row.concept} field colour ${row.canonicalFieldColor}`);
-      if (row.medium !== 'icon') continue;
-      if (!row.paintMatches) errors.add(`${at}: child geometry paint or visibility differs from canonical icon`);
-      if (!row.labelCorroborated) errors.add(`${at}: semantic label is not corroborated by visible text`);
+      if (row.medium !== 'icon' && !(row.medium === 'graphic' && row.concept.startsWith('field:'))) continue;
+      if (row.medium === 'icon') {
+        if (!row.paintMatches) errors.add(`${at}: child geometry paint or visibility differs from canonical icon`);
+        if (!row.labelCorroborated) errors.add(`${at}: semantic label is not corroborated by visible text`);
+      }
       const variant = `${state.theme}/${row.unavailable ? 'unavailable' : 'available'}`;
       const identityKey = `${variant}/${row.medium}/${row.concept}`;
       const pair = `${row.signature}/${row.color}`;
       const choices = identities.get(identityKey) ?? new Set<string>();
       choices.add(pair); identities.set(identityKey, choices);
       // AC1 prohibits a shared icon+colour pair, not independent colour reuse.
-      // Graphics have no icon; their per-concept colour consistency is checked
-      // above, while AC3 compares their meaning to the associated legend.
+      // Field graphics share a colour identity across destinations. Model
+      // series and numeric intensity retain their own AC3 legend checks.
       if (row.medium === 'icon') {
         const pairKey = `${variant}/${pair}`;
         const concepts = owners.get(pairKey) ?? new Set<string>();
@@ -546,6 +557,64 @@ test('AC4 census detects duplicate pairs, forged metadata, altered geometry pain
   await page.locator('main').evaluate(el => el.replaceChildren());
   expect(defects(state(await collect(page))).join('\n')).toContain('empty census');
   writeFileSync(info.outputPath('collector-controls.json'), JSON.stringify({ valid, alphaControl, detected: ['duplicate pair', 'forged icon', 'inline child stroke override', 'stylesheet child stroke override', 'child opacity zero', 'SVG opacity zero', 'metadata-only label', 'alpha backing composition', 'unmapped concept', 'empty census'] }, null, 2));
+});
+
+// Follow-up failure modes: non-icon field graphics can drift across pages;
+// token direction bars can retain a legacy series colour in either theme.
+test('AC4 collector rejects conflicting non-icon field graphic colours', async ({ page }, info) => {
+  await page.setContent(`<style>:root { --field-tokens-in: #075985; }
+    .usage-token-pair i { display:block;width:100px;height:8px;background:#075985; }</style>
+    <main><figure aria-label="Tokens in vs out by model"><span class="usage-token-pair">
+      <i data-field-tone="tokens-in"></i><i data-field-tone="tokens-in"></i>
+    </span></figure></main>`);
+  const state = (readings: Reading[]): State[] => [{ destination: 'local-usage', theme: 'light', developer: false,
+    capturedAt: new Date().toISOString(), source: 'planted graphic collector control', readings }];
+  const valid = await collect(page);
+  expect(valid.filter(row => row.medium === 'graphic')).toHaveLength(2);
+  expect(defects(state(valid))).toEqual([]);
+  await page.locator('i').last().evaluate(el => (el as HTMLElement).style.backgroundColor = '#7e22ce');
+  const wrong = await collect(page);
+  const errors = defects(state(wrong));
+  writeFileSync(info.outputPath('graphic-collector-control.json'), JSON.stringify({ valid, wrong, errors }, null, 2));
+  expect(errors.join('\n')).toContain('field:tokens-in');
+  expect(errors.join('\n')).toContain('graphic');
+  // Cross-page drift must also be rejected independently of the canonical
+  // comparison, so a future unmeasured paint cannot silently bypass it.
+  const withoutCanonical = wrong.map(row => {
+    const reading = { ...row };
+    delete reading.canonicalFieldColor; delete reading.canonicalFieldColorMatches;
+    return reading;
+  });
+  expect(defects(state(withoutCanonical)).join('\n')).toContain('graphic');
+});
+
+test('AC4 Usage token-direction graphics match canonical fields in both themes', async ({ page }, info) => {
+  await serveCharts(page, { ...rows, [prefix + 'usage-by-model-day.v1']: [{
+    usage_day: new Date().toISOString().slice(0, 10), model_id: 'model-a',
+    input_tokens: 100, output_tokens: 20, measured_cost_usd: '1', call_count: 1,
+    unmeasured_call_count: 0, cost_tier_name: 'local',
+  }] });
+  await page.goto('/usage');
+  const figure = page.getByRole('figure', { name: 'Tokens in vs out by model', exact: true });
+  await expect(figure.getByRole('button')).toHaveAttribute('aria-label', /model-a: 100 tokens in, 20 tokens out/);
+  const states: State[] = [];
+  for (const theme of ['light', 'dark']) {
+    if (!(await page.locator('body').getAttribute('class'))?.split(' ').includes(`theme-${theme}`))
+      await page.getByRole('button', { name: 'Toggle theme', exact: true }).click();
+    await expect(page.locator('body')).toHaveClass(new RegExp(`theme-${theme}`));
+    await settleStyles(page);
+    const readings = (await collect(page)).filter(row => row.medium === 'graphic' && /^field:tokens-(in|out)$/.test(row.concept));
+    expect(readings).toHaveLength(2);
+    states.push({ destination: 'local-usage', theme, developer: false, capturedAt: new Date().toISOString(),
+      source: process.env.OMNIDASH_TEST_SOURCE_SHA ?? 'uncommitted regression overlay', readings });
+    writeFileSync(info.outputPath('token-direction-graphics.json'), JSON.stringify({ states, defects: defects(states) }, null, 2));
+    await page.screenshot({ path: info.outputPath(`token-direction-${theme}.png`), fullPage: true });
+    for (const row of readings) {
+      expect(row.canonicalFieldColor, `${row.concept} must be measured against the canonical field`).toBeDefined();
+      expect(row.canonicalFieldColorMatches, `${theme}: ${row.concept} actual graphic paint`).toBe(true);
+    }
+  }
+  expect(defects(states)).toEqual([]);
 });
 
 test('AC4 eleven-destination light/dark icon census includes expanded and Developer states', async ({ page }, info) => {

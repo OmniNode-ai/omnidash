@@ -1534,8 +1534,8 @@ figure.local-chart.usage-insight { min-width: 0; margin: 0; padding: 14px; }
 .usage-model-legend > button > strong { font-variant-numeric: tabular-nums; }
 .usage-model-legend > button > span { grid-column: 2 / -1; color: var(--text-secondary); }
 .usage-token-pair { display: grid; gap: 4px; }
-.usage-token-pair > i { display: block; max-width: 100%; min-height: 7px; border-radius: 4px; background: var(--ins-series-2); }
-.usage-token-pair > i[data-direction="out"] { background: var(--ins-series-5); }
+.usage-token-pair > i { display: block; max-width: 100%; min-height: 7px; border-radius: 4px; background: var(--field-tokens-in); }
+.usage-token-pair > i[data-direction="out"] { background: var(--field-tokens-out); }
 .usage-token-missing { color: var(--text-secondary); font-size: 12px; }
 .usage-cost-by-route ul { display: grid; gap: 6px; list-style: none; margin: 0; padding: 0; }
 .usage-cost-by-route li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; padding: 8px; border-bottom: 1px solid var(--line); font-size: 12px; }
