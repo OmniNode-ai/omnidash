@@ -10,14 +10,26 @@ summary: >-
   figures read from a summary that includes them. Frontend only, over served rows. AC1 and AC2 were already met on
   dev f466f2eb before this change (shared in-flight reads and same-run last good rows in
   src/layout/local-page-loader.ts; current-load publishing, separate unstacked phase timings and the empty-steps
-  message in src/pages/LocalDashboardPage.tsx), so they carry no repo-owned item here.
+  message in src/pages/LocalDashboardPage.tsx); tests/e2e/local-dashboard-honesty-ac12.spec.ts pins that behaviour.
+  Those tests pass at the merge base, where the behaviour already exists, so their bindings take the pinned gate's
+  governed TEST_ONLY_DIFF path; each fails when its behaviour is removed (lab mutants of 2026-10-23).
 is_seam_ticket: false
 interface_change: false
 interfaces_touched: []
 requirements:
   - id: "req-transcribed-acceptance-criteria"
-    statement: "Acceptance criteria AC3 and AC4 copied from the live ticket body on 2026-10-22. The ticket remains the source."
+    statement: "Acceptance criteria AC1 to AC4 copied from the live ticket body (AC3 and AC4 on 2026-10-22, AC1 and AC2 on 2026-10-23). The ticket remains the source."
     acceptance:
+      - id: "AC1"
+        statement: >-
+          AC1: Overview and its drilldowns make one request per topic, tenant and parameter set per refresh, and a
+          failed refresh keeps the last good data on screen labelled with its age instead of blanks or a bare error.
+      - id: "AC2"
+        statement: >-
+          AC2: Run drilldowns join decisions, correlation trace, session cost and steps only by correlation_id; a
+          response for a run the user has left is dropped; latency, queue wait and execution time show separately, each
+          reading not recorded when null, with no summed or stacked duration; zero run-trace rows reads no recorded
+          steps for this run.
       - id: "AC3"
         statement: >-
           AC3: Every average or rate built from decision rows shows its coverage beside it; quality-gate outcome,
@@ -93,4 +105,51 @@ dod_evidence:
         cwd: "${OMNI_HOME}/omnidash"
       - check_type: "test_passes"
         check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty.spec.ts --project=chromium --workers=1 --retries=0 --grep \"fixture delegations beside the totals they enter: no fixture\""
+        cwd: "${OMNI_HOME}/omnidash"
+
+  - id: "dod-omn21304-ac1-one-read-and-saved-data"
+    description: >-
+      AC1: one load and one refresh read the same set of exposures exactly once each; a failed refresh keeps the
+      measured $0.70 on screen with its saved-data age and recovers; a first read that fails says unavailable and
+      claims no saved data (control). Lab mutants on dev 890eb79a: removing the topic set and the in-flight read map
+      fails the first case; dropping the last good rows on failure fails the second. Behaviour already on the base, so
+      this binding uses the pinned gate's governed TEST_ONLY_DIFF path.
+    source: "manual"
+    binds_ac: ["AC1"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty-ac12.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC1 one load and one refresh\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty-ac12.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC1 a failed refresh keeps\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty-ac12.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC1 a first read that fails\""
+        cwd: "${OMNI_HOME}/omnidash"
+
+  - id: "dod-omn21304-ac2-run-switch-and-phases"
+    description: >-
+      AC2: with run A's steps held, a switch to run B inside the app shows B (its model, no steps); when A answers,
+      nothing of A appears; B's null queue wait and execution read Not recorded and its measured 0 duration reads
+      0 ms; run A alone shows its steps (control). Lab mutant on dev 890eb79a: removing the current-load guards fails
+      it. With run A's answer held too, B shows its own answer and none of A's, and going back to A shows A's steps,
+      answer and model. The separate, unstacked, never-summed timings and their Not recorded and measured-zero states
+      are the existing run-timing unit cases T1 to T6, and a run's cost taken only from the session with the same id
+      (with a wrong session listed first, and a missing session) is the existing runs and provenance unit cases; both
+      are bound here as well. Behaviour already on the base, so this
+      binding uses the pinned gate's governed TEST_ONLY_DIFF path.
+    source: "manual"
+    binds_ac: ["AC2"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty-ac12.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC2 a late answer\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty-ac12.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC2 the same run read without a switch\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/LocalDashboardPage.omn21015.run-timing.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/LocalDashboardPage.runs.test.tsx src/pages/LocalDashboardPage.provenance.test.tsx"
         cwd: "${OMNI_HOME}/omnidash"
