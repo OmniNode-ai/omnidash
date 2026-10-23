@@ -72,6 +72,14 @@
         {
           "id": "AC42",
           "statement": "AC42 (TI27): the Overview metering KPIs (spend and savings for the selected AC40 window) are visible in the open insights section, not inside a closed disclosure. Evidence: mockup-parity:50 unchanged and passing; it fails when the KPIs sit in a closed disclosure."
+        },
+        {
+          "id": "AC44",
+          "statement": "AC44: The headline cards show no Details disclosure. The facts it held that OMN-21304 AC4 requires (baseline model, pricing manifest version, unpriced-call count, and the runs a total leaves out, each or its typed not recorded state) appear as a short visible line under Spend and Savings; Modelled · vs cloud baseline and any fixture notice stay beside their figure."
+        },
+        {
+          "id": "AC45",
+          "statement": "AC45: The All calls and All-time aggregate captions are gone from the headline cards; the All time / Today switch still names the window and typed missing states remain."
         }
       ]
     }
@@ -307,6 +315,22 @@
         {
           "check_type": "test_passes",
           "check_value": "uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/ci/test_repo_evidence_caller_omn20073.py -q --noconftest -p no:cacheprovider -c /dev/null -k \"pins_the_current_receipt_gate or browser_sized_timeout\"",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
+    },
+    {
+      "id": "dod-omn21166-ac44-ac45-headline-cleanup",
+      "description": "AC44 and AC45 (part 9): the Overview headline cards carry no Details fold and no All calls / All-time aggregate captions; the OMN-21304 AC4 basis facts stay visible under Spend and Savings, the modelled label stays beside Savings, the window switch still names the window, and a missing total stays a typed state. Fails on dev 159fda56 (the Spend card's Details fold).",
+      "source": "manual",
+      "binds_ac": [
+        "AC44",
+        "AC45"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-headline-cleanup.spec.ts --project=chromium --workers=1 --retries=0",
           "cwd": "${OMNI_HOME}/omnidash"
         }
       ]
