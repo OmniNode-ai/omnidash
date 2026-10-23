@@ -23,6 +23,7 @@
             "model_name",
             "quality_gate_passed",
             "terminal_ok",
+            "terminal_failure_cause",
             "quality_gate_detail",
             "actual_score",
             "latency_ms",
