@@ -760,11 +760,8 @@
 .local-share-legend li:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
 .local-share-swatch { width: 10px; height: 10px; border-radius: 3px; }
 .local-share-value { font-family: var(--font-mono); color: var(--text-secondary); }
-/* Tier colours: local is the cool one, the paid tiers warm up as they cost more. */
-/* Category identity is independent of pass/fail status. Keep slice and swatch
-   on one variable so the chart and legend cannot drift apart. */
-:is(.local-share, .local-tier-details) { --tier-local: #176578; --tier-harness: #68717e; --tier-cheap-frontier: #8357bb; --tier-cheap-cloud: #b66b08; --tier-balanced: #294f9f; --tier-claude: #b83c68; --tier-frontier: #be582b; --tier-other: #62645b; }
-[data-theme="dark"] :is(.local-share, .local-tier-details) { --tier-local: #55c9d9; --tier-harness: #aab8c9; --tier-cheap-frontier: #b794f4; --tier-cheap-cloud: #f4c35a; --tier-balanced: #75a7fa; --tier-claude: #f28caf; --tier-frontier: #f79860; --tier-other: #c5c7b9; }
+/* Tier marks and legends use the canonical named-tier identity. */
+:is(.local-share, .local-tier-details) { --tier-local: var(--field-tier-local); --tier-harness: var(--field-tier-harness); --tier-cheap-frontier: var(--field-tier-cheap-frontier); --tier-cheap-cloud: var(--field-tier-cheap-cloud); --tier-balanced: var(--field-tier-cloud); --tier-claude: var(--field-tier-claude); --tier-frontier: var(--field-tier-frontier); --tier-other: var(--field-tier-other); }
 :is(.local-share, .local-tier-details) [data-tone="local"] { --tier-color: var(--tier-local); }
 :is(.local-share, .local-tier-details) [data-tone="harness"] { --tier-color: var(--tier-harness); }
 :is(.local-share, .local-tier-details) [data-tone="cheap-frontier"] { --tier-color: var(--tier-cheap-frontier); }
@@ -1649,14 +1646,14 @@ figure.local-chart.usage-insight { min-width: 0; margin: 0; padding: 14px; }
 
 /* OMN-21166 (Lakshman, 2026-10-18: every different thing has its own icon and colour): one accent per panel, a
    deep shade on light (>= 4.5:1 on white) and a bright one on dark. */
-.local-dashboard-panel[data-component="overview-spend"] { --panel-accent: #1D4ED8; }
-[data-theme="dark"] .local-dashboard-panel[data-component="overview-spend"] { --panel-accent: #60A5FA; }
-.local-dashboard-panel[data-component="overview-savings"] { --panel-accent: #047857; }
-[data-theme="dark"] .local-dashboard-panel[data-component="overview-savings"] { --panel-accent: #34D399; }
-.local-dashboard-panel[data-component="overview-measured"] { --panel-accent: #B45309; }
-[data-theme="dark"] .local-dashboard-panel[data-component="overview-measured"] { --panel-accent: #FBBF24; }
-.local-dashboard-panel[data-component="overview-tokens"] { --panel-accent: #6D28D9; }
-[data-theme="dark"] .local-dashboard-panel[data-component="overview-tokens"] { --panel-accent: #A78BFA; }
+.local-dashboard-panel[data-component="overview-spend"] { --panel-accent: var(--field-cost); }
+.local-dashboard-panel[data-component="overview-savings"] { --panel-accent: var(--field-savings); }
+.local-dashboard-panel[data-component="overview-measured"] { --panel-accent: var(--field-calls); }
+.local-dashboard-panel[data-component="overview-tokens"] { --panel-accent: var(--field-tokens); }
+[data-theme="dark"] .local-dashboard-panel[data-component="overview-spend"] { --panel-accent: var(--field-cost); }
+[data-theme="dark"] .local-dashboard-panel[data-component="overview-savings"] { --panel-accent: var(--field-savings); }
+[data-theme="dark"] .local-dashboard-panel[data-component="overview-measured"] { --panel-accent: var(--field-calls); }
+[data-theme="dark"] .local-dashboard-panel[data-component="overview-tokens"] { --panel-accent: var(--field-tokens); }
 .local-dashboard-panel[data-component="overview-quality"] { --panel-accent: #0F766E; }
 [data-theme="dark"] .local-dashboard-panel[data-component="overview-quality"] { --panel-accent: #2DD4BF; }
 .local-dashboard-panel[data-component="overview-last-run"] { --panel-accent: #BE185D; }
@@ -2272,8 +2269,10 @@ figure.local-chart.usage-insight { min-width: 0; margin: 0; padding: 14px; }
 .local-routing-model-row .local-routing-name { align-items: flex-start; }
 .local-routing-model-row .local-routing-name > svg { margin-top: 2px; }
 .local-tier-details tbody tr:hover { background: color-mix(in oklab, var(--tier-color) 12%, var(--panel)); }
-.local-model-identity { --model-identity-color: oklch(46% 0.13 var(--model-identity-hue)); color: var(--model-identity-color); }
-[data-theme="dark"] .local-model-identity { --model-identity-color: oklch(79% 0.13 var(--model-identity-hue)); }
+:root { --model-identity-lightness: 46%; }
+[data-theme="dark"] { --model-identity-lightness: 79%; }
+.local-model-identity { color: var(--model-identity-color); }
+.local-model-identity svg.field-icon[data-field-tone="model"] { color: var(--model-identity-color); }
 
 /* Narrow Overview cards retain all routing counts without forcing a wide Runs layout. */
 .local-overview-secondary [data-component="overview-run-locally"] .local-routing-summary { grid-template-columns: minmax(0, 1fr); gap: 16px; }

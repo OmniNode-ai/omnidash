@@ -1,9 +1,9 @@
 import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
 import { useId, useState, type CSSProperties, type ReactNode } from 'react';
-import { Award, Bot, Coins, FileClock, FileText, MessageSquareText, Server, Timer, Waypoints } from 'lucide-react';
 import { RunTimingChart } from './charts';
-import { FieldIcon } from '@/components/dashboard/FieldIcon';
+import { ConceptIcon, FieldIcon } from '@/components/dashboard/FieldIcon';
 import { fieldTone, isUnavailableField } from '@/components/dashboard/field-identity';
+import { modelIdentityStyle } from '@/components/dashboard/model-identity';
 import { formatUsd } from '@/components/dashboard/usage/UsageByModelDayWidget';
 import type { BoundProjectionSnapshot } from '@/layout/local-page-loader';
 import { plainFailureMessage } from './plain-text';
@@ -29,11 +29,10 @@ function Comparison({ title, kind, values }: {
   title: string; kind: 'tokens' | 'quality'; values: Array<{ label: string; value: unknown }>;
 }) {
   const [selected, setSelected] = useState<number | null>(null);
-  const Icon = kind === 'tokens' ? Coins : Award;
   const measurements = values.map(item => measured(item.value)).filter((value): value is number => value !== null);
   const maximum = Math.max(1, ...measurements);
   return <figure className={`local-chart workflow-analysis-card workflow-analysis-card--${kind}`} aria-label={title}>
-    <h3 className="local-dashboard-caption" data-page-heading tabIndex={-1}><Icon size={16} aria-hidden="true" />{title}</h3>
+    <h3 className="local-dashboard-caption" data-page-heading tabIndex={-1}><ConceptIcon concept={kind === 'tokens' ? 'token-flow' : 'quality-comparison'} label={title} size={16} />{title}</h3>
     <div className="workflow-comparison-bars">
       {values.map((item, index) => {
         const value = measured(item.value);
@@ -52,7 +51,7 @@ function Comparison({ title, kind, values }: {
 export function WorkflowDecisionCharts({ decision, children }: { decision: Run; children: ReactNode }) {
   return <div className="workflow-analysis-grid">
     <div className="workflow-analysis-card workflow-analysis-card--timing">
-      <h3 className="local-dashboard-caption" data-page-heading tabIndex={-1}><Timer size={16} aria-hidden="true" />Run timing</h3>
+      <h3 className="local-dashboard-caption" data-page-heading tabIndex={-1}><ConceptIcon concept="timing" size={16} />Run timing</h3>
       {children}
     </div>
     <Comparison title="Token flow" kind="tokens" values={[
@@ -69,7 +68,7 @@ export function WorkflowRecordDetails({ decision, steps }: { decision: Run | und
   const durations = steps.map((step, index) => ({ key: `stage-${index}`, label: recorded(step.step_kind).replaceAll('_', ' '), value: step.duration_ms }));
   return <div className="workflow-record-grid">
     {decision && <section className="workflow-analysis-card workflow-analysis-card--record" aria-labelledby={id}>
-      <h3 id={id} className="local-dashboard-caption" data-page-heading tabIndex={-1}><FileClock size={16} aria-hidden="true" />Recorded run details</h3>
+      <h3 id={id} className="local-dashboard-caption" data-page-heading tabIndex={-1}><ConceptIcon concept="run-details" size={16} />Recorded run details</h3>
       <dl className="local-dashboard-fields">
         {[
           // OMN-19920 AC5: the run's receipt identity. receipt.json records the correlation id as receipt_id.
@@ -88,7 +87,7 @@ export function WorkflowRecordDetails({ decision, steps }: { decision: Run | und
       </dl>
     </section>}
     {durations.some(item => measured(item.value) !== null) && <section className="workflow-analysis-card workflow-analysis-card--stages" aria-label="Stage timing analysis">
-      <h3 className="local-dashboard-caption" data-page-heading tabIndex={-1}><Timer size={16} aria-hidden="true" />Execution stage durations</h3>
+      <h3 className="local-dashboard-caption" data-page-heading tabIndex={-1}><ConceptIcon concept="stage-timing" size={16} />Execution stage durations</h3>
       <RunTimingChart timings={durations} title="Execution stage durations" accentToken="--workflow-stages-accent" />
     </section>}
   </div>;
@@ -137,7 +136,7 @@ export function RunAnswer({ read, runId }: { read: BoundProjectionSnapshot | und
       </div>);
   }
   return <section className="workflow-analysis-card workflow-analysis-card--answer" aria-labelledby={id}>
-    <h3 id={id} className="local-dashboard-caption" data-page-heading tabIndex={-1}><MessageSquareText size={16} aria-hidden="true" />Answer</h3>
+    <h3 id={id} className="local-dashboard-caption" data-page-heading tabIndex={-1}><ConceptIcon concept="answer" size={16} />Answer</h3>
     {body}
   </section>;
 }
@@ -151,15 +150,16 @@ export function FlowConnector() {
 export function WorkflowRoutingFlow({ decision, outcome }: { decision: Run; outcome: string }) {
   return <section aria-label="Recorded routing flow">
     <figure className="local-chart workflow-routing-flow">
-      <h3 className="local-dashboard-caption" data-page-heading tabIndex={-1}><Waypoints size={16} aria-hidden="true" />Recorded routing flow</h3>
+      <h3 className="local-dashboard-caption" data-page-heading tabIndex={-1}><ConceptIcon concept="routing-flow" size={16} />Recorded routing flow</h3>
       <div className="workflow-routing-nodes">
         {[
-          { label: 'Task', value: decision.task_type, Icon: FileText },
-          { label: 'Backend', value: decision.backend_id, Icon: Server },
-          { label: 'Model', value: decision.model_name, Icon: Bot },
-          { label: 'Outcome', value: outcome, Icon: Award },
-        ].map(({ label, value, Icon }, index) => <div className="workflow-flow-node" key={label} data-flow-kind={label.toLowerCase()} data-field-tone={fieldTone(label, value)} data-field-unavailable={isUnavailableField(value)}>
-          <Icon size={18} aria-hidden="true" /><span>{label}</span><strong>{recorded(value)}</strong>
+          { label: 'Task', value: decision.task_type },
+          { label: 'Backend', value: decision.backend_id },
+          { label: 'Model', value: decision.model_name },
+          { label: 'Outcome', value: outcome },
+        ].map(({ label, value }, index) => <div className="workflow-flow-node" key={label} data-flow-kind={label.toLowerCase()} data-field-tone={fieldTone(label, value)} data-field-unavailable={isUnavailableField(value)}
+          style={fieldTone(label, value) === 'model' && !isUnavailableField(value) ? modelIdentityStyle(value) : undefined}>
+          <FieldIcon label={label} value={value} size={18} /><span>{label}</span><strong>{recorded(value)}</strong>
           {index < 3 && <FlowConnector />}
         </div>)}
       </div>

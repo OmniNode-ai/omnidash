@@ -14,10 +14,11 @@ import { formatDashboardCount } from '@/lib/dashboard-count';
  */
 
 import { Fragment, useId, useState, type CSSProperties, type ReactNode } from 'react';
-import { Award, ChevronRight, Coins, PiggyBank, Waypoints, Rows3, ScanSearch } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { isTenantNotConfiguredReason } from '@/data-source/projection-tenant';
 import { TenantNotConfiguredState } from '../TenantNotConfiguredState';
-import { FieldIcon } from '../FieldIcon';
+import { ConceptIcon, FieldIcon } from '../FieldIcon';
+import { modelIdentityStyle } from '../model-identity';
 import { fieldTone, isUnavailableField } from '../field-identity';
 
 // ── formatting helpers ───────────────────────────────────────────────────────
@@ -116,13 +117,13 @@ export function Panel({
   children: ReactNode;
   pad?: boolean;
 }) {
-  const panelIcons: Record<string, typeof ScanSearch> = {
-    'SELECTED RUN': ScanSearch,
-    'MODEL ROUTING': Waypoints,
-    'QUALITY GATE': Award,
-    'SAVINGS vs CLOUD BASELINE': PiggyBank,
-    'TOKEN USAGE': Coins,
-    'RECENT DELEGATIONS': Rows3,
+  const panelConcepts: Record<string, string> = {
+    'SELECTED RUN': 'selected',
+    'MODEL ROUTING': 'tier-mix',
+    'QUALITY GATE': 'quality',
+    'SAVINGS vs CLOUD BASELINE': 'savings',
+    'TOKEN USAGE': 'tokens',
+    'RECENT DELEGATIONS': 'recent',
   };
   const labels: Record<string, string> = {
     'SELECTED RUN': 'Selected run', 'MODEL ROUTING': 'Model routing',
@@ -130,12 +131,12 @@ export function Panel({
     'TOKEN USAGE': 'Token usage', 'RECENT DELEGATIONS': 'Recent delegations',
   };
   const label = typeof title === 'string' ? labels[title] ?? title : title;
-  const Icon = typeof title === 'string' ? panelIcons[title] : undefined;
+  const concept = typeof title === 'string' ? panelConcepts[title] : undefined;
   return (
     <div className="panel" data-panel-title={typeof title === 'string' ? title : undefined}>
       {title || right ? (
         <div className="panel-h">
-          {title ? <h2 className="pt" data-page-heading tabIndex={-1}>{Icon && <span className="ev-panel-icon" aria-hidden="true"><Icon size={16} /></span>}{label}</h2> : null}
+          {title ? <h2 className="pt" data-page-heading tabIndex={-1}>{concept && <span className="ev-panel-icon" aria-hidden="true"><ConceptIcon concept={concept} label={typeof label === 'string' ? label : undefined} size={16} /></span>}{label}</h2> : null}
           {sub ? <span className="ps">{sub}</span> : null}
           {right ? <span className="right">{right}</span> : null}
         </div>
@@ -241,7 +242,8 @@ export function KV({ items }: { items: (KVItem | null | false)[] }) {
   return (
     <div className="kv">
       {real.map((it, i) => (
-        <div key={i} data-field-tone={fieldTone(it.k, it.v)} data-field-unavailable={isUnavailableField(it.v)}>
+        <div key={i} data-field-tone={fieldTone(it.k, it.v)} data-field-unavailable={isUnavailableField(it.v)}
+          style={fieldTone(it.k, it.v) === 'model' && typeof it.v === 'string' && !isUnavailableField(it.v) ? modelIdentityStyle(it.v) : undefined}>
           <div className="k"><FieldIcon label={it.k} value={it.v} />{it.k}</div>
           <div className={`v${it.accent ? ' accent' : ''}`}>{it.v}</div>
         </div>

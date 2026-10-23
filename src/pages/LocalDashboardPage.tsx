@@ -2,12 +2,11 @@ import { formatDashboardCount, formatFullCount, wholeCount } from '@/lib/dashboa
 import { dailyMeteringTokens } from '@/lib/daily-metering-tokens';
 import { DailyMeteringTokens } from '@/components/dashboard/usage/DailyMeteringTokens';
 import { TokenDirections } from '@/components/dashboard/usage/TokenDirections';
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { tierColor, tierConcept } from '@/lib/dashboard-colors';
 import { Link, useLocation, useSearch } from 'wouter';
 import {
-  ArrowDownUp, ArrowUpRight, Award, Bot, CalendarDays, ChartColumnStacked, ChartLine, ChartSpline, Check, ChevronRight, CircleDollarSign, CloudOff, Coins, Copy, DatabaseZap,
-  CircleDot, Flag, History, IdCard, Inbox, KeyRound, PiggyBank, Route, Server, ShieldCheck, Shrink, TrendingDown,
-  Rows3, Scale, TableProperties, Waypoints, Cloud, Sparkles, Zap,
+  ArrowUpRight, Check, ChevronRight, Copy,
   type LucideIcon,
 } from 'lucide-react';
 import { createSnapshotSource } from '@/data-source';
@@ -31,7 +30,7 @@ import { notAvailableYet, plainFailureMessage } from '@/pages/local/plain-text';
 import { RunFilterProvider, causeHref, causeLabelOf, useRunFilter } from '@/pages/local/run-filter';
 import { typedFailureCauseOf } from '@/pages/local/insights';
 import { shortId } from '@/components/dashboard/event-dash/primitives';
-import { FieldIcon } from '@/components/dashboard/FieldIcon';
+import { ConceptIcon, FIELD_ICONS, FieldIcon } from '@/components/dashboard/FieldIcon';
 import { modelIdentityStyle } from '@/components/dashboard/model-identity';
 import { fieldTone, isUnavailableField } from '@/components/dashboard/field-identity';
 import '@/styles/local-dashboard.css';
@@ -246,9 +245,9 @@ export function RunLocallyCard({ row }: { row: Record<string, unknown> | null })
         </div>
       </div>
       <dl className="local-routing-counts">
-        <div data-routing-count="local"><dt><Server size={15} aria-hidden="true" />Local runs</dt><dd>{recordedCount(byTier.local_call_count)}</dd></div>
-        <div data-routing-count="total"><dt><Rows3 size={15} aria-hidden="true" />All runs</dt><dd>{recordedCount(byTier.total_call_count)}</dd></div>
-        <div data-routing-count="untiered"><dt><Route size={15} aria-hidden="true" />Without a tier</dt><dd>{recordedCount(byTier.not_tier_routed_count)}</dd></div>
+        <div data-routing-count="local"><dt><ConceptIcon concept="local-run" size={15} />Local runs</dt><dd>{recordedCount(byTier.local_call_count)}</dd></div>
+        <div data-routing-count="total"><dt><FieldIcon label="All runs" size={15} />All runs</dt><dd>{recordedCount(byTier.total_call_count)}</dd></div>
+        <div data-routing-count="untiered" data-field-tone="unrouted"><dt><FieldIcon label="Without a tier" size={15} />Without a tier</dt><dd>{recordedCount(byTier.not_tier_routed_count)}</dd></div>
       </dl>
       <p className="local-routing-note">Runs without a routing tier are included in the total. They are not classified as local or cloud here.</p>
     </div>
@@ -762,7 +761,7 @@ export function LastRunCard({ decisions, sessions, now = Date.now(), compact = f
     <section aria-label="Last run" className="local-last-run" data-status={status}>
       <dl className="local-dashboard-fields local-latest-primary">
         {fields.filter(([label]) => ['Status', 'Cause', 'Model', 'Age', 'Run', 'Duration', 'Cost'].includes(label))
-          .map(([label, value]) => <div key={label} data-field={label} data-field-tone={fieldTone(label, label === 'Status' ? status : value)} data-field-unavailable={isUnavailableField(value)}><dt><FieldIcon label={label} value={label === 'Status' ? status : value} />{label}</dt><dd>{compact && label === 'Cause' && typeof value === 'string' && value.length > 120
+          .map(([label, value]) => <div key={label} data-field={label} data-field-tone={fieldTone(label, label === 'Status' ? status : value)} data-field-unavailable={isUnavailableField(value)} style={fieldTone(label, value) === 'model' && !isUnavailableField(value) ? modelIdentityStyle(value) : undefined}><dt><FieldIcon label={label} value={label === 'Status' ? status : value} />{label}</dt><dd>{compact && label === 'Cause' && typeof value === 'string' && value.length > 120
             ? <details className="local-run-cause"><summary><ChevronRight size={12} aria-hidden="true" /><span>{value.slice(0, 120)}…</span></summary><p>{value}</p></details>
             : value}</dd></div>)}
       </dl>
@@ -770,7 +769,7 @@ export function LastRunCard({ decisions, sessions, now = Date.now(), compact = f
         <summary>Execution details</summary>
         <dl className="local-dashboard-fields">
           {fields.filter(([label]) => !['Status', 'Cause', 'Model', 'Age', 'Run', 'Duration', 'Cost'].includes(label))
-            .map(([label, value]) => <div key={label} data-field={label} data-field-tone={fieldTone(label, value)} data-field-unavailable={isUnavailableField(value)}><dt><FieldIcon label={label} value={value} />{label}</dt><dd>{value}</dd></div>)}
+            .map(([label, value]) => <div key={label} data-field={label} data-field-tone={fieldTone(label, value)} data-field-unavailable={isUnavailableField(value)} style={fieldTone(label, value) === 'model' && !isUnavailableField(value) ? modelIdentityStyle(value) : undefined}><dt><FieldIcon label={label} value={value} />{label}</dt><dd>{value}</dd></div>)}
         </dl>
       </details>
       {compact && typeof last.correlation_id === 'string' && last.correlation_id !== '' && <p className="local-dashboard-caption local-recent-footer"><Link href={workflowHref(last.correlation_id)}>Open run details <ArrowUpRight size={12} aria-hidden="true" /></Link></p>}
@@ -1265,24 +1264,24 @@ export function TierMixPanel({ row, compact = false }: { row: Row | null; compac
       <summary><span className="local-routing-summary-label">Full routing breakdown</span></summary>
       <div className="local-dashboard-table-wrap local-dashboard-table-wrap--fit">
         <table>
-          <thead><tr><th><span><Route size={13} aria-hidden="true" />Tier</span></th><th><span><Rows3 size={13} aria-hidden="true" />Runs</span></th><th><span><ChartLine size={13} aria-hidden="true" />Share of tier-routed</span></th><th><span><CircleDollarSign size={13} aria-hidden="true" />Cost</span></th></tr></thead>
+          <thead><tr><th><span><FieldIcon label="Tier" size={13} />Tier</span></th><th><span><ConceptIcon concept="delegations" label="Runs" size={13} />Runs</span></th><th><span><ConceptIcon concept="routing" label="Share of tier-routed" size={13} />Share of tier-routed</span></th><th><span><FieldIcon label="Cost" size={13} />Cost</span></th></tr></thead>
           <tbody>{tiers.flatMap((tier, index) => {
             const name = String(tier.cost_tier_name);
-            const TierIcon = ({ local: Server, harness: Bot, cheap_frontier: Zap, cheap_cloud: Cloud, cloud: Cloud, claude: Sparkles, frontier: Sparkles } as Record<string, LucideIcon>)[name] ?? Route;
+            const concept = tierConcept(name) ?? 'tier-other';
             const tone = TIER_TONES[name] ?? 'other';
             return [
-            <tr className="local-routing-tier-row" data-tone={tone} key={`${name}-${index}`}>
+            <tr className="local-routing-tier-row" data-tone={tone} style={{ '--tier-color': tierColor(name) } as CSSProperties} key={`${name}-${index}`}>
               {/* A served share is a long decimal and a name has no break opportunity: each may break inside itself, as
                   the repo's other token cells do, so the Cost column stays inside the panel at 1440x900 with no
                   sideways scroll. Costs wrap at their spaces. */}
-              <td className="local-dashboard-cell-token local-dashboard-cell-name"><span className="local-routing-name"><TierIcon size={16} aria-hidden="true" />{recorded(tier.cost_tier_name)}</span></td>
+              <td className="local-dashboard-cell-token local-dashboard-cell-name"><span className="local-routing-name"><ConceptIcon concept={concept} label={name} value={name} size={16} />{recorded(tier.cost_tier_name)}</span></td>
               <td data-column="runs">{recordedCount(tier.count)}</td>
               <td data-column="share" className="local-dashboard-cell-token"><Readable value={tier.pct_of_tier_routed} kind="percent" /></td>
               <td />
             </tr>,
             ...(Array.isArray(tier.models) ? asRecords(tier.models) : []).map((model, modelIndex) => (
-              <tr data-tone={tone} key={`${name}-${index}-${String(model.model_name)}-${modelIndex}`} className="local-dashboard-row--nested local-routing-model-row">
-                <td className="local-dashboard-cell-token local-dashboard-cell-name"><span className="local-routing-name local-model-identity" style={modelIdentityStyle(model.model_name)}><FieldIcon tone="model" size={14} />{recorded(model.model_name)}</span></td>
+              <tr data-tone={tone} style={{ '--tier-color': tierColor(name) } as CSSProperties} key={`${name}-${index}-${String(model.model_name)}-${modelIndex}`} className="local-dashboard-row--nested local-routing-model-row">
+                <td className="local-dashboard-cell-token local-dashboard-cell-name"><span className="local-routing-name local-model-identity" style={modelIdentityStyle(model.model_name)}><FieldIcon tone="model" value={model.model_name} size={14} />{recorded(model.model_name)}</span></td>
                 <td data-column="runs">{recordedCount(model.count)}</td>
                 <td data-column="share" className="local-dashboard-cell-token"><Readable value={model.pct_of_tier_routed} kind="percent" /></td>
                 <td data-column="cost" data-unavailable={isMissing(model.cost_usd)}>{tierModelCost(model)}</td>
@@ -1383,15 +1382,15 @@ export function RunSummary({ decision, showAnalysis = false }: { decision: Row |
     <section aria-label="Run summary" className="local-dashboard-run-summary">
       <div className="local-run-summary-groups">
         {[
-          { name: 'Run outcome', icon: Award, labels: ['Cause', 'Quality score', 'Required bar', 'Task type'] },
-          { name: 'Routing and model', icon: Route, labels: ['Model', 'Requested model', 'Backend', 'Host', 'Route tier'] },
-          { name: 'Tokens and completion', icon: Coins, labels: ['Tokens in', 'Tokens out', 'Finish reason', 'Truncated', 'Escalations'] },
-          { name: 'Timing', icon: History, labels: ['Queue wait', 'Execution', 'Duration'] },
-        ].map(({ name, icon: Icon, labels }, index) => <section key={name} className="local-run-summary-group" aria-labelledby={`${sectionId}-${index}`}>
-          <h3 className="local-dashboard-caption" id={`${sectionId}-${index}`}><Icon size={16} aria-hidden="true" />{name}</h3>
+          { name: 'Run outcome', concept: 'run-outcome', labels: ['Cause', 'Quality score', 'Required bar', 'Task type'] },
+          { name: 'Routing and model', concept: 'routing-model', labels: ['Model', 'Requested model', 'Backend', 'Host', 'Route tier'] },
+          { name: 'Tokens and completion', concept: 'tokens-completion', labels: ['Tokens in', 'Tokens out', 'Finish reason', 'Truncated', 'Escalations'] },
+          { name: 'Timing', concept: 'timing', labels: ['Queue wait', 'Execution', 'Duration'] },
+        ].map(({ name, concept, labels }, index) => <section key={name} className="local-run-summary-group" aria-labelledby={`${sectionId}-${index}`}>
+          <h3 className="local-dashboard-caption" id={`${sectionId}-${index}`}><ConceptIcon concept={concept} label={name} size={16} />{name}</h3>
           <dl className="local-dashboard-fields">
             {index === 0 && <div data-field-tone={fieldTone('Status', status)}><dt><FieldIcon label="Status" value={status} />Status</dt><dd><OutcomePill value={status} /></dd></div>}
-            {fields.filter(([label]) => labels.includes(label)).map(([label, value]) => <div key={label} data-summary-field={label} data-field-tone={fieldTone(label, value)} data-field-unavailable={isUnavailableField(value)}><dt><FieldIcon label={label} value={value} />{label}</dt><dd>{label === 'Cause' && value.length > 120
+            {fields.filter(([label]) => labels.includes(label)).map(([label, value]) => <div key={label} data-summary-field={label} data-field-tone={fieldTone(label, value)} data-field-unavailable={isUnavailableField(value)} style={fieldTone(label, value) === 'model' && !isUnavailableField(value) ? modelIdentityStyle(value) : undefined}><dt><FieldIcon label={label} value={value} />{label}</dt><dd>{label === 'Cause' && value.length > 120
               ? <details className="local-run-failure-details"><summary title={value}>Show failure reason</summary><p>{value}</p></details>
               : value}</dd></div>)}
           </dl>
@@ -1515,7 +1514,7 @@ export function RunDiagram({ steps }: { steps: readonly unknown[] }) {
       {rows.map((row, index) => {
         const kind = String(row.step_kind ?? '');
         const failing = !isMissing(named) && row.step_sequence === named;
-        const Icon = ({ request: Inbox, routing_decision: Route, provider_call: Bot, quality_gate: ShieldCheck, terminal: Flag } as Record<string, LucideIcon>)[kind] ?? CircleDot;
+        const stepConcept = ({ request: 'step-request', routing_decision: 'step-routing', provider_call: 'step-provider-call', quality_gate: 'step-quality', terminal: 'step-terminal' } as Record<string, string>)[kind] ?? 'step-other';
         return (
           <a
             href={`#run-step-${index + 1}`}
@@ -1525,7 +1524,7 @@ export function RunDiagram({ steps }: { steps: readonly unknown[] }) {
             data-failing-step={failing ? 'true' : undefined}
             title={failing ? 'The step the run failed at' : undefined}
           >
-            <span className="local-run-node-icon" aria-hidden="true"><Icon size={18} /></span>
+            <span className="local-run-node-icon" aria-hidden="true"><ConceptIcon concept={stepConcept} label={RUN_STEP_LABELS[kind] ?? recorded(row.step_kind)} size={18} /></span>
             <span className="local-run-node-name">{RUN_STEP_LABELS[kind] ?? recorded(row.step_kind)}</span>
             <span className="local-run-node-outcome">{recorded(row.outcome)}</span>
             {index < rows.length - 1 && <FlowConnector />}
@@ -1918,7 +1917,7 @@ function ReadFailureNotice({ snapshot, title, now, savedMessage, onRetry = reque
   const label = names[snapshot.topic.replace('onex.snapshot.projection.', '')] ?? `${title} data`;
   return <div className={`local-read-notice${slow || snapshot.lastGoodAt || savedMessage ? ' local-read-notice--warning' : ' local-read-notice--error'}`} role="alert" aria-live="polite">
     <div className="local-read-notice-head">
-      {slow ? <History size={16} aria-hidden="true" /> : <CloudOff size={16} aria-hidden="true" />}
+      <ConceptIcon concept={slow ? 'load-slow' : 'load-error'} size={16} />
       <strong>{label}{slow ? ' is taking longer than expected.' : snapshot.lastGoodAt || savedMessage ? ' couldn’t refresh.' : ' is unavailable.'}</strong>
       <button type="button" disabled={retrying} aria-busy={retrying} onClick={() => { setRetrying(true); onRetry(); }}>{retrying ? 'Retrying…' : 'Try again'}</button>
     </div>
@@ -2002,34 +2001,22 @@ function bindingFailedEmpty(
 }
 
 /** The icon beside a panel's title, by component. A component not listed here gets none; nothing depends on it. */
-export const PANEL_ICONS: Record<string, LucideIcon> = {
-  'overview-spend': CircleDollarSign,
-  'overview-savings': PiggyBank,
-  'overview-measured': Bot,
-  'overview-tokens': Coins,
-  'overview-last-run': History,
-  'overview-recent-runs': Rows3,
-  'overview-insights': ChartSpline,
-  'usage-insights': ChartColumnStacked,
-  'runs-insights': ChartSpline,
-  'runs-tier-mix': Waypoints,
-  'overview-run-locally': Server,
-  'overview-avg-saving-per-call': TrendingDown,
-  'overview-baseline-spend': Scale,
-  'overview-quality': Award,
-  'overview-tier-mix': Waypoints,
-  'overview-compression': Shrink,
-  'overview-cache-hit-rate': DatabaseZap,
-  'overview-spend-by-day': ChartLine,
-  'recent-runs': Rows3,
-  'workflow-run-path': Route,
-  'usage-by-model-day': TableProperties,
-  'usage-tokens-by-day': ArrowDownUp,
-  'usage-savings-series': CalendarDays,
-  'credentials-keys': KeyRound,
-  'api-keys-local-identity': IdCard,
-  'api-keys-cloud': CloudOff,
+export const PANEL_CONCEPTS: Readonly<Record<string, string>> = {
+  'overview-spend': 'cost', 'overview-savings': 'savings', 'overview-measured': 'calls',
+  'overview-tokens': 'tokens', 'overview-last-run': 'last', 'overview-recent-runs': 'recent',
+  'overview-insights': 'analysis', 'usage-insights': 'usage-analysis', 'runs-insights': 'analysis',
+  'runs-tier-mix': 'tier-mix', 'overview-run-locally': 'local-run',
+  'overview-avg-saving-per-call': 'saving-average', 'overview-baseline-spend': 'baseline',
+  'overview-quality': 'quality', 'overview-tier-mix': 'tier-mix', 'overview-compression': 'compression',
+  'overview-cache-hit-rate': 'cache', 'overview-spend-by-day': 'spend-daily', 'recent-runs': 'recent',
+  'workflow-run-path': 'path', 'usage-by-model-day': 'usage-day', 'usage-tokens-by-day': 'tokens-daily',
+  'usage-savings-series': 'savings-daily', 'credentials-keys': 'credentials',
+  'api-keys-local-identity': 'local-identity', 'api-keys-cloud': 'cloud-keys',
 };
+/** Compatibility inventory, derived from the shared canonical identity rather than a second icon map. */
+export const PANEL_ICONS: Record<string, LucideIcon> = Object.fromEntries(
+  Object.entries(PANEL_CONCEPTS).map(([panel, concept]) => [panel, FIELD_ICONS[concept]!]),
+);
 
 const PAGE_TITLES: Record<LocalPageName, string> = {
   overview: 'Overview',
@@ -2242,7 +2229,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
       && metering && metering.rows.length > 0
       && !tokenSources.some(snapshot => snapshot.failure?.kind === 'tenant-not-configured')
       ? dailyMeteringTokens(metering.rows) : null;
-    const PanelIcon = PANEL_ICONS[component.component_id];
+    const panelConcept = PANEL_CONCEPTS[component.component_id];
     // OV-3: only the panels that read metering-summary.v1 have a row per window. Every other Overview panel
     // reads an exposure with no day rows, so with today chosen it still shows all time and has to say so:
     // seen on a store of two real days, "Agent calls 4" beside "6 of 6 runs local".
@@ -2307,7 +2294,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
         aria-busy={credentialProviders ? 'false' : pending}
         key={component.component_id}
       >
-        <h2 data-page-heading={pageName !== 'overview' || ['overview-quality', 'overview-insights', 'overview-spend-by-day', 'overview-last-run', 'overview-recent-runs', 'overview-tier-mix'].includes(component.component_id) ? '' : undefined} tabIndex={-1}>{PanelIcon && <PanelIcon size={14} aria-hidden="true" />}{pageName === 'overview' && component.component_id === 'overview-insights' ? 'Activity trends' : component.title}</h2>
+        <h2 data-page-heading={pageName !== 'overview' || ['overview-quality', 'overview-insights', 'overview-spend-by-day', 'overview-last-run', 'overview-recent-runs', 'overview-tier-mix'].includes(component.component_id) ? '' : undefined} tabIndex={-1}>{panelConcept && <ConceptIcon concept={panelConcept} label={pageName === 'overview' && component.component_id === 'overview-insights' ? 'Activity trends' : component.title} size={14} />}{pageName === 'overview' && component.component_id === 'overview-insights' ? 'Activity trends' : component.title}</h2>
         {outsideWindow && <p className="local-dashboard-caption">{OUTSIDE_WINDOW_NOTE}</p>}
         {credentialProviders && <ModelKeys />}
         {credentialProviders ? <div aria-busy={pending}>{readContent}</div> : readContent}
