@@ -157,6 +157,7 @@ export function TierShareChart({ byTier, variant = 'donut' }: { byTier: unknown;
       )}
       {shaped.segments.length > 0 && variant === 'donut' && (
         <div className="local-donut-row">
+          <div className="local-donut-wrap">
           <svg
             className="local-donut"
             viewBox="0 0 42 42"
@@ -182,13 +183,14 @@ export function TierShareChart({ byTier, variant = 'donut' }: { byTier: unknown;
                 <title>{`${segment.name}: ${percent(segment.share)} of tier-routed runs`}</title>
               </path>
             ))}
-            {focus && (
-              <text className="local-donut-focus" data-testid="tier-focus" x="21" y="21" textAnchor="middle">
-                <tspan x="21" dy="-0.2em">{focus.name}</tspan>
-                <tspan className="local-donut-focus-value" x="21" dy="1.25em">{percent(focus.share)}</tspan>
-              </text>
-            )}
           </svg>
+          {focus && (
+            <div className="local-donut-focus" data-testid="tier-focus">
+              <span>{focus.name}</span>
+              <span className="local-donut-focus-value">{percent(focus.share)}</span>
+            </div>
+          )}
+          </div>
           <ul className="local-share-legend">
             {shaped.segments.map((segment, index) => (
               <li

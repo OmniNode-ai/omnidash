@@ -40,3 +40,18 @@ dod_evidence:
       - check_type: "test_passes"
         check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/styles/type-tokens.omn21306.test.ts"
         cwd: "${OMNI_HOME}/omnidash"
+
+  - id: "dod-omn21306-ac1-source-font-floor"
+    description: >-
+      AC1 source regression: fixed px/rem font declarations in the shipped local dashboard stylesheet
+      and global base meet the 12 px floor, including component overrides that shared tokens do not
+      govern. A planted 11 px rem and 10 px literal demonstrate detection. Current dev retains SVG
+      focus declarations below the source floor; the focused browser regression separately verifies
+      the visible hover labels in a built page. This source check supplements, rather than replaces,
+      the full computed-font census above.
+    source: "manual"
+    binds_ac: ["AC1"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/styles/type-tokens.omn21306.test.ts tests/styles/font-floor.omn21306.test.ts --maxWorkers=1 --no-file-parallelism"
+        cwd: "${OMNI_HOME}/omnidash"

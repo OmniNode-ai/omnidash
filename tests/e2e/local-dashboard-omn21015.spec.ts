@@ -161,7 +161,7 @@ test('OMN-21015: on Overview a tier slice covers its served share of the ring', 
 
   // Pointing at a tier in the list names it in the middle of the ring.
   await page.locator('.local-share-legend').getByRole('listitem').nth(2).hover();
-  await expect(ring.getByTestId('tier-focus')).toHaveText('local75.0%');
+  await expect(page.locator('.local-donut-row').getByTestId('tier-focus')).toHaveText('local75.0%');
 
   await ring.scrollIntoViewIfNeeded();
   await page.screenshot({ path: screenshotPath('local-dashboard-omn21015-overview-tier-mix-1440x900.png'), fullPage: false });

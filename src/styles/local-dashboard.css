@@ -728,15 +728,17 @@
    ring. The ring is 100 units round, so the markup's dash lengths are the shares; nothing here may change them. */
 .local-share { margin: 0 0 14px; }
 .local-donut-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px; }
-.local-donut { width: 168px; height: 168px; flex: none; }
+.local-donut-wrap { position: relative; width: 168px; height: 168px; flex: none; }
+.local-donut { display: block; width: 168px; height: 168px; }
 .local-donut-track { stroke: var(--panel-2); stroke-width: 5; }
 /* No dash, offset, round cap or scaling on a slice: its drawn length is its served share and nothing else. A tier
    too small to see is read from the figure written beside the ring. */
 .local-donut-slice { stroke-width: 5; cursor: pointer; transition: stroke-width 0.15s, opacity 0.15s; }
 .local-donut-slice[data-active="true"] { stroke-width: 6.5; }
 .local-donut:has(.local-donut-slice[data-active="true"]) .local-donut-slice[data-active="false"] { opacity: 0.45; }
-.local-donut-focus { fill: var(--text-secondary); font-size: 2.6px; }
-.local-donut-focus-value { fill: var(--text-primary); font-size: 4.2px; font-weight: 600; font-family: var(--font-mono); }
+.local-donut-focus { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-secondary); font-size: 12px; line-height: 1.4; text-align: center; pointer-events: none; }
+.local-donut-focus > span { max-width: 104px; overflow-wrap: anywhere; }
+.local-donut-focus-value { color: var(--text-primary); font-size: 16px; font-weight: 600; font-family: var(--font-mono); }
 .local-share-legend {
   display: flex;
   flex-direction: column;
