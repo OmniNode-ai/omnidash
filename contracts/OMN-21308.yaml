@@ -42,7 +42,7 @@ evidence_requirements:
     command: "if ! test -d node_modules; then npm ci --no-audit --no-fund || exit $?; fi; node node_modules/playwright/cli.js test tests/e2e/model-identity.omn21308.spec.ts --project=chromium --workers=1 --retries=0 --trace=on"
   - kind: "tests"
     description: "All eleven existing destinations at 1440x900 in light/dark with Developer off/on and expanded recorded content. Records actual SVG shapes and computed paint with visible labels; fails on unmapped semantic icons, inconsistent concept identities, duplicate icon/colour pairs, forged icon metadata and empty census. Explicit action/decoration classifications and raw non-icon graphic paints remain in the JSON. Fixture execution proves rendering, not a live producer or deployed build."
-    command: "if ! test -d node_modules; then npm ci --no-audit --no-fund || exit $?; fi; OMNIDASH_TEST_SOURCE_SHA=\"${OMNIDASH_TEST_SOURCE_SHA:-$(git rev-parse HEAD)}\" node node_modules/playwright/cli.js test tests/e2e/local-dashboard-identity-census.omn21308.spec.ts --project=chromium --workers=1 --retries=0 --trace=on"
+    command: "if ! test -d node_modules; then npm ci --no-audit --no-fund || exit $?; fi; source_sha=\"${OMNIDASH_TEST_SOURCE_SHA:-}\"; if [ -z \"$source_sha\" ]; then source_root=\"${OMNI_HOME:+$OMNI_HOME/omnidash}\"; source_sha=\"$(git -C \"${source_root:-.}\" rev-parse HEAD)\" || exit $?; fi; OMNIDASH_TEST_SOURCE_SHA=\"$source_sha\" node node_modules/playwright/cli.js test tests/e2e/local-dashboard-identity-census.omn21308.spec.ts --project=chromium --workers=1 --retries=0 --trace=on"
 emergency_bypass:
   enabled: false
   justification: ""
@@ -94,5 +94,5 @@ dod_evidence:
     binds_ac: ["AC2","AC4"]
     checks:
       - check_type: "test_passes"
-        check_value: "if ! test -d node_modules; then npm ci --no-audit --no-fund || exit $?; fi; OMNIDASH_TEST_SOURCE_SHA=\"${OMNIDASH_TEST_SOURCE_SHA:-$(git rev-parse HEAD)}\" node node_modules/playwright/cli.js test tests/e2e/local-dashboard-identity-census.omn21308.spec.ts --project=chromium --workers=1 --retries=0 --trace=on"
+        check_value: "if ! test -d node_modules; then npm ci --no-audit --no-fund || exit $?; fi; source_sha=\"${OMNIDASH_TEST_SOURCE_SHA:-}\"; if [ -z \"$source_sha\" ]; then source_root=\"${OMNI_HOME:+$OMNI_HOME/omnidash}\"; source_sha=\"$(git -C \"${source_root:-.}\" rev-parse HEAD)\" || exit $?; fi; OMNIDASH_TEST_SOURCE_SHA=\"$source_sha\" node node_modules/playwright/cli.js test tests/e2e/local-dashboard-identity-census.omn21308.spec.ts --project=chromium --workers=1 --retries=0 --trace=on"
         cwd: "${OMNI_HOME}/omnidash"
