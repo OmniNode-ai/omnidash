@@ -1,3 +1,4 @@
+import { divideDashboardUsd, sumDashboardUsd } from '@/lib/dashboard-money-total';
 import { summary, toInsightRuns, windowDays, windowRuns, type InsightRun } from './insights';
 
 type Row = Record<string, unknown>;
@@ -200,12 +201,6 @@ function unavailableMetering(reason: string): MeteringWindow {
   return { available: false, windowComplete: false, reason, baseline: null, days: [], spend: null, saved: null, counterfactual: null, cumulativeSaved: [] };
 }
 
-function measuredTotal(values: readonly (number | null)[]): number | null {
-  let total: number | null = null;
-  for (const value of values) if (value !== null) total = (total ?? 0) + value;
-  return total;
-}
-
 function cumulative(days: readonly MeteringDay[]): (number | null)[] {
   let total: number | null = null;
   let unknownContribution = false;
@@ -228,6 +223,8 @@ export interface UsageModelAggregate {
   calls: number | null;
   share: number | null;
   measuredCost: number | null;
+  /** Exact served decimal total for display; measuredCost is its chart coordinate. */
+  measuredCostUsd: string | null;
   measuredCalls: number | null;
   unmeasuredCalls: number | null;
   inputTokens: number | null;
@@ -240,6 +237,7 @@ export interface UsageModelAggregate {
 export interface UsageDayAggregate {
   day: string;
   measuredCostPerCall: number | null;
+  measuredCostPerCallUsd: string | null;
   measuredCalls: number | null;
   unmeasuredCalls: number | null;
 }
@@ -268,8 +266,8 @@ export function aggregateUsageRows(
   const callsTotal = callsByModel.every(row => row.calls !== null)
     ? callsByModel.reduce((sum, row) => sum + row.calls!, 0) : null;
   const models = callsByModel.map(({ model, rows, calls }) => {
-    const measured = rows.map(row => number(row.measured_cost_usd));
-    const measuredCost = measuredTotal(measured);
+    const measuredCostUsd = sumDashboardUsd(rows.map(row => row.measured_cost_usd));
+    const measuredCost = measuredCostUsd === null ? null : Number(measuredCostUsd);
     const callPairs = rows.map(row => ({ total: number(row.call_count), missing: number(row.unmeasured_call_count) }));
     const countsKnown = rows.length > 0 && callPairs.every(pair => pair.total !== null && pair.missing !== null && pair.missing >= 0 && pair.missing <= pair.total);
     const measuredCalls = countsKnown ? callPairs.reduce((sum, pair) => sum + pair.total! - pair.missing!, 0) : null;
@@ -285,6 +283,7 @@ export function aggregateUsageRows(
       calls,
       share: callsTotal !== null && callsTotal > 0 && calls !== null ? calls / callsTotal : null,
       measuredCost,
+      measuredCostUsd,
       measuredCalls,
       unmeasuredCalls,
       inputTokens: completeTotal(rows.map(row => number(row.input_tokens))),
@@ -299,8 +298,8 @@ export function aggregateUsageRows(
   for (const row of usage) usageByDay.set(String(row.usage_day), [...(usageByDay.get(String(row.usage_day)) ?? []), row]);
   const dayAggregates = daysInWindow.map(day => {
     const rows = usageByDay.get(day) ?? [];
-    const costs = rows.map(row => number(row.measured_cost_usd));
-    const cost = measuredTotal(costs);
+    const costUsd = sumDashboardUsd(rows.map(row => row.measured_cost_usd));
+    const cost = costUsd === null ? null : Number(costUsd);
     const pairs = rows.map(row => ({ total: number(row.call_count), missing: number(row.unmeasured_call_count) }));
     const countsKnown = rows.length > 0 && pairs.every(pair => pair.total !== null && pair.missing !== null && pair.missing >= 0 && pair.missing <= pair.total);
     const measuredCalls = countsKnown ? pairs.reduce((sum, pair) => sum + pair.total! - pair.missing!, 0) : null;
@@ -308,6 +307,7 @@ export function aggregateUsageRows(
     return {
       day,
       measuredCostPerCall: cost !== null && measuredCalls !== null && measuredCalls > 0 ? cost / measuredCalls : null,
+      measuredCostPerCallUsd: divideDashboardUsd(costUsd, measuredCalls),
       measuredCalls,
       unmeasuredCalls,
     };
