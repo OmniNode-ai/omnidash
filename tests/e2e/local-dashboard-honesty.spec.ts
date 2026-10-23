@@ -101,8 +101,8 @@ for (const scenario of [
       await expect(details).toContainText('Unpriced runs not recorded');
     }
     // Spend and savings stay two figures, never one.
-    await expect(page.locator('[data-component="overview-spend"] .local-dashboard-metric')).toHaveText('$0.2500');
-    await expect(page.locator('[data-component="overview-savings"] .local-dashboard-metric')).toHaveText('$0.7500');
+    await expect(page.locator('[data-component="overview-spend"] .local-dashboard-metric')).toHaveText('$0.25');
+    await expect(page.locator('[data-component="overview-savings"] .local-dashboard-metric')).toHaveText('$0.75');
   });
 }
 
@@ -129,14 +129,14 @@ for (const scenario of [
       await expect(details).toContainText('Baseline baseline-a');
       await expect(details).toContainText('pricing manifest v7');
     }
-    await expect(page.locator('[data-component="overview-spend"] .local-dashboard-metric')).toHaveText('$0.2500');
-    await expect(page.locator('[data-component="overview-savings"] .local-dashboard-metric')).toHaveText('$0.7500');
+    await expect(page.locator('[data-component="overview-spend"] .local-dashboard-metric')).toHaveText('$0.25');
+    await expect(page.locator('[data-component="overview-savings"] .local-dashboard-metric')).toHaveText('$0.75');
   });
 }
 
 for (const scenario of [
   { name: 'the summary includes fixture delegations', delegations: 20 as unknown, savings: 1.5 as unknown, notice: 'Includes 20 fixture delegations' },
-  { name: 'only fixture savings are served', delegations: 0 as unknown, savings: 1.5 as unknown, notice: 'Includes $1.5 of fixture savings' },
+  { name: 'only fixture savings are served', delegations: 0 as unknown, savings: 1.5 as unknown, notice: 'Includes $1.50 of fixture savings' },
   { name: 'a non-numeric count invents no notice', delegations: true as unknown, savings: {} as unknown, notice: null },
   { name: 'no fixture delegations (control)', delegations: 0 as unknown, savings: 0 as unknown, notice: null },
 ]) {

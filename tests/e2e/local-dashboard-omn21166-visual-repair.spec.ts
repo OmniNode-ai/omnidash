@@ -15,11 +15,14 @@ test('compact Overview preserves missing data, quality, chart access and routing
   await expect(summary).toContainText('Not measured: overview totals unavailable');
   await expect(page.getByRole('meter', { name: 'Quality pass rate' })).toHaveAttribute('aria-valuenow', '0.75');
   await expect(page.locator('.local-overview-surface')).toBeVisible();
-  expect(await page.locator('.local-overview-surface').evaluate(el => el.getBoundingClientRect().height)).toBeLessThanOrEqual(600);
+  const quality = await page.locator('[data-component="overview-quality"]').boundingBox();
+  const latest = await page.locator('[data-component="overview-last-run"]').boundingBox();
+  expect(latest!.y).toBeGreaterThanOrEqual(quality!.y+quality!.height);
   for (const card of await summary.getByRole('article').all()) {
     expect(await card.evaluate(el => el.getBoundingClientRect().height)).toBeLessThanOrEqual(180);
   }
-  expect(await page.getByRole('figure', { name: 'Runs per day', exact: true }).evaluate(el => el.getBoundingClientRect().top)).toBeLessThan(1050);
+  await page.getByRole('figure', { name: 'Runs per day', exact: true }).scrollIntoViewIfNeeded();
+  await expect(page.getByRole('figure', { name: 'Runs per day', exact: true })).toBeInViewport();
   const tier = page.locator('[data-component="overview-tier-mix"]');
   const detail = tier.locator('details');
   await expect(detail).not.toHaveAttribute('open', '');

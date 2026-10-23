@@ -1,3 +1,7 @@
+import { formatDashboardCount, formatFullCount, wholeCount } from '@/lib/dashboard-count';
+import { dailyMeteringTokens } from '@/lib/daily-metering-tokens';
+import { DailyMeteringTokens } from '@/components/dashboard/usage/DailyMeteringTokens';
+import { TokenDirections } from '@/components/dashboard/usage/TokenDirections';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation, useSearch } from 'wouter';
 import {
@@ -11,7 +15,7 @@ import { fetchExposureCensus } from '@/data-source/exposure-census';
 import { resolveEffectiveDataSource } from '@/data-source/data-source-override';
 import { resolveConfiguredTenant } from '@/data-source/projection-tenant';
 import { UsageByModelDayTable, UsageTokensByDay, formatUsd } from '@/components/dashboard/usage/UsageByModelDayWidget';
-import { MeteringDaySeries } from '@/components/dashboard/usage/SavingsSeriesWidget';
+import { MeteringDaySeries, meteringDaysByBaseline } from '@/components/dashboard/usage/SavingsSeriesWidget';
 import { TenantNotConfiguredState } from '@/components/dashboard/TenantNotConfiguredState';
 import { requestLocalPageRefresh, subscribeLocalPageRefresh } from '@/services/local-page-refresh';
 import { DEFAULT_RUNS_VIEW, readRunsSearch, writeRunsSearch, type RunsViewState } from '@/navigation/runs-url-state';
@@ -31,6 +35,8 @@ import { FieldIcon } from '@/components/dashboard/FieldIcon';
 import { modelIdentityStyle } from '@/components/dashboard/model-identity';
 import { fieldTone, isUnavailableField } from '@/components/dashboard/field-identity';
 import '@/styles/local-dashboard.css';
+import '@/styles/dashboard-cards.css';
+import { overviewRunCount } from '@/lib/dashboard-overview-count';
 import { DestinationIcon } from '@/navigation/destination-icons';
 import { FlowConnector, RunAnswer, WorkflowDecisionCharts, WorkflowRecordDetails, WorkflowRoutingFlow } from '@/pages/local/workflow-analysis';
 import {
@@ -76,14 +82,15 @@ export interface MetricCardConfig {
   unit?: string | null;
 }
 
-function formatMetric(value: number, config: MetricCardConfig): string {
-  // OMN-21166 (Lakshman, 2026-10-18): an exact zero reads $0.00, not $0.0000; other figures keep their declared precision.
-  const digits = config.format === 'currency' && value === 0 ? 2 : config.precision ?? 0;
-  const grouped = value.toLocaleString('en-US', {
+function formatMetric(value: unknown, config: MetricCardConfig): string {
+  // Currency uses the approved display policy; counts compact, while ratios retain declared precision.
+  if (config.format === 'currency') return formatUsd(value);
+  if (config.format === 'number' && (config.precision ?? 0) === 0) return formatDashboardCount(value);
+  const digits = config.precision ?? 0;
+  const grouped = Number(value).toLocaleString('en-US', {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   });
-  if (config.format === 'currency') return value < 0 ? `-$${grouped.slice(1)}` : `$${grouped}`;
   if (config.format === 'percent') return `${grouped}%`;
   return grouped;
 }
@@ -147,19 +154,19 @@ function captionText(caption: Record<string, unknown> | null | undefined): strin
   if (Array.isArray(fields.excluded_runs)) {
     const classes = (fields.excluded_runs as Array<[unknown, string, string]>).map(([value, one, many]) => {
       const n = countOf(value);
-      return n === null ? `${many}: not recorded` : `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`;
+      return n === null ? `${many}: not recorded` : `${formatDashboardCount(n)} ${n === 1 ? one : many}`;
     });
     parts.push(`Not in this total: ${classes.join(', ')}`);
   }
   if ('zero_token_run_count' in fields && !isMissing(fields.zero_token_run_count)) {
-    parts.push(`Zero-token runs: ${String(fields.zero_token_run_count)}`);
+    parts.push(`Zero-token runs: ${formatDashboardCount(fields.zero_token_run_count)}`);
   }
   // OMN-19980 Amendment 2: metering-summary.v1's run classes beside Measured runs, from the same all row. Every run is
   // in exactly one class (measured, no token counts, no spend), so the excluded counts are served, never derived.
   if ('runs_total' in fields) {
-    parts.push(`Of ${recorded(fields.runs_total)} runs`);
-    parts.push(`Unknown-token runs excluded: ${recorded(fields.runs_unknown_tokens)}`);
-    parts.push(`Unknown-spend runs excluded: ${recorded(fields.runs_unknown_spend)}`);
+    parts.push(`Of ${recordedCount(fields.runs_total)} runs`);
+    parts.push(`Unknown-token runs excluded: ${recordedCount(fields.runs_unknown_tokens)}`);
+    parts.push(`Unknown-spend runs excluded: ${recordedCount(fields.runs_unknown_spend)}`);
   }
   return parts.length > 0 ? parts.join(' · ') : null;
 }
@@ -187,7 +194,7 @@ export function MetricCard({ component, config, row, caption, figureLine, figure
   else if (missing.some((field) => field.includes('baseline'))) text = 'Baseline unresolved';
   else if (missing.length > 0) text = 'Not measured';
   else {
-    text = formatMetric(Number(row[config.metric_key]), config);
+    text = config.format === 'currency' ? formatUsd(row[config.metric_key]) : formatMetric(row[config.metric_key], config);
     figure = true;
   }
   const line = captionText(caption);
@@ -199,7 +206,7 @@ export function MetricCard({ component, config, row, caption, figureLine, figure
     && component.component_id !== SPEND_CARD;
   return (
     <>
-      <p className="local-dashboard-metric" data-measured={figure}>{text}</p>
+      <p className="local-dashboard-metric" data-measured={figure} title={figure && config.format === 'number' ? String(row[config.metric_key]) : undefined}>{text}</p>
       {figure && figureLine && <p className="local-dashboard-caption">{figureLine}</p>}
       {/* OMN-21166 (Lakshman, 2026-10-18): the card's further lines fold under Details, every word kept. */}
       {(line || modelled) && (
@@ -244,9 +251,9 @@ export function RunLocallyCard({ row }: { row: Record<string, unknown> | null })
         </div>
       </div>
       <dl className="local-routing-counts">
-        <div data-routing-count="local"><dt><Server size={15} aria-hidden="true" />Local runs</dt><dd>{recorded(byTier.local_call_count)}</dd></div>
-        <div data-routing-count="total"><dt><Rows3 size={15} aria-hidden="true" />All runs</dt><dd>{recorded(byTier.total_call_count)}</dd></div>
-        <div data-routing-count="untiered"><dt><Route size={15} aria-hidden="true" />Without a tier</dt><dd>{recorded(byTier.not_tier_routed_count)}</dd></div>
+        <div data-routing-count="local"><dt><Server size={15} aria-hidden="true" />Local runs</dt><dd>{recordedCount(byTier.local_call_count)}</dd></div>
+        <div data-routing-count="total"><dt><Rows3 size={15} aria-hidden="true" />All runs</dt><dd>{recordedCount(byTier.total_call_count)}</dd></div>
+        <div data-routing-count="untiered"><dt><Route size={15} aria-hidden="true" />Without a tier</dt><dd>{recordedCount(byTier.not_tier_routed_count)}</dd></div>
       </dl>
       <p className="local-routing-note">Runs without a routing tier are included in the total. They are not classified as local or cloud here.</p>
     </div>
@@ -273,20 +280,6 @@ function countOf(value: unknown): number | null {
  * Tokens in and out from one metering-summary.v1 row. The fold sums tokens only over runs that recorded them, so when
  * every run is an unknown-token run the served 0 is not a measurement and reads Not measured, never 0.
  */
-function tokensText(row: Record<string, unknown>): string {
-  const tokensIn = Number(row.tokens_in);
-  const tokensOut = Number(row.tokens_out);
-  if (isMissing(row.tokens_in) || isMissing(row.tokens_out) || !Number.isFinite(tokensIn) || !Number.isFinite(tokensOut)) {
-    return 'Not measured';
-  }
-  const withTokens = Number(row.runs_total) - Number(row.runs_unknown_tokens);
-  if (!isMissing(row.runs_total) && !isMissing(row.runs_unknown_tokens) && Number.isFinite(withTokens) && withTokens <= 0) {
-    return 'Not measured';
-  }
-  const grouped = (value: number) => value.toLocaleString('en-US', { maximumFractionDigits: 0 });
-  return `${grouped(tokensIn)} in · ${grouped(tokensOut)} out`;
-}
-
 /** OV-3: the window the Overview's metering cards show. The fold serves fixed windows only: all time, and UTC days. */
 export type OverviewWindow = 'all' | 'today';
 
@@ -301,9 +294,11 @@ export function OverviewAggregateCard({ component, config, rows, window }: {
   if (window === 'today') return unavailable('Not measured: daily totals unavailable (UTC)');
   const all = asRecords(rows).filter(row => row.window === 'all')
     .sort((a, b) => timeOf(b.captured_at) - timeOf(a.captured_at));
-  const row = all[0];
-  if (!row) return unavailable('Not measured: overview totals unavailable');
+  const servedRow = all[0];
+  if (!servedRow) return unavailable('Not measured: overview totals unavailable');
   if (all.length > 1 && timeOf(all[0].captured_at) === timeOf(all[1].captured_at)) return unavailable('Not measured: ambiguous overview totals');
+  const row = component.component_id === 'overview-measured'
+    ? { ...servedRow, run_count: overviewRunCount(servedRow) } : servedRow;
   const value = row[config.metric_key];
   if (isMissing(value) || !['string', 'number'].includes(typeof value)
     || (typeof value === 'string' && !/^-?\d+(?:\.\d+)?$/.test(value))
@@ -318,6 +313,7 @@ export function OverviewAggregateCard({ component, config, rows, window }: {
   } : null;
   return <>
     <MetricCard component={component} config={config} row={row} caption={basis} />
+    {component.component_id === 'overview-tokens' && <TokenDirections input={row.tokens_input} output={row.tokens_output} />}
     <p className="local-dashboard-caption">{component.component_id === 'overview-savings'
       ? 'Modelled · vs cloud baseline' : runs ? 'All calls' : 'All-time aggregate'}</p>
     {/* OMN-21166 AC37: the headline is every call; the measured population is a labelled breakdown beside it, the
@@ -337,7 +333,7 @@ export function runBreakdownText(row: Record<string, unknown>): string | null {
   if (!served.some(([field], index) => index > 0 && Number(row[field]) > 0)) return null;
   return served
     .filter(([field], index) => index === 0 || Number(row[field]) > 0)
-    .map(([field, label]) => `${Number(row[field]).toLocaleString('en-US')} ${label}`)
+    .map(([field, label]) => `${formatDashboardCount(row[field])} ${label}`)
     .join(' · ');
 }
 
@@ -395,8 +391,14 @@ export function MeteringTotalCard({ component, config, rows, window = 'all', now
   if ('message' in picked) return <p className="local-dashboard-metric" data-measured="false">{picked.message}</p>;
   const row = picked.row;
   if (config.metric_key === TOKENS_IN_AND_OUT) {
-    const text = tokensText(row);
-    return <p className="local-dashboard-metric" data-measured={!text.startsWith('Not measured')}>{text}</p>;
+    const runs = wholeCount(row.runs_total);
+    const unknown = wholeCount(row.runs_unknown_tokens);
+    const allUnknown = runs !== null && unknown !== null && runs <= unknown;
+    const input = allUnknown ? null : wholeCount(row.tokens_in);
+    const output = allUnknown ? null : wholeCount(row.tokens_out);
+    const total = input !== null && output !== null ? (input + output).toString() : null;
+    return <><p className="local-dashboard-metric" data-measured={total !== null}>{formatDashboardCount(total)}</p>
+      <TokenDirections input={input?.toString()} output={output?.toString()} /></>;
   }
   const required = component.data_bindings?.[0]?.required_fields ?? [];
   // OMN-21304 AC4: Spend and Savings each name the baseline, the pricing version and the runs left unpriced.
@@ -461,13 +463,12 @@ export function SavingsPerRunCard({ rows, window = 'all', now }: {
       : row.runs_measured === 0 ? 'Not measured: no measured runs' : 'Not measured';
     return <p className="local-dashboard-metric" data-measured="false">{why}</p>;
   }
-  const decimal = typeof value === 'number' ? value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 20 }) : String(value);
-  const text = decimal.startsWith('-') ? `-$${decimal.slice(1)}` : `$${decimal}`;
+  const text = formatUsd(value);
   return (
     <>
       <p className="local-dashboard-metric">{text}</p>
       <p className="local-dashboard-caption">
-        {`Over ${recorded(row.runs_measured)} measured runs · baseline ${recorded(row.baseline_model)}`}
+        {`Over ${recordedCount(row.runs_measured)} measured runs · baseline ${recorded(row.baseline_model)}`}
       </p>
     </>
   );
@@ -586,11 +587,19 @@ function causeTextOf(decision: Row | undefined): string {
 function Readable({ value, kind }: { value: unknown; kind: 'percent' | 'decimal' | 'count' }) {
   if (isMissing(value)) return <>{recorded(value)}</>;
   const number = typeof value === 'number' ? value : typeof value === 'string' && value.trim() !== '' ? Number(value) : NaN;
-  if (!Number.isFinite(number) || kind === 'count') return <>{String(value)}</>;
+  if (kind === 'count') return <span className="local-readable" title={String(value)}>{formatDashboardCount(value)}</span>;
+  if (!Number.isFinite(number)) return <>{String(value)}</>;
   const text = kind === 'percent'
     ? number.toLocaleString('en-US', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 })
     : number.toLocaleString('en-US', { maximumFractionDigits: 2 });
   return <span className="local-readable" title={String(value)}>{text}</span>;
+}
+
+function recordedCount(value: unknown): string {
+  return isMissing(value) ? 'Not recorded' : formatDashboardCount(value);
+}
+function recordedTokens(value: unknown): string {
+  return isMissing(value) ? 'Not recorded' : formatFullCount(value);
 }
 
 function recorded(value: unknown): string {
@@ -599,17 +608,15 @@ function recorded(value: unknown): string {
 
 /**
  * A run's cost in dollars, from its delegation.savings.v1 session when one is served, else from the decision row's
- * own measured cost_usd (OMN-20753). Never fewer than two decimals and never rounded, so 0 reads $0.00 and 0.0021
- * keeps its digits. A cost never measured is served null and reads Not recorded, never $0.00.
+ * own measured cost_usd (OMN-20753). The approved display policy truncates to two decimals,
+ * preserving tiny nonzero amounts as $0.01. A cost never measured is served null and reads Not recorded, never $0.00.
  */
 function costOf(session: Row | undefined, decision: Row): string {
   const value = isMissing(session?.local_cost_usd) ? decision.cost_usd : session?.local_cost_usd;
   if (isMissing(value)) return 'Not recorded';
   const amount = Number(value);
   if (!Number.isFinite(amount)) return 'Not recorded';
-  const text = String(amount);
-  const decimals = text.includes('.') ? text.split('.')[1].length : 0;
-  return `$${decimals >= 2 ? text : amount.toFixed(2)}`;
+  return formatUsd(value);
 }
 
 /** A plain decimal as the store serves it: optional minus, digits, optional fraction. No exponent, no grouping. */
@@ -618,8 +625,8 @@ const SERVED_DECIMAL = /^(-?)(\d+)(?:\.(\d+))?$/;
 /**
  * OMN-21015 AC3: one run's modelled saving as served on delegation.decisions.v1, named against the baseline it was priced
  * against. The page formats the served figure and computes nothing. A run that was not measured says why, never 0; a
- * measured zero is a zero. The served decimal text is shown digit for digit, padded to two decimals and never passed
- * through a binary float, which would change its digits; anything that is not a plain decimal is not shown as a figure.
+ * measured zero is a zero. Decimal text is formatted under the approved two-decimal display policy
+ * without changing the source value; anything that is not a plain decimal is not shown as a figure.
  */
 export function runModelledCell(run: Row): string {
   const figure = run.modelled_savings_usd;
@@ -630,8 +637,7 @@ export function runModelledCell(run: Row): string {
   if (isMissing(figure)) return notMeasured;
   const match = SERVED_DECIMAL.exec(String(figure).trim());
   if (match === null) return 'Not measured';
-  const [, sign, whole, fraction = ''] = match;
-  return `${sign}$${whole}.${fraction.padEnd(2, '0')} vs ${recorded(run.savings_baseline_model)}`;
+  return `${formatUsd(figure)} vs ${recorded(run.savings_baseline_model)}`;
 }
 
 /** The route tier as served, with its cost regime beside it when the row carries one (OMN-13649, OMN-20225). */
@@ -750,8 +756,8 @@ export function LastRunCard({ decisions, sessions, now = Date.now(), compact = f
     ['Backend', recorded(last.backend_id)],
     ['Host', recorded(last.host)],
     ['Duration', duration(last.latency_ms)],
-    ['Tokens in', recorded(last.tokens_input)],
-    ['Tokens out', recorded(last.tokens_output)],
+    ['Tokens in', recordedTokens(last.tokens_input)],
+    ['Tokens out', recordedTokens(last.tokens_output)],
     ['Cost', costOf(session, last)],
     ['Basis', recorded(session?.usage_source)],
     ['Task type', recorded(last.task_type)],
@@ -785,7 +791,7 @@ function OverviewRunPreview({ decisions, sessions, now = Date.now() }: RunViewPr
       <div><RunRef id={run.correlation_id} /><span data-field-tone="model" data-field-unavailable={isUnavailableField(modelOrUnknown(run.model_name))}>{modelOrUnknown(run.model_name)}</span></div>
       <div><OutcomePill value={statusOf(run)} /><span data-field-tone="duration" data-field-unavailable={isMissing(run.latency_ms)}>{duration(run.latency_ms)}</span><span className="local-dashboard-caption">{age(run.written_at, now)}</span></div>
     </li>)}</ul>
-    <p className="local-dashboard-caption local-recent-footer"><span>Latest five returned runs</span><Link href={PAGE_PATHS['local-runs']}>View all runs <ArrowUpRight size={12} aria-hidden="true" /></Link></p>
+    <p className="local-dashboard-caption local-recent-footer"><Link href={PAGE_PATHS['local-runs']}>View all runs <ArrowUpRight size={12} aria-hidden="true" /></Link></p>
     <details className="local-recent-fields">
       <summary>Show recent run fields</summary>
       <RecentRunsTable decisions={decisions} sessions={sessions} now={now} showCharts />
@@ -821,7 +827,7 @@ export function RecentRunsTable({ decisions, sessions, now = Date.now(), showCha
           {(['all', 'passed', 'failed'] as const).map(result => (
             <button key={result} type="button" data-result={result} aria-pressed={filter.result === result}
               onClick={() => setFilter({ result, cause: result === 'failed' ? filter.cause : null })}>
-              {result === 'all' ? 'All' : result === 'passed' ? 'Passed' : 'Failed'} <span>{count(result).toLocaleString('en-US')}</span>
+              {result === 'all' ? 'All' : result === 'passed' ? 'Passed' : 'Failed'} <span>{formatDashboardCount(count(result))}</span>
             </button>
           ))}
         </div>
@@ -861,8 +867,8 @@ export function RecentRunsTable({ decisions, sessions, now = Date.now(), showCha
               <td data-label="Task type"><span className="local-recent-value">{recorded(decision.task_type)}</span></td>
               <td className="local-dashboard-cell-token" data-label="Backend"><span className="local-recent-value">{recorded(decision.backend_id)}</span></td>
               <td className="local-dashboard-cell-token" data-label="Host"><span className="local-recent-value">{recorded(decision.host)}</span></td>
-              <td data-label="Tokens in"><span className="local-recent-value">{recorded(decision.tokens_input)}</span></td>
-              <td data-label="Tokens out"><span className="local-recent-value">{recorded(decision.tokens_output)}</span></td>
+              <td data-label="Tokens in"><span className="local-recent-value">{recordedTokens(decision.tokens_input)}</span></td>
+              <td data-label="Tokens out"><span className="local-recent-value">{recordedTokens(decision.tokens_output)}</span></td>
               <td data-label="Basis"><span className="local-recent-value">{recorded(session?.usage_source)}</span></td>
               <td data-label="Route tier"><span className="local-recent-value">{tierOf(decision)}</span></td>
               <td data-label="Quality score"><span className="local-recent-value">{recorded(decision.actual_score)}</span></td>
@@ -1015,12 +1021,12 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
     <figure className="local-chart local-runs-week" aria-label="This week">
         <h3 className="local-dashboard-caption local-section-heading">This week</h3>
       <div className="local-runs-week-days" role="group" aria-label="This week">
-        <p role={day ? 'status' : undefined}>{day ? selectedDay ? `${selectedDay.runs} runs · ${selectedDay.passed} passed · ${selectedDay.failed} failed${selectedDay.unrecorded ? ` · ${selectedDay.unrecorded} not recorded` : ''} for ${day}` : `No runs for ${day}`
-          : `${week.reduce((sum, item) => sum + item.runs, 0)} runs in the latest returned rows · by created day (UTC)`}</p>
+        <p role={day ? 'status' : undefined}>{day ? selectedDay ? `${formatDashboardCount(selectedDay.runs)} runs · ${formatDashboardCount(selectedDay.passed)} passed · ${formatDashboardCount(selectedDay.failed)} failed${selectedDay.unrecorded ? ` · ${formatDashboardCount(selectedDay.unrecorded)} not recorded` : ''} for ${day}` : `No runs for ${day}`
+          : `${formatDashboardCount(week.reduce((sum, item) => sum + item.runs, 0))} runs in the latest returned rows · by created day (UTC)`}</p>
         {week.map(item => <div key={item.day} role="group" data-selected={day === item.day ? 'true' : undefined}
-          aria-label={`${weekLabel(item.day)} · ${item.runs} runs · ${item.passed} passed · ${item.failed} failed${item.unrecorded ? ` · ${item.unrecorded} not recorded` : ''}`}>
+          aria-label={`${weekLabel(item.day)} · ${formatDashboardCount(item.runs)} runs · ${formatDashboardCount(item.passed)} passed · ${formatDashboardCount(item.failed)} failed${item.unrecorded ? ` · ${formatDashboardCount(item.unrecorded)} not recorded` : ''}`}>
           <span>{weekLabel(item.day)}</span><span className="local-runs-week-bar" aria-hidden="true"><i data-outcome="passed" style={{ flex: item.passed }} /><i data-outcome="failed" style={{ flex: item.failed }} /><i data-outcome="unknown" style={{ flex: item.unrecorded }} /></span>
-          {item.runs === 0 ? <strong>No runs</strong> : <strong>{item.runs}</strong>}<small>{item.passed} passed · {item.failed} failed</small>
+          {item.runs === 0 ? <strong>No runs</strong> : <strong>{formatDashboardCount(item.runs)}</strong>}<small>{item.passed} passed · {item.failed} failed</small>
         </div>)}
       </div>
     </figure>
@@ -1032,7 +1038,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
         <h3 className="local-dashboard-caption local-section-heading">Tasks</h3>
         <div className="local-dashboard-filters">{tasks.map(name => <button key={name} type="button" aria-label={`Filter task ${name}`} aria-pressed={task === name}
           onClick={() => updateView({ task: task === name ? 'all' : name, page: 1 })}>
-          {name !== 'Not recorded' && <TaskIcon task={name} />}{name}<span>{taskFacetRuns.filter(run => recorded(run.task_type) === name).length}</span>
+          {name !== 'Not recorded' && <TaskIcon task={name} />}{name}<span>{formatDashboardCount(taskFacetRuns.filter(run => recorded(run.task_type) === name).length)}</span>
         </button>)}</div>
       </section>
       <div className="local-runs-search">
@@ -1041,8 +1047,8 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
           autoComplete="off" spellCheck={false} onChange={event => updateView({ query: event.target.value, page: 1 }, true)}
           aria-describedby={`${id}-scope`} />
         <p id={`${id}-scope`} className="local-dashboard-caption">{truncated
-          ? `${runs.length} recent runs returned. Earlier history is not included; search, filters and charts use these records.`
-          : `${runs.length} returned runs. Search, filters and charts use these records.`}</p>
+          ? `${formatDashboardCount(runs.length)} recent runs returned. Earlier history is not included; search, filters and charts use these records.`
+          : `${formatDashboardCount(runs.length)} returned runs. Search, filters and charts use these records.`}</p>
       </div>
       <div className="local-dashboard-filters">
         <div className="local-filter-field">
@@ -1132,8 +1138,8 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                     </button>
                   </td>
                   <td className="local-dashboard-cell-token">{recorded(run.host)}</td>
-                  <td>{recorded(run.tokens_input)}</td>
-                  <td>{recorded(run.tokens_output)}</td>
+                  <td>{recordedTokens(run.tokens_input)}</td>
+                  <td>{recordedTokens(run.tokens_output)}</td>
                   <td>{costOf(session, run)}</td>
                   <td>{runModelledCell(run)}</td>
                   <td>{recorded(isMissing(run.savings_baseline_model) ? session?.baseline_model : run.savings_baseline_model)}</td>
@@ -1165,8 +1171,8 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
               <div><dt>Route tier</dt><dd>{tierOf(selectedRun)}</dd></div>
               <div><dt>Duration</dt><dd>{duration(selectedRun.latency_ms)}</dd></div>
               <div><dt>Cost</dt><dd>{costOf(selectedSession, selectedRun)}</dd></div>
-              <div><dt>Tokens in</dt><dd>{recorded(selectedRun.tokens_input)}</dd></div>
-              <div><dt>Tokens out</dt><dd>{recorded(selectedRun.tokens_output)}</dd></div>
+              <div><dt>Tokens in</dt><dd>{recordedTokens(selectedRun.tokens_input)}</dd></div>
+              <div><dt>Tokens out</dt><dd>{recordedTokens(selectedRun.tokens_output)}</dd></div>
               <div><dt>Modelled saving</dt><dd>{runModelledCell(selectedRun)}</dd></div>
               <div><dt>Quality score</dt><dd>{recorded(selectedRun.actual_score)}
                 {Number.isFinite(selectedScore) && selectedScore >= 0 && selectedScore <= 1 && <div className="local-selected-quality-meter" role="meter" aria-label="Quality score versus required bar" aria-valuemin={0} aria-valuemax={1} aria-valuenow={selectedScore}
@@ -1181,7 +1187,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
           </aside>}
           </div>
           <div className="local-dashboard-pager">
-            <span>{`Runs ${current * pageSize + 1}–${current * pageSize + page.length} of ${shown.length}`}</span>
+            <span>{`Runs ${current * pageSize + 1}–${current * pageSize + page.length} of ${formatDashboardCount(shown.length)}`}</span>
             <button type="button" aria-label="Previous page" disabled={current === 0} onClick={() => updateView({ page: current })}>Previous</button>
             <button type="button" aria-label="Next page" disabled={current >= pages - 1} onClick={() => updateView({ page: current + 2 })}>Next</button>
           </div>
@@ -1234,13 +1240,11 @@ export function QualityPanel({ row }: { row: Row | null }) {
  */
 function tierModelCost(model: Row): string {
   const unmeasured = isMissing(model.unmeasured_cost_count) ? null : Number(model.unmeasured_cost_count);
-  const runs = (n: number) => `${n} run${n === 1 ? '' : 's'}`;
+  const runs = (n: number) => `${formatDashboardCount(n)} run${n === 1 ? '' : 's'}`;
   if (isMissing(model.cost_usd)) {
     return unmeasured !== null && unmeasured > 0 ? `Not measured (${runs(unmeasured)})` : 'Not measured';
   }
-  const text = String(model.cost_usd);
-  const match = /^(-?)(\d+)(?:\.(\d+))?$/.exec(text);
-  const dollars = match === null ? `$${text}` : `${match[1]}$${match[2]}.${(match[3] ?? '').padEnd(2, '0')}`;
+  const dollars = formatUsd(model.cost_usd);
   if (unmeasured === null) return `${dollars} (unpriced runs unknown)`;
   return unmeasured > 0 ? `${dollars} (+${runs(unmeasured)} not measured)` : dollars;
 }
@@ -1277,14 +1281,14 @@ export function TierMixPanel({ row, compact = false }: { row: Row | null; compac
                   the repo's other token cells do, so the Cost column stays inside the panel at 1440x900 with no
                   sideways scroll. Costs wrap at their spaces. */}
               <td className="local-dashboard-cell-token local-dashboard-cell-name"><span className="local-routing-name"><TierIcon size={16} aria-hidden="true" />{recorded(tier.cost_tier_name)}</span></td>
-              <td data-column="runs">{recorded(tier.count)}</td>
+              <td data-column="runs">{recordedCount(tier.count)}</td>
               <td data-column="share" className="local-dashboard-cell-token"><Readable value={tier.pct_of_tier_routed} kind="percent" /></td>
               <td />
             </tr>,
             ...(Array.isArray(tier.models) ? asRecords(tier.models) : []).map((model, modelIndex) => (
               <tr data-tone={tone} key={`${name}-${index}-${String(model.model_name)}-${modelIndex}`} className="local-dashboard-row--nested local-routing-model-row">
                 <td className="local-dashboard-cell-token local-dashboard-cell-name"><span className="local-routing-name local-model-identity" style={modelIdentityStyle(model.model_name)}><FieldIcon tone="model" size={14} />{recorded(model.model_name)}</span></td>
-                <td data-column="runs">{recorded(model.count)}</td>
+                <td data-column="runs">{recordedCount(model.count)}</td>
                 <td data-column="share" className="local-dashboard-cell-token"><Readable value={model.pct_of_tier_routed} kind="percent" /></td>
                 <td data-column="cost" data-unavailable={isMissing(model.cost_usd)}>{tierModelCost(model)}</td>
               </tr>
@@ -1294,9 +1298,9 @@ export function TierMixPanel({ row, compact = false }: { row: Row | null; compac
       </div>
       </details>
       <dl className="local-dashboard-fields">
-        <div data-field-tone="routing" data-field-unavailable={isMissing(byTier.tier_routed_total)}><dt><FieldIcon label="Tier-routed" />Tier-routed</dt><dd>{recorded(byTier.tier_routed_total)}</dd></div>
-        <div data-field-tone="unrouted" data-field-unavailable={isMissing(byTier.not_tier_routed_count)}><dt><FieldIcon label="Not tier-routed" />Not tier-routed</dt><dd>{recorded(byTier.not_tier_routed_count)}</dd></div>
-        <div data-field-tone="delegations" data-field-unavailable={isMissing(byTier.total_tasks)}><dt><FieldIcon label="All runs" />All runs</dt><dd>{recorded(byTier.total_tasks)}</dd></div>
+        <div data-field-tone="routing" data-field-unavailable={isMissing(byTier.tier_routed_total)}><dt><FieldIcon label="Tier-routed" />Tier-routed</dt><dd>{recordedCount(byTier.tier_routed_total)}</dd></div>
+        <div data-field-tone="unrouted" data-field-unavailable={isMissing(byTier.not_tier_routed_count)}><dt><FieldIcon label="Not tier-routed" />Not tier-routed</dt><dd>{recordedCount(byTier.not_tier_routed_count)}</dd></div>
+        <div data-field-tone="delegations" data-field-unavailable={isMissing(byTier.total_tasks)}><dt><FieldIcon label="All runs" />All runs</dt><dd>{recordedCount(byTier.total_tasks)}</dd></div>
       </dl>
       {compact && <p className="local-dashboard-caption local-recent-footer"><Link href={PAGE_PATHS['local-runs']}>View routing breakdown <ArrowUpRight size={12} aria-hidden="true" /></Link></p>}
     </section>
@@ -1310,7 +1314,7 @@ export function CredentialsTable({ rows }: { rows: readonly unknown[] }) {
   if (keys.length === 0) {
     return (
       <div className="local-dashboard-empty" role="status">
-        <p>No provider key set</p>
+        <p>No provider credentials recorded</p>
         <p>Set one with <code>onex secret set</code> <CopyButton text="onex secret set" label="Copy the command that sets a key" /></p>
       </div>
     );
@@ -1362,11 +1366,11 @@ export function RunSummary({ decision, showAnalysis = false }: { decision: Row |
     // OMN-21015: more of what the run's own row serves, each as served. A served zero is a figure and is shown; a
     // fact the row does not carry says Not recorded.
     ['Required bar', recorded(decision.required_bar)],
-    ['Tokens in', recorded(decision.tokens_input)],
-    ['Tokens out', recorded(decision.tokens_output)],
+    ['Tokens in', recordedTokens(decision.tokens_input)],
+    ['Tokens out', recordedTokens(decision.tokens_output)],
     ['Finish reason', recorded(decision.finish_reason)],
     ['Truncated', yesOrNo(decision.truncated)],
-    ['Escalations', recorded(decision.escalation_count)],
+    ['Escalations', recordedCount(decision.escalation_count)],
     // The model the caller asked for, beside the model that answered; and the two timings the row serves beside its
     // duration. Each new one is the served column (omnimarket v0.4.309, OMN-19448): missing is Not recorded, never zero.
     ['Requested model', recorded(decision.requested_model)],
@@ -1652,7 +1656,7 @@ export function WorkflowRun({ component, snapshots, requested, onOpen }: Workflo
           <RunTimeline steps={rows} />
           {stepsRead?.truncated && (
             <p className="local-dashboard-empty" role="status">
-              {`Not the whole run: run-trace.v1 answered a truncated page of ${rows.length} steps`}
+              {`Not the whole run: run-trace.v1 answered a truncated page of ${formatDashboardCount(rows.length)} steps`}
             </p>
           )}
         </>
@@ -1713,6 +1717,8 @@ function declaredCell(row: Row, column: DeclaredColumn): string {
   if (isMissing(value)) {
     return row.baseline_state === 'unresolved' && !RUN_MEASURED_FIELDS.has(column.key) ? 'Baseline unresolved' : 'Not measured';
   }
+  if (column.key === 'tokens_in' || column.key === 'tokens_out') return formatFullCount(value);
+  if (column.key.startsWith('runs_') || column.key.endsWith('_count')) return formatDashboardCount(value);
   return column.format === 'currency' ? formatUsd(value) : String(value);
 }
 
@@ -1838,13 +1844,15 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns, acti
   if (component.component_id === 'usage-tokens-by-day') return <UsageTokensByDay rows={rows} />;
   // US-3: metering-summary.v1's day rows, as served; the series renders no all row and sums nothing.
   if (component.component_id === 'usage-savings-series') {
+    const groups = meteringDaysByBaseline(rows);
+    if (groups.length === 0) return <MeteringDaySeries rows={rows} />;
     return (
-      <>
+      <>{groups.map(([baseline, days]) => <div className="local-usage-savings" key={baseline}>
         {/* OMN-21015 U2: the same served day rows as bars; the chart plots the money columns this panel declares.
             Its one series takes the chart's third colour, the colour the same figure has on Overview. */}
-        <SpendByDayChart title={component.title} rows={rows} columns={columns} colourPlaces={[3]} />
-        <MeteringDaySeries rows={rows} />
-      </>
+        <SpendByDayChart title={component.title} rows={days} columns={columns} colourPlaces={[3]} />
+        <MeteringDaySeries rows={days} />
+      </div>)}</>
     );
   }
   // OV: baseline against actual spend per UTC day, the declared columns of the served rows (OMN-21015 AC1).
@@ -2234,6 +2242,13 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
       ? (component.data_bindings ?? []).filter(binding => binding.projection_topic === RUN_TRACE_TOPIC)
       : component.component_kind === 'table' ? (component.data_bindings ?? []).slice(0, 1) : component.data_bindings ?? [];
     const pending = bindings.some(binding => !snapshots.some(snapshot => snapshot.topic === binding.projection_topic));
+    const metering = snapshots.find(snapshot => snapshot.topic === METERING_SUMMARY_TOPIC);
+    const tokenSources = snapshots.filter(snapshot => snapshot.topic === METERING_SUMMARY_TOPIC
+      || snapshot.topic === component.data_bindings?.[0]?.projection_topic);
+    const tokenFallback = component.component_id === 'usage-tokens-by-day' && rows.length === 0
+      && metering && metering.rows.length > 0
+      && !tokenSources.some(snapshot => snapshot.failure?.kind === 'tenant-not-configured')
+      ? dailyMeteringTokens(metering.rows) : null;
     const PanelIcon = PANEL_ICONS[component.component_id];
     // OV-3: only the panels that read metering-summary.v1 have a row per window. Every other Overview panel
     // reads an exposure with no day rows, so with today chosen it still shows all time and has to say so:
@@ -2261,7 +2276,8 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
           : unbound && component.component_kind !== 'metric_card' ? <PendingState componentId={component.component_id} />
           : component.component_id === 'workflow-run-path' ? (
             <WorkflowRun component={component} snapshots={snapshots} requested={requestedRunId} onOpen={openRun} />
-          ) : notServed ? <p className="local-dashboard-empty" role="status">{notServed}</p>
+          ) : tokenFallback ? <DailyMeteringTokens data={tokenFallback} />
+          : notServed ? <p className="local-dashboard-empty" role="status">{notServed}</p>
           : bindingFailedEmpty(component, snapshots) ? null
           : emptyState === 'NO_RUNS_YET' ? <NoRunsYet />
           : emptyState ? <p className="local-dashboard-empty" role="status">Baseline unresolved</p>
@@ -2315,7 +2331,6 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
           <span className="local-dashboard-page-icon" aria-hidden="true"><DestinationIcon page={`local-${pageName}`} size={20} /></span>
           <div>
             <h1>{page?.dashboard.name ?? PAGE_TITLES[pageName]}</h1>
-            <p>{page?.dashboard.description}</p>
           </div>
         </div>
         {/* One toolbar row: the page's own control when it has one, and the runtime mode at the right. */}
@@ -2331,7 +2346,6 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
             </div>
           </div>
         )}
-        <span className="local-dashboard-mode">Local runtime · HTTP</span>
         {/* OMN-21166: new runs and failures since this browser's last Overview visit, from the served runs. */}
         {pageName === 'overview' && !loading && !error && page && (() => {
           const recent = page.components.find(candidate => candidate.component_id === 'overview-recent-runs');

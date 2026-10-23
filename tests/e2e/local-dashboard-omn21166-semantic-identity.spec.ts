@@ -89,15 +89,15 @@ test('KPI colors follow their semantic identity instead of inherited gray', asyn
   expect(new Set(colors).size).toBe(4);
 });
 
-test('headline card icons match their semantic title color in both themes', async ({ page }) => {
+test('headline card icons retain semantic colors beside neutral readable headings', async ({ page }) => {
   await page.goto('/overview');
   await expect(page.locator('.local-overview-summary article')).toHaveCount(4);
   for (const theme of ['light','dark']) {
     if ((await page.locator('html').getAttribute('data-theme') === 'dark' ? 'dark' : 'light') !== theme) await page.getByRole('button', { name: 'Toggle theme' }).click();
     const colors: string[] = [];
     for (const card of await page.locator('.local-overview-summary article').all()) {
-      const color = await card.locator('h2').evaluate(el => getComputedStyle(el).color);
-      await expect(card.locator('h2 svg')).toHaveCSS('color', color);
+      const color = await card.locator('h2 svg').evaluate(el => getComputedStyle(el).color);
+      await expect(card.locator('h2')).toHaveCSS('color', await card.evaluate(el => getComputedStyle(el).color));
       colors.push(color);
     }
     expect(new Set(colors).size).toBe(4);

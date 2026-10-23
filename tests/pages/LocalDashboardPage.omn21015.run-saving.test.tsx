@@ -33,7 +33,7 @@ describe('OMN-21015 AC3: savings per run on the Runs list', () => {
     render(<RunsTable now={NOW} sessions={[]} decisions={[run('measured-run', '2026-10-14T05:00:00Z', {
       modelled_savings_usd: '0.012345', savings_baseline_model: 'claude-sonnet-5-5', savings_measurement: 'measured',
     })]} />);
-    expect(savingCell(/measured-run/)).toBe('$0.012345 vs claude-sonnet-5-5');
+    expect(savingCell(/measured-run/)).toBe('$0.01 vs claude-sonnet-5-5');
   });
 
   it('R2: a run whose tokens were not recorded says so, and shows no number', () => {
@@ -84,12 +84,12 @@ describe('OMN-21015 AC3: savings per run on the Runs list', () => {
     expect(savingCell(/zero/)).toBe('$0.00 vs claude-sonnet-5-5');
   });
 
-  it('R8: the served decimal is shown digit for digit, never through a binary float', () => {
+  it('R8: the served decimal is shown with the approved two-decimal display, never through a binary float', () => {
     // Found by independent review: Number('123456789.123456789') prints 123456789.12345679.
     render(<RunsTable now={NOW} sessions={[]} decisions={[run('precise', '2026-10-14T05:00:00Z', {
       modelled_savings_usd: '123456789.123456789', savings_baseline_model: 'claude-sonnet-5-5', savings_measurement: 'measured',
     })]} />);
-    expect(savingCell(/precise/)).toBe('$123456789.123456789 vs claude-sonnet-5-5');
+    expect(savingCell(/precise/)).toBe('$123,456,789.12 vs claude-sonnet-5-5');
   });
 
   it('R9: a negative saving (the run cost more than its baseline) keeps its sign before the dollar', () => {

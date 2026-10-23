@@ -45,19 +45,20 @@ test('shared reference theme keeps all seven routes usable in light and dark', a
 });
 
 // Closer image match: filled ochre navigation and a shared muted plot/legend palette.
-test('nanomon palette uses an ochre active row and matching muted outcome marks', async ({ page }, info) => {
+test('navigation stays blue and outcome plots match their semantic legend', async ({ page }, info) => {
   await page.goto('/overview');
   if (await page.locator('html').getAttribute('data-theme') === 'dark') await page.getByRole('button', { name:'Toggle theme' }).click();
   const nav=page.getByRole('link', { name:'Overview', exact:true });
-  await expect(nav).toHaveCSS('background-color','rgb(140, 100, 31)');
-  await expect(nav.locator('.dash-name')).toHaveCSS('color','rgb(255, 255, 255)');
+  await expect(nav).toHaveCSS('background-color','rgb(238, 243, 255)');
+  await expect(nav.locator('.dash-name')).toHaveCSS('color','rgb(29, 78, 216)');
   const chart=page.getByRole('figure', { name:'Runs per day', exact:true });
   const passed=chart.getByRole('button', { name:'Passed', exact:true });
   await expect(passed).toHaveAttribute('aria-pressed','true');
   const before=await chart.locator('.ins-seg').evaluateAll(els=>els.map(el=>getComputedStyle(el).backgroundColor));
-  expect(before).toContain('rgb(100, 128, 76)');
+  const passColor = await passed.evaluate(el => getComputedStyle(el, '::before').backgroundColor);
+  expect(before).toContain(passColor);
   await passed.click();
-  expect(await chart.locator('.ins-seg').evaluateAll(els=>els.map(el=>getComputedStyle(el).backgroundColor))).not.toContain('rgb(100, 128, 76)');
+  expect(await chart.locator('.ins-seg').evaluateAll(els=>els.map(el=>getComputedStyle(el).backgroundColor))).not.toContain(passColor);
   await passed.click();
   await expect(passed).toHaveAttribute('aria-pressed','true');
   await chart.scrollIntoViewIfNeeded();

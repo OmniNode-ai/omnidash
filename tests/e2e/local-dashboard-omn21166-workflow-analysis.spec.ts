@@ -94,27 +94,26 @@ test('each analysis card keeps its accent in its chart and icon', async ({ page 
   expect(new Set(accents).size).toBe(accents.length);
 });
 
-test('recorded stage flow animates decoratively and respects reduced motion', async ({ page }) => {
+test('recorded stage flow keeps keyboard navigation without decorative particles', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.goto('/workflow?correlation_id=chart-run-a');
   const flow = page.getByRole('navigation', { name: 'Run steps, in the order served', exact: true });
   await expect(flow.getByRole('link')).toHaveCount(2);
-  const particle = flow.locator('.workflow-flow-particle').first();
-  await expect(particle).toBeVisible();
-  expect(await particle.evaluate(element => getComputedStyle(element).animationName)).not.toBe('none');
+  await expect(flow.locator('.workflow-flow-particle')).toHaveCount(0);
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  expect(await particle.evaluate(element => getComputedStyle(element).animationName)).toBe('none');
+  await expect(flow.getByRole('link')).toHaveCount(2);
   await flow.getByRole('link').last().press('Enter');
   await expect(page.locator('#run-step-2')).toBeInViewport();
 });
 
-test('a run with no trace shows an honest animated routing flow from its decision fields', async ({ page }) => {
+test('a run with no trace retains its recorded routing fields without filler labels', async ({ page }) => {
   await page.route('**/*run-trace.v1*', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ rows: [], row_count: 0, data_freshness: 'fresh' }) }));
   await page.goto('/workflow?correlation_id=chart-run-a');
   const flow = page.getByRole('region', { name: 'Recorded routing flow', exact: true });
   await expect(flow).toBeVisible();
   await expect(flow).toContainText('model-a');
-  await expect(flow).toContainText('decision fields');
+  await expect(flow).not.toContainText('decision fields');
+  await expect(flow).toContainText('local');
   await expect(page.getByRole('navigation', { name: 'Run steps, in the order served', exact: true })).toHaveCount(0);
 });
 

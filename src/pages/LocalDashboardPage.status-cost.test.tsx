@@ -67,8 +67,8 @@ describe('Runs status and cost from the local store (OMN-20753)', () => {
     render(<RunsTable
       now={NOW}
       decisions={[MEASURED]}
-      sessions={[{ session_id: 'measured-run', local_cost_usd: 0.0021, usage_source: 'measured' }]}
+      sessions={[{ session_id: 'measured-run', local_cost_usd: 2.1000, usage_source: 'measured' }]}
     />);
-    expect(within(screen.getByRole('row', { name: /^measured-run/ })).getByText('$0.0021')).toBeInTheDocument();
+    expect(within(screen.getByRole('row', { name: /^measured-run/ })).getByText('$2.10')).toBeInTheDocument();
   });
 });

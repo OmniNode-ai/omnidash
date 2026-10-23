@@ -18,7 +18,7 @@
 //   G12 the bars of a day are stacked, which draws a total (actual + baseline + savings) that means nothing.
 //   G13 the same figure is one colour on one page and another on the next, because a colour followed a column's
 //       place among the plotted ones (Savings was third on Overview and first on Usage);
-//   G14 the value axis labels its origin "$0" or "0": a zero on a page whose rule is that nothing unmeasured reads 0
+//   G14 the value axis labels its origin "$0.00" or "0": a zero on a page whose rule is that nothing unmeasured reads 0
 //       (the OMN-19981 browser check looks for exactly those two texts and found the axis);
 //   G10 the chart decides for itself which figures to plot: it names a savings field in page code (the OMN-19980
 //       guard forbids that), plots a column the page does not declare, or plots a declared count as money.
@@ -190,8 +190,8 @@ describe('OMN-21015 U2: the spend chart on the page', () => {
 
   it('G14: the value axis leaves its origin unlabelled and writes every other tick as dollars', () => {
     expect(valueAxisLabel(0)).toBe('');
-    expect(valueAxisLabel(0.2)).toBe('$0.2');
-    expect(valueAxisLabel(12)).toBe('$12');
+    expect(valueAxisLabel(0.2)).toBe('$0.20');
+    expect(valueAxisLabel(12)).toBe('$12.00');
   });
 
   it('G5: two baselines are two charts, each named for its baseline', () => {

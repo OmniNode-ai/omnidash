@@ -113,19 +113,19 @@ describe('OMN-21015 AC1: Overview shows baseline against actual spend per UTC da
     const { headers, rows } = series('claude-sonnet-5-5');
     expect(headers).toEqual(['Day', 'Actual spend', 'Baseline spend', 'Savings', 'Runs']);
     expect(rows.slice(0, 2)).toEqual([
-      ['2026-09-29', '$0.00', '$0.000628', '$0.000628', '2'],
-      ['2026-10-12', '$0.149422', '$0.81947', '$0.670048', '131'],
+      ['2026-09-29', '$0.00', '$0.01', '$0.01', '2'],
+      ['2026-10-12', '$0.14', '$0.81', '$0.67', '131'],
     ]);
   });
 
   it('S2: the exact metering all-time line does not replace independent legacy headlines', async () => {
     await overview(RECORDED);
     const total = series('claude-sonnet-5-5').rows.at(-1);
-    expect(total).toEqual(['All time', '$0.149422', '$0.820098', '$0.670676', '133']);
+    expect(total).toEqual(['All time', '$0.14', '$0.82', '$0.67', '133']);
     // Baseline spend uses this metering row; legacy spend/savings headlines deliberately use a conflicting source.
-    expect(headline('Actual spend')).toBe('$0.5555');
-    expect(headline('Baseline spend')).toBe('$0.8201');
-    expect(headline('Savings')).toBe('$7.7777');
+    expect(headline('Actual spend')).toBe('$0.55');
+    expect(headline('Baseline spend')).toBe('$0.82');
+    expect(headline('Savings')).toBe('$7.77');
   });
 
   it('S2: an all row that is not the sum of the days is shown as served, never re-added here', async () => {
@@ -133,13 +133,13 @@ describe('OMN-21015 AC1: Overview shows baseline against actual spend per UTC da
     const served = { ...RECORDED_ALL, spend_usd: '0.2', counterfactual_usd: '0.9', savings_usd: '0.7', runs_total: 140 };
     await overview([served, RECORDED_DAY_1, RECORDED_DAY_2]);
     expect(series('claude-sonnet-5-5').rows.at(-1)).toEqual(['All time', '$0.20', '$0.90', '$0.70', '140']);
-    expect(headline('Actual spend')).toBe('$0.5555');
+    expect(headline('Actual spend')).toBe('$0.55');
   });
 
   it('S3: a day whose spend was not measured says so, and never shows 0', async () => {
     // Constructed: the second recorded day with its spend removed.
     await overview([RECORDED_ALL, RECORDED_DAY_1, { ...RECORDED_DAY_2, spend_usd: null }]);
-    expect(series('claude-sonnet-5-5').rows[1]).toEqual(['2026-10-12', 'Not measured', '$0.81947', '$0.670048', '131']);
+    expect(series('claude-sonnet-5-5').rows[1]).toEqual(['2026-10-12', 'Not measured', '$0.81', '$0.67', '131']);
   });
 
   it('S4: a day with an unresolved baseline shows no baseline figure', async () => {
@@ -169,7 +169,7 @@ describe('OMN-21015 AC1: Overview shows baseline against actual spend per UTC da
   it('S9: on a resolved-baseline day a missing baseline figure is Not measured, never Baseline unresolved', async () => {
     // Constructed: the second recorded day with its baseline spend removed; its baseline is resolved.
     await overview([RECORDED_ALL, RECORDED_DAY_1, { ...RECORDED_DAY_2, counterfactual_usd: null }]);
-    expect(series('claude-sonnet-5-5').rows[1]).toEqual(['2026-10-12', '$0.149422', 'Not measured', '$0.670048', '131']);
+    expect(series('claude-sonnet-5-5').rows[1]).toEqual(['2026-10-12', '$0.14', 'Not measured', '$0.67', '131']);
   });
 
   it('S9: every column the lab serves on metering-summary.v1 has a decided reason for being missing', () => {
@@ -203,8 +203,8 @@ describe('OMN-21015 AC1: Overview shows baseline against actual spend per UTC da
       other(RECORDED_DAY_2, '1.4', '1.250578'), RECORDED_DAY_1, RECORDED_DAY_2,
     ]);
     expect(series('claude-opus-4-6').rows).toEqual([
-      ['2026-10-12', '$0.149422', '$1.40', '$1.250578', '131'],
-      ['All time', '$0.149422', '$1.50', '$1.350578', '133'],
+      ['2026-10-12', '$0.14', '$1.40', '$1.25', '131'],
+      ['All time', '$0.14', '$1.50', '$1.35', '133'],
     ]);
     expect(series('claude-sonnet-5-5').rows).toHaveLength(3);
   });
