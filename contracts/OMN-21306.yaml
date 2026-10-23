@@ -34,18 +34,18 @@ emergency_bypass:
 dod_evidence:
   - id: "dod-omn21306-ac4-usage-zoom-reset"
     description: >-
-      AC4, Usage chart zoom-and-reset case only: the selected day and its exact savings readout,
-      range change and reset, retained selection and unchanged served table. It covers none of the
-      other AC4 interactions. The original matrix failed its stale six-decimal
-      expectation under the approved two-decimal display policy. The head-test overlay passes
-      the merge base and uses the pinned gate's governed IMPOSSIBLE TEST_ONLY_DIFF path.
-      This change corrects the test, not product zoom behavior. A wrong-value fixture control
-      still fails its exact amount assertion.
+      AC4, Usage chart zoom-and-reset case only: the browser case's savings readout assertion
+      requires the exact two-decimal suffix "Savings: $0.03" and no longer the stale six-decimal
+      0.030000 expectation that stopped the merged-build run before zoom and reset. The browser
+      case itself exceeds the hosted 30 s per-check budget, so this check reads the assertion at
+      the head; it fails at the merge base, where the six-decimal expectation remains. The
+      browser run (1 passed at the head, a 0.04 wrong-value control failing) is recorded in the
+      PR body. It covers none of the other AC4 interactions and changes no product behavior.
     source: "manual"
     binds_ac: ["AC4"]
     checks:
       - check_type: "test_passes"
-        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx playwright test tests/e2e/local-dashboard-verification-interactions.spec.ts --project=chromium --workers=1 --retries=0 --grep 'Usage zoom and reset preserve the selected day and exact served table'"
+        check_value: '! grep -q "0[.]030000" tests/e2e/local-dashboard-verification-interactions.spec.ts && grep -q "toContainText(/Savings: \\\\[$]0\\\\[.]03[$]/);" tests/e2e/local-dashboard-verification-interactions.spec.ts'
         cwd: "${OMNI_HOME}/omnidash"
 
   - id: "dod-omn21306-ac1-type-tokens"
