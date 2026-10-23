@@ -1,8 +1,9 @@
 import { expect, test } from 'playwright/test';
 import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
 
-// OMN-21304 AC3's three falsifier clauses not covered by local-dashboard-honesty.spec.ts. Each behaviour was already
-// met on dev before this change, so each test pins it, sits beside a positive control, and fails on a lab mutant.
+// OMN-21304 AC3's three falsifier clauses not covered by local-dashboard-honesty.spec.ts, each beside a positive
+// control. The average score and passed-gate cases pin behaviour already on dev and fail on a lab mutant; the
+// confidence cases failed on dev, where the Workflow page left an unrecorded confidence out.
 const MISSING = { timeout: 3000 };
 
 const DECISIONS = prefix + 'delegation.decisions.v1';
