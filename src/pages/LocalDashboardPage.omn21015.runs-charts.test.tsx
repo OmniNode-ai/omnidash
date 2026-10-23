@@ -166,7 +166,7 @@ describe('OMN-21015: the Runs page draws the runs it lists', () => {
     const duration = chart('Duration per run').option.tooltip.formatter([{ dataIndex: 0, seriesIndex: 0, marker: '' }]);
     expect(duration).toBe('eeeeeeee-0000-4000-8000-000000000005<br/>passed · model-a<br/>Duration: 0813 ms');
     const both = chart('Tokens per run').option.tooltip.formatter([{ dataIndex: 0, seriesIndex: 0, marker: '', seriesName: 'Tokens in' }, { dataIndex: 0, seriesIndex: 1, marker: '', seriesName: 'Tokens out' }]);
-    expect(both).toBe('eeeeeeee-0000-4000-8000-000000000005<br/>passed · model-a<br/>Tokens in: 0162<br/>Tokens out: 52');
+    expect(both).toBe('eeeeeeee-0000-4000-8000-000000000005<br/>passed · model-a<br/>Tokens in: 162<br/>Tokens out: 52');
   });
 
   it('R8: the tooltip says Not recorded for a run with no value', () => {

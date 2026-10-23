@@ -47,7 +47,7 @@ describe('OMN-21015 AC2: the Tier mix lists each model under its tier', () => {
 
   it('T3: a model cost is the served sum; an unpriced group says Not measured with its run count, never $0', () => {
     render(<TierMixPanel row={ROW} />);
-    expect(cells('gemini')[3]).toBe('$0.009');
+    expect(cells('gemini')[3]).toBe('$0.01');
     expect(cells('qwen-a')[3]).toBe('$0.00');
     expect(cells('qwen-b')[3]).toBe('Not measured (1 run)');
   });
@@ -64,7 +64,7 @@ describe('OMN-21015 AC2: the Tier mix lists each model under its tier', () => {
       models: tier.models.map(({ unmeasured_cost_count: _count, ...model }) => model),
     }));
     render(<TierMixPanel row={{ ...ROW, by_tier: { ...ROW.by_tier, tiers } }} />);
-    expect(cells('gemini')[3]).toBe('$0.009 (unpriced runs unknown)');
+    expect(cells('gemini')[3]).toBe('$0.01 (unpriced runs unknown)');
     expect(cells('qwen-b')[3]).toBe('Not measured');
   });
 

@@ -79,7 +79,7 @@ const PARTS = [
   '.local-share', '.local-meter', '.local-dashboard-filters', '.local-dashboard-pager', '.local-run-title',
   'nav.local-run-diagram', 'ol.local-dashboard-steps', '.usage-tokens-day',
   'ul.local-run-preview', '.local-runs-search', 'dl.local-routing-counts', '.local-routing-note',
-  'nav.local-summary-links',
+  'nav.local-summary-links', '.local-token-directions',
 ].join(', ');
 /** Where a page may draw text at all. */
 const PAGE_PARTS = 'details.local-overview-secondary > summary, header.local-dashboard-header, article.local-dashboard-panel, main > [role="status"], main > [role="alert"]';
@@ -136,7 +136,7 @@ describe('OMN-21015 U1: the guard is looking at drawn pages', () => {
   // A value only the constructed rows carry, and the part it must be drawn in. A page that drew its panels without
   // the served rows would still pass K1 to K4, so each served page is held to one served value.
   it.each([
-    ['overview', '.local-dashboard-metric', '1,476'],
+    ['overview', '.local-dashboard-metric', '1.47K'],
     ['runs', 'table tbody tr', RUN],
     ['workflow', 'ol.local-dashboard-steps > li', 'Provider call'],
     ['usage', 'table tbody tr', '747'],

@@ -51,7 +51,7 @@ describe('MetricCard', () => {
       config={{ metric_key: 'total_cost_usd', label: 'Spend', format: 'currency', precision: 4 }}
       row={{ total_cost_usd: 0.00686, roi_percent: 99 }}
     />);
-    expect(screen.getByText('$0.0069')).toBeInTheDocument();
+    expect(screen.getByText('$0.01')).toBeInTheDocument();
     expect(screen.queryByText(/99/)).not.toBeInTheDocument();
   });
 
@@ -71,7 +71,7 @@ describe('MetricCard', () => {
       config={{ metric_key: 'total_savings_usd', label: 'Savings', format: 'currency', precision: 4 }}
       row={{ total_savings_usd: 1.22354, total_baseline_cost_usd: 1.2304 }}
     />);
-    expect(screen.getByText('$1.2235')).toBeInTheDocument();
+    expect(screen.getByText('$1.22')).toBeInTheDocument();
   });
 
   it('renders Not measured for an absent field, never zero', () => {
@@ -90,7 +90,7 @@ describe('MetricCard', () => {
       config={{ metric_key: 'tokens_total', label: 'Tokens', format: 'number', precision: 0 }}
       row={{ tokens_total: 56800 }}
     />);
-    expect(screen.getByText('56,800')).toBeInTheDocument();
+    expect(screen.getByText('56.8K')).toBeInTheDocument();
   });
 });
 
@@ -102,7 +102,7 @@ describe('MetricCard captions and pending sources (Amendment 4)', () => {
       row={{ total_savings_usd: 1.22354, total_baseline_cost_usd: 1.2304 }}
       caption={{ baseline_model: 'claude-sonnet-5-5', pricing_manifest_version: 1 }}
     />);
-    expect(screen.getByText('$1.2235')).toBeInTheDocument();
+    expect(screen.getByText('$1.22')).toBeInTheDocument();
     expect(screen.getByText('Baseline claude-sonnet-5-5 · pricing manifest v1')).toBeInTheDocument();
   });
 
@@ -174,7 +174,7 @@ describe('LocalDashboardPage', () => {
     const view = render(<LocalDashboardPage pageName="runs" />);
     await act(async () => {});
     // Runs loaded its own document (not the name fallback), so a stale header is possible next.
-    expect(screen.getByText('Search recent runs, investigate failures and open recorded run details.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Recent runs' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Runs');
 
     // The next census never answers, so Overview stays in its loading state.

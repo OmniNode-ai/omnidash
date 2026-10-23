@@ -1,6 +1,5 @@
-import { readFileSync, writeFileSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
+import { writeFileSync } from 'node:fs';
+import { sourceIdentity } from './source-identity';
 import { expect, test } from 'playwright/test';
 import { serveCharts } from './omn21166-chart-fixtures';
 
@@ -96,23 +95,7 @@ test('final redesign captures all eleven pages, themes and widths without lost f
       }
     }
   }
-  // A private source archive has no .git. Its supplied manifest must name and
-  // verify the exact uploaded files; missing or mismatched input fails closed.
-  const manifestPath = process.env.OMNIDASH_VERIFY_SOURCE_MANIFEST;
-  const identity = manifestPath ? JSON.parse(readFileSync(manifestPath, 'utf8')) as {
-    worktree_head: string; files: Record<string, string>;
-  } : null;
-  if (identity) {
-    expect(identity.worktree_head).toMatch(/^[a-f0-9]{40}$/);
-    expect(Object.keys(identity.files).length).toBeGreaterThan(0);
-    for (const [file, digest] of Object.entries(identity.files)) {
-      expect(createHash('sha256').update(readFileSync(file)).digest('hex'), file).toBe(digest);
-    }
-  }
   writeFileSync(info.outputPath('redesign-manifest.json'), JSON.stringify({
-    ...(identity ? { sourceArchive: identity } : {
-      base: execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),
-      diffSha256: createHash('sha256').update(execFileSync('git',['diff','--binary','HEAD'],{maxBuffer:64*1024*1024})).digest('hex'),
-    }), captures,
+    ...sourceIdentity(), captures,
   },null,2));
 });

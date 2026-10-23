@@ -68,7 +68,7 @@ const allRow = (fields: Record<string, unknown> = {}): Record<string, unknown> =
  * runs OMN-21304 names as left out of the total: these rows serve neither class, so both read not recorded.
  */
 const BEFORE = [
-  '$0.0156',
+  '$0.01',
   'Baseline claude-sonnet-5-5 · pricing manifest v1.0.0 · Not in this total: runs with no token counts: not recorded, runs with no spend recorded: not recorded',
   "Modelled: the runs' tokens priced at the baseline model's list price. The baseline never ran.",
 ];
@@ -83,8 +83,8 @@ const PCT_LINE = /\d+% (below|above) the .+? baseline \(modelled\)/;
 
 describe('OMN-20008 AC5: the Savings card percentage line', () => {
   it('instrument: the line pattern matches a line inside a card\'s joined text, so a no-line check can fail', () => {
-    expect(['$0.0156', '42% below the claude-sonnet-5-5 baseline (modelled)', ...BEFORE.slice(1)].join('\n')).toMatch(PCT_LINE);
-    expect(`$0.015642% below the claude-sonnet-5-5 baseline (modelled)${BEFORE[1]}`).toMatch(PCT_LINE);
+    expect(['$0.01', '42% below the claude-sonnet-5-5 baseline (modelled)', ...BEFORE.slice(1)].join('\n')).toMatch(PCT_LINE);
+    expect(`$0.01% below the claude-sonnet-5-5 baseline (modelled)${BEFORE[1]}`).toMatch(PCT_LINE);
     expect(BEFORE.join('\n')).not.toMatch(PCT_LINE);
   });
 
@@ -170,7 +170,7 @@ describe('OMN-20008 AC5: the Overview page', () => {
     harness.reachable = new Set([METERING, OVERVIEW]);
     harness.answer = (topic) => Promise.resolve(topic === OVERVIEW ? [{ window: 'all', captured_at: '2026-10-09T21:00:00Z', total_savings_usd: '0.0156' }] : topic === METERING ? [allRow({ [PCT]: '0.42' })] : []);
     const panel = await savingsPanel();
-    expect(panel.querySelector('.local-dashboard-metric')?.textContent).toBe('$0.0156');
+    expect(panel.querySelector('.local-dashboard-metric')?.textContent).toBe('$0.01');
     expect(panel.textContent).not.toMatch(PCT_LINE);
     expect(panel.textContent).toContain('Modelled · vs cloud baseline');
     expect(panel.textContent).not.toMatch(/verified/i);
@@ -180,7 +180,7 @@ describe('OMN-20008 AC5: the Overview page', () => {
     harness.reachable = new Set([METERING, OVERVIEW]);
     harness.answer = (topic) => Promise.resolve(topic === OVERVIEW ? [{ window: 'all', captured_at: '2026-10-09T21:00:00Z', total_savings_usd: '0.0156' }] : topic === METERING ? [allRow()] : []);
     const panel = await savingsPanel();
-    expect(panel.querySelector('.local-dashboard-metric')?.textContent).toBe('$0.0156');
+    expect(panel.querySelector('.local-dashboard-metric')?.textContent).toBe('$0.01');
     expect(panel.textContent).not.toMatch(PCT_LINE);
   });
 });

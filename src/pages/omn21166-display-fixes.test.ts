@@ -75,8 +75,8 @@ describe('recordedUsd', () => {
     expect(recordedUsd(0)).toBe('$0.00');
     expect(recordedUsd('0.0')).toBe('$0.00');
   });
-  it('keeps a small served cost to its digits', () => {
-    expect(recordedUsd(0.012345)).toBe('$0.012345');
+  it('uses the approved two-decimal money display', () => {
+    expect(recordedUsd(0.012345)).toBe('$0.01');
     expect(recordedUsd('1234.5')).toBe('$1,234.50');
   });
   it('says Not recorded for a missing cost, never $0.00', () => {

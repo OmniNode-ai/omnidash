@@ -8,11 +8,11 @@ const metering = prefix + 'metering-summary.v1';
 const today = new Date().toISOString().slice(0, 10);
 const all = { window_kind: 'all', window_start: '', as_of: today + 'T12:00:00Z',
   baseline_model: 'baseline-current', baseline_state: 'resolved', pricing_manifest_version: 'fixture-1',
-  spend_usd: '0.0123', savings_usd: '0.002992', savings_pct_of_counterfactual: .42,
+  spend_usd: '12.3', savings_usd: '2.992', savings_pct_of_counterfactual: .42,
   runs_total: 29, runs_measured: 23, runs_unknown_tokens: 4, runs_unknown_spend: 2,
   tokens_in: 5756, tokens_out: 378 };
 const day = { ...all, window_kind: 'day', window_start: today,
-  spend_usd: '0.0007', savings_usd: '0.0012', runs_total: 5, runs_measured: 3,
+  spend_usd: '0.7', savings_usd: '1.2', runs_total: 5, runs_measured: 3,
   tokens_in: 756, tokens_out: 78 };
 const legacy = { window: 'all', captured_at: today + 'T12:00:00Z',
   total_cost_usd: 99, total_savings_usd: 98, run_count: 97, measured_run_count: 97, tokens_total: 96 };
@@ -35,25 +35,25 @@ async function totals(page: Page, values: string[]) {
 }
 test('declared local-store absence selects metering before a savings read and restores exact all-time and Today figures', async ({ page }, info) => {
   const requests = await serve(page, 'not_in_local_store');
-  await totals(page, ['$0.0123', '$0.0030', '23', '5,756 in · 378 out']);
+  await totals(page, ['$12.30', '$2.99', '23', '6.13K']);
   for (const id of ids) await expect(card(page, id)).not.toContainText('Source:');
   await expect(card(page, 'overview-savings')).toContainText('42% below the baseline-current baseline (modelled)');
   await page.getByRole('radio', { name: 'Today (UTC)', exact: true }).click();
-  await totals(page, ['$0.0007', '$0.0012', '3', '756 in · 78 out']);
+  await totals(page, ['$0.70', '$1.20', '3', '834']);
   await page.getByRole('radio', { name: 'All time', exact: true }).click();
-  await totals(page, ['$0.0123', '$0.0030', '23', '5,756 in · 378 out']);
+  await totals(page, ['$12.30', '$2.99', '23', '6.13K']);
   expect(requests).toContain(metering); expect(requests).not.toContain(overview);
   await page.screenshot({ path: info.outputPath('declared-sqlite-overview.png'), fullPage: true });
 });
 test('served savings catalogue retains D1 despite conflicting metering and names the selected source', async ({ page }) => {
-  await serve(page, 'bus'); await totals(page, ['$99.0000', '$98.0000', '97', '96']);
+  await serve(page, 'bus'); await totals(page, ['$99.00', '$98.00', '97', '96']);
   for (const id of ids) await expect(card(page, id)).not.toContainText('Source:');
   await page.getByRole('radio', { name: 'Today (UTC)', exact: true }).click();
   await totals(page, ids.map(() => 'Not measured: daily totals unavailable (UTC)'));
 });
 test('metering chooses newest all-time and day baseline and refuses ties on all four cards', async ({ page }) => {
   await serve(page, 'not_in_local_store', [{ ...all, baseline_model: 'old', as_of: today + 'T09:00:00Z', spend_usd: 77 }, all, day, { ...day, baseline_model: 'twin' }]);
-  await totals(page, ['$0.0123', '$0.0030', '23', '5,756 in · 378 out']);
+  await totals(page, ['$12.30', '$2.99', '23', '6.13K']);
   await page.getByRole('radio', { name: 'Today (UTC)', exact: true }).click();
   await totals(page, ids.map(() => 'Not measured: 2 baseline models'));
 });
@@ -64,7 +64,7 @@ test('missing current-day metering never becomes zero, yesterday or legacy savin
 });
 test('metering keeps measured zero and independent missing token or spend values', async ({ page }) => {
   await serve(page, 'not_in_local_store', [{ ...all, spend_usd: 0, savings_usd: null, runs_measured: 0, tokens_in: 0, tokens_out: 0 }]);
-  await totals(page, ['$0.00', 'Not measured', '0', '0 in · 0 out']);
+  await totals(page, ['$0.00', 'Not measured', '0', '0']);
 });
 test('a generic refusal never switches source to mask a producer failure', async ({ page }) => {
   await serve(page, 'not_yet_bus_backed', [all, day], 'producer_not_deployed');

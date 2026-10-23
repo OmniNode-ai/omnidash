@@ -25,7 +25,7 @@ for (const scenario of [
     const row = table.locator('tbody tr');
     await expect(row).toHaveCount(1);
     await expect(row.locator('td').nth(headers.indexOf('Baseline model'))).toHaveText(scenario.expected);
-    await expect(row.locator('td').nth(headers.indexOf('Modelled saving'))).toContainText('$0.034650');
+    await expect(row.locator('td').nth(headers.indexOf('Modelled saving'))).toContainText('$0.03');
     await expect(row.locator('td').nth(headers.indexOf('Basis'))).toHaveText('unknown');
     await expect(row.getByRole('link')).toHaveAttribute('href', /correlation_id=chart-run-a/);
     await page.screenshot({ path: info.outputPath('baseline-provenance.png') });

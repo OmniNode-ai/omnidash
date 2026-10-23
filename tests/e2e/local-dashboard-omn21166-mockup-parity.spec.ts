@@ -138,7 +138,7 @@ test('AC27 Runs filters by UTC day and task, then shows the selected run without
   await expect(selected).toContainText('Task');
   await expect(selected).toContainText('Not recorded');
   await expect(selected.locator('dt').filter({ hasText: /^Tokens out$/ }).locator('xpath=following-sibling::dd')).toHaveText('0');
-  await expect(selected).toContainText('$0.0100 vs baseline-a');
+  await expect(selected).toContainText('$0.01 vs baseline-a');
   await expect(selected).toContainText('Quality score');
   await expect(selected).toContainText('bar not recorded');
   await expect(selected.getByRole('link', { name: 'Open full run', exact: true })).toHaveAttribute('href', /workflow\?correlation_id=run-today-unmeasured/);

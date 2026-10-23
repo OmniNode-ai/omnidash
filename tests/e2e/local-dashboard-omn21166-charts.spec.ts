@@ -7,6 +7,19 @@ import { chartRows, prefix, runIds, serveCharts } from './omn21166-chart-fixture
 test.use({ viewport: { width: 1440, height: 900 }, trace: 'on', actionTimeout: 5000 });
 test.beforeEach(async ({ page }) => { await serveCharts(page); });
 
+test('single-token chart axis never marks valid fractional tick coordinates as missing data', async ({ page }, info) => {
+  await serveCharts(page, { ...chartRows, [prefix + 'delegation.decisions.v1']: [{
+    ...chartRows[prefix + 'delegation.decisions.v1'][0] as object,
+    tokens_input: 1, tokens_output: 0,
+  }] });
+  await page.goto('/runs');
+  const chart = page.getByRole('figure', { name: 'Tokens per run', exact: true });
+  await expect(chart.locator('.local-chart-canvas svg')).toBeVisible();
+  await expect(chart.locator('svg text').filter({ hasText: 'Not measured' })).toHaveCount(0);
+  await expect(chart.locator('svg text').filter({ hasText: /^1$/ })).toHaveCount(1);
+  await page.screenshot({ path: info.outputPath('single-token-axis.png') });
+});
+
 test('chart zoom/reset changes visible range without changing table or selected identity', async ({ page }, info) => {
   await page.goto('/runs');
   const chart = page.getByRole('figure', { name: 'Duration per run', exact: true });
@@ -68,7 +81,7 @@ test('money explorer preserves precise served zero and missing values, table and
   const chart = page.getByRole('figure', { name: 'Spend per day vs baseline-a', exact: true });
   await expect(chart.locator('.local-chart-canvas svg')).toBeVisible();
   await chart.getByLabel('Inspect day').selectOption('1');
-  await expect(chart.getByRole('status')).toContainText('$0.000000');
+  await expect(chart.getByRole('status')).toContainText('$0.00');
   await chart.getByLabel('Inspect day').selectOption('2');
   await expect(chart.getByRole('status')).toContainText('Not measured');
   await expect(chart.getByRole('status')).toContainText('2026-10-03');

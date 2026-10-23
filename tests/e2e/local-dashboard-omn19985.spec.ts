@@ -87,7 +87,7 @@ test('OMN-19985: with no key set, Credentials shows the onex secret set command,
   await serve(page, { [CREDENTIALS]: [] });
   await openCredentials(page);
 
-  await expect(page.getByText('No provider key set')).toBeVisible();
+  await expect(page.getByText('No provider credentials recorded')).toBeVisible();
   await expect(page.getByText('onex secret set')).toBeVisible();
   await expect(page.getByRole('columnheader', { name: 'Fingerprint' })).toHaveCount(0);
   await page.screenshot({ path: screenshotPath('local-dashboard-omn19985-credentials-empty-1440x900.png'), fullPage: false });

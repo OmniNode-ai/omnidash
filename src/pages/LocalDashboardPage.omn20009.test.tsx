@@ -135,7 +135,7 @@ describe('SavingsPerRunCard (OMN-20009 AC1, AC2, AC3)', () => {
   it('S1: shows the served decimal text unchanged, not savings over runs', () => {
     // 2.9 / 3 = 0.966667 and 2.9 / 4 = 0.725; the served value is deliberately neither.
     render(<SavingsPerRunCard rows={[allRow({ savings_per_measured_run_usd: '0.500000' })]} />);
-    expect(screen.getByText('$0.500000')).toBeInTheDocument();
+    expect(screen.getByText('$0.50')).toBeInTheDocument();
     expect(screen.queryByText(/0\.9666|0\.725/)).toBeNull();
     expect(screen.getByText('Over 3 measured runs · baseline claude-opus-4-6')).toBeInTheDocument();
   });
@@ -171,8 +171,8 @@ describe('SavingsPerRunCard (OMN-20009 AC1, AC2, AC3)', () => {
       { ...allRow({ savings_per_measured_run_usd: '9.000000' }), window_kind: 'day', window_start: '2026-10-04' },
       allRow(),
     ]} />);
-    expect(screen.getByText('$0.966667')).toBeInTheDocument();
-    expect(screen.queryByText('$9.000000')).toBeNull();
+    expect(screen.getByText('$0.96')).toBeInTheDocument();
+    expect(screen.queryByText('$9.00')).toBeNull();
   });
 
   it('S4: no all-time row is a typed state', () => {
@@ -194,10 +194,10 @@ describe('SavingsPerRunCard (OMN-20009 AC1, AC2, AC3)', () => {
       allRow({ as_of: '2026-10-04T14:00:00Z', baseline_model: 'claude-opus-4-6', savings_per_measured_run_usd: '0.1' }),
       allRow({ as_of: '2026-10-05T09:30:00Z', baseline_model: 'gpt-5', savings_per_measured_run_usd: '0.250000' }),
     ]} />);
-    expect(screen.getByText('$0.250000')).toBeInTheDocument();
+    expect(screen.getByText('$0.25')).toBeInTheDocument();
     expect(screen.getByText('Over 3 measured runs · baseline gpt-5')).toBeInTheDocument();
     expect(screen.queryByText(/baseline models/)).toBeNull();
-    expect(screen.queryByText('$0.1')).toBeNull();
+    expect(screen.queryByText('$0.10')).toBeNull();
   });
 
   it('S4b: the newest row wins whichever order the rows are served in', () => {
@@ -205,7 +205,7 @@ describe('SavingsPerRunCard (OMN-20009 AC1, AC2, AC3)', () => {
       allRow({ as_of: '2026-10-05T09:30:00Z', baseline_model: 'gpt-5', savings_per_measured_run_usd: '0.250000' }),
       allRow({ as_of: '2026-10-04T14:00:00Z', savings_per_measured_run_usd: '0.1' }),
     ]} />);
-    expect(screen.getByText('$0.250000')).toBeInTheDocument();
+    expect(screen.getByText('$0.25')).toBeInTheDocument();
   });
 
   it('S4c: a day row newer than the all-time row is ignored', () => {
@@ -213,13 +213,13 @@ describe('SavingsPerRunCard (OMN-20009 AC1, AC2, AC3)', () => {
       allRow({ as_of: '2026-10-04T14:00:00Z', savings_per_measured_run_usd: '0.500000' }),
       { ...allRow({ as_of: '2026-10-06T01:00:00Z', savings_per_measured_run_usd: '9.000000' }), window_kind: 'day', window_start: '2026-10-06' },
     ]} />);
-    expect(screen.getByText('$0.500000')).toBeInTheDocument();
-    expect(screen.queryByText('$9.000000')).toBeNull();
+    expect(screen.getByText('$0.50')).toBeInTheDocument();
+    expect(screen.queryByText('$9.00')).toBeNull();
   });
 
   it('S5: a negative saving keeps its sign', () => {
     render(<SavingsPerRunCard rows={[allRow({ savings_per_measured_run_usd: '-0.500000' })]} />);
-    expect(screen.getByText('-$0.500000')).toBeInTheDocument();
+    expect(screen.getByText('-$0.50')).toBeInTheDocument();
   });
 });
 
@@ -266,7 +266,7 @@ describe('Overview page (OMN-20009 P1, P2)', () => {
         ? Promise.resolve([allRow({ as_of: '2026-10-04T14:26:13Z', savings_per_measured_run_usd: '0.500000' })])
         : answer(topic));
       const card = await panel('Avg saving / call');
-      expect(within(card).getByText('$0.500000')).toBeInTheDocument();
+      expect(within(card).getByText('$0.50')).toBeInTheDocument();
       expect(within(card).queryByText(/Not available yet/)).toBeNull();
     } else {
       const card = await panel('Avg saving / call');

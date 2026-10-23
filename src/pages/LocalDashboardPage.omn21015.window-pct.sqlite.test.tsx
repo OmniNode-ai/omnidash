@@ -57,17 +57,17 @@ const BASE = {
 // Three different ratios, so a line read from the wrong row names the wrong percentage.
 const ALL_ROW = {
   ...BASE, window_kind: 'all', window_start: '', as_of: '2026-10-09T12:00:00Z', runs_total: 23, runs_measured: 23,
-  tokens_in: 5756, tokens_out: 378, spend_usd: 0.0123, counterfactual_usd: 0.0212, savings_usd: '0.0089', [PCT]: '0.42',
+  tokens_in: 5756, tokens_out: 378, spend_usd: 12.3000, counterfactual_usd: 21.2000, savings_usd: '8.9000', [PCT]: '0.42',
 };
 const YESTERDAY_ROW = {
   ...BASE, window_kind: 'day', window_start: '2026-10-08', as_of: '2026-10-08T23:50:00Z', runs_total: 20,
-  runs_measured: 20, tokens_in: 5000, tokens_out: 300, spend_usd: 0.01, counterfactual_usd: 0.0111,
-  savings_usd: '0.0011', [PCT]: '0.10',
+  runs_measured: 20, tokens_in: 5000, tokens_out: 300, spend_usd: 10.00, counterfactual_usd: 11.1000,
+  savings_usd: '1.1000', [PCT]: '0.10',
 };
 const TODAY_ROW = {
   ...BASE, window_kind: 'day', window_start: '2026-10-09', as_of: '2026-10-09T12:00:00Z', runs_total: 3,
-  runs_measured: 3, tokens_in: 756, tokens_out: 78, spend_usd: 0.0009, counterfactual_usd: 0.0012,
-  savings_usd: '0.0003', [PCT]: '0.25',
+  runs_measured: 3, tokens_in: 756, tokens_out: 78, spend_usd: 0.9000, counterfactual_usd: 1.2000,
+  savings_usd: '0.3000', [PCT]: '0.25',
 };
 
 const LINE = (pct: number) => `${pct}% below the claude-sonnet-5-5 baseline (modelled)`;
@@ -83,7 +83,7 @@ function card(rows: readonly unknown[], window: 'all' | 'today'): string[] {
 describe('OMN-21015 AC7: the Savings percentage line follows the chosen window', () => {
   it("Q1: today shows today's ratio beside today's saving, not the all-time ratio", () => {
     const shown = card([ALL_ROW, YESTERDAY_ROW, TODAY_ROW], 'today');
-    expect(shown[0]).toBe('$0.0003');
+    expect(shown[0]).toBe('$0.30');
     expect(shown).toContain(LINE(25));
     expect(shown.join('\n')).not.toContain(LINE(42));
     expect(shown.join('\n')).not.toContain(LINE(10));
@@ -91,7 +91,7 @@ describe('OMN-21015 AC7: the Savings percentage line follows the chosen window',
 
   it("Q2: all time shows the all-time ratio, not a day row's", () => {
     const shown = card([TODAY_ROW, YESTERDAY_ROW, ALL_ROW], 'all');
-    expect(shown[0]).toBe('$0.0089');
+    expect(shown[0]).toBe('$8.90');
     expect(shown).toContain(LINE(42));
     expect(shown.join('\n')).not.toContain(LINE(25));
     expect(shown.join('\n')).not.toContain(LINE(10));
@@ -99,7 +99,7 @@ describe('OMN-21015 AC7: the Savings percentage line follows the chosen window',
 
   it('Q3: a today row that serves no ratio shows no line, never the all-time one', () => {
     const shown = card([ALL_ROW, { ...TODAY_ROW, [PCT]: null }], 'today');
-    expect(shown[0]).toBe('$0.0003');
+    expect(shown[0]).toBe('$0.30');
     expect(shown.join('\n')).not.toMatch(ANY_LINE);
   });
 
@@ -127,16 +127,16 @@ describe('OMN-21015 AC7: the Overview page', () => {
     render(<LocalDashboardPage pageName="overview" />);
     await act(async () => { await vi.advanceTimersByTimeAsync(0); });
 
-    expect(panel().querySelector('.local-dashboard-metric')?.textContent).toBe('$0.0089');
+    expect(panel().querySelector('.local-dashboard-metric')?.textContent).toBe('$8.90');
     expect(panel().textContent).toContain(LINE(42));
 
     chooseWindow('today');
-    expect(panel().querySelector('.local-dashboard-metric')?.textContent).toBe('$0.0003');
+    expect(panel().querySelector('.local-dashboard-metric')?.textContent).toBe('$0.30');
     expect(panel().textContent).toContain(LINE(25));
     expect(panel().textContent).not.toContain(LINE(42));
 
     chooseWindow('all');
-    expect(panel().querySelector('.local-dashboard-metric')?.textContent).toBe('$0.0089');
+    expect(panel().querySelector('.local-dashboard-metric')?.textContent).toBe('$8.90');
     expect(panel().textContent).toContain(LINE(42));
     expect(panel().textContent).not.toContain(LINE(25));
   });

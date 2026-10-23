@@ -1,3 +1,6 @@
+import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
+import { modelColor } from '@/lib/dashboard-colors';
+import { formatDashboardUsd } from '@/lib/dashboard-currency';
 import { createContext, useContext, useId, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import {
   ArrowDown, ArrowDownUp, ArrowUp, CalendarClock, ChartColumnStacked, CircleHelp, CodeXml, FileText, FlaskConical, GitPullRequest, Globe,
@@ -52,7 +55,7 @@ export function TaskIcon({ task }: { task: string }) {
 }
 
 function count(value: number): string {
-  return value.toLocaleString('en-US');
+  return formatDashboardCount(value);
 }
 
 /**
@@ -64,7 +67,7 @@ function verdictCoverage(withVerdict: number, runs: number): string {
 }
 
 function duration(ms: number): string {
-  return ms < 1000 ? `${count(ms)} ms` : `${(ms / 1000).toFixed(2)} s`;
+  return ms < 1000 ? `${ms.toLocaleString('en-US')} ms` : `${(ms / 1000).toFixed(2)} s`;
 }
 
 function dayLabel(day: string): string {
@@ -101,6 +104,7 @@ function ChartCard({ title, icon, accent, note, delay, children }: {
 }
 
 function Readout({ testId, text, active }: { testId?: string; text: ReactNode; active: boolean }) {
+  if (text === null) return null;
   return <p className={`ins-readout${active ? ' ins-readout--active' : ''}`} data-testid={testId} aria-live="polite">{text}</p>;
 }
 
@@ -121,7 +125,7 @@ function RunsPerDay({ days }: { days: InsightDay[] }) {
         <button type="button" className="ins-toggle" data-field-tone="fail" aria-pressed={show.failed} onClick={() => toggle('failed')} style={{ '--ins-swatch': FAIL } as CSSProperties}>Failed</button>
       </div>
       <Readout testId="runs-per-day-readout" active={active !== null}
-        text={active ? <>{dayLabel(active.day)} · <span data-field-tone="count">{count(active.runs)} runs</span> · <span data-field-tone="pass">{count(active.passed)} passed</span> · <span data-field-tone="fail">{count(active.failed)} failed</span>{active.unrecorded > 0 && <> · <span data-field-tone="basis" data-field-unavailable="true">{count(active.unrecorded)} not recorded</span></>}</> : 'Hover or tab through the days'} />
+        text={active ? <>{dayLabel(active.day)} · <span data-field-tone="count">{count(active.runs)} runs</span> · <span data-field-tone="pass">{count(active.passed)} passed</span> · <span data-field-tone="fail">{count(active.failed)} failed</span>{active.unrecorded > 0 && <> · <span data-field-tone="basis" data-field-unavailable="true">{count(active.unrecorded)} not recorded</span></>}</> : null} />
       <div className="ins-bars" role="group" aria-label="Runs per day" onMouseLeave={() => setHover(null)}>
         {days.map((day, index) => (
           <button key={day.day} type="button" className="ins-bar" aria-label={`${dayLabel(day.day)}: ${dayCounts(day)}`}
@@ -303,10 +307,10 @@ function ModelScoreboard({ runs }: { runs: InsightRun[] }) {
   return (
     <ChartCard title="Model scoreboard" icon={<Trophy size={16} />} accent="var(--ins-series-7)" note="Pass rate" delay={300}>
       <ul className="ins-rings" aria-label="Pass rate by model">
-        {groups.map((group, index) => {
+        {groups.map(group => {
           const judged = group.passed + group.failed;
           const rate = judged ? (group.passed / judged) * 100 : null;
-          const color = PALETTE[index % PALETTE.length]!;
+          const color = modelColor(group.key);
           return (
             <li key={group.key} className="ins-ring" style={{ '--ins-swatch': color } as CSSProperties}>
               <svg viewBox="0 0 42 42" width={60} height={60} aria-hidden="true">
@@ -380,7 +384,7 @@ function VolumeBars({ runs, field }: { runs: InsightRun[]; field: 'model' | 'tie
     <div className="overview-volume-bars">
       {groups.map((group, index) => <button type="button" key={group.key} aria-pressed={selected === group.key}
         aria-label={`${group.key}: ${count(group.runs)} ${group.runs === 1 ? 'run' : 'runs'}`} onClick={() => setSelected(group.key)}
-        style={{ '--ins-swatch': PALETTE[index % PALETTE.length] } as CSSProperties}>
+        style={{ '--ins-swatch': field === 'model' ? modelColor(group.key) : PALETTE[index % PALETTE.length] } as CSSProperties}>
         <span className="overview-volume-label" data-field-tone={field === 'model' ? 'model' : 'tier'} data-field-unavailable={group.key === NOT_RECORDED}>{group.key}</span><strong data-field-tone="count">{count(group.runs)}</strong>
         <span className="overview-volume-track" aria-hidden="true"><span style={{ width: `${group.runs / maximum * 100}%` }} /></span>
       </button>)}
@@ -424,7 +428,7 @@ function TokensPerDay({ days }: { days: InsightDay[] }) {
   const [hover, setHover] = useState<number | null>(null);
   const total = (day: InsightDay) => (day.tokensIn === null ? 0 : day.tokensIn) + (day.tokensOut === null ? 0 : day.tokensOut);
   const max = Math.max(1, ...days.map(total));
-  const side = (value: number | null, missing: number, direction: 'in' | 'out') => `${value === null ? 'not recorded' : count(value)} ${direction}${value !== null && missing > 0 ? ` (partial: ${count(missing)} ${missing === 1 ? 'run' : 'runs'} not recorded)` : ''}`;
+  const side = (value: number | null, missing: number, direction: 'in' | 'out') => `${value === null ? 'not recorded' : formatFullCount(value)} ${direction}${value !== null && missing > 0 ? ` (partial: ${count(missing)} ${missing === 1 ? 'run' : 'runs'} not recorded)` : ''}`;
   const label = (day: InsightDay) => `${dayLabel(day.day)}: ${side(day.tokensIn, day.tokensInUnmeasured, 'in')}, ${side(day.tokensOut, day.tokensOutUnmeasured, 'out')}`;
   const active = hover === null ? null : days[hover]!;
   return (
@@ -534,7 +538,7 @@ function ChartHeading({ title, detail }: { title: string; detail: string }) {
 }
 
 function usd(value: number | null): string {
-  return value === null ? 'Not served' : `$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
+  return value === null ? 'Not served' : formatDashboardUsd(value);
 }
 
 function delta(value: number | null, format: (value: number) => string): string {
@@ -629,7 +633,7 @@ function MoneyWindowCharts({ rows, now, days, unavailable }: { rows: readonly un
     <ChartSection title="Daily paid vs all-cloud">
       <figure className="local-chart ins-money-chart" aria-label="Spend vs all-cloud">
         <ChartHeading title="Spend vs all-cloud" detail={`${days === 1 ? 'Today (UTC)' : `Last ${days} UTC days`} · ${data.baseline ?? 'baseline not recorded'}`} />
-        <p className="ins-readout" role="status">{selected ? detail(selected) : 'Hover or tab through a served day'}</p>
+        {selected && <p className="ins-readout" role="status">{detail(selected)}</p>}
         <div className="ins-money-bars" role="group" aria-label="Spend vs all-cloud by UTC day" onMouseLeave={() => setActiveSpend(null)}>
           {data.days.map((day, index) => <button key={day.day} type="button" className="ins-money-day" aria-label={detail(day)} onMouseEnter={() => setActiveSpend(index)} onFocus={() => setActiveSpend(index)}>
             <span className="ins-money-day-bars">

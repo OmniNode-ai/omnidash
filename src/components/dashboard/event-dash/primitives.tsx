@@ -1,3 +1,4 @@
+import { formatDashboardCount } from '@/lib/dashboard-count';
 /**
  * OMN-12943 — shared UI primitives for the ported event-dash views.
  *
@@ -129,12 +130,9 @@ export function Panel({
     'TOKEN USAGE': 'Token usage', 'RECENT DELEGATIONS': 'Recent delegations',
   };
   const label = typeof title === 'string' ? labels[title] ?? title : title;
-  const panelTones: Record<string, string> = { 'SELECTED RUN': 'selected', 'MODEL ROUTING': 'routing',
-    'QUALITY GATE': 'quality', 'SAVINGS vs CLOUD BASELINE': 'savings', 'TOKEN USAGE': 'tokens', 'RECENT DELEGATIONS': 'recent' };
-  const panelTone = typeof title === 'string' ? panelTones[title] : undefined;
   const Icon = typeof title === 'string' ? panelIcons[title] : undefined;
   return (
-    <div className="panel" style={panelTone ? { '--card-accent': `var(--field-${panelTone})` } as CSSProperties : undefined} data-panel-title={typeof title === 'string' ? title : undefined}>
+    <div className="panel" data-panel-title={typeof title === 'string' ? title : undefined}>
       {title || right ? (
         <div className="panel-h">
           {title ? <h2 className="pt" data-page-heading tabIndex={-1}>{Icon && <span className="ev-panel-icon" aria-hidden="true"><Icon size={16} /></span>}{label}</h2> : null}
@@ -332,7 +330,7 @@ export function DataTable<T>({
         );
       })}
       {pages > 1 && <nav className="ev-table-paging" aria-label="Record pages">
-        <span aria-live="polite">{current * size + 1}–{Math.min((current + 1) * size, rows.length)} of {rows.length}</span>
+        <span aria-live="polite">{current * size + 1}–{Math.min((current + 1) * size, rows.length)} of {formatDashboardCount(rows.length)}</span>
         <button type="button" disabled={current === 0} onClick={() => setPage(current - 1)}>Previous page</button>
         <button type="button" disabled={current === pages - 1} onClick={() => setPage(current + 1)}>Next page</button>
       </nav>}

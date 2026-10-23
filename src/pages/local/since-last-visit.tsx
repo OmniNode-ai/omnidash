@@ -1,3 +1,4 @@
+import { formatDashboardCount } from '@/lib/dashboard-count';
 import { useEffect, useState } from 'react';
 import { BellRing } from 'lucide-react';
 import { toInsightRuns } from './insights';
@@ -37,13 +38,14 @@ export function SinceLastVisit({ decisions, now, onOpenFailures }: { decisions: 
   useEffect(() => { writeLastVisit(now); }, [now]);
   if (previous === null) return null;
   const fresh = toInsightRuns(decisions).filter(run => run.at > previous);
+  if (fresh.length === 0) return null;
   const failed = fresh.filter(run => run.status === 'failed').length;
   return (
     <p className="local-since-visit" role="status" aria-label="Since your last visit">
       <span className="local-since-visit-icon" aria-hidden="true"><BellRing size={15} /></span>
       <span className="local-since-visit-title">Since your last visit · {visitLabel(previous)}</span>
-      <span className="local-since-visit-chip" data-tone="runs">{fresh.length.toLocaleString('en-US')} new runs</span>
-      <span className="local-since-visit-chip" data-tone="failed">{failed.toLocaleString('en-US')} failed</span>
+      <span className="local-since-visit-chip" data-tone="runs">{formatDashboardCount(fresh.length)} new runs</span>
+      <span className="local-since-visit-chip" data-tone="failed">{formatDashboardCount(failed)} failed</span>
       {(shared || onOpenFailures) && (
         <button type="button" className="local-since-visit-action" onClick={() => {
           if (onOpenFailures) { onOpenFailures(); return; }

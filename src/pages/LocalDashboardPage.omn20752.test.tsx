@@ -70,12 +70,12 @@ describe('OMN-20752 Baseline spend on the Overview', () => {
 
   it('B1: renders the served counterfactual_usd of the all-time row', async () => {
     const card = await baselineCard([allRow({})]);
-    expect(figure(card)).toBe('$0.0153');
+    expect(figure(card)).toBe('$0.01');
   });
 
   it('B1: a different served counterfactual renders that amount, not a constant', async () => {
     const card = await baselineCard([allRow({ counterfactual_usd: 12.5, savings_usd: 12.5 })]);
-    expect(figure(card)).toBe('$12.5000');
+    expect(figure(card)).toBe('$12.50');
   });
 
   for (const counterfactual of [null, 0]) {
@@ -104,6 +104,6 @@ describe('OMN-20752 Baseline spend on the Overview', () => {
   it("B5: a day row's counterfactual is not the headline", async () => {
     const day = { ...allRow({ counterfactual_usd: 99 }), window_kind: 'day', window_start: '2026-10-08' };
     const card = await baselineCard([day, allRow({})]);
-    expect(figure(card)).toBe('$0.0153');
+    expect(figure(card)).toBe('$0.01');
   });
 });

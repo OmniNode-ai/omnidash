@@ -195,7 +195,7 @@ describe('OMN-19920: one run whole on the Workflow page', () => {
       'Recorded cost (USD)': shown['Recorded cost (USD)'], Status: shown.Status,
     }).toEqual({
       Model: 'model-of-older', Backend: `backend-of-${OLDER}`, 'Tokens in': '162', 'Tokens out': '52',
-      'Recorded cost (USD)': '$0.0021', Status: 'passed',
+      'Recorded cost (USD)': '$0.01', Status: 'passed',
     });
     expect(panel().textContent).not.toContain(`answer of ${NEWEST}`);
     expect(answerAsks()).toEqual([OLDER]);

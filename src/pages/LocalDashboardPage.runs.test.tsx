@@ -34,10 +34,10 @@ function session(id: string, createdAt: string, extra: Record<string, unknown> =
     prompt_tokens: 162,
     completion_tokens: 52,
     local_cost_usd: 0,
-    cloud_cost_usd: 0.000844,
-    counterfactual_baseline_usd: 0.000844,
+    cloud_cost_usd: 0.844000,
+    counterfactual_baseline_usd: 0.844000,
     baseline_model: 'claude-opus-4-6',
-    savings_usd: 0.000844,
+    savings_usd: 0.844000,
     usage_source: 'measured',
     task_type: 'summarization',
     latency_ms: 813,
@@ -54,7 +54,7 @@ describe('LastRunCard (OV-4, F16)', () => {
         decision('older-run', '2026-10-02T10:01:20Z'),
         decision('newest-run', '2026-10-02T10:07:00Z'),
       ]}
-      sessions={[session('newest-run', '2026-10-02T10:07:00Z', { local_cost_usd: 0.0021 })]}
+      sessions={[session('newest-run', '2026-10-02T10:07:00Z', { local_cost_usd: 2.1000 })]}
     />);
     const card = screen.getByRole('region', { name: 'Last run' });
     expect(within(card).getByText('newest-run')).toBeInTheDocument();
@@ -65,7 +65,7 @@ describe('LastRunCard (OV-4, F16)', () => {
     expect(within(card).getByText('summarization')).toBeInTheDocument();
     expect(within(card).getByText('local')).toBeInTheDocument();
     expect(within(card).getByText('5m ago')).toBeInTheDocument();
-    expect(within(card).getByText('$0.0021')).toBeInTheDocument();
+    expect(within(card).getByText('$2.10')).toBeInTheDocument();
   });
 
   it('shows tokens in and tokens out apart, never one combined figure (SV-3)', () => {
@@ -132,10 +132,10 @@ describe('RecentRunsTable (OV-5, F17)', () => {
         quality_gate_passed: false,
         quality_gate_detail: 'provider returned 429 (quota exhausted)',
       })]}
-      sessions={[session('quota-run', '2026-10-02T10:00:00Z', { local_cost_usd: 0.0004 })]}
+      sessions={[session('quota-run', '2026-10-02T10:00:00Z', { local_cost_usd: 0.4000 })]}
     />);
     const row = screen.getByRole('row', { name: /quota-run/ });
-    for (const value of ['failed', 'provider returned 429 (quota exhausted)', '162', '52', '$0.0004', 'local']) {
+    for (const value of ['failed', 'provider returned 429 (quota exhausted)', '162', '52', '$0.40', 'local']) {
       expect(within(row).getByText(value)).toBeInTheDocument();
     }
   });
@@ -146,11 +146,11 @@ describe('RecentRunsTable shows no per-run saving (OMN-19980 AC2b)', () => {
     render(<RecentRunsTable
       now={NOW}
       decisions={[decision('unpriced-run', '2026-10-02T10:01:20Z')]}
-      sessions={[session('unpriced-run', '2026-10-02T10:01:20Z', { local_cost_usd: 0.0004, baseline_model: null, savings_usd: 0 })]}
+      sessions={[session('unpriced-run', '2026-10-02T10:01:20Z', { local_cost_usd: 0.4000, baseline_model: null, savings_usd: 0 })]}
     />);
     expect(screen.getAllByRole('columnheader').map((header) => header.textContent)).not.toContain('Savings');
     const row = screen.getByRole('row', { name: /unpriced-run/ });
-    expect(within(row).getByText('$0.0004')).toBeInTheDocument();
+    expect(within(row).getByText('$0.40')).toBeInTheDocument();
     expect(within(row).queryByText('Baseline unresolved')).not.toBeInTheDocument();
   });
 });
@@ -167,7 +167,7 @@ describe('RunsTable rows, status, cause and filters (RU-1, F18, F28)', () => {
     decision('run-d', '2026-10-02T08:00:00Z', { quality_gate_passed: false, quality_gate_detail: 'provider timeout after 30s' }),
   ];
   const sessions = [
-    session('run-a', '2026-10-02T10:07:00Z', { local_cost_usd: 0.0011 }),
+    session('run-a', '2026-10-02T10:07:00Z', { local_cost_usd: 1.1000 }),
     session('run-b', '2026-10-02T09:00:00Z', { model_name: 'deepseek/deepseek-chat-v3' }),
     session('run-c', '2026-10-01T22:00:00Z'),
   ];
@@ -184,7 +184,7 @@ describe('RunsTable rows, status, cause and filters (RU-1, F18, F28)', () => {
   it('takes cost from the session with the same id', () => {
     render(<RunsTable now={NOW} decisions={decisions} sessions={sessions} />);
     const row = screen.getByRole('row', { name: /run-a/ });
-    expect(within(row).getByText('$0.0011')).toBeInTheDocument();
+    expect(within(row).getByText('$1.10')).toBeInTheDocument();
     expect(within(row).getByText('passed')).toBeInTheDocument();
   });
 

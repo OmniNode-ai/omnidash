@@ -127,7 +127,7 @@ describe('OMN-21015 U4: the spend chart legend', () => {
       { seriesIndex: 0, dataIndex: 1, marker: '', seriesName: 'Baseline spend' },
       { seriesIndex: 1, dataIndex: 1, marker: '', seriesName: 'Savings' },
     ]);
-    expect(text).toBe('2026-10-12<br/>Baseline spend: $0.520000<br/>Savings: $0.400000');
+    expect(text).toBe('2026-10-12<br/>Baseline spend: $0.52<br/>Savings: $0.40');
   });
 
   it('J7: a second press brings the series back, in its declared place', async () => {
