@@ -73,6 +73,29 @@ dod_evidence:
       - check_type: "test_passes"
         check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC3 a routing step\""
         cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn21304-ac3-falsifier-clauses"
+    description: >-
+      AC3's three falsifier clauses not covered by the coverage-and-routing item: with 0 of 4 runs scored the average
+      score reads Not recorded and never a number, beside a served-average control; a passed gate reads passed and
+      nothing on the page says accepted; a routing step served with a null confidence shows no 0%. Lab mutants on dev
+      b0c37798: rendering a missing decimal as 0, labelling a passed gate Accepted, and rendering confidence as a
+      percentage each fail their own case and only that case. Behaviour already on the base, so this binding uses the
+      pinned gate's governed TEST_ONLY_DIFF path.
+    source: "manual"
+    binds_ac: ["AC3"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty-ac3.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC3 no scored run\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty-ac3.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC3 a served average score\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty-ac3.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC3 a passed gate reads passed\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty-ac3.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC3 a routing step served with a null confidence\""
+        cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn21304-ac4-cost-basis"
     description: >-
       AC4: under both Overview headline sources the spend and savings cards each name their baseline model, pricing
