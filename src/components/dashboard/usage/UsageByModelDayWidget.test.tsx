@@ -3,7 +3,7 @@
 //
 // Failure modes each test is written against:
 //   * the table shows cost_usd (every call, estimates included) instead of the served measured cost (D1, AC3);
-//   * a null measured cost renders 0 or $0 instead of "Not measured" (D2, AC4);
+//   * a null measured cost renders 0 or $0.00 instead of "Not measured" (D2, AC4);
 //   * the unmeasured count is missing, or reads "0 unmeasured" instead of "none" (D3, AC3);
 //   * the browser drops rows by tenant: the server scopes the read, so every served row renders (D4, AC-T);
 //   * no rows renders an empty table instead of the typed "No usage rows yet" state (D5, AC4);
@@ -54,7 +54,7 @@ describe('UsageByModelDayTable', () => {
     expect(cells.getByText('Not measured')).toBeInTheDocument();
     expect(cells.getByText('1 unmeasured')).toBeInTheDocument();
     expect(screen.queryByText(/^\$?0(?:\.0+)?$/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/\$4/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/\$4.00/)).not.toBeInTheDocument();
   });
 
   it('renders a measured zero as $0.00 and no unmeasured run as none', () => {
@@ -65,10 +65,10 @@ describe('UsageByModelDayTable', () => {
     expect(screen.queryByText('Not measured')).not.toBeInTheDocument();
   });
 
-  it('formats a Postgres NUMERIC as served money, without summing or rounding past 8 places', () => {
+  it('formats a Postgres NUMERIC as served money, with the approved two-decimal display', () => {
     render(<UsageByModelDayTable rows={[row({ measured_cost_usd: '0.25000000' }), row({ model_id: 'm2', measured_cost_usd: 0.00012345 })]} />);
     expect(screen.getByText('$0.25')).toBeInTheDocument();
-    expect(screen.getByText('$0.00012345')).toBeInTheDocument();
+    expect(screen.getByText('$0.01')).toBeInTheDocument();
     expect(screen.queryByText(/0\.25000000/)).not.toBeInTheDocument();
   });
 

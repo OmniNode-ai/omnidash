@@ -21,3 +21,5 @@
 [data-theme="dark"] [data-destination="sea-control"] { --nav-accent: #B0BD8C; }
 [data-theme="dark"] [data-destination="event-bus"] { --nav-accent: #9AAED4; }
 [data-theme="dark"] [data-destination="lab"] { --nav-accent: #CFAD8D; }
+
+svg.destination-icon { color: var(--nav-accent); }

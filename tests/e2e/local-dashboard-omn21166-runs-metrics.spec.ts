@@ -9,11 +9,24 @@ const savings = prefix + 'delegation.savings.v1';
 const rows = {
   ...chartRows,
   [decisions]: chartRows[decisions].map((row, i) => ({ ...(row as object),
-    cost_usd: ['0.012345', '0', null][i], actual_score: ['0.987654', 0, null][i],
+    cost_usd: ['12.345', '0', null][i], actual_score: ['0.987654', 0, null][i],
   })),
-  [savings]: [{ sessions: [{ session_id: runIds[0], local_cost_usd: '0.001234' }] }],
+  [savings]: [{ sessions: [{ session_id: runIds[0], local_cost_usd: '1.234' }] }],
 };
 test.use({ viewport: { width: 1440, height: 900 }, trace: 'on' });
+
+test('fractional median duration retains milliseconds instead of the integer count format', async ({ page }, info) => {
+  // Two integer durations, 813 and 210, produce a valid fractional median.
+  await serveCharts(page, rows);
+  await page.goto('/overview');
+  const metric = page.locator('.local-dashboard-metric').filter({ has: page.getByText('Median duration', { exact: true }) });
+  await expect(metric).toContainText('511.5 ms');
+  await page.goto('/runs');
+  await page.getByText('Show run analysis', { exact: true }).press('Enter');
+  await expect(page.getByText('Median 511.5 ms', { exact: true })).toBeVisible();
+  await expect(page.getByText('Not measured ms', { exact: true })).toHaveCount(0);
+  await page.screenshot({ path: info.outputPath('fractional-duration.png') });
+});
 
 test('cost and score show precise served values, zero and unknown, and open exact runs', async ({ page }, info) => {
   await serveCharts(page, rows);
@@ -23,7 +36,7 @@ test('cost and score show precise served values, zero and unknown, and open exac
   const score = page.getByRole('figure', { name: 'Quality score per run', exact: true });
   for (const chart of [cost, score]) await expect(chart.locator('.local-chart-canvas svg')).toBeVisible();
   await cost.getByLabel('Inspect run').selectOption(runIds[0]);
-  await expect(cost.getByRole('status')).toContainText('$0.001234'); // session cost wins over decision
+  await expect(cost.getByRole('status')).toContainText('$1.23'); // session cost wins over decision
   await score.getByLabel('Inspect run').selectOption(runIds[0]);
   await expect(score.getByRole('status')).toContainText('0.987654');
   await expect(score.getByRole('link', { name: 'Open run', exact: true })).toHaveAttribute('href', /chart-run-a/);

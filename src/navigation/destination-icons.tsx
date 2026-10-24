@@ -1,9 +1,10 @@
 import { Activity, BadgeCheck, Blocks, ChartColumn, FlaskConical, Gauge, KeyRound, LayoutDashboard, LockKeyhole, Radio, Workflow, type LucideIcon } from 'lucide-react';
 import type { AppPage } from '@/store/types';
+import { PAGE_LABELS } from './page-routes';
 import '@/styles/destination-identity.css';
 
 /** One destination identity for sidebar entries and page headers. */
-const ICONS: Partial<Record<AppPage, LucideIcon>> = {
+export const DESTINATION_ICONS: Partial<Record<AppPage, LucideIcon>> = {
   'local-overview': LayoutDashboard,
   'local-runs': Activity,
   'local-workflow': Workflow,
@@ -17,6 +18,8 @@ const ICONS: Partial<Record<AppPage, LucideIcon>> = {
   lab: Gauge,
 };
 export function DestinationIcon({ page, size = 16 }: { page: AppPage; size?: number }) {
-  const Icon = ICONS[page];
-  return Icon ? <Icon size={size} aria-hidden="true" /> : null;
+  const Icon = DESTINATION_ICONS[page];
+  return Icon ? <Icon className="destination-icon" data-destination={page}
+    data-semantic-concept={`destination:${page}`} data-semantic-label={PAGE_LABELS[page]}
+    size={size} aria-hidden="true" /> : null;
 }

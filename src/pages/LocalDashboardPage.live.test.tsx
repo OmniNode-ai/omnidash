@@ -193,7 +193,7 @@ describe('LocalDashboardPage widget states (F26, F27)', () => {
       : Promise.resolve(topic === DECISIONS ? [decisionRow('run-1')] : [{ sessions: [] }]);
     await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
     const spend = screen.getByRole('heading', { name: 'Actual spend' }).closest('article')!;
-    expect(within(spend).getByText('$0.0069')).toBeInTheDocument();
+    expect(within(spend).getByText('$0.01')).toBeInTheDocument();
     expect(within(spend).getByRole('alert')).toHaveTextContent(/HTTP 503 Service Unavailable\)\.; last good 30s ago/);
   });
 });
@@ -280,13 +280,13 @@ describe('Partial pages (FR-3, CR-2, CR-3, AK-3, F24)', () => {
     await settle();
     const panel = screen.getByRole('heading', { name: 'Savings per day' }).closest('article')!;
     const table = within(panel).getByRole('table', { name: 'Savings per day vs claude-sonnet-5-5' });
-    for (const [start, savings, runs] of [['2026-10-01', '$0.50', '20'], ['2026-10-02', '$0.7184', '26']]) {
+    for (const [start, savings, runs] of [['2026-10-01', '$0.50', '20'], ['2026-10-02', '$0.71', '26']]) {
       const row = within(table).getByRole('row', { name: new RegExp(start) });
       for (const value of [start, savings, runs]) expect(within(row).getByText(value)).toBeInTheDocument();
     }
     // The all row is the Overview headline (OV-3): served to this panel too, but never rendered as a day.
     expect(within(table).getAllByRole('row')).toHaveLength(3);
-    expect(within(panel).queryByText('$1.2184')).not.toBeInTheDocument();
+    expect(within(panel).queryByText('$1.21')).not.toBeInTheDocument();
     expect(within(panel).queryByText(/Not available yet/)).not.toBeInTheDocument();
   });
 
@@ -317,7 +317,7 @@ describe('Partial pages (FR-3, CR-2, CR-3, AK-3, F24)', () => {
   it('Credentials with no key ref shows the onex secret set command and no input', async () => {
     render(<LocalDashboardPage pageName="credentials" />);
     await settle();
-    expect(screen.getByText('No provider key set')).toBeInTheDocument();
+    expect(screen.getByText('No provider credentials recorded')).toBeInTheDocument();
     expect(screen.getByText('onex secret set')).toBeInTheDocument();
     expect(document.querySelector('input, textarea, form')).toBeNull();
   });

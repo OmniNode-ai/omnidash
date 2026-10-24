@@ -1,3 +1,4 @@
+import { formatDashboardCount } from '@/lib/dashboard-count';
 // OMN-20006 Amendment 1 (US-3): savings per UTC day against the one baseline, from metering-summary.v1.
 //
 // node_projection_metering_summary serves one `day` row per UTC day and one `all` row per baseline model, from one
@@ -10,6 +11,7 @@ import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionSnapshotQuery } from '@/hooks/useProjectionSnapshotQuery';
 import { TOPICS } from '@shared/types/topics';
 import { formatUsd } from './UsageByModelDayWidget';
+import { useState } from 'react';
 
 /** The subset of metering-summary.v1 columns the series renders. */
 export interface MeteringSummaryRow {
@@ -37,7 +39,7 @@ function savings(row: MeteringSummaryRow): string {
 }
 
 /** Day rows grouped by the baseline they are stated against, each group in served order. */
-function byBaseline(rows: readonly unknown[]): Array<[string, MeteringSummaryRow[]]> {
+export function meteringDaysByBaseline(rows: readonly unknown[]): Array<[string, MeteringSummaryRow[]]> {
   const groups = new Map<string, MeteringSummaryRow[]>();
   for (const value of rows) {
     if (typeof value !== 'object' || value === null) continue;
@@ -54,28 +56,42 @@ function byBaseline(rows: readonly unknown[]): Array<[string, MeteringSummaryRow
  * MeteringTotalCard is), so a page that mounts it names no savings field (OMN-19980 R4).
  */
 export function MeteringDaySeries({ rows }: { rows: readonly unknown[] }) {
-  const series = byBaseline(rows);
+  const series = meteringDaysByBaseline(rows);
   if (series.length === 0) {
     return <p className="local-dashboard-empty" role="status">{NO_SAVINGS_ROWS}</p>;
   }
   return (
     <>
-      {series.map(([baseline, days]) => (
-        <div className="local-dashboard-table-wrap" key={baseline}>
+      {series.map(([baseline, days]) => <SavingsDays key={baseline} baseline={baseline} days={days} />)}
+      <p className="local-dashboard-caption">{SAVINGS_MODELLED}</p>
+    </>
+  );
+}
+
+const DAYS_PER_PAGE = 8;
+function SavingsDays({ baseline, days }: { baseline: string; days: MeteringSummaryRow[] }) {
+  const [requestedPage, setPage] = useState(0);
+  const last = Math.max(0, Math.ceil(days.length / DAYS_PER_PAGE) - 1);
+  const page = Math.min(requestedPage, last);
+  const start = page * DAYS_PER_PAGE;
+  return (
+        <div className="local-dashboard-table-wrap local-savings-days">
           <table aria-label={`Savings per day vs ${baseline}`}>
             <thead><tr><th>Day</th><th>{`Savings vs ${baseline}`}</th><th>Runs</th></tr></thead>
-            <tbody>{days.map((row, index) => (
+            <tbody>{days.slice(start, start + DAYS_PER_PAGE).map((row, index) => (
               <tr key={`${String(row.window_start)}-${index}`}>
                 <td data-label="Day">{isMissing(row.window_start) ? 'Not recorded' : String(row.window_start)}</td>
                 <td data-label={`Savings vs ${baseline}`}>{savings(row)}</td>
-                <td data-label="Runs">{isMissing(row.runs_total) ? 'Not recorded' : String(row.runs_total)}</td>
+                <td data-label="Runs">{isMissing(row.runs_total) ? 'Not recorded' : formatDashboardCount(row.runs_total)}</td>
               </tr>
             ))}</tbody>
           </table>
+          <nav className="local-savings-pagination" aria-label={`Savings days for ${baseline}`}>
+            <button type="button" className="local-filter-clear" aria-label={`Previous savings days for ${baseline}`} disabled={page === 0} onClick={() => setPage(page - 1)}>Previous</button>
+            <span role="status">{start + 1}–{Math.min(start + DAYS_PER_PAGE, days.length)} of {formatDashboardCount(days.length)} days</span>
+            <button type="button" className="local-filter-clear" aria-label={`Next savings days for ${baseline}`} disabled={page === last} onClick={() => setPage(page + 1)}>Next</button>
+          </nav>
         </div>
-      ))}
-      <p className="local-dashboard-caption">{SAVINGS_MODELLED}</p>
-    </>
   );
 }
 

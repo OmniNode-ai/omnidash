@@ -42,7 +42,7 @@ test('Evidence keeps small recorded cost and input/output availability independe
   await page.goto('/delegation-evidence');
   const selected = page.locator('.panel').filter({ has: page.getByRole('heading', { name: 'Selected run', exact: true }) });
   const value = (name: string) => selected.locator('.kv > div').filter({ has: page.getByText(name, { exact: true }) }).locator('.v');
-  await expect(value('Cost')).toHaveText('$0.001234');
+  await expect(value('Cost')).toHaveText('$0.01');
   await expect(value('Tokens in')).toHaveText('Not recorded');
   await expect(value('Tokens out')).toHaveText('0');
   await page.screenshot({ path: info.outputPath('uniform-precise-cost.png') });

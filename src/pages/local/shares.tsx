@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react';
+import { formatDashboardCount } from '@/lib/dashboard-count';
+import { useEffect, useState, type CSSProperties } from 'react';
+import { tierColor } from '@/lib/dashboard-colors';
 
 type Row = Record<string, unknown>;
 
@@ -60,7 +62,7 @@ export function tierShares(byTier: unknown): TierShares {
   return { segments, unmeasured };
 }
 
-/** The tiers the runtime names today get a fixed colour each; any other tier gets the neutral one. */
+/** Legacy CSS hook names; actual colour is resolved from the exact served tier identity. */
 export const TIER_TONES: Readonly<Record<string, string>> = {
   local: 'local',
   harness: 'harness',
@@ -69,7 +71,10 @@ export const TIER_TONES: Readonly<Record<string, string>> = {
   cloud: 'balanced',
   claude: 'claude',
   frontier: 'frontier',
+  customer_keys: 'customer-keys',
 };
+
+const tierStyle = (name: string) => ({ '--tier-color': tierColor(name) }) as CSSProperties;
 
 export const SHARES_OVER_WHOLE = 'The served tier shares add up to more than the whole, so the chart is not drawn';
 
@@ -143,12 +148,12 @@ export function TierShareChart({ byTier, variant = 'donut' }: { byTier: unknown;
           <ul className="local-tier-bars-list">
             {shaped.segments.map((segment, index) => (
               <li key={`${segment.name}-${index}`}>
-                <button type="button" className="local-tier-bar-select" data-tone={TIER_TONES[segment.name] ?? 'other'}
+                <button type="button" className="local-tier-bar-select" data-tone={TIER_TONES[segment.name] ?? 'other'} style={tierStyle(segment.name)}
                   aria-label={`Inspect ${segment.name}`} aria-pressed={selected === segment.name}
                   onClick={() => setSelected(segment.name)}>
-                  <span className="local-tier-bar-name"><span className="local-share-swatch" data-tone={TIER_TONES[segment.name] ?? 'other'} aria-hidden="true" />{segment.name}</span>
+                  <span className="local-tier-bar-name"><span className="local-share-swatch" data-tone={TIER_TONES[segment.name] ?? 'other'} style={tierStyle(segment.name)} aria-hidden="true" />{segment.name}</span>
                   <span className="local-tier-bar-track" aria-hidden="true"><span data-testid={`tier-bar-${segment.name}`} style={{ width: `${segment.share * 100}%` }} /></span>
-                  <span className="local-tier-bar-value"><strong>{percent(segment.share)}</strong><span>{segment.count == null ? 'Count not recorded' : `${typeof segment.count === 'number' ? segment.count.toLocaleString('en-US') : String(segment.count)} runs`}</span></span>
+                  <span className="local-tier-bar-value"><strong>{percent(segment.share)}</strong><span>{segment.count == null ? 'Count not recorded' : `${formatDashboardCount(segment.count)} runs`}</span></span>
                 </button>
               </li>
             ))}
@@ -157,6 +162,7 @@ export function TierShareChart({ byTier, variant = 'donut' }: { byTier: unknown;
       )}
       {shaped.segments.length > 0 && variant === 'donut' && (
         <div className="local-donut-row">
+          <div className="local-donut-wrap">
           <svg
             className="local-donut"
             viewBox="0 0 42 42"
@@ -170,6 +176,7 @@ export function TierShareChart({ byTier, variant = 'donut' }: { byTier: unknown;
                 data-testid="tier-segment"
                 data-tier={segment.name}
                 data-tone={TIER_TONES[segment.name] ?? 'other'}
+                style={tierStyle(segment.name)}
                 data-active={String(active === index || (active === null && selected === segment.name))}
                 data-start={units(starts[index]!)}
                 data-sweep={units(segment.share)}
@@ -182,13 +189,14 @@ export function TierShareChart({ byTier, variant = 'donut' }: { byTier: unknown;
                 <title>{`${segment.name}: ${percent(segment.share)} of tier-routed runs`}</title>
               </path>
             ))}
-            {focus && (
-              <text className="local-donut-focus" data-testid="tier-focus" x="21" y="21" textAnchor="middle">
-                <tspan x="21" dy="-0.2em">{focus.name}</tspan>
-                <tspan className="local-donut-focus-value" x="21" dy="1.25em">{percent(focus.share)}</tspan>
-              </text>
-            )}
           </svg>
+          {focus && (
+            <div className="local-donut-focus" data-testid="tier-focus">
+              <span>{focus.name}</span>
+              <span className="local-donut-focus-value">{percent(focus.share)}</span>
+            </div>
+          )}
+          </div>
           <ul className="local-share-legend">
             {shaped.segments.map((segment, index) => (
               <li
@@ -198,9 +206,9 @@ export function TierShareChart({ byTier, variant = 'donut' }: { byTier: unknown;
                 onBlur={() => setActive(null)}
                 {...mark(index)}
               >
-                <button type="button" className="local-tier-select" aria-label={`Inspect ${segment.name}`} aria-pressed={selected === segment.name}
+                <button type="button" className="local-tier-select" aria-label={`Inspect ${segment.name}`} aria-pressed={selected === segment.name} style={tierStyle(segment.name)}
                   onClick={() => setSelected(segment.name)}>
-                <span className="local-share-swatch" data-tone={TIER_TONES[segment.name] ?? 'other'} aria-hidden="true" />
+                <span className="local-share-swatch" data-tone={TIER_TONES[segment.name] ?? 'other'} style={tierStyle(segment.name)} aria-hidden="true" />
                 <span>{segment.name}</span>
                 <span className="local-share-value">{percent(segment.share)}</span>
                 </button>
@@ -210,7 +218,7 @@ export function TierShareChart({ byTier, variant = 'donut' }: { byTier: unknown;
         </div>
       )}
       {pinned && <div className="local-chart-detail" role="status"><strong>{pinned.name}</strong>
-        <span>{percent(pinned.share)} of tier-routed runs</span><span>{pinned.count == null ? 'Run count not measured' : `${String(pinned.count)} runs`}</span>
+        <span>{percent(pinned.share)} of tier-routed runs</span><span>{pinned.count == null ? 'Run count not measured' : `${formatDashboardCount(pinned.count)} runs`}</span>
         <button type="button" className="local-chart-reset" onClick={() => { setSelected(null); setActive(null); }}>Clear tier selection</button>
       </div>}
       {shaped.unmeasured.length > 0 && (

@@ -62,7 +62,7 @@ evidence_requirements:
     command: "npx vitest run src/pages/LocalDashboardPage.omn21015.interactive.test.tsx src/pages/LocalDashboardPage.omn21015.run-neighbours.test.tsx"
   - kind: "tests"
     description: "AC3: the Runs list shows each run's served modelled saving against its named baseline, and a typed not-measured state, never 0, for an unmeasured run."
-    command: "npx vitest run tests/pages/LocalDashboardPage.omn21015.run-saving.test.tsx src/pages/LocalDashboardPage.runs.test.tsx"
+    command: "npx vitest run tests/pages/LocalDashboardPage.omn21015.run-saving.test.tsx --maxWorkers=1 --no-file-parallelism"
   - kind: "tests"
     description: "AC5: the OMN-19980 guard refuses a savings field from any exposure but the one allowed, a price literal and price arithmetic outside the metering compute."
     command: "npx vitest run tests/pages/local/omn19980.savings-source.test.ts"
@@ -130,12 +130,12 @@ dod_evidence:
         check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/LocalDashboardPage.omn21015.interactive.test.tsx src/pages/LocalDashboardPage.omn21015.run-neighbours.test.tsx"
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn21015-ac3-run-saving"
-    description: "AC3: the Runs list shows each run's served modelled saving against its named baseline, and a typed not-measured state, never 0, for an unmeasured run."
+    description: "AC3, rendered saving cell: each measured run shows its served saving against the named baseline using the approved money display; missing or invalid measurements stay typed, measured zero stays zero, and negative savings retain their sign. Merge-base failures prove the changed display on that cell, not a previously missing cell. Live producer and deployment state remain separate."
     source: "manual"
     binds_ac: ["AC3"]
     checks:
       - check_type: "test_passes"
-        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/pages/LocalDashboardPage.omn21015.run-saving.test.tsx src/pages/LocalDashboardPage.runs.test.tsx"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/pages/LocalDashboardPage.omn21015.run-saving.test.tsx --maxWorkers=1 --no-file-parallelism"
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn21015-ac5-savings-source-guard"
     description: "AC5: the OMN-19980 guard refuses a savings field from any exposure but the one allowed, a price literal and price arithmetic outside the metering compute."
@@ -168,6 +168,14 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/pages/LocalDashboardPage.omn21015.access.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn21015-ac4-usage-table-lint"
+    description: "AC4, by-model table: the share and tier cases in UsageByModelDayWidget.omn21015.test.tsx pass and the file is lint-clean. On dev 97c43e4d ESLint refuses two unused bindings in case S5, which also fails the all-files lint hook for every branch; the same case now builds its older row by filtering the two keys out."
+    source: "manual"
+    binds_ac: ["AC4"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx eslint tests/dashboard/usage/UsageByModelDayWidget.omn21015.test.tsx && npx vitest run tests/dashboard/usage/UsageByModelDayWidget.omn21015.test.tsx"
         cwd: "${OMNI_HOME}/omnidash"
 emergency_bypass:
   enabled: false

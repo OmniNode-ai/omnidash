@@ -14,11 +14,16 @@ interface_change: false
 interfaces_touched: []
 requirements:
   - id: "req-transcribed-acceptance-criteria"
-    statement: "Acceptance criteria copied from the live ticket on 2026-10-22; the ticket remains the source. AC4 is proven only by browser specs, which the hosted control does not complete within its 30 s per-check budget, so it stays in the plan and its recorded report (317 built browser cases at 028ad331) and not in this repo-owned acceptance list, as the OMN-21166 contract does for its browser-only criteria. AC2, AC3, and AC5 are proven after the merge or in the plan record, not by a repo check, so they too stay out of this repo-owned acceptance list. Only AC1 is listed here."
+    statement: "Acceptance criteria copied from the live ticket; the ticket remains the source. AC4 is included for its Usage chart zoom-and-reset case only. The other AC4 interactions and their behavior-removal controls remain in the full browser suite and recorded reports; this narrow check does not prove all of AC4. The ticket's 2026-10-22 selection correction remains controlling for those other interactions. AC2, AC3 and AC5 require post-merge or plan-record evidence and are not bound here."
     acceptance:
       - id: "AC1"
         statement: "AC1: No visible text on the eleven destinations renders below 12 px at 1440x900 and 390x844 (measured 2026-10-22: Runs 25 strings, Workflow 17, Delegation Evidence 29, Experimentation 9, Agent Workbench 27, Event Bus 34, Lab 52) -- falsifier: npx playwright test of a font-size scan over all eleven pages that fails on any computed font-size under 12 px, with a planted 10 px element as its control"
+      - id: "AC4"
+        statement: "AC4: Browser tests cover the interactions the evidence run found untested: Usage chart zoom and reset, chart selection kept across pagination and refresh, a missing run id on the chart selector, tap-to-expand with aria-expanded on Evidence rows, and per-step icons with attempts on Workflow -- falsifier: npx playwright test of each new case, each failing on dev 5afbe1b8 with the behaviour removed"
 evidence_requirements:
+  - kind: "tests"
+    description: "AC4, Usage zoom-and-reset case only: selected date and exact two-decimal savings, range change and reset, retained selected day and unchanged served table. Other AC4 interactions are not covered by this command."
+    command: "npx playwright test tests/e2e/local-dashboard-verification-interactions.spec.ts --project=chromium --workers=1 --retries=0 --grep 'Usage zoom and reset preserve the selected day and exact served table'"
   - kind: "tests"
     description: "Computed-font census and interaction regression with planted small-text and behavior-removal controls."
     command: "npm run test:e2e -- tests/e2e/local-dashboard-readability-12px.spec.ts tests/e2e/local-dashboard-verification-interactions.spec.ts tests/e2e/local-dashboard-typography-hierarchy.spec.ts tests/e2e/local-dashboard-activity-window.spec.ts tests/e2e/local-dashboard-routing-disclosure.spec.ts --project=chromium --workers=1 --retries=0"
@@ -27,6 +32,22 @@ emergency_bypass:
   justification: ""
   follow_up_ticket_id: ""
 dod_evidence:
+  - id: "dod-omn21306-ac4-usage-zoom-reset"
+    description: >-
+      AC4, Usage chart zoom-and-reset case only: the browser case's savings readout assertion
+      requires the exact two-decimal suffix "Savings: $0.03" and no longer the stale six-decimal
+      0.030000 expectation that stopped the merged-build run before zoom and reset. The browser
+      case itself exceeds the hosted 30 s per-check budget, so this check reads the assertion at
+      the head; it fails at the merge base, where the six-decimal expectation remains. The
+      browser run (1 passed at the head, a 0.04 wrong-value control failing) is recorded in the
+      PR body. It covers none of the other AC4 interactions and changes no product behavior.
+    source: "manual"
+    binds_ac: ["AC4"]
+    checks:
+      - check_type: "test_passes"
+        check_value: '! grep -q "0[.]030000" tests/e2e/local-dashboard-verification-interactions.spec.ts && grep -q "toContainText(/Savings: \\\\[$]0\\\\[.]03[$]/);" tests/e2e/local-dashboard-verification-interactions.spec.ts'
+        cwd: "${OMNI_HOME}/omnidash"
+
   - id: "dod-omn21306-ac1-type-tokens"
     description: >-
       AC1: the shared type tokens text-xs, text-sm and text-md resolve to 12 px (0.75rem), the floor every
@@ -39,4 +60,19 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/styles/type-tokens.omn21306.test.ts"
+        cwd: "${OMNI_HOME}/omnidash"
+
+  - id: "dod-omn21306-ac1-source-font-floor"
+    description: >-
+      AC1 source regression: fixed px/rem font declarations in the shipped local dashboard stylesheet
+      and global base meet the 12 px floor, including component overrides that shared tokens do not
+      govern. A planted 11 px rem and 10 px literal demonstrate detection. Current dev retains SVG
+      focus declarations below the source floor; the focused browser regression separately verifies
+      the visible hover labels in a built page. This source check supplements, rather than replaces,
+      the full computed-font census above.
+    source: "manual"
+    binds_ac: ["AC1"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/styles/type-tokens.omn21306.test.ts tests/styles/font-floor.omn21306.test.ts --maxWorkers=1 --no-file-parallelism"
         cwd: "${OMNI_HOME}/omnidash"

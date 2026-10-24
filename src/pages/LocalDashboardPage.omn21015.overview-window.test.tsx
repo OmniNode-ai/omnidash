@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const METERING = 'onex.snapshot.projection.metering-summary.v1';
 const OVERVIEW = 'onex.snapshot.projection.cost.savings-overview.v1';
-const LEGACY_ALL = { window: 'all', captured_at: '2026-10-09T12:00:00Z', total_cost_usd: '0.0123', total_savings_usd: '0.002992', run_count: 23, measured_run_count: 23, tokens_total: 6134 };
+const LEGACY_ALL = { window: 'all', captured_at: '2026-10-09T12:00:00Z', total_cost_usd: '12.3000', total_savings_usd: '2.992000', run_count: 23, measured_run_count: 23, tokens_total: 6134 };
 const DAILY_UNAVAILABLE = 'Not measured: daily totals unavailable (UTC)';
 
 const harness = vi.hoisted(() => ({
@@ -38,21 +38,21 @@ const BASE = {
   runs_unknown_tokens: 0, runs_unknown_spend: 0,
 };
 // The three rows deliberately do not add up: all-time is not yesterday plus today, so a figure summed in the browser
-// from the day rows (0.0107) differs from the served all-time spend (0.0123) and from today's (0.0007).
+// from the day rows (10.70) differs from the served all-time spend (12.30) and from today's (0.70).
 const ALL_ROW = {
   ...BASE, window_kind: 'all', window_start: '', as_of: '2026-10-09T12:00:00Z', runs_total: 23, runs_measured: 23,
-  tokens_in: 5756, tokens_out: 378, spend_usd: 0.0123, counterfactual_usd: 0.015292, savings_usd: 0.002992,
-  savings_per_measured_run_usd: '0.000130',
+  tokens_in: 5756, tokens_out: 378, spend_usd: 12.3000, counterfactual_usd: 15.292000, savings_usd: 2.992000,
+  savings_per_measured_run_usd: '0.130000',
 };
 const YESTERDAY_ROW = {
   ...BASE, window_kind: 'day', window_start: '2026-10-08', as_of: '2026-10-08T23:50:00Z', runs_total: 20,
-  runs_measured: 20, tokens_in: 5000, tokens_out: 300, spend_usd: 0.01, counterfactual_usd: 0.012,
-  savings_usd: 0.002, savings_per_measured_run_usd: '0.000100',
+  runs_measured: 20, tokens_in: 5000, tokens_out: 300, spend_usd: 10.00, counterfactual_usd: 12.000,
+  savings_usd: 2.000, savings_per_measured_run_usd: '0.100000',
 };
 const TODAY_ROW = {
   ...BASE, window_kind: 'day', window_start: '2026-10-09', as_of: '2026-10-09T12:00:00Z', runs_total: 3,
-  runs_measured: 3, tokens_in: 756, tokens_out: 78, spend_usd: 0.0007, counterfactual_usd: 0.0019,
-  savings_usd: 0.0012, savings_per_measured_run_usd: '0.000400',
+  runs_measured: 3, tokens_in: 756, tokens_out: 78, spend_usd: 0.7000, counterfactual_usd: 1.9000,
+  savings_usd: 1.2000, savings_per_measured_run_usd: '0.400000',
 };
 
 async function open(pageName: 'overview' | 'usage', rows: unknown[], totals: unknown[] = [LEGACY_ALL]): Promise<void> {
@@ -87,7 +87,7 @@ describe('OMN-21015 AC7: the Overview tiles switch between today (UTC) and all t
   it('opens on all time, as it always has', async () => {
     await open('overview', [ALL_ROW, YESTERDAY_ROW, TODAY_ROW]);
     expect(screen.getByRole('radio', { name: 'All time' })).toHaveAttribute('aria-checked', 'true');
-    expect(figure('Actual spend')).toBe('$0.0123');
+    expect(figure('Actual spend')).toBe('$12.30');
     expect(figure('Agent calls')).toBe('23');
   });
 
@@ -103,8 +103,8 @@ describe('OMN-21015 AC7: the Overview tiles switch between today (UTC) and all t
   it('W6: secondary all-time metrics remain in the Overview disclosure', async () => {
     await open('overview', [ALL_ROW, YESTERDAY_ROW, TODAY_ROW]);
     fireEvent.click(screen.getByText('Additional runtime metrics', { selector: 'summary' }));
-    expect(figure('Baseline spend')).toBe('$0.0153');
-    expect(figure('Avg saving / call')).toBe('$0.000130');
+    expect(figure('Baseline spend')).toBe('$15.29');
+    expect(figure('Avg saving / call')).toBe('$0.13');
     expect(caption('Avg saving / call')).toContain('Over 23 measured runs');
   });
 
@@ -112,7 +112,7 @@ describe('OMN-21015 AC7: the Overview tiles switch between today (UTC) and all t
     await open('overview', [ALL_ROW, YESTERDAY_ROW, TODAY_ROW]);
     chooseWindow('today');
     chooseWindow('all');
-    expect(figure('Actual spend')).toBe('$0.0123');
+    expect(figure('Actual spend')).toBe('$12.30');
   });
 
   it("W3: a day with no runs says so, and shows neither 0 nor yesterday's figures", async () => {
@@ -139,13 +139,13 @@ describe('OMN-21015 AC7: the Overview tiles switch between today (UTC) and all t
   });
 
   it('W5: latest legacy captured_at selects All time independently of metering baselines', async () => {
-    await open('overview', [ALL_ROW, TODAY_ROW], [{ ...LEGACY_ALL, captured_at: '2026-10-09T09:00:00Z', total_savings_usd: '0.0099' }, LEGACY_ALL]);
-    expect(figure('Savings')).toBe('$0.0030');
+    await open('overview', [ALL_ROW, TODAY_ROW], [{ ...LEGACY_ALL, captured_at: '2026-10-09T09:00:00Z', total_savings_usd: '9.9000' }, LEGACY_ALL]);
+    expect(figure('Savings')).toBe('$2.99');
     chooseWindow('today'); expect(figure('Savings')).toBe(DAILY_UNAVAILABLE);
-    chooseWindow('all'); expect(figure('Savings')).toBe('$0.0030');
+    chooseWindow('all'); expect(figure('Savings')).toBe('$2.99');
   });
   it('W5: tied newest legacy timestamps are refused on every card', async () => {
-    await open('overview', [ALL_ROW, TODAY_ROW], [{ ...LEGACY_ALL, total_savings_usd: '0.0099' }, LEGACY_ALL]);
+    await open('overview', [ALL_ROW, TODAY_ROW], [{ ...LEGACY_ALL, total_savings_usd: '9.9000' }, LEGACY_ALL]);
     for (const title of ['Actual spend', 'Agent calls', 'Tokens processed', 'Savings']) expect(figure(title)).toBe('Not measured: ambiguous overview totals');
   });
 

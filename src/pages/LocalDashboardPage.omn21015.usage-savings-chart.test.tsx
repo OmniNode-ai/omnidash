@@ -82,7 +82,7 @@ describe('OMN-21015 U2: savings per day on Usage, as bars', () => {
     const panel = await open([row('day', '2026-10-12', '0.300000'), row('day', '2026-10-13', '0.412500', { runs_total: 7 })]);
     const rows = within(within(panel).getByRole('table')).getAllByRole('row').slice(1).map((tr) => [...tr.querySelectorAll('td')].map((td) => td.textContent));
     // The table writes a served decimal the way it did before the chart was added.
-    expect(rows).toEqual([['2026-10-12', '$0.30', '3'], ['2026-10-13', '$0.4125', '7']]);
+    expect(rows).toEqual([['2026-10-12', '$0.30', '3'], ['2026-10-13', '$0.41', '7']]);
   });
 
   it('V6: a day whose savings were not measured has no bar, not a bar of zero', async () => {

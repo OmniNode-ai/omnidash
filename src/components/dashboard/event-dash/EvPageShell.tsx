@@ -7,6 +7,7 @@ import { type ReactNode } from 'react';
 import type { AppPage } from '@/store/types';
 import { DestinationIcon } from '@/navigation/destination-icons';
 import '@/styles/event-dash.css';
+import '@/styles/dashboard-cards.css';
 
 export function EvPageShell({
   crumb,
@@ -31,9 +32,9 @@ export function EvPageShell({
       <div className="ev-page-head">
         <div className="ev-head-row">
           <div>
-            <div className="ev-crumb">{crumb}</div>
+            {destination !== 'delegation-evidence' && <div className="ev-crumb">{crumb}</div>}
             <h1 className="ev-title">{destination && <span className="ev-title-icon"><DestinationIcon page={destination} size={20} /></span>}{title}</h1>
-            <div className="ev-sub">{sub}</div>
+            {destination !== 'delegation-evidence' && <div className="ev-sub">{sub}</div>}
           </div>
           {headRight ? <div className="ev-head-right">{headRight}</div> : null}
         </div>

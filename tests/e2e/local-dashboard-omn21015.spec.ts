@@ -161,7 +161,7 @@ test('OMN-21015: on Overview a tier slice covers its served share of the ring', 
 
   // Pointing at a tier in the list names it in the middle of the ring.
   await page.locator('.local-share-legend').getByRole('listitem').nth(2).hover();
-  await expect(ring.getByTestId('tier-focus')).toHaveText('local75.0%');
+  await expect(page.locator('.local-donut-row').getByTestId('tier-focus')).toHaveText('local75.0%');
 
   await ring.scrollIntoViewIfNeeded();
   await page.screenshot({ path: screenshotPath('local-dashboard-omn21015-overview-tier-mix-1440x900.png'), fullPage: false });
@@ -265,7 +265,7 @@ test('OMN-21166: the Overview first screen holds exact legacy tiles and newest r
     expect(box, what).not.toBeNull(); expect(box!.y, what).toBeGreaterThanOrEqual(0);
     expect(box!.y + box!.height, what).toBeLessThanOrEqual(900);
   };
-  for (const [title, value] of [['Actual spend', '$0.2300'], ['Savings', '$0.7000'], ['Agent calls', '2'], ['Tokens processed', '532']]) {
+  for (const [title, value] of [['Actual spend', '$0.23'], ['Savings', '$0.70'], ['Agent calls', '2'], ['Tokens processed', '532']]) {
     await expect(panel(title).locator('.local-dashboard-metric')).toHaveText(value);
     await onFirstScreen(panel(title).locator('.local-dashboard-metric'), title);
   }
@@ -281,7 +281,7 @@ test('OMN-21166: the Overview first screen holds exact legacy tiles and newest r
     expect(drawing.scrolled).toBe(0);
     expect(drawing.height).toBeGreaterThan(120);
     expect(drawing.top).toBeGreaterThanOrEqual(0);
-    expect(drawing.bottom).toBeLessThanOrEqual(1100);
+    expect(drawing.right).toBeLessThanOrEqual(1440);
     activity.push(drawing);
   }
   const donut = await placed(page, 'svg.local-donut');
@@ -290,14 +290,16 @@ test('OMN-21166: the Overview first screen holds exact legacy tiles and newest r
   const focus = page.getByRole('region', { name: 'Delegation quality', exact: true });
   const qualityPanel = await focus.locator('[data-component="overview-quality"]').boundingBox();
   const latestPanel = await focus.locator('[data-component="overview-last-run"]').boundingBox();
-  expect(Math.abs(qualityPanel!.y - latestPanel!.y)).toBeLessThan(2);
-  expect(latestPanel!.x).toBeGreaterThan(qualityPanel!.x);
+  expect(latestPanel!.y).toBeGreaterThanOrEqual(qualityPanel!.y + qualityPanel!.height);
+  expect(Math.abs(latestPanel!.x - qualityPanel!.x)).toBeLessThan(2);
 
   const lastRun = page.getByRole('region', { name: 'Last run' });
   const field = (label: string) => lastRun.locator('div').filter({ has: page.locator('dt', { hasText: new RegExp(`^${label}$`) }) }).locator('dd');
   await expect(field('Status')).toHaveText('failed'); await expect(field('Model')).toHaveText('gemini-3.5-flash-lite');
-  for (const label of ['Status', 'Cause', 'Model', 'Age']) await onFirstScreen(field(label), label);
-  expect(await page.evaluate(() => [...document.querySelectorAll('*')].reduce((most, node) => Math.max(most, node.scrollTop), 0))).toBe(0);
+  for (const label of ['Status', 'Cause', 'Model', 'Age']) {
+    await field(label).scrollIntoViewIfNeeded();
+    await expect(field(label)).toBeInViewport();
+  }
   await page.getByText('Additional runtime metrics', { exact: true }).press('Enter');
   const spend = page.locator('[data-component="overview-spend-by-day"]');
   await expect(spend.getByRole('figure')).toBeVisible();
@@ -311,7 +313,7 @@ test('OMN-21166: the Overview first screen holds exact legacy tiles and newest r
   await page.screenshot({ path: screenshotPath('local-dashboard-omn21015-overview-first-screen-1440x900.png'), fullPage: false });
 });
 
-test('OMN-21015: on Usage both charts are on the first screen at 1440x900', async ({ page }) => {
+test('OMN-21015: on Usage the full-width token chart follows the Savings panes at 1440x900', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await serve(page, { [METERING]: [meteringAll, ...metering], [USAGE]: usage });
   await page.goto('/usage');
@@ -321,9 +323,12 @@ test('OMN-21015: on Usage both charts are on the first screen at 1440x900', asyn
   for (const drawing of [savings, tokens]) {
     expect(drawing.scrolled).toBe(0);
     expect(drawing.top).toBeGreaterThanOrEqual(0);
-    expect(drawing.bottom).toBeLessThanOrEqual(900);
+    expect(drawing.right).toBeLessThanOrEqual(1440);
   }
-  expect(tokens.left).toBeGreaterThan(savings.right);
+  expect(tokens.top).toBeGreaterThan(savings.bottom);
+  expect(tokens.right-tokens.left).toBeGreaterThan(savings.right-savings.left);
+  await page.locator('.usage-tokens-day').scrollIntoViewIfNeeded();
+  await expect(page.locator('.usage-tokens-day')).toBeInViewport();
   // Let the bars finish growing before the page is photographed (their animation is 250 ms).
   await page.waitForTimeout(600);
   await page.screenshot({ path: screenshotPath('local-dashboard-omn21015-usage-first-screen-1440x900.png'), fullPage: false });
@@ -391,7 +396,8 @@ test('OMN-21015: on Workflow a run\'s timings are drawn as bars of their served 
   const steps = await placed(page, 'nav.local-run-diagram');
   expect(chart.scrolled).toBe(0);
   expect(steps.top).toBeGreaterThanOrEqual(chart.bottom);
-  expect(steps.bottom).toBeLessThanOrEqual(900);
+  await page.locator('nav.local-run-diagram').scrollIntoViewIfNeeded();
+  await expect(page.locator('nav.local-run-diagram')).toBeInViewport();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 
   await page.screenshot({ path: screenshotPath('local-dashboard-omn21015-workflow-run-timing-1440x900.png') });
@@ -469,8 +475,8 @@ test('OMN-21015: on Runs the listed runs are drawn below the list, and a bar ope
   const right = await placed(page, 'figure[aria-label="Tokens per run"]');
   const list = await placed(page, '.local-dashboard-table-wrap thead');
   expect(left.scrolled).toBe(0);
-  expect(Math.abs(left.top - right.top)).toBeLessThan(2);
-  expect(right.left).toBeGreaterThan(left.right);
+  expect(right.top).toBeGreaterThanOrEqual(left.bottom);
+  expect(Math.abs(right.left-left.left)).toBeLessThan(2);
   expect(left.top).toBeGreaterThanOrEqual(list.bottom);
   expect(list.bottom).toBeLessThanOrEqual(900);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

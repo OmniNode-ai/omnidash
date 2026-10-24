@@ -65,13 +65,13 @@ import { LocalDashboardPage } from './LocalDashboardPage';
 import { loadLocalPageConfig, resolveLocalPageEmptyState } from '@/layout/local-page-loader';
 
 // Distinct figures, so a per-run saving or baseline price that reached the screen is found by its value.
-const LOCAL_COST = '$0.0011';
+const LOCAL_COST = '$1.10';
 const SESSION = {
-  session_id: 'corr-19980', created_at: '2026-10-05T12:00:00Z', model_name: 'Qwen3.8-27B', local_cost_usd: 0.0011,
-  cloud_cost_usd: 0.000901, counterfactual_baseline_usd: 0.000902, savings_usd: 0.000844,
+  session_id: 'corr-19980', created_at: '2026-10-05T12:00:00Z', model_name: 'Qwen3.8-27B', local_cost_usd: 1.1000,
+  cloud_cost_usd: 0.901000, counterfactual_baseline_usd: 0.902000, savings_usd: 0.844000,
   baseline_model: 'claude-opus-4-6', usage_source: 'measured', savings_method: 'measured',
 };
-const PER_RUN_SAVINGS_FIGURES = ['0.000901', '0.000902', '0.000844'];
+const PER_RUN_SAVINGS_FIGURES = ['$0.90', '$0.84'];
 
 function served(overrides: Record<string, unknown[] | Error> = {}) {
   harness.rows = {
@@ -81,7 +81,7 @@ function served(overrides: Record<string, unknown[] | Error> = {}) {
       tokens_input: 162, tokens_output: 52, task_type: 'summarization', cost_tier_name: 'local', actual_score: '1.000',
     }],
     [SAVINGS]: [{ tenant_id: 'tenant-a', baseline_model: 'claude-opus-4-6', pricing_manifest_version: '1', sessions: [SESSION] }],
-    [OVERVIEW]: [{ total_cost_usd: 0.01, total_savings_usd: 1.29, total_baseline_cost_usd: 1.3, measured_run_count: 4, zero_token_run_count: 0 }],
+    [OVERVIEW]: [{ total_cost_usd: 10.00, total_savings_usd: 1290.00, total_baseline_cost_usd: 1300.0, measured_run_count: 4, zero_token_run_count: 0 }],
     [ROUTING]: [{ tenant_id: 'tenant-a', by_tier: { local_call_share: 0.5, local_call_count: 2, total_call_count: 4, not_tier_routed_count: 0 } }],
     ...overrides,
   };
@@ -136,8 +136,8 @@ describe('OMN-19980 AC2b: a run shows its cost, never a per-run saving', () => {
     const snapshot = (row: Record<string, unknown>) => [{
       topic: DECISIONS, rows: [row], rowCount: 1, dataFreshness: 'fresh' as const, latestEventAt: null, readAt: '2026-10-05T12:00:00Z',
     }];
-    expect(resolveLocalPageEmptyState(page, snapshot({ total_cost_usd: 0.01, savings_usd: null }))).toBeNull();
-    expect(resolveLocalPageEmptyState(page, snapshot({ total_cost_usd: 0.01, baseline_state: 'BASELINE_UNRESOLVED' }))).toBe('BASELINE_UNRESOLVED');
+    expect(resolveLocalPageEmptyState(page, snapshot({ total_cost_usd: 10.00, savings_usd: null }))).toBeNull();
+    expect(resolveLocalPageEmptyState(page, snapshot({ total_cost_usd: 10.00, baseline_state: 'BASELINE_UNRESOLVED' }))).toBe('BASELINE_UNRESOLVED');
   });
 
   // A metering-summary.v1 card says why its own figure is missing, so its rows never decide the page (the rule
@@ -201,12 +201,12 @@ describe('OMN-19980 AC2c: a savings card with nothing measured or served says so
   it('C5: a null saving with an unresolved baseline is that card\'s state, not the page\'s', async () => {
     served({ [METERING]: [{ window_kind: 'all', baseline_model: 'claude-opus-4-6', baseline_state: 'unresolved', runs_measured: 3, savings_usd: null,
       // Amendment 2: Spend reads this same row, and is not priced at the baseline.
-      as_of: '2026-10-05T12:00:00+00:00', spend_usd: '0.010000' }] });
+      as_of: '2026-10-05T12:00:00+00:00', spend_usd: '10.000000' }] });
     await open('overview');
     const card = panel('Savings');
     expect(within(card).getByText('Baseline unresolved')).toBeInTheDocument();
     noFigure(card);
-    expect(within(panel('Actual spend')).getByText('$0.0100')).toBeInTheDocument();
+    expect(within(panel('Actual spend')).getByText('$10.00')).toBeInTheDocument();
     expect(within(panel('Recent runs')).getByText(LOCAL_COST)).toBeInTheDocument();
   });
 });
@@ -217,7 +217,7 @@ function meteringRow(overrides: Record<string, unknown>): Record<string, unknown
     tenant_id: 'tenant-a', window_kind: 'all', window_start: '', window_end: '2026-10-05T12:00:00+00:00',
     as_of: '2026-10-05T12:00:00+00:00', baseline_model: 'claude-sonnet-5-5', pricing_manifest_version: '3',
     baseline_state: 'resolved', runs_total: 9, runs_measured: 7, runs_unknown_tokens: 1, runs_unknown_spend: 1,
-    tokens_in: 1620, tokens_out: 520, spend_usd: '0.007100', counterfactual_usd: '1.232300', savings_usd: '1.225200',
+    tokens_in: 1620, tokens_out: 520, spend_usd: '7.100000', counterfactual_usd: '1232.300000', savings_usd: '1225.200000',
     ...overrides,
   };
 }
@@ -227,20 +227,20 @@ describe('OMN-19980 Step B: the Overview Savings total is metering-summary.v1\'s
 
   it('T1: shows the all row\'s savings_usd with that row\'s baseline and manifest, not another exposure\'s total', async () => {
     served({ [METERING]: [
-      meteringRow({ window_kind: 'day', window_start: '2026-10-05', savings_usd: '0.500000' }),
+      meteringRow({ window_kind: 'day', window_start: '2026-10-05', savings_usd: '500.000000' }),
       meteringRow({}),
     ] });
     await open('overview');
     const savings = panel('Savings');
-    expect(within(savings).getByText('$1.2252')).toBeInTheDocument();
+    expect(within(savings).getByText('$1,225.20')).toBeInTheDocument();
     expect(within(savings).getByText('Baseline claude-sonnet-5-5 · pricing manifest v3 · Not in this total: 1 run with no token counts, 1 run with no spend recorded')).toBeInTheDocument();
     expect(within(savings).getByText(/The baseline never ran\./)).toBeInTheDocument();
     // cost.savings-overview.v1 serves 1.29 and delegation.savings.v1 names claude-opus-4-6: neither reaches the card.
-    expect(within(savings).queryByText('$1.2900')).toBeNull();
+    expect(within(savings).queryByText('$1,290.00')).toBeNull();
     expect(within(savings).queryByText(/claude-opus-4-6/)).toBeNull();
-    expect(within(savings).queryByText('$0.5000')).toBeNull();
+    expect(within(savings).queryByText('$500.00')).toBeNull();
     // Amendment 2: Spend and Measured runs read the same all row now, not cost.savings-overview.v1 (0.01 and 4).
-    expect(within(panel('Actual spend')).getByText('$0.0071')).toBeInTheDocument();
+    expect(within(panel('Actual spend')).getByText('$7.10')).toBeInTheDocument();
     expect(within(panel('Agent calls')).getByText('7')).toBeInTheDocument();
   });
 
@@ -258,7 +258,7 @@ describe('OMN-19980 Step B: the Overview Savings total is metering-summary.v1\'s
     const savings = panel('Savings');
     expect(within(savings).getByText('Baseline unresolved')).toBeInTheDocument();
     noFigure(savings);
-    expect(within(panel('Actual spend')).getByText('$0.0071')).toBeInTheDocument();
+    expect(within(panel('Actual spend')).getByText('$7.10')).toBeInTheDocument();
     expect(within(panel('Recent runs')).getByText(LOCAL_COST)).toBeInTheDocument();
   });
 
@@ -272,19 +272,19 @@ describe('OMN-19980 Step B: the Overview Savings total is metering-summary.v1\'s
 
   it('T5: after a baseline change, the all row refreshed last (the baseline the runtime resolves now) is shown', async () => {
     served({ [METERING]: [
-      meteringRow({ baseline_model: 'claude-opus-4-6', as_of: '2026-10-04T08:00:00+00:00', savings_usd: '9.990000' }),
-      meteringRow({ baseline_model: 'claude-sonnet-5-5', as_of: '2026-10-05T12:00:00+00:00', savings_usd: '1.225200' }),
+      meteringRow({ baseline_model: 'claude-opus-4-6', as_of: '2026-10-04T08:00:00+00:00', savings_usd: '9990.000000' }),
+      meteringRow({ baseline_model: 'claude-sonnet-5-5', as_of: '2026-10-05T12:00:00+00:00', savings_usd: '1225.200000' }),
     ] });
     await open('overview');
     const savings = panel('Savings');
-    expect(within(savings).getByText('$1.2252')).toBeInTheDocument();
+    expect(within(savings).getByText('$1,225.20')).toBeInTheDocument();
     expect(within(savings).getByText('Baseline claude-sonnet-5-5 · pricing manifest v3 · Not in this total: 1 run with no token counts, 1 run with no spend recorded')).toBeInTheDocument();
-    expect(within(savings).queryByText('$9.9900')).toBeNull();
+    expect(within(savings).queryByText('$9,990.00')).toBeNull();
   });
 
   it('T6: two all rows refreshed at the same moment are refused by name, never one picked silently', async () => {
     served({ [METERING]: [
-      meteringRow({ baseline_model: 'claude-opus-4-6', savings_usd: '9.990000' }),
+      meteringRow({ baseline_model: 'claude-opus-4-6', savings_usd: '9990.000000' }),
       meteringRow({ baseline_model: 'claude-sonnet-5-5' }),
     ] });
     await open('overview');
@@ -311,21 +311,21 @@ describe('OMN-19980 Step B (Amendment 2): Spend, Measured runs and Tokens read t
 
   it('M1: each card shows the all row\'s own column, never cost.savings-overview.v1\'s figure or a day row\'s', async () => {
     served({ [METERING]: [
-      meteringRow({ window_kind: 'day', window_start: '2026-10-05', spend_usd: '0.002200', runs_total: 3, runs_measured: 2, tokens_in: 111, tokens_out: 22 }),
+      meteringRow({ window_kind: 'day', window_start: '2026-10-05', spend_usd: '2.200000', runs_total: 3, runs_measured: 2, tokens_in: 111, tokens_out: 22 }),
       meteringRow({}),
     ] });
     await open('overview');
     const spend = panel('Actual spend');
-    expect(within(spend).getByText('$0.0071')).toBeInTheDocument();
-    expect(within(spend).queryByText('$0.0100')).toBeNull();
-    expect(within(spend).queryByText('$0.0022')).toBeNull();
+    expect(within(spend).getByText('$7.10')).toBeInTheDocument();
+    expect(within(spend).queryByText('$10.00')).toBeNull();
+    expect(within(spend).queryByText('$2.20')).toBeNull();
     const measured = panel('Agent calls');
     expect(within(measured).getByText('7')).toBeInTheDocument();
     expect(within(measured).getByText('Of 9 runs · Unknown-token runs excluded: 1 · Unknown-spend runs excluded: 1')).toBeInTheDocument();
     expect(within(measured).queryByText('4')).toBeNull();
     expect(within(measured).queryByText(/Estimated runs excluded/)).toBeNull();
     const tokens = panel('Tokens processed');
-    expect(within(tokens).getByText('1,620 in · 520 out')).toBeInTheDocument();
+    expect(within(tokens).getByText('2.14K')).toBeInTheDocument();
     expect(within(tokens).queryByText(/Not available yet/)).toBeNull();
     expect(within(tokens).queryByText(/111/)).toBeNull();
   });
@@ -344,9 +344,9 @@ describe('OMN-19980 Step B (Amendment 2): Spend, Measured runs and Tokens read t
     served({ [METERING]: [meteringRow({ baseline_state: 'unresolved', pricing_manifest_version: null, counterfactual_usd: null, savings_usd: null })] });
     await open('overview');
     expect(within(panel('Savings')).getByText('Baseline unresolved')).toBeInTheDocument();
-    expect(within(panel('Actual spend')).getByText('$0.0071')).toBeInTheDocument();
+    expect(within(panel('Actual spend')).getByText('$7.10')).toBeInTheDocument();
     expect(within(panel('Agent calls')).getByText('7')).toBeInTheDocument();
-    expect(within(panel('Tokens processed')).getByText('1,620 in · 520 out')).toBeInTheDocument();
+    expect(within(panel('Tokens processed')).getByText('2.14K')).toBeInTheDocument();
     for (const title of HEADLINES) expect(within(panel(title)).queryByText('Baseline unresolved'), title).toBeNull();
   });
 
@@ -363,22 +363,22 @@ describe('OMN-19980 Step B (Amendment 2): Spend, Measured runs and Tokens read t
 
   it('M5: after a baseline change every card reads the all row refreshed last, the same row as Savings', async () => {
     served({ [METERING]: [
-      meteringRow({ baseline_model: 'claude-opus-4-6', as_of: '2026-10-04T08:00:00+00:00', savings_usd: '9.990000',
-        spend_usd: '0.555500', runs_total: 33, runs_measured: 31, tokens_in: 9999, tokens_out: 8888 }),
+      meteringRow({ baseline_model: 'claude-opus-4-6', as_of: '2026-10-04T08:00:00+00:00', savings_usd: '9990.000000',
+        spend_usd: '555.500000', runs_total: 33, runs_measured: 31, tokens_in: 9999, tokens_out: 8888 }),
       meteringRow({ baseline_model: 'claude-sonnet-5-5', as_of: '2026-10-05T12:00:00+00:00' }),
     ] });
     await open('overview');
-    expect(within(panel('Savings')).getByText('$1.2252')).toBeInTheDocument();
-    expect(within(panel('Actual spend')).getByText('$0.0071')).toBeInTheDocument();
+    expect(within(panel('Savings')).getByText('$1,225.20')).toBeInTheDocument();
+    expect(within(panel('Actual spend')).getByText('$7.10')).toBeInTheDocument();
     expect(within(panel('Agent calls')).getByText('7')).toBeInTheDocument();
-    expect(within(panel('Tokens processed')).getByText('1,620 in · 520 out')).toBeInTheDocument();
-    expect([...HEADLINES].map(figure)).toEqual([['$0.0071'], ['7'], ['1,620 in · 520 out']]);
+    expect(within(panel('Tokens processed')).getByText('2.14K')).toBeInTheDocument();
+    expect([...HEADLINES].map(figure)).toEqual([['$7.10'], ['7'], ['2.14K']]);
     expect(captions('Agent calls')).toEqual(['Of 9 runs · Unknown-token runs excluded: 1 · Unknown-spend runs excluded: 1']);
   });
 
   it('M6: two all rows refreshed at the same moment are refused by name on every card, never one picked', async () => {
     served({ [METERING]: [
-      meteringRow({ baseline_model: 'claude-opus-4-6', spend_usd: '0.555500', runs_measured: 31, tokens_in: 9999 }),
+      meteringRow({ baseline_model: 'claude-opus-4-6', spend_usd: '555.500000', runs_measured: 31, tokens_in: 9999 }),
       meteringRow({ baseline_model: 'claude-sonnet-5-5' }),
     ] });
     await open('overview');

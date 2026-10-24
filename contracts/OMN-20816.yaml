@@ -16,9 +16,20 @@ requirements:
           The dashboard lists each provider (Gemini, OpenRouter, OpenAI, Ollama) with its state: set up and last test passed, set up and last test failed (with the provider's reason), or not set up.
 evidence_requirements:
   - kind: "tests"
+    description: "AC1, full-page boundary: healthy provider states remain visible while the independent credentials projection is pending, not served or failed; provider-list failures retain their own message. One read-only list, never marked busy by the credential read."
+    command: "npx vitest run tests/pages/local/model-provider-boundary.omn20816.test.tsx"
+  - kind: "tests"
     description: "AC1, page part: the Credentials page lists the four providers in order, each in its served state (not set up, set up and not tested, last test passed, last test failed with the provider's reason) with its models. It offers no control or field to change a key, and the client only ever GETs /models (R1-R5)."
     command: "npx vitest run tests/pages/local/model-keys.omn20816.test.tsx"
 dod_evidence:
+  - id: "dod-omn20816-ac1-independent-provider-read"
+    description: "AC1 full-page provider list independent of the credential projection: pending, not-served and failed-empty credentials cannot hide a healthy provider list or its own typed failure. Healthy-empty control, exact provider order, one list/read and no mutation controls."
+    source: "manual"
+    binds_ac: ["AC1"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/pages/local/model-provider-boundary.omn20816.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn20816-ac1-read-only-providers"
     description: "AC1, page part: the four providers listed read-only in their served states, the failed one with the provider's reason. A lost, reordered or invented provider, a merged state, any key-entry control, or a client write fails. It does not prove the GET /models route, which omnimarket#4274 carries."
     source: "manual"

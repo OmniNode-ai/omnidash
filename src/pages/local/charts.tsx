@@ -1,5 +1,8 @@
+import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
+import { formatDashboardUsd } from '@/lib/dashboard-currency';
 import { useEffect, useId, useState } from 'react';
-import { ChartNoAxesCombined, CircleDollarSign, Gauge, Layers, RotateCcw, ScanLine, Timer, type LucideIcon } from 'lucide-react';
+import { RotateCcw, ScanLine } from 'lucide-react';
+import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { Link } from 'wouter';
 import { workflowHref } from '@/navigation/workflow-url-state';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
@@ -39,8 +42,8 @@ function useChartRange(keys: readonly string[]) {
   };
 }
 
-function ChartHeading({ title, detail, icon: Icon = ChartNoAxesCombined }: { title: string; detail: string; icon?: LucideIcon }) {
-  return <div className="local-chart-heading"><span className="local-chart-symbol" aria-hidden="true"><Icon size={17} /></span>
+function ChartHeading({ title, detail, concept }: { title: string; detail: string; concept: string }) {
+  return <div className="local-chart-heading"><span className="local-chart-symbol" aria-hidden="true"><ConceptIcon concept={concept} label={title} size={17} /></span>
     <div><h3>{title}</h3><p>{detail}</p></div><ScanLine size={16} className="local-chart-inspect-icon" aria-hidden="true" /></div>;
 }
 
@@ -48,7 +51,7 @@ function ChartRange({ count, range }: { count: number; range: ReturnType<typeof 
   const id = useId();
   if (count < 2) return null;
   return <div className="local-chart-range" role="group" aria-label="Chart range">
-    <span className="local-chart-range-label">Showing {range.first + 1}–{range.last + 1} of {count}</span>
+    <span className="local-chart-range-label">Showing {range.first + 1}–{range.last + 1} of {formatDashboardCount(count)}</span>
     <label htmlFor={`${id}-first`} className="sr-only">First point</label>
     <input id={`${id}-first`} type="range" min={0} max={count - 1} value={range.first} onChange={event => range.setFirst(Number(event.target.value))} />
     <label htmlFor={`${id}-last`} className="sr-only">Last point</label>
@@ -193,7 +196,7 @@ function seriesColours(count: number, places: readonly number[] | undefined): st
  * trust as measured, and an axis origin is not a figure. The baseline the bars stand on is still drawn.
  */
 export function valueAxisLabel(value: number): string {
-  return value === 0 ? '' : `$${value}`;
+  return value === 0 ? '' : formatDashboardUsd(value);
 }
 
 /** The option for the series that are shown. The chart draws no legend: the legend is the row of buttons above it. */
@@ -215,7 +218,7 @@ function optionFor(group: SpendByDayGroup, shown: ReadonlyArray<{ series: Served
         const index = params[0]?.dataIndex ?? 0;
         const lines = params.map((p) => {
           const served = shown[p.seriesIndex]?.series.served[index];
-          return `${p.marker}${asText(p.seriesName)}: ${served === null || served === undefined ? 'Not measured' : `$${asText(served)}`}`;
+          return `${p.marker}${asText(p.seriesName)}: ${served === null || served === undefined ? 'Not measured' : asText(formatDashboardUsd(served))}`;
         });
         return [asText(group.days[index] ?? ''), ...lines].join('<br/>');
       },
@@ -273,7 +276,7 @@ function SpendChartFigure({ group, title, colourPlaces }: { group: SpendByDayGro
   });
   return (
     <figure className="local-chart" aria-label={`${title} vs ${group.baseline}`} data-motion={motion.reduced ? 'reduced' : 'full'}>
-      <ChartHeading title="Daily comparison" detail={`Daily values · ${group.baseline}`} />
+      <ChartHeading concept="spend-daily" title="Daily comparison" detail={`Daily values · ${group.baseline}`} />
       <div className="local-chart-legend" role="group" aria-label="Series shown">
         {all.map(({ series, colour }) => (
           <button
@@ -298,7 +301,7 @@ function SpendChartFigure({ group, title, colourPlaces }: { group: SpendByDayGro
           {group.days.map((value, index) => <option key={`${value}-${index}`} value={index}>{value}</option>)}
         </select>
         {selectedDay !== null && <div className="local-chart-detail" role="status"><strong>{group.days[selectedDay]}</strong>
-          {group.series.map(series => <span key={series.key}>{series.name}: {series.served[selectedDay] == null ? 'Not measured' : `$${series.served[selectedDay]}`}</span>)}
+          {group.series.map(series => <span key={series.key}>{series.name}: {series.served[selectedDay] == null ? 'Not measured' : formatDashboardUsd(series.served[selectedDay])}</span>)}
         </div>}
       </div>
       <figcaption>{`${group.series.map((series) => series.name).join(', ')} per served day, against ${group.baseline}`}</figcaption>
@@ -465,7 +468,8 @@ function statusColour(status: string): string {
 
 /** A tick of a count axis; the origin carries no label, as on the money axis. */
 export function countAxisLabel(value: number): string {
-  return value === 0 ? '' : String(value);
+  // Axis coordinates can be fractional even when every recorded count is an integer.
+  return value === 0 ? '' : value.toLocaleString('en-US');
 }
 
 /** What both run charts share: the page's text colours and font, the runs along the bottom, the value axis. */
@@ -551,7 +555,7 @@ export function RunDurationChart({ runs, onOpen, title = 'Duration per run' }: {
   };
   return (
     <figure className="local-chart local-chart--runs" aria-label={title} data-motion={motion.reduced ? 'reduced' : 'full'}>
-      <ChartHeading title={title} detail="Explore the listed runs" icon={Timer} />
+      <ChartHeading title={title} detail="Explore the listed runs" concept="duration" />
       <div className="local-chart-legend" role="group" aria-label="Statuses shown">
         {statuses.map((status) => (
           <button type="button" className="local-chart-toggle" aria-pressed={!hidden.has(status)} key={status} onClick={() => toggle(status)}>
@@ -603,7 +607,7 @@ export function RunTokensChart({ runs, onOpen, title = 'Tokens per run' }: { run
         const index = params[0]?.dataIndex ?? 0;
         const lines = params.map((param) => {
           const served = shown[param.seriesIndex]?.points[index]?.served;
-          return `${param.marker}${asText(param.seriesName)}: ${served === null || served === undefined ? 'Not recorded' : asText(served)}`;
+          return `${param.marker}${asText(param.seriesName)}: ${served === null || served === undefined ? 'Not recorded' : asText(formatFullCount(served))}`;
         });
         return [...runTooltipHead(runs[index]), ...lines].join('<br/>');
       },
@@ -619,7 +623,7 @@ export function RunTokensChart({ runs, onOpen, title = 'Tokens per run' }: { run
   };
   return (
     <figure className="local-chart local-chart--runs" aria-label={title} data-motion={motion.reduced ? 'reduced' : 'full'}>
-      <ChartHeading title={title} detail="Explore the listed runs" icon={Layers} />
+      <ChartHeading title={title} detail="Explore the listed runs" concept="tokens" />
       <div className="local-chart-legend" role="group" aria-label="Series shown">
         {all.map((series) => (
           <button type="button" className="local-chart-toggle" data-field-tone={series.key === 'tokensIn' ? 'tokens-in' : 'tokens-out'} aria-pressed={!hidden.has(series.key)} key={series.key} onClick={() => toggle(series.key)}>
@@ -654,10 +658,10 @@ export function RunMetricChart({ runs, onOpen, metric }: {
   const color = tone(cost ? '--run-cost-accent' : '--run-score-accent', cost ? 0xb45309 : 0x047857);
   const valueText = (run: ListedRun) => {
     const served = point(run[metric]).served;
-    return `${label}: ${served === null ? 'Not recorded' : `${cost ? '$' : ''}${served}`}`;
+    return `${label}: ${served === null ? 'Not recorded' : cost ? formatDashboardUsd(served) : served}`;
   };
   const option = {
-    ...runChartFrame(runs, value => value === 0 ? '' : `${cost ? '$' : ''}${value}`),
+    ...runChartFrame(runs, value => value === 0 ? '' : cost ? formatDashboardUsd(value) : String(value)),
     ...range.option, ...motion.option,
     tooltip: {
       trigger: 'axis', axisPointer: { type: 'shadow' },
@@ -672,11 +676,11 @@ export function RunMetricChart({ runs, onOpen, metric }: {
     }],
   };
   return <figure className={`local-chart local-chart--runs local-chart--${metric}`} aria-label={title} data-motion={motion.reduced ? 'reduced' : 'full'}>
-    <ChartHeading title={title} detail={cost ? 'Recorded cost · USD' : 'Recorded quality score · original scale'} icon={cost ? CircleDollarSign : Gauge} />
+    <ChartHeading title={title} detail={cost ? 'Recorded cost · USD' : 'Recorded quality score · original scale'} concept={cost ? 'cost' : 'score'} />
     <div className="local-chart-coverage">
-      <span>{recordedCount} of {runs.length} recorded</span>
-      {recordedCount < runs.length && <span>{runs.length - recordedCount} not recorded</span>}
-      {allRecordedZero && <strong>{cost ? 'Recorded costs are $0' : 'Recorded scores are 0'}</strong>}
+      <span>{formatDashboardCount(recordedCount)} of {formatDashboardCount(runs.length)} recorded</span>
+      {recordedCount < runs.length && <span>{formatDashboardCount(runs.length - recordedCount)} not recorded</span>}
+      {allRecordedZero && <strong>{cost ? 'Recorded costs are $0.00' : 'Recorded scores are 0'}</strong>}
     </div>
     {measured ? <ReactEChartsCore echarts={echarts} option={option} notMerge opts={{ renderer: 'svg' }} className="local-chart-canvas" onEvents={openOnClick(runs, onOpen)} />
       : <p className="local-dashboard-empty local-chart-unmeasured">No recorded values for these runs</p>}

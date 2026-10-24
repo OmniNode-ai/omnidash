@@ -36,14 +36,15 @@ test('secondary figures stay accessible by keyboard and last run retains exact s
   await page.screenshot({path:info.outputPath('compact-required-details.png')});
 });
 
-test('quality and latest run share the focus surface; D2 spend remains accessible in its disclosure', async ({page}) => {
+test('quality and latest run have separate full-width rows; D2 spend remains accessible in its disclosure', async ({page}) => {
   await page.goto('/overview');
   const focus=page.getByRole('region',{name:'Delegation quality',exact:true});
   const quality=focus.locator('[data-component="overview-quality"]');
   const latest=focus.locator('[data-component="overview-last-run"]');
   await expect(quality).toBeVisible(); await expect(latest).toBeVisible();
   const q=await quality.boundingBox(), r=await latest.boundingBox();
-  expect(Math.abs(q!.y-r!.y)).toBeLessThan(2);
+  expect(r!.y).toBeGreaterThanOrEqual(q!.y + q!.height);
+  expect(Math.abs(q!.x-r!.x)).toBeLessThan(2);
   expect(q!.width).toBeGreaterThan(300); expect(r!.width).toBeGreaterThan(300);
   await page.getByText('Additional runtime metrics',{exact:true}).press('Enter');
   await expect(page.locator('[data-component="overview-spend-by-day"]')).toBeVisible();

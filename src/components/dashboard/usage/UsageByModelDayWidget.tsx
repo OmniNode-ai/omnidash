@@ -1,3 +1,6 @@
+import { ConceptIcon } from '@/components/dashboard/FieldIcon';
+import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
+import { modelColor } from '@/lib/dashboard-colors';
 // OMN-20006: tokens in, tokens out and measured cost per model per UTC day, from usage-by-model-day.v1.
 //
 // One renderer serves the local Usage page and the dashboard palette, and this module is the declared reader of
@@ -14,8 +17,8 @@
 //   * OMN-21015 AC4: each row's tier is the served `cost_tier_name` (one model under two tiers is two rows), and its
 //     share of calls is the served `call_share`, the row's calls over its tenant's calls that UTC day, formatted as a
 //     percentage. A row with no served share says so; no share is worked out here from the call counts.
-import { useEffect, useId, useState } from 'react';
-import { ArrowDownToLine, ArrowUpFromLine, ChevronLeft, ChevronRight, Filter, RotateCcw } from 'lucide-react';
+import { useEffect, useId, useState, type CSSProperties } from 'react';
+import { ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionSnapshotQuery } from '@/hooks/useProjectionSnapshotQuery';
 import { TOPICS } from '@shared/types/topics';
@@ -36,15 +39,8 @@ export interface UsageByModelDayRow {
   updated_at?: string;
 }
 
-/**
- * A served money value, formatted only: Postgres serves NUMERIC(18,8) as "0.25000000" and SQLite a float, so the
- * served number is shown with 2 to 8 decimals. Nothing is summed or rounded past the store's own 8 places.
- */
-export function formatUsd(value: unknown): string {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return `$${String(value)}`;
-  return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })}`;
-}
+import { formatDashboardUsd as formatUsd } from '@/lib/dashboard-currency';
+export { formatDashboardUsd as formatUsd } from '@/lib/dashboard-currency';
 
 export const NO_USAGE_ROWS = 'No usage rows yet';
 /** The series' own empty text, so a page that mounts the table and the series does not say one sentence twice. */
@@ -69,7 +65,7 @@ function measuredCost(value: unknown): string {
 
 function unmeasured(value: unknown): string {
   if (isMissing(value)) return 'Not recorded';
-  return Number(value) === 0 ? 'none' : `${String(value)} unmeasured`;
+  return Number(value) === 0 ? 'none' : `${formatDashboardCount(value)} unmeasured`;
 }
 
 /** OMN-21015: the served tier; a call that named none is served as not_tier_routed, which is not a tier. */
@@ -109,7 +105,7 @@ export function UsageByModelDayTable({ rows, interactive = false }: { rows: read
   return (
     <div className={interactive ? 'usage-records' : undefined}>
       {interactive && <div className="usage-record-controls local-dashboard-filters" role="group" aria-label="Filter usage records">
-        <span className="usage-record-controls-title"><Filter size={15} aria-hidden="true" />Recorded rows</span>
+        <span className="usage-record-controls-title"><ConceptIcon concept="recorded-rows" label="Recorded rows" size={15} />Recorded rows</span>
         <label htmlFor={`${id}-model`}>Model<select id={`${id}-model`} aria-label="Filter usage model" value={activeModel} onChange={event => { setSelectedModel(event.target.value); setPage(0); }}>
           <option value="">All models</option>{models.map(name => <option value={name} key={name}>{name}</option>)}
         </select></label>
@@ -135,14 +131,14 @@ export function UsageByModelDayTable({ rows, interactive = false }: { rows: read
             <td data-label="Cost (measured)">{measuredCost(row.measured_cost_usd)}</td>
             <td data-label="Unmeasured">{unmeasured(row.unmeasured_call_count)}</td>
             <td data-label="Tier">{tier(row.cost_tier_name)}</td>
-            <td data-label="Calls">{recorded(row.call_count)}</td>
+            <td data-label="Calls">{isMissing(row.call_count) ? 'Not recorded' : formatDashboardCount(row.call_count)}</td>
             <td data-label="Share of calls">{callShare(row.call_share)}</td>
           </tr>
         ))}</tbody>
       </table>
     </div>
       {interactive && <div className="usage-record-pagination local-dashboard-pager">
-        <span role="status">{filtered.length ? `Showing ${currentPage * 25 + 1}–${Math.min((currentPage + 1) * 25, filtered.length)} of ${filtered.length} records` : 'No records match these filters'}</span>
+        <span role="status">{filtered.length ? `Showing ${currentPage * 25 + 1}–${Math.min((currentPage + 1) * 25, filtered.length)} of ${formatDashboardCount(filtered.length)} records` : 'No records match these filters'}</span>
         {filtered.length > 25 && <div><button type="button" aria-label="Previous usage records" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}><ChevronLeft size={16} aria-hidden="true" />Previous</button>
           <button type="button" aria-label="Next usage records" disabled={(currentPage + 1) * 25 >= filtered.length} onClick={() => setPage(currentPage + 1)}>Next<ChevronRight size={16} aria-hidden="true" /></button></div>}
       </div>}
@@ -157,7 +153,7 @@ const TOKEN_DIRECTIONS = [
 
 /** A served token count, grouped for reading. Formatting only: the number is the one the row carries. */
 function groupedCount(value: unknown): string {
-  return Number(value).toLocaleString('en-US', { maximumFractionDigits: 0 });
+  return formatFullCount(value);
 }
 
 /**
@@ -198,7 +194,7 @@ export function UsageTokensByDay({ rows }: { rows: readonly unknown[] }) {
     <figure className="local-chart usage-token-explorer" aria-label="Tokens by model and day">
       <div className="local-chart-legend" role="group" aria-label="Model highlight">
         {models.map(name => <button type="button" className="local-chart-toggle" key={name} aria-label={`Highlight ${name}`}
-          data-series={colorIndex(name)} aria-pressed={selection === name} onClick={() => setSelected(current => current === name ? null : name)}><span className="usage-model-swatch" aria-hidden="true" />{name}</button>)}
+          data-semantic-concept={`model:${name}`} data-semantic-label={name} data-series={colorIndex(name)} style={{ '--model-color': modelColor(name) } as CSSProperties} aria-pressed={selection === name} onClick={() => setSelected(current => current === name ? null : name)}><span className="usage-model-swatch" aria-hidden="true" />{name}</button>)}
         {selection && <button type="button" className="local-chart-reset" onClick={() => setSelected(null)}>Clear model highlight</button>}
       </div>
       {selection && <div className="local-chart-detail" role="status"><strong>{selection}</strong>
@@ -214,23 +210,24 @@ export function UsageTokensByDay({ rows }: { rows: readonly unknown[] }) {
             const uncounted = dayRows.filter((row) => isMissing(row[field]));
             return (
               <div className="usage-tokens-direction" key={direction}>
-                <span className="usage-tokens-label">{direction === 'in' ? <ArrowDownToLine size={14} aria-hidden="true" /> : <ArrowUpFromLine size={14} aria-hidden="true" />}{`Tokens ${direction}`}</span>
+                <span className="usage-tokens-label"><ConceptIcon concept={direction === 'in' ? 'tokens-in' : 'tokens-out'} size={14} />{`Tokens ${direction}`}</span>
                 {counted.length > 0 && (
                   <div className="usage-tokens-series">
                     <div className="usage-tokens-bar" aria-hidden="true" style={{ width: barWidth(dayRows, field) }}>
                       {counted.map((row, index) => (
                         <span
                           className="usage-tokens-fill"
+                          data-semantic-concept={`model:${model(row.model_id)}`} data-semantic-label={model(row.model_id)}
                           data-series={colorIndex(model(row.model_id))}
                           data-highlighted={selection === null || selection === model(row.model_id)}
                           key={`${String(row.model_id)}-${index}`}
-                          style={{ flexGrow: Number(row[field]), flexShrink: 1, flexBasis: '0px', minWidth: '0px' }}
+                          style={{ '--model-color': modelColor(model(row.model_id)), flexGrow: Number(row[field]), flexShrink: 1, flexBasis: '0px', minWidth: '0px' } as CSSProperties}
                         />
                       ))}
                     </div>
                     <ul className="usage-tokens-legend" aria-label={`Tokens ${direction} on ${day}, by model`}>
                       {counted.map((row, index) => (
-                        <li data-series={colorIndex(model(row.model_id))} data-highlighted={selection === null || selection === model(row.model_id)} key={`${String(row.model_id)}-${index}`}>
+                        <li data-semantic-concept={`model:${model(row.model_id)}`} data-semantic-label={model(row.model_id)} data-series={colorIndex(model(row.model_id))} style={{ '--model-color': modelColor(model(row.model_id)) } as CSSProperties} data-highlighted={selection === null || selection === model(row.model_id)} key={`${String(row.model_id)}-${index}`}>
                           {`${model(row.model_id)}: ${groupedCount(row[field])}`}
                         </li>
                       ))}

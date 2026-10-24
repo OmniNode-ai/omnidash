@@ -14,15 +14,16 @@ test('restores four exact legacy totals instead of unrelated metering values', a
     window_kind: 'all', as_of: '2026-10-19T16:01:00Z', spend_usd: 999, savings_usd: 999, runs_measured: 999, tokens_in: 999, tokens_out: 999,
   }] });
   await page.goto('/overview');
-  await expect(figure(page, 'overview-spend')).toHaveText('$3.3923');
-  await expect(figure(page, 'overview-savings')).toHaveText('$1,008.4709');
-  await expect(figure(page, 'overview-measured')).toHaveText('49,148');
-  await expect(figure(page, 'overview-tokens')).toHaveText('183,692,893');
+  await expect(figure(page, 'overview-spend')).toHaveText('$3.39');
+  await expect(figure(page, 'overview-savings')).toHaveText('$1,008.47');
+  await expect(figure(page, 'overview-measured')).toHaveText('49.14K');
+  await expect(figure(page, 'overview-tokens')).toHaveText('183.69M');
   await expect(card(page, 'overview-savings')).toContainText('Modelled');
-  // OMN-21166 AC37: every call (49,148 = 44,489 measured + 4,659 unknown) with the served classes beside it.
-  await expect(card(page, 'overview-measured')).toContainText('All calls');
-  await expect(card(page, 'overview-measured')).toContainText('44,489 measured');
-  await expect(card(page, 'overview-measured')).toContainText('4,659 unknown');
+  // OMN-21166 AC37: every call (49,148 = 44,489 measured + 4,659 unknown) with the served classes beside it; part 9
+  // AC45 drops the All calls caption, since the window switch names the window.
+  await expect(card(page, 'overview-measured')).not.toContainText('All calls');
+  await expect(card(page, 'overview-measured')).toContainText('44.48K measured');
+  await expect(card(page, 'overview-measured')).toContainText('4.65K unknown');
   await expect(page.locator('.local-overview-summary')).not.toContainText('999');
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 900 });
@@ -47,19 +48,19 @@ test('one absent or malformed total does not erase the other cards or borrow ano
   await page.goto('/overview');
   await expect(figure(page, 'overview-spend')).toHaveText('Not measured');
   await expect(figure(page, 'overview-tokens')).toHaveText('Not measured');
-  await expect(figure(page, 'overview-savings')).toHaveText('$1,008.4709');
-  await expect(figure(page, 'overview-measured')).toHaveText('49,148');
+  await expect(figure(page, 'overview-savings')).toHaveText('$1,008.47');
+  await expect(figure(page, 'overview-measured')).toHaveText('49.14K');
 });
 
 test('never presents all-time legacy totals as today', async ({ page }) => {
   await serveCharts(page, { ...chartRows, [topic]: [legacy] });
   await page.goto('/overview');
-  await expect(figure(page, 'overview-measured')).toHaveText('49,148');
+  await expect(figure(page, 'overview-measured')).toHaveText('49.14K');
   await page.getByRole('radio', { name: 'Today (UTC)', exact: true }).click();
   for (const id of ['overview-spend', 'overview-savings', 'overview-measured', 'overview-tokens'])
     await expect(figure(page, id)).toHaveText('Not measured: daily totals unavailable (UTC)');
   await page.getByRole('radio', { name: 'All time', exact: true }).click();
-  await expect(figure(page, 'overview-measured')).toHaveText('49,148');
+  await expect(figure(page, 'overview-measured')).toHaveText('49.14K');
 });
 
 test('a day row cannot impersonate an all-time row', async ({ page }) => {
@@ -73,10 +74,10 @@ test('served legacy totals remain visible when every other exposure is empty', a
   const empty = Object.fromEntries(Object.keys(chartRows).map(name => [name, []]));
   await serveCharts(page, { ...empty, [topic]: [legacy] });
   await page.goto('/overview');
-  await expect(figure(page, 'overview-spend')).toHaveText('$3.3923');
-  await expect(figure(page, 'overview-savings')).toHaveText('$1,008.4709');
-  await expect(figure(page, 'overview-measured')).toHaveText('49,148');
-  await expect(figure(page, 'overview-tokens')).toHaveText('183,692,893');
+  await expect(figure(page, 'overview-spend')).toHaveText('$3.39');
+  await expect(figure(page, 'overview-savings')).toHaveText('$1,008.47');
+  await expect(figure(page, 'overview-measured')).toHaveText('49.14K');
+  await expect(figure(page, 'overview-tokens')).toHaveText('183.69M');
   await expect(page.locator('.local-dashboard-empty-state')).toHaveCount(0);
   await page.screenshot({ path: info.outputPath('legacy-only-overview.png'), fullPage: true });
 });
@@ -85,8 +86,8 @@ test('served legacy totals remain visible when every other exposure is empty', a
 for (const total_savings_usd of [legacy.total_savings_usd, -legacy.total_savings_usd]) test(`narrow ${total_savings_usd < 0 ? 'negative' : 'positive'} measured totals remain whole on one line without clipping a digit`, async ({ page }, info) => {
   await serveCharts(page, { ...chartRows, [topic]: [{ ...legacy, total_savings_usd }] });
   await page.goto('/overview');
-  await expect(figure(page, 'overview-tokens')).toHaveText('183,692,893');
-  await expect(figure(page, 'overview-savings')).toHaveText(total_savings_usd < 0 ? '-$1,008.4709' : '$1,008.4709');
+  await expect(figure(page, 'overview-tokens')).toHaveText('183.69M');
+  await expect(figure(page, 'overview-savings')).toHaveText(total_savings_usd < 0 ? '-$1,008.47' : '$1,008.47');
   for (const width of [390, 320]) {
     await page.setViewportSize({ width, height: 844 });
     const collapse = page.getByRole('button', { name: 'Collapse sidebar', exact: true });

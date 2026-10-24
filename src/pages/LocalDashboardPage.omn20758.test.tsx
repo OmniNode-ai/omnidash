@@ -63,7 +63,7 @@ describe('OMN-20758 Overview titles match the demo mockup', () => {
 
   it('T1: Actual spend shows the served total_cost_usd', async () => {
     await overview();
-    expect(figure('Actual spend')).toBe('$0.0123');
+    expect(figure('Actual spend')).toBe('$0.01');
   });
 
   // OMN-21166 AC37: Agent calls is every call, the served run_count; the measured count is its breakdown (T3).
@@ -74,7 +74,7 @@ describe('OMN-20758 Overview titles match the demo mockup', () => {
 
   it('T1: Tokens processed shows the served combined tokens_total', async () => {
     await overview();
-    expect(figure('Tokens processed')).toBe('6,134');
+    expect(figure('Tokens processed')).toBe('6.13K');
   });
 
   it('T2: none of the old titles renders', async () => {
@@ -84,9 +84,11 @@ describe('OMN-20758 Overview titles match the demo mockup', () => {
     }
   });
 
-  it('T3: Agent calls keeps its run-class caption', async () => {
+  it('T3: Agent calls keeps its run-class breakdown, without the All calls caption (OMN-21166 part 9 AC45)', async () => {
     await overview();
-    expect(within(card('Agent calls')).getByText('All calls')).toBeInTheDocument();
-    expect(within(card('Agent calls')).getByText('23 measured · 2 unknown')).toBeInTheDocument();
+    expect(within(card('Agent calls')).queryByText('All calls')).not.toBeInTheDocument();
+    // OMN-21166 AC46 draws each class in its own span, so the line is matched by its whole text.
+    expect(within(card('Agent calls')).getByText((_, el) => el?.classList.contains('local-run-classes') === true
+      && el.textContent === '23 measured · 2 unknown')).toBeInTheDocument();
   });
 });

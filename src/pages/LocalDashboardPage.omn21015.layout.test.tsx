@@ -52,7 +52,7 @@ const ORDER: Record<PageName, Array<[title: string, width: number]>> = {
     ['Compression', 6], ['Cache hit rate', 6],
   ],
   usage: [
-    ['Savings per day', 6], ['Tokens per day', 6],
+    ['Savings per day', 12], ['Tokens per day', 12],
     ['Usage insights', 12],
     ['Usage by model and day', 12],
   ],

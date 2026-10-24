@@ -16,7 +16,7 @@
       "title": "Savings per day",
       "row": 0,
       "col": 0,
-      "width": 6,
+      "width": 12,
       "height": 4,
       "data_source": "usage-savings-series",
       "config": {
@@ -44,9 +44,9 @@
     {
       "widget_id": "3b1f6a52-7d0e-4c1a-9a53-21015ac40001",
       "title": "Tokens per day",
-      "row": 0,
-      "col": 6,
-      "width": 6,
+      "row": 4,
+      "col": 0,
+      "width": 12,
       "height": 4,
       "data_source": "usage-tokens-by-day",
       "config": {
@@ -77,7 +77,7 @@
     {
       "widget_id": "04fdb053-495c-53f7-902a-728500f5003b",
       "title": "Usage insights",
-      "row": 4,
+      "row": 8,
       "col": 0,
       "width": 12,
       "height": 6,
@@ -102,7 +102,7 @@
     {
       "widget_id": "04fdb053-495c-53f7-902a-728500f5003a",
       "title": "Usage by model and day",
-      "row": 10,
+      "row": 14,
       "col": 0,
       "width": 12,
       "height": 4,
