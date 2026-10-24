@@ -344,6 +344,21 @@
       ]
     },
     {
+      "id": "dod-omn21166-ac44-first-screen-fit",
+      "description": "AC44: the visible basis line under Spend and Savings must not push the newest run off the Overview first screen; at 1440x900 the Overview default page keeps the newest run's Status within the viewport while every basis fact stays visible. Fails on dev 75cba467 CSS (newest-run Status bottom 944.90625 > 900).",
+      "source": "manual",
+      "binds_ac": [
+        "AC44"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-contracts.spec.ts --project=chromium --workers=1 --retries=0 --grep \"Overview is the default page and fits 1440x900\"",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
+    },
+    {
       "id": "dod-omn21166-ac47-token-directions",
       "description": "AC47 (part 9): under Tokens processed, input and output come only from the Overview aggregate's own row, on the savings-overview and the metering source alike; a direction the row does not serve reads Not measured, and a served delegation.token-usage row with other counts never appears there, beside a served-directions control. Behaviour already on dev c01586dd, so this binding uses the pinned gate's governed TEST_ONLY_DIFF path; lab mutants on that commit (a missing direction shown as 0, input borrowed from the total, directions always Not measured) each fail their own case and only that case.",
       "source": "manual",
