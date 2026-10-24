@@ -6,6 +6,9 @@ import { expect, test, type Page } from 'playwright/test';
 import { PAGE_LABELS, PAGE_PATHS } from '../../src/navigation/page-routes';
 import type { AppPage } from '../../src/store/types';
 import { chartRows, prefix, revealRunFields, serveCharts } from './omn21166-chart-fixtures';
+import { resolveCensusSourceSha } from './census-source.mjs';
+
+const sourceSha = resolveCensusSourceSha();
 
 // AC4 failure modes declared before implementation: an omitted destination or
 // disclosure, an empty census, an unmapped semantic icon, forged Lucide metadata,
@@ -606,7 +609,7 @@ test('AC4 Usage token-direction graphics match canonical fields in both themes',
     const readings = (await collect(page)).filter(row => row.medium === 'graphic' && /^field:tokens-(in|out)$/.test(row.concept));
     expect(readings).toHaveLength(2);
     states.push({ destination: 'local-usage', theme, developer: false, capturedAt: new Date().toISOString(),
-      source: process.env.OMNIDASH_TEST_SOURCE_SHA ?? 'uncommitted regression overlay', readings });
+      source: sourceSha, readings });
     writeFileSync(info.outputPath('token-direction-graphics.json'), JSON.stringify({ states, defects: defects(states) }, null, 2));
     await page.screenshot({ path: info.outputPath(`token-direction-${theme}.png`), fullPage: true });
     for (const row of readings) {
@@ -648,7 +651,7 @@ test('AC4 eleven-destination light/dark icon census includes expanded and Develo
         await settleStyles(page);
         const readings = await collect(page);
         states.push({ destination, theme, developer, capturedAt: new Date().toISOString(),
-          source: process.env.OMNIDASH_TEST_SOURCE_SHA ?? 'UNVERIFIED: source SHA not provided', readings });
+          source: sourceSha, readings });
         writeFileSync(info.outputPath('identity-census.json'), JSON.stringify({ data: 'governed response fixtures', states, defects: defects(states) }, null, 2));
         await page.screenshot({ path: info.outputPath(`${destination}-${theme}-developer-${developer}.png`), fullPage: true });
         if (destination === 'delegation-evidence') {
@@ -665,6 +668,6 @@ test('AC4 eleven-destination light/dark icon census includes expanded and Develo
   expect(states).toHaveLength(44);
   expect(new Set(states.map(state => state.destination)).size).toBe(11);
   expect(states.every(state => state.readings.some(row => row.kind === 'semantic')), 'positive semantic anchors on each loaded page').toBe(true);
-  expect(process.env.OMNIDASH_TEST_SOURCE_SHA, 'caller supplies exact tested source SHA').toMatch(/^[0-9a-f]{40}$/);
+  expect(sourceSha, 'census resolves exact tested source SHA').toMatch(/^[0-9a-f]{40}$/);
   expect(defects(states)).toEqual([]);
 });
