@@ -1690,6 +1690,8 @@ figure.local-chart.usage-insight { min-width: 0; margin: 0; padding: 14px; }
 [data-theme="dark"] .local-dashboard-panel[data-component="credentials-keys"] { --panel-accent: #FDA4AF; }
 .local-dashboard-panel[data-component="api-keys-local-identity"] { --panel-accent: #9A3412; }
 [data-theme="dark"] .local-dashboard-panel[data-component="api-keys-local-identity"] { --panel-accent: #FDBA74; }
+.local-dashboard-panel[data-component="api-keys-access"] { --panel-accent: var(--field-local-access); }
+[data-theme="dark"] .local-dashboard-panel[data-component="api-keys-access"] { --panel-accent: var(--field-local-access); }
 .local-dashboard-panel[data-component="api-keys-cloud"] { --panel-accent: #475569; }
 [data-theme="dark"] .local-dashboard-panel[data-component="api-keys-cloud"] { --panel-accent: #CBD5E1; }
 /* OMN-21166 approved mockup: the latest runs' result buttons, cause chip and the trends' clickable causes. */
