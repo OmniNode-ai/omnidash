@@ -26,6 +26,7 @@ import { InsightsSection, InsightsWindowContext, MeteringActivityInsights, Overv
 import { UsageInsights } from '@/pages/local/usage-insights';
 import { SinceLastVisit } from '@/pages/local/since-last-visit';
 import { ModelKeys } from '@/pages/local/model-keys';
+import { EnvironmentPanel } from '@/pages/local/environment';
 import { failureCauseLabel, failureDetailText, notAvailableYet, plainFailureMessage } from '@/pages/local/plain-text';
 import { RunFilterProvider, causeHref, causeLabelOf, useRunFilter } from '@/pages/local/run-filter';
 import { typedFailureCauseOf } from '@/pages/local/insights';
@@ -2035,6 +2036,7 @@ function bindingFailedEmpty(
 
 /** The icon beside a panel's title, by component. A component not listed here gets none; nothing depends on it. */
 export const PANEL_CONCEPTS: Readonly<Record<string, string>> = {
+  'overview-environment': 'host',
   'overview-spend': 'cost', 'overview-savings': 'savings', 'overview-measured': 'calls',
   'overview-tokens': 'tokens', 'overview-last-run': 'last', 'overview-recent-runs': 'recent',
   'overview-insights': 'analysis', 'usage-insights': 'usage-analysis', 'runs-insights': 'analysis',
@@ -2270,16 +2272,21 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
       && component.data_bindings?.[0]?.projection_topic !== METERING_SUMMARY_TOPIC
       && component.data_bindings?.[0]?.projection_topic !== LEGACY_OVERVIEW_TOPIC
       // OMN-21166: the trends follow the window themselves.
-      && component.component_id !== 'overview-insights';
+      && !['overview-insights', 'overview-environment'].includes(component.component_id);
     // GET /models has its own loading/error state; credential projection availability
     // must only gate the key-reference region, including its aria-busy state.
     const credentialProviders = component.component_id === 'credentials-keys';
+    const environment = component.component_id === 'overview-environment';
     const readContent = <>
         {pending ? <p className="local-dashboard-caption" role="status">Loading data…</p>
           : unbound && component.component_kind !== 'metric_card' ? <PendingState componentId={component.component_id} />
           : component.component_id === 'workflow-run-path' ? (
             <WorkflowRun component={component} snapshots={snapshots} requested={requestedRunId} onOpen={openRun} />
           ) : tokenFallback ? <DailyMeteringTokens data={tokenFallback} />
+          : environment ? (notServed || bindingFailedEmpty(component, snapshots)
+            ? <p className="local-dashboard-empty" role="status">Service health is not available yet.</p>
+            : <EnvironmentPanel rows={rows as Record<string, unknown>[]}
+                complete={!bindings.some(binding => snapshots.some(snapshot => snapshot.topic === binding.projection_topic && snapshot.failure))} />)
           : notServed ? <p className="local-dashboard-empty" role="status">{notServed}</p>
           : bindingFailedEmpty(component, snapshots) ? null
           : emptyState === 'NO_RUNS_YET' ? <NoRunsYet />
@@ -2393,6 +2400,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
               <section className="local-overview-summary" aria-label="Runtime summary">{renderGroup(overviewGroups.summary)}</section>
               <section className="local-overview-focus" aria-label="Delegation quality">{renderGroup(overviewGroups.focus)}</section>
             </div>
+            {renderGroup(['overview-environment'])}
             <section className="local-overview-insights" aria-label="Insights">
               {renderGroup(overviewGroups.insights)}
             </section>

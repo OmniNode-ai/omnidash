@@ -475,6 +475,22 @@
         "page_size": 25,
         "show_pagination": false
       }
+    },
+    {
+      "widget_id": "d81c24c4-7d91-4e64-8657-0f36916ea6a3",
+      "title": "Environment",
+      "row": 25,
+      "col": 0,
+      "width": 12,
+      "height": 4,
+      "data_source": "overview-environment",
+      "config": {
+        "config_kind": "status_grid",
+        "widget_type": "status_grid",
+        "columns": 3,
+        "show_labels": true,
+        "compact": false
+      }
     }
   ]
 }

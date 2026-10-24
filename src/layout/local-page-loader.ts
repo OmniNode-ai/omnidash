@@ -2,6 +2,7 @@ import meteringHeadlines from '../pages/local/overview-metering.headlines.json';
 import type { ProjectionSnapshot, ProtocolSnapshotSource } from '../data-source/protocol-snapshot-source';
 import { ProjectionReadRefusedError } from '../data-source/http-snapshot-source';
 import type { ModelComponentContract } from '../shared/types/generated/onex-models';
+import { COMPONENT_WIDGET_KINDS } from '@shared/types/component-manifest';
 import { isTenantNotConfiguredError } from '../data-source/projection-tenant';
 
 export type LocalPageName = 'overview' | 'runs' | 'workflow' | 'usage' | 'credentials' | 'api-keys';
@@ -18,9 +19,13 @@ export interface LocalDashboardView {
   theme?: string;
 }
 
+/** The existing manifest extension is local; generated core contracts stay unchanged. */
+export type LocalComponentContract = ModelComponentContract
+  | (Omit<ModelComponentContract, 'component_kind'> & { component_kind: 'alert_banner' });
+
 export interface LocalPageDocument {
   dashboard: LocalDashboardView;
-  components: ModelComponentContract[];
+  components: LocalComponentContract[];
   empty_state_reasons: LocalPageEmptyState[];
 }
 
@@ -113,6 +118,7 @@ export const isPerRunTopic = (topic: string): boolean => PER_RUN_TOPICS.has(topi
  * row's null saving is that row's own state, not the page's (OMN-20009).
  */
 export const METERING_SUMMARY_TOPIC = 'onex.snapshot.projection.metering-summary.v1';
+export const LOCAL_ENVIRONMENT_TOPIC = 'onex.snapshot.projection.local-environment.v1';
 
 const pageFiles = import.meta.glob('../pages/local/*.page.yaml', {
   eager: true,
@@ -137,9 +143,9 @@ function isDashboardView(value: unknown): value is LocalDashboardView {
     && Array.isArray(value.widgets);
 }
 
-function isComponentContract(value: unknown): value is ModelComponentContract {
+function isComponentContract(value: unknown): value is LocalComponentContract {
   if (!isRecord(value) || typeof value.component_id !== 'string' || typeof value.title !== 'string') return false;
-  if (!['chart', 'table', 'metric_card', 'status_grid', 'event_feed'].includes(String(value.component_kind))) return false;
+  if (!COMPONENT_WIDGET_KINDS.some(kind => kind === value.component_kind)) return false;
   if (!isRecord(value.contract_version) || !Array.isArray(value.data_bindings)) return false;
   return value.data_bindings.every((binding) => isRecord(binding)
     && typeof binding.binding_id === 'string'
@@ -376,8 +382,9 @@ export function resolveLocalPageEmptyState(
 ): LocalPageEmptyState | null {
   // A metering-summary card says why its own figure is missing (a day with no measured run has a null saving), so
   // its rows never switch the whole page to Baseline unresolved or hide a NO_RUNS_YET page (OMN-20009 C3).
+  // Environment health is independent of runs too: a running service is not a recorded delegation.
   const rows = page.components
-    .filter((component) => component.data_bindings?.[0]?.projection_topic !== METERING_SUMMARY_TOPIC)
+    .filter((component) => ![METERING_SUMMARY_TOPIC, LOCAL_ENVIRONMENT_TOPIC].includes(component.data_bindings?.[0]?.projection_topic ?? ''))
     .flatMap((component) => rowsForLocalComponent(component, snapshots));
   // Only a component's first binding supplies its rows; a second binding is a caption (the savings card's baseline
   // line), so it must not switch a page into the Runs session-row rules.
@@ -391,7 +398,7 @@ export function resolveLocalPageEmptyState(
     return 'BASELINE_UNRESOLVED';
   }
   // A failed read is not an empty store: the widgets bound to it say why, and the page is not NO_RUNS_YET.
-  if (snapshots.some((snapshot) => snapshot.failure)) return null;
+  if (snapshots.some((snapshot) => snapshot.topic !== LOCAL_ENVIRONMENT_TOPIC && snapshot.failure)) return null;
   if (rows.length === 0 && page.empty_state_reasons.includes('NO_RUNS_YET')) {
     return 'NO_RUNS_YET';
   }

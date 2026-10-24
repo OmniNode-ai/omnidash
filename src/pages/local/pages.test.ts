@@ -98,6 +98,9 @@ describe('local dashboard page contracts', () => {
     const page = await readPage(pageName);
     expect(page.components.length).toBeGreaterThan(0);
     for (const component of page.components) {
+      // These page declarations remain core contracts. The loader also accepts
+      // the existing local-manifest alert extension without calling it core.
+      if (component.component_kind === 'alert_banner') throw new Error('Page declaration must remain core-valid');
       const coreComponent: ModelComponentContract = component;
       expect(componentValidator(coreComponent), JSON.stringify(componentValidator.errors)).toBe(true);
       for (const binding of coreComponent.data_bindings ?? []) {
@@ -321,6 +324,7 @@ describe('local pages against the captured lab catalogue', () => {
       'onex.snapshot.projection.cost.savings-overview.v1','onex.snapshot.projection.metering-summary.v1',
       'onex.snapshot.projection.delegation.savings.v1','onex.snapshot.projection.delegation.decisions.v1',
       'onex.snapshot.projection.delegation.quality-gate.v1','onex.snapshot.projection.delegation.model-routing.v1',
+      'onex.snapshot.projection.local-environment.v1',
     ]));
   });
 
