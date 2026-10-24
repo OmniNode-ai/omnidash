@@ -50,6 +50,10 @@
         {
           "id": "AC48",
           "statement": "AC48: omnidash's repo-evidence caller pins the omnibase_core receipt gate that takes check-timeout-seconds and passes \"300\", so each evidence check, browser checks included, may run 300 s before it is stopped. Falsifier: uv run pytest tests/ci/test_repo_evidence_caller_omn20073.py -q in omnidash fails at the merge base."
+        },
+        {
+          "id": "AC49",
+          "statement": "AC49: (approved plan amendment, 2026-10-24, Lakshman) at 1440x900 the Overview default page keeps the newest run's status, model and age within the first screen while AC44's basis line under Spend and Savings is visible (requirement Q2) -- falsifier: the bound check dod-omn21166-ac49-first-screen-fit in omnidash contracts/OMN-21166.yaml fails at the merge base"
         }
       ]
     },
@@ -344,6 +348,21 @@
         {
           "check_type": "test_passes",
           "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-headline-cleanup.spec.ts --project=chromium --workers=1 --retries=0",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
+    },
+    {
+      "id": "dod-omn21166-ac49-first-screen-fit",
+      "description": "AC49 (requirement Q2): with AC44's visible basis line under Spend and Savings, the newest run stays on the Overview first screen; at 1440x900 the Overview default page keeps the newest run's Status within the viewport while every basis fact stays visible. Fails on dev 75cba467 CSS (newest-run Status bottom 944.90625 > 900).",
+      "source": "manual",
+      "binds_ac": [
+        "AC49"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-contracts.spec.ts --project=chromium --workers=1 --retries=0 --grep \"Overview is the default page and fits 1440x900\"",
           "cwd": "${OMNI_HOME}/omnidash"
         }
       ]

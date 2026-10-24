@@ -27,25 +27,25 @@ requirements:
 evidence_requirements:
   - kind: "tests"
     description: "AC1 supplemental Usage input/output bars use their canonical field colours in light and dark. AC4 collector control rejects conflicting non-icon field graphics; actual token bars are compared against canonical colours. Covers these follow-up defects only, not the complete ticket."
-    command: "if ! test -d node_modules; then npm ci --no-audit --no-fund || exit $?; fi; source_sha=\"${OMNIDASH_TEST_SOURCE_SHA:-}\"; if [ -z \"$source_sha\" ]; then source_root=\"${OMNI_HOME:+$OMNI_HOME/omnidash}\"; source_sha=\"$(git -C \"${source_root:-.}\" rev-parse HEAD)\" || exit $?; fi; OMNIDASH_TEST_SOURCE_SHA=\"$source_sha\" node node_modules/playwright/cli.js test tests/e2e/local-dashboard-identity-census.omn21308.spec.ts --project=chromium --workers=1 --retries=0 --trace=on --grep 'non-icon field|Usage token-direction'"
+    command: "npm run --silent test:e2e -- tests/e2e/local-dashboard-identity-census.omn21308.spec.ts --project=chromium --workers=1 --retries=0 --trace=on --grep 'non-icon field' && npm run --silent test:e2e -- tests/e2e/local-dashboard-identity-census.omn21308.spec.ts --project=chromium --workers=1 --retries=0 --trace=on --grep 'Usage token-direction'"
   - kind: "tests"
     description: "AC1 supplemental Evidence field-colour consistency in light and dark: actual quality pass/fail statistics and bars, baseline cost, actual cost and savings bars, and the savings hero use their shared canonical concept colours. This focused check compares existing visible labels and rendered paint; it does not claim the full icon registry or eleven-destination census."
-    command: "if ! test -d node_modules; then npm ci --no-audit --no-fund || exit $?; fi; node node_modules/playwright/cli.js test tests/e2e/evidence-concept-colours.omn21308.spec.ts --project=chromium --workers=1 --retries=0 --trace=on"
+    command: "npm run --silent test:e2e -- tests/e2e/evidence-concept-colours.omn21308.spec.ts --project=chromium --workers=1 --retries=0 --trace=on"
   - kind: "tests"
     description: "AC1 named-tier colour consistency in light and dark: local and cloud table icons, served-share chart slices, share legends and run-count bars use the same canonical tier colour. This supplements the complete registry audit and retains the real three-palette base failure; chart geometry is not treated as a Lucide icon."
-    command: "if ! test -d node_modules; then npm ci --no-audit --no-fund || exit $?; fi; node node_modules/playwright/cli.js test tests/e2e/tier-identity.omn21308.spec.ts --project=chromium --workers=1 --retries=0 --trace=on"
+    command: "npm run --silent test:e2e -- tests/e2e/tier-identity.omn21308.spec.ts --project=chromium --workers=1 --retries=0 --trace=on"
   - kind: "tests"
     description: "Shared identity registry and actual declared colour/icon-pair audit, alias preservation and planted duplicate-pair control. The new test must be located under tests/identity so the unchanged receipt gate overlays it on merge-base product; a missing test is not a valid base failure."
-    command: "if ! test -d node_modules; then npm ci --no-audit --no-fund || exit $?; fi; node node_modules/vitest/vitest.mjs run tests/identity/FieldIcon.omn21308.test.tsx src/lib/dashboard-colors.test.ts --maxWorkers=1 --no-file-parallelism"
+    command: "npm run --silent test:run -- tests/identity/FieldIcon.omn21308.test.tsx src/lib/dashboard-colors.test.ts --maxWorkers=1 --no-file-parallelism"
   - kind: "tests"
     description: "Actual rendered Workflow model and passed/failed/unknown outcome icons, plus Without a tier in both themes. Full-page icon coverage is also recorded by the AC4 census; these focused cases do not by themselves prove every page."
-    command: "if ! test -d node_modules; then npm ci --no-audit --no-fund || exit $?; fi; node node_modules/playwright/cli.js test tests/e2e/local-dashboard-omn21308-identities.spec.ts --project=chromium --workers=1 --retries=0 --trace=on"
+    command: "npm run --silent test:e2e -- tests/e2e/local-dashboard-omn21308-identities.spec.ts --project=chromium --workers=1 --retries=0 --trace=on"
   - kind: "tests"
     description: "Actual donut/legend/token-widget model colours with an unpriced model first, exact-ID case distinction, reorder stability and routing-model agreement in both themes. Current dev already fixed position-based priced-model indexing; retain those cases as positive controls and cite the genuine current-base failures separately."
-    command: "if ! test -d node_modules; then npm ci --no-audit --no-fund || exit $?; fi; node node_modules/playwright/cli.js test tests/e2e/model-identity.omn21308.spec.ts --project=chromium --workers=1 --retries=0 --trace=on"
+    command: "npm run --silent test:e2e -- tests/e2e/model-identity.omn21308.spec.ts --project=chromium --workers=1 --retries=0 --trace=on"
   - kind: "tests"
     description: "All eleven existing destinations at 1440x900 in light/dark with Developer off/on and expanded recorded content. Records actual SVG shapes and computed paint with visible labels; fails on unmapped semantic icons, inconsistent concept identities, duplicate icon/colour pairs, forged icon metadata and empty census. Explicit action/decoration classifications and raw non-icon graphic paints remain in the JSON. Fixture execution proves rendering, not a live producer or deployed build."
-    command: "if ! test -d node_modules; then npm ci --no-audit --no-fund || exit $?; fi; source_sha=\"${OMNIDASH_TEST_SOURCE_SHA:-}\"; if [ -z \"$source_sha\" ]; then source_root=\"${OMNI_HOME:+$OMNI_HOME/omnidash}\"; source_sha=\"$(git -C \"${source_root:-.}\" rev-parse HEAD)\" || exit $?; fi; OMNIDASH_TEST_SOURCE_SHA=\"$source_sha\" node node_modules/playwright/cli.js test tests/e2e/local-dashboard-identity-census.omn21308.spec.ts --project=chromium --workers=1 --retries=0 --trace=on"
+    command: "npm run --silent test:e2e -- tests/e2e/local-dashboard-identity-census.omn21308.spec.ts --project=chromium --workers=1 --retries=0 --trace=on"
 emergency_bypass:
   enabled: false
   justification: ""
@@ -57,7 +57,7 @@ dod_evidence:
     binds_ac: ["AC1","AC4"]
     checks:
       - check_type: "test_passes"
-        check_value: "if ! test -d node_modules; then npm ci --no-audit --no-fund || exit $?; fi; source_sha=\"${OMNIDASH_TEST_SOURCE_SHA:-}\"; if [ -z \"$source_sha\" ]; then source_root=\"${OMNI_HOME:+$OMNI_HOME/omnidash}\"; source_sha=\"$(git -C \"${source_root:-.}\" rev-parse HEAD)\" || exit $?; fi; OMNIDASH_TEST_SOURCE_SHA=\"$source_sha\" node node_modules/playwright/cli.js test tests/e2e/local-dashboard-identity-census.omn21308.spec.ts --project=chromium --workers=1 --retries=0 --trace=on --grep 'non-icon field|Usage token-direction'"
+        check_value: "npm run --silent test:e2e -- tests/e2e/local-dashboard-identity-census.omn21308.spec.ts --project=chromium --workers=1 --retries=0 --trace=on --grep 'non-icon field' && npm run --silent test:e2e -- tests/e2e/local-dashboard-identity-census.omn21308.spec.ts --project=chromium --workers=1 --retries=0 --trace=on --grep 'Usage token-direction'"
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn21308-ac1-evidence-field-colours"
     description: "AC1 supplemental Evidence field-colour consistency in light and dark: actual quality pass/fail statistics and bars, baseline cost, actual cost and savings bars, and the savings hero use their shared canonical concept colours. This focused check compares existing visible labels and rendered paint; it does not claim the full icon registry or eleven-destination census."
@@ -65,7 +65,7 @@ dod_evidence:
     binds_ac: ["AC1"]
     checks:
       - check_type: "test_passes"
-        check_value: "if ! test -d node_modules; then npm ci --no-audit --no-fund || exit $?; fi; node node_modules/playwright/cli.js test tests/e2e/evidence-concept-colours.omn21308.spec.ts --project=chromium --workers=1 --retries=0 --trace=on"
+        check_value: "npm run --silent test:e2e -- tests/e2e/evidence-concept-colours.omn21308.spec.ts --project=chromium --workers=1 --retries=0 --trace=on"
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn21308-ac1-named-tier-colours"
     description: "AC1 named-tier colour consistency in light and dark: local and cloud table icons, served-share chart slices, share legends and run-count bars use the same canonical tier colour. This supplements the complete registry audit and retains the real three-palette base failure; chart geometry is not treated as a Lucide icon."
@@ -73,7 +73,7 @@ dod_evidence:
     binds_ac: ["AC1"]
     checks:
       - check_type: "test_passes"
-        check_value: "if ! test -d node_modules; then npm ci --no-audit --no-fund || exit $?; fi; node node_modules/playwright/cli.js test tests/e2e/tier-identity.omn21308.spec.ts --project=chromium --workers=1 --retries=0 --trace=on"
+        check_value: "npm run --silent test:e2e -- tests/e2e/tier-identity.omn21308.spec.ts --project=chromium --workers=1 --retries=0 --trace=on"
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn21308-ac1-shared-identity"
     description: "Shared identity registry and actual declared colour/icon-pair audit, alias preservation and planted duplicate-pair control. The new test must be located under tests/identity so the unchanged receipt gate overlays it on merge-base product; a missing test is not a valid base failure."
@@ -81,7 +81,7 @@ dod_evidence:
     binds_ac: ["AC1"]
     checks:
       - check_type: "test_passes"
-        check_value: "if ! test -d node_modules; then npm ci --no-audit --no-fund || exit $?; fi; node node_modules/vitest/vitest.mjs run tests/identity/FieldIcon.omn21308.test.tsx src/lib/dashboard-colors.test.ts --maxWorkers=1 --no-file-parallelism"
+        check_value: "npm run --silent test:run -- tests/identity/FieldIcon.omn21308.test.tsx src/lib/dashboard-colors.test.ts --maxWorkers=1 --no-file-parallelism"
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn21308-ac2-rendered-icons"
     description: "Actual rendered Workflow model and passed/failed/unknown outcome icons, plus Without a tier in both themes. Full-page icon coverage is also recorded by the AC4 census; these focused cases do not by themselves prove every page."
@@ -89,7 +89,7 @@ dod_evidence:
     binds_ac: ["AC2"]
     checks:
       - check_type: "test_passes"
-        check_value: "if ! test -d node_modules; then npm ci --no-audit --no-fund || exit $?; fi; node node_modules/playwright/cli.js test tests/e2e/local-dashboard-omn21308-identities.spec.ts --project=chromium --workers=1 --retries=0 --trace=on"
+        check_value: "npm run --silent test:e2e -- tests/e2e/local-dashboard-omn21308-identities.spec.ts --project=chromium --workers=1 --retries=0 --trace=on"
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn21308-ac3-model-colours"
     description: "Actual donut/legend/token-widget model colours with an unpriced model first, exact-ID case distinction, reorder stability and routing-model agreement in both themes. Current dev already fixed position-based priced-model indexing; retain those cases as positive controls and cite the genuine current-base failures separately."
@@ -97,7 +97,7 @@ dod_evidence:
     binds_ac: ["AC3"]
     checks:
       - check_type: "test_passes"
-        check_value: "if ! test -d node_modules; then npm ci --no-audit --no-fund || exit $?; fi; node node_modules/playwright/cli.js test tests/e2e/model-identity.omn21308.spec.ts --project=chromium --workers=1 --retries=0 --trace=on"
+        check_value: "npm run --silent test:e2e -- tests/e2e/model-identity.omn21308.spec.ts --project=chromium --workers=1 --retries=0 --trace=on"
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn21308-ac4-complete-census"
     description: "All eleven existing destinations at 1440x900 in light/dark with Developer off/on and expanded recorded content. Records actual SVG shapes and computed paint with visible labels; fails on unmapped semantic icons, inconsistent concept identities, duplicate icon/colour pairs, forged icon metadata and empty census. Explicit action/decoration classifications and raw non-icon graphic paints remain in the JSON. Fixture execution proves rendering, not a live producer or deployed build."
@@ -105,5 +105,5 @@ dod_evidence:
     binds_ac: ["AC2","AC4"]
     checks:
       - check_type: "test_passes"
-        check_value: "if ! test -d node_modules; then npm ci --no-audit --no-fund || exit $?; fi; source_sha=\"${OMNIDASH_TEST_SOURCE_SHA:-}\"; if [ -z \"$source_sha\" ]; then source_root=\"${OMNI_HOME:+$OMNI_HOME/omnidash}\"; source_sha=\"$(git -C \"${source_root:-.}\" rev-parse HEAD)\" || exit $?; fi; OMNIDASH_TEST_SOURCE_SHA=\"$source_sha\" node node_modules/playwright/cli.js test tests/e2e/local-dashboard-identity-census.omn21308.spec.ts --project=chromium --workers=1 --retries=0 --trace=on"
+        check_value: "npm run --silent test:e2e -- tests/e2e/local-dashboard-identity-census.omn21308.spec.ts --project=chromium --workers=1 --retries=0 --trace=on"
         cwd: "${OMNI_HOME}/omnidash"

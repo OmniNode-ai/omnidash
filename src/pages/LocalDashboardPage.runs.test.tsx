@@ -333,7 +333,7 @@ describe('OMN-19919 AC5, AC6: Runs lists failed runs with their typed cause', ()
     expect(cell('run-typed', 'Created').textContent).toBe('Oct 2, 10:05:00 UTC');
     expect(cell('run-typed', 'Status').textContent).toBe('failed');
     const typedCause = cell('run-typed', 'Cause');
-    expect(within(typedCause).getByText('provider_error')).toHaveAttribute('title', 'provider returned 503: upstream unavailable');
+    expect(within(typedCause).getByText('Provider error')).toHaveAttribute('title', 'provider returned 503: upstream unavailable');
     expect(within(typedCause).getByText('Read failure details')).toBeInTheDocument();
     expect(typedCause).toHaveTextContent('provider returned 503: upstream unavailable');
     for (const id of ['run-terminal', 'run-empty']) {
@@ -369,8 +369,8 @@ describe('OMN-19919 AC5, AC6: Runs lists failed runs with their typed cause', ()
   it('U7: with no typed cause served the cause is the detail\'s label, the full detail still readable', () => {
     render(<RunsTable now={NOW} decisions={decisions} sessions={[]} />);
     const legacy = cell('run-legacy', 'Cause');
-    expect(within(legacy).getByText('MALFORMED')).toHaveAttribute('title', 'MALFORMED: invalid syntax');
-    expect(legacy).toHaveTextContent('MALFORMED: invalid syntax');
+    expect(within(legacy).getByText('Malformed output')).toHaveAttribute('title', 'Malformed output: invalid syntax');
+    expect(legacy).toHaveTextContent('Malformed output: invalid syntax');
     fireEvent.change(screen.getByLabelText('Search runs'), { target: { value: 'invalid syntax' } });
     expect(listed()).toEqual(['run-legacy']);
   });
@@ -413,10 +413,10 @@ describe('OMN-19919: a whitespace-only typed cause falls back like a missing one
     const summaryCause = (container: HTMLElement) => container.querySelector('[data-summary-field="Cause"] dd')?.textContent;
 
     const card = render(<LastRunCard now={NOW} decisions={[withDetail]} sessions={[]} />);
-    expect(cardCause()).toBe('MALFORMED: invalid syntax');
+    expect(cardCause()).toBe('Malformed output: invalid syntax');
     card.unmount();
     const summary = render(<RunSummary decision={withDetail} />);
-    expect(summaryCause(summary.container)).toBe('MALFORMED: invalid syntax');
+    expect(summaryCause(summary.container)).toBe('Malformed output: invalid syntax');
     summary.unmount();
 
     const bareCard = render(<LastRunCard now={NOW} decisions={[noDetail]} sessions={[]} />);

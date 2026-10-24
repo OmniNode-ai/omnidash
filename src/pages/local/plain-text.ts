@@ -16,19 +16,33 @@ const FAILURE_CAUSE_LABELS: Readonly<Record<string, string>> = {
   refused_before_dispatch: 'Refused before dispatch', returned_to_caller: 'Returned to caller',
 };
 
+const LEGACY_FAILURE_LABELS: Readonly<Record<string, string>> = {
+  REFUSAL: 'Response refused', MALFORMED: 'Malformed output', WEAK_OUTPUT: 'Weak output',
+  TASK_MISMATCH: 'Task mismatch', SCHEMA_VIOLATION: 'Schema violation',
+};
+
 export function failureCauseLabel(cause: unknown): string {
   if (cause === null || cause === undefined) return 'Not recorded';
   if (typeof cause !== 'string') return 'Failure reason unavailable';
   const code = cause.trim();
   if (code === '' || code === 'Not recorded') return 'Not recorded';
   if (code === 'none') return 'None';
-  return Object.hasOwn(FAILURE_CAUSE_LABELS, code) ? FAILURE_CAUSE_LABELS[code] : 'Failure reason unavailable';
+  if (Object.hasOwn(FAILURE_CAUSE_LABELS, code)) return FAILURE_CAUSE_LABELS[code];
+  return Object.hasOwn(LEGACY_FAILURE_LABELS, code) ? LEGACY_FAILURE_LABELS[code] : 'Failure reason unavailable';
 }
 
 /** Keep readable detail; an opaque internal diagnostic remains explicitly unavailable. */
 export function failureDetailText(detail: string): string {
-  const codes = Object.keys(FAILURE_CAUSE_LABELS);
-  const text = detail.replace(new RegExp(`\\b(?:${codes.join('|')})\\b`, 'g'), code => FAILURE_CAUSE_LABELS[code]);
+  const exactCode = detail.trim();
+  if (Object.hasOwn(FAILURE_CAUSE_LABELS, exactCode)) return FAILURE_CAUSE_LABELS[exactCode];
+  const codes = Object.keys(FAILURE_CAUSE_LABELS).filter(code => code.includes('_'));
+  const text = detail
+    .replace(new RegExp(`\\b(?:${codes.join('|')})\\b`, 'g'), code => FAILURE_CAUSE_LABELS[code])
+    .replace(/(^|;\s*)(REFUSAL|MALFORMED|WEAK_OUTPUT|TASK_MISMATCH|SCHEMA_VIOLATION):\s*/g,
+      (_, separator: string, code: string) => `${separator}${LEGACY_FAILURE_LABELS[code]}: `)
+    .replace(/(^|;\s*)(?:[A-Z][A-Z0-9_]*|[a-z]+(?:_[a-z0-9]+)+):\s*/g, '$1')
+    .replace(/\bcode_generation\b/g, 'code generation');
+  if (!/[\p{L}\p{N}]/u.test(text)) return 'Failure details unavailable';
   return /\b[A-Z]{2,}(?:_[A-Z0-9]+)*:|^[A-Z][A-Z0-9_]*$|[a-z0-9-]+(?:\.[a-z0-9-]+)*\.v\d+|\b[a-z]+(?:_[a-z0-9]+)+\b|\b[A-Z]{2,}(?:_[A-Z0-9]+)+\b/.test(text)
     ? 'Failure details unavailable' : text;
 }

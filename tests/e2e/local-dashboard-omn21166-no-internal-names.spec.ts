@@ -82,8 +82,8 @@ test('typed failure labels preserve the exact served cause filter and selected r
   }
   await cause.selectOption('MALFORMED');
   const legacyCause = page.locator('.local-runs-wrap tbody [data-failure-cause="MALFORMED"]');
-  await expect(legacyCause).toHaveText('Failure reason unavailable');
-  await expect.soft(legacyCause).toHaveAttribute('title', 'Failure details unavailable');
+  await expect(legacyCause).toHaveText('Malformed output');
+  await expect.soft(legacyCause).toHaveAttribute('title', 'Malformed output: invalid syntax');
   await cause.selectOption('refused_before_dispatch');
   const labels = await cause.locator('option').allTextContents();
   for (const label of Object.values(causeLabels)) expect(labels).toContain(label);
