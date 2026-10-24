@@ -12,6 +12,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { RunsTable } from './LocalDashboardPage';
 
+const READABLE_CAUSE = 'Malformed output: response does not compile as Python: invalid syntax; Task mismatch: code generation response contains no code artifact';
 const NOW = Date.parse('2026-10-18T08:00:00Z');
 const CAUSE = 'MALFORMED: response does not compile as Python: invalid syntax; TASK_MISMATCH: code_generation response contains no code artifact';
 
@@ -42,10 +43,10 @@ describe('OMN-21166 AC27: Runs opens compact, all fields one switch away', () =>
   // the whole detail stays on the row, as the cause's title and under "Read failure details".
   it('P3: a long cause keeps its whole text as its title', () => {
     render(<RunsTable now={NOW} decisions={[run('run-b', { quality_gate_passed: false, quality_gate_detail: CAUSE })]} sessions={[]} />);
-    const cause = screen.getByTitle(CAUSE);
+    const cause = screen.getByTitle(READABLE_CAUSE);
     expect(cause).toHaveClass('local-runs-cause');
-    expect(cause.textContent).toBe('MALFORMED');
-    expect(screen.getByText('Read failure details').closest('details')?.textContent).toBe(`Read failure details${CAUSE}`);
+    expect(cause.textContent).toBe('Malformed output');
+    expect(screen.getByText('Read failure details').closest('details')?.textContent).toBe(`Read failure details${READABLE_CAUSE}`);
   });
 
   it('P4: a task type carries its own icon; a missing one reads Not recorded with no icon', () => {

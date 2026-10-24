@@ -42,10 +42,10 @@ describe('OMN-21166: Overview run filter', () => {
 
   it('F3: a cause in the trends narrows the latest runs to it, and can be cleared', () => {
     render(<RunFilterProvider><InsightsSection decisions={RUNS} now={NOW} /><RecentRunsTable decisions={RUNS} sessions={[]} now={NOW} /></RunFilterProvider>);
-    fireEvent.click(screen.getByRole('button', { name: 'Show runs failed by MALFORMED' }));
+    fireEvent.click(document.querySelector<HTMLButtonElement>('button[data-failure-cause="MALFORMED"]')!);
     expect(ids()).toEqual(['run-mal']);
-    expect(screen.getByRole('button', { name: 'Show runs failed by MALFORMED' })).toHaveAttribute('aria-pressed', 'true');
-    fireEvent.click(screen.getByRole('button', { name: 'Clear cause MALFORMED' }));
+    expect(document.querySelector<HTMLButtonElement>('button[data-failure-cause="MALFORMED"]')!).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Clear cause Malformed output' }));
     expect(ids()).toHaveLength(5);
   });
 
@@ -82,7 +82,7 @@ describe('OMN-19919: one cause function for the trends, the filter and the link'
     render(<RunFilterProvider><InsightsSection decisions={ROWS} now={NOW} /><RecentRunsTable decisions={ROWS} sessions={[]} now={NOW} /></RunFilterProvider>);
     const group = screen.getByRole('group', { name: 'Filter runs by result' });
     expect(within(group).getByRole('button', { name: /^Failed/ }).textContent).toBe('Failed 4');
-    fireEvent.click(screen.getByRole('button', { name: 'Show runs failed by provider_error' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Show runs failed by Provider error' }));
     expect(ids().sort()).toEqual(['run-503', 'run-mal']);
     fireEvent.click(screen.getByRole('button', { name: 'Show runs failed by Not recorded' }));
     expect(ids()).toEqual(['run-silent']);

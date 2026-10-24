@@ -189,7 +189,7 @@
     },
     {
       "id": "dod-omn21166-ac39-literal-name-matching",
-      "description": "AC39: the internal-name matcher treats exposure bases as literal text, including backslashes and regex metacharacters, rejects near matches, and retains its planted-name positive controls. The first check fails if regex escaping is incomplete; the remaining six walk the seven pages, one scenario per check (populated, served but empty, unserved, read refused, store has no table, missing tenant) so each fits the per-check budget, and fail if any visible text names an internal exposure, field or code.",
+      "description": "AC39: the internal-name matcher treats exposure bases as literal text, including backslashes and regex metacharacters, rejects near matches, and retains its planted-name positive controls. The first check fails if regex escaping is incomplete; the remaining six walk the seven pages, one scenario per check (populated, served but empty, unserved, read refused, store has no table, missing tenant) so each fits the per-check budget, and fail if any visible text names an internal exposure, field or code. Typed terminal failures also retain exact served filter and run identity while displaying friendly labels, including accessibility text.",
       "source": "manual",
       "binds_ac": [
         "AC39"
@@ -228,6 +228,11 @@
         {
           "check_type": "test_passes",
           "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-no-internal-names.spec.ts --project=chromium --workers=1 --retries=0 --grep \"no internal names on the seven pages: missing tenant$\"",
+          "cwd": "${OMNI_HOME}/omnidash"
+        },
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-no-internal-names.spec.ts --project=chromium --workers=1 --retries=0 --grep \"typed failure labels|typed terminal failures\"",
           "cwd": "${OMNI_HOME}/omnidash"
         }
       ]

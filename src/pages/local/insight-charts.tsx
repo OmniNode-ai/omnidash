@@ -5,6 +5,7 @@ import { formatDashboardUsd } from '@/lib/dashboard-currency';
 import { createContext, useContext, useId, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { causeHref, useSharedRunFilter } from './run-filter';
+import { failureCauseLabel } from './plain-text';
 import { Link } from 'wouter';
 import {
   NOT_RECORDED, causes, countBy, durationBuckets, summary, toInsightRuns, windowDays, windowRuns,
@@ -348,17 +349,17 @@ function FailureCauses({ runs, onInspectFailure }: { runs: InsightRun[]; onInspe
           {list.map((entry, index) => (
             <li key={entry.cause} className="ins-list-row ins-list-row--plain" style={{ '--ins-swatch': [FAIL, 'var(--ins-series-7)', 'var(--ins-series-5)', 'var(--ins-series-4)', 'var(--ins-series-3)'][index % 5] } as CSSProperties}>
               {shared || onInspectFailure ? (
-                <button type="button" className="ins-list-name ins-cause-button" aria-label={`Show runs failed by ${entry.cause}`}
+                <button type="button" className="ins-list-name ins-cause-button" data-failure-cause={entry.cause} aria-label={`Show runs failed by ${failureCauseLabel(entry.cause)}`}
                   aria-pressed={!onInspectFailure && shared?.filter.cause === entry.cause}
                   onClick={() => onInspectFailure ? onInspectFailure(entry.cause) : shared?.setFilter(shared.filter.cause === entry.cause ? { cause: null } : { result: 'failed', cause: entry.cause })}>
-                  {entry.cause}
+                  {failureCauseLabel(entry.cause)}
                 </button>
-              ) : <span className="ins-list-name">{entry.cause}</span>}
+              ) : <span className="ins-list-name" data-failure-cause={entry.cause}>{failureCauseLabel(entry.cause)}</span>}
               <span className="ins-track"><span className="ins-fill od-growx" style={{ width: `${(entry.count / max) * 100}%`, animationDelay: `${index * 60}ms` }} /></span>
               <span className="ins-list-value" data-field-tone="fail">{count(entry.count)}</span>
               <span className="ins-list-seen">
                 <span><SeenAt label="First seen" at={entry.firstSeen} /> · <SeenAt label="Last seen" at={entry.lastSeen} /></span>
-                <Link href={causeHref(entry.cause)} aria-label={`View runs failed by ${entry.cause}`}>View runs</Link>
+                <Link href={causeHref(entry.cause)} aria-label={`View runs failed by ${failureCauseLabel(entry.cause)}`}>View runs</Link>
               </span>
             </li>
           ))}
