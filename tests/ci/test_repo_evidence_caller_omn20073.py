@@ -108,6 +108,39 @@ def test_caller_pins_the_current_receipt_gate_and_verifier() -> None:
     assert version >= VERIFIER_FLOOR
 
 
+def test_timeout_criterion_is_declared_and_runs_its_core_falsifier() -> None:
+    """A passing caller check must not leave the live timeout criterion unbound.
+
+    The closer refused OMN-21166 as CRITERIA_DRIFT because the dashboard
+    contract omitted AC43. A declaration alone would instead be unbound; a
+    merge probe would not execute the timeout validation. Keep the actual
+    core test and this caller integration check together in the binding.
+    """
+    contract = _load(REPO_ROOT / "contracts" / "OMN-21166.yaml")
+    labels = {
+        criterion["id"]
+        for requirement in contract["requirements"]
+        for criterion in requirement["acceptance"]
+    }
+    assert "AC43" in labels, "live AC43 must be declared for the criteria-drift reader"
+    items = [item for item in contract["dod_evidence"] if "AC43" in item.get("binds_ac", [])]
+    assert len(items) == 1, "AC43 needs one executable binding, not a declaration alone"
+    checks = items[0]["checks"]
+    assert any(
+        check["check_type"] == "test_passes"
+        and check["cwd"] == "${OMNI_HOME}/omnibase_core"
+        and check["check_value"]
+        == "uv run pytest tests/ci/test_receipt_gate_check_timeout_omn21166.py -q -p no:randomly"
+        for check in checks
+    ), "AC43 must execute its core-owned timeout falsifier"
+    assert any(
+        check["check_type"] == "test_passes"
+        and check["cwd"] == "${OMNI_HOME}/omnidash"
+        and "tests/ci/test_repo_evidence_caller_omn20073.py" in check["check_value"]
+        for check in checks
+    ), "the binding must catch the dashboard integration gap at the merge base"
+
+
 def test_caller_gives_each_check_a_browser_sized_timeout() -> None:
     # A quoted whole number of seconds within the reusable's 1 to 900 range; an
     # unquoted or out-of-range value is refused there, and an absent one keeps 30 s.

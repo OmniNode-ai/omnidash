@@ -90,6 +90,16 @@
           "statement": "AC47: Under Tokens processed, input and output show only from fields the Overview aggregate itself serves for the same tenant, window and population as its tokens_total; a missing direction reads Not measured and nothing is borrowed from delegation.token-usage."
         }
       ]
+    },
+    {
+      "id": "req-timeout-gate-dependency",
+      "statement": "AC43 is implemented in omnibase_core. Declare the live criterion here as well and execute its core-owned falsifier through the pinned sibling checkout; the dashboard integration check prevents a declaration-only or missing-binding repair.",
+      "acceptance": [
+        {
+          "id": "AC43",
+          "statement": "AC43: (approved plan amendment, 2026-10-22, Jonah's comment on this ticket) omnibase_core's receipt gate takes a check-timeout-seconds input: an empty value keeps the verifier's 30 s per-check default, a whole number from 1 to 900 reaches both the head check and the merge-base control, and any other value is refused before the verifier is installed -- falsifier: uv run pytest tests/ci/test_receipt_gate_check_timeout_omn21166.py -q in omnibase_core fails at the merge base"
+        }
+      ]
     }
   ],
   "evidence_requirements": [
@@ -419,6 +429,26 @@
         {
           "check_type": "test_passes",
           "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-run-classes-ac46.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC46 measured absent and estimated 0\"",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
+    },
+    {
+      "id": "dod-omn21166-ac43-timeout-integration",
+      "description": "The core-owned timeout falsifier executes against the pinned sibling, and the dashboard caller integration check catches a missing AC43 declaration or executable binding at the merge base.",
+      "source": "manual",
+      "binds_ac": [
+        "AC43"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "uv run pytest tests/ci/test_receipt_gate_check_timeout_omn21166.py -q -p no:randomly",
+          "cwd": "${OMNI_HOME}/omnibase_core"
+        },
+        {
+          "check_type": "test_passes",
+          "check_value": "uv run --no-project --with pytest --with pyyaml python -m pytest tests/ci/test_repo_evidence_caller_omn20073.py -q --noconftest -p no:cacheprovider -c /dev/null",
           "cwd": "${OMNI_HOME}/omnidash"
         }
       ]
