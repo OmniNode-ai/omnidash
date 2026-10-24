@@ -576,7 +576,13 @@ function causeOf(decision: Row | undefined): string {
 
 function displayCauseOf(decision: Row | undefined): string {
   const raw = decision?.terminal_failure_cause;
-  return failureCauseLabel(raw !== null && raw !== undefined && typeof raw !== 'string' ? raw : causeOf(decision));
+  const cause = causeOf(decision);
+  if (raw !== null && raw !== undefined && typeof raw !== 'string') return failureCauseLabel(raw);
+  if (cause === 'none' || cause === 'Not recorded' || (decision !== undefined && typedFailureCauseOf(decision) !== null)) {
+    return failureCauseLabel(cause);
+  }
+  const readable = failureDetailText(cause);
+  return readable === 'Failure details unavailable' ? failureCauseLabel(cause) : readable;
 }
 
 /** A failed run's served failure detail, the text its cause was read from, kept readable beside the cause. */

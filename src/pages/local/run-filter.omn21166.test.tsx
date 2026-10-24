@@ -45,7 +45,7 @@ describe('OMN-21166: Overview run filter', () => {
     fireEvent.click(document.querySelector<HTMLButtonElement>('button[data-failure-cause="MALFORMED"]')!);
     expect(ids()).toEqual(['run-mal']);
     expect(document.querySelector<HTMLButtonElement>('button[data-failure-cause="MALFORMED"]')!).toHaveAttribute('aria-pressed', 'true');
-    fireEvent.click(screen.getByRole('button', { name: 'Clear cause Failure reason unavailable' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Clear cause Malformed output' }));
     expect(ids()).toHaveLength(5);
   });
 
