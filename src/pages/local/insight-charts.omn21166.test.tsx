@@ -209,12 +209,12 @@ describe('OMN-19919: Why runs failed rows carry count, first and last seen, and 
     const list = screen.getByRole('list', { name: 'Failure causes' });
     const rows = within(list).getAllByRole('listitem');
     expect(rows).toHaveLength(2);
-    const typed = rows.find(item => item.textContent?.includes('provider_error'))!;
+    const typed = rows.find(item => item.querySelector('[data-failure-cause="provider_error"]'))!;
     expect(typed).toBeDefined();
     expect(typed.querySelector('[data-field-tone="fail"]')).toHaveTextContent(/^3$/);
     expect(typed).toHaveTextContent('First seen 2026-10-17 22:05 UTC');
     expect(typed).toHaveTextContent('Last seen 2026-10-18 08:20 UTC');
-    expect(within(typed).getByRole('link', { name: 'View runs failed by provider_error' })).toHaveAttribute('href', '/runs?status=failed&cause=provider_error');
+    expect(within(typed).getByRole('link', { name: 'View runs failed by Provider error' })).toHaveAttribute('href', '/runs?status=failed&cause=provider_error');
     const unrecorded = rows.find(item => item.textContent?.includes('Not recorded'))!;
     expect(unrecorded.querySelector('[data-field-tone="fail"]')).toHaveTextContent(/^1$/);
     expect(unrecorded).toHaveTextContent('First seen 2026-10-18 08:10 UTC');

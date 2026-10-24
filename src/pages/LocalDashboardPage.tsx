@@ -26,7 +26,8 @@ import { InsightsSection, InsightsWindowContext, MeteringActivityInsights, Overv
 import { UsageInsights } from '@/pages/local/usage-insights';
 import { SinceLastVisit } from '@/pages/local/since-last-visit';
 import { ModelKeys } from '@/pages/local/model-keys';
-import { notAvailableYet, plainFailureMessage } from '@/pages/local/plain-text';
+import { EnvironmentPanel } from '@/pages/local/environment';
+import { failureCauseLabel, failureDetailText, notAvailableYet, plainFailureMessage } from '@/pages/local/plain-text';
 import { RunFilterProvider, causeHref, causeLabelOf, useRunFilter } from '@/pages/local/run-filter';
 import { typedFailureCauseOf } from '@/pages/local/insights';
 import { DashboardAccess } from '@/pages/local/access';
@@ -575,6 +576,17 @@ function causeOf(decision: Row | undefined): string {
   return causeLabelOf(decision);
 }
 
+function displayCauseOf(decision: Row | undefined): string {
+  const raw = decision?.terminal_failure_cause;
+  const cause = causeOf(decision);
+  if (raw !== null && raw !== undefined && typeof raw !== 'string') return failureCauseLabel(raw);
+  if (cause === 'none' || cause === 'Not recorded' || (decision !== undefined && typedFailureCauseOf(decision) !== null)) {
+    return failureCauseLabel(cause);
+  }
+  const readable = failureDetailText(cause);
+  return readable === 'Failure details unavailable' ? failureCauseLabel(cause) : readable;
+}
+
 /** A failed run's served failure detail, the text its cause was read from, kept readable beside the cause. */
 function failureDetailOf(decision: Row | undefined): string | null {
   return statusOf(decision) === 'failed' && !isMissing(decision?.quality_gate_detail) ? String(decision?.quality_gate_detail) : null;
@@ -582,12 +594,14 @@ function failureDetailOf(decision: Row | undefined): string | null {
 
 /**
  * One run's cause on its own card: the served typed cause, else the whole served detail as before OMN-19919, so a
- * card that has room for it loses nothing while decisions.v1 does not serve the typed cause.
+ * card preserves readable detail while opaque diagnostic codes use a plain unavailable state.
  */
 function causeTextOf(decision: Row | undefined): string {
+  if (decision?.terminal_failure_cause !== null && decision?.terminal_failure_cause !== undefined
+    && typeof decision.terminal_failure_cause !== 'string') return failureCauseLabel(decision.terminal_failure_cause);
   return decision === undefined || typedFailureCauseOf(decision) === null
-    ? (failureDetailOf(decision) ?? 'Not recorded')
-    : causeOf(decision);
+    ? failureDetailText(failureDetailOf(decision) ?? 'Not recorded')
+    : displayCauseOf(decision);
 }
 
 /**
@@ -778,7 +792,7 @@ export function LastRunCard({ decisions, sessions, now = Date.now(), compact = f
     <section aria-label="Last run" className="local-last-run" data-status={status}>
       <dl className="local-dashboard-fields local-latest-primary">
         {fields.filter(([label]) => ['Status', 'Cause', 'Model', 'Age', 'Run', 'Duration', 'Cost'].includes(label))
-          .map(([label, value]) => <div key={label} data-field={label} data-field-tone={fieldTone(label, label === 'Status' ? status : value)} data-field-unavailable={isUnavailableField(value)} style={fieldTone(label, value) === 'model' && !isUnavailableField(value) ? modelIdentityStyle(value) : undefined}><dt><FieldIcon label={label} value={label === 'Status' ? status : value} />{label}</dt><dd>{compact && label === 'Cause' && typeof value === 'string' && value.length > 120
+          .map(([label, value]) => <div key={label} data-field={label} data-field-tone={fieldTone(label, label === 'Status' ? status : value)} data-field-unavailable={isUnavailableField(value)} style={fieldTone(label, value) === 'model' && !isUnavailableField(value) ? modelIdentityStyle(value) : undefined}><dt><FieldIcon label={label} value={label === 'Status' ? status : value} />{label}</dt><dd data-failure-cause={label === 'Cause' ? causeOf(last) : undefined}>{compact && label === 'Cause' && typeof value === 'string' && value.length > 120
             ? <details className="local-run-cause"><summary><ChevronRight size={12} aria-hidden="true" /><span>{value.slice(0, 120)}…</span></summary><p>{value}</p></details>
             : value}</dd></div>)}
       </dl>
@@ -843,8 +857,8 @@ export function RecentRunsTable({ decisions, sessions, now = Date.now(), showCha
           ))}
         </div>
         {filter.cause !== null && (
-          <button type="button" className="local-run-filter-cause" aria-label={`Clear cause ${filter.cause}`} onClick={() => setFilter({ cause: null, result: 'all' })}>
-            Cause: {filter.cause} <span aria-hidden="true">✕</span>
+          <button type="button" className="local-run-filter-cause" data-failure-cause={filter.cause} aria-label={`Clear cause ${failureCauseLabel(filter.cause)}`} onClick={() => setFilter({ cause: null, result: 'all' })}>
+            Cause: {failureCauseLabel(filter.cause)} <span aria-hidden="true">✕</span>
           </button>
         )}
         <label className="local-recent-toolbar">
@@ -874,7 +888,7 @@ export function RecentRunsTable({ decisions, sessions, now = Date.now(), showCha
               <td data-label="Cost"><span className="local-recent-value">{costOf(session, decision)}</span></td>
               <td data-label="Duration"><span className="local-recent-value">{duration(decision.latency_ms)}</span></td>
               <td data-label="Age"><span className="local-recent-value">{age(decision.written_at, now)}</span></td>
-              <td data-label="Cause"><span className="local-recent-value" title={failureDetailOf(decision) ?? undefined}>{causeOf(decision)}</span></td>
+              <td data-label="Cause"><span className="local-recent-value" data-failure-cause={causeOf(decision)} title={failureDetailOf(decision) ? failureDetailText(failureDetailOf(decision)!) : undefined}>{displayCauseOf(decision)}</span></td>
               <td data-label="Task type"><span className="local-recent-value">{recorded(decision.task_type)}</span></td>
               <td className="local-dashboard-cell-token" data-label="Backend"><span className="local-recent-value">{recorded(decision.backend_id)}</span></td>
               <td className="local-dashboard-cell-token" data-label="Host"><span className="local-recent-value">{recorded(decision.host)}</span></td>
@@ -924,11 +938,12 @@ function isFixture(decision: Row): boolean {
  * came from, readable on the row (its title, and "Read failure details") whenever it says more than the cause.
  */
 function RunCause({ run }: { run: Row }) {
-  const cause = causeOf(run);
-  const detail = failureDetailOf(run) ?? cause;
-  if (detail === cause && cause.length <= 120) return <span className="local-runs-cause" title={cause}>{cause}</span>;
+  const rawCause = causeOf(run);
+  const cause = displayCauseOf(run);
+  const detail = failureDetailText(failureDetailOf(run) ?? cause);
+  if (detail === cause && cause.length <= 120) return <span className="local-runs-cause" data-failure-cause={rawCause} title={cause}>{cause}</span>;
   return <>
-    {detail !== cause && <span className="local-runs-cause" title={detail}>{cause}</span>}
+    {detail !== cause && <span className="local-runs-cause" data-failure-cause={rawCause} title={detail}>{cause}</span>}
     <details className="local-run-failure"><summary>Read failure details</summary><p className="local-runs-cause" title={detail === cause ? detail : undefined}>{detail}</p></details>
   </>;
 }
@@ -1075,8 +1090,8 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
         <label htmlFor={`${id}-cause`}>Cause</label>
         <select id={`${id}-cause`} value={cause} onChange={filter('cause')}>
           <option value="all">All</option>
-          {cause !== 'all' && !causes.includes(cause) && <option value={cause}>{cause} (not in current data)</option>}
-          {causes.map((name) => <option key={name} value={name}>{name}</option>)}
+          {cause !== 'all' && !causes.includes(cause) && <option value={cause}>{failureCauseLabel(cause)} (not in current data)</option>}
+          {causes.map((name) => <option key={name} value={name}>{failureCauseLabel(name)}</option>)}
         </select>
         </div>
         <div className="local-filter-field">
@@ -1177,7 +1192,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
             </p>
             <dl className="local-dashboard-fields">
               <div><dt>Task</dt><dd>{recorded(selectedRun.task_type)}</dd></div>
-              <div><dt>Cause</dt><dd><span className="local-runs-cause" title={causeTextOf(selectedRun)}>{causeTextOf(selectedRun)}</span></dd></div>
+              <div><dt>Cause</dt><dd><span className="local-runs-cause" data-failure-cause={causeOf(selectedRun)} title={causeTextOf(selectedRun)}>{causeTextOf(selectedRun)}</span></dd></div>
               <div><dt>Model</dt><dd>{modelOrUnknown(selectedRun.model_name)}</dd></div>
               <div><dt>Route tier</dt><dd>{tierOf(selectedRun)}</dd></div>
               <div><dt>Duration</dt><dd>{duration(selectedRun.latency_ms)}</dd></div>
@@ -2025,6 +2040,7 @@ function bindingFailedEmpty(
 
 /** The icon beside a panel's title, by component. A component not listed here gets none; nothing depends on it. */
 export const PANEL_CONCEPTS: Readonly<Record<string, string>> = {
+  'overview-environment': 'host',
   'overview-spend': 'cost', 'overview-savings': 'savings', 'overview-measured': 'calls',
   'overview-tokens': 'tokens', 'overview-last-run': 'last', 'overview-recent-runs': 'recent',
   'overview-insights': 'analysis', 'usage-insights': 'usage-analysis', 'runs-insights': 'analysis',
@@ -2260,16 +2276,21 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
       && component.data_bindings?.[0]?.projection_topic !== METERING_SUMMARY_TOPIC
       && component.data_bindings?.[0]?.projection_topic !== LEGACY_OVERVIEW_TOPIC
       // OMN-21166: the trends follow the window themselves.
-      && component.component_id !== 'overview-insights';
+      && !['overview-insights', 'overview-environment'].includes(component.component_id);
     // GET /models has its own loading/error state; credential projection availability
     // must only gate the key-reference region, including its aria-busy state.
     const credentialProviders = component.component_id === 'credentials-keys';
+    const environment = component.component_id === 'overview-environment';
     const readContent = <>
         {pending ? <p className="local-dashboard-caption" role="status">Loading data…</p>
           : unbound && component.component_kind !== 'metric_card' ? <PendingState componentId={component.component_id} />
           : component.component_id === 'workflow-run-path' ? (
             <WorkflowRun component={component} snapshots={snapshots} requested={requestedRunId} onOpen={openRun} />
           ) : tokenFallback ? <DailyMeteringTokens data={tokenFallback} />
+          : environment ? (notServed || bindingFailedEmpty(component, snapshots)
+            ? <p className="local-dashboard-empty" role="status">Service health is not available yet.</p>
+            : <EnvironmentPanel rows={rows as Record<string, unknown>[]}
+                complete={!bindings.some(binding => snapshots.some(snapshot => snapshot.topic === binding.projection_topic && snapshot.failure))} />)
           : notServed ? <p className="local-dashboard-empty" role="status">{notServed}</p>
           : bindingFailedEmpty(component, snapshots) ? null
           : emptyState === 'NO_RUNS_YET' ? <NoRunsYet />
@@ -2383,6 +2404,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
               <section className="local-overview-summary" aria-label="Runtime summary">{renderGroup(overviewGroups.summary)}</section>
               <section className="local-overview-focus" aria-label="Delegation quality">{renderGroup(overviewGroups.focus)}</section>
             </div>
+            {renderGroup(['overview-environment'])}
             <section className="local-overview-insights" aria-label="Insights">
               {renderGroup(overviewGroups.insights)}
             </section>

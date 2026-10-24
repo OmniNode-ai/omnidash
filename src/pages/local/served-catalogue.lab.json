@@ -1,6 +1,6 @@
 {
   "source": "GET /projections on the .201 dev-lane projection API, read-only",
-  "captured_at": "2026-10-22T22:45:48.017758+00:00",
+  "captured_at": "2026-10-24T05:54:57.950190+00:00",
   "exposures": [
     {
       "topic": "delegation",
@@ -487,7 +487,8 @@
         "latest_projection_updated_at",
         "tenant_id",
         "estimated_run_count",
-        "unknown_run_count"
+        "unknown_run_count",
+        "run_count"
       ]
     },
     {
@@ -788,7 +789,10 @@
         "latest_projection_updated_at",
         "cumulative_counterfactual_baseline_usd",
         "tenant_id",
-        "unpriced_call_count"
+        "unpriced_call_count",
+        "measured_run_count",
+        "estimated_run_count",
+        "unknown_run_count"
       ]
     },
     {
@@ -1114,34 +1118,6 @@
         "payload",
         "correlation_id",
         "created_at"
-      ]
-    },
-    {
-      "topic": "onex.snapshot.projection.local-environment.v1",
-      "status": "ok",
-      "degraded_reason": null,
-      "columns": [
-        "tenant_id",
-        "mode",
-        "service",
-        "observed_state",
-        "reason",
-        "versions",
-        "last_seen",
-        "last_change",
-        "verdict",
-        "verdict_reason",
-        "alert_code",
-        "alert_severity",
-        "alert_since",
-        "store_kind",
-        "store_location",
-        "access_mode",
-        "token_minted_at",
-        "rotate_hint",
-        "report_id",
-        "updated_at",
-        "projection_cursor"
       ]
     },
     {

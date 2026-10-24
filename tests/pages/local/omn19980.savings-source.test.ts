@@ -118,11 +118,31 @@ interface WidgetKey { page: string; componentId: string; key: string }
 
 function widgetKeys(page: LoadedPage): WidgetKey[] {
   return page.doc.dashboard.widgets.flatMap((widget) => {
-    const config = (widget.config ?? {}) as { metric_key?: unknown; columns?: Array<{ key?: unknown }> };
-    const keys = [
-      ...(typeof config.metric_key === 'string' ? [config.metric_key] : []),
-      ...(config.columns ?? []).map((column) => column.key).filter((key): key is string => typeof key === 'string'),
-    ];
+    const config = (widget.config ?? {}) as { config_kind?: unknown; metric_key?: unknown; columns?: unknown };
+    let keys: string[];
+    switch (config.config_kind) {
+      case 'metric_card':
+        if (typeof config.metric_key !== 'string') throw new TypeError('metric_card metric_key must be a string');
+        keys = [config.metric_key];
+        break;
+      case 'table':
+        if (!Array.isArray(config.columns)) throw new TypeError('table columns must be an array');
+        keys = config.columns.map((column: unknown) => {
+          if (typeof column !== 'object' || column === null || !('key' in column) || typeof column.key !== 'string') {
+            throw new TypeError('table column key must be a string');
+          }
+          return column.key;
+        });
+        break;
+      case 'status_grid':
+        if (typeof config.columns !== 'number' || !Number.isInteger(config.columns) || config.columns < 1) {
+          throw new TypeError('status_grid columns must be a positive layout count');
+        }
+        keys = []; // Layout count; field identities remain scanned through the component's required_fields.
+        break;
+      default:
+        throw new TypeError(`Unsupported widget configuration: ${String(config.config_kind)}`);
+    }
     return keys.map((key) => ({ page: page.name, componentId: String(widget.data_source), key }));
   });
 }
@@ -459,6 +479,18 @@ function plant(components: ModelComponentContract[], widgets: Array<{ data_sourc
 
 const metric = (key: string) => ({ config_kind: 'metric_card', widget_type: 'metric_card', metric_key: key, label: key });
 const table = (...keys: string[]) => ({ config_kind: 'table', widget_type: 'table', columns: keys.map((key) => ({ key, header: key })) });
+
+describe('Widget field classifier configuration boundaries (OMN-19988)', () => {
+  it('treats status_grid columns as layout rather than field keys', () => {
+    const pages = plant([], [{ data_source: 'environment-control', config: { config_kind: 'status_grid', widget_type: 'status_grid', columns: 3 } }]);
+    expect(widgetKeys(pages.at(-1)!)).toEqual([]);
+  });
+
+  it('refuses a table with numeric columns rather than treating it as a status grid', () => {
+    const pages = plant([], [{ data_source: 'malformed-table-control', config: { config_kind: 'table', widget_type: 'table', columns: 3 } }]);
+    expect(() => widgetKeys(pages.at(-1)!)).toThrow(/table columns must be an array/);
+  });
+});
 const plantedOnly = (findings: string[]) => findings.filter((finding) => finding.includes(' planted/'));
 
 // ---- Tests ------------------------------------------------------------------------------------------------------

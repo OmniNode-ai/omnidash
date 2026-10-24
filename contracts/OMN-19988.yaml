@@ -14,6 +14,13 @@ requirements:
       - id: "AC2"
         statement: |-
           AC2: A stopped service shows `DOWN` with an alert within 60 s -- falsifier: the lab step's page read after 60 s
+  - id: "req-omn19988-ac3-native-panel"
+    statement: |-
+      In native mode the Overview Environment panel shows the served native health and versions and no compose service tiles; a version the projection does not record is shown as not recorded.
+    acceptance:
+      - id: "AC3"
+        statement: |-
+          AC3: A mode 1 install shows mode `native` and its versions with no compose rows -- falsifier: the lab step's page read
 evidence_requirements:
   - kind: "tests"
     description: "AC2, panel half only: the served verdict and alert as tiles and banner lines, with their severities, the failed-runs link and the mode filter."
@@ -26,6 +33,17 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/pages/local/environment.omn19988.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/LocalDashboardPage.omn19988.environment.test.tsx -t E9"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn19988-ac3-native-panel"
+    description: "AC3, panel half only: on the production Overview a native-mode install shows its served health and versions with no compose tiles. It does not prove the lab page read on a mode 1 install."
+    source: "manual"
+    binds_ac: ["AC3"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/LocalDashboardPage.omn19988.environment.test.tsx -t E8"
         cwd: "${OMNI_HOME}/omnidash"
 emergency_bypass:
   enabled: false

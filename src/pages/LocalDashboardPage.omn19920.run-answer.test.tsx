@@ -257,17 +257,18 @@ describe('OMN-19920: one run whole on the Workflow page', () => {
     open(`/workflow?correlation_id=${OLDER}`);
     await shows(`backend-of-${OLDER}`);
     const shown = fieldsShown();
-    expect([shown.Status, shown.Cause]).toEqual(['failed', 'timeout']);
+    expect([shown.Status, shown.Cause]).toEqual(['failed', 'Timed out']);
   });
 
-  it('R3: a failed run with no typed cause served keeps its whole detail as the cause', async () => {
+  it('R3: an unknown detail prefix is hidden while its safe explanation stays readable', async () => {
     lab.decisions = served([decision(OLDER, '2026-10-11T15:00:00Z', {
       quality_gate_passed: false, quality_gate_detail: 'provider_timeout: no answer in 30 s', terminal_ok: 0,
     })]);
     open(`/workflow?correlation_id=${OLDER}`);
     await shows(`backend-of-${OLDER}`);
     const shown = fieldsShown();
-    expect([shown.Status, shown.Cause]).toEqual(['failed', 'provider_timeout: no answer in 30 s']);
+    expect([shown.Status, shown.Cause]).toEqual(['failed', 'no answer in 30 s']);
+    expect(shown.Cause).not.toContain('provider_timeout');
   });
 
   it('R4: the receipt id is the run\'s correlation id', async () => {
