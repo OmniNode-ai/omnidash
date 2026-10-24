@@ -51,7 +51,8 @@ test('AC8: a refused run is visible on Runs with its cause and correlation link'
 test('positive control: the correlation-link probe rejects when the refusal row is absent', async ({ page }) => {
   await serveCharts(page, { ...chartRows, [DECISIONS]: [] });
   await page.goto('/runs?status=failed');
-  await expect(page.getByRole('status')).toHaveText('No runs match these filters');
+  // The page must have loaded, so the rejection below is the missing row and not a blank page.
+  await expect(page.getByRole('heading', { level: 1, name: 'Runs', exact: true })).toBeVisible();
 
   let probeRejected = false;
   try {
