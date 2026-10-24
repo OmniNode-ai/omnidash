@@ -7,6 +7,32 @@
 /** The one plain waiting line for a figure whose source is not served yet. */
 export const NOT_AVAILABLE_YET = 'Not available yet';
 
+// EnumDelegationTerminalFailureCause names what decided a run. These are
+// presentation labels only: the original enum still owns filtering and URLs.
+const FAILURE_CAUSE_LABELS: Readonly<Record<string, string>> = {
+  provider_quota_exhausted: 'Provider quota exhausted', auth_failed: 'Authentication failed',
+  provider_error: 'Provider error', quality_gate_refused: 'Quality gate refused', timeout: 'Timed out',
+  no_terminal: 'Run completion not recorded', runtime_shutdown: 'Runtime stopped',
+  refused_before_dispatch: 'Refused before dispatch', returned_to_caller: 'Returned to caller',
+};
+
+export function failureCauseLabel(cause: unknown): string {
+  if (cause === null || cause === undefined) return 'Not recorded';
+  if (typeof cause !== 'string') return 'Failure reason unavailable';
+  const code = cause.trim();
+  if (code === '' || code === 'Not recorded') return 'Not recorded';
+  if (code === 'none') return 'None';
+  return Object.hasOwn(FAILURE_CAUSE_LABELS, code) ? FAILURE_CAUSE_LABELS[code] : 'Failure reason unavailable';
+}
+
+/** Keep readable detail; an opaque internal diagnostic remains explicitly unavailable. */
+export function failureDetailText(detail: string): string {
+  const codes = Object.keys(FAILURE_CAUSE_LABELS);
+  const text = detail.replace(new RegExp(`\\b(?:${codes.join('|')})\\b`, 'g'), code => FAILURE_CAUSE_LABELS[code]);
+  return /\b[A-Z]{2,}(?:_[A-Z0-9]+)*:|^[A-Z][A-Z0-9_]*$|[a-z0-9-]+(?:\.[a-z0-9-]+)*\.v\d+|\b[a-z]+(?:_[a-z0-9]+)+\b|\b[A-Z]{2,}(?:_[A-Z0-9]+)+\b/.test(text)
+    ? 'Failure details unavailable' : text;
+}
+
 /** "Not available yet: <what>" when what is missing can be named in plain words; the bare line when it cannot. */
 export function notAvailableYet(waitsOn: string | undefined): string {
   return waitsOn ? `${NOT_AVAILABLE_YET}: ${waitsOn}` : NOT_AVAILABLE_YET;
