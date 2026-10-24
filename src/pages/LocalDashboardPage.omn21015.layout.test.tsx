@@ -50,6 +50,7 @@ const ORDER: Record<PageName, Array<[title: string, width: number]>> = {
     ['Recent runs', 8], ['Tier mix', 4],
     ['Run locally', 4], ['Avg saving / call', 4], ['Baseline spend', 4],
     ['Compression', 6], ['Cache hit rate', 6],
+    ['Environment', 12],
   ],
   usage: [
     ['Savings per day', 12], ['Tokens per day', 12],
@@ -63,17 +64,17 @@ const RENDERED_ORDER: Record<PageName, Array<[title: string, width: number]>> = 
   // The original declarative grid is still checked separately by Y4/Y5.
   overview: [
     ['Actual spend', 3], ['Savings', 3], ['Agent calls', 3], ['Tokens processed', 3],
-    ['Quality', 6], ['Last run', 6], ['Activity trends', 12],
+    ['Quality', 6], ['Last run', 6], ['Environment', 12], ['Activity trends', 12],
     ['Tier mix', 6], ['Recent runs', 6],
     ['Run locally', 4], ['Avg saving / call', 4], ['Baseline spend', 4],
     ['Compression', 6], ['Cache hit rate', 6], ['Spend per day', 12],
   ],
   usage: ORDER.usage,
 };
-/** The panels each page had before it was reorganised: the same set, whatever the order. */
+/** The preserved panel set, plus the approved OMN-19988 Environment addition; each appears once. */
 // D2 (Lakshman2026-10-20): all secondary metrics remain on Overview in its native disclosure.
 const BEFORE: Record<PageName, string[]> = {
-  overview: ['Actual spend', 'Savings', 'Agent calls', 'Tokens processed', 'Quality', 'Last run', 'Activity trends', 'Tier mix', 'Recent runs', 'Run locally', 'Avg saving / call', 'Baseline spend', 'Compression', 'Cache hit rate', 'Spend per day'].sort(),
+  overview: ['Actual spend', 'Savings', 'Agent calls', 'Tokens processed', 'Quality', 'Last run', 'Activity trends', 'Tier mix', 'Recent runs', 'Run locally', 'Avg saving / call', 'Baseline spend', 'Compression', 'Cache hit rate', 'Spend per day', 'Environment'].sort(),
   usage: ['Savings per day', 'Tokens per day', 'Usage insights', 'Usage by model and day'].sort(),
 };
 
