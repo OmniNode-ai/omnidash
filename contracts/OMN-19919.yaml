@@ -20,6 +20,9 @@ requirements:
       - id: "AC7"
         statement: |-
           AC7 (Overview, OV-7): each "Why runs failed" row shows its count, first seen and last seen, and links to the filtered Runs view.
+      - id: "AC8"
+        statement: |-
+          AC8 (lab): a keyless run on a fresh lab HOME shows on `/runs?status=failed` with its cause and correlation id.
 evidence_requirements:
   - kind: "tests"
     description: "AC5: under status=failed each failed run is listed with its correlation id, time and typed cause, the served terminal_failure_cause winning over the detail text. terminal_ok 0 with no quality-gate verdict counts as failed. The cause filter offers the typed cause and keeps only its runs (U1-U3, U5-U7, W2)."
@@ -54,6 +57,14 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/local/insight-charts.omn21166.test.tsx src/pages/local/insights.omn21166.test.ts src/pages/local/run-filter.omn21166.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn19919-ac8-refusal-runs"
+    description: "AC8, rendered-page half: a served terminal_ok 0 refused_before_dispatch row is listed on Runs under status=failed with its correlation link and the label Refused before dispatch; selecting the cause keeps the raw value in the URL filter and the raw value never shows as visible text. A planted missing-row control proves the link assertion fails without the row. It does not run the keyless delegation on a fresh lab HOME; that lab read is recorded on the ticket (comment of 2026-10-24 13:00Z)."
+    source: "manual"
+    binds_ac: ["AC8"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-omn19919-refusal.spec.ts --project=chromium --workers=1 --retries=0"
         cwd: "${OMNI_HOME}/omnidash"
 emergency_bypass:
   enabled: false
