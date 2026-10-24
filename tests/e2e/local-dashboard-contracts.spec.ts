@@ -173,7 +173,6 @@ test('stored basis, excluded counts and modelled baseline survive native Overvie
   await page.goto('/');
   // Savings and, since OMN-20752, Baseline spend both carry the metering row's baseline caption and modelled note.
   await page.getByText('Additional runtime metrics', { exact: true }).press('Enter');
-  await page.locator('[data-component="overview-baseline-spend"] summary').press('Enter');
   await expect(page.getByText('Baseline served-baseline-model · pricing manifest v1')).toHaveCount(1);
   await expect(page.getByText(/The baseline never ran\./)).toHaveCount(1);
   // OMN-21166 AC37: Agent calls is every call; the served classes are its caption.
