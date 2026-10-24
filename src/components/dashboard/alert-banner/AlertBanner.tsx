@@ -19,10 +19,14 @@ export interface AlertBannerProps {
   alerts: readonly AlertBannerRow[];
   /** The manifest's emptyState.waits_on: the topic(s) the banner reads. */
   waitsOn: readonly string[];
+  /** Presentation only: the original code remains the row's machine identity. */
+  codeLabel?: (code: string) => string;
+  refusalMessage?: string;
 }
 
-function AlertLine({ alert, onDismiss }: { alert: AlertBannerRow; onDismiss?: () => void }) {
+function AlertLine({ alert, onDismiss, codeLabel }: { alert: AlertBannerRow; onDismiss?: () => void; codeLabel?: (code: string) => string }) {
   const role = SEVERITY_ROLES[alert.severity];
+  const label = codeLabel ? codeLabel(alert.code) : alert.code;
   return (
     <div
       role={alert.severity === 'critical' ? 'alert' : undefined}
@@ -45,9 +49,9 @@ function AlertLine({ alert, onDismiss }: { alert: AlertBannerRow; onDismiss?: ()
       <Text size="xs" family="mono" weight="bold" color="primary">
         {role.label}
       </Text>
-      <Text size="sm" family="mono" weight="semibold" color="primary">
-        {alert.code}
-      </Text>
+      <span data-alert-code={alert.code}><Text size="sm" family="mono" weight="semibold" color="primary">
+        {label}
+      </Text></span>
       <Text size="sm" color="primary">
         {alert.subject}
       </Text>
@@ -56,14 +60,14 @@ function AlertLine({ alert, onDismiss }: { alert: AlertBannerRow; onDismiss?: ()
       </Text>
       <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 10, alignItems: 'center' }}>
         {alert.link ? (
-          <a href={alert.link} aria-label={`Open ${alert.code} for ${alert.subject}`}>
+          <a href={alert.link} aria-label={`Open ${label} for ${alert.subject}`}>
             <Text size="xs" color="brand">
               open
             </Text>
           </a>
         ) : null}
         {onDismiss ? (
-          <button type="button" onClick={onDismiss} aria-label={`Dismiss ${alert.code} for ${alert.subject}`}>
+          <button type="button" onClick={onDismiss} aria-label={`Dismiss ${label} for ${alert.subject}`}>
             <Text size="xs" color="secondary">
               dismiss
             </Text>
@@ -74,7 +78,7 @@ function AlertLine({ alert, onDismiss }: { alert: AlertBannerRow; onDismiss?: ()
   );
 }
 
-export function AlertBanner({ alerts, waitsOn }: AlertBannerProps) {
+export function AlertBanner({ alerts, waitsOn, codeLabel, refusalMessage }: AlertBannerProps) {
   // Session-only dismissal: component state, never storage, so a reload brings an open alert back.
   const [dismissed, setDismissed] = useState<ReadonlySet<string>>(new Set());
   const [expanded, setExpanded] = useState(false);
@@ -96,7 +100,7 @@ export function AlertBanner({ alerts, waitsOn }: AlertBannerProps) {
     refused.length > 0 ? (
       <div data-testid="alert-banner-refused">
         <Text size="xs" family="mono" color="warn">
-          {`${refused.length} alert${refused.length === 1 ? '' : 's'} refused: ${refused.join(' | ')}`}
+          {refusalMessage ?? `${refused.length} alert${refused.length === 1 ? '' : 's'} refused: ${refused.join(' | ')}`}
         </Text>
       </div>
     ) : null;
@@ -130,6 +134,7 @@ export function AlertBanner({ alerts, waitsOn }: AlertBannerProps) {
         <AlertLine
           key={alert.alert_id}
           alert={alert}
+          codeLabel={codeLabel}
           onDismiss={() => setDismissed((prev) => new Set(prev).add(alert.alert_id))}
         />
       ))}
@@ -145,7 +150,7 @@ export function AlertBanner({ alerts, waitsOn }: AlertBannerProps) {
               </Text>
             </button>
           </span>
-          {expanded ? rest.map((alert) => <AlertLine key={alert.alert_id} alert={alert} />) : null}
+          {expanded ? rest.map((alert) => <AlertLine key={alert.alert_id} alert={alert} codeLabel={codeLabel} />) : null}
         </div>
       ) : null}
       {refusedNote}

@@ -8,7 +8,7 @@
  */
 import { AlertBanner } from '@/components/dashboard/alert-banner/AlertBanner';
 import { StatusGrid } from '@/components/dashboard/status-grid/StatusGrid';
-import type { AlertBannerRow, StatusGridRow, StatusGridSeverity } from '@shared/types/component-manifest';
+import { validateStatusGridRow, type AlertBannerRow, type StatusGridRow, type StatusGridSeverity } from '@shared/types/component-manifest';
 
 export const ENVIRONMENT_TOPIC = 'onex.snapshot.projection.local-environment.v1';
 
@@ -72,12 +72,64 @@ export function environmentAlertRows(rows: readonly EnvironmentRow[], mode: stri
 interface EnvironmentPanelProps {
   rows: readonly EnvironmentRow[];
   mode: string;
+  plain?: boolean;
+  allowClear?: boolean;
 }
 
-export function EnvironmentStatus({ rows, mode }: EnvironmentPanelProps) {
-  return <StatusGrid title="Environment" rows={environmentTileRows(rows, mode)} waitsOn={[ENVIRONMENT_TOPIC]} />;
+export function EnvironmentStatus({ rows, mode, plain = false }: EnvironmentPanelProps) {
+  const known = new Set(inMode(rows, mode).filter(row => Object.hasOwn(VERDICT_SEVERITY, text(row.verdict))).map(row => text(row.service)));
+  return <StatusGrid title={plain ? 'Services' : 'Environment'} rows={environmentTileRows(rows, mode)} waitsOn={[ENVIRONMENT_TOPIC]}
+    statusLabel={plain ? tile => known.has(tile.key) ? tile.status : 'Health unknown' : undefined} />;
 }
 
-export function EnvironmentAlerts({ rows, mode }: EnvironmentPanelProps) {
-  return <AlertBanner alerts={environmentAlertRows(rows, mode)} waitsOn={[ENVIRONMENT_TOPIC]} />;
+const ALERT_LABELS: Readonly<Record<string, string>> = {
+  SERVICE_DOWN: 'Service down', SERVICE_DEGRADED: 'Service degraded', HEALTH_UNKNOWN: 'Health unknown',
+};
+const alertLabel = (code: string): string => Object.hasOwn(ALERT_LABELS, code) ? ALERT_LABELS[code]! : 'Alert type unavailable';
+
+export function EnvironmentAlerts({ rows, mode, plain = false, allowClear = true }: EnvironmentPanelProps) {
+  const alerts = environmentAlertRows(rows, mode);
+  const missingCode = plain && inMode(rows, mode).some(row => !text(row.alert_code)
+    && Boolean(text(row.alert_severity) || text(row.alert_since)));
+  return <>
+    {missingCode && <p className="local-dashboard-empty" role="status">Alert details are not available.</p>}
+    {(alerts.length > 0 || (allowClear && !missingCode)) && <AlertBanner alerts={alerts} waitsOn={[plain ? `${mode} service health` : ENVIRONMENT_TOPIC]}
+      codeLabel={plain ? alertLabel : undefined} refusalMessage={plain ? 'Alert details are not available.' : undefined} />}
+  </>;
+}
+
+/** Native startup metadata and health stay visible even before the first delegation. */
+export function EnvironmentPanel({ rows, complete = true }: { rows: readonly EnvironmentRow[]; complete?: boolean }) {
+  const validModes = new Set(['native', 'compose']);
+  const invalidMode = rows.some(row => !validModes.has(text(row.mode)));
+  const modes = [...new Set(rows.map(row => text(row.mode)).filter(mode => validModes.has(mode)))];
+  if (rows.length === 0) return <p className="local-dashboard-empty" role="status">Service health is not available yet.</p>;
+  return <>
+    {invalidMode && <p className="local-dashboard-empty" role="status">Some service health details are not available.</p>}
+    {modes.map(mode => {
+    const selected = inMode(rows, mode);
+    const validHealth = selected.filter(row => validateStatusGridRow(environmentTileRows([row], mode)[0]!).valid);
+    const refusedHealth = validHealth.length !== selected.length;
+    // The projection owns verdicts/freshness. A missing or uncertain input
+    // cannot support a positive presentation claim about this mode's health.
+    const allowClear = complete && !invalidMode && !refusedHealth && selected.every(row => text(row.verdict) === 'running');
+    const first = selected[0]!;
+    const versions = first.versions && typeof first.versions === 'object' && !Array.isArray(first.versions)
+      ? Object.entries(first.versions) : [];
+    const labels: Readonly<Record<string, string>> = { omnimarket: 'Runtime', omnibase_core: 'Core', omnidash: 'Dashboard' };
+    return <section key={mode} data-environment-mode={mode} aria-label={`${mode} environment`}>
+      <dl className="local-dashboard-fields">
+        <div><dt>Mode</dt><dd>{mode}</dd></div>
+        {mode === 'native' && <>
+          {versions.length > 0 ? versions.map(([name, version]) => <div key={name}><dt>{labels[name] ?? name}</dt><dd>{text(version) || 'Not recorded'}</dd></div>)
+            : <div><dt>Versions</dt><dd>Not recorded</dd></div>}
+          <div><dt>Store</dt><dd>{text(first.store_kind) || 'Not recorded'}</dd></div>
+          <div><dt>Last start</dt><dd>{text(first.token_minted_at) || 'Not recorded'}</dd></div>
+        </>}
+      </dl>
+      {refusedHealth && <p className="local-dashboard-empty" role="status">Some service health details are not available.</p>}
+      {validHealth.length > 0 && <div role="status"><EnvironmentStatus rows={validHealth} mode={mode} plain /></div>}
+      <div role="status"><EnvironmentAlerts rows={selected} mode={mode} plain allowClear={allowClear} /></div>
+    </section>;
+  })}</>;
 }

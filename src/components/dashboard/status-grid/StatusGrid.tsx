@@ -26,13 +26,15 @@ export interface StatusGridProps {
   /** True when the rows are fixtures; shows the wrapper's fixture badge. */
   fileMode?: boolean;
   columns?: number;
+  /** Optional presentation label; the upstream status remains machine-readable. */
+  statusLabel?: (row: StatusGridRow) => string;
 }
 
 export function waitingForMessage(waitsOn: readonly string[]): string {
   return `Waiting for ${waitsOn.join(', ')} events`;
 }
 
-export function StatusGrid({ title, rows, waitsOn, isLoading, error, fileMode, columns = 3 }: StatusGridProps) {
+export function StatusGrid({ title, rows, waitsOn, isLoading, error, fileMode, columns = 3, statusLabel }: StatusGridProps) {
   const shown: StatusGridRow[] = [];
   const refused: string[] = [];
   for (const row of rows) {
@@ -67,6 +69,7 @@ export function StatusGrid({ title, rows, waitsOn, isLoading, error, fileMode, c
               key={row.key}
               role="listitem"
               data-testid="status-grid-tile"
+              data-status={row.status}
               data-severity={row.severity}
               style={{
                 borderLeft: `4px solid ${role.edge}`,
@@ -87,7 +90,7 @@ export function StatusGrid({ title, rows, waitsOn, isLoading, error, fileMode, c
                   <SeverityIcon severity={row.severity} />
                 </Text>
                 <Text size="xs" family="mono" weight="bold" color="primary">
-                  {row.status}
+                  {statusLabel ? statusLabel(row) : row.status}
                 </Text>
                 <Text size="xs" family="mono" color="secondary">
                   {role.label}
