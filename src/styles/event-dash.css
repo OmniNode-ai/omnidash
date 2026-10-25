@@ -39,9 +39,9 @@
   --ev-m-pink:  #e081b3;
   --ev-m-teal:  #4cc6b2;
 
-  --ev-font-display: system-ui, -apple-system, "Segoe UI", sans-serif;
-  --ev-font-ui: system-ui, -apple-system, "Segoe UI", sans-serif;
-  --ev-font-mono: "JetBrains Mono", "SF Mono", "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --ev-font-display: var(--font-sans);
+  --ev-font-ui: var(--font-sans);
+  --ev-font-mono: var(--font-mono);
 
   --ev-r: 10px;
   --ev-r-sm: 7px;
@@ -318,9 +318,9 @@
   --ev-txt: var(--ink);
   --ev-txt-2: var(--ink-2);
   --ev-txt-3: var(--ink-3);
-  --ev-accent: #5965af;
-  --ev-accent-d: #485292;
-  --ev-accent-ink: #fff;
+  --ev-accent: var(--ui-accent);
+  --ev-accent-d: var(--ui-accent);
+  --ev-accent-ink: var(--panel);
   --ev-ok: var(--status-ok);
   --ev-fail: var(--status-bad);
   --ev-warn: var(--status-warn);
@@ -338,9 +338,6 @@
   --ev-r: 9px;
 }
 [data-theme="dark"] .ev-root {
-  --ev-accent: #a4acee;
-  --ev-accent-d: #8792dc;
-  --ev-accent-ink: #182034;
   --ev-info: #86aff4;
 }
 .ev-root .panel, .ev-root .kpi {

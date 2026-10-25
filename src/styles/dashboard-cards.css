@@ -2,25 +2,22 @@
 :root {
   --card-spend: #047857; --card-savings: #0f766e; --card-calls: #b45309;
   --card-tokens: #2563eb; --card-quality: #7e22ce; --card-activity: #4338ca;
-  --card-surface: #ffffff; --card-canvas: #f7f8fa;
+  --card-surface: var(--panel); --card-canvas: var(--bg);
   --card-routing: #c2410c; --card-identity: #be185d; --card-insights: #0369a1;
 }
 [data-theme="dark"] {
   --card-spend: #6ee7b7; --card-savings: #5eead4; --card-calls: #fbbf24;
   --card-tokens: #93c5fd; --card-quality: #d8b4fe; --card-activity: #a5b4fc;
-  --card-surface: #171b23; --card-canvas: #101319;
+  --card-surface: var(--panel); --card-canvas: var(--bg);
   --card-routing: #fdba74; --card-identity: #f9a8d4; --card-insights: #7dd3fc;
 }
-/* The app frame and page content share one neutral surface palette. */
+/* The app frame and page content share one neutral surface palette: the part-11 tokens in globals.css (OMN-21166
+ * AC61/AC62). Only the active destination and the chart series are set here. */
 .app:has(.local-dashboard-page),
 .app:has(.ev-root[data-destination="delegation-evidence"]) {
-  --bg: var(--card-canvas); --panel: var(--card-surface); --panel-2: #f1f3f6;
-  --ink: #202733; --ink-2: #525d6e; --ink-3: #657184;
   --text-primary: var(--ink); --text-secondary: var(--ink-2); --text-tertiary: var(--ink-3);
-  --line: #e0e4eb; --line-2: #edf0f4;
-  --sidebar: #ffffff; --sidebar-ink: var(--ink); --sidebar-ink-2: var(--ink-2);
-  --sidebar-line: var(--line); --sidebar-hover: var(--panel-2);
-  --shell-active: #1d4ed8; --shell-active-surface: #eef3ff;
+  --sidebar-ink: var(--ink); --sidebar-ink-2: var(--ink-2); --sidebar-hover: var(--panel-2);
+  --shell-active: var(--ui-accent); --shell-active-surface: var(--ui-accent-soft);
   --nav-accent: var(--shell-active);
   --entity-color-lightness: 42%;
   --ins-series-1: #2563eb; --ins-series-2: #059669; --ins-series-3: #ea580c;
@@ -30,9 +27,6 @@
 }
 [data-theme="dark"] .app:has(.local-dashboard-page),
 [data-theme="dark"] .app:has(.ev-root[data-destination="delegation-evidence"]) {
-  --panel-2: #222833; --ink: #edf0f5; --ink-2: #b0b9c8; --ink-3: #95a1b4;
-  --line: #303846; --line-2: #252d39; --sidebar: #14181f;
-  --shell-active: #a5c2ff; --shell-active-surface: #202e49;
   --entity-color-lightness: 68%;
   --ins-series-1: #60a5fa; --ins-series-2: #4ade80; --ins-series-3: #fb923c;
   --ins-series-4: #c4b5fd; --ins-series-5: #fde047; --ins-series-6: #e879f9;
