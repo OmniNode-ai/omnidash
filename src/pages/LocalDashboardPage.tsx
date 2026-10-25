@@ -30,6 +30,7 @@ import { EnvironmentPanel } from '@/pages/local/environment';
 import { failureCauseLabel, failureDetailText, notAvailableYet, plainFailureMessage } from '@/pages/local/plain-text';
 import { RunFilterProvider, causeHref, causeLabelOf, useRunFilter } from '@/pages/local/run-filter';
 import { typedFailureCauseOf } from '@/pages/local/insights';
+import { DashboardAccess } from '@/pages/local/access';
 import { shortId } from '@/components/dashboard/event-dash/primitives';
 import { ConceptIcon, FIELD_ICONS, FieldIcon } from '@/components/dashboard/FieldIcon';
 import { modelIdentityStyle } from '@/components/dashboard/model-identity';
@@ -1902,6 +1903,9 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns, acti
     const first = rawRowsFor(component, snapshots, 0)[0];
     return <LocalIdentity row={first && typeof first === 'object' ? (first as Record<string, unknown>) : null} />;
   }
+  // OMN-21015 AC10 (AK-2): the access card reads the native local-runtime row `onex dashboard` writes to
+  // local-environment.v1 at each start (OMN-19988); another service's row or a compose row is never the dashboard's.
+  if (component.component_id === 'api-keys-access') return <DashboardAccess rows={asRecords(rawRowsFor(component, snapshots, 0))} />;
   return rows.length === 0 ? <NoRunsYet /> : <RunsTable decisions={rows} sessions={lookup} pageSize={pageSize} syncUrl={syncUrl}
     truncated={snapshots.find(snapshot => snapshot.topic === DELEGATION_DECISIONS_TOPIC)?.truncated} />;
 }
@@ -2046,7 +2050,7 @@ export const PANEL_CONCEPTS: Readonly<Record<string, string>> = {
   'overview-cache-hit-rate': 'cache', 'overview-spend-by-day': 'spend-daily', 'recent-runs': 'recent',
   'workflow-run-path': 'path', 'usage-by-model-day': 'usage-day', 'usage-tokens-by-day': 'tokens-daily',
   'usage-savings-series': 'savings-daily', 'credentials-keys': 'credentials',
-  'api-keys-local-identity': 'local-identity', 'api-keys-cloud': 'cloud-keys',
+  'api-keys-local-identity': 'local-identity', 'api-keys-access': 'local-access', 'api-keys-cloud': 'cloud-keys',
 };
 /** Compatibility inventory, derived from the shared canonical identity rather than a second icon map. */
 export const PANEL_ICONS: Record<string, LucideIcon> = Object.fromEntries(

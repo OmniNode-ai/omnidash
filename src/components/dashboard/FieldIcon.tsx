@@ -1,7 +1,7 @@
 import {
   Activity, ArrowDown, ArrowDownUp, ArrowUp, Award, BadgeInfo, Blocks, Bot, BrainCircuit, Building2, CalendarDays,
   CircleCheck, CircleDot, CircleDollarSign, CircleX, Clock3, Coins, Cpu, DatabaseZap,
-  ChartColumn, ChartColumnStacked, ChartLine, ChartSpline, CircleHelp, Cloud, CloudOff, CodeXml, FileClock, FileText, Filter, Fingerprint, Flag, FlaskConical, Gauge, GitPullRequest, Globe, History, Hourglass, IdCard, Inbox, KeyRound, Layers, ListChecks, MessageSquareText, MessagesSquare,
+  ChartColumn, ChartColumnStacked, ChartLine, ChartSpline, CircleHelp, Cloud, CloudOff, CodeXml, FileClock, FileText, Filter, Fingerprint, FingerprintPattern, Flag, FlaskConical, Gauge, GitPullRequest, Globe, History, Hourglass, IdCard, Inbox, KeyRound, Layers, ListChecks, MessageSquareText, MessagesSquare,
   Monitor, Network, PiggyBank, PlugZap, Radio, Route, RouteOff, Scale, ScanSearch, ShieldCheck, Shrink,
   Rows3, ScrollText, Sparkles, Star, TableProperties, Timer, TrendingDown, Server, Waypoints, Zap, type LucideIcon,
 } from 'lucide-react';
@@ -24,7 +24,7 @@ export const FIELD_ICONS: Readonly<Record<string, LucideIcon>> = {
   unavailable: CircleDot, 'tier-harness': Cpu, 'step-provider-call': PlugZap,
   recent: Rows3, last: History, analysis: ChartSpline,
   'spend-daily': ChartLine, 'tokens-daily': ArrowDownUp, 'savings-daily': CalendarDays,
-  'usage-day': TableProperties, credentials: KeyRound, 'local-identity': IdCard,
+  'usage-day': TableProperties, credentials: KeyRound, 'local-identity': IdCard, 'local-access': FingerprintPattern,
   'cloud-keys': CloudOff, path: Route, 'local-run': Server,
   'run-outcome': Award, 'routing-model': Waypoints, 'tokens-completion': Coins,
   timing: Timer, 'run-details': FileClock, 'stage-timing': Timer,
@@ -61,7 +61,7 @@ export const CONCEPT_LABELS: Readonly<Record<string, string>> = {
   delegations: 'Delegations', routing: 'Tier-routed', unrouted: 'Without a tier', contract: 'Contract pass',
   unavailable: 'Not recorded', recent: 'Recent runs', last: 'Last run', analysis: 'Activity analysis',
   'spend-daily': 'Spend per day', 'tokens-daily': 'Tokens per day', 'savings-daily': 'Savings per day',
-  'usage-day': 'Usage by model and day', credentials: 'Credentials', 'local-identity': 'Local identity',
+  'usage-day': 'Usage by model and day', credentials: 'Credentials', 'local-identity': 'Local identity', 'local-access': 'Dashboard access',
   'cloud-keys': 'Cloud keys', path: 'Run path', 'local-run': 'Local runs',
   'run-outcome': 'Run outcome', 'routing-model': 'Routing and model', 'tokens-completion': 'Tokens and completion',
   timing: 'Run timing', 'run-details': 'Recorded run details', 'stage-timing': 'Execution stage durations',

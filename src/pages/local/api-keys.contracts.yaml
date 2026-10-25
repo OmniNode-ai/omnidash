@@ -23,6 +23,34 @@
       "supported_empty_state_reasons": [
         "no-data"
       ]
+    },
+    {
+      "component_id": "api-keys-access",
+      "component_kind": "table",
+      "title": "Dashboard access",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "api-keys-access-environment",
+          "projection_topic": "onex.snapshot.projection.local-environment.v1",
+          "ordering_authority_field": "updated_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "mode",
+            "service",
+            "access_mode",
+            "token_minted_at",
+            "rotate_hint"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "no-data"
+      ]
     }
   ],
   "page_empty_state_reasons": []
