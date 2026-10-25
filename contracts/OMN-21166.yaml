@@ -461,6 +461,21 @@
           "cwd": "${OMNI_HOME}/omnidash"
         }
       ]
+    },
+    {
+      "id": "dod-omn21166-ac48-accepted-20261025t0045z",
+      "description": "AC48 accepted binding (lane=dod-closeout-accept-2026-10-25T0045Z-c2): omnidash's repo-evidence caller pins the omnibase_core receipt gate that takes check-timeout-seconds and passes \"300\". Passes on dev 3713a03; 2 of 9 fail with the workflow change of f31016f reverted.",
+      "source": "manual",
+      "binds_ac": [
+        "AC48"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/ci/test_repo_evidence_caller_omn20073.py -q --noconftest -p no:cacheprovider -c /dev/null",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
     }
   ],
   "context": {
@@ -469,6 +484,14 @@
         {
           "label": "AC49",
           "criterion_hash": "3345529a0528199e3bbc74a9994259f044caf531d6a094193aeaa5d3480927e4",
+          "proposed_by": "lane=dod-closeout-bind-2026-10-25T0045Z-c2",
+          "accepted_by": "lane=dod-closeout-accept-2026-10-25T0045Z-c2"
+        }
+      ],
+      "dod-omn21166-ac48-accepted-20261025t0045z": [
+        {
+          "label": "AC48",
+          "criterion_hash": "117940cd3282defb17f4081f9acfdb8706c0969cbf8d567b3927c3eb8e41ac8a",
           "proposed_by": "lane=dod-closeout-bind-2026-10-25T0045Z-c2",
           "accepted_by": "lane=dod-closeout-accept-2026-10-25T0045Z-c2"
         }
