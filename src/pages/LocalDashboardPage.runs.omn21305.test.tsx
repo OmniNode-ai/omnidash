@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { RunsTable } from './LocalDashboardPage';
 
 // OMN-21305 AC3: the keyless fresh-HOME run, refused before dispatch, appears on Runs under status=failed with its
@@ -56,9 +56,12 @@ const listed = () =>
 const headers = () => screen.getAllByRole('columnheader').map((cell) => cell.textContent?.trim());
 
 describe('OMN-21305 AC3: a run refused before dispatch shows on Runs under status=failed', () => {
-  it('R1, R2: status=failed lists the refused run by its correlation id, linked into its run', () => {
-    render(<RunsTable now={NOW} decisions={[refusedRow, passedRow]} sessions={[]} />);
-    fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'failed' } });
+  afterEach(() => window.history.replaceState(null, '', '/'));
+
+  it('R1, R2: /runs?status=failed lists the refused run by its correlation id, linked into its run', () => {
+    window.history.replaceState(null, '', '/runs?status=failed');
+    render(<RunsTable now={NOW} decisions={[refusedRow, passedRow]} sessions={[]} syncUrl />);
+    expect(screen.getByLabelText('Status')).toHaveValue('failed');
     expect(listed()).toEqual([REFUSED_ID]);
     const row = screen.getByRole('row', { name: new RegExp(`^${REFUSED_ID}`) });
     expect(within(row).getByRole('link', { name: REFUSED_ID })).toHaveAttribute(
@@ -86,9 +89,10 @@ describe('OMN-21305 AC3: a run refused before dispatch shows on Runs under statu
     expect(listed()).toEqual([REFUSED_ID]);
   });
 
-  it('control: without the refused row, status=failed lists no run', () => {
-    render(<RunsTable now={NOW} decisions={[passedRow]} sessions={[]} />);
-    fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'failed' } });
+  it('control: without the refused row, /runs?status=failed lists no run', () => {
+    window.history.replaceState(null, '', '/runs?status=failed');
+    render(<RunsTable now={NOW} decisions={[passedRow]} sessions={[]} syncUrl />);
+    expect(screen.getByLabelText('Status')).toHaveValue('failed');
     expect(screen.queryByRole('row', { name: new RegExp(`^${REFUSED_ID}`) })).not.toBeInTheDocument();
   });
 });
