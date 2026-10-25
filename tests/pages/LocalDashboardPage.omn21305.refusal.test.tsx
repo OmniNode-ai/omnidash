@@ -14,7 +14,8 @@ vi.mock('echarts-for-react/lib/core', () => ({ default: () => <div /> }));
 // Failure modes, each with a test below:
 //   R1  the refused row is missing from status=failed (its terminal_ok 0 not read as failed)
 //   R2  the row loses its correlation id, or the id is not the link into its run
-//   R3  the cause shows the raw code, the long refusal detail, Not recorded, or nothing, instead of its label
+//   R3  the cause's label is the raw code, the long refusal detail, Not recorded, or nothing, instead of Refused before
+//       dispatch; or the refusal detail is no longer readable on the row (the page keeps it behind the label)
 //   R4  the cause filter does not offer the refusal cause, or choosing it keeps other runs
 const NOW = Date.parse('2026-10-24T13:00:00Z');
 const REFUSED_ID = '7c785ca1-52c0-471f-bcba-3df77bdab1bd';
@@ -75,12 +76,13 @@ describe('OMN-21305 AC3: a run refused before dispatch shows on Runs under statu
     expect(within(row).getAllByRole('cell')[headers().indexOf('Status')]!.textContent).toBe('failed');
   });
 
-  it('R3: the cause reads Refused before dispatch, never the raw code, the detail or Not recorded', () => {
+  it('R3: the cause is labelled Refused before dispatch, never the raw code or Not recorded, its detail still readable', () => {
     render(<RunsTable now={NOW} decisions={[refusedRow, passedRow]} sessions={[]} />);
     fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'failed' } });
     const row = screen.getByRole('row', { name: new RegExp(`^${REFUSED_ID}`) });
     const cause = within(row).getAllByRole('cell')[headers().indexOf('Cause')]!;
     expect(within(cause).getByText('Refused before dispatch')).toBeInTheDocument();
+    expect(cause).toHaveTextContent('No local model is declared on this machine');
     expect(cause.textContent).not.toContain('refused_before_dispatch');
     expect(cause.textContent).not.toBe('Not recorded');
   });
