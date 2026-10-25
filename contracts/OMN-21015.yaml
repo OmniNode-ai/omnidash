@@ -169,6 +169,14 @@ dod_evidence:
       - check_type: "test_passes"
         check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/pages/LocalDashboardPage.omn21015.access.test.tsx"
         cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn21015-ac5-token-directions"
+    description: "AC5: the Tokens processed card's input and output read the directions cost.savings-overview.v1 serves (tokens_input_total and tokens_output_total, omnimarket#4341), never the unserved tokens_input and tokens_output; a served zero stays 0, a missing direction reads Not measured and is never derived from the total. At the merge base the card reads the unserved names, so these tests fail there."
+    source: "manual"
+    binds_ac: ["AC5"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/pages/LocalDashboardPage.omn21015.token-directions.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn21015-ac4-usage-table-lint"
     description: "AC4, by-model table: the share and tier cases in UsageByModelDayWidget.omn21015.test.tsx pass and the file is lint-clean. On dev 97c43e4d ESLint refuses two unused bindings in case S5, which also fails the all-files lint hook for every branch; the same case now builds its older row by filtering the two keys out."
     source: "manual"
