@@ -1,7 +1,11 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RunsTable } from './LocalDashboardPage';
+
+// The URL-synced table draws the Runs activity chart; jsdom has no canvas, so the chart is stubbed as the other
+// Runs tests stub it, and only the table is under test here.
+vi.mock('echarts-for-react/lib/core', () => ({ default: () => <div /> }));
 
 // OMN-21305 AC3: the keyless fresh-HOME run, refused before dispatch, appears on Runs under status=failed with its
 // correlation id and its cause. The fixture is the decisions.v1 row the lab served for that run on 2026-10-24
