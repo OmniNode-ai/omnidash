@@ -448,6 +448,21 @@
       ]
     },
     {
+      "id": "dod-omn21166-ac49-accepted-20261025t0045z",
+      "description": "AC49 accepted binding (lane=dod-closeout-accept-2026-10-25T0045Z-c2): at 1440x900 the Overview default page keeps the newest run's status, model and age within the first screen while the Spend and Savings basis line is visible. Passes on dev 3713a03; fails with the product change of 795ffb0 reverted.",
+      "source": "manual",
+      "binds_ac": [
+        "AC49"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "CI=1 npx playwright test tests/e2e/local-dashboard-contracts.spec.ts --project=chromium --workers=1 --retries=0 --grep \"Overview is the default page and fits 1440x900\"",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
+    },
+    {
       "id": "dod-omn21166-ac48-accepted-20261025t0045z",
       "description": "AC48 accepted binding (lane=dod-closeout-accept-2026-10-25T0045Z-c2): omnidash's repo-evidence caller pins the omnibase_core receipt gate that takes check-timeout-seconds and passes \"300\". Passes on dev 3713a03; 2 of 9 fail with the workflow change of f31016f reverted.",
       "source": "manual",
@@ -465,6 +480,14 @@
   ],
   "context": {
     "ac_binding_provenance": {
+      "dod-omn21166-ac49-accepted-20261025t0045z": [
+        {
+          "label": "AC49",
+          "criterion_hash": "3345529a0528199e3bbc74a9994259f044caf531d6a094193aeaa5d3480927e4",
+          "proposed_by": "lane=dod-closeout-bind-2026-10-25T0045Z-c2",
+          "accepted_by": "lane=dod-closeout-accept-2026-10-25T0045Z-c2"
+        }
+      ],
       "dod-omn21166-ac48-accepted-20261025t0045z": [
         {
           "label": "AC48",
