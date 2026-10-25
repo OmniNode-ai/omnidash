@@ -259,6 +259,9 @@ const R4_ALLOWED: readonly R4Allowance[] = [
   // OMN-21166 AC66: Usage's savings panel (bound to metering-summary.v1 with savings_usd required) lists the runtime's
   // own per-model breakdown of its all-time row, summary_json.by_model, as served; it sums nothing.
   { file: 'src/pages/LocalDashboardPage.tsx', owner: 'SavingsByModel', fields: ['savings_usd'], componentId: 'usage-savings-series', pageName: 'usage', state: 'bound' },
+  // OMN-21166 AC63: Usage's KPI strip reads the same bound all-time row and its day rows (savings_usd and
+  // counterfactual_usd are required by usage-savings-series), formats them and divides nothing.
+  { file: 'src/pages/LocalDashboardPage.tsx', owner: 'UsageKpis', fields: ['savings_usd', 'counterfactual_usd'], componentId: 'usage-savings-series', pageName: 'usage', state: 'bound' },
 ];
 const PAGE_FILE = 'src/pages/LocalDashboardPage.tsx';
 /** Imports of these assets carry no code, so they are not scanned (the page imports its stylesheet). */

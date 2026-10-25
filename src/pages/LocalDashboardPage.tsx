@@ -31,7 +31,8 @@ import { ModelKeys } from '@/pages/local/model-keys';
 import { EnvironmentPanel } from '@/pages/local/environment';
 import { failureCauseLabel, failureDetailText, notAvailableYet, plainFailureMessage, taskLabel, tierLabel } from '@/pages/local/plain-text';
 import { RunFilterProvider, causeHref, causeLabelOf, useRunFilter } from '@/pages/local/run-filter';
-import { typedFailureCauseOf } from '@/pages/local/insights';
+import { dailySeries, summary as runSummary, toInsightRuns, typedFailureCauseOf } from '@/pages/local/insights';
+import { KpiStrip, type KpiItem } from '@/components/dashboard/KpiStrip';
 import { DashboardAccess, dashboardAccessRow } from '@/pages/local/access';
 import { shortId } from '@/components/dashboard/event-dash/primitives';
 import { ConceptIcon, FIELD_ICONS, FieldIcon } from '@/components/dashboard/FieldIcon';
@@ -468,6 +469,67 @@ export function MeteringTotalCard({ component, config, rows, window = 'all', now
   );
 }
 
+/** Days a strip's sparkline covers: the latest 14 UTC days the rows were served for. */
+const SPARK_DAYS = 14;
+
+/**
+ * OMN-21166 AC63: the Runs page's KPI strip, from the returned decision rows only (the rows the run list below shows):
+ * runs, pass rate with its coverage, median and p95 duration with what is unrecorded, failed runs and escalated runs.
+ * The sparkline is runs per UTC day over the same rows; a day with no row is a gap, never zero.
+ */
+export function RunsKpis({ rows, now }: { rows: readonly unknown[]; now: number }) {
+  const runs = toInsightRuns(rows);
+  if (runs.length === 0) return null;
+  const totals = runSummary(runs);
+  const latencies = runs.map(run => run.latencyMs).filter((value): value is number => value !== null).sort((a, b) => a - b);
+  const p95 = latencies.length === 0 ? null : latencies[Math.max(0, Math.ceil(latencies.length * 0.95) - 1)]!;
+  const escalationServed = asRecords(rows).filter(row => !isMissing(row.escalation_count) && Number.isFinite(Number(row.escalation_count)));
+  const escalated = escalationServed.filter(row => Number(row.escalation_count) > 0).length;
+  const days = dailySeries(runs, now, SPARK_DAYS);
+  const items: KpiItem[] = [
+    { label: 'Runs', value: formatDashboardCount(totals.runs), note: `Latest ${formatDashboardCount(totals.runs)} returned runs`, series: days.map(day => (day.runs > 0 ? day.runs : null)) },
+    { label: 'Pass rate', value: totals.passRate === null ? 'Not recorded' : `${totals.passRate.toFixed(1)}%`, unavailable: totals.passRate === null,
+      note: `${formatDashboardCount(totals.passed + totals.failed)} of ${formatDashboardCount(totals.runs)} runs have a verdict`,
+      series: days.map(day => day.passRate) },
+    { label: 'Median duration', value: totals.medianLatency === null ? 'Not recorded' : formatDuration(totals.medianLatency), unavailable: totals.medianLatency === null,
+      note: `${formatDashboardCount(runs.length - latencies.length)} without a duration` },
+    { label: 'p95 duration', value: p95 === null ? 'Not recorded' : formatDuration(p95), unavailable: p95 === null, title: p95 === null ? undefined : exactMs(p95),
+      note: `Over ${formatDashboardCount(latencies.length)} recorded durations` },
+    { label: 'Failed', value: formatDashboardCount(totals.failed), tone: 'fail', note: totals.unrecorded > 0 ? `${formatDashboardCount(totals.unrecorded)} without a verdict` : 'Of the returned runs' },
+    { label: 'Escalated', value: escalationServed.length === 0 ? 'Not recorded' : formatDashboardCount(escalated), unavailable: escalationServed.length === 0,
+      note: escalationServed.length === 0 ? null : `Of ${formatDashboardCount(escalationServed.length)} runs recording escalations` },
+  ];
+  return <KpiStrip label="Run summary" items={items} />;
+}
+
+/**
+ * OMN-21166 AC63: the Usage page's KPI strip, from the same all-time metering-summary.v1 row as Overview's headline
+ * (pickMeteringRow), so the two pages show one figure per concept; the sparklines are that exposure's served day rows
+ * for the latest days, a missing day a gap. Nothing is computed from prices here.
+ */
+export function UsageKpis({ rows }: { rows: readonly unknown[] }) {
+  const picked = pickMeteringRow(rows, 'all');
+  if ('message' in picked) return null;
+  const row = picked.row;
+  const days = asRecords(rows).filter(day => day.window_kind === 'day' && typeof day.window_start === 'string')
+    .sort((a, b) => String(a.window_start).localeCompare(String(b.window_start))).slice(-SPARK_DAYS);
+  const series = (field: string) => days.map(day => (isMissing(day[field]) || !Number.isFinite(Number(day[field])) ? null : Number(day[field])));
+  const money = (value: unknown) => (isMissing(value) ? 'Not measured' : formatUsd(value));
+  const tokens = meteringTokens(row);
+  const unresolved = row.baseline_state === 'unresolved';
+  const baseline = isMissing(row.baseline_model) ? 'the baseline' : String(row.baseline_model);
+  const items: KpiItem[] = [
+    { label: 'You paid', value: money(row.spend_usd), unavailable: isMissing(row.spend_usd), tone: 'cost', note: 'Measured spend, all time', series: series('spend_usd') },
+    { label: 'Baseline cost', value: unresolved ? 'Baseline unresolved' : money(row.counterfactual_usd), unavailable: unresolved || isMissing(row.counterfactual_usd), tone: 'baseline',
+      note: `Same tokens at ${baseline} list price (modelled)`, series: unresolved ? null : series('counterfactual_usd') },
+    { label: 'Saved', value: unresolved ? 'Baseline unresolved' : money(row.savings_usd), unavailable: unresolved || isMissing(row.savings_usd), tone: 'savings',
+      note: 'Modelled · vs cloud baseline', series: unresolved ? null : series('savings_usd') },
+    { label: 'Tokens in', value: tokens.input === null ? 'Not measured' : formatFullCount(tokens.input.toString()), unavailable: tokens.input === null, tone: 'tokens-in', series: series('tokens_in') },
+    { label: 'Tokens out', value: tokens.output === null ? 'Not measured' : formatFullCount(tokens.output.toString()), unavailable: tokens.output === null, tone: 'tokens-out', series: series('tokens_out') },
+  ];
+  return <KpiStrip label="Usage summary" items={items} />;
+}
+
 /**
  * OMN-21166 AC66: each model's modelled saving, spend and runs, as the all-time metering-summary.v1 row serves them in
  * summary_json.by_model (the breakdown `onex metering` prints). A model with no measured run has no saving: it reads
@@ -846,7 +908,7 @@ export function LastRunCard({ decisions, sessions, now = Date.now(), compact = f
     ['Tokens out', recordedTokens(last.tokens_output)],
     ['Cost', costOf(session, last)],
     ['Basis', recorded(session?.usage_source)],
-    ['Task type', recorded(last.task_type)],
+    ['Task type', isMissing(last.task_type) ? recorded(last.task_type) : taskLabel(last.task_type)],
     ['Route tier', tierOf(last)],
   ];
   return (
@@ -1458,7 +1520,7 @@ export function RunSummary({ decision, showAnalysis = false }: { decision: Row |
   const fields: Array<[string, string]> = [
     ...(status === 'failed' ? [['Cause', causeTextOf(decision)] as [string, string]] : []),
     ['Quality score', recorded(decision.actual_score)],
-    ['Task type', recorded(decision.task_type)],
+    ['Task type', isMissing(decision.task_type) ? recorded(decision.task_type) : taskLabel(decision.task_type)],
     ['Model', modelOrUnknown(decision.model_name)],
     ['Backend', recorded(decision.backend_id)],
     ['Host', recorded(decision.host)],
@@ -2461,6 +2523,16 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
             return recent && decisions && !decisions.failure ? <SinceLastVisit decisions={rowsForLocalComponent(recent, snapshots)} now={now} onOpenFailures={() => navigate('/runs?status=failed')} /> : null;
         })()}
         {pageName === 'overview' && <Link className="local-explore-runs" href={PAGE_PATHS['local-runs']}>Explore runs <ArrowUpRight size={14} aria-hidden="true" /></Link>}
+        {/* OMN-21166 AC63: the owning page's summary strip, part of its header, from the same served rows its panels
+            read; a read that failed draws no strip (its panels say why). */}
+        {!loading && !error && page && pageName === 'runs' && (() => {
+          const read = snapshots.find(snapshot => snapshot.topic === DELEGATION_DECISIONS_TOPIC);
+          return read && !read.failure ? <RunsKpis rows={read.rows} now={now} /> : null;
+        })()}
+        {!loading && !error && page && pageName === 'usage' && (() => {
+          const read = snapshots.find(snapshot => snapshot.topic === METERING_SUMMARY_TOPIC);
+          return read && !read.failure ? <UsageKpis rows={read.rows} /> : null;
+        })()}
       </header>
       {loading && <p role="status">Loading runtime exposures…</p>}
       {error && <ReadFailureNotice title="Dashboard" now={now}

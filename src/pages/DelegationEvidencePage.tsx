@@ -55,6 +55,7 @@ import { overviewRunCount } from '@/lib/dashboard-overview-count';
 import { modelColor } from '@/lib/dashboard-colors';
 import { formatDuration } from '@/lib/duration';
 import { percent as sharePercent } from '@/pages/local/shares';
+import { taskLabel } from '@/pages/local/plain-text';
 import { modelIdentityStyle } from '@/components/dashboard/model-identity';
 
 /**
@@ -232,7 +233,7 @@ function SelectedRun({ correlationId, decision }: { correlationId: string | null
       <KV
         items={[
           { k: 'Correlation', v: row.correlation_id, accent: true },
-          { k: 'Task type', v: row.task_type },
+          { k: 'Task type', v: taskLabel(row.task_type) },
           { k: 'Model', v: row.model_name },
           { k: 'Latency', v: fmtLatency(row.latency_ms) },
           { k: 'Tokens in', v: row.tokens_input == null ? 'Not recorded' : formatFullCount(row.tokens_input) },
@@ -488,7 +489,7 @@ function DecisionDetail({ row }: { row: DelegationDecisionRow }) {
       <KV
         items={[
           { k: 'Correlation', v: row.correlation_id, accent: true },
-          { k: 'Task type', v: row.task_type },
+          { k: 'Task type', v: taskLabel(row.task_type) },
           { k: 'Model', v: row.model_name },
           { k: 'Quality detail', v: row.quality_gate_detail ? escalationReason(row.quality_gate_detail).text : '—' },
           { k: 'Tokens in / out', v: `${row.tokens_input == null ? 'Not recorded' : formatFullCount(row.tokens_input)} / ${row.tokens_output == null ? 'Not recorded' : formatFullCount(row.tokens_output)}` },
@@ -665,7 +666,8 @@ export function DelegationEvidencePage() {
       sub="Routing, quality gate, savings & per-correlation trace — live projections"
       headRight={headRight}
     >
-      <div className="grid cols-4">
+      {/* OMN-21166 AC63: the four headline figures read as one segmented strip, as on the local pages. */}
+      <div className="grid cols-4 ev-kpi-strip">
         <KPI label="Delegations" icon={<Activity size={15} aria-hidden="true" />} tone="blue" value={headline.runs} sub={headline.runsSub ?? undefined} />
         <KPI label="Quality pass" icon={<Award size={15} aria-hidden="true" />} tone="green" value={summary ? passRate(summary.qualityGatePassRate) : '—'} sub={withFixtureNotice('deterministic gate', fixtureNotice)} />
         <KPI label="Savings (modelled)" icon={<PiggyBank size={15} aria-hidden="true" />} tone="purple" value={headline.savings} accent sub="vs cloud baseline" />

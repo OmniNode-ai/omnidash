@@ -1628,7 +1628,7 @@ figure.local-chart.usage-insight { min-width: 0; margin: 0; padding: 14px; }
   .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) :is(th, td):nth-child(14) { width: 15%; }
   .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) .local-task-cell { min-width: 0; }
 }
-.local-dashboard-page--runs .local-runs-wrap th:nth-child(15)::after { content: ' (ms)'; }
+/* OMN-21166 AC55: durations read with their own unit ("5.3 s"), so the header carries none. */
 .local-dashboard-page--usage .local-dashboard-grid { align-items: start; }
 /* OMN-21166 light mode (Chrome walk, 2026-10-18): the bright accents fall under contrast on white, so light mode
    uses deeper shades of the same hues (each >= 4.5:1 on white; the 64px hero >= 3:1). */

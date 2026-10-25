@@ -174,3 +174,158 @@ main.ev-root .ev-acceptance-checks > li > :first-child, main.ev-root .ev-accepta
 .local-dashboard-page section.overview-chart-section[aria-label="Why runs failed"] > .overview-chart-row { grid-template-columns: minmax(0, 1fr); }
 .local-dashboard-page section.overview-chart-section[aria-label="Why runs failed"] figure { min-height: 0; height: auto; display: block; }
 .local-dashboard-page section.overview-chart-section[aria-label="Why runs failed"] figure > * { max-width: none; }
+
+/* ═════════════════════════════════════════════════════════════════════════════════════════════════════════════
+ * OMN-21166 part 11 — the new look of the seven pages (reference: dense observability views). Quiet surfaces,
+ * one ink for figures, colour only for status and chart series, compact controls and dense tables.
+ * ═════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+/* Page frame */
+.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"] { background: var(--bg); }
+.local-dashboard-page { padding: 20px 24px 40px; }
+.local-dashboard-page .local-dashboard-header { margin-bottom: 16px; gap: 10px; align-items: center; }
+.local-dashboard-page .local-dashboard-header h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.015em; }
+.local-dashboard-page .local-dashboard-header .local-dashboard-page-icon { width: 20px; height: 20px; color: var(--ink-3); }
+
+/* Controls: outline buttons and a segmented window switch, in the one accent */
+.local-dashboard-page .local-explore-runs {
+  display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: 6px;
+  border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-size: 12px; font-weight: 500; text-decoration: none;
+}
+.local-dashboard-page .local-explore-runs:hover { border-color: var(--ink-3); }
+.local-dashboard-page .local-window-options { display: inline-flex; padding: 2px; gap: 2px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); }
+.local-dashboard-page .local-window-options > button {
+  height: 26px; padding: 0 10px; border: 0; border-radius: 5px; background: transparent; color: var(--ink-2); font-size: 12px; font-weight: 500;
+}
+.local-dashboard-page .local-window-options > button[aria-checked="true"] { background: var(--ink); color: var(--panel); }
+.local-dashboard-page .local-dashboard-filters :is(select, input) {
+  min-height: 32px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-size: 13px;
+}
+
+/* Panels: one quiet surface, monochrome icon, compact title row */
+.local-dashboard-page .local-dashboard-panel,
+.local-dashboard-page .local-dashboard-panel:hover,
+main.ev-root[data-destination="delegation-evidence"] :is(.panel, .kpi, .kpi[data-tone]:hover) {
+  border: 1px solid var(--line); border-radius: 10px; background: var(--panel); box-shadow: none; transform: none; animation: none;
+}
+.local-dashboard-page .local-dashboard-panel { padding: 14px 16px; }
+.local-dashboard-page .local-dashboard-panel > h2 { margin-bottom: 12px; font-size: 13px; font-weight: 600; color: var(--ink); }
+.local-dashboard-page .local-dashboard-panel > h2 svg,
+.local-dashboard-page .local-section-heading svg,
+.local-dashboard-page .overview-chart-heading svg,
+main.ev-root[data-destination="delegation-evidence"] :is(.ev-panel-icon, .k-l svg) { color: var(--ink-3) !important; width: 15px; height: 15px; }
+.local-dashboard-page .local-dashboard-asof { font-size: 12px; color: var(--ink-3); }
+main.ev-root[data-destination="delegation-evidence"] .panel-h .pt { font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none; }
+
+/* Figures read in the one ink; status keeps its colour (pass, fail) and series keep theirs in charts */
+.local-dashboard-page :is(dd, .local-recent-value, .local-dashboard-metric, .ins-kpi strong, .ins-list-value, .local-share-value, .local-readable),
+main.ev-root[data-destination="delegation-evidence"] :is(.kv .v, .kpi .k-v, .big, .val) { color: var(--ink) !important; }
+.local-dashboard-page :is(dt, .ins-kpi > span, .ins-kpi small),
+main.ev-root[data-destination="delegation-evidence"] :is(.kv .k, .kpi .k-l, .note) { color: var(--ink-3) !important; }
+.local-dashboard-page [data-field-tone="fail"] :is(strong, .ins-list-value), .local-dashboard-page strong[data-field-tone="fail"],
+main.ev-root[data-destination="delegation-evidence"] [data-field-tone="fail"] .big { color: var(--ui-fail) !important; }
+.local-dashboard-page [data-field-tone="pass"] strong, main.ev-root[data-destination="delegation-evidence"] [data-field-tone="pass"] .big { color: var(--ui-pass) !important; }
+.local-dashboard-page [data-field-unavailable="true"] :is(dd, strong), .local-dashboard-page :is(dd, strong)[data-field-unavailable="true"] { color: var(--ink-3) !important; font-weight: 500; }
+.local-dashboard-page dt svg { color: var(--ink-3) !important; }
+
+/* Run and model identifiers in JetBrains Mono, in ink; links in the link colour */
+.local-dashboard-page :is(.local-model-identity, .local-routing-name.local-model-identity) { font-family: var(--font-mono); font-size: 12px; color: var(--ink) !important; }
+.local-dashboard-page a { color: var(--link-ink); }
+
+/* Dense tables */
+.local-dashboard-page table { border-collapse: separate; border-spacing: 0; font-size: 13px; }
+.local-dashboard-page thead th { background: transparent; border-bottom: 1px solid var(--line); padding: 8px 10px; white-space: nowrap; }
+.local-dashboard-page tbody td { padding: 8px 10px; border-bottom: 1px solid var(--line-2); vertical-align: middle; }
+.local-dashboard-page tbody tr:hover > td { background: var(--panel-2); }
+.local-dashboard-page tbody tr:last-child > td { border-bottom: 0; }
+
+/* Status pills: quiet tinted chips */
+.local-dashboard-page .local-outcome-pill, .local-dashboard-page [class*="outcome-pill"], main.ev-root .badge {
+  border-radius: 999px; font-size: 12px; font-weight: 500; padding: 1px 8px;
+}
+
+/* Charts sit on the panel surface: no grey plot fill, hairline grid */
+.local-dashboard-page :is(.ins-card, .local-chart, .usage-insight, .workflow-analysis-card) { background: transparent; box-shadow: none; }
+.local-dashboard-page :is(.ins-bars, .ins-plot, .overview-volume-bars, .usage-tokens-day) { background: transparent; }
+.local-dashboard-page .ins-card { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+
+/* KPI strip (AC63): label, figure, note, then the sparkline under them */
+.kpi-strip { margin-bottom: 16px; }
+.kpi-strip > .kpi-item { display: grid; align-content: start; gap: 4px; padding: 14px 18px 12px; min-width: 0; }
+.kpi-strip .kpi-label { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+.kpi-strip .kpi-value { font-size: clamp(20px, 1.8vw, 26px); font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: var(--ink); overflow-wrap: anywhere; }
+.kpi-strip [data-field-unavailable="true"] .kpi-value { font-size: 14px; font-weight: 500; color: var(--ink-3); }
+.kpi-strip [data-field-tone="fail"] .kpi-value { color: var(--ui-fail); }
+.kpi-strip .kpi-note { font-size: 12px; color: var(--ink-3); line-height: 1.4; }
+.kpi-strip .kpi-sparkline { width: 100%; height: 24px; margin-top: 4px; color: var(--ui-accent); opacity: 0.85; }
+.kpi-strip [data-field-tone="savings"] .kpi-sparkline { color: var(--ui-pass); }
+.kpi-strip [data-field-tone="tokens-in"] .kpi-sparkline { color: var(--ins-series-1); }
+.kpi-strip [data-field-tone="tokens-out"] .kpi-sparkline { color: var(--ins-series-4); }
+@media (max-width: 1280px) { .kpi-strip { grid-template-columns: repeat(min(var(--kpi-count, 4), 3), minmax(0, 1fr)); } }
+.kpi-strip [data-field-tone] .kpi-note { color: var(--ink-3) !important; }
+
+/* Filter chips: compact, neutral, monochrome icon; the pressed chip takes the ink */
+.local-dashboard-page .local-dashboard-filters > button,
+.local-dashboard-page .local-dashboard-filters button[aria-pressed] {
+  min-height: 28px; height: auto; padding: 3px 9px; gap: 6px; border-radius: 6px; border: 1px solid var(--line);
+  background: var(--panel); color: var(--ink-2); font-size: 12px; font-weight: 500; box-shadow: none;
+}
+.local-dashboard-page .local-dashboard-filters button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--panel); }
+.local-dashboard-page .local-dashboard-filters button > span:last-child { color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.local-dashboard-page .local-dashboard-filters button[aria-pressed="true"] > span:last-child { color: inherit; opacity: 0.8; }
+.local-dashboard-page .local-dashboard-filters button svg,
+.local-dashboard-page .local-task-cell svg { width: 14px; height: 14px; padding: 0; background: transparent !important; color: var(--ink-3) !important; border-radius: 0; }
+.local-dashboard-page .local-dashboard-filters button [class*="icon"],
+.local-dashboard-page .local-task-cell [class*="icon"] { background: transparent !important; padding: 0; }
+.local-dashboard-page h3.local-dashboard-caption { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3); }
+
+/* One ink in every strip: the old per-field colours no longer tint labels or figures (status keeps its colour). */
+.kpi-strip .kpi-label { color: var(--ink-3) !important; }
+.kpi-strip .kpi-value { color: var(--ink) !important; }
+.kpi-strip [data-field-tone="fail"] .kpi-value { color: var(--ui-fail) !important; }
+.kpi-strip [data-field-unavailable="true"] .kpi-value { color: var(--ink-3) !important; }
+
+/* Overview's strip reads like the others: label on top, figure under it, basis lines below. */
+@media (min-width: 1101px) {
+  .local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel {
+    display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 4px; padding: 14px 18px 12px;
+  }
+  .local-dashboard-page--overview .local-overview-summary .local-dashboard-panel > :is(h2, .local-dashboard-metric) {
+    grid-column: 1; grid-row: auto; text-align: left; margin: 0;
+  }
+}
+.local-dashboard-page--overview .local-overview-summary .local-dashboard-panel > h2 { margin: 0; }
+.local-dashboard-page--overview .local-overview-summary .local-dashboard-metric[data-measured="true"] { font-size: clamp(20px, 1.8vw, 26px); font-weight: 600; }
+.local-dashboard-page--overview .local-overview-summary .local-token-directions { color: var(--ink-2); font-size: 12px; }
+.local-dashboard-page--overview .local-overview-summary .local-token-directions strong { color: var(--ink) !important; }
+
+/* Overview › Quality and Last run side by side on wide screens (their declared half widths), so the newest run's
+ * status, model and age sit in the first screen at 1440x900 (AC49) and the page reads as one dense summary. */
+@media (min-width: 1101px) {
+  .local-dashboard-page--overview .local-overview-surface > .local-overview-focus.local-overview-focus {
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; align-items: start;
+  }
+  .local-dashboard-page--overview .local-overview-focus > .local-dashboard-panel { align-self: start; }
+}
+.local-dashboard-page--overview .local-meter-value { font-size: 40px; line-height: 1.1; }
+
+/* Delegation Evidence in the same look: compact page head, a segmented KPI strip, values in Inter (ids stay mono). */
+main.ev-root[data-destination="delegation-evidence"] .ev-page-head { padding: 20px 24px 12px; border-bottom: 0; background: var(--bg); }
+main.ev-root[data-destination="delegation-evidence"] .ev-page-head :is(h1, .ev-title) { font-size: 20px; font-weight: 600; letter-spacing: -0.015em; }
+main.ev-root[data-destination="delegation-evidence"] .ev-kpi-strip {
+  gap: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); overflow: hidden;
+}
+main.ev-root[data-destination="delegation-evidence"] .ev-kpi-strip > .kpi {
+  border: 0 !important; border-radius: 0 !important; border-inline-end: 1px solid var(--line) !important; background: transparent !important; padding: 14px 18px 12px;
+}
+main.ev-root[data-destination="delegation-evidence"] .ev-kpi-strip > .kpi:last-child { border-inline-end: 0 !important; }
+main.ev-root[data-destination="delegation-evidence"] .ev-kpi-strip .k-l { font-size: 12px !important; font-weight: 600; letter-spacing: 0.06em !important; text-transform: uppercase !important; }
+main.ev-root[data-destination="delegation-evidence"] .ev-kpi-strip .k-v { font-size: clamp(20px, 1.8vw, 26px); font-weight: 600; letter-spacing: -0.02em; }
+main.ev-root[data-destination="delegation-evidence"] .kv .v { font-family: var(--font-sans); font-variant-numeric: tabular-nums; }
+main.ev-root[data-destination="delegation-evidence"] .kv .v.accent,
+main.ev-root[data-destination="delegation-evidence"] .kv [data-field-tone="model"] .v { font-family: var(--font-mono); font-size: 12px; }
+@media (max-width: 900px) {
+  main.ev-root[data-destination="delegation-evidence"] .ev-kpi-strip > .kpi { border-inline-end: 0 !important; border-bottom: 1px solid var(--line) !important; }
+}
+.local-dashboard-page .local-dashboard-header { flex-wrap: wrap; }
+.local-dashboard-page .local-dashboard-header > .kpi-strip { flex: 1 0 100%; order: 10; margin: 4px 0 0; }
