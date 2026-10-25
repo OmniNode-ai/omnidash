@@ -1,0 +1,33 @@
+---
+schema_version: "1.0.0"
+ticket_id: "OMN-21305"
+title: "A delegation refused during routing publishes a typed terminal, so the run reaches delegation_events instead of only a receipt"
+summary: "The omnidash half of OMN-21305: the run a routing refusal now records shows on Runs under status=failed with its correlation id and its cause. AC1 and AC2 (the terminal and the row) are omnimarket's, bound in omnimarket's contracts/OMN-21305.yaml."
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-omn21305-refused-run-on-runs"
+    statement: |-
+      The keyless fresh-HOME run that the routing reducer refuses is listed on Runs under status=failed with its correlation id and its cause.
+    acceptance:
+      - id: "AC3"
+        statement: |-
+          AC3: the keyless fresh-HOME run appears on /runs?status=failed with its correlation id and its cause -- falsifier: a vitest over the Runs reader with a fixture holding that row, failing when the filtered view returns no row for it
+evidence_requirements:
+  - kind: "tests"
+    description: "AC3: with the decisions.v1 row the lab served for the keyless refused run, Runs under status=failed lists it by its correlation id, linked into its run, with the cause Refused before dispatch, and the cause filter keeps only it; without the row it is not listed (R1-R4 and the control)."
+    command: "npx vitest run src/pages/LocalDashboardPage.runs.omn21305.test.tsx"
+dod_evidence:
+  - id: "dod-omn21305-ac3-refused-run-on-runs"
+    description: "AC3: a vitest over the Runs reader with the served refusal row lists it under status=failed with its correlation link and the label Refused before dispatch. It fails when the label is replaced by the raw code, and when the run link no longer carries the correlation id (both shown on the lab host); without the row nothing is listed."
+    source: "manual"
+    binds_ac: ["AC3"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/LocalDashboardPage.runs.omn21305.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
