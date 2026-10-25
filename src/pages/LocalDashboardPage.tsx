@@ -8,7 +8,7 @@ import { Fragment, useEffect, useId, useRef, useState, type CSSProperties, type 
 import { modelColor, tierColor, tierConcept } from '@/lib/dashboard-colors';
 import { Link, useLocation, useSearch } from 'wouter';
 import {
-  ArrowUpRight, Check, ChevronRight, Copy,
+  ArrowUpRight, Check, ChevronRight, Copy, Info,
   type LucideIcon,
 } from 'lucide-react';
 import { createSnapshotSource } from '@/data-source';
@@ -110,6 +110,8 @@ interface MetricCardProps {
   figureLine?: string | null;
   /** Required fields read only for `figureLine`: when one is absent or null the line goes, never the figure. */
   figureLineFields?: readonly string[];
+  /** Further basis lines the caller adds (Overview headline cards put them in the card's tooltip, part 12). */
+  basisExtra?: ReactNode;
 }
 
 /** AK-3: cloud keys are not linked in the local MVP; one line, no form. */
@@ -182,7 +184,7 @@ export function captionText(caption: Record<string, unknown> | null | undefined)
  * field is a baseline, the figure is a savings figure with no priced baseline,
  * which is BASELINE_UNRESOLVED and never a zero. No row at all is Not measured.
  */
-export function MetricCard({ component, config, row, caption, figureLine, figureLineFields = [] }: MetricCardProps) {
+export function MetricCard({ component, config, row, caption, figureLine, figureLineFields = [], basisExtra }: MetricCardProps) {
   if ((component.data_bindings ?? []).length === 0) {
     return <p className="local-dashboard-empty" role="status">{notAvailableYet(PENDING_SOURCES[component.component_id]?.waitsOn)}</p>;
   }
@@ -209,14 +211,47 @@ export function MetricCard({ component, config, row, caption, figureLine, figure
   // (OMN-21304).
   const modelled = caption !== null && caption !== undefined && 'baseline_model' in caption
     && component.component_id !== SPEND_CARD;
+  const details = <>
+    {figure && figureLine && <p className="local-dashboard-caption">{figureLine}</p>}
+    {line && <p className="local-dashboard-caption local-card-basis">{line}</p>}
+    {modelled && <p className="local-dashboard-caption">{SAVINGS_MODELLED}</p>}
+    {basisExtra}
+  </>;
+  const hasDetails = Boolean((figure && figureLine) || line || modelled || basisExtra);
   return (
     <>
       <p className="local-dashboard-metric" data-measured={figure} title={figure && config.format === 'number' ? String(row[config.metric_key]) : undefined}>{text}</p>
-      {figure && figureLine && <p className="local-dashboard-caption">{figureLine}</p>}
-      {/* OMN-21166 part 9 AC44 (Lakshman, 2026-10-23): no Details fold; the card's further lines stay in view. */}
-      {line && <p className="local-dashboard-caption local-card-basis">{line}</p>}
-      {modelled && <p className="local-dashboard-caption">{SAVINGS_MODELLED}</p>}
+      {/* OMN-21166 part 12 AC73 (Lakshman, 2026-10-25, "Figure only, details on hover"): an Overview headline card shows
+          its figure; its basis lines live in the card's tooltip, still in the page as the info button's description.
+          Every other card keeps its lines in view. */}
+      {OVERVIEW_HEADLINE_CARDS.has(component.component_id)
+        ? hasDetails && <CardBasis label={component.title}>{details}</CardBasis>
+        : details}
     </>
+  );
+}
+
+/** The four Overview headline cards whose basis lines sit in a tooltip (part 12 AC73). */
+const OVERVIEW_HEADLINE_CARDS: ReadonlySet<string> = new Set(['overview-spend', 'overview-savings', 'overview-measured', 'overview-tokens']);
+
+/**
+ * OMN-21166 part 12 AC73: a card's basis behind an info button. The button is keyboard focusable and names the card; the
+ * tooltip opens on hover and on focus and closes on Escape or blur. The tooltip's text is the button's accessible
+ * description, so the facts stay in the page for screen readers and for every check that reads them.
+ */
+export function CardBasis({ label, children }: { label: string; children: ReactNode }) {
+  const id = useId();
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="local-card-basis-tip" data-open={open ? 'true' : undefined}
+      onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+      <button type="button" className="local-card-info" aria-label={`About ${label}`} aria-describedby={id} aria-expanded={open}
+        onFocus={() => setOpen(true)} onBlur={() => setOpen(false)}
+        onKeyDown={(event) => { if (event.key === 'Escape') { setOpen(false); (event.currentTarget as HTMLButtonElement).blur(); } }}>
+        <Info size={14} aria-hidden="true" />
+      </button>
+      <div role="tooltip" id={id} className="local-card-tooltip">{children}</div>
+    </div>
   );
 }
 
@@ -323,15 +358,16 @@ export function OverviewAggregateCard({ component, config, rows, window }: {
       [row.unknown_run_count, 'unknown-provenance run', 'unknown-provenance runs']],
   } : null;
   return <>
-    <MetricCard component={component} config={config} row={row} caption={basis} />
+    <MetricCard component={component} config={config} row={row} caption={basis} basisExtra={component.component_id !== 'overview-savings' && !runs ? undefined : <>
+      {/* OMN-21166 part 9 AC45: only Savings keeps a caption: its basis (in the tooltip since part 12). */}
+      {component.component_id === 'overview-savings' && <p className="local-dashboard-caption">Modelled · vs cloud baseline</p>}
+      {/* OMN-21166 AC37: the headline is every call; the measured population is a labelled breakdown beside it, the
+          same breakdown Delegation Evidence shows under the same figure. */}
+      {runs && <RunBreakdown row={row} />}
+    </>} />
     {/* OMN-21015: cost.savings-overview.v1 serves the directions as tokens_input_total and tokens_output_total
-        (omnimarket#4341); it serves no tokens_input or tokens_output. */}
+        (omnimarket#4341); it serves no tokens_input or tokens_output. They are figures, so they stay in view. */}
     {component.component_id === 'overview-tokens' && <TokenDirections input={row.tokens_input_total} output={row.tokens_output_total} />}
-    {/* OMN-21166 part 9 AC45: the window switch names the window, so only Savings keeps a caption: its basis. */}
-    {component.component_id === 'overview-savings' && <p className="local-dashboard-caption">Modelled · vs cloud baseline</p>}
-    {/* OMN-21166 AC37: the headline is every call; the measured population is a labelled breakdown beside it, the
-        same breakdown Delegation Evidence shows under the same figure. */}
-    {runs && <RunBreakdown row={row} />}
   </>;
 }
 

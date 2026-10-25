@@ -329,3 +329,30 @@ main.ev-root[data-destination="delegation-evidence"] .kv [data-field-tone="model
 }
 .local-dashboard-page .local-dashboard-header { flex-wrap: wrap; }
 .local-dashboard-page .local-dashboard-header > .kpi-strip { flex: 1 0 100%; order: 10; margin: 4px 0 0; }
+
+/* ── Overview headline cards: figure only, basis in a tooltip (part 12 AC73) ────────────────────────────────── */
+.local-dashboard-page--overview .local-overview-summary > .local-dashboard-panel { position: relative; }
+.local-card-basis-tip { position: absolute; top: 12px; right: 12px; z-index: 5; }
+.local-card-info {
+  display: inline-grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%;
+  background: transparent; color: var(--ink-3); cursor: help;
+}
+.local-card-info:is(:hover, :focus-visible) { background: var(--panel-2); color: var(--ink); outline: none; }
+.local-card-info:focus-visible { box-shadow: 0 0 0 2px var(--ui-accent); }
+.local-card-tooltip {
+  position: absolute; top: calc(100% + 6px); right: 0; width: min(320px, 80vw); padding: 10px 12px;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--panel); box-shadow: var(--shadow-md);
+  visibility: hidden; opacity: 0; transform: translateY(-2px); transition: opacity 120ms ease, transform 120ms ease;
+  text-align: left; pointer-events: none;
+}
+.local-card-tooltip .local-dashboard-caption { margin: 0 0 6px; font-size: 12px; line-height: 1.45; color: var(--ink-2) !important; }
+.local-card-tooltip .local-dashboard-caption:last-child { margin-bottom: 0; }
+.local-card-basis-tip[data-open="true"] .local-card-tooltip,
+.local-card-basis-tip:focus-within .local-card-tooltip { visibility: visible; opacity: 1; transform: none; pointer-events: auto; }
+@media (prefers-reduced-motion: reduce) { .local-card-tooltip { transition: none; } }
+/* The strip lets the tooltip out; its outer cards round their own corners instead of clipping. */
+.local-dashboard-page--overview .local-overview-surface > .local-overview-summary { overflow: visible; }
+.local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel:first-child { border-radius: 10px 0 0 10px; }
+.local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel:last-child { border-radius: 0 10px 10px 0; }
+.local-dashboard-page--overview .local-overview-summary > .local-dashboard-panel:has(.local-card-basis-tip[data-open="true"], .local-card-basis-tip:focus-within) { z-index: 6; }
+.local-dashboard-page--overview .local-overview-summary > .local-dashboard-panel.local-dashboard-panel { overflow: visible; }
