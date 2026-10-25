@@ -127,3 +127,50 @@ main.ev-root[data-destination="delegation-evidence"] .dt-head {
 .local-dashboard-page .usage-cost-bars strong { font-weight: 500; color: var(--ink-3); white-space: nowrap; }
 .local-dashboard-page .usage-insights .usage-cost-bars > button { grid-template-rows: auto 120px auto auto; }
 .local-dashboard-page .usage-cost-unmeasured { max-width: 9ch; color: var(--ink-3); line-height: 1.3; }
+
+/* Evidence › Acceptance checks (AC66): served check types and the cost of compliance, compact rows. */
+main.ev-root .ev-acceptance-checks, main.ev-root .ev-acceptance-models { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 6px; }
+main.ev-root .ev-acceptance-checks > li, main.ev-root .ev-acceptance-models > li {
+  display: grid; grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr)); gap: 8px; align-items: baseline;
+  font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink-2);
+}
+main.ev-root .ev-acceptance-checks > li > :first-child, main.ev-root .ev-acceptance-models > li > :first-child { color: var(--ink); overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+  main.ev-root .ev-acceptance-checks > li, main.ev-root .ev-acceptance-models > li { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+
+/* Usage › Savings by model (AC66): one row per served model, bar against the largest saving. */
+.local-dashboard-page .local-savings-by-model { margin-top: 20px; }
+.local-dashboard-page .local-savings-by-model > h3 { display: flex; align-items: center; gap: 8px; }
+.local-dashboard-page .local-savings-by-model ul { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 8px; }
+.local-dashboard-page .local-savings-by-model li {
+  display: grid; grid-template-columns: minmax(0, 2fr) minmax(80px, 2fr) 96px minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 10px; align-items: center; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink-2);
+}
+.local-dashboard-page .local-savings-by-model li > :first-child { overflow-wrap: anywhere; }
+.local-dashboard-page .local-savings-by-model strong { color: var(--ink); font-weight: 600; text-align: right; }
+.local-dashboard-page .local-savings-bar { height: 6px; border-radius: 3px; background: var(--line-2); overflow: hidden; }
+.local-dashboard-page .local-savings-bar > i { display: block; height: 100%; background: var(--model-color, var(--field-savings)); }
+@media (max-width: 760px) {
+  .local-dashboard-page .local-savings-by-model li { grid-template-columns: minmax(0, 1fr) auto; }
+  .local-dashboard-page .local-savings-bar { grid-column: 1 / -1; }
+}
+
+/* Overview › all-time metering line (AC42 keeps it visible; AC60): one slim full-width row, not an orphan half card. */
+.local-dashboard-page .ins-window-kpis--metering:has(> .ins-kpi:only-child) { grid-template-columns: minmax(0, 1fr); }
+.local-dashboard-page .ins-window-kpis--metering > .ins-kpi:only-child {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; padding: 10px 14px;
+}
+.local-dashboard-page .ins-window-kpis--metering > .ins-kpi:only-child > strong { font-size: 18px; }
+
+/* Overview › routing and recent activity (AC60): each panel keeps its own height, so no empty band under Tier mix. */
+.local-dashboard-page--overview .local-overview-bottom { align-items: start; }
+.local-dashboard-page--overview .local-overview-bottom > .local-dashboard-panel { align-self: start; }
+
+/* Labels keep the sentence case they are written in ("Quality gate refused"), as everywhere else on the pages. */
+.local-dashboard-page .ins-list-name { text-transform: none; }
+
+/* Overview › Why runs failed (AC65): the one card spans the row and takes only the height of its rows. */
+.local-dashboard-page section.overview-chart-section[aria-label="Why runs failed"] > .overview-chart-row { grid-template-columns: minmax(0, 1fr); }
+.local-dashboard-page section.overview-chart-section[aria-label="Why runs failed"] figure { min-height: 0; height: auto; display: block; }
+.local-dashboard-page section.overview-chart-section[aria-label="Why runs failed"] figure > * { max-width: none; }

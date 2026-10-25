@@ -336,8 +336,10 @@ function SeenAt({ label, at }: { label: string; at: number }) {
  * OV-7 (OMN-19919 AC7): failed runs per cause, each with its count, first and last seen, and a link to Runs filtered
  * to status=failed and that cause. The cause is failureCauseOf's, the same one the filter and the Runs list key on.
  */
-function FailureCauses({ runs, onInspectFailure }: { runs: InsightRun[]; onInspectFailure?: (cause: string) => void }) {
-  const list = causes(runs);
+function FailureCauses({ runs, onInspectFailure, limit }: { runs: InsightRun[]; onInspectFailure?: (cause: string) => void; limit?: number }) {
+  // OMN-21166 AC65: Overview shows the top causes only, ranked as Runs ranks them, with a link to the full list there.
+  const all = causes(runs);
+  const list = limit === undefined ? all : all.slice(0, limit);
   // On the Overview a cause filters the latest runs below (OMN-21166 approved mockup); alone it is a plain list.
   const shared = useSharedRunFilter();
   const max = Math.max(1, ...list.map(entry => entry.count));
@@ -364,6 +366,7 @@ function FailureCauses({ runs, onInspectFailure }: { runs: InsightRun[]; onInspe
           ))}
         </ul>
       )}
+      {limit !== undefined && all.length > limit && <p className="local-dashboard-caption"><Link href="/runs?status=failed">{`All ${count(all.length)} causes on Runs`}</Link></p>}
     </ChartCard>
   );
 }
@@ -473,7 +476,7 @@ export function PassRateSparkline() {
   const comparison = window.kind === 'days' ? compareWindow(context.decisions, context.now, window.days) : null;
   const current = summary(currentRuns);
   const rate = current.passRate === null ? 'Not recorded' : `${current.passRate.toFixed(1)}%`;
-  const deltaText = comparison === null ? 'Comparison unavailable for this window'
+  const deltaText = comparison === null ? null
     : comparison.passRateDeltaPoints === null
       ? comparison.previousComplete
         ? `Previous ${comparisonDays === 1 ? 'day' : `${comparisonDays} days`} has no recorded verdicts to compare`
@@ -483,7 +486,7 @@ export function PassRateSparkline() {
   // label names that population beside the figure.
   return <section className="ins-pass-headline" aria-label="Pass rate trend">
     <p className="local-dashboard-caption ins-pass-line"><span>Pass rate · latest returned runs</span> <strong data-field-unavailable={current.passRate === null}>{rate}</strong> <span className="ins-pass-coverage" data-field-tone="basis">{verdictCoverage(current.passed + current.failed, current.runs)}</span></p>
-    <p className="local-dashboard-caption ins-pass-delta" data-field-unavailable={comparison?.passRateDeltaPoints === null || comparison === null}>{deltaText}</p>
+    {deltaText !== null && <p className="local-dashboard-caption ins-pass-delta" data-field-unavailable={comparison?.passRateDeltaPoints === null}>{deltaText}</p>}
     <PassRateTrend days={seriesForDays(currentRuns, plottedDays(runs, context.now, window))} />
   </section>;
 }
@@ -550,17 +553,17 @@ function RunWindowKpis({ runs, decisions, label, comparisonEnabled, now, days }:
   const selectedLabel = label;
   const durationMissing = runs.filter(run => run.latencyMs === null).length;
   const summaryNow = summary(runs);
-  const runDelta = !comparisonEnabled ? 'Comparison unavailable for this window'
+  const runDelta = !comparisonEnabled ? null
     : comparison?.previousComplete && comparison.runsDelta !== null
       ? delta(comparison.runsDelta, value => `${value} runs`) : 'Previous window not fully returned';
-  const medianDelta = !comparisonEnabled ? 'Comparison unavailable for this window'
+  const medianDelta = !comparisonEnabled ? null
     : comparison?.previousComplete && comparison.medianLatencyDelta !== null
       ? delta(comparison.medianLatencyDelta, value => `${(value / 1000).toFixed(2)} s`) : 'Previous window not fully returned';
   const median = summaryNow.medianLatency === null ? 'Not recorded' : duration(summaryNow.medianLatency);
   return (
     <section className="ins-window-kpis ins-window-kpis--runs" aria-label={`Runs in ${selectedLabel}`}>
-      <div className="ins-kpi local-dashboard-metric" data-field-tone="count"><span>Runs</span><strong>{count(summaryNow.runs)}</strong><small>{selectedLabel} · counted from the returned decision rows</small><small>{runDelta}</small></div>
-      <div className="ins-kpi local-dashboard-metric" data-field-tone="duration"><span>Median duration</span><strong data-field-unavailable={summaryNow.medianLatency === null}>{median}</strong><small>{count(durationMissing)} duration values not recorded</small><small>{medianDelta}</small></div>
+      <div className="ins-kpi local-dashboard-metric" data-field-tone="count"><span>Runs</span><strong>{count(summaryNow.runs)}</strong><small>{selectedLabel} · counted from the returned decision rows</small>{runDelta !== null && <small>{runDelta}</small>}</div>
+      <div className="ins-kpi local-dashboard-metric" data-field-tone="duration"><span>Median duration</span><strong data-field-unavailable={summaryNow.medianLatency === null}>{median}</strong><small>{count(durationMissing)} duration values not recorded</small>{medianDelta !== null && <small>{medianDelta}</small>}</div>
     </section>
   );
 }
@@ -585,15 +588,15 @@ function MeteringWindowKpis({ current, previous, days, label, comparisonEnabled,
       : `${servedDayCount} served day rows · ${savedPct}`);
   const previousComplete = comparisonEnabled && unavailable === null && current.available && current.windowComplete
     && previous !== null && previous.available && previous.windowComplete;
-  const paidDelta = !comparisonEnabled ? 'Comparison unavailable for this window'
+  const paidDelta = !comparisonEnabled ? null
     : previousComplete && current.spend !== null && previous.spend !== null
       ? delta(current.spend - previous.spend, value => usd(value)) : 'Previous window not fully returned';
-  const savedDelta = !comparisonEnabled ? 'Comparison unavailable for this window'
+  const savedDelta = !comparisonEnabled ? null
     : previousComplete && current.saved !== null && previous.saved !== null
       ? delta(current.saved - previous.saved, value => usd(value)) : 'Previous window not fully returned';
   return <section className="ins-window-kpis ins-window-kpis--metering" aria-label={`Metered spend summary for ${label}`}>
-    <div className="ins-kpi local-dashboard-metric" data-field-tone="cost"><span>You paid</span><strong data-field-unavailable={!paidReady}>{paidReady ? usd(current.spend) : 'Unavailable'}</strong><small>{paidNote}</small><small>{paidDelta}</small></div>
-    <div className="ins-kpi local-dashboard-metric" data-field-tone="savings"><span>Saved</span><strong data-field-unavailable={!savedReady}>{savedReady ? usd(current.saved) : 'Unavailable'}</strong><small>{savedNote}</small><small>{savedDelta}</small></div>
+    <div className="ins-kpi local-dashboard-metric" data-field-tone="cost"><span>You paid</span><strong data-field-unavailable={!paidReady}>{paidReady ? usd(current.spend) : 'Unavailable'}</strong><small>{paidNote}</small>{paidDelta !== null && <small>{paidDelta}</small>}</div>
+    <div className="ins-kpi local-dashboard-metric" data-field-tone="savings"><span>Saved</span><strong data-field-unavailable={!savedReady}>{savedReady ? usd(current.saved) : 'Unavailable'}</strong><small>{savedNote}</small>{savedDelta !== null && <small>{savedDelta}</small>}</div>
   </section>;
 }
 
@@ -607,7 +610,7 @@ function MeteringAllTimeKpis({ rows, label, unavailable }: { rows: readonly unkn
   const paidReady = reason === null && total.spend !== null;
   const paidNote = reason ?? (total.spend === null ? 'The all-time spend total is not recorded.' : 'All-time total, as served.');
   return <section className="ins-window-kpis ins-window-kpis--metering" aria-label={`Metered spend summary for ${label}`}>
-    <div className="ins-kpi local-dashboard-metric" data-field-tone="cost"><span>You paid</span><strong data-field-unavailable={!paidReady}>{paidReady ? usd(total.spend) : 'Unavailable'}</strong><small>{paidNote}</small><small>Comparison unavailable for this window</small></div>
+    <div className="ins-kpi local-dashboard-metric" data-field-tone="cost"><span>You paid</span><strong data-field-unavailable={!paidReady}>{paidReady ? usd(total.spend) : 'Unavailable'}</strong><small>{paidNote}</small></div>
   </section>;
 }
 
@@ -739,11 +742,12 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
           </div>
         </div>
       )}
-      <p className="local-dashboard-caption ins-sub" data-testid="insights-total">{population}{undated} · Row timestamps: {servedSpan} · Earlier activity is not included{window.kind === 'all' || window.kind === 'custom' ? ` · Charts show at most ${MAX_ALL_TIME_DAYS} UTC days; ${count(chartRuns.length)} of ${count(runs.length)} selected runs plotted` : ''}</p>
+      <p className="local-dashboard-caption ins-sub" data-testid="insights-total">{population}{undated} · Row timestamps: {servedSpan} · Earlier activity is not included{window.kind === 'days' ? '' : ' · Comparisons with the previous window appear for 1, 7, 15 and 30 days'}{window.kind === 'all' || window.kind === 'custom' ? ` · Charts show at most ${MAX_ALL_TIME_DAYS} UTC days; ${count(chartRuns.length)} of ${count(runs.length)} selected runs plotted` : ''}</p>
       {emptyMessage !== null ? <p className="local-dashboard-empty ins-empty" role="status" aria-label="Insights">{emptyMessage}</p> : (
         <div className="overview-chart-sections">
           {view !== 'analysis' && <RunWindowKpis runs={runs} decisions={decisions} now={now} days={window.kind === 'days' ? window.days : MAX_ALL_TIME_DAYS} label={windowCaption(window)} comparisonEnabled={window.kind === 'days'} />}
           {view !== 'analysis' && <ChartSection concept="activity" title="Activity over time"><RunsPerDay days={chartDays} /><TokensPerDay days={chartDays} /></ChartSection>}
+          {view === 'summary' && <ChartSection concept="quality-outcomes" title="Why runs failed"><FailureCauses runs={runs} limit={3} /></ChartSection>}
           {view !== 'summary' && <>
           <ChartSection concept="routing-workload" title="Routing and workload"><VolumeBars runs={runs} field="model" /><VolumeBars runs={runs} field="tier" /><TaskMix runs={runs} /></ChartSection>
           <ChartSection concept="quality-outcomes" title="Quality and outcomes"><OutcomeComposition runs={runs} /><PassRateTrend days={chartDays} /><FailureCauses runs={runs} onInspectFailure={onInspectFailure} /></ChartSection>

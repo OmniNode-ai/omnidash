@@ -5,7 +5,7 @@ import { dailyMeteringTokens } from '@/lib/daily-metering-tokens';
 import { DailyMeteringTokens } from '@/components/dashboard/usage/DailyMeteringTokens';
 import { TokenDirections } from '@/components/dashboard/usage/TokenDirections';
 import { Fragment, useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { tierColor, tierConcept } from '@/lib/dashboard-colors';
+import { modelColor, tierColor, tierConcept } from '@/lib/dashboard-colors';
 import { Link, useLocation, useSearch } from 'wouter';
 import {
   ArrowUpRight, Check, ChevronRight, Copy,
@@ -465,6 +465,43 @@ export function MeteringTotalCard({ component, config, rows, window = 'all', now
   return (
     <MetricCard component={component} config={config} row={row} caption={caption}
       figureLine={pct} figureLineFields={[pctField]} />
+  );
+}
+
+/**
+ * OMN-21166 AC66: each model's modelled saving, spend and runs, as the all-time metering-summary.v1 row serves them in
+ * summary_json.by_model (the breakdown `onex metering` prints). A model with no measured run has no saving: it reads
+ * Not measured with its run count, never $0. The bar is layout only (a model's saving against the largest); nothing
+ * here is summed, so the list cannot disagree with the Savings total it breaks down.
+ */
+export function SavingsByModel({ row }: { row: Row }) {
+  const summary = asRecord(row.summary_json);
+  const models = summary && Array.isArray(summary.by_model) ? asRecords(summary.by_model) : [];
+  // The breakdown adds to the panel's own figures; a row that serves none adds nothing, not a second waiting line.
+  if (models.length === 0) return null;
+  const saving = (model: Row) => (isMissing(model.savings_usd) || !Number.isFinite(Number(model.savings_usd)) ? null : Number(model.savings_usd));
+  const max = Math.max(0, ...models.map(saving).filter((n): n is number => n !== null));
+  return (
+    <section className="local-savings-by-model" aria-label="Savings by model">
+      <h3 className="local-dashboard-caption local-section-heading"><ConceptIcon concept="savings" size={16} />Savings by model</h3>
+      <ul>
+        {models.map((model, index) => {
+          const n = saving(model);
+          const name = isMissing(model.model) ? 'Unknown model' : String(model.model);
+          const runs = recordedCount(model.runs);
+          return (
+            <li key={`${name}-${index}`} data-semantic-concept={`model:${name}`} style={{ '--model-color': modelColor(name) } as CSSProperties}>
+              <span className="local-model-identity" style={modelIdentityStyle(name)}>{name}</span>
+              <span className="local-savings-bar" aria-hidden="true">{n !== null && max > 0 && <i style={{ width: `${Math.max(1, (n / max) * 100)}%` }} />}</span>
+              <strong data-field-tone="savings" data-field-unavailable={n === null}>{n === null ? 'Not measured' : formatUsd(model.savings_usd)}</strong>
+              <span>{`${recordedCount(model.runs_measured)} of ${runs} runs measured`}</span>
+              <span>{isMissing(model.spend_usd) ? 'Spend not measured' : `Spend ${formatUsd(model.spend_usd)}`}</span>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="local-dashboard-caption">Modelled against {isMissing(row.baseline_model) ? 'an unresolved baseline' : String(row.baseline_model)}; the totals above are these rows summed by the runtime.</p>
+    </section>
   );
 }
 
@@ -1910,14 +1947,17 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns, acti
   // US-3: metering-summary.v1's day rows, as served; the series renders no all row and sums nothing.
   if (component.component_id === 'usage-savings-series') {
     const groups = meteringDaysByBaseline(rows);
-    if (groups.length === 0) return <MeteringDaySeries rows={rows} />;
+    // OMN-21166 AC66: savings by model, from the same all-time metering row as Overview's Savings card.
+    const allTime = pickMeteringRow(rawRowsFor(component, snapshots, 0), 'all');
+    const byModel = 'row' in allTime ? <SavingsByModel row={allTime.row} /> : null;
+    if (groups.length === 0) return <><MeteringDaySeries rows={rows} />{byModel}</>;
     return (
       <>{groups.map(([baseline, days]) => <div className="local-usage-savings" key={baseline}>
         {/* OMN-21015 U2: the same served day rows as bars; the chart plots the money columns this panel declares.
             Its one series takes the chart's third colour, the colour the same figure has on Overview. */}
         <SpendByDayChart title={component.title} rows={days} columns={columns} colourPlaces={[3]} />
         <MeteringDaySeries rows={days} />
-      </div>)}</>
+      </div>)}{byModel}</>
     );
   }
   // OV: baseline against actual spend per UTC day, the declared columns of the served rows (OMN-21015 AC1).

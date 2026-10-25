@@ -92,6 +92,8 @@ export function WorkflowRecordDetails({ decision, steps }: { decision: Run | und
             ['Tokens to compliance', decision.tokens_to_compliance],
             ['Routed model', decision.routed_model], ['Answering backend', decision.answering_backend],
             ['Score source', decision.score_source], ['Recorded by', writerOf(decision.writer_identity)],
+            // OMN-21166 AC66: a retried run names the run it retried and how; a run with no lineage leaves both out.
+            ['Retry of', decision.parent_correlation_id], ['Lineage', decision.lineage_kind],
           ].filter(([, value]) => value !== null && value !== undefined && value !== ''),
         ].map(([label, value]) => <div key={String(label)} data-field-tone={fieldTone(label, value)} data-field-unavailable={isUnavailableField(value)}><dt><FieldIcon label={label} value={value} />{String(label)}</dt><dd>{(label === 'Created at' || label === 'Written at') && typeof value === 'string' && Number.isFinite(Date.parse(value))
           ? <time dateTime={value} title={value}>{new Date(value).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'UTC' })} UTC</time>

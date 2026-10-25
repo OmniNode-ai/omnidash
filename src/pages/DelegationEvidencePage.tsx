@@ -42,6 +42,7 @@ import {
   useMeteringSummary,
 } from '@/components/dashboard/event-dash/useEventDashData';
 import type {
+  QualityGateRow,
   CorrelationTraceRow,
   CostSavingsOverviewRow,
   DelegationDecisionRow,
@@ -314,6 +315,7 @@ function QualityGate() {
         <div className="bar-fill m-green" data-field-tone="pass" data-semantic-concept="field:pass" data-semantic-label="Passed checks" style={{ background: 'var(--field-pass)', width: total > 0 ? `${(q.total_passed / total) * 100}%` : '0%' }} />
         <div className="bar-fill m-red" data-field-tone="fail" data-semantic-concept="field:fail" data-semantic-label="Failed checks" style={{ background: 'var(--field-fail)', width: total > 0 ? `${(q.total_failed / total) * 100}%` : '0%' }} />
       </div>
+      <AcceptanceChecks q={q} />
       <div className="divider" />
       <div className="section-label">Escalation reasons</div>
       {q.failure_categories.slice(0, 6).map((f, i) => {
@@ -326,6 +328,65 @@ function QualityGate() {
         );
       })}
     </Panel>
+  );
+}
+
+/** A served check name in words ("score vs required bar"); the served key stays in the data attribute. */
+const checkName = (value: unknown) => (isUnavailableField(value) ? 'Not recorded' : String(value).replace(/_+/g, ' '));
+const servedNumber = (value: unknown): number | null =>
+  isUnavailableField(value) || !Number.isFinite(Number(value)) ? null : Number(value);
+const wholeTokens = (value: unknown) => {
+  const n = servedNumber(value);
+  return n === null ? 'Not recorded' : formatFullCount(Math.round(n));
+};
+const attempts = (value: unknown) => {
+  const n = servedNumber(value);
+  return n === null ? 'Not recorded' : n.toFixed(1);
+};
+
+/**
+ * OMN-21166 AC66: what the quality gate checked and what it cost to pass, from the same served quality-gate row: each
+ * check type with its own pass and fail counts, and the tokens and attempts a run took to comply, overall and by
+ * model. Nothing is computed here; a field the runtime does not serve reads Not recorded and a list it does not serve
+ * is left out.
+ */
+function AcceptanceChecks({ q }: { q: QualityGateRow }) {
+  const checks = Array.isArray(q.by_check_type) ? q.by_check_type : [];
+  const byModel = Array.isArray(q.tokens_to_compliance_by_model) ? q.tokens_to_compliance_by_model : [];
+  return (
+    <section className="ev-acceptance" aria-label="Acceptance checks">
+      <div className="divider" />
+      <div className="section-label">Acceptance checks</div>
+      {checks.length > 0 && (
+        <ul className="ev-acceptance-checks" aria-label="Checks by type">
+          {checks.map((check, index) => (
+            <li key={`${String(check.check_type)}-${index}`} data-check-type={String(check.check_type ?? '')}>
+              <span>{checkName(check.check_type)}</span>
+              <span data-field-tone="pass">{servedNumber(check.passed) === null ? 'Not recorded' : formatDashboardCount(check.passed)} passed</span>
+              <span data-field-tone="fail">{servedNumber(check.failed) === null ? 'Not recorded' : formatDashboardCount(check.failed)} failed</span>
+              <span>{servedNumber(check.pass_rate) === null ? 'Not recorded' : passRate(check.pass_rate)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <KV items={[
+        { k: 'Median tokens to comply', v: wholeTokens(q.median_tokens_to_compliance) },
+        { k: 'Average tokens to comply', v: wholeTokens(q.avg_tokens_to_compliance) },
+        { k: 'Average attempts', v: attempts(q.avg_compliance_attempts) },
+      ]} />
+      {byModel.length > 0 && (
+        <ul className="ev-acceptance-models" aria-label="Tokens to comply by model">
+          {byModel.map((model, index) => (
+            <li key={`${String(model.model_name)}-${index}`}>
+              <span className="mono local-model-identity" style={modelIdentityStyle(String(model.model_name ?? ''))}>{isUnavailableField(model.model_name) ? 'Unknown model' : String(model.model_name)}</span>
+              <span>{wholeTokens(model.avg_tokens)} tokens</span>
+              <span>{attempts(model.avg_attempts)} attempts</span>
+              <span>{servedNumber(model.sample_count) === null ? 'Not recorded' : `${formatDashboardCount(model.sample_count)} runs`}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 
