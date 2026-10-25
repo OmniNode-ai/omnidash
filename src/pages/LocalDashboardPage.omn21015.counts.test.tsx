@@ -5,7 +5,7 @@ import { loadLocalPageConfig } from '@/layout/local-page-loader';
 import { OverviewAggregateCard } from './LocalDashboardPage';
 const page = loadLocalPageConfig('overview');
 const row = { window: 'all', captured_at: '2026-10-22T10:00:00Z', run_count: '59188',
-  tokens_total: '309271491', tokens_input: '300000001', tokens_output: '9271490' };
+  tokens_total: '309271491', tokens_input_total: '300000001', tokens_output_total: '9271490' };
 afterEach(cleanup);
 function card(id: string, data: Record<string, unknown> = row, window: 'all' | 'today' = 'all') {
   const component = page.components.find(c => c.component_id === id)!;
@@ -28,11 +28,11 @@ describe('OMN-21015 headline counts and directional tokens', () => {
     expect(container.querySelectorAll('.local-token-direction svg')).toHaveLength(2);
   });
   it('keeps a true zero direction', () => {
-    const { container } = card('overview-tokens', { ...row, tokens_output: 0 });
+    const { container } = card('overview-tokens', { ...row, tokens_output_total: 0 });
     expect(container.querySelector('[data-field-tone="tokens-out"]')?.textContent).toBe('0');
   });
   it.each([null, undefined, false, 'bad', '1.25'])('refuses invalid input %s without hiding output', value => {
-    const { container } = card('overview-tokens', { ...row, tokens_input: value });
+    const { container } = card('overview-tokens', { ...row, tokens_input_total: value });
     expect(container.querySelector('[data-field-tone="tokens-in"]')?.textContent).toMatch(/Not measured/);
     expect(container.querySelector('[data-field-tone="tokens-out"]')?.textContent).toMatch(/9,271,490/);
   });

@@ -309,7 +309,9 @@ export function OverviewAggregateCard({ component, config, rows, window }: {
   } : null;
   return <>
     <MetricCard component={component} config={config} row={row} caption={basis} />
-    {component.component_id === 'overview-tokens' && <TokenDirections input={row.tokens_input} output={row.tokens_output} />}
+    {/* OMN-21015: cost.savings-overview.v1 serves the directions as tokens_input_total and tokens_output_total
+        (omnimarket#4341); it serves no tokens_input or tokens_output. */}
+    {component.component_id === 'overview-tokens' && <TokenDirections input={row.tokens_input_total} output={row.tokens_output_total} />}
     {/* OMN-21166 part 9 AC45: the window switch names the window, so only Savings keeps a caption: its basis. */}
     {component.component_id === 'overview-savings' && <p className="local-dashboard-caption">Modelled · vs cloud baseline</p>}
     {/* OMN-21166 AC37: the headline is every call; the measured population is a labelled breakdown beside it, the
