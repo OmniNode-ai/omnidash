@@ -293,3 +293,68 @@ export default function UsageByModelDayWidget() {
     </ComponentWrapper>
   );
 }
+
+/**
+ * OMN-21166 Maple grid: tokens per UTC day as one vertical stacked chart, days across, one colour per model, with a
+ * switch between tokens in and tokens out. Each segment is a served count (rows of one model under two tiers add up);
+ * a count that is not served draws no segment, adds nothing to the scale and is named in the day's label.
+ */
+export function UsageTokensChart({ rows, days = 14 }: { rows: readonly unknown[]; days?: number }) {
+  const [direction, setDirection] = useState<'in' | 'out'>('in');
+  const usage = asRows(rows);
+  const field = direction === 'in' ? 'input_tokens' : 'output_tokens';
+  const byDay = new Map<string, Map<string, { value: number; missing: boolean }>>();
+  for (const entry of usage) {
+    if (isMissing(entry.usage_day)) continue;
+    const day = String(entry.usage_day);
+    const name = model(entry.model_id);
+    const models = byDay.get(day) ?? new Map<string, { value: number; missing: boolean }>();
+    const cell = models.get(name) ?? { value: 0, missing: false };
+    const served = entry[field];
+    if (typeof served === 'number' && Number.isFinite(served)) cell.value += served;
+    else cell.missing = true;
+    models.set(name, cell);
+    byDay.set(day, models);
+  }
+  const shown = [...byDay.keys()].sort().slice(-days);
+  const names = [...new Set(shown.flatMap(day => [...byDay.get(day)!.keys()]))];
+  const total = (day: string) => [...byDay.get(day)!.values()].reduce((sum, cell) => sum + cell.value, 0);
+  const max = Math.max(0, ...shown.map(total));
+  if (shown.length === 0) return <p className="local-dashboard-empty" role="status">{NO_TOKEN_ROWS}</p>;
+  const short = (day: string) => new Date(`${day}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  return (
+    <figure className="utc-chart" aria-label={`Tokens ${direction} per day by model`}>
+      <div className="utc-tools">
+        <div className="utc-switch" role="group" aria-label="Direction">
+          <button type="button" aria-pressed={direction === 'in'} onClick={() => setDirection('in')}>Tokens in</button>
+          <button type="button" aria-pressed={direction === 'out'} onClick={() => setDirection('out')}>Tokens out</button>
+        </div>
+        <ul className="utc-legend" aria-label="Models">
+          {names.map(name => <li key={name}><i aria-hidden="true" style={{ background: modelColor(name) }} />{name}</li>)}
+        </ul>
+      </div>
+      <ol className="utc-plot" style={{ '--utc-count': shown.length } as CSSProperties}>
+        {shown.map(day => {
+          const models = [...byDay.get(day)!.entries()];
+          const label = `${day}: ${models.map(([name, cell]) => `${name}: ${cell.missing && cell.value === 0 ? 'not recorded' : `${formatFullCount(cell.value)}${cell.missing ? ' (some rows not recorded)' : ''}`}`).join('; ')}`;
+          const dayTotal = total(day);
+          return (
+            <li key={day} data-token-day={day} aria-label={label} title={label}>
+              <span className="utc-value">{formatDashboardCount(dayTotal)}</span>
+              <span className="utc-track">
+                <span className="utc-stack" style={{ height: `${max > 0 ? Math.round((dayTotal / max) * 1000) / 10 : 0}%` }}>
+                  {models.filter(([, cell]) => cell.value > 0).map(([name, cell]) => (
+                    <i key={name} data-token-model={name} style={{ flex: cell.value, background: modelColor(name) }} />
+                  ))}
+                </span>
+              </span>
+              {models.some(([, cell]) => cell.missing) && <span className="utc-missing" data-token-missing aria-hidden="true">n/r</span>}
+              <span className="utc-day">{short(day)}</span>
+            </li>
+          );
+        })}
+      </ol>
+      <figcaption className="local-dashboard-caption">{`Tokens ${direction} per UTC day, latest ${shown.length} served ${shown.length === 1 ? 'day' : 'days'}; n/r marks a day with a count not recorded.`}</figcaption>
+    </figure>
+  );
+}

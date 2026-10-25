@@ -56,6 +56,7 @@ import { modelColor } from '@/lib/dashboard-colors';
 import { formatDuration } from '@/lib/duration';
 import { percent as sharePercent } from '@/pages/local/shares';
 import { taskLabel } from '@/pages/local/plain-text';
+import { readableTime } from '@/lib/readable-time';
 import { modelIdentityStyle } from '@/components/dashboard/model-identity';
 
 /**
@@ -316,6 +317,10 @@ function QualityGate() {
         <div className="bar-fill m-green" data-field-tone="pass" data-semantic-concept="field:pass" data-semantic-label="Passed checks" style={{ background: 'var(--field-pass)', width: total > 0 ? `${(q.total_passed / total) * 100}%` : '0%' }} />
         <div className="bar-fill m-red" data-field-tone="fail" data-semantic-concept="field:fail" data-semantic-label="Failed checks" style={{ background: 'var(--field-fail)', width: total > 0 ? `${(q.total_failed / total) * 100}%` : '0%' }} />
       </div>
+      {/* OMN-21166 Maple grid: the headline in view; the checks by type, cost to comply and escalation reasons are one
+          click away, so the panel sits beside the selected run without running the length of the page. */}
+      <details className="local-more ev-more">
+      <summary>More quality detail</summary>
       <AcceptanceChecks q={q} />
       <div className="divider" />
       <div className="section-label">Escalation reasons</div>
@@ -328,6 +333,7 @@ function QualityGate() {
           </div>
         );
       })}
+      </details>
     </Panel>
   );
 }
@@ -495,7 +501,7 @@ function DecisionDetail({ row }: { row: DelegationDecisionRow }) {
           { k: 'Quality detail', v: row.quality_gate_detail ? escalationReason(row.quality_gate_detail).text : '—' },
           { k: 'Tokens in / out', v: `${row.tokens_input == null ? 'Not recorded' : formatFullCount(row.tokens_input)} / ${row.tokens_output == null ? 'Not recorded' : formatFullCount(row.tokens_output)}` },
           { k: 'Latency', v: fmtLatency(row.latency_ms) },
-          { k: 'Created', v: row.created_at.replace('T', ' ').slice(0, 19) },
+          { k: 'Created', v: readableTime(row.created_at) ?? row.created_at },
         ]}
       />
       {isLoading ? (
@@ -521,12 +527,13 @@ function DecisionDetail({ row }: { row: DelegationDecisionRow }) {
 function RecentDelegations({ decisions }: { decisions: DelegationDecisionRow[] }) {
   const cols: DataColumn<DelegationDecisionRow>[] = [
     { key: 'correlation_id', label: 'Correlation', render: (r) => <span className="mono c-blue">{shortId(r.correlation_id)}</span> },
-    { key: 'task_type', label: 'Task', grow: true, render: (r) => r.task_type },
+    { key: 'task_type', label: 'Task', grow: true, render: (r) => taskLabel(r.task_type) },
     { key: 'model_name', label: 'Model', truncate: true, render: (r) => <span className="mono local-model-identity" style={modelIdentityStyle(r.model_name)}>{r.model_name.length > 22 ? `${r.model_name.slice(0, 20)}…` : r.model_name}</span> },
     { key: 'state', label: 'State', render: (r) => <StateBadge passed={r.quality_gate_passed} /> },
     { key: 'tokens', label: 'Tokens', num: true, render: (r) => formatDashboardCount(r.tokens_to_compliance) },
     { key: 'latency_ms', label: 'Latency', num: true, render: (r) => fmtLatency(r.latency_ms) },
-    { key: 'created_at', label: 'Created', num: true, render: (r) => <span className="mono dim">{r.created_at.replace('T', ' ').slice(0, 19)}</span> },
+    // OMN-21166 AC60: the time reads as on the other pages; the served value is the title.
+    { key: 'created_at', label: 'Created', num: true, render: (r) => <span className="dim" title={r.created_at}>{readableTime(r.created_at) ?? r.created_at}</span> },
   ];
   return (
     <Panel
@@ -675,15 +682,14 @@ export function DelegationEvidencePage() {
         <KPI label="Tokens" icon={<Coins size={15} aria-hidden="true" />} tone="amber" value={headline.tokens} sub={summary ? withFixtureNotice(`avg ${formatDuration(summary.avgLatencyMs)} latency`, fixtureNotice) : undefined} />
       </div>
 
-      <div className="grid cols-2 ev-selected-run-layout">
-        <SelectedRun correlationId={latestCid} decision={decisions[0]} />
-        <ModelRouting />
-        <SavingsPanel money={headline.money} unavailable={headline.unavailable} />
-      </div>
-
-      <div className="grid cols-2 ev-align-start">
-        <QualityGate />
-        <TokenUsage />
+      {/* OMN-21166 Maple grid, as on the local pages: the selected run (8 of 12) beside its quality gate (4), then routing
+          beside savings (6 and 6); token usage is one line when it is not served. */}
+      <div className="maple-grid ev-maple-grid">
+        <div className="maple-cell maple-cell--wide"><SelectedRun correlationId={latestCid} decision={decisions[0]} /></div>
+        <div className="maple-cell"><QualityGate /></div>
+        <div className="maple-cell maple-cell--half"><ModelRouting /></div>
+        <div className="maple-cell maple-cell--half"><SavingsPanel money={headline.money} unavailable={headline.unavailable} /></div>
+        <div className="maple-cell maple-cell--full"><TokenUsage /></div>
       </div>
 
       {decisionsQ.isLoading ? (

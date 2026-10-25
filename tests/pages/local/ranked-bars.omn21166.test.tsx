@@ -19,7 +19,7 @@ function bars() {
   return [...document.querySelectorAll<HTMLElement>('[data-ranked-item]')];
 }
 function height(name: string): string {
-  return (bars().find(bar => bar.dataset.rankedItem === name)!.querySelector('.rb-bar') as HTMLElement).style.height;
+  return (bars().find(bar => bar.dataset.rankedItem === name)!.querySelector('.rb-bar') as HTMLElement).style.getPropertyValue('--rb-size');
 }
 
 describe('RankedBars', () => {

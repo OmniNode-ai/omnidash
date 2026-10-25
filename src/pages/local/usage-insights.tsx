@@ -143,11 +143,18 @@ function TokensByModel({ data }: { data: UsageAggregates }) {
   </figure>;
 }
 
-export function UsageInsights({ usageRows, decisionRows, routingRows, now = Date.now() }: {
+export function UsageInsights({ usageRows, decisionRows, routingRows, now = Date.now(), part = 'all' }: {
   usageRows: readonly unknown[]; decisionRows: readonly unknown[]; routingRows: readonly unknown[]; now?: number;
+  /** OMN-21166 Maple grid: 'spend' is the spend-by-model panel; 'more' is the rest, under the page's "More usage". */
+  part?: 'all' | 'spend' | 'more';
 }) {
   const data = aggregateUsageRows(usageRows, decisionRows, now, USAGE_WINDOW_DAYS);
   const routing = routeSpendByTier(records(routingRows)[0] ?? {});
+  if (part === 'spend') return <section className="usage-insights" aria-label="Usage insights"><SpendByModel data={data} /></section>;
+  if (part === 'more') return <section className="usage-insights" aria-label="Usage insights">
+    <div className="usage-insight-grid"><CostPerRun data={data} /><TokensByModel data={data} /></div>
+    <CostByRoute routing={routing} />
+  </section>;
   return <section className="usage-insights" aria-label="Usage insights">
     <h3 className="local-dashboard-caption">Latest {USAGE_WINDOW_DAYS} UTC days · counted from served usage rows</h3>
     <div className="usage-insight-grid"><SpendByModel data={data} /></div>
@@ -155,11 +162,17 @@ export function UsageInsights({ usageRows, decisionRows, routingRows, now = Date
     <details className="local-more">
     <summary>More usage</summary>
     <div className="usage-insight-grid"><CostPerRun data={data} /><TokensByModel data={data} /></div>
+    <CostByRoute routing={routing} />
+    </details>
+  </section>;
+}
+
+function CostByRoute({ routing }: { routing: ReturnType<typeof routeSpendByTier> }) {
+  return (
     <section className="local-chart usage-cost-by-route" aria-label="Cost by route">
       <h3 className="local-dashboard-caption"><ConceptIcon concept="cost-route" size={16} />Cost by route</h3>
       {routing.length === 0 ? <p className="local-dashboard-caption" role="status">Route cost is not served yet.</p> : <dl className="local-dashboard-fields local-routing-counts">{routing.map(row => <div key={row.route}><dt>{row.route}</dt><dd>{row.runs} runs · {row.share}</dd><dd>{row.cost}</dd></div>)}</dl>}
       <p role="status">Savings by route is not served yet</p>
     </section>
-    </details>
-  </section>;
+  );
 }

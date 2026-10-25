@@ -59,23 +59,32 @@ const ORDER: Record<PageName, Array<[title: string, width: number]>> = {
   ],
 };
 const RENDERED_ORDER: Record<PageName, Array<[title: string, width: number]>> = {
-  // Lakshman's 2026-10-18 Overview reorganization: latest execution beside
-  // Quality, grouped insights next, cost/routing together, then full-width runs.
-  // The original declarative grid is still checked separately by Y4/Y5.
+  // OMN-21166 Maple grid (Lakshman 2026-10-25): the headline tiles, then each chart (8) beside its ranking (4), then
+  // the recent runs beside quality and the environment line; the last run and the secondary metrics sit under
+  // "Additional runtime metrics". The original declarative grid is still checked separately by Y4/Y5.
   overview: [
     ['Actual spend', 3], ['Savings', 3], ['Agent calls', 3], ['Tokens processed', 3],
-    ['Quality', 6], ['Last run', 6], ['Environment', 12], ['Activity trends', 12],
-    ['Tier mix', 6], ['Recent runs', 6],
-    ['Run locally', 4], ['Avg saving / call', 4], ['Baseline spend', 4],
+    ['Runs per day', 8], ['Why runs failed', 4], ['Tokens per day', 8], ['Tier mix', 4],
+    ['Recent runs', 8], ['Quality', 4], ['Environment', 12],
+    ['Last run', 12], ['Run locally', 4], ['Avg saving / call', 4], ['Baseline spend', 4],
     ['Compression', 6], ['Cache hit rate', 6], ['Spend per day', 12],
   ],
-  usage: ORDER.usage,
+  // Each day chart beside its ranking by model; cost per run, the token detail and the model-by-day table under
+  // "More usage".
+  usage: [
+    ['Savings per day', 8], ['Savings by model', 4], ['Tokens per day', 8], ['Spend by model', 4],
+    ['Cost per run, tokens by model and cost by route', 12], ['Tokens per day by model, in detail', 12], ['Usage by model and day', 12],
+  ],
 };
 /** The preserved panel set, plus the approved OMN-19988 Environment addition; each appears once. */
 // D2 (Lakshman2026-10-20): all secondary metrics remain on Overview in its native disclosure.
 const BEFORE: Record<PageName, string[]> = {
-  overview: ['Actual spend', 'Savings', 'Agent calls', 'Tokens processed', 'Quality', 'Last run', 'Activity trends', 'Tier mix', 'Recent runs', 'Run locally', 'Avg saving / call', 'Baseline spend', 'Compression', 'Cache hit rate', 'Spend per day', 'Environment'].sort(),
-  usage: ['Savings per day', 'Tokens per day', 'Usage insights', 'Usage by model and day'].sort(),
+  // OMN-21166 Maple grid: "Activity trends" is drawn as its three slices, each once.
+  overview: ['Actual spend', 'Savings', 'Agent calls', 'Tokens processed', 'Quality', 'Last run', 'Runs per day', 'Why runs failed', 'Tokens per day', 'Tier mix', 'Recent runs', 'Run locally', 'Avg saving / call', 'Baseline spend', 'Compression', 'Cache hit rate', 'Spend per day', 'Environment'].sort(),
+  // OMN-21166 Maple grid: Usage insights is drawn as Spend by model and the "More usage" slice; savings by model and the
+  // token detail are slices of their panels, each once.
+  usage: ['Savings per day', 'Savings by model', 'Tokens per day', 'Spend by model', 'Cost per run, tokens by model and cost by route',
+    'Tokens per day by model, in detail', 'Usage by model and day'].sort(),
 };
 
 async function panels(pageName: PageName): Promise<Array<[string, number]>> {

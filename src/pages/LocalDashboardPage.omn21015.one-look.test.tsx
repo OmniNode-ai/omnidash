@@ -82,6 +82,9 @@ const PARTS = [
   'nav.local-run-diagram', 'ol.local-dashboard-steps', '.usage-tokens-day',
   'ul.local-run-preview', '.local-runs-search', 'dl.local-routing-counts', '.local-routing-note',
   'nav.local-summary-links', '.local-token-directions',
+  // OMN-21166: the shared ranked bars (AC64), the stacked tokens chart, the window presets of the activity panels, and
+  // labels kept only for screen readers.
+  'figure.rb-chart', 'figure.utc-chart', '.ins-range-presets', '.local-visually-hidden',
 ].join(', ');
 /** Where a page may draw text at all. */
 const PAGE_PARTS = 'details.local-overview-secondary > summary, header.local-dashboard-header, article.local-dashboard-panel, main > [role="status"], main > [role="alert"]';

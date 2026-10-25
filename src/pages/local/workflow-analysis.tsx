@@ -48,18 +48,24 @@ function Comparison({ title, kind, values }: {
   </figure>;
 }
 
-export function WorkflowDecisionCharts({ decision, children }: { decision: Run; children: ReactNode }) {
+export function WorkflowDecisionCharts({ decision, children, show = 'all' }: {
+  decision: Run; children: ReactNode;
+  /** OMN-21166 Maple grid: the page shows the timing card; the token and score comparisons repeat the summary fields,
+   *  so they sit under "More run details". */
+  show?: 'all' | 'timing' | 'comparisons';
+}) {
+  // OMN-21166 part 13: no timing card when the run summary left its one-bar chart out.
   return <div className="workflow-analysis-grid">
-    <div className="workflow-analysis-card workflow-analysis-card--timing">
+    {show !== 'comparisons' && children !== null && children !== undefined && <div className="workflow-analysis-card workflow-analysis-card--timing">
       <h3 className="local-dashboard-caption" data-page-heading tabIndex={-1}><ConceptIcon concept="timing" size={16} />Run timing</h3>
       {children}
-    </div>
-    <Comparison title="Token flow" kind="tokens" values={[
+    </div>}
+    {show !== 'timing' && <><Comparison title="Token flow" kind="tokens" values={[
       { label: 'Input tokens', value: decision.tokens_input }, { label: 'Output tokens', value: decision.tokens_output },
     ]} />
     <Comparison title="Quality score and threshold" kind="quality" values={[
       { label: 'Actual score', value: decision.actual_score }, { label: 'Required threshold', value: decision.required_bar },
-    ]} />
+    ]} /></>}
   </div>;
 }
 

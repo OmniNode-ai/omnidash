@@ -384,7 +384,7 @@ main.ev-root[data-destination="delegation-evidence"] .kv [data-field-tone="model
 .local-usage-savings { grid-template-columns: minmax(0, 1fr); }
 
 /* ── AC64: ranked bars (one bar per model, value above, name below, pattern by how the figure was obtained) ── */
-.rb-chart { margin: 0; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.rb-chart { container-type: inline-size; margin: 0; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .rb-chart .rb-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; font-size: 12px; color: var(--ink-3); }
 .rb-chart .rb-plot {
   list-style: none; margin: 0; padding: 0; display: grid; align-items: end; gap: clamp(8px, 2vw, 20px);
@@ -395,7 +395,7 @@ main.ev-root[data-destination="delegation-evidence"] .kv [data-field-tone="model
 .rb-chart .rb-value { font-family: var(--font-mono); font-size: 12px; color: var(--ink); text-align: center; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rb-chart [data-basis="unknown"] > .rb-value { color: var(--ink-3); font-family: var(--font-sans); }
 .rb-chart .rb-track { height: 180px; display: flex; align-items: flex-end; }
-.rb-chart .rb-bar { display: block; width: 100%; min-height: 0; box-sizing: border-box; color: var(--rb-color); }
+.rb-chart .rb-bar { display: block; width: 100%; height: var(--rb-size, 0); min-height: 0; box-sizing: border-box; color: var(--rb-color); }
 .rb-chart .rb-bar[data-pattern="measured"] {
   border-top: 2px solid currentColor;
   background-image: radial-gradient(currentColor 1.15px, transparent 1.35px);
@@ -421,3 +421,150 @@ main.ev-root[data-destination="delegation-evidence"] .kv [data-field-tone="model
 .rb-chart .rb-key i[data-pattern="estimated"] { background-image: repeating-linear-gradient(135deg, currentColor 0 1.5px, transparent 1.5px 5px); border-top: 2px solid currentColor; }
 .rb-chart .rb-key i[data-pattern="unknown"] { border: 1px dashed var(--ink-3); border-bottom: 0; }
 .rb-chart .rb-footnote { margin: 0; font-size: 12px; color: var(--ink-3); }
+
+/* AC71: below 560 px of chart width the bars run sideways (name, bar, value per row), so no label is cut to an ellipsis. */
+@container (max-width: 560px) {
+  .rb-chart .rb-plot { display: flex; flex-direction: column; align-items: stretch; gap: 10px; max-width: none; margin-bottom: 0; border-bottom: 0; border-left: 1px solid var(--line); padding-left: 0; }
+  .rb-chart .rb-plot > li { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name value" "track track"; row-gap: 4px; column-gap: 12px; }
+  .rb-chart .rb-name { position: static; grid-area: name; text-align: left; margin: 0 0 0 8px; -webkit-line-clamp: 1; }
+  .rb-chart .rb-value { grid-area: value; margin: 0; text-align: right; }
+  .rb-chart .rb-track { grid-area: track; height: 12px; align-items: stretch; }
+  .rb-chart .rb-bar { height: auto; width: var(--rb-size, 0); }
+  .rb-chart .rb-bar[data-pattern="measured"], .rb-chart .rb-bar[data-pattern="estimated"] { border-top: 0; border-right: 2px solid currentColor; }
+  .rb-chart .rb-bar[data-pattern="measured"] { -webkit-mask-image: linear-gradient(to left, #000 0%, #000 55%, rgba(0,0,0,.35) 100%); mask-image: linear-gradient(to left, #000 0%, #000 55%, rgba(0,0,0,.35) 100%); }
+  .rb-chart .rb-bar[data-pattern="estimated"] { background-image: repeating-linear-gradient(45deg, currentColor 0 1.5px, transparent 1.5px 6px); }
+  .rb-chart .rb-bar[data-pattern="unknown"] { width: 14px; height: auto; border: 1px dashed var(--ink-3); border-left: 0; }
+}
+
+/* ── Maple grid (2026-10-25, chosen by Lakshman): KPI strip, then rows of chart (8/12) beside its ranking (4/12),
+   then the dense table. One panel chrome, no card inside a card. ─────────────────────────────────────────────── */
+.maple-grid { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; align-items: stretch; }
+.maple-cell { grid-column: span 4; min-width: 0; display: flex; flex-direction: column; }
+.maple-cell--wide { grid-column: span 8; }
+.maple-cell--half { grid-column: span 6; }
+.maple-cell--full { grid-column: 1 / -1; }
+.maple-cell > .local-dashboard-panel { flex: 1; margin: 0; }
+@media (max-width: 1100px) { .maple-cell, .maple-cell--wide, .maple-cell--half { grid-column: 1 / -1; } }
+
+/* A slice panel draws its chart flat: the panel heading is the chart's title, so the inner card loses its chrome. */
+.local-dashboard-panel[data-slice] .ins-card { border: 0; background: none; box-shadow: none; padding: 0; margin: 0; animation: none; }
+.local-dashboard-panel[data-slice] .ins-card-head h3 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.local-dashboard-panel[data-slice] .ins-card-head { min-height: 0; margin: 0; }
+.ins-section--slice { display: flex; flex-direction: column; gap: 10px; }
+.ins-slice-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.ins-slice-tools .ins-sub { margin: 0; }
+.ins-slice-tools .ins-range-presets { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+.ins-slice-tools .ins-range-presets button { height: 26px; padding: 0 10px; border: 0; border-right: 1px solid var(--line); background: transparent; color: var(--ink-3); font-size: 12px; cursor: pointer; }
+.ins-slice-tools .ins-range-presets button:last-child { border-right: 0; }
+.ins-slice-tools .ins-range-presets button[aria-pressed="true"] { background: var(--ink); color: var(--panel); }
+
+/* Maple grid: Overview's recent runs as dense one-line rows. */
+.local-dashboard-page .local-run-preview { list-style: none; margin: 0; padding: 0; }
+.local-dashboard-page .local-run-preview > li {
+  display: grid; grid-template-columns: minmax(120px, 1.1fr) minmax(0, 1.4fr) auto 64px 72px; align-items: center; gap: 12px;
+  padding: 9px 0; border-bottom: 1px solid var(--line-2); font-size: 13px;
+}
+.local-dashboard-page .local-run-preview > li > div { display: contents; }
+.local-dashboard-page .local-run-preview > li a { font-family: var(--font-mono); font-size: 12px; }
+.local-dashboard-page .local-run-preview > li [data-field-tone="model"] { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.local-dashboard-page .local-run-preview > li [data-field-tone="duration"] { text-align: right; font-variant-numeric: tabular-nums; }
+.local-dashboard-page .local-run-preview > li .local-dashboard-caption { text-align: right; margin: 0; }
+@media (max-width: 640px) { .local-dashboard-page .local-run-preview > li { grid-template-columns: minmax(0, 1fr) auto; } }
+
+/* Maple grid: a failure cause is a ranked row; its name is never cut, the bar runs beneath it. */
+.local-dashboard-panel[data-slice="failures"] .ins-list-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name value" "track track" "seen seen"; gap: 4px 12px; padding: 8px 0;
+}
+.local-dashboard-panel[data-slice="failures"] .ins-list-name { grid-area: name; white-space: normal; overflow: visible; text-overflow: clip; text-align: left; }
+.local-dashboard-panel[data-slice="failures"] .ins-list-value { grid-area: value; }
+.local-dashboard-panel[data-slice="failures"] .ins-track { grid-area: track; }
+.local-dashboard-panel[data-slice="failures"] .ins-list-seen { grid-area: seen; font-size: 12px; color: var(--ink-3); }
+
+/* Labels kept for screen readers and tests, not drawn. */
+.local-visually-hidden { position: absolute !important; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* Maple grid: Runs toolbar on one row (search, compact selects, clear), scope line under it. */
+.local-dashboard-page .local-runs-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 6px; }
+.local-dashboard-page .local-runs-toolbar .local-runs-search { flex: 1 1 260px; margin: 0; }
+.local-dashboard-page .local-runs-toolbar .local-runs-search input {
+  width: 100%; height: 32px; box-sizing: border-box; padding: 0 10px 0 30px; border: 1px solid var(--line); border-radius: 7px;
+  background: var(--panel) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%23888' stroke-width='2' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") no-repeat 10px center;
+  font-size: 13px; color: var(--ink);
+}
+.local-dashboard-page .local-runs-toolbar .local-dashboard-filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; border: 0; }
+.local-dashboard-page .local-runs-toolbar .local-filter-field { margin: 0; display: block; }
+.local-dashboard-page .local-runs-toolbar select {
+  height: 32px; padding: 0 28px 0 10px; border: 1px solid var(--line); border-radius: 7px; background-color: var(--panel);
+  font-size: 13px; color: var(--ink-2); max-width: 220px; min-width: 0; width: auto;
+}
+.local-dashboard-page .local-runs-toolbar .local-filter-clear { height: 32px; padding: 0 10px; font-size: 13px; }
+.local-dashboard-page .local-runs-scope { margin: 0 0 10px; font-size: 12px; color: var(--ink-3); }
+.local-dashboard-page .local-runs-toolbar .local-dashboard-filters > .local-filter-field { flex: 0 0 auto; width: auto; min-width: 0; max-width: none; }
+.local-dashboard-page .local-runs-toolbar .local-dashboard-filters > .local-filter-field > select { width: auto; inline-size: auto; max-width: 220px; }
+.local-dashboard-page .local-runs-toolbar { flex-wrap: nowrap; }
+.local-dashboard-page .local-runs-toolbar .local-runs-search { flex: 1 1 220px; min-width: 180px; }
+.local-dashboard-page .local-runs-toolbar .local-dashboard-filters { flex: 0 1 auto; flex-wrap: nowrap; min-width: 0; }
+.local-dashboard-page .local-runs-toolbar .local-dashboard-filters > .local-filter-field > select { max-width: 132px; text-overflow: ellipsis; }
+@media (max-width: 1200px) {
+  .local-dashboard-page .local-runs-toolbar, .local-dashboard-page .local-runs-toolbar .local-dashboard-filters { flex-wrap: wrap; }
+}
+.local-dashboard-page .local-runs-toolbar .local-runs-search input,
+.local-dashboard-page .local-runs-toolbar .local-dashboard-filters > .local-filter-field > select { height: 34px; min-height: 34px; box-sizing: border-box; }
+.local-dashboard-page .local-runs-toolbar .local-dashboard-filters > .local-filter-field > select { max-width: 140px; }
+
+/* Maple grid: Usage's stacked tokens chart. */
+.utc-chart { margin: 0; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.utc-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.utc-switch { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+.utc-switch button { height: 26px; padding: 0 10px; border: 0; background: transparent; color: var(--ink-3); font-size: 12px; cursor: pointer; }
+.utc-switch button + button { border-left: 1px solid var(--line); }
+.utc-switch button[aria-pressed="true"] { background: var(--ink); color: var(--panel); }
+.utc-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--ink-2); }
+.utc-legend li { display: inline-flex; align-items: center; gap: 6px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.utc-legend i { width: 8px; height: 8px; border-radius: 2px; flex: none; }
+.utc-plot { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(var(--utc-count), minmax(0, 1fr)); gap: 6px; align-items: end; border-bottom: 1px solid var(--line); }
+.utc-plot > li { display: flex; flex-direction: column; align-items: stretch; min-width: 0; position: relative; }
+.utc-value { font-family: var(--font-mono); font-size: 11px; color: var(--ink-3); text-align: center; margin-bottom: 4px; white-space: nowrap; overflow: hidden; }
+.utc-track { height: 180px; display: flex; align-items: flex-end; }
+.utc-stack { width: 100%; display: flex; flex-direction: column-reverse; border-radius: 3px 3px 0 0; overflow: hidden; min-height: 0; }
+.utc-stack i { display: block; min-height: 1px; }
+.utc-missing { position: absolute; top: 0; right: 0; font-size: 10px; color: var(--ink-3); border: 1px dashed var(--ink-3); border-radius: 3px; padding: 0 2px; }
+.utc-day { position: absolute; top: calc(100% + 6px); left: 0; right: 0; text-align: center; font-size: 11px; color: var(--ink-3); white-space: nowrap; }
+.utc-chart figcaption { margin-top: 22px; }
+
+/* A slice panel's own heading is the panel's; the inner duplicate title is not drawn. */
+.local-dashboard-panel[data-slice] .local-savings-by-model > h3,
+.local-dashboard-panel[data-slice] .usage-insight > h3 { display: none; }
+.local-dashboard-panel[data-slice] .local-savings-by-model { margin-top: 0; }
+.local-dashboard-panel[data-slice] .usage-insight { border: 0; padding: 0; background: none; }
+
+/* Maple grid: the savings day chart drawn flat in its panel (the panel heading names it; no inner card, no zoom bar). */
+.maple-cell .local-usage-savings > figure.local-chart { border: 0; background: none; box-shadow: none; padding: 0; margin: 0; }
+.maple-cell .local-usage-savings > figure.local-chart .local-chart-symbol,
+.maple-cell .local-usage-savings > figure.local-chart .local-chart-heading h3,
+.maple-cell .local-usage-savings > figure.local-chart .local-chart-inspect-icon,
+.maple-cell .local-usage-savings > figure.local-chart .local-chart-range { display: none; }
+.maple-cell .local-usage-savings > figure.local-chart .local-chart-heading { min-height: 0; margin: 0 0 6px; }
+.maple-cell .local-usage-savings > figure.local-chart .local-chart-heading p { margin: 0; font-size: 12px; color: var(--ink-3); }
+.maple-cell .local-usage-savings > figure.local-chart .local-chart-canvas { background: transparent; }
+.maple-cell .local-usage-savings > figure.local-chart .local-chart-legend { display: none; }
+.maple-cell .local-usage-savings select { width: auto; max-width: 260px; }
+
+/* Maple grid: Workflow's four summary groups as one divided strip (no card inside the panel's card). */
+.local-dashboard-page--workflow .local-run-summary-groups { gap: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.local-dashboard-page--workflow .local-run-summary-groups > .local-run-summary-group { border: 0; border-radius: 0; border-inline-end: 1px solid var(--line); box-shadow: none; background: transparent; }
+.local-dashboard-page--workflow .local-run-summary-groups > .local-run-summary-group:last-child { border-inline-end: 0; }
+@media (max-width: 1100px) { .local-dashboard-page--workflow .local-run-summary-groups > .local-run-summary-group { border-inline-end: 0; border-bottom: 1px solid var(--line); } }
+.maple-cell > .panel { flex: 1; margin: 0; }
+main.ev-root .maple-grid { margin-bottom: 16px; }
+main.ev-root details.ev-more { margin-top: 12px; border-top: 1px solid var(--line-2); padding-top: 8px; }
+main.ev-root details.ev-more > summary { cursor: pointer; font-size: 12px; font-weight: 500; color: var(--ink-3); list-style: none; display: inline-flex; gap: 6px; align-items: center; }
+main.ev-root details.ev-more > summary::-webkit-details-marker { display: none; }
+main.ev-root details.ev-more > summary::before { content: '+'; display: inline-grid; place-items: center; width: 14px; height: 14px; border: 1px solid var(--line); border-radius: 3px; font-size: 11px; }
+main.ev-root details.ev-more[open] > summary::before { content: '−'; }
+main.ev-root .ev-maple-grid { align-items: start; }
+/* Maple grid: API Keys' two short cards side by side. */
+@media (min-width: 1100px) {
+  .local-dashboard-page--api-keys .local-dashboard-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: none; align-items: start; }
+  .local-dashboard-page--api-keys .local-dashboard-grid > .local-dashboard-panel { grid-column: auto; max-width: none; }
+}

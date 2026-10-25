@@ -64,8 +64,10 @@ test('AC62 bundled Inter and JetBrains Mono typography preserves the Poppins wor
   await expect(page.locator('.local-dashboard-panel').first()).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
   expect(await page.locator('body').evaluate(el => getComputedStyle(el).fontFamily)).toContain('Inter');
-  expect(await page.evaluate(() => document.fonts.check('14px Inter'))).toBe(true);
-  expect(await page.evaluate(() => document.fonts.check('14px "JetBrains Mono"'))).toBe(true);
+  // fonts.check() is true only once a face was used; part 13 keeps most identifiers in closed sections, so the mono
+  // face may not be fetched on load. load() resolves the bundled faces for the family (none when nothing is bundled).
+  expect(await page.evaluate(async () => (await document.fonts.load('14px Inter')).length)).toBeGreaterThan(0);
+  expect(await page.evaluate(async () => (await document.fonts.load('14px "JetBrains Mono"')).length)).toBeGreaterThan(0);
   expect(await page.locator('.brand-name .primary').evaluate(el => getComputedStyle(el).fontFamily)).toContain('Poppins');
   expect(external).toEqual([]);
 });

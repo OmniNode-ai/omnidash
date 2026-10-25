@@ -60,7 +60,8 @@ export function RankedBars({ label, unit, items, order = 'asc', note, footnote }
               style={{ '--rb-color': item.color } as CSSProperties}>
               <span className="rb-value" title={item.title}>{item.display}</span>
               <span className="rb-track" aria-hidden="true">
-                <span className="rb-bar" data-pattern={item.basis} style={scaled === undefined ? undefined : { height: scaled }} />
+                {/* The size is one variable: the bar's height when the chart is wide, its width when narrow. */}
+                <span className="rb-bar" data-pattern={item.basis} style={scaled === undefined ? undefined : { '--rb-size': scaled } as CSSProperties} />
               </span>
               <span className="rb-name" title={item.name}>{item.name}</span>
             </li>

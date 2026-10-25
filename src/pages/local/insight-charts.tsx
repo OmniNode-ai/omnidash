@@ -689,7 +689,7 @@ function allTimeDays(runs: readonly InsightRun[], now: number): number {
 }
 
 export function InsightsSection({ decisions, now, view = 'all', onInspectFailure, more }: {
-  decisions: readonly unknown[]; now: number; view?: 'all' | 'summary' | 'analysis'; onInspectFailure?: (cause: string) => void;
+  decisions: readonly unknown[]; now: number; view?: 'all' | 'summary' | 'analysis' | 'runs' | 'tokens' | 'failures'; onInspectFailure?: (cause: string) => void;
   /** OMN-21166 part 13: on the summary view, further detail shown inside the section's closed "More activity". */
   more?: ReactNode;
 }) {
@@ -723,6 +723,24 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
         : window.kind === 'all' ? 'No runs in served data'
           : window.kind === 'days' && window.days === 1 ? 'No runs today' : `No runs in the last ${window.kind === 'days' ? window.days : MAX_ALL_TIME_DAYS} days`
         : null;
+  // OMN-21166 Maple grid: a slice draws one piece in its own panel; the runs panel carries the window and the population.
+  if (view === 'runs' || view === 'tokens' || view === 'failures') {
+    return (
+      <div className="ins-section ins-section--slice" role="group" aria-label={view === 'runs' ? 'Runs per day' : view === 'tokens' ? 'Tokens per day' : 'Why runs failed'}>
+        {view === 'runs' && <div className="ins-slice-tools">
+          <div className="ins-range-presets" role="group" aria-label="Quick ranges">
+            <button type="button" data-window="all" aria-pressed={window.kind === 'all'} onClick={() => setWindow({ kind: 'all' })}>All</button>
+            {RANGES.map(range => <button key={range.days} type="button" data-window={range.days} aria-pressed={window.kind === 'days' && window.days === range.days} onClick={() => setWindow({ kind: 'days', days: range.days })}>{range.label}</button>)}
+          </div>
+          <p className="local-dashboard-caption ins-sub" data-testid="insights-total">{population}{undated}</p>
+        </div>}
+        {emptyMessage !== null ? <p className="local-dashboard-empty ins-empty" role="status">{emptyMessage}</p>
+          : view === 'runs' ? <RunsPerDay days={chartDays} />
+            : view === 'tokens' ? <TokensPerDay days={chartDays} />
+              : <FailureCauses runs={runs} limit={5} onInspectFailure={onInspectFailure} />}
+      </div>
+    );
+  }
   return (
     <div className={`ins-section${view === 'summary' ? ' ins-section--summary' : ''}`} aria-label="Insights" role="group">
       {view !== 'analysis' && (

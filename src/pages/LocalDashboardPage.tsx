@@ -15,7 +15,7 @@ import { createSnapshotSource } from '@/data-source';
 import { fetchExposureCensus, type ExposureCensus } from '@/data-source/exposure-census';
 import { resolveEffectiveDataSource } from '@/data-source/data-source-override';
 import { resolveConfiguredTenant } from '@/data-source/projection-tenant';
-import { UsageByModelDayTable, UsageTokensByDay, formatUsd } from '@/components/dashboard/usage/UsageByModelDayWidget';
+import { UsageByModelDayTable, UsageTokensByDay, UsageTokensChart, formatUsd } from '@/components/dashboard/usage/UsageByModelDayWidget';
 import { MeteringDaySeries, meteringDaysByBaseline } from '@/components/dashboard/usage/SavingsSeriesWidget';
 import { TenantNotConfiguredState } from '@/components/dashboard/TenantNotConfiguredState';
 import { requestLocalPageRefresh, subscribeLocalPageRefresh } from '@/services/local-page-refresh';
@@ -231,6 +231,20 @@ export function MetricCard({ component, config, row, caption, figureLine, figure
     </>
   );
 }
+
+/**
+ * OMN-21166 Maple grid (Lakshman 2026-10-25): each panel's width in the page's twelve columns, keyed page:component
+ * or page:component:slice. A chart takes 8 beside its ranking at 4; everything else spans the row.
+ */
+const MAPLE_WIDTHS: Readonly<Record<string, number>> = {
+  'overview:overview-insights:runs': 8, 'overview:overview-insights:failures': 4,
+  'overview:overview-insights:tokens': 8, 'overview:overview-tier-mix': 4,
+  'overview:overview-recent-runs': 8, 'overview:overview-quality': 4,
+  'overview:overview-environment': 12, 'overview:overview-last-run': 12,
+  'usage:usage-savings-series': 8, 'usage:usage-savings-series:by-model': 4,
+  'usage:usage-tokens-by-day': 8, 'usage:usage-insights:spend': 4,
+  'usage:usage-insights:more': 12, 'usage:usage-tokens-by-day:detail': 12, 'usage:usage-by-model-day': 12,
+};
 
 /** Runs' secondary panels, shown under its "More analysis" (part 13 AC74). */
 const RUNS_SECONDARY: ReadonlySet<string> = new Set(['runs-tier-mix', 'runs-insights']);
@@ -987,7 +1001,8 @@ function OverviewRunPreview({ decisions, sessions, now = Date.now() }: RunViewPr
   const recent = newestFirst(decisions).slice(0, 5);
   return <>
     <ul className="local-run-preview" aria-label="Recent runs preview">{recent.map((run, index) => <li key={String(run.correlation_id ?? index)}>
-      <div><RunRef id={run.correlation_id} /><span data-field-tone="model" data-field-unavailable={isUnavailableField(modelOrUnknown(run.model_name))}>{modelOrUnknown(run.model_name)}</span></div>
+      {/* OMN-21166 Maple grid: one dense row per run (id, model, outcome, duration, age); the whole id is the link's name. */}
+      <div><RunRef id={run.correlation_id} short /><span data-field-tone="model" data-field-unavailable={isUnavailableField(modelOrUnknown(run.model_name))}>{modelOrUnknown(run.model_name)}</span></div>
       <div><OutcomePill value={statusOf(run)} /><span data-field-tone="duration" data-field-unavailable={isMissing(run.latency_ms)}>{duration(run.latency_ms)}</span><span className="local-dashboard-caption">{age(run.written_at, now)}</span></div>
     </li>)}</ul>
     <p className="local-dashboard-caption local-recent-footer"><Link href={PAGE_PATHS['local-runs']}>View all runs <ArrowUpRight size={12} aria-hidden="true" /></Link></p>
@@ -1232,58 +1247,57 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
   );
   return (
     <>
-      <section className="local-runs-task-filters" aria-label="Tasks">
-        <h3 className="local-dashboard-caption local-section-heading">Tasks</h3>
-        <div className="local-dashboard-filters">{tasks.map(name => <button key={name} type="button" aria-label={`Filter task ${name}`} aria-pressed={task === name}
-          onClick={() => updateView({ task: task === name ? 'all' : name, page: 1 })}>
-          {name !== 'Not recorded' && <TaskIcon task={name} />}{taskLabel(name)}<span>{formatDashboardCount(taskFacetRuns.filter(run => recorded(run.task_type) === name).length)}</span>
-        </button>)}</div>
-      </section>
+      {/* OMN-21166 Maple grid: one toolbar row (search, then the filters as compact selects); the scope is one line under it. */}
+      <div className="local-runs-toolbar">
       <div className="local-runs-search">
-        <label htmlFor={`${id}-search`}>Search runs</label>
-        <input id={`${id}-search`} type="search" value={query} placeholder="Run ID, model, task, backend or failure…"
+        <label htmlFor={`${id}-search`} className="local-visually-hidden">Search runs</label>
+        <input id={`${id}-search`} type="search" value={query} placeholder="Search runs…" title="Search by run ID, model, task, backend or failure"
           autoComplete="off" spellCheck={false} onChange={event => updateView({ query: event.target.value, page: 1 }, true)}
           aria-describedby={`${id}-scope`} />
-        <p id={`${id}-scope`} className="local-dashboard-caption">{truncated
-          ? `${formatDashboardCount(runs.length)} recent runs returned. Earlier history is not included; search, filters and charts use these records.`
-          : `${formatDashboardCount(runs.length)} returned runs. Search, filters and charts use these records.`}</p>
       </div>
       <div className="local-dashboard-filters">
         <div className="local-filter-field">
-        <label htmlFor={`${id}-status`}>Status</label>
+        <label htmlFor={`${id}-task`} className="local-visually-hidden">Task</label>
+        <select id={`${id}-task`} value={task} onChange={event => updateView({ task: event.target.value, page: 1 })}>
+          <option value="all">All tasks</option>
+          {tasks.map(name => <option key={name} value={name}>{`${taskLabel(name)} (${formatDashboardCount(taskFacetRuns.filter(run => recorded(run.task_type) === name).length)})`}</option>)}
+        </select>
+        </div>
+        <div className="local-filter-field">
+        <label htmlFor={`${id}-status`} className="local-visually-hidden">Status</label>
         <select id={`${id}-status`} value={status} onChange={filter('status')}>
-          <option value="all">All</option>
+          <option value="all">All statuses</option>
           <option value="passed">passed</option>
           <option value="failed">failed</option>
           <option value="Not recorded">Not recorded</option>
         </select>
         </div>
         <div className="local-filter-field">
-        <label htmlFor={`${id}-cause`}>Cause</label>
+        <label htmlFor={`${id}-cause`} className="local-visually-hidden">Cause</label>
         <select id={`${id}-cause`} value={cause} onChange={filter('cause')}>
-          <option value="all">All</option>
+          <option value="all">All causes</option>
           {cause !== 'all' && !causes.includes(cause) && <option value={cause}>{failureCauseLabel(cause)} (not in current data)</option>}
           {causes.map((name) => <option key={name} value={name}>{failureCauseLabel(name)}</option>)}
         </select>
         </div>
         <div className="local-filter-field">
-        <label htmlFor={`${id}-model`}>Model</label>
+        <label htmlFor={`${id}-model`} className="local-visually-hidden">Model</label>
         <select id={`${id}-model`} value={model} onChange={filter('model')}>
-          <option value="all">All</option>
+          <option value="all">All models</option>
           {model !== 'all' && !models.includes(model) && <option value={model}>{model} (not in current data)</option>}
           {models.map((name) => <option key={name} value={name}>{name}</option>)}
         </select>
         </div>
         <div className="local-filter-field">
-        <label htmlFor={`${id}-backend`}>Backend</label>
+        <label htmlFor={`${id}-backend`} className="local-visually-hidden">Backend</label>
         <select id={`${id}-backend`} value={backend} onChange={filter('backend')}>
-          <option value="all">All</option>
+          <option value="all">All backends</option>
           {backend !== 'all' && !backends.includes(backend) && <option value={backend}>{backend} (not in current data)</option>}
           {backends.map((name) => <option key={name} value={name}>{name}</option>)}
         </select>
         </div>
         <div className="local-filter-field">
-        <label htmlFor={`${id}-window`}>Window</label>
+        <label htmlFor={`${id}-window`} className="local-visually-hidden">Window</label>
         <select id={`${id}-window`} value={span} onChange={filter('span')}>
           <option value="all">All time</option>
           <option value="today">Today (UTC)</option>
@@ -1293,11 +1307,15 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
           <button type="button" className="local-filter-clear" onClick={() => { setSelectedRunId(null); updateView({ ...DEFAULT_RUNS_VIEW, query: '' }); }}>Clear filters</button>
         )}
       </div>
+      </div>
+      <p id={`${id}-scope`} className="local-dashboard-caption local-runs-scope">{truncated
+        ? `${formatDashboardCount(runs.length)} recent runs returned; earlier history is not included. Search, filters and charts use these records.`
+        : `${formatDashboardCount(runs.length)} returned runs. Search, filters and charts use these records.`}</p>
       {shown.length === 0 ? <p className="local-dashboard-empty" role="status">No runs match these filters</p> : (
         <>
           <div className={`local-runs-list-detail${selectedRun ? ' local-runs-list-detail--selected' : ''}`}>
             <div className="local-runs-table-column">
-          <h3 className="local-dashboard-caption local-section-heading" data-page-heading tabIndex={-1}>Run list</h3>
+          <h3 className="local-visually-hidden" data-page-heading tabIndex={-1}>Run list</h3>
           <p className="local-dashboard-caption local-recent-toolbar"><label>
             <input type="checkbox" checked={showAllFields} onChange={event => setShowAllFields(event.target.checked)} aria-controls={`${id}-table`} />
             Show all run fields
@@ -1469,10 +1487,27 @@ export function TierMixPanel({ row, compact = false }: { row: Row | null; compac
   if (!byTier || tiers.length === 0) {
     return <p className="local-dashboard-empty" role="status">No tier mix served yet</p>;
   }
+  if (compact) {
+    // OMN-21166 Maple grid: on Overview the tiers are a ranked list beside Tokens per day; the full breakdown is on Runs.
+    const share = (value: unknown) => (isMissing(value) || !Number.isFinite(Number(value)) ? null : Number(value));
+    return (
+      <section aria-label="Tier mix">
+        <RankedBars label="Runs by tier" unit="Share of tier-routed runs" order="desc"
+          items={tiers.filter(tier => tier.cost_tier_name !== 'not_tier_routed').map((tier, index) => {
+            const name = String(tier.cost_tier_name);
+            const pct = share(tier.pct_of_tier_routed);
+            return { key: `${name}-${index}`, name: tierLabel(name), value: pct === null ? null : pct * 100, basis: 'measured' as const, color: tierColor(name),
+              display: pct === null ? 'Not recorded' : `${recordedCount(tier.count)} · ${(pct * 100).toFixed(1)}%` };
+          })} />
+        <p className="local-dashboard-caption">{`${recordedCount(byTier.tier_routed_total)} tier-routed · ${recordedCount(byTier.not_tier_routed_count)} not tier-routed · ${recordedCount(byTier.total_tasks)} runs`}</p>
+        <p className="local-dashboard-caption local-recent-footer"><Link href={PAGE_PATHS['local-runs']}>View routing breakdown <ArrowUpRight size={12} aria-hidden="true" /></Link></p>
+      </section>
+    );
+  }
   return (
     <section aria-label="Tier mix">
       {/* The bar and the table show the same served tiers; the bar's widths are the served shares. */}
-      <TierShareChart byTier={byTier} variant={compact ? 'donut' : 'bars'} />
+      <TierShareChart byTier={byTier} variant="bars" />
       <details className="local-routing-details local-tier-details">
       <summary><span className="local-routing-summary-label">Full routing breakdown</span></summary>
       <div className="local-dashboard-table-wrap local-dashboard-table-wrap--fit">
@@ -1509,7 +1544,6 @@ export function TierMixPanel({ row, compact = false }: { row: Row | null; compac
         <div data-field-tone="unrouted" data-field-unavailable={isMissing(byTier.not_tier_routed_count)}><dt><FieldIcon label="Not tier-routed" />Not tier-routed</dt><dd>{recordedCount(byTier.not_tier_routed_count)}</dd></div>
         <div data-field-tone="delegations" data-field-unavailable={isMissing(byTier.total_tasks)}><dt><FieldIcon label="All runs" />All runs</dt><dd>{recordedCount(byTier.total_tasks)}</dd></div>
       </dl>
-      {compact && <p className="local-dashboard-caption local-recent-footer"><Link href={PAGE_PATHS['local-runs']}>View routing breakdown <ArrowUpRight size={12} aria-hidden="true" /></Link></p>}
     </section>
   );
 }
@@ -1633,7 +1667,7 @@ export function RunSummary({ decision, showAnalysis = false }: { decision: Row |
         </section>)}
       </div>
       {/* The same three timings as bars, under the labels their tiles carry. */}
-      {showAnalysis ? <WorkflowDecisionCharts decision={decision}>{timingChart}</WorkflowDecisionCharts> : timingChart}
+      {showAnalysis ? (timingChart && <WorkflowDecisionCharts decision={decision} show="timing">{timingChart}</WorkflowDecisionCharts>) : timingChart}
     </section>
   );
 }
@@ -1898,6 +1932,10 @@ export function WorkflowRun({ component, snapshots, requested, onOpen }: Workflo
       {/* OMN-21166 part 13: the recorded fields and the stage chart (a repeat of the step durations) are one click away. */}
       <details className="local-more">
         <summary>More run details</summary>
+        {(() => {
+          const decision = decisions.find((row) => row.correlation_id === runId);
+          return decision ? <WorkflowDecisionCharts decision={decision} show="comparisons">{null}</WorkflowDecisionCharts> : null;
+        })()}
         <WorkflowRecordDetails decision={decisions.find((row) => row.correlation_id === runId)} steps={stepsUnread || foreign ? [] : rows} />
       </details>
     </div>
@@ -2024,7 +2062,14 @@ export function MeteringDayTable({ title, rows, columns }: {
 }
 
 /** The renderer for a table component: its first binding's rows, joined to its second binding by a served id. */
-function TableComponent({ component, snapshots, pageSize, syncUrl, columns, activityWindow, meteringView = 'all' }: {
+/**
+ * OMN-21166 Maple grid: one bound component drawn as several panels, each a slice of the same served rows (the
+ * Overview activity charts and failure causes; Usage's savings and spend by model beside their day charts).
+ */
+export interface PanelSlice { key: string; title: string; concept: string }
+
+function TableComponent({ component, snapshots, pageSize, syncUrl, columns, activityWindow, meteringView = 'all', slice }: {
+  slice?: PanelSlice;
   component: LocalPageDocument['components'][number];
   snapshots: readonly BoundProjectionSnapshot[];
   pageSize: number;
@@ -2049,6 +2094,7 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns, acti
     const meteringUnavailable = metering?.failure ? 'Daily metering data is not available yet.' : null;
     // OMN-21166 part 13: Overview keeps the activity summary; the window's spend line sits in "More activity" with the
     // run counts, and the detailed analysis lives on Runs (its "Explore run analysis" link stays).
+    if (slice) return rows.length === 0 ? <NoRunsYet /> : <InsightsSection decisions={rows} now={Date.now()} view={slice.key as 'runs' | 'tokens' | 'failures'} onInspectFailure={cause => navigate(causeHref(cause))} />;
     return rows.length === 0 ? <NoRunsYet /> : <>
     <InsightsSection decisions={rows} now={Date.now()} view="summary" more={meteringRows.length > 0
       ? <MeteringActivityInsights rows={meteringRows} now={Date.now()} window={activityWindow} unavailable={meteringUnavailable} display="kpis" />
@@ -2068,19 +2114,22 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns, acti
   }
   if (component.component_id === 'credentials-keys') return <CredentialsTable rows={rows} />;
   // Usage analysis and the raw row table are separate declared components so the analysis does not duplicate rows.
-  if (component.component_id === 'usage-insights') return <UsageInsights usageRows={rows}
+  if (component.component_id === 'usage-insights') return <UsageInsights usageRows={rows} part={slice?.key === 'spend' ? 'spend' : slice?.key === 'more' ? 'more' : 'all'}
     decisionRows={rawRowsFor(component, snapshots, 1)} routingRows={rawRowsFor(component, snapshots, 2)} />;
   // US-1, US-2, US-4: served rows as served. The exposure is tenant-scoped, so the server filters, not the browser.
   if (component.component_id === 'usage-by-model-day') return <UsageByModelDayTable rows={rows} interactive />;
   // US-1 (OMN-21015 AC4): the same served rows as a stacked series, tokens in and out apart, split by model.
-  if (component.component_id === 'usage-tokens-by-day') return <UsageTokensByDay rows={rows} />;
+  // OMN-21166 Maple grid: the page shows the stacked chart; the per-day list is the detail under "More usage".
+  if (component.component_id === 'usage-tokens-by-day') return slice?.key === 'detail' ? <UsageTokensByDay rows={rows} /> : <UsageTokensChart rows={rows} />;
   // US-3: metering-summary.v1's day rows, as served; the series renders no all row and sums nothing.
   if (component.component_id === 'usage-savings-series') {
     const groups = meteringDaysByBaseline(rows);
     // OMN-21166 AC66: savings by model, from the same all-time metering row as Overview's Savings card.
     const allTime = pickMeteringRow(rawRowsFor(component, snapshots, 0), 'all');
     const byModel = 'row' in allTime ? <SavingsByModel row={allTime.row} /> : null;
-    if (groups.length === 0) return <><MeteringDaySeries rows={rows} />{byModel}</>;
+    // OMN-21166 Maple grid: savings by model is its own panel beside the day chart.
+    if (slice?.key === 'by-model') return byModel ?? <p className="local-dashboard-empty" role="status">No savings by model served yet</p>;
+    if (groups.length === 0) return <MeteringDaySeries rows={rows} />;
     return (
       <>{groups.map(([baseline, days]) => <div className="local-usage-savings" key={baseline}>
         {/* OMN-21015 U2: the same served day rows as bars; the chart plots the money columns this panel declares.
@@ -2088,7 +2137,7 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns, acti
         <SpendByDayChart title={component.title} rows={days} columns={columns} colourPlaces={[3]} />
         {/* OMN-21166 part 13: the day table repeats the chart, so it is one click away. */}
         <details className="local-more"><summary>Savings by day as a table</summary><MeteringDaySeries rows={days} /></details>
-      </div>)}{byModel}</>
+      </div>)}</>
     );
   }
   // OV: baseline against actual spend per UTC day, the declared columns of the served rows (OMN-21015 AC1).
@@ -2457,7 +2506,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
   const now = Date.now();
   const interval = page?.dashboard.refresh_interval_seconds ?? 30;
 
-  const renderComponent = (component: LocalPageDocument['components'][number], meteringView: 'all' | 'kpis' | 'daily' = 'all') => {
+  const renderComponent = (component: LocalPageDocument['components'][number], meteringView: 'all' | 'kpis' | 'daily' = 'all', slice?: PanelSlice) => {
     if (!page) return null;
     const rows = rowsForLocalComponent(component, snapshots);
     const first = (rows[0] ?? {}) as Record<string, unknown>;
@@ -2511,6 +2560,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
               syncUrl={syncUrl}
               activityWindow={activityWindow}
               meteringView={meteringView}
+              slice={slice}
               columns={((widget?.config as { columns?: DeclaredColumn[] } | undefined)?.columns) ?? []}
             />
           ) : component.component_id === 'overview-run-locally' ? (
@@ -2537,16 +2587,18 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
     return (
       <article
         className="local-dashboard-panel"
-        data-width={String(pageName === 'overview' && component.component_id === 'overview-spend-by-day' ? 12
+        data-width={String(MAPLE_WIDTHS[`${pageName}:${component.component_id}${slice ? `:${slice.key}` : ''}`] ?? (pageName === 'overview' && component.component_id === 'overview-spend-by-day' ? 12
           : pageName === 'overview' && ['overview-quality', 'overview-last-run'].includes(component.component_id) ? 6
-          : pageName === 'overview' && ['overview-recent-runs', 'overview-tier-mix'].includes(component.component_id) ? 6 : widget?.width ?? 12)}
+          : pageName === 'overview' && ['overview-recent-runs', 'overview-tier-mix'].includes(component.component_id) ? 6 : widget?.width ?? 12))}
         data-component={component.component_id}
+        data-slice={slice?.key}
         data-kind={component.component_kind}
         data-field-tone={component.component_kind === 'metric_card' ? fieldTone(component.title) : undefined}
         aria-busy={credentialProviders ? 'false' : pending}
-        key={component.component_id}
+        key={slice ? `${component.component_id}-${slice.key}` : component.component_id}
       >
-        <h2 data-page-heading={pageName !== 'overview' || ['overview-quality', 'overview-insights', 'overview-spend-by-day', 'overview-last-run', 'overview-recent-runs', 'overview-tier-mix'].includes(component.component_id) ? '' : undefined} tabIndex={-1}>{panelConcept && <ConceptIcon concept={panelConcept} label={pageName === 'overview' && component.component_id === 'overview-insights' ? 'Activity trends' : component.title} size={14} />}{pageName === 'overview' && component.component_id === 'overview-insights' ? 'Activity trends' : component.title}</h2>
+        <h2 data-page-heading={pageName !== 'overview' || ['overview-quality', 'overview-insights', 'overview-spend-by-day', 'overview-last-run', 'overview-recent-runs', 'overview-tier-mix'].includes(component.component_id) ? '' : undefined} tabIndex={-1}>{slice ? <><ConceptIcon concept={slice.concept} label={slice.title} size={14} />{slice.title}</>
+          : <>{panelConcept && <ConceptIcon concept={panelConcept} label={pageName === 'overview' && component.component_id === 'overview-insights' ? 'Activity trends' : component.title} size={14} />}{pageName === 'overview' && component.component_id === 'overview-insights' ? 'Activity trends' : component.title}</>}</h2>
         {outsideWindow && <p className="local-dashboard-caption">{OUTSIDE_WINDOW_NOTE}</p>}
         {credentialProviders && <ModelKeys />}
         {credentialProviders ? <div aria-busy={pending}>{readContent}</div> : readContent}
@@ -2555,8 +2607,6 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
   };
   const overviewGroups = {
     summary: ['overview-spend', 'overview-savings', 'overview-measured', 'overview-tokens'],
-    focus: ['overview-quality', 'overview-last-run'],
-    insights: ['overview-insights'],
   };
   const renderGroup = (ids: string[], meteringView: 'all' | 'kpis' | 'daily' = 'all') => ids.map(id => {
     const component = page?.components.find(candidate => candidate.component_id === id);
@@ -2618,36 +2668,60 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
               return recent ? { decisions: rowsForLocalComponent(recent, snapshots), now } : null;
             })()}>
             <InsightsWindowContext.Provider value={{ window: activityWindow, setWindow: setActivityWindow }}>
+            {/* OMN-21166 Maple grid: the KPI strip, then rows of a chart (8 of 12 columns) beside its ranking (4), then
+                the recent runs beside quality. The last run is the first recent run, so it sits under "Additional". */}
             <div className="local-overview-surface">
               <section className="local-overview-summary" aria-label="Runtime summary">{renderGroup(overviewGroups.summary)}</section>
-              <section className="local-overview-focus" aria-label="Delegation quality">{renderGroup(overviewGroups.focus)}</section>
             </div>
-            {renderGroup(['overview-environment'])}
-            <section className="local-overview-insights" aria-label="Insights">
-              {renderGroup(overviewGroups.insights)}
-            </section>
-            <section className="local-overview-bottom" aria-label="Routing and recent activity">
-              {renderGroup(['overview-tier-mix', 'overview-recent-runs'])}
-            </section>
+            <div className="maple-grid">
+              {(() => {
+                const insights = page.components.find(candidate => candidate.component_id === 'overview-insights');
+                if (!insights) return null;
+                const slice = (key: string, title: string, concept: string) => renderComponent(insights, 'all', { key, title, concept });
+                return <>
+                  <div className="maple-cell maple-cell--wide">{slice('runs', 'Runs per day', 'runs-daily')}</div>
+                  <div className="maple-cell">{slice('failures', 'Why runs failed', 'quality-outcomes')}</div>
+                  <div className="maple-cell maple-cell--wide">{slice('tokens', 'Tokens per day', 'tokens-daily')}</div>
+                </>;
+              })()}
+              <div className="maple-cell">{renderGroup(['overview-tier-mix'])}</div>
+              <div className="maple-cell maple-cell--wide">{renderGroup(['overview-recent-runs'])}</div>
+              <div className="maple-cell">{renderGroup(['overview-quality'])}</div>
+              <div className="maple-cell maple-cell--full">{renderGroup(['overview-environment'])}</div>
+            </div>
             <details className="local-overview-secondary">
               <summary>Additional runtime metrics</summary>
               <section className="local-dashboard-grid" aria-label="Additional runtime metrics">
-                {renderGroup(['overview-run-locally', 'overview-avg-saving-per-call', 'overview-baseline-spend',
+                {renderGroup(['overview-last-run', 'overview-run-locally', 'overview-avg-saving-per-call', 'overview-baseline-spend',
                   'overview-compression', 'overview-cache-hit-rate', 'overview-spend-by-day'], 'daily')}
               </section>
             </details>
             </InsightsWindowContext.Provider>
             </OverviewRunsContext.Provider>
-          </> : pageName === 'usage' ? <>
-            {/* OMN-21166 part 13: the full model-by-day table is one click away under the charts. */}
-            {page.components.filter(component => component.component_id !== 'usage-by-model-day').map(component => renderComponent(component))}
-            {page.components.some(component => component.component_id === 'usage-by-model-day') && (
+          </> : pageName === 'usage' ? (() => {
+            // OMN-21166 Maple grid: each day chart beside its ranking by model; the rest under one "More usage".
+            const find = (id: string) => page.components.find(candidate => candidate.component_id === id);
+            const savings = find('usage-savings-series');
+            const tokens = find('usage-tokens-by-day');
+            const insights = find('usage-insights');
+            const byDay = find('usage-by-model-day');
+            return <>
+              <div className="maple-grid">
+                {savings && <div className="maple-cell maple-cell--wide">{renderComponent(savings)}</div>}
+                {savings && <div className="maple-cell">{renderComponent(savings, 'all', { key: 'by-model', title: 'Savings by model', concept: 'savings' })}</div>}
+                {tokens && <div className="maple-cell maple-cell--wide">{renderComponent(tokens)}</div>}
+                {insights && <div className="maple-cell">{renderComponent(insights, 'all', { key: 'spend', title: 'Spend by model', concept: 'spend-model' })}</div>}
+              </div>
               <details className="local-overview-secondary local-more local-more--page">
-                <summary>Usage by model and day</summary>
-                {page.components.filter(component => component.component_id === 'usage-by-model-day').map(component => renderComponent(component))}
+                <summary>More usage</summary>
+                <div className="maple-grid">
+                  {insights && <div className="maple-cell maple-cell--full">{renderComponent(insights, 'all', { key: 'more', title: 'Cost per run, tokens by model and cost by route', concept: 'cost-per-run' })}</div>}
+                  {tokens && <div className="maple-cell maple-cell--full">{renderComponent(tokens, 'all', { key: 'detail', title: 'Tokens per day by model, in detail', concept: 'tokens-daily' })}</div>}
+                  {byDay && <div className="maple-cell maple-cell--full">{renderComponent(byDay)}</div>}
+                </div>
               </details>
-            )}
-          </> : pageName === 'runs' ? (
+            </>;
+          })() : pageName === 'runs' ? (
             <InsightsWindowContext.Provider value={{ window: activityWindow, setWindow: setActivityWindow }}>
               {/* OMN-21166 part 13: the run list in view; routing and analysis in one "More analysis"; Run locally is
                   Overview's, so Runs does not repeat it. */}
