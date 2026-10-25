@@ -142,17 +142,17 @@ main.ev-root .ev-acceptance-checks > li > :first-child, main.ev-root .ev-accepta
 /* Usage › Savings by model (AC66): one row per served model, bar against the largest saving. */
 .local-dashboard-page .local-savings-by-model { margin-top: 20px; }
 .local-dashboard-page .local-savings-by-model > h3 { display: flex; align-items: center; gap: 8px; }
-.local-dashboard-page .local-savings-by-model ul { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 8px; }
-.local-dashboard-page .local-savings-by-model li {
+.local-dashboard-page .local-savings-by-model details ul { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 8px; }
+.local-dashboard-page .local-savings-by-model details ul > li {
   display: grid; grid-template-columns: minmax(0, 2fr) minmax(80px, 2fr) 96px minmax(0, 1.2fr) minmax(0, 1fr);
   gap: 10px; align-items: center; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink-2);
 }
-.local-dashboard-page .local-savings-by-model li > :first-child { overflow-wrap: anywhere; }
+.local-dashboard-page .local-savings-by-model details ul > li > :first-child { overflow-wrap: anywhere; }
 .local-dashboard-page .local-savings-by-model strong { color: var(--ink); font-weight: 600; text-align: right; }
 .local-dashboard-page .local-savings-bar { height: 6px; border-radius: 3px; background: var(--line-2); overflow: hidden; }
 .local-dashboard-page .local-savings-bar > i { display: block; height: 100%; background: var(--model-color, var(--field-savings)); }
 @media (max-width: 760px) {
-  .local-dashboard-page .local-savings-by-model li { grid-template-columns: minmax(0, 1fr) auto; }
+  .local-dashboard-page .local-savings-by-model details ul > li { grid-template-columns: minmax(0, 1fr) auto; }
   .local-dashboard-page .local-savings-bar { grid-column: 1 / -1; }
 }
 
@@ -356,3 +356,68 @@ main.ev-root[data-destination="delegation-evidence"] .kv [data-field-tone="model
 .local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel:last-child { border-radius: 0 10px 10px 0; }
 .local-dashboard-page--overview .local-overview-summary > .local-dashboard-panel:has(.local-card-basis-tip[data-open="true"], .local-card-basis-tip:focus-within) { z-index: 6; }
 .local-dashboard-page--overview .local-overview-summary > .local-dashboard-panel.local-dashboard-panel { overflow: visible; }
+
+/* ── Part 13: "More …" disclosures and one-line status ─────────────────────────────────────────────────────── */
+.local-dashboard-page details.local-more { margin-top: 10px; border-top: 1px solid var(--line-2); padding-top: 8px; }
+.local-dashboard-page details.local-more > summary {
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer; list-style: none;
+  font-size: 12px; font-weight: 500; color: var(--ink-3); padding: 2px 0;
+}
+.local-dashboard-page details.local-more > summary::-webkit-details-marker { display: none; }
+.local-dashboard-page details.local-more > summary::before { content: '+'; display: inline-grid; place-items: center; width: 14px; height: 14px; border: 1px solid var(--line); border-radius: 3px; font-size: 11px; line-height: 1; }
+.local-dashboard-page details.local-more[open] > summary::before { content: '−'; }
+.local-dashboard-page details.local-more > summary:hover, .local-dashboard-page details.local-more > summary:focus-visible { color: var(--ink); }
+.local-dashboard-page details.local-more[open] > :not(summary) { margin-top: 10px; }
+.local-dashboard-page .local-environment-line { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 13px; color: var(--ink-2); }
+.local-dashboard-page .local-environment-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); flex: none; }
+.local-dashboard-page [data-environment-state="clear"] .local-environment-dot { background: var(--ui-pass); }
+.local-dashboard-page [data-environment-state="alert"] .local-environment-dot { background: var(--ui-fail); }
+.local-dashboard-page .local-show-all {
+  margin-top: 8px; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 6px;
+  background: var(--panel); color: var(--ink-2); font-size: 12px; font-weight: 500; cursor: pointer;
+}
+.local-dashboard-page .local-show-all:hover { color: var(--ink); border-color: var(--ink-3); }
+.local-dashboard-page details.local-more--page { margin: 4px 0 0; padding: 12px 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+.ev-unserved-line { margin: 0; padding: 10px 14px; border: 1px dashed var(--line); border-radius: 8px; font-size: 13px; color: var(--ink-3); }
+.local-dashboard-page details.local-more--page { grid-column: 1 / -1; width: 100%; box-sizing: border-box; }
+/* Part 13: the savings chart takes the row; its table opens under it. */
+.local-usage-savings { grid-template-columns: minmax(0, 1fr); }
+
+/* ── AC64: ranked bars (one bar per model, value above, name below, pattern by how the figure was obtained) ── */
+.rb-chart { margin: 0; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.rb-chart .rb-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; font-size: 12px; color: var(--ink-3); }
+.rb-chart .rb-plot {
+  list-style: none; margin: 0; padding: 0; display: grid; align-items: end; gap: clamp(8px, 2vw, 20px);
+  grid-template-columns: repeat(var(--rb-count), minmax(0, 1fr)); border-bottom: 1px solid var(--line);
+  max-width: calc(var(--rb-count) * 120px);
+}
+.rb-chart .rb-plot > li { grid-template-columns: none; gap: 0; border: 0; background: none; padding: 0; margin: 0; display: flex; flex-direction: column; align-items: stretch; min-width: 0; position: relative; padding-bottom: 0; }
+.rb-chart .rb-value { font-family: var(--font-mono); font-size: 12px; color: var(--ink); text-align: center; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rb-chart [data-basis="unknown"] > .rb-value { color: var(--ink-3); font-family: var(--font-sans); }
+.rb-chart .rb-track { height: 180px; display: flex; align-items: flex-end; }
+.rb-chart .rb-bar { display: block; width: 100%; min-height: 0; box-sizing: border-box; color: var(--rb-color); }
+.rb-chart .rb-bar[data-pattern="measured"] {
+  border-top: 2px solid currentColor;
+  background-image: radial-gradient(currentColor 1.15px, transparent 1.35px);
+  background-size: 5px 5px; background-position: 1px 0;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 55%, rgba(0,0,0,.35) 100%);
+          mask-image: linear-gradient(to bottom, #000 0%, #000 55%, rgba(0,0,0,.35) 100%);
+}
+.rb-chart .rb-bar[data-pattern="estimated"] {
+  border-top: 2px solid currentColor;
+  background-image: repeating-linear-gradient(135deg, currentColor 0 1.5px, transparent 1.5px 6px);
+}
+.rb-chart .rb-bar[data-pattern="unknown"] { height: 14px; border: 1px dashed var(--ink-3); border-bottom: 0; background: none; }
+.rb-chart .rb-name {
+  margin-top: 8px; font-size: 12px; line-height: 1.3; color: var(--rb-color); text-align: center;
+  overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-break: break-word;
+  position: absolute; top: 100%; left: 0; right: 0;
+}
+.rb-chart .rb-plot { margin-bottom: calc(2.6em + 10px); }
+.rb-chart .rb-key { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--ink-3); }
+.rb-chart .rb-key li { display: inline-flex; align-items: center; gap: 6px; }
+.rb-chart .rb-key i { width: 14px; height: 10px; color: var(--ink-2); display: inline-block; }
+.rb-chart .rb-key i[data-pattern="measured"] { background-image: radial-gradient(currentColor 1px, transparent 1.2px); background-size: 4px 4px; border-top: 2px solid currentColor; }
+.rb-chart .rb-key i[data-pattern="estimated"] { background-image: repeating-linear-gradient(135deg, currentColor 0 1.5px, transparent 1.5px 5px); border-top: 2px solid currentColor; }
+.rb-chart .rb-key i[data-pattern="unknown"] { border: 1px dashed var(--ink-3); border-bottom: 0; }
+.rb-chart .rb-footnote { margin: 0; font-size: 12px; color: var(--ink-3); }

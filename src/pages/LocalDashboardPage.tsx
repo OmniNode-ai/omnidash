@@ -22,7 +22,7 @@ import { requestLocalPageRefresh, subscribeLocalPageRefresh } from '@/services/l
 import { DEFAULT_RUNS_VIEW, readRunsSearch, writeRunsSearch, type RunsViewState } from '@/navigation/runs-url-state';
 import { PAGE_PATHS } from '@/navigation/page-routes';
 import { normaliseRunId, readWorkflowRunId, workflowHref, writeWorkflowRunId } from '@/navigation/workflow-url-state';
-import { RunDurationChart, RunMetricChart, RunTimingChart, RunTokensChart, SpendByDayChart, UNRESOLVED_BASELINE, type ListedRun } from '@/pages/local/charts';
+import { RunDurationChart, RunMetricChart, RunTimingChart, RunTokensChart, SpendByDayChart, runTimingBars, UNRESOLVED_BASELINE, type ListedRun } from '@/pages/local/charts';
 import { PassRateMeter, TierShareChart, TIER_TONES } from '@/pages/local/shares';
 import { InsightsSection, InsightsWindowContext, MeteringActivityInsights, OverviewRunsContext, PassRateSparkline, TaskIcon, type ActivityWindow } from '@/pages/local/insight-charts';
 import { UsageInsights } from '@/pages/local/usage-insights';
@@ -32,6 +32,7 @@ import { EnvironmentPanel } from '@/pages/local/environment';
 import { failureCauseLabel, failureDetailText, notAvailableYet, plainFailureMessage, taskLabel, tierLabel } from '@/pages/local/plain-text';
 import { RunFilterProvider, causeHref, causeLabelOf, useRunFilter } from '@/pages/local/run-filter';
 import { dailySeries, summary as runSummary, toInsightRuns, typedFailureCauseOf } from '@/pages/local/insights';
+import { RankedBars } from '@/components/dashboard/RankedBars';
 import { KpiStrip, type KpiItem } from '@/components/dashboard/KpiStrip';
 import { DashboardAccess, dashboardAccessRow } from '@/pages/local/access';
 import { shortId } from '@/components/dashboard/event-dash/primitives';
@@ -230,6 +231,9 @@ export function MetricCard({ component, config, row, caption, figureLine, figure
     </>
   );
 }
+
+/** Runs' secondary panels, shown under its "More analysis" (part 13 AC74). */
+const RUNS_SECONDARY: ReadonlySet<string> = new Set(['runs-tier-mix', 'runs-insights']);
 
 /** The four Overview headline cards whose basis lines sit in a tooltip (part 12 AC73). */
 const OVERVIEW_HEADLINE_CARDS: ReadonlySet<string> = new Set(['overview-spend', 'overview-savings', 'overview-measured', 'overview-tokens']);
@@ -582,6 +586,16 @@ export function SavingsByModel({ row }: { row: Row }) {
   return (
     <section className="local-savings-by-model" aria-label="Savings by model">
       <h3 className="local-dashboard-caption local-section-heading"><ConceptIcon concept="savings" size={16} />Savings by model</h3>
+      {/* OMN-21166 AC64: modelled savings are estimates, so their bars are hatched; the per-model rows are one click away. */}
+      <RankedBars label="Savings by model" unit={`USD · modelled saving against ${isMissing(row.baseline_model) ? 'an unresolved baseline' : String(row.baseline_model)} · higher is better`}
+        order="desc" items={models.map((model, index) => {
+          const name = isMissing(model.model) ? 'Unknown model' : String(model.model);
+          const n = saving(model);
+          return { key: `${name}-${index}`, name, value: n, basis: 'estimated' as const, color: modelColor(name),
+            display: n === null ? 'Not measured' : formatUsd(model.savings_usd), title: `${recordedCount(model.runs_measured)} of ${recordedCount(model.runs)} runs measured` };
+        })} />
+      <details className="local-more">
+      <summary>Savings by model as a table</summary>
       <ul>
         {models.map((model, index) => {
           const n = saving(model);
@@ -598,6 +612,7 @@ export function SavingsByModel({ row }: { row: Row }) {
           );
         })}
       </ul>
+      </details>
       <p className="local-dashboard-caption">Modelled against {isMissing(row.baseline_model) ? 'an unresolved baseline' : String(row.baseline_model)}; the totals above are these rows summed by the runtime.</p>
     </section>
   );
@@ -1200,17 +1215,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
   const selectedRequiredBar = selectedRun && !isMissing(selectedRun.required_bar) ? Number(selectedRun.required_bar) : Number.NaN;
   const selectedDay = week.find(item => item.day === day);
   const weekLabel = (value: string) => value === today ? `Today ${value}` : `${new Date(`${value}T00:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })} ${value}`;
-  const dayFilters = (
-    <section className="local-runs-day-filters" aria-label="Days">
-      <h3 className="local-dashboard-caption local-section-heading">Days</h3>
-      <div className="local-dashboard-filters" role="group" aria-label="Run days">
-        {week.map(item => <button key={item.day} type="button" aria-pressed={day === item.day}
-          aria-label={`Filter day ${weekLabel(item.day)}`} onClick={() => updateView({ day: day === item.day ? '' : item.day, page: 1 })}>
-          {weekLabel(item.day)}
-        </button>)}
-      </div>
-    </section>
-  );
+  // OMN-21166 part 13: no day chips; the Window filter covers them, and a day in the address still filters.
   const weekChart = (
     <figure className="local-chart local-runs-week" aria-label="This week">
         <h3 className="local-dashboard-caption local-section-heading">This week</h3>
@@ -1227,7 +1232,6 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
   );
   return (
     <>
-      {dayFilters}
       <section className="local-runs-task-filters" aria-label="Tasks">
         <h3 className="local-dashboard-caption local-section-heading">Tasks</h3>
         <div className="local-dashboard-filters">{tasks.map(name => <button key={name} type="button" aria-label={`Filter task ${name}`} aria-pressed={task === name}
@@ -1385,14 +1389,18 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
             <button type="button" aria-label="Previous page" disabled={current === 0} onClick={() => updateView({ page: current })}>Previous</button>
             <button type="button" aria-label="Next page" disabled={current >= pages - 1} onClick={() => updateView({ page: current + 2 })}>Next</button>
           </div>
-          <h3 className="local-dashboard-caption local-section-heading" data-page-heading tabIndex={-1}>Run charts</h3>
-          <div className="local-run-charts">
-            <RunDurationChart runs={listed} onOpen={openRun} />
-            <RunTokensChart runs={listed} onOpen={openRun} />
-            <RunMetricChart runs={listed} onOpen={openRun} metric="cost" />
-            <RunMetricChart runs={listed} onOpen={openRun} metric="score" />
-          </div>
-          {weekChart}
+          {/* OMN-21166 part 13: the run list is the page; its charts are one click away. */}
+          <details className="local-more">
+            <summary>More run charts</summary>
+            <h3 className="local-dashboard-caption local-section-heading" data-page-heading tabIndex={-1}>Run charts</h3>
+            <div className="local-run-charts">
+              <RunDurationChart runs={listed} onOpen={openRun} />
+              <RunTokensChart runs={listed} onOpen={openRun} />
+              <RunMetricChart runs={listed} onOpen={openRun} metric="cost" />
+              <RunMetricChart runs={listed} onOpen={openRun} metric="score" />
+            </div>
+            {weekChart}
+          </details>
         </>
       )}
     </>
@@ -1418,10 +1426,15 @@ export function QualityPanel({ row }: { row: Row | null }) {
   return (
     <section aria-label="Quality">
       <PassRateMeter row={row} />
-      <PassRateSparkline />
-      <dl className="local-dashboard-fields">
-        {QUALITY_FIELDS.map(([label, field]) => <div key={field} data-quality-field={field} data-field-tone={fieldTone(label)} data-field-unavailable={isUnavailableField(row[field])}><dt><FieldIcon label={label} />{label}</dt><dd><Readable value={row[field]} kind={field === 'overall_pass_rate' ? 'percent' : field.startsWith('avg_') ? 'decimal' : 'count'} /></dd></div>)}
-      </dl>
+      <PassRateSparkline part="headline" />
+      {/* OMN-21166 part 13: the daily line and the check counts are one click away, not in view on load. */}
+      <details className="local-more">
+        <summary>More quality detail</summary>
+        <PassRateSparkline part="trend" />
+        <dl className="local-dashboard-fields">
+          {QUALITY_FIELDS.map(([label, field]) => <div key={field} data-quality-field={field} data-field-tone={fieldTone(label)} data-field-unavailable={isUnavailableField(row[field])}><dt><FieldIcon label={label} />{label}</dt><dd><Readable value={row[field]} kind={field === 'overall_pass_rate' ? 'percent' : field.startsWith('avg_') ? 'decimal' : 'count'} /></dd></div>)}
+        </dl>
+      </details>
       <p className="local-dashboard-caption local-recent-footer"><Link href="/delegation-evidence">View delegation evidence <ArrowUpRight size={12} aria-hidden="true" /></Link></p>
     </section>
   );
@@ -1513,11 +1526,14 @@ export function CredentialsTable({ rows }: { rows: readonly unknown[] }) {
       </div>
     );
   }
-  return (
+  // OMN-21166 part 13: the keys in use are in view; revoked history is one click away. Rows stay as served.
+  const current = keys.filter(key => isMissing(key.revoked_at));
+  const revoked = keys.filter(key => !isMissing(key.revoked_at));
+  const table = (list: Row[], label: string) => (
     <div className="local-dashboard-table-wrap local-credentials-records">
-      <table aria-label="Provider key references">
+      <table aria-label={label}>
         <thead><tr><th>Provider</th><th>Key ref</th><th>Fingerprint</th><th>Set</th><th>Revoked</th><th>Expires</th><th>Bound host</th></tr></thead>
-        <tbody>{keys.map((key, index) => (
+        <tbody>{list.map((key, index) => (
           <tr key={`${String(key.provider)}-${String(key.name)}-${index}`}>
             <td data-label="Provider">{recorded(key.provider)}</td>
             <td data-label="Key ref">{recorded(key.name)}</td>
@@ -1534,6 +1550,17 @@ export function CredentialsTable({ rows }: { rows: readonly unknown[] }) {
         ))}</tbody>
       </table>
     </div>
+  );
+  return (
+    <>
+      {current.length > 0 ? table(current, 'Provider key references') : <p className="local-dashboard-empty" role="status">No key is in use; every recorded key is revoked</p>}
+      {revoked.length > 0 && (
+        <details className="local-more">
+          <summary>{`Show key history (${formatDashboardCount(revoked.length)} revoked)`}</summary>
+          {table(revoked, 'Revoked key references')}
+        </details>
+      )}
+    </>
   );
 }
 
@@ -1577,11 +1604,16 @@ export function RunSummary({ decision, showAnalysis = false }: { decision: Row |
     ['Execution', duration(decision.execution_ms)],
     ['Duration', duration(decision.latency_ms)],
   ];
-  const timingChart = <RunTimingChart timings={[
+  const timings = [
     { key: 'queue_wait_ms', label: 'Queue wait', value: decision.queue_wait_ms },
     { key: 'execution_ms', label: 'Execution', value: decision.execution_ms },
     { key: 'latency_ms', label: 'Duration', value: decision.latency_ms },
-  ]} compact={showAnalysis} accentToken={showAnalysis ? '--workflow-timing-accent' : undefined} />;
+  ];
+  // OMN-21166 part 13: a chart whose one drawable bar is the total duration repeats the Duration tile, so it is left
+  // out; the chart's own rule decides what is drawable, and the tiles still say Not recorded for the rest.
+  const drawable = runTimingBars(timings).bars;
+  const onlyTotal = drawable.length === 1 && drawable[0]!.label === 'Duration';
+  const timingChart = onlyTotal ? null : <RunTimingChart timings={timings} compact={showAnalysis} accentToken={showAnalysis ? '--workflow-timing-accent' : undefined} />;
   return (
     <section aria-label="Run summary" className="local-dashboard-run-summary">
       <div className="local-run-summary-groups">
@@ -1863,7 +1895,11 @@ export function WorkflowRun({ component, snapshots, requested, onOpen }: Workflo
           )}
         </>
       )}
-      <WorkflowRecordDetails decision={decisions.find((row) => row.correlation_id === runId)} steps={stepsUnread || foreign ? [] : rows} />
+      {/* OMN-21166 part 13: the recorded fields and the stage chart (a repeat of the step durations) are one click away. */}
+      <details className="local-more">
+        <summary>More run details</summary>
+        <WorkflowRecordDetails decision={decisions.find((row) => row.correlation_id === runId)} steps={stepsUnread || foreign ? [] : rows} />
+      </details>
     </div>
   );
 }
@@ -2011,22 +2047,18 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns, acti
     const metering = snapshots.find(snapshot => snapshot.topic === METERING_SUMMARY_TOPIC);
     const meteringRows = metering?.rows ?? [];
     const meteringUnavailable = metering?.failure ? 'Daily metering data is not available yet.' : null;
-    const meteringDays = meteringRows.some(row => typeof row === 'object' && row !== null && (row as Record<string, unknown>).window_kind === 'day');
+    // OMN-21166 part 13: Overview keeps the activity summary; the window's spend line sits in "More activity" with the
+    // run counts, and the detailed analysis lives on Runs (its "Explore run analysis" link stays).
     return rows.length === 0 ? <NoRunsYet /> : <>
-    <InsightsSection decisions={rows} now={Date.now()} view="summary" />
-    {meteringRows.length > 0 && <MeteringActivityInsights rows={meteringRows} now={Date.now()} window={activityWindow}
-      unavailable={meteringUnavailable} display="kpis" />}
-    <details className="local-analysis-details"><summary>Detailed activity analysis</summary>
-    <InsightsSection decisions={rows} now={Date.now()} view="analysis" onInspectFailure={cause => navigate(causeHref(cause))} />
-    {meteringDays && <MeteringActivityInsights rows={meteringRows} now={Date.now()} window={activityWindow}
-      unavailable={meteringUnavailable} display="charts" />}
-    </details>
+    <InsightsSection decisions={rows} now={Date.now()} view="summary" more={meteringRows.length > 0
+      ? <MeteringActivityInsights rows={meteringRows} now={Date.now()} window={activityWindow} unavailable={meteringUnavailable} display="kpis" />
+      : null} />
   </>;
   }
-  if (component.component_id === 'runs-insights') return <details className="local-analysis-details"><summary>Show run analysis</summary>{rows.length === 0 ? <NoRunsYet /> : <InsightsSection decisions={rows} now={Date.now()} view="analysis" onInspectFailure={cause => {
+  if (component.component_id === 'runs-insights') return <>{rows.length === 0 ? <NoRunsYet /> : <InsightsSection decisions={rows} now={Date.now()} view="analysis" onInspectFailure={cause => {
     navigate(causeHref(cause));
     document.querySelector('[data-component="recent-runs"]')?.scrollIntoView?.({ block: 'start' });
-  }} />}</details>;
+  }} />}</>;
   if (component.component_id === 'overview-quality' || component.component_id === 'overview-tier-mix' || component.component_id === 'runs-tier-mix') {
     const first = rawRowsFor(component, snapshots, 0)[0];
     const row = first && typeof first === 'object' && !Array.isArray(first) ? (first as Row) : null;
@@ -2054,7 +2086,8 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns, acti
         {/* OMN-21015 U2: the same served day rows as bars; the chart plots the money columns this panel declares.
             Its one series takes the chart's third colour, the colour the same figure has on Overview. */}
         <SpendByDayChart title={component.title} rows={days} columns={columns} colourPlaces={[3]} />
-        <MeteringDaySeries rows={days} />
+        {/* OMN-21166 part 13: the day table repeats the chart, so it is one click away. */}
+        <details className="local-more"><summary>Savings by day as a table</summary><MeteringDaySeries rows={days} /></details>
       </div>)}{byModel}</>
     );
   }
@@ -2605,9 +2638,25 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
             </details>
             </InsightsWindowContext.Provider>
             </OverviewRunsContext.Provider>
+          </> : pageName === 'usage' ? <>
+            {/* OMN-21166 part 13: the full model-by-day table is one click away under the charts. */}
+            {page.components.filter(component => component.component_id !== 'usage-by-model-day').map(component => renderComponent(component))}
+            {page.components.some(component => component.component_id === 'usage-by-model-day') && (
+              <details className="local-overview-secondary local-more local-more--page">
+                <summary>Usage by model and day</summary>
+                {page.components.filter(component => component.component_id === 'usage-by-model-day').map(component => renderComponent(component))}
+              </details>
+            )}
           </> : pageName === 'runs' ? (
             <InsightsWindowContext.Provider value={{ window: activityWindow, setWindow: setActivityWindow }}>
-              {page.components.map(component => renderComponent(component))}
+              {/* OMN-21166 part 13: the run list in view; routing and analysis in one "More analysis"; Run locally is
+                  Overview's, so Runs does not repeat it. */}
+              {page.components.filter(component => !RUNS_SECONDARY.has(component.component_id) && component.component_id !== 'overview-run-locally')
+                .map(component => renderComponent(component))}
+              <details className="local-overview-secondary local-more local-more--page">
+                <summary>More analysis</summary>
+                {page.components.filter(component => RUNS_SECONDARY.has(component.component_id)).map(component => renderComponent(component))}
+              </details>
             </InsightsWindowContext.Provider>
           ) : page.components.map(component => renderComponent(component))}
         </section>

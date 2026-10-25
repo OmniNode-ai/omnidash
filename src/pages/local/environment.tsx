@@ -118,7 +118,24 @@ export function EnvironmentPanel({ rows, complete = true }: { rows: readonly Env
     const versions = first.versions && typeof first.versions === 'object' && !Array.isArray(first.versions)
       ? Object.entries(first.versions) : [];
     const labels: Readonly<Record<string, string>> = { omnimarket: 'Runtime', omnibase_core: 'Core', omnidash: 'Dashboard' };
+    // OMN-21166 part 13: one status line in view (mode, runtime, store, services running, alerts), every served
+    // word; the full table is one click away in "Environment details".
+    const runtimeVersion = versions.find(([name]) => name === 'omnimarket')?.[1];
+    const runningCount = selected.filter(row => text(row.verdict) === 'running').length;
+    const alertCount = environmentAlertRows(selected, mode).length;
+    const statusParts = [
+      mode,
+      text(runtimeVersion) ? `runtime ${text(runtimeVersion)}` : null,
+      text(first.store_kind) || null,
+      `${runningCount} of ${selected.length} ${selected.length === 1 ? 'service' : 'services'} running`,
+      alertCount === 0 ? (allowClear ? 'no open alerts' : null) : `${alertCount} open ${alertCount === 1 ? 'alert' : 'alerts'}`,
+    ].filter((part): part is string => part !== null);
     return <section key={mode} data-environment-mode={mode} aria-label={`${mode} environment`}>
+      <p className="local-environment-line" role="status" data-environment-state={alertCount > 0 ? 'alert' : allowClear ? 'clear' : 'unknown'}>
+        <span className="local-environment-dot" aria-hidden="true" />{statusParts.join(' · ')}
+      </p>
+      <details className="local-more">
+      <summary>Environment details</summary>
       <dl className="local-dashboard-fields">
         <div><dt>Mode</dt><dd>{mode}</dd></div>
         {mode === 'native' && <>
@@ -131,6 +148,7 @@ export function EnvironmentPanel({ rows, complete = true }: { rows: readonly Env
       {refusedHealth && <p className="local-dashboard-empty" role="status">Some service health details are not available.</p>}
       {validHealth.length > 0 && <div role="status"><EnvironmentStatus rows={validHealth} mode={mode} plain /></div>}
       <div role="status"><EnvironmentAlerts rows={selected} mode={mode} plain allowClear={allowClear} /></div>
+      </details>
     </section>;
   })}</>;
 }

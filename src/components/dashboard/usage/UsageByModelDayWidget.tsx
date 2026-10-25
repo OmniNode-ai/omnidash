@@ -181,8 +181,13 @@ function groupedCount(value: unknown): string {
  * its 5,133 tokens in. The scale is layout only: the bar's own width is its counts' sum against the largest bar's, and
  * that sum is never written.
  */
+/** Days of tokens in view before "Show all days" (OMN-21166 part 13). */
+const RECENT_DAYS = 7;
+
 export function UsageTokensByDay({ rows }: { rows: readonly unknown[] }) {
   const [selected, setSelected] = useState<string | null>(null);
+  // OMN-21166 part 13: the latest days are in view; the rest are one click away.
+  const [showAllDays, setShowAllDays] = useState(false);
   const usage = asRows(rows);
   const models = [...new Set(usage.map(row => model(row.model_id)))];
   const selection = selected !== null && models.includes(selected) ? selected : null;
@@ -216,7 +221,7 @@ export function UsageTokensByDay({ rows }: { rows: readonly unknown[] }) {
           {recorded(row.usage_day)} · {tier(row.cost_tier_name)} · Tokens in: {recorded(row.input_tokens)} · Tokens out: {recorded(row.output_tokens)}
         </span>)}
       </div>}
-      {[...days.entries()].map(([day, dayRows]) => (
+      {[...days.entries()].slice(0, showAllDays ? undefined : RECENT_DAYS).map(([day, dayRows]) => (
         <section className="usage-tokens-day" key={day}>
           <h3>{day}</h3>
           {TOKEN_DIRECTIONS.map(({ direction, field }) => {
@@ -258,6 +263,11 @@ export function UsageTokensByDay({ rows }: { rows: readonly unknown[] }) {
           })}
         </section>
       ))}
+      {days.size > RECENT_DAYS && (
+        <button type="button" className="local-show-all" aria-expanded={showAllDays} onClick={() => setShowAllDays(value => !value)}>
+          {showAllDays ? 'Show the latest days only' : `Show all ${days.size} days`}
+        </button>
+      )}
     </figure>
   );
 }

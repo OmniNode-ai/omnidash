@@ -67,17 +67,24 @@ describe('OMN-21015: where a run\'s time went', () => {
   });
 
   it('T3: a timing the row does not carry has no bar and its tile says Not recorded', () => {
-    render(<RunSummary decision={run({ queue_wait_ms: null, execution_ms: undefined })} />);
+    render(<RunSummary decision={run({ queue_wait_ms: null })} />);
     const shown = fields();
-    expect([shown['Queue wait'], shown.Execution]).toEqual(['Not recorded', 'Not recorded']);
-    expect(drawn()).toEqual([['Duration', 743]]);
-    expect(within(summary()).getByRole('figure', { name: 'Run timing' }).textContent).toContain('No measured value to draw for: Queue wait, Execution');
+    expect(shown['Queue wait']).toBe('Not recorded');
+    expect(drawn()).toEqual([['Execution', 4788], ['Duration', 743]]);
+    expect(within(summary()).getByRole('figure', { name: 'Run timing' }).textContent).toContain('No measured value to draw for: Queue wait');
   });
 
-  it('T11: with one timing measured the caption does not speak of several', () => {
-    render(<RunSummary decision={run({ queue_wait_ms: null, execution_ms: null })} />);
-    const caption = within(summary()).getByRole('figure', { name: 'Run timing' }).querySelector('figcaption')?.textContent;
-    expect(caption).toBe('Duration of this run in milliseconds, as served. No measured value to draw for: Queue wait, Execution.');
+  // OMN-21166 part 13: with only the total measured, a one-bar chart would repeat the Duration tile, so none is drawn.
+  it('T11: with only the duration measured no chart is drawn and the other tiles say Not recorded', () => {
+    render(<RunSummary decision={run({ queue_wait_ms: null, execution_ms: undefined })} />);
+    const shown = fields();
+    expect([shown['Queue wait'], shown.Execution, shown.Duration]).toEqual(['Not recorded', 'Not recorded', '743 ms']);
+    expect(within(summary()).queryByRole('figure', { name: 'Run timing' })).toBeNull();
+  });
+
+  it('T11: a duration with one other timing that is not a number draws no chart either', () => {
+    render(<RunSummary decision={run({ queue_wait_ms: 'soon', execution_ms: -5 })} />);
+    expect(within(summary()).queryByRole('figure', { name: 'Run timing' })).toBeNull();
   });
 
   it('T11: with several measured the caption says they are not added together', () => {
@@ -87,8 +94,8 @@ describe('OMN-21015: where a run\'s time went', () => {
   });
 
   it('T3: a timing that is not a number is not drawn', () => {
-    render(<RunSummary decision={run({ queue_wait_ms: 'soon', execution_ms: -5 })} />);
-    expect(drawn()).toEqual([['Duration', 743]]);
+    render(<RunSummary decision={run({ queue_wait_ms: 'soon' })} />);
+    expect(drawn()).toEqual([['Execution', 4788], ['Duration', 743]]);
   });
 
   it.each([

@@ -1,9 +1,9 @@
 import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
 import { modelColor, tierColor, tierConcept } from '@/lib/dashboard-colors';
-import { modelIdentityStyle } from '@/components/dashboard/model-identity';
 import { formatDashboardUsd } from '@/lib/dashboard-currency';
 import { formatDuration } from '@/lib/duration';
 import { createContext, useContext, useId, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
+import { RankedBars } from '@/components/dashboard/RankedBars';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { causeHref, useSharedRunFilter } from './run-filter';
 import { failureCauseLabel, tierLabel } from './plain-text';
@@ -298,30 +298,17 @@ function DurationHistogram({ runs }: { runs: InsightRun[] }) {
 }
 
 function ModelScoreboard({ runs }: { runs: InsightRun[] }) {
+  // OMN-21166 AC64: the pass rate per model as ranked bars; a model with no verdicts is drawn as not measured.
   const groups = countBy(runs, 'model');
   return (
     <ChartCard title="Model scoreboard" concept="quality-model" note="Pass rate" delay={300}>
-      <ul className="ins-rings" aria-label="Pass rate by model">
-        {groups.map(group => {
+      <RankedBars label="Pass rate by model" unit="Pass rate of runs with a verdict · higher is better" order="desc"
+        items={groups.map(group => {
           const judged = group.passed + group.failed;
           const rate = judged ? (group.passed / judged) * 100 : null;
-          const color = modelColor(group.key);
-          return (
-            <li key={group.key} data-semantic-concept={`model:${group.key}`} data-semantic-label={group.key} className="ins-ring" style={{ '--ins-swatch': color } as CSSProperties}>
-              <svg viewBox="0 0 42 42" width={60} height={60} aria-hidden="true">
-                <circle cx="21" cy="21" r="15.915" fill="none" className="ins-ring-track" strokeWidth={4.5} />
-                {rate !== null && <circle className="od-ring" cx="21" cy="21" r="15.915" fill="none" stroke={color} strokeWidth={4.5} strokeLinecap="round" strokeDasharray={`${rate.toFixed(2)} ${(100 - rate).toFixed(2)}`} transform="rotate(-90 21 21)" />}
-              </svg>
-              <span className="ins-ring-text">
-                <span className="ins-ring-name local-model-identity" style={modelIdentityStyle(group.key)} data-field-tone="model" data-field-unavailable={group.key === NOT_RECORDED}>{group.key}</span>
-                <span className="ins-ring-rate" data-field-tone="pass" data-field-unavailable={rate === null}>{rate === null ? 'No verdicts' : `${Math.round(rate)}% passed`}</span>
-                <span className="ins-ring-runs" data-field-tone="count">{count(group.runs)} runs</span>
-                <span className="ins-ring-coverage" data-field-tone="basis">{verdictCoverage(judged, group.runs)}</span>
-              </span>
-            </li>
-          );
-        })}
-      </ul>
+          return { key: group.key, name: group.key, value: rate, basis: 'measured' as const, color: modelColor(group.key),
+            display: rate === null ? 'No verdicts' : `${Math.round(rate)}%`, title: `${count(group.runs)} runs · ${verdictCoverage(judged, group.runs)}` };
+        })} />
     </ChartCard>
   );
 }
@@ -462,7 +449,11 @@ export const OverviewRunsContext = createContext<{ decisions: readonly unknown[]
  * The Quality hero's "Pass rate per day": the same chart the trends drew, moved into the hero as the mockup has it.
  * It follows the selected Activity trends window; with no page rows it draws nothing, so the Quality panel alone is unchanged.
  */
-export function PassRateSparkline() {
+/**
+ * The latest-runs pass rate: its headline line and delta, and its daily line. OMN-21166 part 13 lets Overview show the
+ * headline in view and the daily line inside its closed "More quality detail" (`part`); both read the same runs.
+ */
+export function PassRateSparkline({ part = 'all' }: { part?: 'all' | 'headline' | 'trend' } = {}) {
   const context = useContext(OverviewRunsContext);
   const pageWindow = useContext(InsightsWindowContext);
   const [ownWindow] = useState<ActivityWindow>({ kind: 'all' });
@@ -484,10 +475,12 @@ export function PassRateSparkline() {
       : `${comparison.passRateDeltaPoints > 0 ? '▲' : comparison.passRateDeltaPoints < 0 ? '▼' : '—'} ${Math.abs(comparison.passRateDeltaPoints).toFixed(1)} percentage points vs previous ${comparisonDays === 1 ? 'day' : `${comparisonDays} days`} (${verdictCoverage(comparison.previousVerdicts, comparison.previousRuns)})`;
   // OMN-21166 part 11: this rate is over the latest returned runs, not every check the meter above counts, so its
   // label names that population beside the figure.
+  const trend = <PassRateTrend days={seriesForDays(currentRuns, plottedDays(runs, context.now, window))} />;
+  if (part === 'trend') return trend;
   return <section className="ins-pass-headline" aria-label="Pass rate trend">
     <p className="local-dashboard-caption ins-pass-line"><span>Pass rate · latest returned runs</span> <strong data-field-unavailable={current.passRate === null}>{rate}</strong> <span className="ins-pass-coverage" data-field-tone="basis">{verdictCoverage(current.passed + current.failed, current.runs)}</span></p>
     {deltaText !== null && <p className="local-dashboard-caption ins-pass-delta" data-field-unavailable={comparison?.passRateDeltaPoints === null}>{deltaText}</p>}
-    <PassRateTrend days={seriesForDays(currentRuns, plottedDays(runs, context.now, window))} />
+    {part === 'all' && trend}
   </section>;
 }
 const MAX_ALL_TIME_DAYS = 30;
@@ -695,8 +688,10 @@ function allTimeDays(runs: readonly InsightRun[], now: number): number {
   return Math.min(MAX_ALL_TIME_DAYS, Math.max(7, Math.round((today - oldest) / 86_400_000) + 1));
 }
 
-export function InsightsSection({ decisions, now, view = 'all', onInspectFailure }: {
+export function InsightsSection({ decisions, now, view = 'all', onInspectFailure, more }: {
   decisions: readonly unknown[]; now: number; view?: 'all' | 'summary' | 'analysis'; onInspectFailure?: (cause: string) => void;
+  /** OMN-21166 part 13: on the summary view, further detail shown inside the section's closed "More activity". */
+  more?: ReactNode;
 }) {
   const pageWindow = useContext(InsightsWindowContext);
   const [ownWindow, setOwnWindow] = useState<ActivityWindow>({ kind: 'all' });
@@ -742,10 +737,10 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
           </div>
         </div>
       )}
-      <p className="local-dashboard-caption ins-sub" data-testid="insights-total">{population}{undated} · Row timestamps: {servedSpan} · Earlier activity is not included{window.kind === 'days' ? '' : ' · Comparisons with the previous window appear for 1, 7, 15 and 30 days'}{window.kind === 'all' || window.kind === 'custom' ? ` · Charts show at most ${MAX_ALL_TIME_DAYS} UTC days; ${count(chartRuns.length)} of ${count(runs.length)} selected runs plotted` : ''}</p>
+      <p className="local-dashboard-caption ins-sub" data-testid="insights-total">{population}{undated}{view === 'summary' ? null : <> · Row timestamps: {servedSpan} · Earlier activity is not included{window.kind === 'days' ? '' : ' · Comparisons with the previous window appear for 1, 7, 15 and 30 days'}{window.kind === 'all' || window.kind === 'custom' ? ` · Charts show at most ${MAX_ALL_TIME_DAYS} UTC days; ${count(chartRuns.length)} of ${count(runs.length)} selected runs plotted` : ''}</>}</p>
       {emptyMessage !== null ? <p className="local-dashboard-empty ins-empty" role="status" aria-label="Insights">{emptyMessage}</p> : (
         <div className="overview-chart-sections">
-          {view !== 'analysis' && <RunWindowKpis runs={runs} decisions={decisions} now={now} days={window.kind === 'days' ? window.days : MAX_ALL_TIME_DAYS} label={windowCaption(window)} comparisonEnabled={window.kind === 'days'} />}
+          {view === 'all' && <RunWindowKpis runs={runs} decisions={decisions} now={now} days={window.kind === 'days' ? window.days : MAX_ALL_TIME_DAYS} label={windowCaption(window)} comparisonEnabled={window.kind === 'days'} />}
           {view !== 'analysis' && <ChartSection concept="activity" title="Activity over time"><RunsPerDay days={chartDays} /><TokensPerDay days={chartDays} /></ChartSection>}
           {view === 'summary' && <ChartSection concept="quality-outcomes" title="Why runs failed"><FailureCauses runs={runs} limit={3} /></ChartSection>}
           {view !== 'summary' && <>
@@ -755,6 +750,14 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
           <ChartSection concept="activity-hourly" title="Activity by UTC hour"><ActivityHeatmap runs={runs} days={chartDaysList} window={window} /></ChartSection>
           </>}
         </div>
+      )}
+      {view === 'summary' && emptyMessage === null && (
+        <details className="local-more">
+          <summary>More activity</summary>
+          <p className="local-dashboard-caption ins-sub">{population}{undated} · Row timestamps: {servedSpan} · Earlier activity is not included{window.kind === 'days' ? '' : ' · Comparisons with the previous window appear for 1, 7, 15 and 30 days'}{window.kind === 'all' || window.kind === 'custom' ? ` · Charts show at most ${MAX_ALL_TIME_DAYS} UTC days; ${count(chartRuns.length)} of ${count(runs.length)} selected runs plotted` : ''}</p>
+          <RunWindowKpis runs={runs} decisions={decisions} now={now} days={window.kind === 'days' ? window.days : MAX_ALL_TIME_DAYS} label={windowCaption(window)} comparisonEnabled={window.kind === 'days'} />
+          {more}
+        </details>
       )}
       {view === 'summary' && <nav className="local-summary-links" aria-label="Detailed analysis"><Link href="/runs">Explore run analysis</Link><Link href="/usage">Explore usage</Link></nav>}
     </div>

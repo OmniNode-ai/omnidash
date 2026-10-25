@@ -453,10 +453,11 @@ function TokenUsage() {
   }
   const t = data.rows[0];
   if (!t) {
+    // OMN-21166 part 13: when nothing is served the panel is one line, not an empty card (Usage owns token figures).
     return (
-      <Panel title="TOKEN USAGE">
-        <EvEmpty title="No token usage by model" reason={plainUnservedReason(data.degradedReason)} />
-      </Panel>
+      <p className="ev-unserved-line" role="status">
+        Token usage by model: {plainUnservedReason(data.degradedReason) ?? 'not available yet'}
+      </p>
     );
   }
   const models = t.by_model.filter((m) => m.total_tokens > 0 || m.token_provenance === 'measured');

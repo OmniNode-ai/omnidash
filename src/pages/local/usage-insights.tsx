@@ -1,10 +1,11 @@
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
+import { RankedBars } from '@/components/dashboard/RankedBars';
 import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
 import { modelColor } from '@/lib/dashboard-colors';
 import { formatDashboardUsd } from '@/lib/dashboard-currency';
 import { sumDashboardUsd } from '@/lib/dashboard-money-total';
 import { useState } from 'react';
-import { aggregateUsageRows, type UsageAggregates, type UsageModelAggregate } from './insight-aggregates';
+import { aggregateUsageRows, type UsageAggregates } from './insight-aggregates';
 import { tierLabel } from './plain-text';
 
 const USAGE_WINDOW_DAYS = 30;
@@ -68,32 +69,21 @@ function routeSpendByTier(row: Row): Array<{ route: string; runs: string; share:
 }
 
 function SpendByModel({ data }: { data: UsageAggregates }) {
-  const [active, setActive] = useState<string | null>(null);
+  // OMN-21166 AC64: ranked bars, one per model; a model whose spend is not measured is drawn as not measured, never $0.00.
   const priced = data.models.filter(model => model.measuredCost !== null);
   const totalUsd = sumDashboardUsd(priced.map(model => model.measuredCostUsd));
-  const total = totalUsd === null ? 0 : Number(totalUsd);
-  let offset = 0;
-  const gradient = priced.map(model => {
-    const start = offset;
-    const amount = total > 0 ? model.measuredCost! / total * 100 : 0;
-    offset += amount;
-    return `${modelColor(model.model)} ${start}% ${offset}%`;
-  }).join(', ');
-  const selection = priced.find(model => model.model === active) ?? null;
-  const detail = (model: UsageModelAggregate) => `${model.model}: ${money(model.measuredCostUsd)} · ${share(total > 0 && model.measuredCost !== null ? model.measuredCost / total : null)} of measured spend · ${count(model.unmeasuredCalls)} unmeasured calls`;
+  const gaps = data.models.filter(model => model.unmeasuredCalls !== 0);
   return (
     <figure className="local-chart usage-insight" aria-label="Spend by model">
       <h3><ConceptIcon concept="spend-model" size={16} />Spend by model</h3>
-      {(selection || !priced.length) && <p role="status" className="ins-readout">{selection ? detail(selection) : 'No measured model spend served'}</p>}
-      <div className="usage-spend-models">
-        <div className="usage-donut" aria-hidden="true" style={{ background: total > 0 ? `conic-gradient(${gradient})` : 'var(--line-subtle)' }}><span>{money(totalUsd)}</span></div>
-        <div className="usage-model-legend" role="group" aria-label="Spend by model legend">
-          {data.models.map(model => <button type="button" key={model.model} aria-label={detail(model)} onMouseEnter={() => setActive(model.model)} onFocus={() => setActive(model.model)} onMouseLeave={() => setActive(null)} onBlur={() => setActive(null)}>
-            <i aria-hidden="true" data-semantic-concept={`model:${model.model}`} data-semantic-label={model.model} style={{ background: modelColor(model.model) }} />{model.model}<strong>{money(model.measuredCostUsd)}</strong><span>{count(model.unmeasuredCalls)} unmeasured</span>
-          </button>)}
-        </div>
-      </div>
-      <figcaption>Measured spend only, summed from the latest {USAGE_WINDOW_DAYS} UTC days of served usage rows.</figcaption>
+      {priced.length === 0 && <p role="status" className="ins-readout">No measured model spend served</p>}
+      <RankedBars label="Measured spend per model" unit={totalUsd === null ? 'USD · measured spend' : `USD · measured spend · ${money(totalUsd)} in all`}
+        items={data.models.map(model => ({
+          key: model.model, name: model.model, value: model.measuredCost, basis: 'measured',
+          display: model.measuredCost === null ? 'Not measured' : money(model.measuredCostUsd), color: modelColor(model.model),
+        }))}
+        footnote={gaps.length > 0 ? gaps.map(model => `${model.model}: ${model.unmeasuredCalls === null ? 'unmeasured runs not recorded' : `${count(model.unmeasuredCalls)} unmeasured`}`).join(' · ') : undefined} />
+      <p className="local-dashboard-caption">Measured spend only, summed from the latest {USAGE_WINDOW_DAYS} UTC days of served usage rows.</p>
     </figure>
   );
 }
@@ -160,11 +150,16 @@ export function UsageInsights({ usageRows, decisionRows, routingRows, now = Date
   const routing = routeSpendByTier(records(routingRows)[0] ?? {});
   return <section className="usage-insights" aria-label="Usage insights">
     <h3 className="local-dashboard-caption">Latest {USAGE_WINDOW_DAYS} UTC days · counted from served usage rows</h3>
-    <div className="usage-insight-grid"><SpendByModel data={data} /><CostPerRun data={data} /><TokensByModel data={data} /></div>
+    <div className="usage-insight-grid"><SpendByModel data={data} /></div>
+    {/* OMN-21166 part 13: cost per run, tokens by model and cost by route are one click away. */}
+    <details className="local-more">
+    <summary>More usage</summary>
+    <div className="usage-insight-grid"><CostPerRun data={data} /><TokensByModel data={data} /></div>
     <section className="local-chart usage-cost-by-route" aria-label="Cost by route">
       <h3 className="local-dashboard-caption"><ConceptIcon concept="cost-route" size={16} />Cost by route</h3>
       {routing.length === 0 ? <p className="local-dashboard-caption" role="status">Route cost is not served yet.</p> : <dl className="local-dashboard-fields local-routing-counts">{routing.map(row => <div key={row.route}><dt>{row.route}</dt><dd>{row.runs} runs · {row.share}</dd><dd>{row.cost}</dd></div>)}</dl>}
       <p role="status">Savings by route is not served yet</p>
     </section>
+    </details>
   </section>;
 }
