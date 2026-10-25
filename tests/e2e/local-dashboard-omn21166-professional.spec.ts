@@ -10,12 +10,17 @@ test.beforeEach(async ({ page }) => { await serveCharts(page); });
 
 test('page navigation starts at the top while query edits preserve scroll and input focus', async ({ page }, info) => {
   await page.goto('/overview');
-  await expect(page.getByRole('heading', { name: 'Recent runs', exact: true })).toBeVisible();
+  // OMN-21166 AC86 (Lakshman 2026-10-25): Recent runs is deleted from Overview; its last chart cell anchors the page.
+  await expect(page.getByRole('heading', { name: 'Tier mix', exact: true })).toBeVisible();
   await page.locator('main').evaluate(el => { el.scrollTop = el.scrollHeight; });
   expect(await page.locator('main').evaluate(el => el.scrollTop)).toBeGreaterThan(100);
   await page.getByRole('link', { name: 'Runs', exact: true }).click();
   await expect(page.getByRole('searchbox', { name: 'Search runs' })).toBeVisible();
   expect(await page.locator('main').evaluate(el => el.scrollTop)).toBe(0);
+  // OMN-21166 part 13: Runs now fits one screen; open its two closed sections so the page scrolls and the scroll check is real.
+  await page.getByText('More run charts', { exact: true }).press('Enter');
+  await page.getByText('More analysis', { exact: true }).press('Enter');
+  expect(await page.locator('main').evaluate(el => el.scrollHeight - el.clientHeight), 'positive control: Runs scrolls').toBeGreaterThan(200);
   const input = page.getByRole('searchbox', { name: 'Search runs' });
   await input.fill('model');
   await expect(input).toHaveValue('model');
@@ -48,17 +53,23 @@ test('a delayed destination chunk has an accessible loading page and recovers', 
   await expect(page.locator('.ev-root')).toBeVisible();
 });
 
-test('preview ignores unused cost failures while cards displaying cost retain the warning', async ({ page }) => {
+test('Overview ignores unused cost failures while the Runs list displaying cost retains the warning', async ({ page }) => {
+  // OMN-21166 AC86 (Lakshman 2026-10-25): the Recent runs preview and Last run are deleted from Overview. The property
+  // stays on the surfaces that remain: Overview reads no cost lookup, so a failed one raises no alert there, and the
+  // Runs list, which displays cost, keeps the warning.
   await page.route(/\/projection\/.*delegation\.savings\.v1(?:\?|$)/, route => route.fulfill({ status: 503, body: '{}' }));
   await page.goto('/overview');
-  const preview = page.locator('[data-component="overview-recent-runs"]');
-  await expect(preview).toContainText('chart-run-a');
-  await expect(page.locator('[data-component="overview-last-run"]')).toContainText('Cost data is unavailable');
-  await expect(preview.getByRole('alert')).toHaveCount(0);
-  // Run-data failure remains visible: excluding a lookup must not silence the row source.
+  const insights = page.locator('[data-component="overview-insights"]');
+  await expect(insights.getByRole('button', { name: /Oct 17: 3 runs/ })).toBeVisible();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await page.goto('/runs');
+  const list = page.locator('[data-component="recent-runs"]');
+  await expect(list).toContainText('chart-run-a');
+  await expect(list.getByRole('alert')).toContainText('Cost data is unavailable');
+  // Run-data failure remains visible on Overview: excluding a lookup must not silence the row source.
   await page.route(/\/projection\/.*delegation\.decisions\.v1(?:\?|$)/, route => route.fulfill({ status: 503, body: '{}' }));
-  await page.reload();
-  await expect(preview.getByRole('alert')).toContainText('Run data is unavailable');
+  await page.goto('/overview');
+  await expect(insights.getByRole('alert').first()).toContainText('Run data is unavailable');
 });
 
 test('all eleven destinations have matching icons, browser titles and a single page heading', async ({ page }, info) => {
@@ -83,9 +94,11 @@ test('all eleven destinations have matching icons, browser titles and a single p
 
 test('Evidence uses readable sentence-case section headings and preserves routing and quality values', async ({ page }) => {
   await page.goto('/delegation-evidence');
-  for (const name of ['Selected run','Model routing','Quality gate','Savings vs cloud baseline','Token usage','Recent delegations']) {
+  for (const name of ['Selected run','Model routing','Quality gate','Savings vs cloud baseline','Recent delegations']) {
     await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
   }
+  // OMN-21166 part 13: token usage that is not served is one honest line, not a headed empty panel (this fixture serves none).
+  await expect(page.getByRole('status').filter({ hasText: /^Token usage by model:/ })).toBeVisible();
   await expect(page.locator('[data-panel-title="MODEL ROUTING"]')).toContainText('model-a');
   await expect(page.locator('[data-panel-title="QUALITY GATE"]')).toContainText('75');
   expect(chartRows[prefix + 'delegation.quality-gate.v1']).toHaveLength(1);

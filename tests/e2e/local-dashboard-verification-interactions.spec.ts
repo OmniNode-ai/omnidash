@@ -14,6 +14,8 @@ test('Usage zoom and reset preserve the selected day and exact served table', as
   const panel = page.locator('[data-component="usage-savings-series"]');
   const chart = panel.getByRole('figure', { name: 'Savings per day vs baseline-a', exact: true });
   await expect(chart.locator('.local-chart-canvas svg')).toBeVisible();
+  // OMN-21166 part 13: the savings day table is under "Savings by day as a table".
+  await panel.getByText('Savings by day as a table', { exact: true }).press('Enter');
   const before = await panel.getByRole('table').innerText();
   await chart.getByLabel('Inspect day', { exact: true }).selectOption('1');
   await expect(chart.getByRole('status')).toContainText('2026-10-02');
@@ -33,6 +35,8 @@ test('a refresh inserting a newer run preserves the selected full run id', async
   const decisions = chartRows[topic].map(row => ({ ...row as Record<string, unknown> }));
   await serveCharts(page, { ...chartRows, [topic]: decisions });
   await page.goto('/runs');
+  // OMN-21166 part 13: the run charts sit under the closed "More run charts" on Runs; open it first.
+  await page.getByText('More run charts', { exact: true }).press('Enter');
   const chart = page.getByRole('figure', { name: 'Duration per run', exact: true });
   const selector = chart.getByLabel('Inspect run', { exact: true });
   await selector.selectOption(runIds[1]);
@@ -50,6 +54,8 @@ test('a refresh inserting a newer run preserves the selected full run id', async
 test('filtering the selected run off the chart clears it without selecting another run', async ({ page }, info) => {
   await serveCharts(page);
   await page.goto('/runs');
+  // OMN-21166 part 13: the run charts sit under the closed "More run charts" on Runs; open it first.
+  await page.getByText('More run charts', { exact: true }).press('Enter');
   const chart = page.getByRole('figure', { name: 'Duration per run', exact: true });
   const selector = chart.getByLabel('Inspect run', { exact: true });
   await selector.selectOption(runIds[1]);
@@ -72,6 +78,8 @@ test('chart run identity stays exact after pagination removes the selection', as
   const served = { ...chartRows, [decisionsTopic]: many };
   await serveCharts(page, served);
   await page.goto('/runs');
+  // OMN-21166 part 13: the run charts sit under the closed "More run charts" on Runs; open it first.
+  await page.getByText('More run charts', { exact: true }).press('Enter');
   const chart = page.getByRole('figure', { name: 'Duration per run', exact: true });
   await chart.getByLabel('Inspect run', { exact: true }).selectOption('paged-run-1');
   await expect(chart.getByRole('link', { name: 'Open run', exact: true })).toHaveAttribute('href', /correlation_id=paged-run-1$/);
@@ -87,6 +95,8 @@ test('a reordered refresh never substitutes another id for the selected run', as
   const decisions = chartRows[topic].map(row => ({ ...row as Record<string, unknown> }));
   await serveCharts(page, { ...chartRows, [topic]: decisions });
   await page.goto('/runs');
+  // OMN-21166 part 13: the run charts sit under the closed "More run charts" on Runs; open it first.
+  await page.getByText('More run charts', { exact: true }).press('Enter');
   const chart = page.getByRole('figure', { name: 'Duration per run', exact: true });
   await chart.getByLabel('Inspect run', { exact: true }).selectOption(runIds[1]);
   await expect(chart.getByRole('link', { name: 'Open run', exact: true })).toHaveAttribute('href', /correlation_id=chart-run-b$/);
@@ -106,6 +116,8 @@ test('a run with no recorded id is absent from the chart selector and cannot rep
   const missing = { ...(chartRows[topic][0] as object), correlation_id: null };
   await serveCharts(page, { ...chartRows, [topic]: [missing, chartRows[topic][1]] });
   await page.goto('/runs');
+  // OMN-21166 part 13: the run charts sit under the closed "More run charts" on Runs; open it first.
+  await page.getByText('More run charts', { exact: true }).press('Enter');
   const chart = page.getByRole('figure', { name: 'Duration per run', exact: true });
   await expect(chart.locator('.local-chart-canvas svg')).toBeVisible();
   const options = chart.getByLabel('Inspect run', { exact: true }).getByRole('option');

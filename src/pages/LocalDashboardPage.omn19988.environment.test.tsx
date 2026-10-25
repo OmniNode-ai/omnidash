@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+// OMN-21166 live review 2026-10-25: Lakshman moved the Environment panel from Overview to API Keys (which already reads
+// local-environment.v1); every check below now runs on the API Keys page, unchanged otherwise.
 // The production Overview, not only the isolated Environment widgets, must read
 // and render its declared health exposure. Failure modes before implementation:
 // E8: native health/versions disappear when there have been no delegations;
@@ -28,7 +30,7 @@ vi.mock('@/data-source/data-source-override', () => ({ resolveEffectiveDataSourc
 vi.mock('@/data-source/exposure-census', () => ({
   fetchExposureCensus: async () => {
     const { loadLocalPageConfig } = await import('@/layout/local-page-loader');
-    const topics = new Set(loadLocalPageConfig('overview').components.flatMap(component => component.data_bindings?.map(binding => binding.projection_topic) ?? []));
+    const topics = new Set(loadLocalPageConfig('api-keys').components.flatMap(component => component.data_bindings?.map(binding => binding.projection_topic) ?? []));
     if (!harness.available) topics.delete('onex.snapshot.projection.local-environment.v1');
     return { rows: [...topics].map(topic => ({ topic, reachability: 'reachable' })) };
   },
@@ -50,7 +52,7 @@ const native = {
 
 async function open(rows: Record<string, unknown>[]) {
   harness.rows = rows;
-  render(<LocalDashboardPage pageName="overview" />);
+  render(<LocalDashboardPage pageName="api-keys" />);
   await act(async () => { await vi.advanceTimersByTimeAsync(0); });
   await act(async () => { await vi.advanceTimersByTimeAsync(0); });
 }
@@ -63,8 +65,8 @@ afterEach(() => { cleanup(); vi.useRealTimers(); });
 
 describe('OMN-19988 production Overview Environment binding', () => {
   it('declares the actual Environment panel with a core-valid status_grid config', () => {
-    const page = loadLocalPageConfig('overview');
-    expect(page.components.find(component => component.component_id === 'overview-environment')?.component_kind).toBe('status_grid');
+    const page = loadLocalPageConfig('api-keys');
+    expect(page.components.find(component => component.component_id === 'api-keys-environment')?.component_kind).toBe('status_grid');
     const validate = new Ajv({ allErrors: true, validateFormats: false, strict: false }).compile(dashboardConfigSchema);
     expect(validate(page.dashboard), JSON.stringify(validate.errors)).toBe(true);
     expect(validate({ ...page.dashboard, widgets: [...page.dashboard.widgets, {

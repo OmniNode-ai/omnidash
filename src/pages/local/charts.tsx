@@ -184,10 +184,13 @@ function tone(token: string, fallback: number): string {
  * orange-red, teal, yellow), which differ in hue.
  */
 function seriesColours(count: number, places: readonly number[] | undefined): string[] {
-  const palette = [tone('--chart-1', 0x58a6ff), tone('--chart-4', 0xf0703c), tone('--chart-2', 0x3fb9a0), tone('--chart-3', 0xd9b530)];
+  // Place 5 is the savings identity colour, the colour of the Savings headline card (OMN-21166 live review 2026-10-25).
+  const palette = [tone('--chart-1', 0x58a6ff), tone('--chart-4', 0xf0703c), tone('--chart-2', 0x3fb9a0), tone('--chart-3', 0xd9b530),
+    tone('--field-savings', 0x0f766e)];
   return Array.from({ length: count }, (_, index) => {
     const place = places?.[index];
-    const chosen = typeof place === 'number' && Number.isInteger(place) && place >= 1 && place <= palette.length ? place - 1 : index % palette.length;
+    // The default cycle is the four chart colours; the savings colour is only ever asked for by place.
+    const chosen = typeof place === 'number' && Number.isInteger(place) && place >= 1 && place <= palette.length ? place - 1 : index % 4;
     return palette[chosen]!;
   });
 }
@@ -378,7 +381,7 @@ function timingOption(bars: readonly RunTimingBar[], colours: readonly string[],
   return {
     animationDuration: 250,
     ...(fontFamily ? { textStyle: { fontFamily } } : {}),
-    grid: { left: compact ? 60 : 96, right: compact ? 56 : 84, top: 6, bottom: 24 },
+    grid: { left: compact ? 60 : 96, right: compact ? 64 : 84, top: 6, bottom: 24 }, // room for the longest label ("1 min 10 s") at 390px
     tooltip: {
       trigger: 'item',
       formatter: (param: { dataIndex: number; name: string; marker: string }) => `${param.marker}${asText(param.name)}: ${asText(servedText(param.dataIndex))}`,

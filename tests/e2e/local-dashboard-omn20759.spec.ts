@@ -3,7 +3,7 @@ import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { expect, test, type Page } from 'playwright/test';
 
-// OMN-20759: at 1440x900 the Runs table (including modelled saving) and Overview Recent runs fit inside
+// OMN-20759: at 1440x900 the Runs table (including modelled saving) fits inside
 // their panels, with no clipped cell, no sideways scroll and no column dropped. The rows are the OMN-20223 re-walk's
 // own shape (2026-10-09): UUID run ids, microsecond timestamps and the Gemini host, the values that clipped.
 const DECISIONS = 'onex.snapshot.projection.delegation.decisions.v1';
@@ -12,7 +12,7 @@ const RUNS_HEADERS = [
   'Run', 'Created', 'Status', 'Cause', 'Model', 'Backend', 'Host', 'Tokens in', 'Tokens out', 'Local cost', 'Modelled saving',
   'Baseline model', 'Basis', 'Task type', 'Duration', 'Tokens to compliance', 'Route tier', 'Quality score',
 ];
-const RECENT_HEADERS = ['Time','Run','Status','Model','Cost','Duration','Age','Cause','Task type','Backend','Host','Tokens in','Tokens out','Basis','Route tier','Quality score'];
+// OMN-21166 AC86 (Lakshman 2026-10-25): Recent runs is deleted from Overview, so its table-fit case is removed; Runs keeps it.
 
 const decisions = Array.from({ length: 23 }, (_, index) => {
   const minute = String(index).padStart(2, '0');
@@ -80,7 +80,6 @@ async function runTable(page: Page, headers: string[]) {
 
 for (const [name, path, headers] of [
   ['Runs', '/runs', RUNS_HEADERS],
-  ['Overview Recent runs', '/', RECENT_HEADERS],
 ] as const) {
   test(`OMN-20759: the ${name} table fits its panel at 1440x900 with every column`, async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });

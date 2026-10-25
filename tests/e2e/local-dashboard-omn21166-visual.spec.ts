@@ -74,14 +74,21 @@ test('AC62 bundled Inter and JetBrains Mono typography preserves the Poppins wor
 
 test('AC10 sentence case headings and semantic panel icon badges', async ({ page }) => {
   await page.goto('/overview');
+  // OMN-21166 AC63: the five KPI strip labels (OMN-21166 live review 2026-10-25: Delegation Quality is the fifth card) are uppercase by design; every other panel heading stays sentence case.
   const headings = page.locator('.local-dashboard-panel h2');
   await expect(headings.first()).toBeVisible();
-  expect(await headings.first().evaluate(el => getComputedStyle(el).textTransform)).toBe('none');
-  const icons = await page.locator('.local-dashboard-panel h2 svg').evaluateAll(els => els.slice(0, 4).map(el => ({
-    color: getComputedStyle(el).color, background: getComputedStyle(el).backgroundColor,
+  const transforms = await headings.evaluateAll(els => els.map(el => ({
+    kpi: !!el.closest('.local-overview-summary'), transform: getComputedStyle(el).textTransform })));
+  expect(transforms.filter(item => item.kpi)).toHaveLength(5);
+  expect(transforms.filter(item => !item.kpi).length).toBeGreaterThan(0);
+  for (const item of transforms.filter(item => !item.kpi)) expect(item.transform).toBe('none');
+  // The five KPI icons are unbadged glyphs, each in its own field colour (and each naming its own field).
+  const icons = await page.locator('.local-dashboard-panel h2 svg').evaluateAll(els => els.slice(0, 5).map(el => ({
+    color: getComputedStyle(el).color, background: getComputedStyle(el).backgroundColor, field: el.getAttribute('data-field-icon'),
   })));
-  expect(icons).toHaveLength(4);
-  expect(new Set(icons.map(icon => icon.color)).size).toBe(4);
+  expect(icons).toHaveLength(5);
+  expect(new Set(icons.map(icon => icon.color)).size).toBe(5);
+  expect(new Set(icons.map(icon => icon.field)).size).toBe(5);
   for (const icon of icons) expect(icon.background).toBe('rgba(0, 0, 0, 0)');
 });
 

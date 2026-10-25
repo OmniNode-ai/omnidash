@@ -13,7 +13,10 @@ test('Credentials keeps reference metadata readable on phones without exposing v
   const collapse = page.getByRole('button', { name: 'Collapse sidebar', exact: true });
   if (await collapse.isVisible()) await collapse.click();
   const row = page.locator('[data-component="credentials-keys"] tbody tr').first();
-  await expect(row.locator('td[data-label]')).toHaveCount(5);
+  // OMN-21166 part 10: the table also has Expires and Bound host columns (7 labelled cells); the fixture serves neither, so each says so.
+  await expect(row.locator('td[data-label]')).toHaveCount(7);
+  await expect(row.locator('td[data-label="Expires"]')).toHaveText('No expiry recorded');
+  await expect(row.locator('td[data-label="Bound host"]')).toHaveText('Not recorded');
   expect(await row.locator('td').first().evaluate(element => element.getBoundingClientRect().width)).toBeGreaterThan(200);
   await expect(row).toContainText('0123abcd');
   await expect(row).toContainText('Not revoked');
@@ -23,12 +26,14 @@ test('Credentials keeps reference metadata readable on phones without exposing v
 });
 
 test('API Keys offers copy only for an actual served tenant identity', async ({ page }) => {
-  await serveCharts(page, { ...chartRows, [prefix + 'delegation.savings.v1']: [{ tenant_id: 'served-fixture-tenant', captured_at: '2026-10-18T10:00:00Z', sessions: [] }] });
+  // OMN-21166 part 11: the tenant is read from the native local-runtime row of local-environment.v1, not from savings sessions.
+  await serveCharts(page, { ...chartRows, [prefix + 'local-environment.v1']: [
+    { mode: 'native', service: 'local-runtime', tenant_id: 'served-fixture-tenant', updated_at: '2026-10-18T10:00:00Z' }] });
   await page.goto('/api-keys');
   await expect(page.getByRole('button', { name: 'Copy the tenant identity', exact: true })).toBeVisible();
   await expect(page.getByText('served-fixture-tenant', { exact: true })).toBeVisible();
   await expect(page.getByText('Not recorded', { exact: true }).first()).toBeVisible();
-  await serveCharts(page, { ...chartRows, [prefix + 'delegation.savings.v1']: [] });
+  await serveCharts(page, { ...chartRows, [prefix + 'local-environment.v1']: [] });
   await page.reload();
   await expect(page.getByRole('button', { name: 'Copy the tenant identity', exact: true })).toHaveCount(0);
 });

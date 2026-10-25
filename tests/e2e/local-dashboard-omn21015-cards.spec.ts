@@ -39,11 +39,20 @@ for (const theme of ['light', 'dark'] as const) {
       const cards = page.locator('.local-dashboard-panel, .ev-root .panel, .ev-root .kpi');
       await expect(cards.first()).toBeVisible();
       const accents = await cards.evaluateAll(elements => elements.map(el => ({
-        width: parseFloat(getComputedStyle(el).borderTopWidth), color: getComputedStyle(el).borderTopColor,
+        // OMN-21166 AC63: Evidence's KPI tiles are cells of one divided strip; the strip carries the single 1px border.
+        width: parseFloat(getComputedStyle(el.parentElement?.matches('.ev-kpi-strip') ? el.parentElement : el).borderTopWidth), color: getComputedStyle(el).borderTopColor,
         background: getComputedStyle(el).backgroundColor,
         image: getComputedStyle(el).backgroundImage,
+        headline: el.closest('.local-overview-summary') !== null,
       })));
-      expect(accents.every(card => card.width === 1), 'Cards use a single subtle border').toBe(true);
+      // Live review 2026-10-25 ("each card different color"): Overview's four headline cards wear their identity colour
+      // as a 3px top edge, each a different colour; every other card keeps the single subtle 1px border.
+      expect(accents.filter(card => !card.headline).every(card => card.width === 1), 'Cards use a single subtle border').toBe(true);
+      const headlines = accents.filter(card => card.headline);
+      if (headlines.length > 0) {
+        expect(headlines.every(card => card.width === 3), 'Headline cards carry a 3px identity edge').toBe(true);
+        expect(new Set(headlines.map(card => card.color)).size, 'Each headline card has its own colour').toBe(headlines.length);
+      }
       expect(accents.every(card => card.image === 'none'), 'Cards use flat surfaces, without decorative gradients').toBe(true);
       const nestedSurfaces = page.locator('.local-run-summary-group, .workflow-analysis-card, .workflow-flow-node, .local-chart.ins-card, .usage-insight');
       const nestedStyles = await nestedSurfaces.evaluateAll(elements => elements.map(el => ({
@@ -57,7 +66,10 @@ for (const theme of ['light', 'dark'] as const) {
         await expect(visibleNested.first()).toHaveCSS('box-shadow', 'none');
       }
       if (path === '/overview') {
-        expect(new Set(accents.slice(0,4).map(card => card.color)).size).toBe(1);
+        // OMN-21166 live review 2026-10-25: the five headline cards each wear their own edge colour (asserted above), so the
+        // old "first four cards share one border colour" check is replaced by the count. Under this snapshot
+        // (cost.savings-overview) source the Tokens card still keeps its two direction figures in view.
+        expect(headlines.length, 'Five headline cards').toBe(5);
         await expect(page.locator('[data-component="overview-tokens"] .local-token-direction')).toHaveCount(2);
         await expect(page.locator('[data-component="overview-spend"] .local-dashboard-metric')).toHaveText('$3.59');
       }
@@ -76,7 +88,8 @@ for (const theme of ['light', 'dark'] as const) {
         const icon = panel.locator(':scope > h2 svg');
         await expect(icon).toHaveCount(1);
         await expect(icon).toHaveCSS('padding', '0px');
-        await expect(icon).toHaveCSS('width', '18px');
+        // OMN-21166 part 11/AC63: panel title icons are a 15px bare glyph; the KPI strip's label icons are 14px.
+        await expect(icon).toHaveCSS('width', await panel.evaluate(el => el.parentElement?.matches('.local-overview-summary')) ? '14px' : '15px');
       }
       await page.screenshot({path:info.outputPath(`${path.split('?')[0]!.slice(1)}-${theme}-desktop.png`),fullPage:true});
       for (const width of [390,320]) {

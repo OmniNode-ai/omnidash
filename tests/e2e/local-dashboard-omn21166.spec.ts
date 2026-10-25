@@ -260,7 +260,8 @@ test(`AC8 page walk ${state} width ${width}`, async ({ page }, info) => {
         await page.goto(`/${route}`);
         await expect(page.getByTestId('nav-local-overview')).toBeVisible();
         await expect(page.locator('body')).toHaveClass('theme-light');
-        if (state === 'populated-fixture' && route === 'overview') await expect(page.getByLabel('Recent runs preview', { exact: true }).getByRole('link', { name: 'omn21166-fixture-run', exact: true })).toBeVisible();
+        // OMN-21166 AC86 (Lakshman 2026-10-25): Recent runs preview deleted from Overview; the served fixture run is shown by its Runs per day bar.
+        if (state === 'populated-fixture' && route === 'overview') await expect(page.locator('[data-slice="runs"] button.gdb-day').first()).toHaveAccessibleName(/^Oct 17: 1 runs?, 1 passed, 0 failed$/);
         if (state === 'missing-tenant' && route === 'overview') {
           await expect(page.getByText('Tenant not configured', { exact: true }).first()).toBeVisible();
         }

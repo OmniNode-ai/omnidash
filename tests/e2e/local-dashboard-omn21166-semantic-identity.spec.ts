@@ -44,16 +44,18 @@ test('matching model, duration and token fields retain the same Lucide icon and 
 });
 
 test('the same recent-run and daily-token concepts keep their icons on owner pages', async ({ page }) => {
+  // OMN-21166 AC86 (Lakshman 2026-10-25): Recent runs deleted from Overview. The recent-run icon is checked on Runs
+  // alone; the daily-token concept still has to match between Overview and Usage.
+  await page.goto('/runs');
+  await expect(page.locator('[data-component="recent-runs"] h2 svg')).toHaveCount(1);
   await page.goto('/overview');
-  const recent = page.locator('[data-component="overview-recent-runs"] h2 svg');
-  await expect(recent).toHaveCount(1);
-  const recentIcon = await recent.getAttribute('class');
   const tokens = page.getByRole('figure', { name: 'Tokens per day', exact: true });
   const tokenIcon = await tokens.locator('h3 svg').getAttribute('class');
-  await page.goto('/runs');
-  await expect(page.locator('[data-component="recent-runs"] h2 svg')).toHaveAttribute('class', recentIcon!);
+  expect(tokenIcon).toBeTruthy();
   await page.goto('/usage');
-  await expect(page.locator('[data-component="usage-tokens-by-day"] h2 svg')).toHaveAttribute('class', tokenIcon!);
+  // OMN-21166 Maple grid: the token panel is drawn twice on Usage (the chart, and the detail under "More usage"); the
+  // page's own panel is the one with no data-slice.
+  await expect(page.locator('[data-component="usage-tokens-by-day"]:not([data-slice]) h2 svg')).toHaveAttribute('class', tokenIcon!);
 });
 
 test('Developer KPI concepts have logical Lucide icons and distinct colors', async ({ page }) => {
@@ -89,18 +91,29 @@ test('KPI colors follow their semantic identity instead of inherited gray', asyn
   expect(new Set(colors).size).toBe(4);
 });
 
-test('headline card icons retain semantic colors beside neutral readable headings', async ({ page }) => {
+// Live review 2026-10-25 ("each card different color"): the headline labels are tinted in their card's identity colour
+// instead of neutral ink. Kept: four distinct icon colours, and every label readable (4.5:1 on its card) in both themes.
+test('headline card icons retain semantic colors beside readable identity-tinted headings', async ({ page }) => {
   await page.goto('/overview');
-  await expect(page.locator('.local-overview-summary article')).toHaveCount(4);
+  // OMN-21166 live review 2026-10-25: Delegation Quality is now a fifth headline card, so five distinct colours.
+  await expect(page.locator('.local-overview-summary article')).toHaveCount(5);
   for (const theme of ['light','dark']) {
     if ((await page.locator('html').getAttribute('data-theme') === 'dark' ? 'dark' : 'light') !== theme) await page.getByRole('button', { name: 'Toggle theme' }).click();
     const colors: string[] = [];
     for (const card of await page.locator('.local-overview-summary article').all()) {
       const color = await card.locator('h2 svg').evaluate(el => getComputedStyle(el).color);
-      await expect(card.locator('h2')).toHaveCSS('color', await card.evaluate(el => getComputedStyle(el).color));
+      const ratio = await card.evaluate(el => {
+        const ctx = document.createElement('canvas').getContext('2d')!;
+        const lum = (c: string) => { ctx.clearRect(0, 0, 1, 1); ctx.fillStyle = c; ctx.fillRect(0, 0, 1, 1);
+          return Array.from(ctx.getImageData(0, 0, 1, 1).data).slice(0, 3).map(v => { const x = v / 255; return x <= .04045 ? x / 12.92 : ((x + .055) / 1.055) ** 2.4; })
+            .reduce((sum, v, i) => sum + v * [.2126, .7152, .0722][i]!, 0); };
+        const fg = lum(getComputedStyle(el.querySelector('h2')!).color); const bg = lum(getComputedStyle(el).backgroundColor);
+        return (Math.max(fg, bg) + .05) / (Math.min(fg, bg) + .05);
+      });
+      expect(ratio, `${theme} heading contrast`).toBeGreaterThanOrEqual(4.5);
       colors.push(color);
     }
-    expect(new Set(colors).size).toBe(4);
+    expect(new Set(colors).size).toBe(5);
   }
 });
 
@@ -112,13 +125,18 @@ test('routing categories have separate colors matching their legend in both them
     tiers: names.map(name => ({ cost_tier_name: name, count: 1, tier_routed: true, pct_of_tier_routed: 1 / 7 })) } };
   await serveCharts(page, { ...rows, [prefix + 'delegation.model-routing.v1']: [routing] });
   await page.goto('/overview');
-  await expect(page.locator('.local-donut-slice')).toHaveCount(7);
+  // OMN-21166 AC64 / Maple grid: the tier donut and its legend buttons are ranked bars (figure "Runs by tier"); a bar is
+  // drawn in the tier's colour and the tier's name beneath it is written in the same colour, so the bar and its
+  // label are the pair that has to match, and the seven tiers still have to differ.
+  const chart = page.getByRole('figure', { name: 'Runs by tier', exact: true });
+  await expect(chart.locator('[data-ranked-item]')).toHaveCount(7);
   for (const theme of ['light','dark']) {
     if ((await page.locator('html').getAttribute('data-theme') === 'dark' ? 'dark' : 'light') !== theme) await page.getByRole('button', { name: 'Toggle theme' }).click();
     const colors = [];
     for (const name of names) {
-      const color = await page.locator(`[data-tier="${name}"]`).evaluate(el => getComputedStyle(el).stroke);
-      await expect(page.getByRole('button', { name: `Inspect ${name}`, exact: true }).locator('.local-share-swatch')).toHaveCSS('background-color', color);
+      const item = chart.locator(`[data-ranked-item^="${name}-"]`);
+      const color = await item.locator('.rb-bar').evaluate(el => getComputedStyle(el).color);
+      expect(await item.locator('.rb-name').evaluate(el => getComputedStyle(el).color)).toBe(color);
       colors.push(color);
     }
     expect(new Set(colors).size).toBe(names.length);
@@ -145,12 +163,14 @@ test('checks, score, run ID and model occupy distinct hue families', async ({ pa
 
 // Legacy compact-card CSS clipped these labels to a 1px accessibility-only box.
 test('Overview visibly labels model and run identity beside their Lucide icons', async ({ page }, info) => {
-  await page.goto('/overview');
-  const card = page.locator('[data-component="overview-last-run"]');
+  // OMN-21166 AC86 (Lakshman 2026-10-25): Last run deleted from Overview. The property (labels visible beside their
+  // icon, not clipped to 1px) is retargeted to the Workflow run summary, which carries Model and Duration tiles.
+  await page.goto('/workflow?correlation_id=chart-run-a');
+  const card = page.locator('.local-dashboard-run-summary');
   for (const theme of ['light','dark']) {
     if ((await page.locator('html').getAttribute('data-theme') === 'dark' ? 'dark' : 'light') !== theme) await page.getByRole('button', { name: 'Toggle theme' }).click();
-    for (const name of ['Model','Run']) {
-      const label = card.locator(`[data-field="${name}"] dt`);
+    for (const name of ['Model','Duration']) {
+      const label = card.locator(`[data-summary-field="${name}"] dt`);
       await expect(label).toContainText(name);
       const box = await label.boundingBox();
       expect(box!.width).toBeGreaterThan(30);
@@ -158,16 +178,18 @@ test('Overview visibly labels model and run identity beside their Lucide icons',
       await expect(label.locator('svg')).toBeVisible();
     }
     await card.scrollIntoViewIfNeeded();
-    await page.screenshot({ path: info.outputPath(`visible-last-run-${theme}.png`) });
+    await page.screenshot({ path: info.outputPath(`visible-run-summary-${theme}.png`) });
   }
 });
 
-// A long backend failure made the Overview row expand into a detailed report.
+// A long backend failure made the run tile expand into a detailed report.
 test('Overview keeps a long failure compact and reveals its complete original reason on demand', async ({ page }, info) => {
   const reason = 'Recorded failure: ' + 'provider credential reference unavailable; '.repeat(30);
   await serveCharts(page, { ...rows, [prefix + 'delegation.decisions.v1']: [{ ...run, quality_gate_passed: false, quality_gate_detail: reason }] });
-  await page.goto('/overview');
-  const cause = page.locator('[data-component="overview-last-run"] [data-field="Cause"] dd');
+  // OMN-21166 AC86 (Lakshman 2026-10-25): Last run deleted from Overview; the compact Cause disclosure is checked on
+  // the Workflow run summary, and the Overview-only "Open run details" link assertion is retired with it.
+  await page.goto('/workflow?correlation_id=chart-run-a');
+  const cause = page.locator('[data-summary-field="Cause"] dd');
   const details = cause.locator('details');
   await expect(details).not.toHaveAttribute('open');
   await expect(cause.locator('summary')).toBeVisible();
@@ -177,7 +199,5 @@ test('Overview keeps a long failure compact and reveals its complete original re
   await expect(cause.locator('p')).toHaveText(reason);
   await cause.locator('summary').press('Enter');
   await expect(details).not.toHaveAttribute('open');
-  await expect(page.getByRole('link', { name: 'Open run details', exact: true })).toHaveAttribute('href', /correlation_id=chart-run-a/);
-  await page.locator('[data-component="overview-last-run"]').scrollIntoViewIfNeeded();
   await page.screenshot({ path: info.outputPath('compact-recorded-failure.png') });
 });

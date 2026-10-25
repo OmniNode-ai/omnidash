@@ -28,7 +28,8 @@ function accent(componentId: string, dark: boolean): string | undefined {
 
 // Owner2026-10-19T11:15Z: different things differ, and vice versa.
 // The same recent-run/routing/activity component reused across pages remains one concept.
-const concept = (id: string) => ({ 'overview-recent-runs': 'recent-runs', 'runs-tier-mix': 'overview-tier-mix', 'runs-insights': 'overview-insights' } as Record<string, string>)[id] ?? id;
+// Environment moved from Overview to API Keys (live review 2026-10-25): one concept.
+const concept = (id: string) => ({ 'overview-environment': 'api-keys-environment', 'overview-recent-runs': 'recent-runs', 'runs-tier-mix': 'overview-tier-mix', 'runs-insights': 'overview-insights' } as Record<string, string>)[id] ?? id;
 
 describe('OMN-21166: each different concept has its own icon and colour', () => {
   it('D1: no two panels share an icon', () => {

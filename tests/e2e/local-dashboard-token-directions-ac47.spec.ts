@@ -60,9 +60,12 @@ test('AC47 the metering aggregate serves no directions: both read Not measured, 
       ? { topic, status: 'degraded', backing: 'not_in_local_store', bus_backed: false, degraded_reason: 'projection_table_missing' }
       : { topic, status: 'ok', backing: 'bus', bus_backed: true, tenant_scoped: false }) }) }));
   await page.goto('/');
-  const { card, directions } = await tokenDirections(page);
-  await expect(directions).toHaveCount(2);
-  await expect(directions.nth(0)).toHaveText('Not measured', MISSING);
-  await expect(directions.nth(1)).toHaveText('Not measured');
+  const { card } = await tokenDirections(page);
+  // OMN-21166 live review 2026-10-25: on the metering path the headline card shows its figure only; its input and output
+  // directions are one line in the card's hover ("<in> in · <out> out"), shown on keyboard focus of the card. The row
+  // serves neither tokens_in nor tokens_out, so each reads "Not recorded", and nothing is borrowed from token-usage.
+  await card.getByRole('button', { name: 'About Tokens processed', exact: true }).focus();
+  await expect(card.getByText('Not recorded in · Not recorded out', { exact: true })).toBeVisible(MISSING);
+  await expect(card.locator('.local-token-direction')).toHaveCount(0);
   await expect(card).not.toContainText(/7,?771|3,?331/);
 });

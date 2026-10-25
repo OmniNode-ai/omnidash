@@ -90,12 +90,14 @@ test('Event Bus pages every returned correlation, including records beyond eight
 });
 
 // Live Chrome regression: list-first Runs left reused chart copy saying below.
-// Keep captions true in both Runs and Overview's disclosed recent-run charts.
+// Keep captions true on Runs' run charts. OMN-21166 AC86 (Lakshman 2026-10-25): Recent runs and "Show recent run fields"
+// are deleted from Overview, so its disclosed recent-run charts no longer exist and only Runs is checked.
 test('run chart captions identify the listed records without claiming an obsolete position', async ({ page }, info) => {
   await serveCharts(page);
-  for (const route of ['/runs', '/overview']) {
+  for (const route of ['/runs']) {
     await page.goto(route);
-    if (route === '/overview') await page.getByText('Show recent run fields', { exact: true }).click();
+    // OMN-21166 part 13: Runs keeps its run charts under a closed "More run charts".
+    await page.locator('summary').filter({ hasText: /^More run charts$/ }).click();
     for (const name of ['Duration per run', 'Tokens per run']) {
       const chart = page.getByRole('figure', { name, exact: true });
       await expect(chart).toBeVisible();

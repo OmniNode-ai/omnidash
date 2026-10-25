@@ -10,17 +10,20 @@ test.beforeEach(async ({ page }) => { await serveCharts(page); await page.emulat
 
 const centre = async (locator: Locator) => { const box = (await locator.boundingBox())!; return box.y + box.height / 2; };
 
-test('Overview window label, switch and Explore runs share one centre line in both themes', async ({ page }) => {
+// Live review 2026-10-25 ("unified"): one control (calendar, All, Today, 7/15/30 days); its "Figures for" name is kept
+// for screen readers and the header no longer has "Explore runs". The property kept: the calendar and the options sit
+// on one centre line, beside the page title, in both themes.
+test('Overview window calendar and options share one centre line with the title in both themes', async ({ page }) => {
   await page.goto('/overview');
   const options = page.getByRole('radiogroup', { name: 'Figures for', exact: true });
   await expect(options).toBeVisible();
-  const label = page.locator('.local-window-switch > span');
-  await expect(label).toHaveText('Figures for');
-  const explore = page.getByRole('link', { name: 'Explore runs' });
+  const calendar = page.getByRole('button', { name: /Pick a UTC day/ });
+  const title = page.locator('.local-dashboard-header h1');
+  await expect(page.getByRole('link', { name: 'Explore runs' })).toHaveCount(0);
   for (const theme of ['light', 'dark']) {
     if ((await page.locator('html').getAttribute('data-theme') === 'dark' ? 'dark' : 'light') !== theme) await page.getByRole('button', { name: 'Toggle theme' }).click();
     const line = await centre(options);
-    expect(Math.abs(await centre(label) - line), `${theme}: label centre`).toBeLessThanOrEqual(1);
-    expect(Math.abs(await centre(explore) - line), `${theme}: Explore runs centre`).toBeLessThanOrEqual(1);
+    expect(Math.abs(await centre(calendar) - line), `${theme}: calendar centre`).toBeLessThanOrEqual(1);
+    expect(Math.abs(await centre(title) - line), `${theme}: title centre`).toBeLessThanOrEqual(4);
   }
 });

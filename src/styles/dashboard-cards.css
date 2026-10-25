@@ -16,8 +16,11 @@
 .app:has(.local-dashboard-page),
 .app:has(.ev-root[data-destination="delegation-evidence"]) {
   --text-primary: var(--ink); --text-secondary: var(--ink-2); --text-tertiary: var(--ink-3);
-  --sidebar-ink: var(--ink); --sidebar-ink-2: var(--ink-2); --sidebar-hover: var(--panel-2);
-  --shell-active: var(--ui-accent); --shell-active-surface: var(--ui-accent-soft);
+  /* AC69: the navigation is unchanged, so the sidebar keeps dev's surface and blue active state; the warm accent is
+     for primary actions only. */
+  --sidebar: #ffffff; --sidebar-ink: var(--ink); --sidebar-ink-2: var(--ink-2);
+  --sidebar-line: var(--line); --sidebar-hover: var(--panel-2);
+  --shell-active: #1d4ed8; --shell-active-surface: #eef3ff;
   --nav-accent: var(--shell-active);
   --entity-color-lightness: 42%;
   --ins-series-1: #2563eb; --ins-series-2: #059669; --ins-series-3: #ea580c;
@@ -27,6 +30,7 @@
 }
 [data-theme="dark"] .app:has(.local-dashboard-page),
 [data-theme="dark"] .app:has(.ev-root[data-destination="delegation-evidence"]) {
+  --sidebar: #14181f; --shell-active: #a5c2ff; --shell-active-surface: #202e49;
   --entity-color-lightness: 68%;
   --ins-series-1: #60a5fa; --ins-series-2: #4ade80; --ins-series-3: #fb923c;
   --ins-series-4: #c4b5fd; --ins-series-5: #fde047; --ins-series-6: #e879f9;

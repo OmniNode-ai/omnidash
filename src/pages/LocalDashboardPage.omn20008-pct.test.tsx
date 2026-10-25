@@ -67,10 +67,13 @@ const allRow = (fields: Record<string, unknown> = {}): Record<string, unknown> =
  * What the card showed before this change, line by line (OMN-20008 AC3 and OMN-19980 Step B), with the
  * runs OMN-21304 names as left out of the total: these rows serve neither class, so both read not recorded.
  */
+// OMN-21166 live review 2026-10-25 ("crisp and important info in short"): the card shows its figure, and its hover
+// lines say the same facts shorter: modelled, the runs not counted (here not recorded), the baseline and pricing.
 const BEFORE = [
   '$0.01',
-  'Baseline claude-sonnet-5-5 · pricing manifest v1.0.0 · Not in this total: runs with no token counts: not recorded, runs with no spend recorded: not recorded',
-  "Modelled: the runs' tokens priced at the baseline model's list price. The baseline never ran.",
+  'Modelled at claude-sonnet-5-5 prices. The baseline never ran.',
+  'Runs not counted: Not recorded',
+  'Baseline claude-sonnet-5-5 · pricing v1.0.0',
 ];
 
 function lines(rows: readonly unknown[]): string[] {

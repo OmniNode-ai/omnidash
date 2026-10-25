@@ -14,12 +14,15 @@ export function EvPageShell({
   crumb,
   title,
   sub,
+  scope,
   headRight,
   children,
 }: {
   crumb: string;
   title: string;
   sub: string;
+  /** OMN-21166 AC79: one line under the title saying what the page counts and over which window. */
+  scope?: ReactNode;
   headRight?: ReactNode;
   children: ReactNode;
 }) {
@@ -36,6 +39,7 @@ export function EvPageShell({
             {destination !== 'delegation-evidence' && <div className="ev-crumb">{crumb}</div>}
             <h1 className="ev-title">{destination && <span className="ev-title-icon"><DestinationIcon page={destination} size={20} /></span>}{title}</h1>
             {destination !== 'delegation-evidence' && <div className="ev-sub">{sub}</div>}
+            {scope !== undefined && <p className="ev-sub ev-scope">{scope}</p>}
           </div>
           {headRight ? <div className="ev-head-right">{headRight}</div> : null}
         </div>

@@ -344,7 +344,7 @@ export function UsageTokensChart({ rows, days = 14 }: { rows: readonly unknown[]
               <span className="utc-track">
                 <span className="utc-stack" style={{ height: `${max > 0 ? Math.round((dayTotal / max) * 1000) / 10 : 0}%` }}>
                   {models.filter(([, cell]) => cell.value > 0).map(([name, cell]) => (
-                    <i key={name} data-token-model={name} style={{ flex: cell.value, background: modelColor(name) }} />
+                    <i key={name} data-token-model={name} style={{ flex: cell.value, color: modelColor(name), borderTop: `2px solid ${modelColor(name)}` }} />
                   ))}
                 </span>
               </span>

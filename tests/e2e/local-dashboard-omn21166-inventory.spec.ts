@@ -16,11 +16,8 @@ test('required field and control inventory stays available on every current page
     await expect(page.locator('.breadcrumbs .cur')).not.toHaveText('');
     await expect(page.locator('.main')).not.toContainText(/Loading(?: runtime exposures| census|…|\.\.\.)/);
     if (route === 'runs') await revealRunFields(page);
-    if (route === 'overview') {
-      await revealRunFields(page);
-      await page.locator('.local-overview-secondary > summary').press('Enter');
-      if (await page.locator('.local-run-more summary').count()) await page.locator('.local-run-more summary').press('Enter');
-    }
+    // OMN-21166 AC86 (Lakshman 2026-10-25): Overview has no Recent runs field view and no "Additional runtime metrics"
+    // disclosure to open; everything it draws is in view on load.
     pages[route] = await page.evaluate(() => ({
       fields: [...document.querySelectorAll(location.pathname === '/runs' ? '[data-component="recent-runs"] th' : '.main th, .main dt, .main .kv .k, .main .k-l, .main .dt-head > div')]
         .map(el => el.textContent?.trim()).filter(Boolean),
@@ -45,11 +42,8 @@ test('text contrast is measured on real rendered backgrounds in both themes', as
     await expect(page.locator('.breadcrumbs .cur')).not.toHaveText('');
     await expect(page.locator('.main')).not.toContainText(/Loading(?: runtime exposures| census|…|\.\.\.)/);
     if (route === 'runs') await revealRunFields(page);
-    if (route === 'overview') {
-      await revealRunFields(page);
-      await page.locator('.local-overview-secondary > summary').press('Enter');
-      if (await page.locator('.local-run-more summary').count()) await page.locator('.local-run-more summary').press('Enter');
-    }
+    // OMN-21166 AC86 (Lakshman 2026-10-25): Overview has no Recent runs field view and no "Additional runtime metrics"
+    // disclosure to open; everything it draws is in view on load.
     for (const theme of ['light','dark']) {
       if ((await page.locator('html').getAttribute('data-theme') === 'dark' ? 'dark' : 'light') !== theme) await page.getByRole('button',{name:'Toggle theme'}).click();
       await expect(page.locator('body')).toHaveClass(new RegExp(`theme-${theme}`));
@@ -106,11 +100,8 @@ test('chart marks remain distinguishable against their actual surfaces', async (
     await page.goto('/'+route);
     await expect(page.locator('.main')).not.toContainText(/Loading(?: runtime exposures| census|…|\.\.\.)/);
     if (route === 'runs') await revealRunFields(page);
-    if (route === 'overview') {
-      await revealRunFields(page);
-      await page.locator('.local-overview-secondary > summary').press('Enter');
-      if (await page.locator('.local-run-more summary').count()) await page.locator('.local-run-more summary').press('Enter');
-    }
+    // OMN-21166 AC86 (Lakshman 2026-10-25): Overview has no Recent runs field view and no "Additional runtime metrics"
+    // disclosure to open; everything it draws is in view on load.
     for (const theme of ['light','dark']) {
       if ((await page.locator('html').getAttribute('data-theme') === 'dark' ? 'dark' : 'light') !== theme) await page.getByRole('button',{name:'Toggle theme'}).click();
       await expect(page.locator('body')).toHaveClass(new RegExp(`theme-${theme}`));
@@ -123,11 +114,13 @@ test('chart marks remain distinguishable against their actual surfaces', async (
         const rgba=(color:string)=>{ctx.clearRect(0,0,1,1);ctx.fillStyle=color;ctx.fillRect(0,0,1,1);return [...ctx.getImageData(0,0,1,1).data].map((v,i)=>i===3?v/255:v);};
         const blend=(fg:number[],bg:number[])=>fg.slice(0,3).map((v,i)=>v*fg[3]+bg[i]*(1-fg[3]));
         const lum=(rgb:number[])=>rgb.slice(0,3).map(v=>{const s=v/255;return s<=.04045?s/12.92:((s+.055)/1.055)**2.4;}).reduce((sum,v,i)=>sum+v*[.2126,.7152,.0722][i],0);
-        return [...document.querySelectorAll('.local-donut-slice,.usage-tokens-fill,.local-chart-swatch')].map(el=>{
+        return [...document.querySelectorAll('.local-donut-slice,.usage-tokens-fill,.local-chart-swatch,.gdb-bar,.rb-bar:not([data-pattern="unknown"])')].map(el=>{
           const css=getComputedStyle(el), ancestors:Element[]=[];let p:Element|null=el.parentElement;
           while(p){ancestors.unshift(p);p=p.parentElement;}
           let bg=[255,255,255];for(const ancestor of ancestors)bg=blend(rgba(getComputedStyle(ancestor).backgroundColor),bg);
-          const color=el.matches('.local-donut-slice')?css.stroke:css.backgroundColor;
+          // OMN-21166 live review 2026-10-25: Overview's marks are dotted grouped bars (.gdb-bar) and ranked bars (.rb-bar); both
+          // are painted in currentColor (their colour property), the donut by its stroke, the rest by their fill.
+          const color=el.matches('.local-donut-slice')?css.stroke:el.matches('.gdb-bar,.rb-bar')?css.color:css.backgroundColor;
           const fg=rgba(color), a=lum(fg),b=lum(bg);
           return {class:el.getAttribute('class'),color,ratio:(Math.max(a,b)+.05)/(Math.min(a,b)+.05)};
         });

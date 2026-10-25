@@ -13,6 +13,7 @@ const DECISIONS = prefix + 'delegation.decisions.v1';
 const RUN_TRACE = prefix + 'run-trace.v1';
 const METERING = prefix + 'metering-summary.v1';
 const SUMMARY = prefix + 'delegation.summary.v1';
+const QUALITY = prefix + 'delegation.quality-gate.v1';
 
 const hourAgo = (n: number) => new Date(Date.now() - n * 3600_000).toISOString();
 
@@ -32,21 +33,29 @@ const COVERAGE_SCENARIOS = [
 
 for (const scenario of COVERAGE_SCENARIOS) {
   test(`AC3 the Overview pass rate shows its coverage: ${scenario.name}`, async ({ page }) => {
-    await serveCharts(page, { ...chartRows, [DECISIONS]: decisions(scenario.verdicts) });
+    // OMN-21166 live review 2026-10-25: the Quality panel became the "Delegation Quality" card, whose hover names the
+    // served passed and checked runs. The quality-gate row is served from the same verdicts, so the hover must name
+    // exactly the runs with a verdict (a run with none is not counted as checked).
+    const passed = scenario.verdicts.filter(v => v === true).length;
+    const failed = scenario.verdicts.filter(v => v === false).length;
+    await serveCharts(page, { ...chartRows, [DECISIONS]: decisions(scenario.verdicts),
+      [QUALITY]: [{ overall_pass_rate: passed / (passed + failed), total_passed: passed, total_failed: failed, total_checks: passed + failed }] });
     await page.goto('/');
-    const headline = page.locator('section[aria-label="Pass rate trend"]');
-    await expect(headline).toContainText('Pass rate');
-    await expect(headline).toContainText(scenario.coverage, MISSING);
+    const card = page.locator('[data-component="overview-quality"]');
+    await expect(card.locator('.local-dashboard-metric')).toContainText('%');
+    await card.hover();
+    await expect(card).toContainText(`${passed} of ${passed + failed} runs passed the quality gate`, MISSING);
   });
 
   test(`AC3 the Runs task and model pass rates show their coverage: ${scenario.name}`, async ({ page }) => {
     await serveCharts(page, { ...chartRows, [DECISIONS]: decisions(scenario.verdicts) });
     await page.goto('/runs');
-    await page.getByText('Show run analysis', { exact: true }).click();
+    // OMN-21166 part 13: the page-level "More analysis" replaces the "Show run analysis" fold on Runs.
+    await page.getByText('More analysis', { exact: true }).click();
     const tasks = page.getByRole('list', { name: 'Tasks' }).getByRole('listitem');
     await expect(tasks).toHaveCount(1);
     await expect(tasks).toContainText(scenario.coverage, MISSING);
-    await expect(page.getByRole('list', { name: 'Pass rate by model' }).getByRole('listitem')).toContainText(scenario.coverage, MISSING);
+    await expect(page.getByRole('figure', { name: 'Pass rate by model', exact: true })).toContainText(scenario.coverage, MISSING);
   });
 }
 
@@ -65,17 +74,21 @@ test('AC3 a routing step with no recorded reason or candidates says not recorded
   await expect(steps.nth(1)).toContainText('reason: not recorded', MISSING);
   await expect(steps.nth(1)).toContainText('candidates: not recorded');
   await expect(steps.nth(2)).toContainText('cheapest tier passes');
-  await expect(steps.nth(2)).toContainText('candidates: model-a, model-b');
+  // OMN-21166 AC54: recorded candidates read as words ("Model a"), the served list kept in order.
+  await expect(steps.nth(2)).toContainText('candidates: Model a, Model b');
   await expect(steps.nth(2)).not.toContainText('not recorded');
 });
 
 const OVERVIEW = prefix + 'cost.savings-overview.v1';
 
 /** The cards' basis line, in view under the figure (OMN-21166 part 9 AC44 replaced the Details fold). */
-async function basisOf(page: Page, card: string) {
+async function basisOf(page: Page, card: string, line = '.local-card-basis') {
   const panel = page.locator(`[data-component="${card}"]`);
   await expect(panel.locator('.local-dashboard-metric')).toHaveAttribute('data-measured', 'true');
-  const basis = panel.locator('.local-card-basis');
+  // OMN-21166 part 12 AC73: the four headline cards keep their basis in a tooltip behind the keyboard-focusable
+  // "About <card>" button, which opens on focus; open it through the keyboard path, then require the basis in view.
+  await panel.getByRole('button', { name: /^About /i }).focus();
+  const basis = panel.locator(line);
   await expect(basis, `${card} shows its basis`).toBeVisible({ timeout: 3000 });
   return basis;
 }
@@ -108,8 +121,8 @@ for (const scenario of [
 // With no savings table in the local store the Overview reads metering-summary.v1. The fold classes a run with no token
 // counts before it looks at spend, so both classes are named; the one with no token counts is never hidden behind a 0.
 for (const scenario of [
-  { name: 'two runs with no spend', unpriced: 2, expected: 'Not in this total: 1 run with no token counts, 2 runs with no spend recorded' },
-  { name: 'every run with tokens priced (control)', unpriced: 0, expected: 'Not in this total: 1 run with no token counts, 0 runs with no spend recorded' },
+  { name: 'two runs with no spend', unpriced: 2, expected: 'Not counted: 1 run without token counts, 2 runs without spend', spendNamed: true },
+  { name: 'every run with tokens priced (control)', unpriced: 0, expected: 'Not counted: 1 run without token counts', spendNamed: false },
 ]) {
   test(`AC4 spend and savings each name their baseline, pricing version and the runs left out (metering): ${scenario.name}`, async ({ page }) => {
     await serveCharts(page, { ...chartRows, [METERING]: [{
@@ -122,11 +135,14 @@ for (const scenario of [
         ? { topic, status: 'degraded', backing: 'not_in_local_store', bus_backed: false, degraded_reason: 'projection_table_missing' }
         : { topic, status: 'ok', backing: 'bus', bus_backed: true, tenant_scoped: false }) }) }));
     await page.goto('/');
+    // OMN-21166 live review 2026-10-25: on the metering source the headline cards' basis is the tooltip's lines
+    // ("Not counted: ...", "Baseline X · pricing vN"); a class with a zero count is left out rather than written as 0.
     for (const card of ['overview-spend', 'overview-savings']) {
-      const details = await basisOf(page, card);
+      const details = await basisOf(page, card, '[role="tooltip"]');
       await expect(details).toContainText(scenario.expected);
+      if (!scenario.spendNamed) await expect(details).not.toContainText('without spend');
       await expect(details).toContainText('Baseline baseline-a');
-      await expect(details).toContainText('pricing manifest v7');
+      await expect(details).toContainText('pricing v7');
     }
     await expect(page.locator('[data-component="overview-spend"] .local-dashboard-metric')).toHaveText('$0.25');
     await expect(page.locator('[data-component="overview-savings"] .local-dashboard-metric')).toHaveText('$0.75');

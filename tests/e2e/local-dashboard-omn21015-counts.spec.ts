@@ -10,7 +10,8 @@ for (const theme of ['light', 'dark'] as const) {
     await serveCharts(page, { ...chartRows,
       [prefix + 'cost.savings-overview.v1']: [{ window: 'all', captured_at: '2026-10-22T10:00:00Z',
         total_cost_usd: '3.5923', total_savings_usd: '1074.2157', run_count: '59188',
-        tokens_total: '309271491', tokens_input: '300000001', tokens_output: '9271490' }],
+        // Dev #462 (omnimarket#4341): cost.savings-overview.v1 serves its directions as tokens_input_total / tokens_output_total.
+        tokens_total: '309271491', tokens_input_total: '300000001', tokens_output_total: '9271490' }],
       [prefix + 'usage-by-model-day.v1']: [{ usage_day: '2026-10-01', model_id: 'model-a',
         input_tokens: '300000001', output_tokens: '9271490', call_count: 59188, measured_cost_usd: '3.5923', cost_tier_name: 'local', call_share: 1 }],
       [prefix + 'metering-summary.v1']: [{ window_kind: 'day', window_start: '2026-10-01',
@@ -61,10 +62,12 @@ test('metering-backed Overview uses the same compact total and arrow-only full d
   await page.goto('/overview');
   const tokens = page.locator('[data-component="overview-tokens"]');
   await expect(tokens.locator('.local-dashboard-metric')).toHaveText('6.13K');
-  await expect(tokens.locator('[data-field-tone="tokens-in"]')).toContainText('5,756');
-  await expect(tokens.locator('[data-field-tone="tokens-out"]')).toContainText('378');
-  await expect(tokens.locator('.local-token-directions')).not.toContainText('Input');
-  await expect(tokens.locator('.local-token-directions')).not.toContainText('Output');
+  // OMN-21166 live review 2026-10-25: on the metering path the Tokens card is its compact total, and the full
+  // directions (whole integers, never compacted) are its hover line, a tooltip that is the info button's description.
+  await expect(tokens.locator('[role="tooltip"]')).toHaveText('5,756 in · 378 out');
+  await expect(tokens.getByRole('button', { name: 'About Tokens processed' })).toHaveAttribute('aria-describedby', await tokens.locator('[role="tooltip"]').getAttribute('id') ?? '');
+  await expect(tokens).not.toContainText('Input');
+  await expect(tokens).not.toContainText('Output');
 });
 
 test('Evidence selected-run directional counts remain full integers', async ({ page }, info) => {
@@ -118,12 +121,19 @@ for (const theme of ['light','dark'] as const) {
     ]});
     await page.goto('/runs');
     await expect(page.locator('body')).toHaveClass(new RegExp(`\\btheme-${theme}\\b`));
-    await page.locator('summary').filter({hasText:/^Show run analysis$/}).click();
-    const model = page.locator('.ins-ring').filter({has:page.getByText('model-a',{exact:true})});
+    // OMN-21166 part 13 + AC64: Runs' analysis is under the page's closed "More analysis", and the model scoreboard
+    // rings are ranked bars ("Pass rate by model") whose name is written in the model's colour.
+    await page.locator('summary').filter({hasText:/^More analysis$/}).click();
+    const model = page.getByRole('figure',{name:'Pass rate by model',exact:true}).locator('[data-ranked-item]').filter({has:page.getByText('model-a',{exact:true})});
     await expect(model).toBeVisible();
-    const color = await model.locator('circle.od-ring').evaluate(el => getComputedStyle(el).stroke);
+    const color = await model.locator('.rb-name').evaluate(el => getComputedStyle(el).color);
     await page.goto('/usage');
-    const legend = page.locator('.usage-model-legend button').filter({hasText:'model-a'});
+    // OMN-21166 AC64: Usage's spend donut and legend buttons are ranked bars ("Measured spend per model"); the
+    // stacked "Tokens per day" chart's legend swatch carries the same model colour.
+    const spend = page.getByRole('figure',{name:'Measured spend per model',exact:true}).locator('[data-ranked-item]').filter({has:page.getByText('model-a',{exact:true})});
+    await expect(spend).toBeVisible();
+    expect(await spend.locator('.rb-name').evaluate(el => getComputedStyle(el).color)).toBe(color);
+    const legend = page.locator('.utc-legend li').filter({hasText:'model-a'});
     await expect(legend).toBeVisible();
     expect(await legend.locator('i').evaluate(el => getComputedStyle(el).backgroundColor)).toBe(color);
     await page.screenshot({path:info.outputPath(`model-colors-${theme}.png`),fullPage:true});

@@ -10,6 +10,7 @@
 //   V4  with no day rows an empty chart is drawn, or the panel's typed state is lost;
 //   V5  the table under the chart loses a row or a figure;
 //   V6  a day whose savings were not measured gets a bar of zero.
+import { readFileSync } from 'node:fs';
 import { act, cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -90,18 +91,15 @@ describe('OMN-21015 U2: savings per day on Usage, as bars', () => {
     expect(harness.handed[0]!.series[0].data).toEqual([null, 0.4125]);
   });
 
+  // OMN-21166 live review 2026-10-25: Overview's money chart is gone; its Savings card wears --field-savings, so the
+  // Usage series must follow that token, whatever the theme sets it to.
   it('V7: Savings is the same colour here as on Overview', async () => {
-    harness.rows = [row('day', '2026-10-12', '0.300000')];
-    harness.handed.length = 0;
-    render(<LocalDashboardPage pageName="overview" />);
-    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
-    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
-    const onOverview = harness.handed.at(-1)!.series.find((series: Option) => series.name === 'Savings').itemStyle.color;
-    const others = harness.handed.at(-1)!.series.filter((series: Option) => series.name !== 'Savings').map((series: Option) => series.itemStyle.color);
-    cleanup();
+    // jsdom has no canvas, so a chart colour is its token's fallback: the series must use --field-savings's, and that
+    // fallback must be the light theme's --field-savings, the colour of the Savings card.
+    const savingsToken = /--field-savings:\s*(#[0-9a-f]{6});/i.exec(readFileSync('src/styles/field-identity.css', 'utf8'))?.[1]?.toLowerCase();
+    expect(savingsToken).toBe('#0f766e');
     await open([row('day', '2026-10-12', '0.300000')]);
-    const onUsage = harness.handed.at(-1)!.series[0].itemStyle.color;
-    expect(onUsage).toBe(onOverview);
-    expect(others).not.toContain(onUsage);
+    expect(harness.handed.at(-1)!.series[0].itemStyle.color).toBe(savingsToken);
   });
+
 });

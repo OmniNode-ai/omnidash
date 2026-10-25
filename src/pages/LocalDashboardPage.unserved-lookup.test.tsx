@@ -8,7 +8,7 @@
 //
 // Real data path: HttpSnapshotSource, the exposure census and tenant resolution all run; only fetch is stubbed,
 // with the bodies `onex dashboard` sent in the lab.
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/config/generated/data-source-defaults', () => ({
@@ -151,14 +151,4 @@ describe('Runs with a savings lookup this store does not serve (OMN-19994 AC1)',
   });
 });
 
-describe('Overview run tables with the same unserved lookup (OMN-19994 AC1, same class)', () => {
-  it('shows the run in Recent runs and Last run', async () => {
-    render(<LocalDashboardPage pageName="overview" />);
-    const recent = await waitFor(() => panel('Recent runs'));
-    await waitFor(() => expect(within(recent.querySelector('.local-run-preview') as HTMLElement).getByRole('link', { name: RUN_ID })).toHaveAttribute('href', `/workflow?correlation_id=${RUN_ID}`));
-    fireEvent.click(within(recent).getByText('Show recent run fields', { selector: 'summary' }));
-    expect(within(recent.querySelector('.local-dashboard-table-wrap') as HTMLElement).getByRole('link', { name: RUN_ID })).toHaveAttribute('href', `/workflow?correlation_id=${RUN_ID}`);
-    expect(within(panel('Last run')).getByText(RUN_ID)).toBeInTheDocument();
-    expect(within(recent).queryByRole('alert')).toBeNull();
-  });
-});
+// OMN-21166 live review 2026-10-25: Overview no longer has run tables (Recent runs, Last run); Runs keeps them above.

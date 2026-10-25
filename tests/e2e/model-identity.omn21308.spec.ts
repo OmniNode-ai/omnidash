@@ -44,16 +44,38 @@ async function theme(page: Page, requested: string) {
 }
 
 async function usageColors(page: Page, names: string[]) {
+  // OMN-21166 Maple grid + AC64: Spend by model is ranked bars (no donut or legend buttons) and the page's Tokens per day
+  // is a stacked chart; the highlight buttons and per-day bars are the detail under "More usage". One model keeps one colour in all.
   const spend = page.getByRole('figure', { name: 'Spend by model', exact: true });
+  const chart = page.getByRole('figure', { name: 'Tokens in per day by model', exact: true });
   const tokens = page.getByRole('figure', { name: 'Tokens by model and day', exact: true });
-  await expect(spend.locator('.usage-model-legend button')).toHaveCount(names.length);
+  await expect(spend.locator('li[data-ranked-item]')).toHaveCount(names.length);
+  await expect(chart.getByRole('list', { name: 'Models', exact: true }).getByRole('listitem')).toHaveCount(names.length);
   await expect(tokens.getByRole('group', { name: 'Model highlight' }).getByRole('button')).toHaveCount(names.length);
   const result: Record<string, string> = {};
   for (const [index, name] of names.entries()) {
     const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const legend = spend.getByRole('button', { name: new RegExp(`^${escaped}:`) });
-    const color = await legend.locator('i').evaluate(el => getComputedStyle(el).backgroundColor);
-    expect(color, `${name}: real legend color`).not.toBe('rgba(0, 0, 0, 0)');
+    const item = spend.locator(`li[data-ranked-item="${name}"]`);
+    const color = await item.locator('.rb-name').evaluate(el => getComputedStyle(el).color);
+    expect(color, `${name}: real ranked-bar colour`).not.toBe('rgba(0, 0, 0, 0)');
+    const bar = item.locator('.rb-bar');
+    if (name === 'unpriced-model') {
+      // An unpriced model is drawn as not measured: an outline with no height, never a zero-cost bar.
+      await expect(bar).toHaveAttribute('data-pattern', 'unknown');
+      expect(await bar.getAttribute('style'), 'unpriced model must not create a zero-cost bar').toBeNull();
+    } else {
+      await expect(bar).toHaveAttribute('data-pattern', 'measured');
+      expect(await bar.evaluate(el => getComputedStyle(el).color), `bar for ${name}`).toBe(color);
+      expect(await bar.getAttribute('style'), `bar size for ${name}`).toContain('--rb-size');
+    }
+    const chartLegend = chart.getByRole('list', { name: 'Models', exact: true }).getByRole('listitem').filter({ hasText: new RegExp(`^${escaped}$`) });
+    await expect(chartLegend).toHaveCount(1);
+    expect(await chartLegend.locator('i').evaluate(el => getComputedStyle(el).backgroundColor), `${name}: token chart legend`).toBe(color);
+    const segment = chart.locator(`i[data-token-model="${name}"]`).first();
+    // OMN-21166 live review 2026-10-25: token segments are dotted marks drawn in currentColor (a radial-gradient
+    // background-image), so the model colour is the segment's text colour and its top edge, not its background-color.
+    expect(await segment.evaluate(el => getComputedStyle(el).color), `${name}: token chart segment`).toBe(color);
+    expect(await segment.evaluate(el => getComputedStyle(el).borderTopColor), `${name}: token chart segment edge`).toBe(color);
     const highlight = tokens.getByRole('button', { name: `Highlight ${name}`, exact: true });
     await expect(highlight.locator('.usage-model-swatch')).toHaveCSS('background-color', color);
     await expect(tokens.locator('.usage-tokens-bar').first().locator('.usage-tokens-fill').nth(index)).toHaveCSS('background-color', color);
@@ -61,9 +83,6 @@ async function usageColors(page: Page, names: string[]) {
     expect(await tokenLegend.evaluate(el => getComputedStyle(el, '::before').backgroundColor)).toBe(color);
     result[name] = color;
   }
-  const gradient = await spend.locator('.usage-donut').evaluate(el => getComputedStyle(el).backgroundImage);
-  for (const name of names.filter(name => name !== 'unpriced-model')) expect(gradient, `slice for ${name}`).toContain(result[name]);
-  expect(gradient, 'unpriced model must not create a zero-cost slice').not.toContain(result['unpriced-model']);
   return result;
 }
 
@@ -76,6 +95,7 @@ for (const selectedTheme of ['light', 'dark']) {
     await serveCharts(page, rows);
     await page.goto('/usage');
     await theme(page, selectedTheme);
+    await page.getByText('More usage', { exact: true }).press('Enter');
     const before = await usageColors(page, names);
     rows[USAGE] = [...rows[USAGE]].reverse();
     await page.getByRole('button', { name: 'Refresh', exact: true }).click();
@@ -91,6 +111,7 @@ for (const selectedTheme of ['light', 'dark']) {
     await serveCharts(page, fixture(names));
     await page.goto('/usage');
     await theme(page, selectedTheme);
+    await page.getByText('More usage', { exact: true }).press('Enter');
     const colors = await usageColors(page, names);
     expect(colors['Model-A'], 'distinct served model identities need distinct measured colors').not.toBe(colors['model-a']);
     await info.attach('model-colors', { body: JSON.stringify({ theme: selectedTheme, colors }), contentType: 'application/json' });
@@ -99,18 +120,20 @@ for (const selectedTheme of ['light', 'dark']) {
   test(`AC3: routing model identity agrees with its chart ring and model label, ${selectedTheme}`, async ({ page }, info) => {
     const names = ['unpriced-model', 'model-a', 'model-b'];
     await serveCharts(page, fixture(names));
-    await page.goto('/overview');
+    // OMN-21166 part 13 + AC64: the routing table and the pass-rate-by-model bars (the old scoreboard rings) are on Runs, under "More analysis".
+    await page.goto('/runs');
     await theme(page, selectedTheme);
-    await page.getByText('Detailed activity analysis', { exact: true }).click();
-    await page.locator('[data-component="overview-tier-mix"] details.local-tier-details > summary').click();
+    await page.getByText('More analysis', { exact: true }).press('Enter');
+    await page.locator('[data-component="runs-tier-mix"] details.local-tier-details > summary').press('Enter');
     const colors: Record<string, { ring: string; name: string; routing: string }> = {};
     for (const name of names) {
-      const ring = page.locator('.ins-ring').filter({ has: page.getByText(name, { exact: true }) });
-      await expect(ring).toHaveCount(1);
-      const ringColor = await ring.locator('circle.od-ring').evaluate(el => getComputedStyle(el).stroke);
-      const nameColor = await ring.locator('.ins-ring-name').evaluate(el => getComputedStyle(el).color);
-      const routing = page.locator('.local-routing-model-row').filter({ hasText: name }).locator('.local-model-identity');
+      const mark = page.getByRole('figure', { name: 'Pass rate by model', exact: true }).locator(`li[data-ranked-item="${name}"]`);
+      await expect(mark).toHaveCount(1);
+      const ringColor = await mark.locator('.rb-bar').evaluate(el => getComputedStyle(el).color);
+      const nameColor = await mark.locator('.rb-name').evaluate(el => getComputedStyle(el).color);
+      const routing = page.locator('.local-routing-model-row').filter({ hasText: name }).locator('.local-model-identity svg.field-icon[data-field-tone="model"]');
       await expect(routing).toHaveCount(1);
+      // OMN-21166 new look: model names in tables are set in ink (seven-page-design.css); the model's identity colour is its icon.
       const routingColor = await routing.evaluate(el => getComputedStyle(el).color);
       colors[name] = { ring: ringColor, name: nameColor, routing: routingColor };
       expect(nameColor, `${name}: model label and chart mark`).toBe(ringColor);

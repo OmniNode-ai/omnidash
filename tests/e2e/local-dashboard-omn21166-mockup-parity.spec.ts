@@ -52,55 +52,55 @@ function fixtureRows(overrides: Record<string, unknown[]> = {}) {
   };
 }
 
-test('AC26 Overview applies the selected window, compares only complete periods, and keeps daily savings sourced', async ({ page }, info) => {
+test('AC26 Overview applies the selected window to cards and charts and never invents a daily figure from an all-time row', async ({ page }, info) => {
   await serveCharts(page, fixtureRows());
   await page.goto('/overview');
-  const window = page.getByRole('group', { name: 'Activity window' });
-  await expect(window.getByRole('button', { name: '7 days', exact: true })).toBeVisible();
-  await expect(window.getByRole('button', { name: '15 days', exact: true })).toBeVisible();
-  await window.getByRole('button', { name: '7 days', exact: true }).click();
-  await expect(page.getByRole('region', { name: 'Pass rate trend' })).toContainText('16.7 percentage points');
-  await expect(page.getByRole('region', { name: 'Pass rate trend' })).toContainText('vs previous 7 days');
-  const windowKpis = page.getByRole('region', { name: 'Summary for last 7 UTC days' });
-  await expect(windowKpis).toContainText('Unavailable');
-  await expect(windowKpis).toContainText('selected window is incomplete');
-  await page.getByText('Detailed activity analysis', { exact: true }).click();
+  // Live review 2026-10-25 ("unified"): the window presets are the header's one control (radiogroup "Figures for"),
+  // driving the cards and the charts; the custom dates are its calendar.
+  const window = page.getByRole('radiogroup', { name: 'Figures for', exact: true });
+  await expect(window.getByRole('radio', { name: 'Last 7 days (UTC)', exact: true })).toBeVisible();
+  await expect(window.getByRole('radio', { name: 'Last 15 days (UTC)', exact: true })).toBeVisible();
+  await window.getByRole('radio', { name: 'Last 7 days (UTC)', exact: true }).click();
+  // OMN-21166 AC86 (Lakshman 2026-10-25): the Quality panel's pass-rate trend, "More activity" (its window run and spend
+  // cards and Median duration), Cumulative savings and Spend vs all-cloud are deleted from Overview, so the complete-
+  // period comparison checks on them are retired. What stays: the window drives the cards and the Runs per day chart,
+  // a card never shows an all-time or served-elsewhere figure as a daily one, and Quality says it is all time.
+  for (const id of ['overview-spend', 'overview-savings', 'overview-measured', 'overview-tokens']) {
+    await expect(page.locator(`[data-component="${id}"] .local-dashboard-metric`)).toHaveText('Not measured: daily totals unavailable (UTC)');
+  }
+  await expect(page.locator('[data-component="overview-quality"] .local-dashboard-metric')).toHaveText('75.0%');
+  await expect(page.locator('[data-component="overview-quality"] [role="tooltip"]')).toContainText('All time: the window above does not change this figure');
+  await expect(page.locator('[data-component="overview-insights"][data-slice="runs"]')).toContainText('last 7 UTC days');
+  await expect(page.getByRole('figure', { name: 'Cumulative savings', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('figure', { name: 'Spend vs all-cloud', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('region', { name: 'Pass rate trend' })).toHaveCount(0);
+  await page.screenshot({ path: info.outputPath('overview-mockup-parity.png'), fullPage: true });
+  // OMN-21166 part 13: the duration histogram moved to Runs' analysis, under its closed "More analysis". It reads every
+  // served run (the Overview window does not apply there); one of them (run-yesterday, 7,780 ms) is 5 to 10 seconds.
+  await page.goto('/runs');
+  await page.locator('summary').filter({ hasText: /^More analysis$/ }).click();
   const duration = page.getByRole('figure', { name: 'How long runs take', exact: true });
   const fiveToTenSeconds = duration.getByRole('button', { name: '5 seconds to 10 seconds: 1 runs' });
   await fiveToTenSeconds.focus();
   await expect(duration).toContainText('5 seconds to 10 seconds · 1 runs');
-  await expect(page.locator('[data-component="overview-insights"]')).toContainText('Median duration');
-  const cumulative = page.getByRole('figure', { name: 'Cumulative savings', exact: true });
-  await expect(cumulative).toContainText('$0.40');
-  await expect(cumulative.getByRole('status')).toContainText('Served rows only · cumulative incomplete');
-  const yesterdayLabel = new Date(`${utcDay(-1)}T00:00:00Z`).toLocaleString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
-  const cumulativeDay = cumulative.getByRole('group', { name: 'Cumulative savings by UTC day' })
-    .getByRole('button', { name: new RegExp(`${yesterdayLabel}.*cumulative \\$0\\.40`) });
-  await cumulativeDay.focus();
-  await expect(cumulative.getByRole('status')).toContainText('cumulative $0.40');
-  const spendByDay = page.getByRole('figure', { name: 'Spend vs all-cloud', exact: true });
-  const servedSpendDay = spendByDay.getByRole('group', { name: 'Spend vs all-cloud by UTC day' })
-    .getByRole('button', { name: /Paid \$0\.25/ });
-  await servedSpendDay.focus();
-  await expect(spendByDay.getByRole('status')).toContainText('Paid $0.25');
-  await page.screenshot({ path: info.outputPath('overview-mockup-parity.png'), fullPage: true });
 
   await serveCharts(page, fixtureRows({ [prefix + 'delegation.decisions.v1']: [decisions[2]!, decisions[3]!], [prefix + 'metering-summary.v1']: [
     { tenant_id: 'mock-tenant', window_kind: 'all', window_start: null, spend_usd: '9.99', savings_usd: '8.88', counterfactual_usd: '18.87', runs_total: 5 },
   ] }));
   await page.goto('/overview');
-  await page.getByRole('group', { name: 'Activity window' }).getByRole('button', { name: '7 days', exact: true }).click();
-  await expect(page.locator('[data-component="overview-insights"]')).toContainText('Previous window not fully returned');
-  await expect(page.locator('[data-component="overview-insights"]')).toContainText('Daily metering data is unavailable: no day rows are served.');
-  await expect(page.locator('[data-component="overview-insights"]')).toContainText('Unavailable');
-  await expect(page.locator('[data-component="overview-insights"]')).not.toContainText('8.88');
-  await expect(page.locator('[data-component="overview-insights"]')).not.toContainText('$12.00');
+  await page.getByRole('radiogroup', { name: 'Figures for', exact: true }).getByRole('radio', { name: 'Last 7 days (UTC)', exact: true }).click();
+  // An all-time row serves no day, so the 7-day cards stay unmeasured and none of its figures leaks in.
+  await expect(page.locator('[data-component="overview-savings"] .local-dashboard-metric')).toHaveText('Not measured: daily totals unavailable (UTC)');
+  await expect(page.locator('.local-overview-summary')).not.toContainText('8.88');
+  await expect(page.locator('.local-overview-summary')).not.toContainText('9.99');
   await page.screenshot({ path: info.outputPath('overview-truncated-previous-and-unserved.png'), fullPage: true });
 });
 
 test('AC27 Runs filters by UTC day and task, then shows the selected run without filling missing fields', async ({ page }, info) => {
   await serveCharts(page, fixtureRows());
   await page.goto('/runs');
+  // OMN-21166 part 13: the "This week" chart is under the closed "More run charts", below the run list.
+  await page.locator('summary').filter({ hasText: /^More run charts$/ }).click();
   const week = page.getByRole('group', { name: 'This week' });
   const listTop = await page.getByRole('heading', { name: 'Run list', exact: true }).evaluate(element => element.getBoundingClientRect().top);
   const weekHeading = page.getByRole('heading', { name: 'This week', exact: true });
@@ -111,26 +111,25 @@ test('AC27 Runs filters by UTC day and task, then shows the selected run without
   expect(listBox).not.toBeNull();
   expect(filtersTop).toBeLessThan(listTop);
   expect(weekTop).toBeGreaterThanOrEqual(listBox!.y + listBox!.height - 1);
-  const dayFilters = page.getByRole('group', { name: 'Run days' });
-  const today = dayFilters.getByRole('button', { name: new RegExp(`Filter day Today.*${utcDay(0)}`) });
-  await today.click();
-  await expect(today).toHaveAttribute('aria-pressed', 'true');
+  // OMN-21166 part 13: the "Days" chip row is gone; a UTC day in the address still filters the list and the week status
+  // names it, and the task chips are the Task select (its option counts follow the other filters).
+  await page.goto(`/runs?day=${utcDay(0)}`);
+  await page.locator('summary').filter({ hasText: /^More run charts$/ }).click();
   await expect(week.getByRole('status')).toContainText('2 runs · 1 passed · 1 failed');
   await expect(page).toHaveURL(new RegExp(`day=${utcDay(0)}`));
   await expect(page.getByRole('row', { name: /run-today-unmeasured/ })).toBeVisible();
-  const task = page.getByRole('button', { name: /Filter task code_generation/ });
-  await expect(task).toContainText('1');
-  await today.click();
-  await expect(today).toHaveAttribute('aria-pressed', 'false');
+  const task = page.getByLabel('Task', { exact: true });
+  await expect(task.locator('option', { hasText: 'code generation' })).toHaveText('code generation (1)');
+  await page.getByRole('button', { name: 'Clear filters', exact: true }).click();
+  await expect(page).not.toHaveURL(/day=/);
   await expect(page.getByRole('row', { name: /run-prev-pass/ })).toBeVisible();
 
-  await expect(task).toContainText('2');
-  await task.click();
-  await expect(task).toHaveAttribute('aria-pressed', 'true');
+  await expect(task.locator('option', { hasText: 'code generation' })).toHaveText('code generation (2)');
+  await task.selectOption('code_generation');
   await expect(page.getByRole('row', { name: /run-today-fail/ })).toBeVisible();
   await expect(page.getByRole('row', { name: /run-yesterday/ })).toHaveCount(0);
-  await task.click();
-  await expect(task).toHaveAttribute('aria-pressed', 'false');
+  await task.selectOption('all');
+  await expect(page.getByRole('row', { name: /run-yesterday/ })).toBeVisible();
 
   await page.getByRole('row', { name: /run-today-unmeasured/ }).click();
   const selected = page.getByRole('complementary', { name: 'Selected run' });
@@ -154,9 +153,13 @@ test('AC27 selected failed run shows its served result, time, cause, route facts
   const selected = page.getByRole('complementary', { name: 'Selected run' });
   await expect(selected.locator('.local-run-pill')).toHaveText('failed');
   await expect(selected.locator('time')).toHaveAttribute('datetime', at(0, '09:30'));
-  await expect(selected.locator('.local-task-cell')).toContainText('code_generation');
+  // OMN-21166 (readable task names, 0d7d6df3): a task is written "code generation", not its served key.
+  await expect(selected.locator('.local-task-cell')).toContainText('code generation');
   for (const [label, value] of [
-    ['Cause', 'RATE_LIMIT: provider refused'], ['Model', 'model-b'], ['Route tier', 'cloud'], ['Duration', '1200 ms'], ['Cost', '$0.20'],
+    // Dev #455 (failure codes out of readable run details): the served "RATE_LIMIT: provider refused" reads "provider refused".
+    ['Cause', 'provider refused'], ['Model', 'model-b'],
+    // OMN-21166 AC54 / AC55: a tier and a duration are written as words ("Cloud", "1.2 s"), not as served (cloud, 1200 ms).
+    ['Route tier', 'Cloud'], ['Duration', '1.2 s'], ['Cost', '$0.20'],
     ['Tokens in', '10'], ['Tokens out', '3'], ['Quality score', '0.5'], ['Required bar', '0.8'],
   ]) {
     await expect(selected.locator('dt').filter({ hasText: new RegExp(`^${label}$`) }).locator('xpath=following-sibling::dd')).toHaveText(value);
@@ -195,11 +198,17 @@ test('AC29 Usage exposes measured model spend, per-call cost, tokens, and honest
   await serveCharts(page, fixtureRows());
   await page.goto('/usage');
   const spend = page.getByRole('figure', { name: 'Spend by model', exact: true });
-  const alpha = spend.getByRole('button', { name: /model-a.*\$0\.50.*1 unmeasured/ });
+  // OMN-21166 AC64: spend by model is ranked bars (figure "Measured spend per model"); a bar is a list item named by its
+  // model and measured value, a model with no measured spend is "Not measured" (never $0.00), and the count of
+  // unmeasured runs is the figure's footnote.
+  const bars = spend.getByRole('figure', { name: 'Measured spend per model', exact: true });
+  const alpha = bars.getByRole('listitem', { name: /^model-a: \$0\.50, measured$/ });
   await expect(alpha).toBeVisible();
-  await alpha.focus();
-  await expect(spend.getByRole('status')).toContainText('model-a');
-  await expect(spend.getByRole('status')).toContainText('$0.50');
+  await expect(bars.getByRole('listitem', { name: /^model-b: Not measured, not measured$/ })).toBeVisible();
+  await expect(spend).toContainText('model-a: 1 unmeasured');
+  await expect(spend).toContainText('model-b: 1 unmeasured');
+  // OMN-21166 part 13: cost per run, tokens by model, cost by route and the per-day table are under "More usage".
+  await page.locator('summary').filter({ hasText: /^More usage$/ }).click();
   const perCall = page.getByRole('figure', { name: 'Cost per run', exact: true });
   await expect(perCall).toContainText('$0.50');
   const allUnmeasuredDay = perCall.getByRole('button', { name: new RegExp(`${utcDay(-2)}.*measured cost per call Not measured.*2 unmeasured calls`) });

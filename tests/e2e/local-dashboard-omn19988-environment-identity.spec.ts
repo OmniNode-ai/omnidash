@@ -3,6 +3,12 @@ import { serveCharts } from './omn21166-chart-fixtures';
 
 test.use({ reducedMotion: 'reduce' });
 
+// OMN-21166 live review 2026-10-25: Environment moved from Overview to API Keys (article[data-component="api-keys-environment"]),
+// so the same identity-colour checks run on /api-keys.
+
+// OMN-21166 live review 2026-10-25: Environment moved from Overview to API Keys (article[data-component="api-keys-environment"]),
+// so the same identity-colour checks run on /api-keys.
+
 // Resolve actual browser colours, so two differently written CSS values cannot
 // hide the same colour. The temporary child is removed in this read operation.
 async function colours(panel: Locator, canonical: string) {
@@ -21,9 +27,9 @@ async function colours(panel: Locator, canonical: string) {
 for (const dark of [false, true]) {
   test(`Environment and the legacy Cloud keys style use distinct canonical colours (dark: ${dark})`, async ({ page }, info) => {
     await serveCharts(page);
-    await page.goto('/overview');
+    await page.goto('/api-keys');
     await page.evaluate(darkTheme => document.documentElement.setAttribute('data-theme', darkTheme ? 'dark' : 'light'), dark);
-    const environment = page.locator('article[data-component="overview-environment"]');
+    const environment = page.locator('article[data-component="api-keys-environment"]');
     await expect(environment).toBeVisible();
     const host = await colours(environment, '--field-host');
     await page.screenshot({ path: info.outputPath('environment.png'), fullPage: true });
@@ -52,9 +58,9 @@ for (const dark of [false, true]) {
 
   test(`computed-colour instrument catches a planted equal-colour collision (dark: ${dark})`, async ({ page }, info) => {
     await serveCharts(page);
-    await page.goto('/overview');
+    await page.goto('/api-keys');
     await page.evaluate(darkTheme => document.documentElement.setAttribute('data-theme', darkTheme ? 'dark' : 'light'), dark);
-    const environment = page.locator('article[data-component="overview-environment"]');
+    const environment = page.locator('article[data-component="api-keys-environment"]');
     await expect(environment).toBeVisible();
     const control = await environment.evaluate(element => {
       const panel = element as HTMLElement;

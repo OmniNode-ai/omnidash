@@ -84,209 +84,40 @@
       }
     },
     {
-      "widget_id": "3b1f6a52-7d0e-4c1a-9a53-21015ac10001",
-      "title": "Spend per day",
+      "widget_id": "6408a8d2-29a3-4526-aa67-4141a0802380",
+      "title": "Model usage",
       "row": 12,
       "col": 0,
-      "width": 8,
-      "height": 4,
-      "data_source": "overview-spend-by-day",
-      "config": {
-        "config_kind": "table",
-        "widget_type": "table",
-        "columns": [
-          {
-            "key": "window_start",
-            "header": "Day"
-          },
-          {
-            "key": "spend_usd",
-            "header": "Actual spend",
-            "format": "currency"
-          },
-          {
-            "key": "counterfactual_usd",
-            "header": "Baseline spend",
-            "format": "currency"
-          },
-          {
-            "key": "savings_usd",
-            "header": "Savings",
-            "format": "currency"
-          },
-          {
-            "key": "runs_total",
-            "header": "Runs"
-          }
-        ],
-        "page_size": 25,
-        "show_pagination": false
-      }
-    },
-    {
-      "widget_id": "5d0c2a51-6a4e-5b8a-9f1e-3c7b2e0a9d41",
-      "title": "Last run",
-      "row": 12,
-      "col": 8,
-      "width": 4,
-      "height": 4,
-      "data_source": "overview-last-run",
-      "config": {
-        "config_kind": "table",
-        "widget_type": "table",
-        "columns": [
-          {
-            "key": "status",
-            "header": "Status"
-          },
-          {
-            "key": "cause",
-            "header": "Cause"
-          },
-          {
-            "key": "actual_score",
-            "header": "Quality score"
-          },
-          {
-            "key": "correlation_id",
-            "header": "Run"
-          },
-          {
-            "key": "model_name",
-            "header": "Model"
-          },
-          {
-            "key": "backend",
-            "header": "Backend"
-          },
-          {
-            "key": "host",
-            "header": "Host"
-          },
-          {
-            "key": "latency_ms",
-            "header": "Duration"
-          },
-          {
-            "key": "tokens_input",
-            "header": "Tokens in"
-          },
-          {
-            "key": "tokens_output",
-            "header": "Tokens out"
-          },
-          {
-            "key": "cost",
-            "header": "Cost"
-          },
-          {
-            "key": "usage_source",
-            "header": "Basis"
-          },
-          {
-            "key": "task_type",
-            "header": "Task type"
-          },
-          {
-            "key": "cost_tier_name",
-            "header": "Route tier"
-          },
-          {
-            "key": "written_at",
-            "header": "Age"
-          }
-        ],
-        "page_size": 1,
-        "show_pagination": false,
-        "default_sort_key": "written_at",
-        "default_sort_direction": "desc"
-      }
-    },
-    {
-      "widget_id": "8e4f1b77-2c39-5d06-a8b2-6f0d4c9e1a53",
-      "title": "Recent runs",
-      "row": 16,
-      "col": 0,
-      "width": 8,
+      "width": 12,
       "height": 5,
-      "data_source": "overview-recent-runs",
+      "data_source": "overview-model-usage",
       "config": {
         "config_kind": "table",
         "widget_type": "table",
         "columns": [
           {
-            "key": "written_at",
-            "header": "Time"
-          },
-          {
-            "key": "status",
-            "header": "Status"
-          },
-          {
-            "key": "cause",
-            "header": "Cause"
-          },
-          {
-            "key": "task_type",
-            "header": "Task type"
-          },
-          {
             "key": "model_name",
             "header": "Model"
           },
           {
-            "key": "backend",
-            "header": "Backend"
+            "key": "total_count",
+            "header": "Runs"
           },
           {
-            "key": "host",
-            "header": "Host"
-          },
-          {
-            "key": "tokens_input",
-            "header": "Tokens in"
-          },
-          {
-            "key": "tokens_output",
-            "header": "Tokens out"
-          },
-          {
-            "key": "cost",
-            "header": "Cost"
-          },
-          {
-            "key": "usage_source",
-            "header": "Basis"
-          },
-          {
-            "key": "latency_ms",
-            "header": "Duration"
-          },
-          {
-            "key": "cost_tier_name",
-            "header": "Route tier"
-          },
-          {
-            "key": "actual_score",
-            "header": "Quality score"
-          },
-          {
-            "key": "correlation_id",
-            "header": "Run"
+            "key": "pct_of_total",
+            "header": "Share of runs"
           }
         ],
         "page_size": 10,
-        "show_pagination": false,
-        "default_sort_key": "written_at",
-        "default_sort_direction": "desc"
+        "show_pagination": false
       }
     },
     {
       "widget_id": "92d0d8ce-8d52-447e-8511-8cb1269c0112",
       "title": "Tier mix",
-      "row": 16,
-      "col": 8,
-      "width": 4,
+      "row": 17,
+      "col": 0,
+      "width": 12,
       "height": 5,
       "data_source": "overview-tier-mix",
       "config": {
@@ -308,60 +139,6 @@
         ],
         "page_size": 10,
         "show_pagination": false
-      }
-    },
-    {
-      "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20009a1c0c01",
-      "title": "Run locally",
-      "row": 21,
-      "col": 0,
-      "width": 4,
-      "height": 2,
-      "data_source": "overview-run-locally",
-      "config": {
-        "config_kind": "metric_card",
-        "widget_type": "metric_card",
-        "metric_key": "by_tier.local_call_share",
-        "label": "Run locally",
-        "unit": "share of runs",
-        "format": "percent",
-        "precision": 1
-      }
-    },
-    {
-      "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20009a1c0c02",
-      "title": "Avg saving / call",
-      "row": 21,
-      "col": 4,
-      "width": 4,
-      "height": 2,
-      "data_source": "overview-avg-saving-per-call",
-      "config": {
-        "config_kind": "metric_card",
-        "widget_type": "metric_card",
-        "metric_key": "savings_per_measured_run_usd",
-        "label": "Avg saving / call",
-        "unit": "USD",
-        "format": "currency",
-        "precision": 6
-      }
-    },
-    {
-      "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20752a1c0c01",
-      "title": "Baseline spend",
-      "row": 21,
-      "col": 8,
-      "width": 4,
-      "height": 2,
-      "data_source": "overview-baseline-spend",
-      "config": {
-        "config_kind": "metric_card",
-        "widget_type": "metric_card",
-        "metric_key": "counterfactual_usd",
-        "label": "Baseline spend",
-        "unit": "USD",
-        "format": "currency",
-        "precision": 4
       }
     },
     {
@@ -406,40 +183,6 @@
       }
     },
     {
-      "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20226a1c0c01",
-      "title": "Compression",
-      "row": 23,
-      "col": 0,
-      "width": 6,
-      "height": 2,
-      "data_source": "overview-compression",
-      "config": {
-        "config_kind": "metric_card",
-        "widget_type": "metric_card",
-        "metric_key": "compression_ratio",
-        "label": "Compression",
-        "format": "number",
-        "precision": 2
-      }
-    },
-    {
-      "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20226a1c0c02",
-      "title": "Cache hit rate",
-      "row": 23,
-      "col": 6,
-      "width": 6,
-      "height": 2,
-      "data_source": "overview-cache-hit-rate",
-      "config": {
-        "config_kind": "metric_card",
-        "widget_type": "metric_card",
-        "metric_key": "cache_hit_rate",
-        "label": "Cache hit rate",
-        "format": "number",
-        "precision": 3
-      }
-    },
-    {
       "widget_id": "21166a0e-5c3b-4e1f-9d2a-0f7c1b8e2a61",
       "title": "Trends and breakdowns",
       "row": 6,
@@ -474,22 +217,6 @@
         ],
         "page_size": 25,
         "show_pagination": false
-      }
-    },
-    {
-      "widget_id": "d81c24c4-7d91-4e64-8657-0f36916ea6a3",
-      "title": "Environment",
-      "row": 25,
-      "col": 0,
-      "width": 12,
-      "height": 4,
-      "data_source": "overview-environment",
-      "config": {
-        "config_kind": "status_grid",
-        "widget_type": "status_grid",
-        "columns": 3,
-        "show_labels": true,
-        "compact": false
       }
     }
   ]

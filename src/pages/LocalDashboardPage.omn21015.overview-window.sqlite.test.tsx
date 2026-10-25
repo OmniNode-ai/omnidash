@@ -7,7 +7,8 @@
 // Failure modes, each with a test below:
 //   W1  the tiles do not change with the switch (the criterion's falsifier)
 //   W2  a today figure is summed or derived in the browser instead of read from today's row
-//   W3  a day with no runs shows 0, or another day's row, instead of saying it is not measured
+//   W3  a day with no runs shows another day's row, or reads Not measured, instead of the zero it is (Lakshman,
+//       live review 2026-10-25: a UTC day with no served day row ran nothing; "instead of not measured say 0")
 //   W4  "today" is taken from the reader's local date rather than the UTC date
 //   W5  after a baseline change two rows exist for today and one is picked silently, or the older one is shown
 //   W6  one card moves to today while another on the same page stays on all time, so the figures disagree
@@ -108,30 +109,28 @@ describe('OMN-21015 AC7: the Overview tiles switch between today (UTC) and all t
     expect(figure('Savings')).toBe('$1.20');
   });
 
+  // OMN-21166 live review 2026-10-25: the secondary metrics left Overview, so the four headline cards are the page's
+  // metering cards.
   it('W6: every metering card on the page moves to the same window', async () => {
     await open('overview', [ALL_ROW, YESTERDAY_ROW, TODAY_ROW]);
-    fireEvent.click(screen.getByText('Additional runtime metrics', { selector: 'summary' }));
     chooseWindow('today');
-    expect(figure('Baseline spend')).toBe('$1.90');
-    expect(figure('Avg saving / call')).toBe('$0.40');
-    expect(caption('Avg saving / call')).toContain('Over 3 measured runs');
+    expect(['Actual spend', 'Savings', 'Agent calls', 'Tokens processed'].map(figure)).toEqual(['$0.70', '$1.20', '3', '834']);
   });
 
   it('W7: all time comes back when chosen again', async () => {
     await open('overview', [ALL_ROW, YESTERDAY_ROW, TODAY_ROW]);
     chooseWindow('today');
     chooseWindow('all');
-    fireEvent.click(screen.getByText('Additional runtime metrics', { selector: 'summary' }));
-    expect(figure('Actual spend')).toBe('$12.30');
-    expect(figure('Avg saving / call')).toBe('$0.13');
+    expect(['Actual spend', 'Savings', 'Agent calls', 'Tokens processed'].map(figure)).toEqual(['$12.30', '$2.99', '23', '6.13K']);
   });
 
-  it("W3: a day with no runs says so, and shows neither 0 nor yesterday's figures", async () => {
+  it("W3: a day with no runs is that day's zero, says so, and never shows yesterday's figures", async () => {
     await open('overview', [ALL_ROW, YESTERDAY_ROW]);
     chooseWindow('today');
-    fireEvent.click(screen.getByText('Additional runtime metrics', { selector: 'summary' }));
-    for (const title of ['Actual spend', 'Savings', 'Agent calls', 'Tokens processed', 'Avg saving / call']) {
-      expect(figure(title)).toBe('Not measured: daily metering data unavailable (UTC)');
+    expect(['Actual spend', 'Savings', 'Agent calls', 'Tokens processed'].map(figure)).toEqual(['$0.00', '$0.00', '0', '0']);
+    expect(screen.getAllByText('No runs today (UTC)').length).toBeGreaterThan(0);
+    for (const title of ['Actual spend', 'Savings', 'Agent calls', 'Tokens processed']) {
+      expect(figure(title)).not.toMatch(/10\.00|5\.3K|20|2\.00/);
     }
   });
 

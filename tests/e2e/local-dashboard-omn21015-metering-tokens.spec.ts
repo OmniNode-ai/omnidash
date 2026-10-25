@@ -17,7 +17,9 @@ for (const theme of ['light', 'dark']) {
     await serveCharts(page, { ...chartRows, [prefix+'usage-by-model-day.v1']: [],
       [prefix+'metering-summary.v1']: [context, ...days] });
     await page.goto('/usage');
-    const panel = page.locator('[data-component="usage-tokens-by-day"]');
+    // OMN-21166 Maple grid: the token panel is drawn twice (the page's chart, and the detail under "More usage"); with no
+    // model rows both draw the daily metering totals, so the page's own panel is the one with no data-slice.
+    const panel = page.locator('[data-component="usage-tokens-by-day"]:not([data-slice])');
     await expect(panel.getByRole('figure', { name: 'Daily metering token totals' })).toBeVisible();
     await expect(panel).toContainText('Daily metering totals');
     await expect(panel).toContainText('Model breakdown unavailable');
@@ -49,7 +51,8 @@ test('daily totals retain measured zero and an independently unrecorded directio
   await serveCharts(page, { ...chartRows, [prefix+'usage-by-model-day.v1']: [],
     [prefix+'metering-summary.v1']: [context, { ...days[8], tokens_in: 0, tokens_out: null, runs_unknown_tokens: null }] });
   await page.goto('/usage');
-  const panel = page.locator('[data-component="usage-tokens-by-day"]');
+  // OMN-21166 Maple grid: the page's own token panel (the detail under "More usage" repeats it).
+  const panel = page.locator('[data-component="usage-tokens-by-day"]:not([data-slice])');
   const bar = panel.getByRole('button', { name: /Oct 22: 0 in, not recorded out/ });
   await expect(bar).toBeVisible();
   expect(await bar.locator('[data-field-tone="tokens-in"]').evaluate(el => el.getBoundingClientRect().height)).toBe(0);
@@ -66,7 +69,8 @@ test('shortened daily data clamps old pagination so one Next returns to the late
     [prefix+'metering-summary.v1']: [context, ...many] };
   await serveCharts(page, served);
   await page.goto('/usage');
-  const panel = page.locator('[data-component="usage-tokens-by-day"]');
+  // OMN-21166 Maple grid: the page's own token panel (the detail under "More usage" repeats it).
+  const panel = page.locator('[data-component="usage-tokens-by-day"]:not([data-slice])');
   const previous = panel.getByRole('button', { name: 'Previous token days' });
   await expect(previous).toBeEnabled();
   for (let i = 0; i < 8; i++) await previous.click();
@@ -84,7 +88,13 @@ test('served model/day rows retain their own series rather than being replaced b
     { usage_day: '2026-10-22', model_id: 'model-primary', input_tokens: 17, output_tokens: 3 },
   ], [prefix+'metering-summary.v1']: [context, ...days] });
   await page.goto('/usage');
-  const panel = page.locator('[data-component="usage-tokens-by-day"]');
-  await expect(panel.getByRole('figure', { name: 'Tokens by model and day' })).toBeVisible();
+  // OMN-21166 Maple grid: served model/day rows draw the page's stacked per-day chart; the per-model day list
+  // ("Tokens by model and day") is the detail under "More usage". Neither is replaced by the metering totals.
+  const panel = page.locator('[data-component="usage-tokens-by-day"]:not([data-slice])');
+  const detail = page.locator('[data-component="usage-tokens-by-day"][data-slice="detail"]');
+  await expect(panel.getByRole('figure', { name: 'Tokens in per day by model' })).toBeVisible();
   await expect(panel.getByRole('figure', { name: 'Daily metering token totals' })).toHaveCount(0);
+  await page.locator('summary').filter({ hasText: /^More usage$/ }).click();
+  await expect(detail.getByRole('figure', { name: 'Tokens by model and day' })).toBeVisible();
+  await expect(detail.getByRole('figure', { name: 'Daily metering token totals' })).toHaveCount(0);
 });

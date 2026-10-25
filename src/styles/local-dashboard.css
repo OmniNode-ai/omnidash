@@ -1654,8 +1654,11 @@ figure.local-chart.usage-insight { min-width: 0; margin: 0; padding: 14px; }
 [data-theme="dark"] .local-dashboard-panel[data-component="overview-savings"] { --panel-accent: var(--field-savings); }
 [data-theme="dark"] .local-dashboard-panel[data-component="overview-measured"] { --panel-accent: var(--field-calls); }
 [data-theme="dark"] .local-dashboard-panel[data-component="overview-tokens"] { --panel-accent: var(--field-tokens); }
-.local-dashboard-panel[data-component="overview-environment"] { --panel-accent: var(--field-host); }
-[data-theme="dark"] .local-dashboard-panel[data-component="overview-environment"] { --panel-accent: var(--field-host); }
+.local-dashboard-panel[data-component="overview-environment"], .local-dashboard-panel[data-component="api-keys-environment"] { --panel-accent: var(--field-host); }
+[data-theme="dark"] .local-dashboard-panel[data-component="overview-environment"], [data-theme="dark"] .local-dashboard-panel[data-component="api-keys-environment"] { --panel-accent: var(--field-host); }
+/* OMN-21166 live review 2026-10-25: Model usage (runs by model) has its own accent, apart from Tier mix's cyan. */
+.local-dashboard-panel[data-component="overview-model-usage"] { --panel-accent: #6D28D9; }
+[data-theme="dark"] .local-dashboard-panel[data-component="overview-model-usage"] { --panel-accent: #A78BFA; }
 .local-dashboard-panel[data-component="overview-quality"] { --panel-accent: #0F766E; }
 [data-theme="dark"] .local-dashboard-panel[data-component="overview-quality"] { --panel-accent: #2DD4BF; }
 .local-dashboard-panel[data-component="overview-last-run"] { --panel-accent: #BE185D; }

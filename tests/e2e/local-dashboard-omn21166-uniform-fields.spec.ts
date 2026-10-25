@@ -14,25 +14,34 @@ test.use({ viewport: { width: 1440, height: 900 }, trace: 'on' });
 
 test('matching fields retain one distinct color across Overview, Workflow and Evidence', async ({ page }, info) => {
   await serveCharts(page, rows);
+  // OMN-21166 AC86 (Lakshman 2026-10-25): Last run is deleted from Overview, so the Model identity is read from the
+  // Workflow run summary; the token identities still come from Overview's Tokens per day legend.
+  // OMN-21166 live review 2026-10-25 + seven-page look: values (dd, .v) are set in ink; a field's identity colour is
+  // carried by its icon, so the cross-page match is checked on the icon colour and the values must agree in ink.
+  await page.goto('/workflow?correlation_id=chart-run-a');
+  const icon = (label: string) => color(page.locator(`[data-summary-field="${label}"] dt svg`));
+  const modelColor = await icon('Model');
   await page.goto('/overview');
-  const last = page.getByRole('region', { name: 'Last run', exact: true });
   const daily = page.getByRole('figure', { name: 'Tokens per day', exact: true });
-  const original = await Promise.all([color(last.locator('[data-field="Model"] dd')), color(daily.locator('.ins-token-legend [data-field-tone="tokens-in"]')), color(daily.locator('.ins-token-legend [data-field-tone="tokens-out"]'))]);
+  const original = [modelColor, ...await Promise.all([color(daily.locator('.ins-token-legend [data-field-tone="tokens-in"]')), color(daily.locator('.ins-token-legend [data-field-tone="tokens-out"]'))])];
   expect(new Set(original).size).toBe(3);
   await page.goto('/workflow?correlation_id=chart-run-a');
+  const inkValues: string[] = [];
   for (const [index, label] of ['Model', 'Tokens in', 'Tokens out'].entries()) {
-    await expect(page.locator(`[data-summary-field="${label}"] dd`)).toHaveCSS('color', original[index]);
+    await expect(page.locator(`[data-summary-field="${label}"] dt svg`)).toHaveCSS('color', original[index]);
+    inkValues.push(await color(page.locator(`[data-summary-field="${label}"] dd`)));
   }
   await expect(page.locator('[data-summary-field="Quality score"] dd')).toHaveText('0.987654');
   await page.goto('/delegation-evidence');
   const selected = page.locator('.panel').filter({ has: page.getByRole('heading', { name: 'Selected run', exact: true }) });
-  const model = selected.locator('.kv > div').filter({ has: page.getByText('Model', { exact: true }) }).locator('.v');
-  await expect(model).toHaveText('model-a');
-  await expect(model).toHaveCSS('color', original[0]);
+  const field = (name: string) => selected.locator('.kv > div').filter({ has: page.getByText(name, { exact: true }) });
+  await expect(field('Model').locator('.v')).toHaveText('model-a');
+  await expect(field('Model').locator('.k svg')).toHaveCSS('color', original[0]);
+  await expect(field('Model').locator('.v')).toHaveCSS('color', inkValues[0]);
   for (const [index, label] of ['Tokens in', 'Tokens out'].entries()) {
-    const value = selected.locator('.kv > div').filter({ has: page.getByText(label, { exact: true }) }).locator('.v');
-    await expect(value).toHaveText(index === 0 ? '162' : '52');
-    await expect(value).toHaveCSS('color', original[index + 1]);
+    await expect(field(label).locator('.v')).toHaveText(index === 0 ? '162' : '52');
+    await expect(field(label).locator('.k svg')).toHaveCSS('color', original[index + 1]);
+    await expect(field(label).locator('.v')).toHaveCSS('color', inkValues[index + 1]);
   }
   await page.screenshot({ path: info.outputPath('uniform-evidence.png') });
 });
@@ -72,7 +81,9 @@ test('shared field colors stay readable in both themes with phone-safe expanded 
       if (await page.locator('html').getAttribute('data-theme') !== theme) await page.getByRole('button', { name: 'Toggle theme' }).click();
       await page.setViewportSize({ width: 390, height: 844 });
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
-      const contrasts = await page.locator('[data-field-tone] > dt, [data-field-tone] > dd, [data-field-tone] > .k, [data-field-tone] > .v').evaluateAll(els => {
+      // OMN-21166 live review 2026-10-25: Overview has no dt/dd fields now; its tone-coloured text is the Tokens per day
+      // legend and readout, so those are measured too.
+      const contrasts = await page.locator('[data-field-tone] > dt, [data-field-tone] > dd, [data-field-tone] > .k, [data-field-tone] > .v, .ins-token-legend > [data-field-tone], .ins-readout > [data-field-tone]').evaluateAll(els => {
         const canvas = document.createElement('canvas'); canvas.width = canvas.height = 1;
         const ctx = canvas.getContext('2d')!;
         const rgb = (s: string) => { ctx.clearRect(0, 0, 1, 1); ctx.fillStyle = s; ctx.fillRect(0, 0, 1, 1); return [...ctx.getImageData(0, 0, 1, 1).data]; };

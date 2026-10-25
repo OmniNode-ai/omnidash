@@ -303,28 +303,13 @@ describe('local pages against the captured lab catalogue', () => {
     expect(page.dashboard.widgets.filter(w => (w.config as Record<string, unknown>).config_kind === 'metric_card').map(w => (w.config as Record<string, unknown>).metric_key)).toEqual([
       // OMN-21166 AC37: Agent calls is every call (run_count); the measured count is its labelled breakdown.
       'total_cost_usd', 'total_savings_usd', 'run_count', 'tokens_total',
-      'by_tier.local_call_share', 'savings_per_measured_run_usd', 'counterfactual_usd', 'compression_ratio', 'cache_hit_rate',
     ]);
-    // D2 keeps these exact secondary bindings on Overview; DOM suites open
-    // Additional runtime metrics and require the native disclosure to be open.
-    for (const [id, topic, fields] of [
-      ['overview-run-locally', 'delegation.model-routing.v1', ['by_tier']],
-      ['overview-avg-saving-per-call', 'metering-summary.v1', ['window_kind', 'as_of', 'savings_per_measured_run_usd']],
-      ['overview-baseline-spend', 'metering-summary.v1', ['window_kind', 'as_of', 'baseline_model', 'pricing_manifest_version', 'baseline_state', 'counterfactual_usd']],
-      ['overview-compression', 'metering-summary.v1', ['window_kind', 'as_of', 'compression_ratio']],
-      ['overview-cache-hit-rate', 'metering-summary.v1', ['window_kind', 'as_of', 'cache_hit_rate']],
-    ] as const) {
-      const bindings = page.components.find(c => c.component_id === id)?.data_bindings;
-      expect(bindings).toHaveLength(1);
-      expect(bindings?.[0]?.projection_topic).toBe(`onex.snapshot.projection.${topic}`);
-      expect(bindings?.[0]?.required_fields).toEqual(fields);
-    }
-    // Existing routing/quality/run sources and metering-dependent daily panels remain declared.
+    // OMN-21166 live review 2026-10-25: Lakshman deleted the secondary metrics, Spend per day, Last run, Recent runs and
+    // Environment from Overview (Environment moved to API Keys). Overview declares its cards, quality, the activity
+    // charts' decisions and the tier mix; the cards switch to metering-summary.v1 at run time (OMN-19980).
     expect(new Set(page.components.flatMap(c=>(c.data_bindings??[]).map(b=>b.projection_topic)))).toEqual(new Set([
-      'onex.snapshot.projection.cost.savings-overview.v1','onex.snapshot.projection.metering-summary.v1',
-      'onex.snapshot.projection.delegation.savings.v1','onex.snapshot.projection.delegation.decisions.v1',
-      'onex.snapshot.projection.delegation.quality-gate.v1','onex.snapshot.projection.delegation.model-routing.v1',
-      'onex.snapshot.projection.local-environment.v1',
+      'onex.snapshot.projection.cost.savings-overview.v1', 'onex.snapshot.projection.delegation.decisions.v1',
+      'onex.snapshot.projection.delegation.quality-gate.v1', 'onex.snapshot.projection.delegation.model-routing.v1',
     ]));
   });
 
@@ -347,27 +332,8 @@ describe('local pages against the captured lab catalogue', () => {
 describe('Amendment 5: last run, recent runs and run status from delegation decisions', () => {
   const DECISIONS = 'onex.snapshot.projection.delegation.decisions.v1';
   const SAVINGS = 'onex.snapshot.projection.delegation.savings.v1';
-  const decisionFields = [
-    'correlation_id', 'written_at', 'quality_gate_passed', 'quality_gate_detail', 'model_name',
-    'latency_ms', 'tokens_input', 'tokens_output', 'task_type', 'cost_tier_name',
-  ];
 
-  it.each([['overview-last-run', 1], ['overview-recent-runs', 10]] as const)(
-    'Overview %s reads decisions, newest first by written_at, with its cost from the savings session (OV-4, OV-5)',
-    (componentId, pageSize) => {
-      const page = readPage('overview');
-      const component = page.components.find((c) => c.component_id === componentId);
-      const [first, second] = component?.data_bindings ?? [];
-      expect(first?.projection_topic).toBe(DECISIONS);
-      expect(first?.ordering_authority_field).toBe('written_at');
-      expect(first?.ordering_direction).toBe('descending');
-      expect(first?.required_fields).toEqual(expect.arrayContaining(decisionFields));
-      expect(second?.projection_topic).toBe(SAVINGS);
-      expect(second?.required_fields).toEqual(expect.arrayContaining(['sessions', 'session_id', 'local_cost_usd']));
-      const widget = page.dashboard.widgets.find((w) => w.data_source === componentId);
-      expect((widget?.config as Record<string, unknown>).page_size).toBe(pageSize);
-    },
-  );
+  // OMN-21166 live review 2026-10-25: Overview no longer has Last run or Recent runs; Runs' list carries OV-4/OV-5.
 
   it('Runs rows come from decisions, not from the savings lookup (Amendment 6, F28)', () => {
     const runs = readPage('runs');
@@ -404,8 +370,6 @@ describe('Amendment 5: last run, recent runs and run status from delegation deci
 describe('OMN-20225: run rows carry verdict, backend, host and tier; Overview gains quality and tier-mix panels', () => {
   const runBindings = [
     ['runs', 'recent-runs', 'runs-decisions'],
-    ['overview', 'overview-last-run', 'overview-last-run-decisions'],
-    ['overview', 'overview-recent-runs', 'overview-recent-runs-decisions'],
     ['workflow', 'workflow-run-path', 'workflow-run-path-decisions'],
   ] as const;
 
@@ -419,7 +383,8 @@ describe('OMN-20225: run rows carry verdict, backend, host and tier; Overview ga
   });
 
   it('Runs and Overview recent runs show a Host column beside Backend (AC2)', () => {
-    for (const [pageName, componentId] of [['runs', 'recent-runs'], ['overview', 'overview-recent-runs']] as const) {
+    // OMN-21166 live review 2026-10-25: Overview's recent runs were deleted; Runs keeps the Host column.
+    for (const [pageName, componentId] of [['runs', 'recent-runs']] as const) {
       const widget = readPage(pageName).dashboard.widgets.find((w) => w.data_source === componentId);
       const keys = ((widget?.config as { columns?: Array<{ key: string }> }).columns ?? []).map((c) => c.key);
       expect(keys.indexOf('host'), componentId).toBe(keys.indexOf('backend') + 1);
@@ -585,10 +550,10 @@ describe('Amendment 6: the six local pages and the loader', () => {
       mode: 'http',
       availableTopics: new Set(['onex.snapshot.projection.delegation.decisions.v1', 'onex.snapshot.projection.delegation.savings.v1']),
     });
-    // OMN-19980 Amendment 2: the headline cards' exposure is the one Overview topic this census leaves out.
-    const metering = snapshots.find((s) => s.topic === 'onex.snapshot.projection.metering-summary.v1');
-    expect(metering?.failure).toEqual({ kind: 'not-served', message: 'Not served: onex.snapshot.projection.metering-summary.v1' });
+    // OMN-21166 live review 2026-10-25: the tier mix's exposure is one Overview topic this census leaves out.
+    const routing = snapshots.find((s) => s.topic === 'onex.snapshot.projection.delegation.model-routing.v1');
+    expect(routing?.failure).toEqual({ kind: 'not-served', message: 'Not served: onex.snapshot.projection.delegation.model-routing.v1' });
     expect(snapshots.find((s) => s.topic === 'onex.snapshot.projection.delegation.decisions.v1')?.failure).toBeUndefined();
-    expect(source.readSnapshot).not.toHaveBeenCalledWith('onex.snapshot.projection.metering-summary.v1');
+    expect(source.readSnapshot).not.toHaveBeenCalledWith('onex.snapshot.projection.delegation.model-routing.v1');
   });
 });

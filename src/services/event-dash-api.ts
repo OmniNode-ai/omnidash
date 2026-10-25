@@ -81,6 +81,9 @@ function asString(v: unknown): string | null {
 }
 
 function asFreshness(v: unknown): ProjectionFreshness {
+  // "idle" is the API's word for a fresh cache whose source has gone quiet (protocol-snapshot-source.ts): a current
+  // read, so it is fresh, not stale (OMN-21166, 2026-10-25).
+  if (v === "idle") return "fresh";
   return v === "fresh" || v === "stale" || v === "degraded" ? v : "unknown";
 }
 

@@ -68,11 +68,6 @@ function figure(title: string): string {
   return article.querySelector('.local-dashboard-metric')?.textContent ?? '';
 }
 
-function caption(title: string): string {
-  const article = screen.getByRole('heading', { name: title }).closest('article');
-  return article?.querySelector('.local-dashboard-caption')?.textContent ?? '';
-}
-
 // OMN-21166: the window is a two-button switch.
 const chooseWindow = (value: 'all' | 'today') =>
   fireEvent.click(screen.getByRole('radio', { name: value === 'today' ? 'Today (UTC)' : 'All time' }));
@@ -100,12 +95,12 @@ describe('OMN-21015 AC7: the Overview tiles switch between today (UTC) and all t
     expect(figure('Savings')).toBe(DAILY_UNAVAILABLE);
   });
 
-  it('W6: secondary all-time metrics remain in the Overview disclosure', async () => {
+  // OMN-21166 live review 2026-10-25: the secondary metrics left Overview ("delete them"); the four headline cards
+  // are its metering cards, and all time shows each one's all-time figure.
+  it('W6: the headline cards all read all time together', async () => {
     await open('overview', [ALL_ROW, YESTERDAY_ROW, TODAY_ROW]);
-    fireEvent.click(screen.getByText('Additional runtime metrics', { selector: 'summary' }));
-    expect(figure('Baseline spend')).toBe('$15.29');
-    expect(figure('Avg saving / call')).toBe('$0.13');
-    expect(caption('Avg saving / call')).toContain('Over 23 measured runs');
+    expect(screen.queryByText('Additional runtime metrics')).toBeNull();
+    expect(figure('Actual spend')).toBe('$12.30');
   });
 
   it('W7: all time comes back when chosen again', async () => {

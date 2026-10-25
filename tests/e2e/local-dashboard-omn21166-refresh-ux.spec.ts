@@ -8,23 +8,27 @@ test('slow quality data recovers immediately after the five-second notice',async
  await serveCharts(page);let release!:()=>void;const gate=new Promise<void>(r=>release=r);
  await page.route('**/projection/'+quality,async route=>{await gate;await route.fulfill({contentType:'application/json',body:JSON.stringify({rows:chartRows[quality],row_count:1,data_freshness:'fresh'})});});
  await page.goto('/overview');const panel=page.locator('[data-component="overview-quality"]');
+ // OMN-21166 live review 2026-10-25: Quality is the "Delegation Quality" card; its served pass rate (.75) is the figure and its
+ // served counts (6 of 8 runs) are in its hover, so those replace the deleted "Checks" detail row.
  await expect(panel.getByText('Quality data is taking longer than expected.',{exact:true})).toBeVisible({timeout:8000});
  const details=panel.locator('details');await expect(details).not.toHaveAttribute('open','');
  await expect(panel.getByText('No answer within 5 seconds.',{exact:false})).toBeHidden();
  await page.screenshot({path:info.outputPath('quality-friendly-slow.png')});release();
  await expect(panel.locator('[role="alert"]')).toHaveCount(0,{timeout:3000});
- await expect(panel.getByText('Checks',{exact:true}).locator('..')).toContainText('8');
+ await expect(panel.locator('.local-dashboard-metric')).toHaveText('75.0%');
  await page.screenshot({path:info.outputPath('quality-late-recovered.png')});
 });
 test('failed refresh keeps saved values and supports retry with technical details',async({page},info)=>{
  await serveCharts(page);let fail=false;
  await page.route('**/projection/'+quality,route=>route.fulfill(fail?{status:503,body:'Service unavailable'}:{contentType:'application/json',body:JSON.stringify({rows:chartRows[quality],row_count:1,data_freshness:'fresh'})}));
  await page.goto('/overview');const panel=page.locator('[data-component="overview-quality"]');
- await expect(panel.getByText('Checks',{exact:true}).locator('..')).toContainText('8');
+ // OMN-21166 live review 2026-10-25: Quality is the "Delegation Quality" card; its served pass rate (.75) is the figure and its
+ // served counts (6 of 8 runs) are in its hover, so those replace the deleted "Checks" detail row.
+ await expect(panel.locator('.local-dashboard-metric')).toHaveText('75.0%');
  fail=true;await page.getByRole('button',{name:'Refresh',exact:true}).click();
  await expect(panel.getByText('Quality data couldn’t refresh.',{exact:true})).toBeVisible();
  await expect(panel.getByText(/Showing saved data from/)).toBeVisible();
- await expect(panel.getByText('Checks',{exact:true}).locator('..')).toContainText('8');
+ await expect(panel.locator('.local-dashboard-metric')).toHaveText('75.0%');
  await panel.getByText('Technical details',{exact:true}).click();
  await expect(panel.getByText('The data could not be read (HTTP 503',{exact:false})).toBeVisible();
  fail=false;await panel.getByRole('button',{name:'Try again',exact:true}).click();

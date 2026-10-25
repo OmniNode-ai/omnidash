@@ -182,7 +182,7 @@ describe('OMN-21015 U2: the spend chart on the page', () => {
   it('G13: a place off the palette, or none, leaves a series the colour of its own place', () => {
     render(<SpendByDayChart columns={COLUMNS} rows={[day('2026-10-12')]} />);
     const byPlace = options().at(-1)!.series.map((series: any) => series.itemStyle.color);
-    for (const odd of [[0, 5, 2.5], ['3' as unknown as number], []]) {
+    for (const odd of [[0, 6, 2.5], ['3' as unknown as number], []]) {
       render(<SpendByDayChart columns={COLUMNS} rows={[day('2026-10-12')]} colourPlaces={odd} />);
       expect(options().at(-1)!.series.map((series: any) => series.itemStyle.color)).toEqual(byPlace);
     }

@@ -10,8 +10,17 @@ for (const route of ['/overview', '/runs']) {
   test(`routing disclosure uses its native marker and remains operable on ${route}`, async ({ page }, info) => {
     await serveCharts(page);
     await page.goto(route);
+    if (route === '/overview') {
+      // OMN-21166 Maple grid: Overview's Tier mix is ranked bars with a link; the full routing breakdown disclosure
+      // lives on Runs, so Overview has none of its own and reaches it through that link.
+      await expect(page.locator('summary').filter({ hasText: 'Full routing breakdown' })).toHaveCount(0);
+      await page.getByRole('link', { name: /View routing breakdown/ }).click();
+      await expect(page).toHaveURL(/\/runs/);
+    }
+    // OMN-21166 part 13: Runs keeps the routing breakdown inside its closed page-level "More analysis".
+    await page.locator('summary').filter({ hasText: /^More analysis$/ }).click();
     const summary = page.locator('summary').filter({ hasText: 'Full routing breakdown' });
-    const details = page.locator('details').filter({ has: summary });
+    const details = page.locator('details.local-routing-details').filter({ has: summary });
     await expect(summary).toHaveCount(1);
     await expect(details).toHaveCount(1);
     await expect(details).not.toHaveAttribute('open');

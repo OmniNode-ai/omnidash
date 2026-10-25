@@ -66,14 +66,24 @@ test('OMN-19985: Credentials lists each key ref with its fingerprint and set tim
   await serve(page, { [CREDENTIALS]: rows });
   await openCredentials(page);
 
-  const table = page.locator('table').filter({ has: page.getByRole('columnheader', { name: 'Fingerprint' }) });
-  await expect(table.getByRole('columnheader')).toHaveText(['Provider', 'Key ref', 'Fingerprint', 'Set', 'Revoked']);
+  // OMN-21166 part 13/part 10/AC60: the keys in use are in view; the revoked one is under "Show key history (1 revoked)".
+  // The table gained Expires and Bound host columns, and times read as "Oct 7, 07:35:00 UTC" with the served value kept
+  // in the <time> element (datetime and title).
+  const table = page.getByRole('table', { name: 'Provider key references', exact: true });
+  await expect(table.getByRole('columnheader')).toHaveText(['Provider', 'Key ref', 'Fingerprint', 'Set', 'Revoked', 'Expires', 'Bound host']);
   const live = table.getByRole('row').filter({ hasText: '89abcdef' });
   await expect(live.getByRole('cell')).toHaveText([
-    'openrouter', 'llm.openrouter.api_key', '89abcdef', '2026-10-07T07:35:00+00:00', 'Not revoked',
+    'openrouter', 'llm.openrouter.api_key', '89abcdef', 'Oct 7, 07:35:00 UTC', 'Not revoked', 'No expiry recorded', 'Not recorded',
   ]);
-  const revoked = table.getByRole('row').filter({ hasText: '0123abcd' });
-  await expect(revoked.getByRole('cell').last()).toHaveText('2026-10-07T07:35:00+00:00');
+  await expect(live.locator('td[data-label="Set"] time')).toHaveAttribute('datetime', '2026-10-07T07:35:00+00:00');
+  await expect(live.locator('td[data-label="Set"] time')).toHaveAttribute('title', '2026-10-07T07:35:00+00:00');
+  await expect(table.getByRole('row').filter({ hasText: '0123abcd' })).toHaveCount(0);
+  const history = page.getByText('Show key history (1 revoked)', { exact: true });
+  await history.press('Enter');
+  const revokedTable = page.getByRole('table', { name: 'Revoked key references', exact: true });
+  const revoked = revokedTable.getByRole('row').filter({ hasText: '0123abcd' });
+  await expect(revoked.locator('td[data-label="Revoked"]')).toHaveText('Oct 7, 07:35:00 UTC');
+  await expect(revoked.locator('td[data-label="Revoked"] time')).toHaveAttribute('datetime', '2026-10-07T07:35:00+00:00');
 
   await expect(page.getByText(PLANTED)).toHaveCount(0);
   expect(await page.content()).not.toContain(PLANTED);

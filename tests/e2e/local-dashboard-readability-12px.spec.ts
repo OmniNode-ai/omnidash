@@ -84,7 +84,8 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
       await expect(page.locator('main')).not.toHaveAttribute('aria-busy', 'true');
       await expect(page.locator('h1')).toBeVisible();
       await expect(page.locator('.main')).not.toContainText(/Dashboard is unavailable|Loading/);
-      if (destination === 'local-overview' || destination === 'local-runs') await revealRunFields(page);
+      // OMN-21166 AC86 (Lakshman 2026-10-25): Recent runs and its field view are deleted from Overview; only Runs has them.
+      if (destination === 'local-runs') await revealRunFields(page);
       if (destination === 'lab') await expect(page.getByTestId('topic-activity-row')).toHaveCount(1);
       // Exercise rendered disclosures, including fields that are hidden at rest.
       for (const disclosure of await page.locator('main details').all()) {

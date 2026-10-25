@@ -2,7 +2,7 @@
 // D1 confirmed by Lakshman2026-10-20: legacy all-row Overview headlines; Today is unavailable.
 // Retain exact values, source conflicts, missing/malformed/zero, timestamp ordering/ties,
 // per-card isolation and transport failure controls. Metering formatter/provenance suites retain their original source.
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const DECISIONS = 'onex.snapshot.projection.delegation.decisions.v1';
@@ -73,20 +73,7 @@ beforeEach(() => {
 afterEach(() => { vi.useRealTimers(); });
 
 describe('OMN-19980 AC2b: a run shows its cost, never a per-run saving', () => {
-  it('B1: Overview Recent runs and Last run show the run\'s cost and no saving', async () => {
-    await open('overview');
-    const recent = panel('Recent runs');
-    fireEvent.click(within(recent).getByText('Show recent run fields', { selector: 'summary' }));
-    expect(headers(recent)).toContain('Cost');
-    expect(headers(recent)).not.toContain('Savings');
-    expect(within(recent).getByText(LOCAL_COST)).toBeInTheDocument();
-    const last = panel('Last run');
-    expect(within(last).getByText(LOCAL_COST)).toBeInTheDocument();
-    for (const scope of [recent, last]) {
-      for (const figure of PER_RUN_SAVINGS_FIGURES) expect(within(scope).queryByText(figure), figure).toBeNull();
-    }
-  });
-
+  // B1 retired with Overview's Recent runs and Last run (OMN-21166 live review 2026-10-25); B2 keeps the Runs list.
   it('B2: Runs shows local cost and the baseline labels, never a baseline price or a saving', async () => {
     await open('runs');
     const runs = panel('Recent runs');
@@ -177,7 +164,8 @@ describe('OMN-19980 AC2c: Overview absence and transport errors remain typed und
   it('C5: a missing saving affects only its card; unrelated baseline state cannot blank the page', async () => {
     served({ [OVERVIEW]: [overviewRow({ total_savings_usd: null, baseline_state: 'unresolved' })] }); await open('overview');
     expect(figure('Savings')).toBe('Not measured'); expect(figure('Actual spend')).toBe('$7.10');
-    expect(within(panel('Last run')).getByText(LOCAL_COST)).toBeInTheDocument();
+    // The rest of the page still draws: the state is this card's, not the page's.
+    expect(screen.getByRole('heading', { name: 'Runs per day' })).toBeInTheDocument();
   });
 });
 

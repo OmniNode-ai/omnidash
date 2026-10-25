@@ -11,27 +11,35 @@ test('compact Overview preserves missing data, quality, chart access and routing
   });
   await page.goto('/overview');
   const summary = page.getByRole('region', { name: 'Runtime summary', exact: true });
-  await expect(summary.getByRole('article')).toHaveCount(4);
+  // OMN-21166 live review 2026-10-25: five headline cards (Delegation Quality is the fifth).
+  await expect(summary.getByRole('article')).toHaveCount(5);
   await expect(summary).toContainText('Not measured: overview totals unavailable');
-  await expect(page.getByRole('meter', { name: 'Quality pass rate' })).toHaveAttribute('aria-valuenow', '0.75');
+  // OMN-21166 AC86 (Lakshman 2026-10-25): the Quality meter is deleted; the same served pass rate is the card's figure.
+  await expect(page.locator('[data-component="overview-quality"][data-slice="card"] .local-dashboard-metric')).toHaveText('75.0%');
   await expect(page.locator('.local-overview-surface')).toBeVisible();
-  const quality = await page.locator('[data-component="overview-quality"]').boundingBox();
-  const latest = await page.locator('[data-component="overview-last-run"]').boundingBox();
-  expect(latest!.y).toBeGreaterThanOrEqual(quality!.y+quality!.height);
+  // OMN-21166 AC86 (Lakshman 2026-10-25): the Last run card and "Additional runtime metrics" are deleted from Overview.
   for (const card of await summary.getByRole('article').all()) {
     expect(await card.evaluate(el => el.getBoundingClientRect().height)).toBeLessThanOrEqual(180);
   }
   await page.getByRole('figure', { name: 'Runs per day', exact: true }).scrollIntoViewIfNeeded();
   await expect(page.getByRole('figure', { name: 'Runs per day', exact: true })).toBeInViewport();
+  // OMN-21166 Maple grid: Overview's tier mix is ranked bars with a keyboard link to the routing breakdown; the routing
+  // table is Runs' "Full routing breakdown" disclosure, under "More analysis".
   const tier = page.locator('[data-component="overview-tier-mix"]');
-  const detail = tier.locator('details');
+  await expect(tier.getByRole('listitem', { name: 'Local: 6 · 75.0%, measured', exact: true })).toBeVisible();
+  await expect(tier.getByRole('link', { name: /View routing breakdown/ })).toHaveAttribute('href', /\/runs/);
+  await page.goto('/runs');
+  await page.getByText('More analysis', { exact: true }).press('Enter');
+  const routing = page.locator('[data-component="runs-tier-mix"]');
+  const detail = routing.locator('details.local-tier-details');
   await expect(detail).not.toHaveAttribute('open', '');
-  await tier.locator('details > summary').press('Enter');
+  await routing.locator('details.local-tier-details > summary').press('Enter');
   await expect(detail).toHaveAttribute('open', '');
-  await expect(tier.getByRole('table')).toContainText('local');
-  await expect(tier.getByRole('table')).toContainText('75.0%');
+  await expect(routing.getByRole('table')).toContainText('Local');
+  await expect(routing.getByRole('table')).toContainText('75.0%');
   await page.screenshot({ path: info.outputPath('overview-routing-expanded.png'), fullPage: true });
-  await tier.locator('details > summary').press('Enter');
+  await routing.locator('details.local-tier-details > summary').press('Enter');
+  await page.goto('/overview');
   for (const theme of ['light', 'dark']) {
     for (const width of [1440, 390, 320]) {
       await page.setViewportSize({ width, height: 900 });

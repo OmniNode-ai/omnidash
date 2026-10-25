@@ -123,8 +123,9 @@ describe('LocalDashboardPage widget states (F26, F27)', () => {
     await settle();
     const spend = screen.getByRole('heading', { name: 'Actual spend' }).closest('article')!;
     expect(within(spend).getByText('Not available yet: savings summary.')).toBeInTheDocument();
-    const lastRun = screen.getByRole('heading', { name: 'Last run' }).closest('article')!;
-    expect(within(lastRun).getByText('run-1')).toBeInTheDocument();
+    // OMN-21166 live review 2026-10-25: Last run left Overview; Runs per day reads the served decisions instead.
+    const runsPerDay = screen.getByRole('heading', { name: 'Runs per day' }).closest('article')!;
+    expect(within(runsPerDay).queryByText(/Not available yet/)).toBeNull();
     expect(screen.queryByRole('alert', { name: /page/i })).not.toBeInTheDocument();
   });
 

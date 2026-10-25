@@ -20,7 +20,7 @@
   border: 0;
   border-radius: 0;
   border-inline-end: 1px solid var(--line);
-  background: transparent;
+  background: var(--panel);
   box-shadow: none;
   padding: 14px 18px 16px;
   min-width: 0;
@@ -194,39 +194,41 @@ main.ev-root .ev-acceptance-checks > li > :first-child, main.ev-root .ev-accepta
 }
 .local-dashboard-page .local-explore-runs:hover { border-color: var(--ink-3); }
 .local-dashboard-page .local-window-options { display: inline-flex; padding: 2px; gap: 2px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); }
-.local-dashboard-page .local-window-options > button {
+.local-dashboard-page .local-window-options button {
   height: 26px; padding: 0 10px; border: 0; border-radius: 5px; background: transparent; color: var(--ink-2); font-size: 12px; font-weight: 500;
 }
-.local-dashboard-page .local-window-options > button[aria-checked="true"] { background: var(--ink); color: var(--panel); }
+.local-dashboard-page .local-window-options button[aria-checked="true"] { background: var(--ink); color: var(--panel); }
 .local-dashboard-page .local-dashboard-filters :is(select, input) {
   min-height: 32px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-size: 13px;
 }
 
-/* Panels: one quiet surface, monochrome icon, compact title row */
+/* Panels: one quiet surface, compact title row; icons keep their identity colour */
 .local-dashboard-page .local-dashboard-panel,
 .local-dashboard-page .local-dashboard-panel:hover,
 main.ev-root[data-destination="delegation-evidence"] :is(.panel, .kpi, .kpi[data-tone]:hover) {
   border: 1px solid var(--line); border-radius: 10px; background: var(--panel); box-shadow: none; transform: none; animation: none;
 }
-.local-dashboard-page .local-dashboard-panel { padding: 14px 16px; }
+/* Hover keeps the resting padding: a panel's content no longer shifts 2px when pointed at (found 2026-10-25). */
+.local-dashboard-page .local-dashboard-panel, .local-dashboard-page .local-dashboard-panel:hover { padding: 14px 16px; }
 .local-dashboard-page .local-dashboard-panel > h2 { margin-bottom: 12px; font-size: 13px; font-weight: 600; color: var(--ink); }
 .local-dashboard-page .local-dashboard-panel > h2 svg,
 .local-dashboard-page .local-section-heading svg,
 .local-dashboard-page .overview-chart-heading svg,
-main.ev-root[data-destination="delegation-evidence"] :is(.ev-panel-icon, .k-l svg) { color: var(--ink-3) !important; width: 15px; height: 15px; }
+main.ev-root[data-destination="delegation-evidence"] :is(.ev-panel-icon, .k-l svg) { width: 15px; height: 15px; }
+/* Icons keep their concept identity colour (OMN-21308 census, AC9/AC10); only their size is set here. */
 .local-dashboard-page .local-dashboard-asof { font-size: 12px; color: var(--ink-3); }
 main.ev-root[data-destination="delegation-evidence"] .panel-h .pt { font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none; }
 
 /* Figures read in the one ink; status keeps its colour (pass, fail) and series keep theirs in charts */
 .local-dashboard-page :is(dd, .local-recent-value, .local-dashboard-metric, .ins-kpi strong, .ins-list-value, .local-share-value, .local-readable),
-main.ev-root[data-destination="delegation-evidence"] :is(.kv .v, .kpi .k-v, .big, .val) { color: var(--ink) !important; }
+main.ev-root[data-destination="delegation-evidence"] :is(.kv .v, .kpi .k-v) { color: var(--ink) !important; }
+/* Evidence's statistics and bar values keep their OMN-21308 concept colours (pass, fail, savings, baseline, cost). */
 .local-dashboard-page :is(dt, .ins-kpi > span, .ins-kpi small),
 main.ev-root[data-destination="delegation-evidence"] :is(.kv .k, .kpi .k-l, .note) { color: var(--ink-3) !important; }
-.local-dashboard-page [data-field-tone="fail"] :is(strong, .ins-list-value), .local-dashboard-page strong[data-field-tone="fail"],
-main.ev-root[data-destination="delegation-evidence"] [data-field-tone="fail"] .big { color: var(--ui-fail) !important; }
-.local-dashboard-page [data-field-tone="pass"] strong, main.ev-root[data-destination="delegation-evidence"] [data-field-tone="pass"] .big { color: var(--ui-pass) !important; }
+.local-dashboard-page [data-field-tone="fail"] :is(strong, .ins-list-value), .local-dashboard-page strong[data-field-tone="fail"] { color: var(--ui-fail) !important; }
+.local-dashboard-page [data-field-tone="pass"] strong { color: var(--ui-pass) !important; }
 .local-dashboard-page [data-field-unavailable="true"] :is(dd, strong), .local-dashboard-page :is(dd, strong)[data-field-unavailable="true"] { color: var(--ink-3) !important; font-weight: 500; }
-.local-dashboard-page dt svg { color: var(--ink-3) !important; }
+/* dt icons keep their field identity colour (OMN-21308). */
 
 /* Run and model identifiers in JetBrains Mono, in ink; links in the link colour */
 .local-dashboard-page :is(.local-model-identity, .local-routing-name.local-model-identity) { font-family: var(--font-mono); font-size: 12px; color: var(--ink) !important; }
@@ -235,6 +237,9 @@ main.ev-root[data-destination="delegation-evidence"] [data-field-tone="fail"] .b
 /* Dense tables */
 .local-dashboard-page table { border-collapse: separate; border-spacing: 0; font-size: 13px; }
 .local-dashboard-page thead th { background: transparent; border-bottom: 1px solid var(--line); padding: 8px 10px; white-space: nowrap; }
+/* A fit table's columns are only as wide as their data, so its headers wrap between words (never inside one): with
+   nowrap, "Quality score" overflowed the all-fields Runs table by 38px and long headers ran into their neighbours. */
+.local-dashboard-page .local-dashboard-table-wrap--fit thead th { white-space: normal; overflow-wrap: normal; word-break: normal; }
 .local-dashboard-page tbody td { padding: 8px 10px; border-bottom: 1px solid var(--line-2); vertical-align: middle; }
 .local-dashboard-page tbody tr:hover > td { background: var(--panel-2); }
 .local-dashboard-page tbody tr:last-child > td { border-bottom: 0; }
@@ -274,7 +279,7 @@ main.ev-root[data-destination="delegation-evidence"] [data-field-tone="fail"] .b
 .local-dashboard-page .local-dashboard-filters button > span:last-child { color: var(--ink-3); font-variant-numeric: tabular-nums; }
 .local-dashboard-page .local-dashboard-filters button[aria-pressed="true"] > span:last-child { color: inherit; opacity: 0.8; }
 .local-dashboard-page .local-dashboard-filters button svg,
-.local-dashboard-page .local-task-cell svg { width: 14px; height: 14px; padding: 0; background: transparent !important; color: var(--ink-3) !important; border-radius: 0; }
+.local-dashboard-page .local-task-cell svg { width: 14px; height: 14px; padding: 0; background: transparent !important; border-radius: 0; }
 .local-dashboard-page .local-dashboard-filters button [class*="icon"],
 .local-dashboard-page .local-task-cell [class*="icon"] { background: transparent !important; padding: 0; }
 .local-dashboard-page h3.local-dashboard-caption { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3); }
@@ -364,7 +369,7 @@ main.ev-root[data-destination="delegation-evidence"] .kv [data-field-tone="model
   font-size: 12px; font-weight: 500; color: var(--ink-3); padding: 2px 0;
 }
 .local-dashboard-page details.local-more > summary::-webkit-details-marker { display: none; }
-.local-dashboard-page details.local-more > summary::before { content: '+'; display: inline-grid; place-items: center; width: 14px; height: 14px; border: 1px solid var(--line); border-radius: 3px; font-size: 11px; line-height: 1; }
+.local-dashboard-page details.local-more > summary::before { content: '+'; display: inline-grid; place-items: center; width: 14px; height: 14px; border: 1px solid var(--line); border-radius: 3px; font-size: 12px; line-height: 1; }
 .local-dashboard-page details.local-more[open] > summary::before { content: '−'; }
 .local-dashboard-page details.local-more > summary:hover, .local-dashboard-page details.local-more > summary:focus-visible { color: var(--ink); }
 .local-dashboard-page details.local-more[open] > :not(summary) { margin-top: 10px; }
@@ -448,7 +453,8 @@ main.ev-root[data-destination="delegation-evidence"] .kv [data-field-tone="model
 
 /* A slice panel draws its chart flat: the panel heading is the chart's title, so the inner card loses its chrome. */
 .local-dashboard-panel[data-slice] .ins-card { border: 0; background: none; box-shadow: none; padding: 0; margin: 0; animation: none; }
-.local-dashboard-panel[data-slice] .ins-card-head h3 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+/* The card's h2 names the chart; the chart's own h3 is kept only as the figure's label, so it is not a second heading. */
+.local-dashboard-panel[data-slice] .ins-card-head h3 { display: none; }
 .local-dashboard-panel[data-slice] .ins-card-head { min-height: 0; margin: 0; }
 .ins-section--slice { display: flex; flex-direction: column; gap: 10px; }
 .ins-slice-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
@@ -497,11 +503,13 @@ main.ev-root[data-destination="delegation-evidence"] .kv [data-field-tone="model
   height: 32px; padding: 0 28px 0 10px; border: 1px solid var(--line); border-radius: 7px; background-color: var(--panel);
   font-size: 13px; color: var(--ink-2); max-width: 220px; min-width: 0; width: auto;
 }
-.local-dashboard-page .local-runs-toolbar .local-filter-clear { height: 32px; padding: 0 10px; font-size: 13px; }
+.local-dashboard-page .local-runs-toolbar .local-filter-clear { min-height: 40px; padding: 0 10px; font-size: 13px; }
 .local-dashboard-page .local-runs-scope { margin: 0 0 10px; font-size: 12px; color: var(--ink-3); }
 .local-dashboard-page .local-runs-toolbar .local-dashboard-filters > .local-filter-field { flex: 0 0 auto; width: auto; min-width: 0; max-width: none; }
 .local-dashboard-page .local-runs-toolbar .local-dashboard-filters > .local-filter-field > select { width: auto; inline-size: auto; max-width: 220px; }
-.local-dashboard-page .local-runs-toolbar { flex-wrap: nowrap; }
+/* The row wraps rather than push Clear filters past the panel edge (seen at 1440 with a filter set, 2026-10-25). */
+.local-dashboard-page .local-runs-toolbar { flex-wrap: wrap; row-gap: 8px; }
+.local-dashboard-page .local-runs-toolbar .local-dashboard-filters { flex-wrap: wrap; row-gap: 8px; }
 .local-dashboard-page .local-runs-toolbar .local-runs-search { flex: 1 1 220px; min-width: 180px; }
 .local-dashboard-page .local-runs-toolbar .local-dashboard-filters { flex: 0 1 auto; flex-wrap: nowrap; min-width: 0; }
 .local-dashboard-page .local-runs-toolbar .local-dashboard-filters > .local-filter-field > select { max-width: 132px; text-overflow: ellipsis; }
@@ -524,12 +532,12 @@ main.ev-root[data-destination="delegation-evidence"] .kv [data-field-tone="model
 .utc-legend i { width: 8px; height: 8px; border-radius: 2px; flex: none; }
 .utc-plot { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(var(--utc-count), minmax(0, 1fr)); gap: 6px; align-items: end; border-bottom: 1px solid var(--line); }
 .utc-plot > li { display: flex; flex-direction: column; align-items: stretch; min-width: 0; position: relative; }
-.utc-value { font-family: var(--font-mono); font-size: 11px; color: var(--ink-3); text-align: center; margin-bottom: 4px; white-space: nowrap; overflow: hidden; }
+.utc-value { font-family: var(--font-mono); font-size: 12px; color: var(--ink-3); text-align: center; margin-bottom: 4px; white-space: nowrap; overflow: hidden; }
 .utc-track { height: 180px; display: flex; align-items: flex-end; }
 .utc-stack { width: 100%; display: flex; flex-direction: column-reverse; border-radius: 3px 3px 0 0; overflow: hidden; min-height: 0; }
 .utc-stack i { display: block; min-height: 1px; }
-.utc-missing { position: absolute; top: 0; right: 0; font-size: 10px; color: var(--ink-3); border: 1px dashed var(--ink-3); border-radius: 3px; padding: 0 2px; }
-.utc-day { position: absolute; top: calc(100% + 6px); left: 0; right: 0; text-align: center; font-size: 11px; color: var(--ink-3); white-space: nowrap; }
+.utc-missing { position: absolute; top: 0; right: 0; font-size: 12px; color: var(--ink-3); border: 1px dashed var(--ink-3); border-radius: 3px; padding: 0 2px; }
+.utc-day { position: absolute; top: calc(100% + 6px); left: 0; right: 0; text-align: center; font-size: 12px; color: var(--ink-3); white-space: nowrap; }
 .utc-chart figcaption { margin-top: 22px; }
 
 /* A slice panel's own heading is the panel's; the inner duplicate title is not drawn. */
@@ -542,8 +550,8 @@ main.ev-root[data-destination="delegation-evidence"] .kv [data-field-tone="model
 .maple-cell .local-usage-savings > figure.local-chart { border: 0; background: none; box-shadow: none; padding: 0; margin: 0; }
 .maple-cell .local-usage-savings > figure.local-chart .local-chart-symbol,
 .maple-cell .local-usage-savings > figure.local-chart .local-chart-heading h3,
-.maple-cell .local-usage-savings > figure.local-chart .local-chart-inspect-icon,
-.maple-cell .local-usage-savings > figure.local-chart .local-chart-range { display: none; }
+.maple-cell .local-usage-savings > figure.local-chart .local-chart-inspect-icon { display: none; }
+/* The zoom range (first/last point, reset) stays: it is the chart's keyboard and touch access to its days. */
 .maple-cell .local-usage-savings > figure.local-chart .local-chart-heading { min-height: 0; margin: 0 0 6px; }
 .maple-cell .local-usage-savings > figure.local-chart .local-chart-heading p { margin: 0; font-size: 12px; color: var(--ink-3); }
 .maple-cell .local-usage-savings > figure.local-chart .local-chart-canvas { background: transparent; }
@@ -560,11 +568,371 @@ main.ev-root .maple-grid { margin-bottom: 16px; }
 main.ev-root details.ev-more { margin-top: 12px; border-top: 1px solid var(--line-2); padding-top: 8px; }
 main.ev-root details.ev-more > summary { cursor: pointer; font-size: 12px; font-weight: 500; color: var(--ink-3); list-style: none; display: inline-flex; gap: 6px; align-items: center; }
 main.ev-root details.ev-more > summary::-webkit-details-marker { display: none; }
-main.ev-root details.ev-more > summary::before { content: '+'; display: inline-grid; place-items: center; width: 14px; height: 14px; border: 1px solid var(--line); border-radius: 3px; font-size: 11px; }
+main.ev-root details.ev-more > summary::before { content: '+'; display: inline-grid; place-items: center; width: 14px; height: 14px; border: 1px solid var(--line); border-radius: 3px; font-size: 12px; }
 main.ev-root details.ev-more[open] > summary::before { content: '−'; }
 main.ev-root .ev-maple-grid { align-items: start; }
 /* Maple grid: API Keys' two short cards side by side. */
 @media (min-width: 1100px) {
   .local-dashboard-page--api-keys .local-dashboard-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: none; align-items: start; }
   .local-dashboard-page--api-keys .local-dashboard-grid > .local-dashboard-panel { grid-column: auto; max-width: none; }
+}
+
+/* Live review 2026-10-25: Overview headline tiles end with their day sparkline; the info icon sits on the label line. */
+.local-dashboard-page--overview .local-overview-summary > .local-dashboard-panel { display: flex; flex-direction: column; }
+.local-dashboard-page--overview .local-overview-summary .local-card-spark { margin-top: auto; padding-top: 10px; color: var(--panel-accent, var(--ink-3)); }
+.local-dashboard-page--overview .local-overview-summary .local-card-spark .kpi-sparkline { display: block; width: 100%; height: 28px; }
+.local-dashboard-page--overview .local-overview-summary .local-dashboard-panel > h2 { align-items: center; }
+.local-dashboard-page--overview .local-overview-summary .local-card-basis-button,
+.local-dashboard-page--overview .local-overview-summary .local-dashboard-panel > h2 button { align-self: center; margin-top: 0; }
+.local-dashboard-page--overview .local-overview-summary .local-card-basis-tip { top: 15px; right: 16px; }
+.local-dashboard-page--overview .local-overview-summary .local-card-info { display: inline-grid; place-items: center; width: 20px; height: 20px; padding: 0; color: var(--ink-3); }
+.local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel { display: flex; flex-direction: column; gap: 6px; }
+.local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel { align-items: stretch; text-align: left; min-height: 0; }
+.local-dashboard-page--overview .local-overview-summary .local-dashboard-panel > h2 { justify-content: flex-start; }
+.local-dashboard-page--overview .local-overview-summary .local-token-directions { justify-content: flex-start; }
+
+/* Live review 2026-10-25 ("each card different color"): every headline tile wears its identity colour (OMN-21308:
+   amber spend, teal savings, blue calls, violet tokens) as a top bar, a soft tint and its label; figures stay ink. */
+.local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel {
+  background: color-mix(in srgb, var(--panel-accent, var(--ink-3)) 7%, var(--panel));
+  box-shadow: inset 0 3px 0 var(--panel-accent, var(--ink-3));
+}
+.local-dashboard-page--overview .local-overview-summary .local-dashboard-panel > h2 { color: color-mix(in srgb, var(--panel-accent, var(--ink-3)) 75%, var(--ink)); }
+.local-dashboard-page--overview .local-overview-summary .local-dashboard-panel > h2 svg { color: var(--panel-accent, var(--ink-3)); }
+
+/* Live review 2026-10-25: four separate headline cards, each bordered in its identity colour; the basis tooltip opens
+   inside its own card so it is never cut off; the sparkline is labelled. */
+.local-dashboard-page--overview .local-overview-surface > .local-overview-summary { gap: 12px; border: 0; background: transparent; }
+.local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel,
+.local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel:first-child,
+.local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel:last-child {
+  border: 1px solid color-mix(in srgb, var(--panel-accent, var(--ink-3)) 45%, var(--line));
+  border-top: 3px solid var(--panel-accent, var(--ink-3));
+  border-radius: 10px; box-shadow: none;
+}
+.local-dashboard-page--overview .local-overview-summary .local-card-basis-tip { position: static; }
+.local-dashboard-page--overview .local-overview-summary .local-card-info { position: absolute; top: 13px; right: 14px; }
+.local-dashboard-page--overview .local-overview-summary .local-card-tooltip { top: 44px; left: 12px; right: 12px; width: auto; }
+.local-dashboard-page--overview .local-overview-summary .local-card-spark { display: flex; flex-direction: column; gap: 4px; cursor: default; }
+.local-dashboard-page--overview .local-overview-summary .local-card-spark-label { font-size: 12px; color: var(--ink-3); }
+@media (max-width: 1100px) {
+  .local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel { border-top-width: 3px; }
+}
+.local-dashboard-page--overview .local-overview-summary .local-card-figure-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.local-dashboard-page--overview .local-overview-summary .local-card-figure-row .local-token-directions { margin: 0; font-size: 12px; }
+.local-dashboard-page--overview .local-overview-summary .local-card-spark { margin-top: 8px; }
+.local-dashboard-page--overview .local-overview-summary .local-card-figure-row { flex-wrap: nowrap; align-items: center; }
+.local-dashboard-page--overview .local-overview-summary .local-card-figure-row .local-token-directions { display: flex; flex-direction: column; align-items: flex-start; gap: 0; line-height: 1.35; white-space: nowrap; }
+
+/* Live review 2026-10-25: label and figure only; hovering anywhere on a headline card opens its details. */
+.local-dashboard-page--overview .local-overview-summary > .local-dashboard-panel:hover .local-card-tooltip { visibility: visible; opacity: 1; transform: none; pointer-events: auto; }
+.local-dashboard-page--overview .local-overview-summary .local-card-tooltip { top: 40px; z-index: 6; }
+.local-dashboard-page--overview .local-overview-summary .local-card-tooltip .local-token-directions { display: flex; gap: 12px; margin: 0 0 8px; font-size: 12px; }
+.local-dashboard-page--overview .local-overview-summary .local-card-tooltip .local-card-spark { margin-top: 6px; color: var(--panel-accent, var(--ink-3)); }
+.local-dashboard-page--overview .local-overview-summary .local-card-tooltip .kpi-sparkline { display: block; width: 100%; height: 32px; }
+.local-dashboard-page--overview .local-overview-summary .local-card-tooltip { top: calc(100% + 6px); left: 0; right: 0; }
+
+/* Live review 2026-10-25 ("remove i"): no info icon on the headline cards; the whole card is the focus and hover target
+   (the button stays for keyboard and screen readers, stretched invisibly over the card). */
+.local-dashboard-page--overview .local-overview-summary .local-card-info { inset: 0; top: 0; right: 0; width: 100%; height: 100%; border-radius: 10px; opacity: 0; cursor: default; }
+.local-dashboard-page--overview .local-overview-summary .local-card-info:focus-visible { opacity: 1; background: transparent; box-shadow: 0 0 0 2px var(--panel-accent, var(--ui-accent)) inset; }
+.local-dashboard-page--overview .local-overview-summary .local-card-info:focus-visible svg { display: none; }
+/* The card-wide hover button must not swallow a card's own controls: a read-failure notice's "Technical details" and
+   "Try again" were unclickable under it (found by the lab e2e run, refresh-ux, 2026-10-25). */
+.local-dashboard-page--overview .local-overview-summary > .local-dashboard-panel :is([role="alert"], [role="status"], details, summary, a, button:not(.local-card-info)) { position: relative; z-index: 6; }
+.local-dashboard-page--overview .local-overview-summary .local-card-tooltip { width: auto; padding: 8px 12px; }
+.local-dashboard-page--overview .local-overview-summary .local-card-tooltip .local-dashboard-caption { margin: 0 0 2px; }
+.local-dashboard-page--overview .local-overview-summary .local-card-tooltip .local-dashboard-caption:first-child { color: var(--ink) !important; font-weight: 500; }
+
+/* Live review 2026-10-25: the headline hover is a tooltip bubble above its card, pointing down at it, in the card's colour. */
+.local-dashboard-page--overview .local-overview-summary .local-card-tooltip {
+  top: auto; bottom: calc(100% + 12px); left: 50%; right: auto; width: max-content; max-width: min(300px, 92%);
+  padding: 9px 12px; border-radius: 10px; overflow: visible;
+  background: color-mix(in srgb, var(--panel-accent, var(--ink-3)) 12%, var(--panel));
+  border: 1px solid color-mix(in srgb, var(--panel-accent, var(--ink-3)) 55%, var(--line));
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.12);
+  transform: translate(-50%, 4px);
+}
+.local-dashboard-page--overview .local-overview-summary .local-card-tooltip::after {
+  content: ''; position: absolute; left: 50%; bottom: -7px; width: 12px; height: 12px;
+  background: inherit; border-right: inherit; border-bottom: inherit; transform: translateX(-50%) rotate(45deg);
+}
+.local-dashboard-page--overview .local-overview-summary > .local-dashboard-panel:hover .local-card-tooltip,
+.local-dashboard-page--overview .local-overview-summary .local-card-basis-tip[data-open="true"] .local-card-tooltip,
+.local-dashboard-page--overview .local-overview-summary .local-card-basis-tip:focus-within .local-card-tooltip { transform: translate(-50%, 0); }
+.local-dashboard-page--overview .local-overview-summary .local-card-tooltip .local-dashboard-caption:first-child { color: color-mix(in srgb, var(--panel-accent, var(--ink)) 70%, var(--ink)) !important; }
+/* The bubble opens below its card (above, the top bar cut it off), its arrow pointing up at the card. */
+.local-dashboard-page--overview .local-overview-summary .local-card-tooltip { bottom: auto; top: calc(100% + 12px); }
+.local-dashboard-page--overview .local-overview-summary .local-card-tooltip::after {
+  bottom: auto; top: -7px; border-right: 0; border-bottom: 0;
+  border-left: 1px solid color-mix(in srgb, var(--panel-accent, var(--ink-3)) 55%, var(--line));
+  border-top: 1px solid color-mix(in srgb, var(--panel-accent, var(--ink-3)) 55%, var(--line));
+}
+
+/* Live review 2026-10-25: Overview's window control: one compact segmented pill with a calendar icon, soft selection. */
+.local-dashboard-page .local-window-switch { gap: 0; margin: 0; padding: 0; border: 0; }
+.local-dashboard-page .local-window-switch .local-window-options {
+  display: inline-flex; align-items: center; gap: 2px; height: 32px; padding: 2px 3px 2px 10px; box-sizing: border-box;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--panel);
+}
+.local-dashboard-page .local-window-switch .local-window-icon { color: var(--ink-3); margin-right: 6px; flex: none; }
+.local-dashboard-page .local-window-switch .local-window-options button {
+  height: 26px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: var(--ink-2);
+  font-size: 13px; font-weight: 500; display: inline-flex; align-items: baseline; gap: 4px; cursor: pointer; box-shadow: none;
+}
+.local-dashboard-page .local-window-switch .local-window-options button small { font-size: 12px; font-weight: 400; color: var(--ink-3); }
+.local-dashboard-page .local-window-switch .local-window-options button:hover { color: var(--ink); background: var(--panel-2); }
+.local-dashboard-page .local-window-switch .local-window-options button[aria-checked="true"] {
+  background: color-mix(in srgb, var(--ui-accent) 14%, var(--panel)); color: var(--ink);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ui-accent) 45%, var(--line));
+}
+.local-dashboard-page .local-window-switch .local-window-options button:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 1px; }
+/* The options keep the 40px touch target; the pill fits around them. */
+.local-dashboard-page .local-window-switch .local-window-options { height: auto; padding: 0 2px 0 10px; }
+.local-dashboard-page .local-window-switch .local-window-options button { height: 34px; min-height: 40px; margin: 0; }
+.local-dashboard-page .local-window-switch .local-window-options button[aria-checked="true"] { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ui-accent) 45%, var(--line)); }
+.local-dashboard-page .local-window-switch .local-window-options button { align-items: center; justify-content: center; line-height: 1; }
+
+/* Live review 2026-10-25 ("pick a day"): the calendar opens a list of the served UTC days. */
+.local-dashboard-page .local-window-switch .local-window-options { padding-left: 3px; }
+.local-dashboard-page .local-window-switch .local-window-radios { display: inline-flex; gap: 2px; }
+.local-dashboard-page .local-day-picker { position: relative; display: inline-flex; }
+.local-dashboard-page .local-window-switch .local-window-options .local-day-button { color: var(--ink-3); gap: 6px; padding: 0 10px; }
+.local-dashboard-page .local-window-switch .local-window-options .local-day-button[aria-pressed="true"] {
+  color: var(--ink); background: color-mix(in srgb, var(--ui-accent) 14%, var(--panel));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ui-accent) 45%, var(--line));
+}
+.local-dashboard-page .local-day-list {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 20; margin: 0; padding: 4px; list-style: none;
+  min-width: 170px; max-height: 300px; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--panel); box-shadow: 0 8px 24px rgb(0 0 0 / 0.14);
+}
+.local-dashboard-page .local-day-list > li {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 36px; padding: 0 10px;
+  border-radius: 6px; font-size: 13px; color: var(--ink); cursor: pointer;
+}
+.local-dashboard-page .local-day-list > li small { font-family: var(--font-mono); font-size: 12px; color: var(--ink-3); }
+.local-dashboard-page .local-day-list > li:is(:hover, :focus-visible) { background: var(--panel-2); outline: none; }
+.local-dashboard-page .local-day-list > li[aria-selected="true"] { background: color-mix(in srgb, var(--ui-accent) 14%, var(--panel)); }
+
+/* Live review 2026-10-25: the chart window presets sit in the header beside the cards' window, each labelled. */
+.local-dashboard-page .local-window-switch { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.local-dashboard-page .local-window-label { font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-3); }
+.local-dashboard-page .local-window-label + .local-visually-hidden + .local-window-options,
+.local-dashboard-page .local-chart-window + .local-window-label { margin-left: 8px; }
+.local-dashboard-page .local-chart-window { display: inline-flex; height: 42px; box-sizing: border-box; padding: 0 2px; align-items: center; gap: 2px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); overflow: visible; }
+.local-dashboard-page .local-chart-window > button {
+  height: 34px; min-height: 40px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: var(--ink-2);
+  font-size: 13px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center;
+}
+.local-dashboard-page .local-chart-window > button:hover { background: var(--panel-2); color: var(--ink); }
+.local-dashboard-page .local-chart-window > button[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--ui-accent) 14%, var(--panel)); color: var(--ink);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ui-accent) 45%, var(--line));
+}
+.local-dashboard-page .local-day-pop {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 20; min-width: 210px; padding: 8px;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--panel); box-shadow: 0 8px 24px rgb(0 0 0 / 0.14);
+}
+.local-dashboard-page .local-day-pop .local-day-list { position: static; box-shadow: none; border: 0; padding: 4px 0 0; max-height: 240px; min-width: 0; }
+.local-dashboard-page .local-day-any { display: flex; flex-direction: column; gap: 4px; padding-bottom: 8px; border-bottom: 1px solid var(--line-2); font-size: 12px; color: var(--ink-3); }
+.local-dashboard-page .local-day-any input { height: 36px; min-height: 36px; padding: 0 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--ink); font-size: 13px; }
+.local-dashboard-page .local-window-switch .ins-range-presets.local-chart-window > button { border: 0; border-right: 0; outline: 0; }
+.local-dashboard-page .local-window-switch .ins-range-presets.local-chart-window > button[aria-pressed="true"] { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ui-accent) 45%, var(--line)); }
+
+/* Live review 2026-10-25 ("open the full calendar"): a month grid; dots mark days with runs, today is outlined. */
+.local-dashboard-page .local-calendar { width: 264px; padding: 10px; }
+.local-dashboard-page .local-calendar-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.local-dashboard-page .local-calendar-head h3 { margin: 0; font-size: 13px; font-weight: 600; color: var(--ink); }
+.local-dashboard-page .local-calendar-head button {
+  display: inline-grid; place-items: center; width: 32px; height: 32px; min-height: 32px; padding: 0;
+  border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--ink-2); cursor: pointer;
+}
+.local-dashboard-page .local-calendar-head button:disabled { opacity: .4; cursor: default; }
+.local-dashboard-page .local-calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.local-dashboard-page .local-calendar-weekday { font-size: 12px; color: var(--ink-3); text-align: center; padding: 4px 0; }
+.local-dashboard-page .local-calendar-day {
+  position: relative; height: 32px; min-height: 32px; padding: 0; border: 0; border-radius: 6px; background: transparent;
+  font-size: 13px; color: var(--ink); cursor: pointer; font-variant-numeric: tabular-nums;
+}
+.local-dashboard-page .local-calendar-day:hover:not(:disabled) { background: var(--panel-2); }
+.local-dashboard-page .local-calendar-day:disabled { color: var(--ink-3); opacity: .45; cursor: default; }
+.local-dashboard-page .local-calendar-day[data-served="true"]::after {
+  content: ''; position: absolute; left: 50%; bottom: 4px; width: 4px; height: 4px; border-radius: 50%;
+  background: var(--ui-accent); transform: translateX(-50%);
+}
+.local-dashboard-page .local-calendar-day[data-today="true"] { box-shadow: inset 0 0 0 1px var(--line); font-weight: 600; }
+.local-dashboard-page .local-calendar-day[aria-pressed="true"] { background: var(--ui-accent); color: #fff; }
+.local-dashboard-page .local-calendar-day[aria-pressed="true"]::after { background: #fff; }
+.local-dashboard-page .local-calendar-day:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 1px; }
+.local-dashboard-page .local-calendar-key { margin: 8px 0 0; font-size: 12px; color: var(--ink-3); display: flex; align-items: center; gap: 6px; }
+.local-dashboard-page .local-calendar-key i { width: 6px; height: 6px; border-radius: 50%; background: var(--ui-accent); display: inline-block; }
+.local-dashboard-page .local-day-pop.local-calendar { left: 0; right: auto; }
+/* The calendar fits its seven columns (day cells never overflow) and shades the active window. */
+.local-dashboard-page .local-day-pop.local-calendar { width: 300px; box-sizing: border-box; padding: 12px; }
+.local-dashboard-page .local-calendar-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.local-dashboard-page .local-calendar .local-calendar-day { min-width: 0; width: 100%; }
+.local-dashboard-page .local-calendar-day[data-in-window="true"] { background: color-mix(in srgb, var(--ui-accent) 14%, var(--panel)); border-radius: 0; }
+.local-dashboard-page .local-calendar-day[data-in-window="true"][data-window-edge="true"] { border-radius: 6px; }
+.local-dashboard-page .local-calendar-day[aria-pressed="true"],
+.local-dashboard-page .local-calendar-day[data-in-window="true"][data-window-edge="true"] { background: var(--ui-accent); color: #fff; }
+.local-dashboard-page .local-calendar-day[data-window-edge="true"]::after { background: #fff; }
+/* The window pill's button rules also match the calendar's day buttons; these restore the calendar's own look. */
+.local-dashboard-page .local-window-switch .local-window-options .local-calendar button.local-calendar-day {
+  height: 32px; min-height: 32px; padding: 0; border-radius: 6px; background: transparent; color: var(--ink); font-size: 13px; font-weight: 400;
+  box-shadow: none; display: block; justify-content: initial;
+}
+.local-dashboard-page .local-window-switch .local-window-options .local-calendar button.local-calendar-day:disabled { color: var(--ink-3); }
+.local-dashboard-page .local-window-switch .local-window-options .local-calendar button.local-calendar-day[data-today="true"] { box-shadow: inset 0 0 0 1px var(--line); font-weight: 600; }
+.local-dashboard-page .local-window-switch .local-window-options .local-calendar button.local-calendar-day[data-in-window="true"] {
+  background: color-mix(in srgb, var(--ui-accent) 16%, var(--panel)); border-radius: 0;
+}
+.local-dashboard-page .local-window-switch .local-window-options .local-calendar button.local-calendar-day:is([aria-pressed="true"], [data-window-edge="true"][data-in-window="true"]) {
+  background: var(--ui-accent); color: #fff; border-radius: 6px; font-weight: 600;
+}
+.local-dashboard-page .local-window-switch .local-window-options .local-calendar button.local-calendar-day:hover:not(:disabled):not([aria-pressed="true"]):not([data-window-edge="true"]) { background: var(--panel-2); }
+.local-dashboard-page .local-window-switch .local-window-options .local-calendar-head button { height: 32px; min-height: 32px; width: 32px; padding: 0; justify-content: center; }
+
+/* E2E triage fixes (2026-10-25). */
+/* Overview's recent runs with every field shown take the whole row, as the pre-grid rule did (local-dashboard.css:1120). */
+.maple-grid > .maple-cell--wide:has(.local-recent-runs-wrap--all) { grid-column: 1 / -1; }
+/* Runs' all-fields table: eighteen columns fit the panel at 1440 with slimmer cell padding (no sideways scroll). */
+.local-dashboard-page--runs .local-runs-wrap--all :is(th, td) { padding-left: 5px; padding-right: 5px; }
+/* Runs filters keep the 40px touch target (dashboard-cards.css:107). */
+.local-dashboard-page .local-runs-toolbar .local-runs-search input,
+.local-dashboard-page .local-runs-toolbar .local-dashboard-filters > .local-filter-field > select { height: 40px; min-height: 40px; }
+/* Run analysis rows: the value and verdict coverage wrap inside the panel instead of running past it. */
+.local-dashboard-page .ins-list-row { grid-template-columns: 26px minmax(110px, 1fr) minmax(0, 1fr) minmax(0, auto); }
+.local-dashboard-page .ins-list-row > .ins-list-value { white-space: normal; text-align: right; overflow-wrap: anywhere; max-width: 240px; }
+/* The pressed filter chip's count keeps the chip's own text colour (it was light on light). */
+.local-dashboard-page .local-run-filter-results button[aria-pressed="true"] span { background: transparent; color: inherit; }
+/* Last run at full width (under Additional runtime metrics): its fields run across, not one per row. */
+.local-overview-secondary [data-component="overview-last-run"] .local-latest-primary { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+/* Phone: a page-level "More" box and the panels inside it do not both pad, so record cells keep their width. */
+@media (max-width: 600px) {
+  .local-dashboard-page details.local-more--page { padding: 8px; }
+  .local-dashboard-page details.local-more--page .local-dashboard-panel { padding: 12px 10px; }
+}
+/* Calendar days keep the 40px touch target. */
+.local-dashboard-page .local-window-switch .local-window-options .local-calendar button.local-calendar-day { height: 40px; min-height: 40px; }
+
+/* ── Live review 2026-10-25 ("all graphs this style"): grouped dotted bars, value above, day below, legend under ── */
+.ins-bars.gdb-plot { display: flex; align-items: stretch; gap: 6px; height: 240px; padding: 0; border-bottom: 1px solid var(--line); margin-bottom: 26px; }
+.ins-bars.gdb-plot > .ins-bar.gdb-day {
+  flex: 1 1 0; min-width: 0; height: 100%; padding: 0; border: 0; background: none; position: relative;
+  display: flex; flex-direction: column; justify-content: flex-end; cursor: default; box-shadow: none;
+}
+.ins-bars.gdb-plot > .ins-bar.gdb-day[data-dim="true"] { opacity: .45; }
+.gdb-group { display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 100%; }
+.gdb-col { flex: 1 1 0; max-width: 28px; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; min-width: 0; }
+.gdb-val { font-family: var(--font-mono); font-weight: 500; font-size: 12px; color: var(--ink); text-align: center; line-height: 1; margin-bottom: 4px; white-space: nowrap; }
+.gdb-bar.ins-seg {
+  display: block; width: 100%; min-height: 3px; border-radius: 0; animation: none; background: none !important;
+  border-top: 2px solid currentColor;
+  background-image: radial-gradient(currentColor 1.15px, transparent 1.35px) !important; background-size: 5px 5px !important;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 55%, rgba(0,0,0,.4) 100%);
+          mask-image: linear-gradient(to bottom, #000 0%, #000 55%, rgba(0,0,0,.4) 100%);
+}
+.gdb-day-label { position: absolute; top: calc(100% + 6px); left: -4px; right: -4px; text-align: center; font-size: 12px; color: var(--ink-3); white-space: nowrap; }
+.gdb-legend { display: flex; flex-wrap: wrap; gap: 16px; margin: 4px 0 0; padding: 0; list-style: none; }
+.gdb-legend .ins-toggle { border: 0; background: none; box-shadow: none; padding: 0 2px; font-size: 13px; min-height: 32px; }
+.gdb-legend .ins-toggle[aria-pressed="false"] { opacity: .45; }
+.ins-token-legend.gdb-legend li { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-2); }
+.ins-token-legend.gdb-legend li i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.ins-section--slice .ins-readout { min-height: 18px; }
+
+/* Ranked bars that stay upright in a narrow panel (Tier mix, Usage's model charts). */
+@container (max-width: 560px) {
+  .rb-chart.rb-chart--vertical .rb-plot { display: grid; flex-direction: row; align-items: end; border-left: 0; border-bottom: 1px solid var(--line); margin-bottom: calc(2.6em + 10px); gap: 10px; }
+  .rb-chart.rb-chart--vertical .rb-plot > li { display: flex; flex-direction: column; grid-template-columns: none; grid-template-areas: none; }
+  .rb-chart.rb-chart--vertical .rb-name { position: absolute; top: 100%; margin: 8px 0 0; text-align: center; -webkit-line-clamp: 2; }
+  .rb-chart.rb-chart--vertical .rb-value { margin: 0 0 6px; text-align: center; }
+  .rb-chart.rb-chart--vertical .rb-track { height: 180px; align-items: flex-end; }
+  .rb-chart.rb-chart--vertical .rb-bar { width: 100%; height: var(--rb-size, 0); }
+  .rb-chart.rb-chart--vertical .rb-bar[data-pattern="measured"], .rb-chart.rb-chart--vertical .rb-bar[data-pattern="estimated"] { border-right: 0; border-top: 2px solid currentColor; }
+  .rb-chart.rb-chart--vertical .rb-bar[data-pattern="measured"] { -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 55%, rgba(0,0,0,.35) 100%); mask-image: linear-gradient(to bottom, #000 0%, #000 55%, rgba(0,0,0,.35) 100%); }
+  .rb-chart.rb-chart--vertical .rb-bar[data-pattern="estimated"] { background-image: repeating-linear-gradient(135deg, currentColor 0 1.5px, transparent 1.5px 6px); }
+  .rb-chart.rb-chart--vertical .rb-bar[data-pattern="unknown"] { width: 100%; height: 14px; border: 1px dashed var(--ink-3); border-bottom: 0; }
+}
+
+/* Usage's stacked tokens chart: the same dotted fill, segment by segment. */
+.utc-stack i { background-image: radial-gradient(currentColor 1.15px, transparent 1.35px); background-size: 5px 5px; }
+.gdb-col { max-width: 40px; } .gdb-group { gap: 4px; padding: 0 2px; }
+/* Upright ranked bars keep the reference's proportions (bars at most 64px wide), and "Not measured" wraps, never cut. */
+.rb-chart.rb-chart--vertical .rb-plot { grid-template-columns: repeat(var(--rb-count), minmax(0, 64px)); justify-content: space-around; max-width: none; }
+.rb-chart [data-basis="unknown"] > .rb-value { white-space: normal; line-height: 1.2; }
+
+/* Live review 2026-10-25 ("slim strip"): newest run, pass rate and environment in one compact row under the cards. */
+.maple-cell--slim-5 { grid-column: span 5; } .maple-cell--slim-3 { grid-column: span 3; } .maple-cell--slim-4 { grid-column: span 4; }
+@media (max-width: 1100px) { .maple-cell--slim-5, .maple-cell--slim-3, .maple-cell--slim-4 { grid-column: 1 / -1; } }
+.maple-grid > [class*="maple-cell--slim"] > .local-dashboard-panel { padding: 10px 14px; }
+.maple-grid > [class*="maple-cell--slim"] > .local-dashboard-panel > h2 { margin-bottom: 6px; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-3); }
+.maple-grid > [class*="maple-cell--slim"] .local-dashboard-asof { display: none; }
+.local-newest-run { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 0; font-size: 13px; }
+.local-newest-run a { margin-left: auto; font-size: 12px; display: inline-flex; align-items: center; gap: 2px; }
+/* Quality in the strip: the pass rate and its meter only; its detail stays on Delegation Evidence. */
+.overview-slim-quality :is(.ins-pass-headline, details.local-more, .local-recent-footer, .local-dashboard-caption) { display: none; }
+.overview-slim-quality .local-meter { margin: 0; }
+.overview-slim-quality .local-dashboard-metric { font-size: 22px; }
+/* Environment in the strip: its one status line; the full table stays behind "Environment details". */
+.overview-slim-environment .local-environment-line { font-size: 13px; }
+.overview-slim-environment details.local-more { margin-top: 4px; padding-top: 4px; border-top: 0; }
+.rb-chart.rb-chart--vertical .rb-value { overflow: visible; text-overflow: clip; white-space: nowrap; }
+/* Delegation Quality: the fifth headline card, in the pass colour (Quality's teal would repeat Savings). */
+.local-dashboard-page--overview .local-overview-summary .local-dashboard-panel[data-component="overview-quality"] { --panel-accent: var(--field-pass); }
+.local-dashboard-panel[data-component="api-keys-environment"] { --panel-accent: var(--field-host); }
+.local-dashboard-page--api-keys .local-dashboard-grid > .local-dashboard-panel[data-component="api-keys-environment"] { grid-column: 1 / -1; }
+/* Full-width upright bars: columns wide enough for model names, bars still at most 64px. */
+.rb-chart.rb-chart--vertical .rb-plot { grid-template-columns: repeat(var(--rb-count), minmax(0, 160px)); }
+.rb-chart.rb-chart--vertical .rb-bar { max-width: 64px; margin: 0 auto; }
+.rb-chart.rb-chart--vertical .rb-track { justify-content: center; }
+
+/* Live review 2026-10-25 ("all bar graphs should have full cards"): on Overview the bars fill their card. */
+.local-dashboard-page--overview .rb-chart.rb-chart--vertical .rb-plot { grid-template-columns: repeat(var(--rb-count), minmax(0, 1fr)); justify-content: stretch; gap: 24px; }
+.local-dashboard-page--overview .rb-chart.rb-chart--vertical .rb-bar { max-width: none; width: 72%; }
+.local-dashboard-page--overview .rb-chart.rb-chart--vertical .rb-track { height: 220px; }
+.local-dashboard-page--overview .gdb-col { max-width: none; }
+.local-dashboard-page--overview .gdb-group { gap: 3px; padding: 0 3px; }
+.local-dashboard-page--overview .ins-bars.gdb-plot { gap: 8px; height: 260px; }
+
+/* Live review 2026-10-25 ("remove the number and show them when hover"): bar values appear on hover or keyboard
+   focus only; their space stays, so nothing moves, and each bar's accessible name still carries its value. */
+.gdb-val { visibility: hidden; }
+.ins-bar.gdb-day:is(:hover, :focus-visible) .gdb-val { visibility: visible; }
+.rb-chart .rb-plot > li > .rb-value { visibility: hidden; }
+.rb-chart .rb-plot > li:is(:hover, :focus-within) > .rb-value { visibility: visible; }
+.rb-chart .rb-plot > li { cursor: default; }
+
+/* OMN-21166 part 14 (AC75, AC76): sortable Runs headers read as the header text with an arrow; the export pair sits
+   at the end of the "Show all run fields" line. Both keep the 40px touch floor. */
+.local-dashboard-page th > .local-sort-header {
+  all: unset; box-sizing: border-box; display: inline-flex; align-items: center; min-height: 40px; cursor: pointer;
+  font: inherit; color: inherit; white-space: normal; overflow-wrap: normal; word-break: keep-all; text-align: inherit;
+}
+/* Found by the lab e2e run (page-polish): with all 18 fields the table scrolled 36px sideways while the sort headers
+   kept their text on one line; they now wrap between words like every other header. */
+.local-dashboard-page th > .local-sort-header:hover, .local-dashboard-page th > .local-sort-header[data-sort-active] { color: var(--ink-1, var(--text-primary)); }
+.local-dashboard-page th > .local-sort-header:focus-visible { outline: 2px solid var(--text-secondary); outline-offset: 2px; border-radius: 4px; }
+.local-dashboard-page .local-recent-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.local-dashboard-page .local-runs-export { display: inline-flex; gap: 8px; }
+.local-dashboard-page .local-runs-export button {
+  min-height: 40px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel);
+  color: var(--ink-2); font: inherit; font-size: 13px; cursor: pointer;
+}
+.local-dashboard-page .local-runs-export button:hover { border-color: var(--ink-3); color: var(--ink-1, var(--text-primary)); }
+.local-dashboard-page .local-runs-export button:focus-visible { outline: 2px solid var(--text-secondary); outline-offset: 2px; }
+
+/* AC77: the served read time sits just before Refresh in the top bar, muted, never wrapping. */
+.topbar-updated { font-size: 12px; color: var(--ink-3, var(--text-secondary)); white-space: nowrap; margin-right: 4px; font-variant-numeric: tabular-nums; }
+@media (max-width: 480px) { .topbar-updated { display: none; } }
+
+/* AC79: Evidence's scope line under its title. */
+.ev-root .ev-scope { margin: 4px 0 0; font-size: 13px; }
+
+/* Found by the lab e2e run (activity-window, 2026-10-25): at 320px the 300px calendar, anchored under its button at
+   x=84, ran 64px off the screen. On narrow screens it is placed against the viewport instead (fixed, with its top left
+   at its natural place under the button), 10px from each side, keeping 40px day targets. */
+@media (max-width: 480px) {
+  .local-dashboard-page .local-day-pop.local-calendar { position: fixed; left: 10px; right: 10px; width: auto; max-width: 320px; margin-inline: auto; padding: 8px; }
+  .local-dashboard-page .local-day-pop.local-calendar .local-calendar-grid { gap: 0; }
 }

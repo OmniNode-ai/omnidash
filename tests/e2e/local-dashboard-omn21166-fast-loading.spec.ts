@@ -30,9 +30,11 @@ test('page structure and fast panels do not wait for slow catalogue or aggregate
   });
   try {
     await page.goto('/overview');
-    await expect(page.getByRole('heading', { name: 'Recent runs', exact: true })).toBeVisible({ timeout: 1000 });
+    // OMN-21166 AC86 (Lakshman 2026-10-25): Recent runs deleted from Overview. The page structure that must not wait
+    // for the catalogue is now the Runs per day heading, and the fast panel is its served day bar (3 fixture runs on Oct 17).
+    await expect(page.getByRole('heading', { name: 'Runs per day', exact: true })).toBeVisible({ timeout: 1000 });
     releaseCatalogue();
-    await expect(page.getByRole('link', { name: 'chart-run-a', exact: true }).first()).toBeVisible({ timeout: 1500 });
+    await expect(page.locator('[data-slice="runs"] button.gdb-day').first()).toHaveAccessibleName('Oct 17: 3 runs, 2 passed, 1 failed', { timeout: 1500 });
     await expect(page.locator('[data-component="overview-quality"]')).toHaveAttribute('aria-busy', 'true');
     await page.screenshot({ path: info.outputPath('fast-runs-slow-aggregates.png') });
   } finally { releaseCatalogue(); releaseAggregates(); }
@@ -65,6 +67,8 @@ test('returning to Runs keeps recent real responses visible while refreshing', a
     await expect(page.getByRole('link', { name: 'chart-run-a', exact: true }).first()).toBeVisible();
     expect(tenantFixtureMatched).toBe(true);
     await page.getByRole('link', { name: 'Usage', exact: true }).click();
+    // OMN-21166 Maple grid: the by-day table sits under the page's closed "More usage" disclosure; open it first.
+    await page.getByText('More usage', { exact: true }).press('Enter');
     await expect(page.getByRole('heading', { name: 'Usage by model and day', exact: true })).toBeVisible();
     await page.getByRole('link', { name: 'Runs', exact: true }).click();
     await expect(page.getByRole('link', { name: 'chart-run-a', exact: true }).first()).toBeVisible({ timeout: 1000 });
@@ -88,6 +92,8 @@ test('without an explicit tenant returning to Runs refuses cross-navigation cach
     await page.goto('/runs');
     await expect(page.getByRole('link', { name: 'chart-run-a', exact: true })).toBeVisible();
     await page.getByRole('link', { name: 'Usage', exact: true }).click();
+    // OMN-21166 Maple grid: the by-day table sits under the page's closed "More usage" disclosure; open it first.
+    await page.getByText('More usage', { exact: true }).press('Enter');
     await expect(page.getByRole('heading', { name: 'Usage by model and day', exact: true })).toBeVisible();
     await page.getByRole('link', { name: 'Runs', exact: true }).click();
     // Prove a new read is actually waiting, then prove the previous response

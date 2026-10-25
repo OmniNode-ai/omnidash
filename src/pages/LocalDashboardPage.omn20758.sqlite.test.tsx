@@ -90,6 +90,7 @@ describe('OMN-20758 Overview titles match the demo mockup', () => {
 
   it('T3: Agent calls keeps its run-class caption', async () => {
     await overview();
-    expect(within(card('Agent calls')).getByText(/^Of 23 runs/)).toBeInTheDocument();
+    // OMN-21166 live review 2026-10-25: the run-class line is in the card's hover.
+    expect(within(card('Agent calls')).getByText(/of 23 runs measured$/)).toBeInTheDocument();
   });
 });

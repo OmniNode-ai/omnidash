@@ -179,6 +179,10 @@ async function collect(page: Page): Promise<Reading[]> {
     const readings: Reading[] = [];
     for (const svg of body.querySelectorAll('svg.lucide')) {
       const drawnLabel = visibleLabelFor(svg);
+      // OMN-21166 Maple grid: inside Usage's savings panel the chart's own symbol and its title are hidden together (the
+      // panel carries the title); a symbol hidden with its whole title is not a hidden icon beside a visible label.
+      const chartHeading = svg.closest('.local-chart-heading');
+      if (chartHeading && !visible(svg) && chartHeading.querySelector('h3') && !visible(chartHeading.querySelector('h3')!)) continue;
       // A hidden semantic SVG beside a visible field label must fail paint
       // verification rather than silently disappear from a nonempty census.
       if (!visible(svg) && !(svg.closest('[data-semantic-concept], [data-field-icon]') && drawnLabel)) continue;
@@ -196,12 +200,17 @@ async function collect(page: Page): Promise<Reading[]> {
       const modelId = model ? clean(model.getAttribute('data-model') || model.textContent) : '';
       let concept = modelId ? `model:${modelId}` : semantic || (field ? `field:${field}` : destination ? `destination:${destination}` : '');
       let kind: Reading['kind'] = concept ? 'semantic' : 'unmapped';
+      // OMN-21166 part 12 AC73: the "About <card>" info button sits inside a field-toned card but is a control, not that
+      // field's icon; it is recorded as an action (its Lucide shape and paint are still compared with the canonical icon).
+      if (svg.closest('button.local-card-info') && icon === 'info') { kind = 'action'; concept = 'action:info'; }
       // Exact affordance icons plus a control are the action allowlist. A Bot,
       // Award, Model etc. inside a clickable semantic row is NOT an action.
       const control = svg.closest('button,a,summary,[role="button"]');
       const actionIcons = new Set(['copy', 'chevron-down', 'chevron-up', 'chevron-left', 'chevron-right', 'chevrons-left', 'chevrons-right', 'sliders-horizontal',
         'arrow-up-right', 'external-link', 'rotate-ccw', 'refresh-cw', 'panel-left-close',
-        'panel-left-open', 'menu', 'x', 'sun', 'moon', 'search', 'filter', 'settings', 'ellipsis']);
+        'panel-left-open', 'menu', 'x', 'sun', 'moon', 'search', 'filter', 'settings', 'ellipsis',
+        // OMN-21166 live review 2026-10-25: the Overview window control's calendar button (Pick a UTC day).
+        'calendar-days']);
       if (!concept && control && label && actionIcons.has(icon)) { kind = 'action'; concept = `action:${icon}`; }
       if (!concept && icon === 'check' && control && /^copy/i.test(label)) { kind = 'action'; concept = 'action:copy-confirmation'; }
       if (!concept && icon === 'scan-line' && svg.classList.contains('local-chart-inspect-icon')) {
@@ -421,7 +430,7 @@ test.use({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce', trac
 test('core headline identities use amber spend, teal savings, blue calls and violet tokens with readable contrast', async ({ page }, info) => {
   await serveCharts(page, rows);
   await page.goto('/overview');
-  await expect(page.locator('.local-overview-summary article')).toHaveCount(4);
+  await expect(page.locator('.local-overview-summary article')).toHaveCount(5); // OMN-21166 live review 2026-10-25: Delegation Quality is the fifth headline card.
   const readings = [];
   // Broad semantic hue ranges assert the approved meaning, not implementation
   // hex literals. The computed SVG paint, label ink and real card background
@@ -431,6 +440,9 @@ test('core headline identities use amber spend, teal savings, blue calls and vio
     { label: 'Savings', family: 'teal', hue: [150, 200] },
     { label: 'Agent calls', family: 'blue', hue: [205, 245] },
     { label: 'Tokens processed', family: 'violet', hue: [250, 295] },
+    // OMN-21166 live review 2026-10-25: the fifth card's heading icon keeps the site-wide quality identity (one concept,
+    // one colour on every page, checked by the AC4 census); its 3px edge is the green pass colour (AC82).
+    { label: 'Delegation Quality', family: 'teal-green quality ink', hue: [150, 200] },
   ];
   for (const theme of ['light', 'dark']) {
     if ((await page.locator('html').getAttribute('data-theme') ?? 'light') !== theme) await page.getByRole('button', { name: 'Toggle theme', exact: true }).click();
@@ -492,7 +504,7 @@ test('core headline identities use amber spend, teal savings, blue calls and vio
       expect(measured.textContrast, `${concept.label} caption/background`).toBeGreaterThanOrEqual(4.5);
       expect(measured.valueContrast, `${concept.label} value/background`).toBeGreaterThanOrEqual(4.5);
     }
-    expect(new Set(colors).size).toBe(4);
+    expect(new Set(colors).size).toBe(5);
     await page.screenshot({ path: info.outputPath(`core-palette-${theme}.png`), fullPage: true });
   }
 });
@@ -598,6 +610,8 @@ test('AC4 Usage token-direction graphics match canonical fields in both themes',
     unmeasured_call_count: 0, cost_tier_name: 'local',
   }] });
   await page.goto('/usage');
+  // OMN-21166 part 13: "Tokens in vs out by model" is under the closed "More usage" section.
+  await page.getByText('More usage', { exact: true }).press('Enter');
   const figure = page.getByRole('figure', { name: 'Tokens in vs out by model', exact: true });
   await expect(figure.getByRole('button')).toHaveAttribute('aria-label', /model-a: 100 tokens in, 20 tokens out/);
   const states: State[] = [];
@@ -630,7 +644,8 @@ test('AC4 eleven-destination light/dark icon census includes expanded and Develo
     await expect(page.locator('h1')).toBeVisible();
     await expect(page.locator('main')).not.toHaveAttribute('aria-busy', 'true');
     await expect(page.locator('.main')).not.toContainText(/Dashboard is unavailable|Loading/);
-    if (destination === 'local-overview' || destination === 'local-runs') await revealRunFields(page);
+    // OMN-21166 AC86 (Lakshman 2026-10-25): Recent runs and its field view are deleted from Overview; only Runs has them.
+    if (destination === 'local-runs') await revealRunFields(page);
     if (destination === 'local-workflow') await expect(page.locator('[data-step-kind]')).toHaveCount(6);
     if (destination === 'delegation-evidence') {
       const disclosure = page.getByRole('button', { name: 'Toggle details for chart-run-a', exact: true });

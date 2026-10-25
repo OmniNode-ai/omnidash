@@ -15,13 +15,15 @@ test('review fixes: exact median and keyboard/touch hourly inspection', async ({
     model_name: 'fixture-model', task_type: 'document',
   })) };
   await serveCharts(page, rows);
-  await page.goto('/overview');
-  await page.getByText('Detailed activity analysis', { exact: true }).press('Enter');
+  // OMN-21166 part 13/Maple grid: Overview no longer has the "Detailed activity analysis" fold; the run analysis (duration
+  // medians and the UTC-hour heatmap) is Runs', under "More analysis". Runs draws the latest seven served UTC days,
+  // so the 168 cells no longer need the Overview presets.
+  await page.goto('/runs');
+  await page.getByText('More analysis', { exact: true }).press('Enter');
   await page.waitForLoadState('networkidle');
-  await expect(page.getByRole('heading', { name: 'Overview', exact: true })).toBeVisible();
-  await page.getByRole('group', { name: 'Activity window' }).getByRole('button', { name: '7 days', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Runs', exact: true })).toBeVisible();
   await expect(page.getByRole('figure', { name: 'How long runs take', exact: true })).toContainText('Median 960 ms');
-  const heat = page.getByRole('group', { name: /Runs by UTC hour over the last 7 days/ });
+  const heat = page.getByRole('group', { name: /Runs by UTC hour for all served UTC dates/ });
   const cells = heat.getByRole('button');
   await expect(cells).toHaveCount(168);
   expect(await cells.evaluateAll(elements => elements.filter(el => (el as HTMLButtonElement).tabIndex === 0).length)).toBe(1);
@@ -36,7 +38,7 @@ test('review fixes: exact median and keyboard/touch hourly inspection', async ({
   await populated.press('ArrowRight');
   await expect(page.getByTestId('activity-hour-readout')).toHaveText(`${weekday} 09:00 UTC · 0 runs`);
   // A readout must survive the pointer leaving the chart after keyboard selection.
-  await page.getByRole('heading', { name: 'Overview', exact: true }).hover();
+  await page.getByRole('heading', { name: 'Runs', exact: true }).hover();
   await expect(page.getByTestId('activity-hour-readout')).toHaveText(`${weekday} 09:00 UTC · 0 runs`);
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 900 });

@@ -7,7 +7,8 @@ import { RankedBars } from '@/components/dashboard/RankedBars';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { causeHref, useSharedRunFilter } from './run-filter';
 import { failureCauseLabel, tierLabel } from './plain-text';
-import { Link } from 'wouter';
+import { Link, useLocation, useSearch } from 'wouter';
+import { DEFAULT_RUNS_VIEW, readRunsSearch, writeRunsSearch } from '@/navigation/runs-url-state';
 import {
   NOT_RECORDED, causes, countBy, durationBuckets, summary, toInsightRuns, windowDays, windowRuns,
   type InsightDay, type InsightRun,
@@ -83,14 +84,18 @@ function dayCounts(day: InsightDay): string {
   return parts.join(', ');
 }
 
+/** True inside a panel whose own heading already names the chart: the chart's title then only labels the figure. */
+const NamedByPanel = createContext(false);
+
 function ChartCard({ title, concept, note, delay, children }: {
   title: string; concept: string; note?: string; delay: number; children: ReactNode;
 }) {
   const id = useId();
+  const named = useContext(NamedByPanel);
   return (
     <figure className="local-chart ins-card od-card" aria-labelledby={id} style={{ '--ins-accent': `var(--field-${concept})`, animationDelay: `${delay}ms` } as CSSProperties}>
       <div className="ins-card-head">
-        <h3 id={id} className="ins-title"><span className="ins-badge" aria-hidden="true"><ConceptIcon concept={concept} label={title} size={16} /></span>{title}</h3>
+        <h3 id={id} className="ins-title" hidden={named}><span className="ins-badge" aria-hidden="true"><ConceptIcon concept={concept} label={title} size={16} /></span>{title}</h3>
         {note && <span className="ins-note">{note}</span>}
       </div>
       {children}
@@ -103,35 +108,80 @@ function Readout({ testId, text, active }: { testId?: string; text: ReactNode; a
   return <p className={`ins-readout${active ? ' ins-readout--active' : ''}`} data-testid={testId} aria-live="polite">{text}</p>;
 }
 
+/**
+ * Live review 2026-10-25 ("all graphs this style"): one day of a grouped bar chart, the reference screenshot's look:
+ * each series a dotted bar side by side, its served value above it; a value not served draws no bar and no number.
+ * Heights are each value over the largest single value in the chart.
+ */
+function DayBars({ values, max }: { values: ReadonlyArray<{ key: string; value: number | null; color: string; label: string }>; max: number }) {
+  return (
+    <span className="gdb-group">
+      {values.map(entry => (
+        <span key={entry.key} className="gdb-col" data-series={entry.key}>
+          {entry.value !== null && entry.value > 0 && <b className="gdb-val">{entry.label}</b>}
+          {entry.value !== null && entry.value > 0 && (
+            <span className="gdb-bar ins-seg" style={{ height: `${(entry.value / max) * 100}%`, color: entry.color } as CSSProperties} />
+          )}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/** A short label above a token bar ("2.9K", "206K"); the exact count is in the day's readout and accessible name. */
+function shortCount(value: number | null): string {
+  if (value === null) return '';
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(value >= 10_000_000 ? 0 : 1)}M`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(value >= 100_000 ? 0 : 1)}K`;
+  return String(value);
+}
+
+/** Day labels under a grouped chart: every day while they fit, else every few days, always the last. */
+function dayTicks(days: readonly { day: string }[]): Set<number> {
+  const step = Math.max(1, Math.ceil(days.length / 14));
+  return new Set(days.map((_, index) => index).filter(index => index % step === 0 || index === days.length - 1));
+}
+
 function RunsPerDay({ days }: { days: InsightDay[] }) {
   const [hover, setHover] = useState<number | null>(null);
+  // OMN-21166 AC78: a day opens Runs filtered to that UTC day (the day key is already the UTC date).
+  // On Runs itself the filters already chosen stay; only the day changes.
+  const [location, navigate] = useLocation();
+  const search = useSearch();
+  const onRuns = location === '/runs';
+  const openDay = (key: string) => navigate(`/runs?${writeRunsSearch(onRuns ? search : '', { ...(onRuns ? readRunsSearch(search) : DEFAULT_RUNS_VIEW), day: key, page: 1 })}`);
+  const opensId = useId();
   const [show, setShow] = useState({ passed: true, failed: true });
-  const height = (day: InsightDay) => (show.passed ? day.passed : 0) + (show.failed ? day.failed : 0) + day.unrecorded;
-  const max = Math.max(1, ...days.map(height));
+  const max = Math.max(1, ...days.flatMap(day => [show.passed ? day.passed : 0, show.failed ? day.failed : 0, day.unrecorded]));
   const active = hover === null ? null : days[hover]!;
+  const ticks = dayTicks(days);
   const toggle = (key: 'passed' | 'failed') => setShow(current => {
     const other = key === 'passed' ? 'failed' : 'passed';
     return current[key] && !current[other] ? current : { ...current, [key]: !current[key] };
   });
   return (
     <ChartCard title="Runs per day" concept="runs-daily" delay={0}>
-      <div className="ins-toggles" role="group" aria-label="Series">
-        <button type="button" className="ins-toggle" data-field-tone="pass" aria-pressed={show.passed} onClick={() => toggle('passed')} style={{ '--ins-swatch': PASS } as CSSProperties}>Passed</button>
-        <button type="button" className="ins-toggle" data-field-tone="fail" aria-pressed={show.failed} onClick={() => toggle('failed')} style={{ '--ins-swatch': FAIL } as CSSProperties}>Failed</button>
-      </div>
       <Readout testId="runs-per-day-readout" active={active !== null}
-        text={active ? <>{dayLabel(active.day)} · <span data-field-tone="count">{count(active.runs)} runs</span> · <span data-field-tone="pass">{count(active.passed)} passed</span> · <span data-field-tone="fail">{count(active.failed)} failed</span>{active.unrecorded > 0 && <> · <span data-field-tone="basis" data-field-unavailable="true">{count(active.unrecorded)} not recorded</span></>}</> : null} />
-      <div className="ins-bars" role="group" aria-label="Runs per day" onMouseLeave={() => setHover(null)}>
+        text={active ? <>{dayLabel(active.day)} · <span data-field-tone="count">{count(active.runs)} runs</span> · <span data-field-tone="pass">{count(active.passed)} passed</span> · <span data-field-tone="fail">{count(active.failed)} failed</span>{active.unrecorded ? <> · {count(active.unrecorded)} not recorded</> : null}</> : 'Passed vs failed runs per UTC day'} />
+      <div className="ins-bars gdb-plot" role="group" aria-label="Runs per day" onMouseLeave={() => setHover(null)}>
         {days.map((day, index) => (
-          <button key={day.day} type="button" className="ins-bar" aria-label={`${dayLabel(day.day)}: ${dayCounts(day)}`}
+          <button key={day.day} type="button" className="ins-bar gdb-day" aria-label={`${dayLabel(day.day)}: ${dayCounts(day)}`}
+            aria-describedby={opensId} onClick={() => openDay(day.day)}
             data-dim={hover !== null && hover !== index} onMouseEnter={() => setHover(index)} onFocus={() => setHover(index)}>
-            <span className="ins-seg od-grow" style={{ height: `${(day.unrecorded / max) * 100}%`, background: UNKNOWN, animationDelay: `${index * 30}ms` }} />
-            {show.failed && <span className="ins-seg od-grow" style={{ height: `${(day.failed / max) * 100}%`, background: FAIL, animationDelay: `${index * 30}ms` }} />}
-            {show.passed && <span className="ins-seg od-grow" style={{ height: `${(day.passed / max) * 100}%`, background: PASS, animationDelay: `${index * 30}ms` }} />}
+            <DayBars max={max} values={[
+              ...(show.passed ? [{ key: 'passed', value: day.passed, color: PASS, label: count(day.passed) }] : []),
+              ...(show.failed ? [{ key: 'failed', value: day.failed, color: FAIL, label: count(day.failed) }] : []),
+              ...(day.unrecorded > 0 ? [{ key: 'unrecorded', value: day.unrecorded, color: UNKNOWN, label: count(day.unrecorded) }] : []),
+            ]} />
+            <span className="gdb-day-label" aria-hidden="true">{ticks.has(index) ? dayLabel(day.day) : ''}</span>
           </button>
         ))}
       </div>
-      <div className="ins-axis"><span>{dayLabel(days[0]!.day)}</span><span>{dayLabel(days[days.length - 1]!.day)}</span></div>
+      <span id={opensId} hidden>Opens Runs for this day</span>
+      <div className="ins-toggles gdb-legend" role="group" aria-label="Series">
+        <button type="button" className="ins-toggle" data-field-tone="pass" aria-pressed={show.passed} onClick={() => toggle('passed')} style={{ '--ins-swatch': PASS } as CSSProperties}>Passed</button>
+        <button type="button" className="ins-toggle" data-field-tone="fail" aria-pressed={show.failed} onClick={() => toggle('failed')} style={{ '--ins-swatch': FAIL } as CSSProperties}>Failed</button>
+      </div>
     </ChartCard>
   );
 }
@@ -308,7 +358,9 @@ function ModelScoreboard({ runs }: { runs: InsightRun[] }) {
           const rate = judged ? (group.passed / judged) * 100 : null;
           return { key: group.key, name: group.key, value: rate, basis: 'measured' as const, color: modelColor(group.key),
             display: rate === null ? 'No verdicts' : `${Math.round(rate)}%`, title: `${count(group.runs)} runs · ${verdictCoverage(judged, group.runs)}` };
-        })} />
+        })}
+        // Each model's verdict coverage in plain text under the bars, so keyboard and touch readers have it too.
+        footnote={groups.map(group => `${group.key}: ${verdictCoverage(group.passed + group.failed, group.runs)}`).join(' · ')} />
     </ChartCard>
   );
 }
@@ -411,33 +463,37 @@ function ChartSection({ title, concept, children }: { title: string; concept: st
 
 function TokensPerDay({ days }: { days: InsightDay[] }) {
   const [hover, setHover] = useState<number | null>(null);
-  const total = (day: InsightDay) => (day.tokensIn === null ? 0 : day.tokensIn) + (day.tokensOut === null ? 0 : day.tokensOut);
-  const max = Math.max(1, ...days.map(total));
+  // The scale comes from the days that recorded tokens; a day without a count draws no bar.
+  const max = Math.max(1, ...days.flatMap(day => [day.tokensIn, day.tokensOut]).filter((value): value is number => value !== null));
   const side = (value: number | null, missing: number, direction: 'in' | 'out') => `${value === null ? 'not recorded' : formatFullCount(value)} ${direction}${value !== null && missing > 0 ? ` (partial: ${count(missing)} ${missing === 1 ? 'run' : 'runs'} not recorded)` : ''}`;
   const label = (day: InsightDay) => `${dayLabel(day.day)}: ${side(day.tokensIn, day.tokensInUnmeasured, 'in')}, ${side(day.tokensOut, day.tokensOutUnmeasured, 'out')}`;
   const active = hover === null ? null : days[hover]!;
+  const ticks = dayTicks(days);
   return (
     <ChartCard title="Tokens per day" concept="tokens-daily" delay={420}>
-      <ul className="ins-token-legend" aria-label="Token series">
-        <li data-field-tone="tokens-in"><ConceptIcon concept="tokens-in" size={14} /><span>Tokens in</span></li>
-        <li data-field-tone="tokens-out"><ConceptIcon concept="tokens-out" size={14} /><span>Tokens out</span></li>
-      </ul>
       <Readout active={active !== null} text={active ? <>{dayLabel(active.day)} · <span data-field-tone="tokens-in" data-field-unavailable={active.tokensIn === null}>{side(active.tokensIn, active.tokensInUnmeasured, 'in')}</span>, <span data-field-tone="tokens-out" data-field-unavailable={active.tokensOut === null}>{side(active.tokensOut, active.tokensOutUnmeasured, 'out')}</span></> : <><span data-field-tone="tokens-in">Tokens in</span> and <span data-field-tone="tokens-out">out</span>, per UTC day</>} />
-      <div className="ins-bars" role="group" aria-label="Tokens per day" onMouseLeave={() => setHover(null)}>
+      <div className="ins-bars gdb-plot" role="group" aria-label="Tokens per day" onMouseLeave={() => setHover(null)}>
         {days.map((day, index) => (
-          <button key={day.day} type="button" className="ins-bar" aria-label={label(day)}
+          <button key={day.day} type="button" className="ins-bar gdb-day" aria-label={label(day)}
             data-dim={hover !== null && hover !== index} onMouseEnter={() => setHover(index)} onFocus={() => setHover(index)}>
-            {day.tokensOut !== null && <span className="ins-seg od-grow" style={{ height: `${(day.tokensOut / max) * 100}%`, background: 'var(--field-tokens-out)', animationDelay: `${index * 30}ms` }} />}
-            {day.tokensIn !== null && <span className="ins-seg od-grow" style={{ height: `${(day.tokensIn / max) * 100}%`, background: 'var(--field-tokens-in)', animationDelay: `${index * 30}ms` }} />}
+            <DayBars max={max} values={[
+              { key: 'in', value: day.tokensIn, color: 'var(--field-tokens-in)', label: shortCount(day.tokensIn) },
+              { key: 'out', value: day.tokensOut, color: 'var(--field-tokens-out)', label: shortCount(day.tokensOut) },
+            ]} />
+            <span className="gdb-day-label" aria-hidden="true">{ticks.has(index) ? dayLabel(day.day) : ''}</span>
           </button>
         ))}
       </div>
-      <div className="ins-axis"><span>{dayLabel(days[0]!.day)}</span><span>{dayLabel(days[days.length - 1]!.day)}</span></div>
+      <ul className="ins-token-legend gdb-legend" aria-label="Token series">
+        <li data-field-tone="tokens-in"><i aria-hidden="true" style={{ background: 'var(--field-tokens-in)' }} /><span>Tokens in</span></li>
+        <li data-field-tone="tokens-out"><i aria-hidden="true" style={{ background: 'var(--field-tokens-out)' }} /><span>Tokens out</span></li>
+      </ul>
     </ChartCard>
   );
 }
 
 /** The Activity trends window, shared by its summary and the pass-rate sparkline. */
+
 export type ActivityWindow = { kind: 'all' } | { kind: 'days'; days: number } | { kind: 'custom'; start: string; end: string };
 export interface InsightsWindowValue { window: ActivityWindow; setWindow: (window: ActivityWindow) => void }
 export const InsightsWindowContext = createContext<'all' | 'today' | InsightsWindowValue | null>(null);
@@ -726,19 +782,20 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
   // OMN-21166 Maple grid: a slice draws one piece in its own panel; the runs panel carries the window and the population.
   if (view === 'runs' || view === 'tokens' || view === 'failures') {
     return (
-      <div className="ins-section ins-section--slice" role="group" aria-label={view === 'runs' ? 'Runs per day' : view === 'tokens' ? 'Tokens per day' : 'Why runs failed'}>
+      <NamedByPanel.Provider value>
+      <div className="ins-section ins-section--slice">
+        {/* Live review 2026-10-25: the window presets moved to the page header (ChartWindowPresets); the panel keeps its population. */}
         {view === 'runs' && <div className="ins-slice-tools">
-          <div className="ins-range-presets" role="group" aria-label="Quick ranges">
-            <button type="button" data-window="all" aria-pressed={window.kind === 'all'} onClick={() => setWindow({ kind: 'all' })}>All</button>
-            {RANGES.map(range => <button key={range.days} type="button" data-window={range.days} aria-pressed={window.kind === 'days' && window.days === range.days} onClick={() => setWindow({ kind: 'days', days: range.days })}>{range.label}</button>)}
-          </div>
           <p className="local-dashboard-caption ins-sub" data-testid="insights-total">{population}{undated}</p>
         </div>}
         {emptyMessage !== null ? <p className="local-dashboard-empty ins-empty" role="status">{emptyMessage}</p>
-          : view === 'runs' ? <RunsPerDay days={chartDays} />
+          : view === 'runs' ? <><RunsPerDay days={chartDays} />
+            {/* Live review 2026-10-25: no "More activity" on Overview (Lakshman: "remove from overview"). */}
+            <nav className="local-summary-links" aria-label="Detailed analysis"><Link href="/runs">Explore run analysis</Link><Link href="/usage">Explore usage</Link></nav></>
             : view === 'tokens' ? <TokensPerDay days={chartDays} />
               : <FailureCauses runs={runs} limit={5} onInspectFailure={onInspectFailure} />}
       </div>
+      </NamedByPanel.Provider>
     );
   }
   return (

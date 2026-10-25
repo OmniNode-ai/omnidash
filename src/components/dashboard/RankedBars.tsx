@@ -26,7 +26,9 @@ const KEY_LABELS: Readonly<Record<RankedBarBasis, string>> = {
   unknown: 'Not measured',
 };
 
-export function RankedBars({ label, unit, items, order = 'asc', note, footnote }: {
+export function RankedBars({ label, unit, items, order = 'asc', note, footnote, layout = 'auto' }: {
+  /** 'vertical' keeps upright bars in a narrow panel (live review 2026-10-25); 'auto' turns them sideways below 560px. */
+  layout?: 'auto' | 'vertical';
   label: string;
   /** The unit and reading direction under the title, e.g. "USD · lower is better". */
   unit: string;
@@ -45,7 +47,7 @@ export function RankedBars({ label, unit, items, order = 'asc', note, footnote }
   const max = Math.max(0, ...served.map(item => item.value!));
   const classes = (['measured', 'estimated', 'unknown'] as const).filter(basis => ordered.some(item => item.basis === basis));
   return (
-    <figure className="rb-chart" aria-label={label}>
+    <figure className={`rb-chart${layout === 'vertical' ? ' rb-chart--vertical' : ''}`} aria-label={label}>
       <figcaption className="rb-head">
         <span className="rb-unit">{unit}</span>
         {note}
@@ -55,7 +57,8 @@ export function RankedBars({ label, unit, items, order = 'asc', note, footnote }
           const scaled = item.basis === 'unknown' ? undefined
             : `${max > 0 && item.value! > 0 ? Math.round((item.value! / max) * 1000) / 10 : 0}%`;
           return (
-            <li key={item.key} data-ranked-item={item.key} data-basis={item.basis}
+            // Focusable, so a keyboard reader reveals the value as a pointer does on hover (live review 2026-10-25).
+            <li key={item.key} data-ranked-item={item.key} data-basis={item.basis} tabIndex={0}
               aria-label={`${item.name}: ${item.display}, ${KEY_LABELS[item.basis].toLowerCase()}`}
               style={{ '--rb-color': item.color } as CSSProperties}>
               <span className="rb-value" title={item.title}>{item.display}</span>

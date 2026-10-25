@@ -96,9 +96,10 @@ for (const total_savings_usd of [legacy.total_savings_usd, -legacy.total_savings
       const range = document.createRange(); range.selectNodeContents(el);
       return { text: el.textContent, lines: range.getClientRects().length, overflow: el.scrollWidth-el.clientWidth, font: parseFloat(getComputedStyle(el).fontSize) };
     }));
-    expect(geometry).toHaveLength(4);
+    // OMN-21166 live review 2026-10-25: the fifth headline card (Delegation Quality, 75.0% on this fixture) is measured too.
+    expect(geometry).toHaveLength(5);
     await info.attach(`totals-${width}`, { body: JSON.stringify(geometry), contentType: 'application/json' });
-    expect(geometry.map(metric => metric.lines), geometry.map(metric => metric.text).join(' / ')).toEqual([1, 1, 1, 1]);
+    expect(geometry.map(metric => metric.lines), geometry.map(metric => metric.text).join(' / ')).toEqual([1, 1, 1, 1, 1]);
     for (const metric of geometry) { expect(metric.overflow, metric.text!).toBeLessThanOrEqual(1); expect(metric.font).toBeGreaterThanOrEqual(18); }
     await page.screenshot({ path: info.outputPath(`whole-totals-${width}.png`), fullPage: true });
   }

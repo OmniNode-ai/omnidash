@@ -145,11 +145,6 @@ function screenshotPath(name: string) {
   return path;
 }
 
-async function showOverviewRunFields(page: Page) {
-  const details = page.locator('details.local-recent-fields');
-  if (await details.getAttribute('open') === null) await details.locator(':scope > summary').press('Enter');
-}
-
 test('stored basis, excluded counts and modelled baseline survive native Overview and Runs', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const bases = ['measured', 'estimated', 'unknown', undefined];
@@ -171,22 +166,35 @@ test('stored basis, excluded counts and modelled baseline survive native Overvie
       runs_total: 4, runs_measured: 1, runs_unknown_tokens: 1, runs_unknown_spend: 2 })],
   });
   await page.goto('/');
-  // Savings and, since OMN-20752, Baseline spend both carry the metering row's baseline caption and modelled note.
-  await page.getByText('Additional runtime metrics', { exact: true }).press('Enter');
-  await expect(page.getByText('Baseline served-baseline-model · pricing manifest v1')).toHaveCount(1);
-  await expect(page.getByText(/The baseline never ran\./)).toHaveCount(1);
+  // OMN-21166 AC86 (Lakshman 2026-10-25): "Additional runtime metrics" (and its Baseline spend card, the only place the
+  // metering row's baseline and "The baseline never ran." note appeared) is deleted from Overview, and the Overview
+  // headline follows cost.savings-overview.v1 (D1), which serves no baseline model. The Savings card's hover therefore
+  // says so, and names the runs the total leaves out; the metering row's baseline is held on Usage, below.
+  const savingsCard = page.locator('[data-component="overview-savings"]');
+  await expect(savingsCard.locator('.local-dashboard-metric')).toBeVisible();
+  await savingsCard.getByRole('button', { name: 'About Savings', exact: true }).focus();
+  await expect(savingsCard.getByText(/Baseline model not recorded/)).toBeVisible();
+  await expect(savingsCard.getByText(/3 unknown-provenance runs/)).toBeVisible();
+  await expect(page.getByText('Baseline served-baseline-model · pricing manifest v1')).toHaveCount(0);
   // OMN-21166 AC37: Agent calls is every call; the served classes are its caption.
+  // OMN-21166 (card basis in a tooltip): the served classes sit in the card's info tooltip, shown on focus.
+  await page.getByRole('button', { name: 'About Agent calls', exact: true }).focus();
   await expect(page.getByText('46 measured · 3 unknown', { exact: true })).toBeVisible();
-  await showOverviewRunFields(page);
-  await revealRunFields(page);
-  const last = page.getByRole('region', { name: 'Last run' });
-  await last.locator('summary').click();
-  await expect(last.locator('dt').filter({ hasText: /^Basis$/ })).toBeVisible();
-  await expect(last.getByText('measured', { exact: true })).toBeVisible();
-  for (const route of ['overview', 'runs']) {
+  // OMN-21166 AC86 (Lakshman 2026-10-25): Last run and Recent runs deleted from Overview; the stored basis column is
+  // held on Runs below, and Overview keeps the no-cut-off check.
+  await expectNoPanelCutOff(page);
+  // The metering row's own baseline model is named on Usage (live review 2026-10-25: KPI "Baseline cost").
+  await page.getByTestId('nav-local-usage').click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Usage' })).toBeVisible();
+  await expect(page.getByText('Same tokens at served-baseline-model list price (modelled)')).toHaveCount(1);
+  await page.getByTestId('nav-local-overview').click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
+  await page.screenshot({ path: screenshotPath('local-dashboard-provenance-overview-1440x900.png'), fullPage: false });
+  for (const route of ['runs']) {
     if (route === 'runs') {
       await page.getByTestId('nav-local-runs').click();
       await expect(page.getByRole('heading', { name: 'Runs', exact: true })).toBeVisible();
+      await revealRunFields(page);
       await expect(page.locator('table thead th').filter({ hasText: 'Basis' })).toHaveCount(1);
     }
     // Runs is intentionally horizontally scrollable at 1440px; role locators
@@ -215,36 +223,28 @@ test('Overview is the default page and fits 1440x900 with no unmeasured 0 (AC4)'
   await page.goto('/');
 
   await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
-  await showOverviewRunFields(page);
-  await revealRunFields(page);
   await page.locator('.local-dashboard-page').evaluate(el => { el.scrollTop = 0; });
-  const recent = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Recent runs' }) });
-  const unmeasured = recent.locator('tr').filter({ has: page.getByRole('link', { name: 'corr-19981-unmeasured', exact: true }) });
-  await expect(unmeasured).toBeVisible();
-  // OMN-19980 AC2b: a run shows its cost and never a per-run saving, so the unpriced run has no saving to type.
-  await expect(recent.getByRole('columnheader', { name: 'Savings', exact: true })).toHaveCount(0);
-  await expect(unmeasured.getByText('$0.01', { exact: true })).toBeVisible();
-  await expect(unmeasured.getByText('Not recorded').first()).toBeVisible();
-  await expect(unmeasured.getByText('0', { exact: true })).toHaveCount(0);
+  // OMN-21166 AC86 (Lakshman 2026-10-25): Recent runs (its Savings column, the per-run unmeasured row and the Passed/Failed
+  // filter buttons) is deleted from Overview; the per-run typed values are held on Runs (AC4 Runs test below). What
+  // stays here is the page-wide guard: no unmeasured figure is drawn as 0.
+  await expect(page.getByRole('heading', { name: 'Recent runs' })).toHaveCount(0);
   // Keep the page-wide guard. Only explicit chart axes and the separately
   // verified returned-run composition counts may contain a measured zero.
   const zeroNodes = await page.getByText('0', { exact: true }).evaluateAll(nodes => nodes.map(el => ({
     html: el.outerHTML, parent: el.parentElement?.outerHTML.slice(0, 900),
-    exempt: !!el.closest('.ins-axis, .local-tier-bars-axis, .overview-outcome-legend, button[data-result="failed"] > span, figure[aria-label="Duration per run"] .local-chart-canvas svg, figure[aria-label="Tokens per run"] .local-chart-canvas svg'),
+    exempt: !!el.closest('.ins-axis, .local-tier-bars-axis, .overview-outcome-legend, figure[aria-label="Duration per run"] .local-chart-canvas svg, figure[aria-label="Tokens per run"] .local-chart-canvas svg'),
   })));
   await test.info().attach('numeric-zero-scope', { body: JSON.stringify(zeroNodes), contentType: 'application/json' });
   expect(zeroNodes.filter(node => !node.exempt)).toEqual([]);
   await expect(page.getByText('$0', { exact: true })).toHaveCount(0);
-  await expect(recent.locator('button[data-result="failed"]')).toHaveText('Failed 0');
-  const outcomes = page.locator('.overview-outcome-legend button');
-  await expect(outcomes).toHaveCount(3);
-  for (const [index, label] of ['Passed: 2 runs', 'Failed: 0 runs', 'Not recorded: 0 runs'].entries()) await expect(outcomes.nth(index)).toHaveAttribute('aria-label', label);
 
   // D1: Savings follows cost.savings-overview.v1, never a metering row.
   const savings = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Savings', exact: true }) });
   // D1: legacy1.2252, never the conflicting metering1.2184.
   await expect(savings.getByText('$1.22', { exact: true })).toBeVisible();
   await expect(savings.getByText('$1.21', { exact: true })).toHaveCount(0);
+  // OMN-21166 (card basis in a tooltip): the basis line is in the card's tooltip, shown on keyboard focus of the card.
+  await savings.getByRole('button', { name: 'About Savings', exact: true }).focus();
   await expect(savings.getByText('Modelled · vs cloud baseline', { exact: true })).toBeVisible();
   await expect(savings.getByText('$0.40', { exact: true })).toHaveCount(0);
   // D1: all four headline tiles follow the same legacy all row.
@@ -252,30 +252,19 @@ test('Overview is the default page and fits 1440x900 with no unmeasured 0 (AC4)'
   await expect(headline('Actual spend').getByText('$0.01', { exact: true })).toBeVisible();
   await expect(headline('Agent calls').getByText('49', { exact: true })).toBeVisible();
   await expect(headline('Agent calls').getByText('46', { exact: true })).toHaveCount(0);
+  await headline('Agent calls').getByRole('button', { name: 'About Agent calls', exact: true }).focus();
   await expect(headline('Agent calls').getByText('46 measured · 3 unknown', { exact: true })).toBeVisible();
   await expect(headline('Tokens processed').getByText('9.84K', { exact: true })).toBeVisible();
   await expect(headline('Tokens processed').getByText(/Not available yet/)).toHaveCount(0);
 
-  // The headline tiles sit above the fold, Tokens processed among them (requirement Q3), and so do the newest run's
-  // status, model and age (requirement Q2). OMN-21015 (Lakshman, 2026-10-13: the charts are moved up so a reader sees
-  // them without scrolling): Last run now shares the second row with the two charts, so this test holds the facts
-  // Q2 names inside the window rather than the whole Last run panel, and Recent runs, which it used to hold starting
-  // on the first screen, starts below it. Q2's pass condition is met by the Last run card. The charts' own place is
-  // measured in local-dashboard-omn21015.spec.ts.
-  for (const title of ['Actual spend', 'Savings', 'Agent calls', 'Tokens processed']) {
+  // The headline cards sit above the fold, Tokens processed among them (requirement Q3). OMN-21166 AC86 (Lakshman
+  // 2026-10-25): the newest run (requirement Q2) is waived and its row is deleted from Overview, so only the five
+  // cards are held inside the window. Delegation Quality is the fifth card (live review 2026-10-25).
+  for (const title of ['Actual spend', 'Savings', 'Agent calls', 'Tokens processed', 'Delegation Quality']) {
     const bounds = await page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: title, exact: true }) }).boundingBox();
     expect(bounds, title).not.toBeNull();
     expect(bounds!.y + bounds!.height, title).toBeLessThanOrEqual(900);
   }
-  const lastRun = page.getByRole('region', { name: 'Last run' });
-  for (const label of ['Status', 'Model', 'Age']) {
-    const value = lastRun.locator('div').filter({ has: page.locator('dt', { hasText: new RegExp(`^${label}$`) }) }).locator('dd');
-    await expect(value, label).toBeVisible();
-    const bounds = await value.boundingBox();
-    expect(bounds!.y, label).toBeGreaterThanOrEqual(0);
-    expect(bounds!.y + bounds!.height, label).toBeLessThanOrEqual(900);
-  }
-  await expect(recent).toHaveCount(1);
   await expectNoPanelCutOff(page);
 
   await page.screenshot({ path: screenshotPath('local-dashboard-overview-1440x900.png'), fullPage: false });
@@ -297,8 +286,20 @@ test('Runs lists every decision with typed unmeasured values at 1440x900 (AC4)',
   await expect(unmeasured.getByText('$0.01', { exact: true })).toBeVisible();
   await expect(unmeasured.getByText('Baseline unresolved')).toHaveCount(0);
   await expect(page.getByText('Runs 1–2 of 2')).toBeVisible();
-  await expect(page.getByText('0', { exact: true })).toHaveCount(0);
+  // OMN-21166 AC63: the Runs summary strip shows the served Failed count; both runs passed, so its 0 is a measured
+  // count (the strip's other figures are non-zero). Every other 0 on the page would be an unmeasured value shown as 0.
+  const runZeros = await page.getByText('0', { exact: true }).evaluateAll(nodes => nodes.map(el => ({
+    html: el.outerHTML, exempt: !!el.closest('.kpi-item[data-field-tone="fail"] .kpi-value'),
+  })));
+  expect(runZeros.filter(node => !node.exempt)).toEqual([]);
+  await expect(page.locator('.kpi-item[data-field-tone="fail"]')).toContainText('Failed0');
   await expectNoPanelCutOff(page);
+  // OMN-21166 Maple grid: the outcome legend (Passed/Failed/Not recorded) left Overview; it is Runs' "Quality and
+  // outcomes", under "More analysis".
+  await page.getByText('More analysis', { exact: true }).press('Enter');
+  const outcomes = page.locator('.overview-outcome-legend button');
+  await expect(outcomes).toHaveCount(3);
+  for (const [index, label] of ['Passed: 2 runs', 'Failed: 0 runs', 'Not recorded: 0 runs'].entries()) await expect(outcomes.nth(index)).toHaveAttribute('aria-label', label);
 
   await page.screenshot({ path: screenshotPath('local-dashboard-runs-1440x900.png'), fullPage: false });
 });
@@ -326,6 +327,10 @@ test('Usage shows measured cost beside unmeasured runs, never 0 for unmeasured, 
   await page.getByTestId('nav-local-usage').click();
 
   await expect(page.getByRole('heading', { level: 1, name: 'Usage' })).toBeVisible();
+  // OMN-21166 part 13: the usage-by-model-day records are under "More usage", and the savings day table under "Savings
+  // by day as a table".
+  await page.getByText('More usage', { exact: true }).press('Enter');
+  await page.getByText('Savings by day as a table', { exact: true }).press('Enter');
   const mixed = page.getByRole('row').filter({ hasText: 'Qwen3.8-27B' });
   for (const value of ['2026-10-02', '162', '52', '$0.25', '1 unmeasured', '2']) {
     await expect(mixed.getByText(value, { exact: true })).toBeVisible();
@@ -351,33 +356,26 @@ test('Overview and Runs show each run\'s backend, host, tier and score, typed wh
   await page.setViewportSize({ width: 1440, height: 900 });
   await serveFixtures(page);
   await page.goto('/');
-  await showOverviewRunFields(page);
-  await revealRunFields(page);
 
   await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
-  await showOverviewRunFields(page);
-  await revealRunFields(page);
-  await page.locator('.local-dashboard-page').evaluate(el => { el.scrollTop = 0; });
+  // OMN-21166 AC86 (Lakshman 2026-10-25): Recent runs deleted from Overview, so a run's backend, host, tier and score
+  // are held on Runs below; Overview no longer lists any run row.
   await expect(page.getByText('Not served (OMN-20162)')).toHaveCount(0);
-  const recent = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Recent runs' }) });
-  const measured = recent.locator('tr').filter({ has: page.getByRole('link', { name: 'corr-19981-measured', exact: true }) });
-  for (const value of ['local-heavy-reasoning', 'gpu-host-b', 'local (free_local)', 'passed', '1.000']) {
-    await expect(measured.getByText(value, { exact: true }), value).toBeVisible();
-  }
-  // The second run carries no backend or host: typed, never blank.
-  const unmeasured = recent.locator('tr').filter({ has: page.getByRole('link', { name: 'corr-19981-unmeasured', exact: true }) });
-  const headers = await recent.getByRole('columnheader').allTextContents();
-  const cells = unmeasured.getByRole('cell');
-  for (const header of ['Backend', 'Host']) {
-    await expect(cells.nth(headers.map((h) => h.trim()).indexOf(header)), header).toHaveText('Not recorded');
-  }
+  await expect(page.getByRole('link', { name: 'corr-19981-measured', exact: true })).toHaveCount(0);
 
   await page.getByTestId('nav-local-runs').click();
   await expect(page.getByRole('heading', { level: 1, name: 'Runs' })).toBeVisible();
   await revealRunFields(page);
   const run = page.locator('tr').filter({ has: page.getByRole('link', { name: 'corr-19981-measured', exact: true }) });
-  for (const value of ['local-heavy-reasoning', 'gpu-host-b', 'local (free_local)']) {
+  for (const value of ['local-heavy-reasoning', 'gpu-host-b', 'Local (free local)']) {
     await expect(run.getByText(value, { exact: true }), value).toBeVisible();
+  }
+  // The second run carries no backend or host: typed, never blank (moved here from the deleted Overview Recent runs).
+  const unmeasuredRun = page.locator('tr').filter({ has: page.getByRole('link', { name: 'corr-19981-unmeasured', exact: true }) });
+  const runHeaders = (await page.locator('table thead th').allTextContents()).map((h) => h.trim());
+  for (const header of ['Backend', 'Host']) {
+    expect(runHeaders.indexOf(header), header).toBeGreaterThanOrEqual(0);
+    await expect(unmeasuredRun.getByRole('cell').nth(runHeaders.indexOf(header)), header).toHaveText('Not recorded');
   }
   await expect(page.getByText('Not served (OMN-20162)')).toHaveCount(0);
   await expectNoPanelCutOff(page);
@@ -389,38 +387,49 @@ test('Overview quality and tier-mix panels show served fields only (OMN-20225 AC
   await serveFixtures(page);
   await page.goto('/');
 
-  await page.locator('.local-overview-secondary > summary').click();
-  const quality = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Quality', exact: true }) });
-  await quality.scrollIntoViewIfNeeded();
-  await expect(quality.getByRole('meter')).toHaveAttribute('aria-valuenow', '0.875');
-  await expect(quality.locator('[data-quality-field=overall_pass_rate] dd .local-readable')).toHaveAttribute('title', '0.875');
-  await expect(quality.getByRole('meter')).toContainText('87.5%');
-  for (const value of ['7', '1', '8', '0.81', '0.7']) {
-    await expect(quality.getByText(value, { exact: true }), value).toBeVisible();
-  }
+  // OMN-21166 live review 2026-10-25: Quality is the fifth headline card, "Delegation Quality": its figure is the served
+  // overall pass rate (not recomputed from the counts), and the served passed / checked / failed counts are in its hover.
+  // OMN-21166 AC86 (Lakshman 2026-10-25): the meter, "More quality detail", the score figures (0.81, 0.7) and the daily
+  // pass-rate line are deleted from Overview.
+  const quality = page.locator('[data-component="overview-quality"][data-slice="card"]');
+  await expect(quality.getByRole('heading', { name: 'Delegation Quality', exact: true })).toBeVisible();
+  await expect(quality.locator('.local-dashboard-metric')).toHaveText('87.5%');
+  await expect(page.getByRole('meter')).toHaveCount(0);
+  await quality.getByRole('button', { name: 'About Delegation Quality', exact: true }).focus();
+  await expect(quality.getByText('7 of 8 runs passed the quality gate', { exact: true })).toBeVisible();
+  await expect(quality.getByText('1 failed · deterministic checks', { exact: true })).toBeVisible();
+  // OMN-21166 Maple grid/AC64: Overview's Tier mix is ranked bars that print each served share and count, with the
+  // not-tier-routed count; the table with the raw served shares (title 0.7143) is Runs' routing breakdown, below.
   const tierMix = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Tier mix', exact: true }) });
-  await tierMix.locator('details > summary').press('Enter');
-  for (const value of ['cheap_cloud', '71.4%', '28.6%']) {
-    await expect(tierMix.getByRole('table').getByText(value, { exact: true }), value).toBeVisible();
-  }
-  await expect(tierMix.locator('.local-readable[title="0.7143"]')).toBeVisible();
-  await expect(tierMix.locator('.local-readable[title="0.2857"]')).toBeVisible();
-  await expect(tierMix.getByText('Not tier-routed', { exact: true })).toBeVisible();
-  // OMN-21015 (Lakshman, 2026-10-13): the charts are at the top of the page, so Tier mix now sits above Recent runs
-  // and Recent runs starts below the first screen. This test used to hold both panels under Recent runs and Recent
-  // runs starting above the fold. The requirement behind that (Q2: the newest run's status, model and age without
-  // scrolling) is met by the Last run card, which is held on the first screen in the Overview test above; that no
-  // panel is cut off is still held here. Recent runs is still on the page.
-  const recent = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Recent runs' }) });
-  await expect(recent).toHaveCount(1);
+  await expect(tierMix.getByRole('listitem', { name: 'Local: 5 · 71.4%, measured', exact: true })).toBeVisible();
+  await expect(tierMix.getByRole('listitem', { name: 'Cheap cloud: 2 · 28.6%, measured', exact: true })).toBeVisible();
+  await expect(tierMix.getByText('7 tier-routed · 2 not tier-routed · 9 runs', { exact: true })).toBeVisible();
+  // OMN-21166 AC86 (Lakshman 2026-10-25): Recent runs is deleted from Overview; that no panel is cut off is still held.
+  await expect(page.getByRole('heading', { name: 'Recent runs' })).toHaveCount(0);
   await expectNoPanelCutOff(page);
   await quality.scrollIntoViewIfNeeded();
   await page.screenshot({ path: screenshotPath('local-dashboard-overview-panels-1440x900.png'), fullPage: false });
+  // The raw served shares and the not-tier-routed count stay in Runs' routing breakdown, under "More analysis".
+  await page.goto('/runs');
+  await page.getByText('More analysis', { exact: true }).press('Enter');
+  const routing = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Routing breakdown', exact: true }) });
+  await routing.locator('summary').filter({ hasText: 'Full routing breakdown' }).press('Enter');
+  for (const value of ['Cheap cloud', '71.4%', '28.6%']) {
+    await expect(routing.getByRole('table').getByText(value, { exact: true }), value).toBeVisible();
+  }
+  await expect(routing.locator('.local-readable[title="0.7143"]').first()).toBeVisible();
+  await expect(routing.locator('.local-readable[title="0.2857"]').first()).toBeVisible();
+  await expect(routing.getByText('Not tier-routed', { exact: true })).toBeVisible();
 });
 
 test('every local page opens in order, names a served exposure, and fits 1440x900', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await serveFixtures(page);
+  // OMN-21166 part 11 (data pass 1): API Keys' identity and access cards read the native local-runtime row of
+  // local-environment.v1 (no longer delegation.savings.v1), so that exposure is served for the page to name.
+  await serveFixtures(page, { ...fixtures, 'onex.snapshot.projection.local-environment.v1': [{
+    tenant_id: 'tenant-fresh-store', mode: 'native', service: 'local-runtime', updated_at: '2026-10-02T10:07:00Z',
+    access_mode: 'token', token_minted_at: '2026-10-02T10:00:00Z', rotate_hint: 'onex dashboard --rotate',
+  }] });
   await page.goto('/');
 
   const nav = page.getByRole('navigation', { name: 'Local' });
@@ -449,8 +458,7 @@ test('local panels follow both themes on every page without losing readable surf
   await serveFixtures(page);
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
-  await showOverviewRunFields(page);
-  await revealRunFields(page);
+  // OMN-21166 AC86 (Lakshman 2026-10-25): Overview has no Recent runs field view to reveal.
   await page.locator('.local-dashboard-page').evaluate(el => { el.scrollTop = 0; });
 
   for (const theme of ['light', 'dark']) {
@@ -466,20 +474,53 @@ test('local panels follow both themes on every page without losing readable surf
       const surfaces = await page.locator('.local-dashboard-panel').evaluateAll((panels) => {
         const expected = document.createElement('div');
         expected.style.backgroundColor = getComputedStyle(document.querySelector('.app')!).getPropertyValue('--panel').trim();
-        return panels.map((panel) => ({
-          title: panel.querySelector('h2')?.textContent,
-          background: getComputedStyle(panel).backgroundColor,
-          expected: expected.style.backgroundColor,
-        }));
+        // OMN-21166 AC63/live review: the four KPI tiles are --panel with a 7% tint of their own accent, so they are
+        // compared channel by channel (within 20/255 of --panel, and opaque); every other panel is exactly --panel.
+        const canvas = document.createElement('canvas').getContext('2d')!;
+        const rgb = (color: string) => { canvas.clearRect(0, 0, 1, 1); canvas.fillStyle = color; canvas.fillRect(0, 0, 1, 1); return [...canvas.getImageData(0, 0, 1, 1).data]; };
+        return panels.map((panel) => {
+          const background = getComputedStyle(panel).backgroundColor;
+          const tile = !!panel.parentElement?.matches('.local-overview-summary');
+          const a = rgb(background), b = rgb(expected.style.backgroundColor);
+          return {
+            title: panel.querySelector('h2')?.textContent,
+            background: tile ? (a[3] === 255 && a.slice(0, 3).every((v, i) => Math.abs(v - b[i]) <= 20) ? 'panel-tint' : background) : background,
+            expected: tile ? 'panel-tint' : expected.style.backgroundColor,
+          };
+        });
       });
       expect(surfaces.length).toBeGreaterThan(0);
       for (const surface of surfaces) expect(surface.background, `${theme} ${name} ${surface.title}`).toBe(surface.expected);
       const nested = await page.locator('.overview-chart-row > figure.local-chart, .local-run-charts > figure.local-chart, .workflow-analysis-card').evaluateAll(cards => cards.map(card => {
         const expected = document.createElement('div');
         expected.style.backgroundColor = getComputedStyle(document.querySelector('.app')!).getPropertyValue('--panel').trim();
-        return { title: card.querySelector('h3')?.textContent, background: getComputedStyle(card).backgroundColor, expected: expected.style.backgroundColor };
+        const background = getComputedStyle(card).backgroundColor;
+        // OMN-21166 live review 2026-10-25: the Maple restyle draws a chart or analysis card flat (transparent) on its
+        // panel, whose own --panel surface is checked above; a flat card inside a panel passes, any other colour fails.
+        const flat = background === 'rgba(0, 0, 0, 0)' && !!card.closest('.local-dashboard-panel');
+        return { title: card.querySelector('h3')?.textContent, background: flat ? expected.style.backgroundColor : background, expected: expected.style.backgroundColor };
       }));
-      if (['overview', 'runs'].includes(name)) expect(nested.length, `${name} nested-card positive control`).toBeGreaterThan(0);
+      // OMN-21166 Maple grid: Overview's charts are drawn flat inside their panel (no card of their own), so there is no
+      // nested card to colour; each flat chart must sit on a panel whose surface is the checked --panel (above) and
+      // add no surface of its own. Runs' nested chart cards keep the --panel surface.
+      if (name === 'overview') {
+        const flat = await page.locator('.maple-grid figure.local-chart, .maple-grid figure.rb-chart').evaluateAll(figures => figures.map(figure => {
+          const expected = document.createElement('div');
+          expected.style.backgroundColor = getComputedStyle(document.querySelector('.app')!).getPropertyValue('--panel').trim();
+          const background = getComputedStyle(figure).backgroundColor;
+          return {
+            title: figure.getAttribute('aria-label') ?? figure.querySelector('h3')?.textContent,
+            // A flat chart is either transparent on its panel or the same --panel; never a surface of another colour.
+            background: background === expected.style.backgroundColor ? 'rgba(0, 0, 0, 0)' : background,
+            panelSurface: !!figure.closest('.local-dashboard-panel'),
+          };
+        }));
+        expect(flat.length, 'overview flat-chart positive control').toBeGreaterThan(0);
+        for (const chart of flat) {
+          expect(chart.panelSurface, `${theme} overview flat chart ${chart.title} sits in a panel`).toBe(true);
+          expect(chart.background, `${theme} overview flat chart ${chart.title}`).toBe('rgba(0, 0, 0, 0)');
+        }
+      } else if (name === 'runs') expect(nested.length, `${name} nested-card positive control`).toBeGreaterThan(0);
       for (const card of nested) expect(card.background, `${theme} ${name} nested ${card.title}`).toBe(card.expected);
       await expect(page.getByRole('alert')).toHaveCount(0);
       await expectNoPanelCutOff(page);
@@ -499,22 +540,18 @@ test('Overview and Runs scroll to their last row while the header stays reachabl
   await serveFixtures(page, { ...fixtures, [DECISIONS]: manyDecisions });
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
-  await showOverviewRunFields(page);
-  await revealRunFields(page);
+  // OMN-21166 AC86 (Lakshman 2026-10-25): Recent runs is deleted from Overview, so its last row is no longer the end of
+  // the page; the same property (the page scrolls to its last panel while the header stays reachable) is held on the
+  // last Overview panel, Tier mix.
   await page.locator('.local-dashboard-page').evaluate(el => { el.scrollTop = 0; });
   const scrollPage = page.locator('.local-dashboard-page');
-  // Recent runs' rows; the tier-mix panel below it is a table too (OMN-20225).
-  const recentRows = page.locator('.local-dashboard-panel')
-    .filter({ has: page.getByRole('heading', { name: 'Recent runs' }) })
-    .locator('.local-dashboard-table-wrap tbody tr');
-  await expect(recentRows).toHaveCount(10);
   await expect.poll(() => scrollPage.evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
   await page.mouse.move(1100, 650);
   await page.mouse.wheel(0, 4000);
   await expect.poll(() => scrollPage.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
-  const lastOverviewRow = recentRows.last();
-  await lastOverviewRow.scrollIntoViewIfNeeded();
-  await expect.poll(async () => { const box = await lastOverviewRow.boundingBox(); return box!.y + box!.height; }).toBeLessThanOrEqual(900);
+  const lastOverviewPanel = page.locator('[data-component="overview-tier-mix"]');
+  await lastOverviewPanel.scrollIntoViewIfNeeded();
+  await expect.poll(async () => { const box = await lastOverviewPanel.boundingBox(); return box!.y + box!.height; }).toBeLessThanOrEqual(900);
   expect((await page.getByRole('button', { name: 'Toggle theme', exact: true }).boundingBox())!.y).toBeGreaterThanOrEqual(0);
 
   await page.getByTestId('nav-local-runs').click();
@@ -562,8 +599,7 @@ test('sidebar surfaces and controls follow the theme in expanded and collapsed l
   await serveFixtures(page);
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
-  await showOverviewRunFields(page);
-  await revealRunFields(page);
+  // OMN-21166 AC86 (Lakshman 2026-10-25): Overview has no Recent runs field view to reveal.
   await page.locator('.local-dashboard-page').evaluate(el => { el.scrollTop = 0; });
   // Compare rendered colors, not equivalent hex/rgb/oklch serializations.
   const token = async (name: string) => page.evaluate((name) => {
@@ -777,10 +813,12 @@ test('Runs filters, pagination and table hover use readable themed controls', as
     if ((await page.locator('html').getAttribute('data-theme') === 'dark' ? 'dark' : 'light') !== theme) await page.getByRole('button', { name: 'Toggle theme' }).click();
     await expect(page.locator('body')).toHaveClass(`theme-${theme}`);
     const selects = page.locator('.local-dashboard-filters select');
-    // Status, Cause, Model, Window, and since OMN-21015 AC8 Backend.
-    await expect(selects).toHaveCount(5);
+    // Status, Cause, Model, Window, and since OMN-21015 AC8 Backend. OMN-21166 Maple grid: the task chips became a
+    // sixth select, Task.
+    await expect(selects).toHaveCount(6);
     for (const select of await selects.all()) {
-      await expect(select).toHaveCSS('border-radius', '8px');
+      // OMN-21166 Maple grid: the one-row Runs toolbar's selects have a 7px radius and keep the 40px touch target.
+      await expect(select).toHaveCSS('border-radius', '7px');
       await expect(select).toHaveCSS('min-height', '40px');
       await expect(select).toHaveCSS('border-top-style', 'solid');
     }

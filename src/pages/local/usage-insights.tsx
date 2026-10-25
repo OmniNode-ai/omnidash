@@ -77,7 +77,7 @@ function SpendByModel({ data }: { data: UsageAggregates }) {
     <figure className="local-chart usage-insight" aria-label="Spend by model">
       <h3><ConceptIcon concept="spend-model" size={16} />Spend by model</h3>
       {priced.length === 0 && <p role="status" className="ins-readout">No measured model spend served</p>}
-      <RankedBars label="Measured spend per model" unit={totalUsd === null ? 'USD · measured spend' : `USD · measured spend · ${money(totalUsd)} in all`}
+      <RankedBars layout="vertical" label="Measured spend per model" unit={totalUsd === null ? 'USD · measured spend' : `USD · measured spend · ${money(totalUsd)} in all`}
         items={data.models.map(model => ({
           key: model.model, name: model.model, value: model.measuredCost, basis: 'measured',
           display: model.measuredCost === null ? 'Not measured' : money(model.measuredCostUsd), color: modelColor(model.model),
