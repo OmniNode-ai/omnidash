@@ -11,6 +11,7 @@
 //   T6  a run with no served steps renders a blank instead of a typed state;
 //   T7  a step kind this page does not know is dropped instead of shown as served;
 //   T8  a terminal that names a step that was not served marks some other step.
+import { tierLabel } from '@/pages/local/plain-text';
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { RunTimeline } from './LocalDashboardPage';
@@ -71,7 +72,8 @@ describe('OMN-19987 run timeline', () => {
     const [, , call, terminal] = items();
     expect(call.getAttribute('data-failing-step')).toBe('true');
     expect(within(call).getByText('Failed here')).toBeTruthy();
-    expect(call.textContent).toContain('timeout');
+    // OMN-21166 AC39: a step's cause reads as its label, not the typed code.
+    expect(call.textContent).toContain('Timed out');
     expect(terminal.getAttribute('data-failing-step')).toBeNull();
     expect(within(terminal).queryByText('Failed here')).toBeNull();
     expect(screen.getAllByText('Failed here')).toHaveLength(1);
@@ -90,14 +92,16 @@ describe('OMN-19987 run timeline', () => {
     expect(screen.queryByText('Failed here')).toBeNull();
     // The earlier failure is still shown on its own step.
     expect(items()[2].textContent).toContain('failed');
-    expect(items()[2].textContent).toContain('timeout');
+    expect(items()[2].textContent).toContain('Timed out');
   });
 
   it('T5: the routing step shows its candidates in the order served, the chosen backend and the reason', () => {
     render(<RunTimeline steps={recorded} />);
     const routing = items()[1];
     const candidates = recorded[1].candidates as string[];
-    expect(routing.textContent).toContain(candidates.join(', '));
+    // OMN-21166 AC54: candidate tiers read as words, in the order served.
+    expect(routing.textContent).toContain(candidates.map(tierLabel).join(', '));
+    expect(routing.textContent).not.toMatch(/cheap_/);
     expect(routing.textContent).toContain(String(recorded[1].backend_id));
     expect(routing.textContent).toContain(String(recorded[1].reason));
   });
@@ -118,6 +122,6 @@ describe('OMN-19987 run timeline', () => {
     render(<RunTimeline steps={missing} />);
     expect(screen.queryByText('Failed here')).toBeNull();
     // The cause is still on the terminal row itself.
-    expect(items()[2].textContent).toContain('timeout');
+    expect(items()[2].textContent).toContain('Timed out');
   });
 });

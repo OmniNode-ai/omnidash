@@ -28,7 +28,7 @@ describe('OMN-21015 AC10 dashboard access', () => {
   it('A1: shows the served access mode, mint time and rotate hint as served', () => {
     render(<DashboardAccess rows={[native]} />);
     expect(field('Access')).toBe('loopback-token');
-    expect(field('Token minted')).toBe('2026-10-17T10:00:00+00:00');
+    expect(field('Token minted')).toBe('Oct 17, 10:00:00 UTC');
     expect(field('Rotate')).toBe(native.rotate_hint);
   });
 
@@ -53,6 +53,6 @@ describe('OMN-21015 AC10 dashboard access', () => {
   it('A4: a restart shows the new mint time', () => {
     const { rerender } = render(<DashboardAccess rows={[native]} />);
     rerender(<DashboardAccess rows={[{ ...native, token_minted_at: '2026-10-17T10:30:00+00:00' }]} />);
-    expect(field('Token minted')).toBe('2026-10-17T10:30:00+00:00');
+    expect(field('Token minted')).toBe('Oct 17, 10:30:00 UTC');
   });
 });

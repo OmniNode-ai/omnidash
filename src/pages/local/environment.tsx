@@ -6,6 +6,7 @@
  * and iconed with, and which rows give an alert_banner line. Nothing is judged here; a verdict the projection does not
  * serve is drawn as unknown under its own word, never as one of the four.
  */
+import { readableTime } from '@/lib/readable-time';
 import { AlertBanner } from '@/components/dashboard/alert-banner/AlertBanner';
 import { StatusGrid } from '@/components/dashboard/status-grid/StatusGrid';
 import { validateStatusGridRow, type AlertBannerRow, type StatusGridRow, type StatusGridSeverity } from '@shared/types/component-manifest';
@@ -124,7 +125,7 @@ export function EnvironmentPanel({ rows, complete = true }: { rows: readonly Env
           {versions.length > 0 ? versions.map(([name, version]) => <div key={name}><dt>{labels[name] ?? name}</dt><dd>{text(version) || 'Not recorded'}</dd></div>)
             : <div><dt>Versions</dt><dd>Not recorded</dd></div>}
           <div><dt>Store</dt><dd>{text(first.store_kind) || 'Not recorded'}</dd></div>
-          <div><dt>Last start</dt><dd>{text(first.token_minted_at) || 'Not recorded'}</dd></div>
+          <div><dt>Last start</dt><dd title={text(first.token_minted_at) || undefined}>{text(first.token_minted_at) ? readableTime(text(first.token_minted_at)) ?? text(first.token_minted_at) : 'Not recorded'}</dd></div>
         </>}
       </dl>
       {refusedHealth && <p className="local-dashboard-empty" role="status">Some service health details are not available.</p>}

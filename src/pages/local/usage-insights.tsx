@@ -5,6 +5,7 @@ import { formatDashboardUsd } from '@/lib/dashboard-currency';
 import { sumDashboardUsd } from '@/lib/dashboard-money-total';
 import { useState } from 'react';
 import { aggregateUsageRows, type UsageAggregates, type UsageModelAggregate } from './insight-aggregates';
+import { tierLabel } from './plain-text';
 
 const USAGE_WINDOW_DAYS = 30;
 
@@ -58,7 +59,7 @@ function routeSpendByTier(row: Row): Array<{ route: string; runs: string; share:
   return Array.isArray(tiers) ? records(tiers).map(tier => {
     const cost = routeCost(tier);
     return {
-      route: typeof tier.cost_tier_name === 'string' ? tier.cost_tier_name : 'Not recorded',
+      route: typeof tier.cost_tier_name === 'string' ? tierLabel(tier.cost_tier_name) : 'Not recorded',
       runs: count(typeof tier.count === 'number' ? tier.count : null),
       share: share(typeof tier.pct_of_tier_routed === 'number' ? tier.pct_of_tier_routed : null),
       cost,
@@ -97,19 +98,35 @@ function SpendByModel({ data }: { data: UsageAggregates }) {
   );
 }
 
+/**
+ * OMN-21166 AC60: cost per run as one compact bar per UTC day (bar height is that day's served measured cost per call
+ * against the highest day's, layout only), its value above and its date below; the full sentence stays in each bar's
+ * accessible label and the readout. A day with no measured call draws no bar and says so.
+ */
 function CostPerRun({ data }: { data: UsageAggregates }) {
   const [active, setActive] = useState<string | null>(null);
   const activeDay = data.days.find(day => day.day === active);
   const date = (day: string) => new Date(`${day}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
   const text = (day: UsageAggregates['days'][number]) => `${day.day} · measured cost per call ${money(day.measuredCostPerCallUsd)} · ${count(day.unmeasuredCalls)} unmeasured calls`;
+  const shown = data.days.filter(day => day.measuredCalls !== null || day.unmeasuredCalls !== null);
+  const value = (day: UsageAggregates['days'][number]) => {
+    const n = Number(day.measuredCostPerCallUsd);
+    return day.measuredCostPerCallUsd === null || !Number.isFinite(n) ? null : n;
+  };
+  const max = Math.max(0, ...shown.map(value).filter((n): n is number => n !== null));
   return <figure className="local-chart usage-insight" aria-label="Cost per run">
     <h3><ConceptIcon concept="cost-per-run" size={16} />Cost per run</h3>
     <p role="status" className="ins-readout">{activeDay ? text(activeDay) : 'Measured cost per call; unmeasured calls are excluded from the denominator'}</p>
-    <div className="usage-cost-days" role="group" aria-label="Cost per run by UTC day">
-      {data.days.filter(day => day.measuredCalls !== null || day.unmeasuredCalls !== null).map(day => <button type="button" key={day.day} aria-label={text(day)} onMouseEnter={() => setActive(day.day)} onFocus={() => setActive(day.day)} onMouseLeave={() => setActive(null)} onBlur={() => setActive(null)}>
-        <strong>{date(day.day)}</strong><span>Paid / measured call: {money(day.measuredCostPerCallUsd)}</span>
-        {day.unmeasuredCalls !== null && day.unmeasuredCalls > 0 && <span>{day.unmeasuredCalls} unmeasured calls excluded</span>}
-      </button>)}
+    <div className="usage-cost-days usage-cost-bars" role="group" aria-label="Cost per run by UTC day">
+      {shown.map(day => {
+        const n = value(day);
+        return <button type="button" key={day.day} aria-label={text(day)} aria-pressed={active === day.day} onMouseEnter={() => setActive(day.day)} onFocus={() => setActive(day.day)} onMouseLeave={() => setActive(null)} onBlur={() => setActive(null)}>
+          <span className="usage-cost-value">{n === null ? 'Not measured' : money(day.measuredCostPerCallUsd)}</span>
+          <span className="usage-cost-track" aria-hidden="true">{n !== null && <i style={{ height: `${max > 0 ? Math.max(2, (n / max) * 100) : 2}%` }} />}</span>
+          <strong>{date(day.day)}</strong>
+          {day.unmeasuredCalls !== null && day.unmeasuredCalls > 0 && <span className="usage-cost-unmeasured">{day.unmeasuredCalls} unmeasured calls excluded</span>}
+        </button>;
+      })}
     </div>
     <figcaption>Cost per call = measured spend divided by calls with measured cost.</figcaption>
   </figure>;

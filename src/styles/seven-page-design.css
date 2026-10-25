@@ -110,3 +110,20 @@ main.ev-root[data-destination="delegation-evidence"] .dt-head {
   font-family: var(--font-sans);
   font-variant-numeric: tabular-nums;
 }
+
+/* Usage › Cost per run (AC60): one compact bar per UTC day instead of a column of boxed lines. */
+.local-dashboard-page .usage-insights .usage-cost-bars {
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(36px, 1fr); align-items: end; gap: 6px;
+  overflow-x: auto; padding-bottom: 2px;
+}
+.local-dashboard-page .usage-insights .usage-cost-bars > button {
+  display: grid; grid-template-rows: auto 120px auto; justify-items: center; gap: 4px; padding: 4px 2px;
+  border: 0; border-radius: 6px; background: transparent; text-align: center; font-size: 12px;
+}
+.local-dashboard-page .usage-insights .usage-cost-bars > button:is(:hover, :focus-visible, [aria-pressed="true"]) { background: var(--panel-2); }
+.local-dashboard-page .usage-cost-value { font-variant-numeric: tabular-nums; color: var(--ink-2); white-space: nowrap; }
+.local-dashboard-page .usage-cost-track { display: flex; align-items: flex-end; width: 18px; height: 100%; border-bottom: 1px solid var(--line); }
+.local-dashboard-page .usage-cost-track > i { display: block; width: 100%; border-radius: 3px 3px 0 0; background: var(--field-cost, var(--ui-accent)); }
+.local-dashboard-page .usage-cost-bars strong { font-weight: 500; color: var(--ink-3); white-space: nowrap; }
+.local-dashboard-page .usage-insights .usage-cost-bars > button { grid-template-rows: auto 120px auto auto; }
+.local-dashboard-page .usage-cost-unmeasured { max-width: 9ch; color: var(--ink-3); line-height: 1.3; }

@@ -53,7 +53,7 @@ describe('OMN-21015 AC4: the Usage table shows each row tier and share of calls 
       row({ cost_tier_name: 'cheap_cloud', call_count: 2, call_share: 0.5 }),
     ]} />);
     const tier = headers().indexOf('Tier');
-    expect([cells(0)[tier], cells(1)[tier]]).toEqual(['local', 'cheap_cloud']);
+    expect([cells(0)[tier], cells(1)[tier]]).toEqual(['Local', 'Cheap cloud']);
   });
 
   it('S3: the served share reads as a percentage, to two decimals at most', () => {

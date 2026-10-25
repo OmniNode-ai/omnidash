@@ -59,7 +59,7 @@ describe('OMN-20225 AC1, AC2: the served verdict, score, backend, host and tier 
     expect(lastRunValue('Quality score')).toBe('0.92');
     expect(lastRunValue('Backend')).toBe('local-heavy-reasoning');
     expect(lastRunValue('Host')).toBe('gpu-host-b');
-    expect(lastRunValue('Route tier')).toBe('local (free_local)');
+    expect(lastRunValue('Route tier')).toBe('Local (free local)');
     expect(screen.queryByText(/Not served \(OMN-20162\)/)).not.toBeInTheDocument();
   });
 
@@ -70,7 +70,7 @@ describe('OMN-20225 AC1, AC2: the served verdict, score, backend, host and tier 
     expect(cellUnder(row, 'Quality score')).toHaveTextContent('0.41');
     expect(cellUnder(row, 'Backend')).toHaveTextContent('local-heavy-reasoning');
     expect(cellUnder(row, 'Host')).toHaveTextContent('gpu-host-b');
-    expect(cellUnder(row, 'Route tier')).toHaveTextContent('local (free_local)');
+    expect(cellUnder(row, 'Route tier')).toHaveTextContent('Local (free local)');
     expect(screen.queryByText(/Not served \(OMN-20162\)/)).not.toBeInTheDocument();
   });
 
@@ -88,7 +88,7 @@ describe('OMN-20225 AC1, AC2: the served verdict, score, backend, host and tier 
     for (const id of ['run-host-a', 'run-host-b']) {
       const row = screen.getByRole('row', { name: new RegExp(id) });
       expect(cellUnder(row, 'Backend')).toHaveTextContent('local-heavy-reasoning');
-      expect(cellUnder(row, 'Route tier')).toHaveTextContent('local (free_local)');
+      expect(cellUnder(row, 'Route tier')).toHaveTextContent('Local (free local)');
       expect(cellUnder(row, 'Quality score')).toHaveTextContent('0.92');
     }
     expect(screen.queryByText(/Not served \(OMN-20162\)/)).not.toBeInTheDocument();
@@ -101,7 +101,7 @@ describe('OMN-20225 AC1, AC2: the served verdict, score, backend, host and tier 
     const field = (label: string) => within(summary).getByText(label).nextElementSibling?.textContent ?? '';
     expect(field('Backend')).toBe('local-heavy-reasoning');
     expect(field('Host')).toBe('gpu-host-b');
-    expect(field('Route tier')).toBe('local (free_local)');
+    expect(field('Route tier')).toBe('Local (free local)');
     expect(field('Status')).toBe('passed');
     expect(field('Quality score')).toBe('0.92');
     expect(summary.textContent).not.toContain('OMN-20162');
@@ -145,7 +145,7 @@ describe('OMN-20225 AC4: no accepting backend is a typed not-recorded state, nev
       ]}
       sessions={[]}
     />);
-    expect(cellUnder(screen.getByRole('row', { name: /tier-name-only/ }), 'Route tier').textContent?.trim()).toBe('local');
+    expect(cellUnder(screen.getByRole('row', { name: /tier-name-only/ }), 'Route tier').textContent?.trim()).toBe('Local');
     expect(cellUnder(screen.getByRole('row', { name: /no-tier/ }), 'Route tier').textContent?.trim()).toBe('Not recorded');
   });
 });
@@ -204,13 +204,13 @@ describe('OMN-20225 AC3: the quality and tier-mix panels show served fields and 
 
   it('the tier-mix panel lists each served tier with its served count and share', () => {
     render(<TierMixPanel row={{ tenant_id: quality.tenant_id, by_tier: byTier }} />);
-    const local = screen.getByRole('row', { name: /^local/ });
-    expect(cellUnder(local, 'Tier')).toHaveTextContent('local');
+    const local = screen.getByRole('row', { name: /^Local/ });
+    expect(cellUnder(local, 'Tier')).toHaveTextContent('Local');
     expect(cellUnder(local, 'Runs')).toHaveTextContent('5');
     // OMN-21166 (Lakshman, 2026-10-18): a share reads as a percent; the exact served fraction is the title.
     expect(cellUnder(local, 'Share of tier-routed')).toHaveTextContent('71.4%');
     expect(cellUnder(local, 'Share of tier-routed').querySelector('[title]')).toHaveAttribute('title', '0.7143');
-    const cloud = screen.getByRole('row', { name: /^cheap_cloud/ });
+    const cloud = screen.getByRole('row', { name: /^Cheap cloud/ });
     expect(cellUnder(cloud, 'Share of tier-routed')).toHaveTextContent('28.6%');
     expect(cellUnder(cloud, 'Share of tier-routed').querySelector('[title]')).toHaveAttribute('title', '0.2857');
     // The runs with no tier are their own served figure, never folded into a tier.
@@ -220,8 +220,8 @@ describe('OMN-20225 AC3: the quality and tier-mix panels show served fields and 
 
   it('the tier-mix panel shows a served share as served, even when the counts would give another number', () => {
     render(<TierMixPanel row={{ by_tier: { ...byTier, tiers: [{ cost_tier_name: 'local', count: 1, tier_routed: true, pct_of_tier_routed: 0.4 }] } }} />);
-    expect(cellUnder(screen.getByRole('row', { name: /^local/ }), 'Share of tier-routed')).toHaveTextContent('40.0%');
-    expect(cellUnder(screen.getByRole('row', { name: /^local/ }), 'Share of tier-routed').querySelector('[title]')).toHaveAttribute('title', '0.4');
+    expect(cellUnder(screen.getByRole('row', { name: /^Local/ }), 'Share of tier-routed')).toHaveTextContent('40.0%');
+    expect(cellUnder(screen.getByRole('row', { name: /^Local/ }), 'Share of tier-routed').querySelector('[title]')).toHaveAttribute('title', '0.4');
     expect(screen.queryByText('1', { selector: 'td:nth-child(3)' })).not.toBeInTheDocument();
   });
 

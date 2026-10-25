@@ -6,6 +6,7 @@
  * served; a value the row does not carry reads "Not recorded", and with no such row the card says what it waits on.
  */
 import { notAvailableYet } from './plain-text';
+import { readableTime } from '@/lib/readable-time';
 
 const DASHBOARD_SERVICE = 'local-runtime';
 
@@ -40,7 +41,8 @@ export function DashboardAccess({ rows }: { rows: readonly EnvironmentRow[] }) {
   return (
     <dl className="local-dashboard-fields">
       <div><dt>Access</dt><dd>{served(row.access_mode)}</dd></div>
-      <div><dt>Token minted</dt><dd>{served(row.token_minted_at)}</dd></div>
+      {/* OMN-21166 AC60: "Oct 25, 10:36:18 UTC", the served timestamp kept in the title. */}
+      <div><dt>Token minted</dt><dd title={served(row.token_minted_at)}>{readableTime(served(row.token_minted_at)) ?? served(row.token_minted_at)}</dd></div>
       <div><dt>Rotate</dt><dd>{served(row.rotate_hint)}</dd></div>
     </dl>
   );

@@ -69,6 +69,8 @@ const SERVED: Array<[string, unknown[]]> = [
   ['delegation.quality-gate.v1', [{ tenant_id: TENANT, overall_pass_rate: 0.5, total_passed: 1, total_failed: 1, total_checks: 2, avg_actual_score: 0.9, avg_required_bar: 0.8, captured_at: '2026-10-13T10:52:43+00:00' }]],
   ['usage-by-model-day.v1', [{ tenant_id: TENANT, usage_day: '2026-10-13', model_id: 'local-model', input_tokens: 729, output_tokens: 747, cost_usd: 0, measured_cost_usd: 0, unmeasured_call_count: 0, call_count: 2 }]],
   ['run-trace.v1', ['request', 'routing_decision', 'provider_call', 'quality_gate', 'terminal'].map((kind, index) => step(index + 1, kind))],
+  // OMN-21166 part 11: API Keys reads its identity and access from the native runtime row.
+  ['local-environment.v1', [{ tenant_id: TENANT, mode: 'native', service: 'local-runtime', access_mode: 'loopback-token', token_minted_at: '2026-10-13T10:00:00+00:00', rotate_hint: 'Restart onex dashboard', updated_at: '2026-10-13T10:00:00Z' }]],
   ['tenant-credentials.v1', [{ api_key_ref: 'ref-1', tenant_id: TENANT, name: 'openai-main', provider: 'openai', created_at: '2026-10-12T09:00:00+00:00', revoked_at: null }]],
 ];
 

@@ -13,6 +13,7 @@ const OVERVIEW_ALL_ROW = { window: 'all', captured_at: '2026-10-02T10:07:00Z', t
 const CREDENTIALS = 'onex.snapshot.projection.tenant-credentials.v1';
 const USAGE = 'onex.snapshot.projection.usage-by-model-day.v1';
 const RUN_TRACE = 'onex.snapshot.projection.run-trace.v1';
+const ENVIRONMENT = 'onex.snapshot.projection.local-environment.v1';
 
 const harness = vi.hoisted(() => ({
   reads: [] as string[],
@@ -301,14 +302,16 @@ describe('Partial pages (FR-3, CR-2, CR-3, AK-3, F24)', () => {
   });
 
   it('API Keys preserves served local identity without the deferred Cloud Keys panel (OMN-21166 AC5)', async () => {
-    harness.reachable = new Set([SAVINGS]);
-    harness.answer = () => Promise.resolve([{ tenant_id: '820272f9-4aaf-5add-a2df-0af942852ab2', sessions: [] }]);
+    // OMN-21166 part 11: the identity reads the native runtime row of local-environment.v1, not the savings rows.
+    harness.reachable = new Set([ENVIRONMENT]);
+    harness.answer = () => Promise.resolve([{ tenant_id: '820272f9-4aaf-5add-a2df-0af942852ab2', mode: 'native', service: 'local-runtime',
+      access_mode: 'loopback-token', token_minted_at: '2026-10-25T10:36:18.358815+00:00', rotate_hint: 'Restart onex dashboard', updated_at: '2026-10-25T10:36:18Z' }]);
     render(<LocalDashboardPage pageName="api-keys" />);
     await settle();
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('API Keys');
     const identity = screen.getByRole('heading', { name: 'Local identity' }).closest('article')!;
     expect(within(identity).getByText('820272f9-4aaf-5add-a2df-0af942852ab2')).toBeInTheDocument();
-    expect(within(identity).getByText('Mint time unavailable.')).toBeInTheDocument();
+    expect(within(identity).getByText('Not recorded')).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Cloud Keys' })).not.toBeInTheDocument();
     expect(screen.queryByText(/CLOUD_NOT_LINKED/)).not.toBeInTheDocument();
     expect(document.querySelector('input, textarea, select, form')).toBeNull();

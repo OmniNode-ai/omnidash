@@ -63,7 +63,7 @@ describe('LastRunCard (OV-4, F16)', () => {
     expect(within(card).getByText('Qwen3.8-27B')).toBeInTheDocument();
     expect(within(card).getByText('813 ms')).toBeInTheDocument();
     expect(within(card).getByText('summarization')).toBeInTheDocument();
-    expect(within(card).getByText('local')).toBeInTheDocument();
+    expect(within(card).getByText('Local')).toBeInTheDocument();
     expect(within(card).getByText('5m ago')).toBeInTheDocument();
     expect(within(card).getByText('$2.10')).toBeInTheDocument();
   });
@@ -135,7 +135,7 @@ describe('RecentRunsTable (OV-5, F17)', () => {
       sessions={[session('quota-run', '2026-10-02T10:00:00Z', { local_cost_usd: 0.4000 })]}
     />);
     const row = screen.getByRole('row', { name: /quota-run/ });
-    for (const value of ['failed', 'provider returned 429 (quota exhausted)', '162', '52', '$0.40', 'local']) {
+    for (const value of ['failed', 'provider returned 429 (quota exhausted)', '162', '52', '$0.40', 'Local']) {
       expect(within(row).getByText(value)).toBeInTheDocument();
     }
   });

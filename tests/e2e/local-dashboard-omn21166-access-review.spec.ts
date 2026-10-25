@@ -27,7 +27,7 @@ test('API Keys offers copy only for an actual served tenant identity', async ({ 
   await page.goto('/api-keys');
   await expect(page.getByRole('button', { name: 'Copy the tenant identity', exact: true })).toBeVisible();
   await expect(page.getByText('served-fixture-tenant', { exact: true })).toBeVisible();
-  await expect(page.getByText('Mint time unavailable.', { exact: true })).toBeVisible();
+  await expect(page.getByText('Not recorded', { exact: true }).first()).toBeVisible();
   await serveCharts(page, { ...chartRows, [prefix + 'delegation.savings.v1']: [] });
   await page.reload();
   await expect(page.getByRole('button', { name: 'Copy the tenant identity', exact: true })).toHaveCount(0);

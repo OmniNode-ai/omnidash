@@ -21,7 +21,8 @@ function fraction(value: unknown): number | null | 'out-of-range' {
  * is never written as 0.0%, and one below the whole never as 100.0%: where rounding would say so, it reads <0.1% or
  * >99.9% instead. Exactly 0 and exactly 1 are written as they are.
  */
-function percent(share: number): string {
+/** A served share as a percent to one decimal; a share above zero never reads 0.0% and one below the whole never 100.0%. */
+export function percent(share: number): string {
   const written = share.toLocaleString('en-US', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 });
   if (share > 0 && written === '0.0%') return '<0.1%';
   if (share < 1 && written === '100.0%') return '>99.9%';

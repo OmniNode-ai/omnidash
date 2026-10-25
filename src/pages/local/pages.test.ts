@@ -536,7 +536,8 @@ describe('Amendment 6: the six local pages and the loader', () => {
   it('API Keys reads the tenant id from a served exposure and binds nothing for cloud keys (AK-1, AK-3)', () => {
     const page = readPage('api-keys');
     const identity = page.components.find((c) => c.component_id === 'api-keys-local-identity');
-    expect(identity?.data_bindings?.[0]?.projection_topic).toBe('onex.snapshot.projection.delegation.savings.v1');
+    // OMN-21166 part 11: the identity reads the native runtime row, so it does not depend on recorded savings.
+    expect(identity?.data_bindings?.[0]?.projection_topic).toBe('onex.snapshot.projection.local-environment.v1');
     expect(identity?.data_bindings?.[0]?.required_fields).toContain('tenant_id');
     expect(page.components.find((c) => c.component_id === 'api-keys-cloud')).toBeUndefined();
   });

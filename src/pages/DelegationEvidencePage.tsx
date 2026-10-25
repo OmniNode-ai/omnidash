@@ -25,7 +25,6 @@ import {
   StateBadge,
   derivePageBadge,
   fmtLatency,
-  fmtPct,
   shortId,
   type DataColumn,
   type ProjectionSnapshot,
@@ -53,7 +52,16 @@ import {
 } from '@/pages/LocalDashboardPage';
 import { overviewRunCount } from '@/lib/dashboard-overview-count';
 import { modelColor } from '@/lib/dashboard-colors';
+import { formatDuration } from '@/lib/duration';
+import { percent as sharePercent } from '@/pages/local/shares';
 import { modelIdentityStyle } from '@/components/dashboard/model-identity';
+
+/**
+ * OMN-21166 AC72 pass 1: a rate on Evidence reads to one decimal, as Overview writes the same served rate (91.6%, not
+ * 92%), and a rate above zero never reads 0%.
+ */
+const passRate = (value: number | null | undefined): string =>
+  value == null || !Number.isFinite(value) ? '—' : sharePercent(value);
 
 const recordedMoney = (value: unknown) => isUnavailableField(value) || !Number.isFinite(Number(value))
   ? 'Not recorded' : formatUsd(value);
@@ -268,7 +276,7 @@ function ModelRouting() {
       {entries.map(([model, count]) => (
         <div className="barrow" key={model}>
           <div className="lab local-model-identity" title={model} style={modelIdentityStyle(model)}>{model}</div>
-          <div className="val">{formatDashboardCount(count)} · {fmtPct(count / agg.total_delegations)}</div>
+          <div className="val">{formatDashboardCount(count)} · {sharePercent(count / agg.total_delegations)}</div>
           <div className="track2 bar-track">
             <div className="bar-fill" style={{ width: `${Math.max(3, (count / max) * 100)}%`, background: modelColor(model) }} />
           </div>
@@ -297,10 +305,10 @@ function QualityGate() {
   return (
     <Panel title="QUALITY GATE" sub="deterministic checks">
       <div className="ev-qg-stats">
-        <span className="stat-inline"><span className="big c-amber" style={{ color: 'var(--field-pass)' }}>{fmtPct(q.overall_pass_rate)}</span><span className="note">pass rate</span></span>
+        <span className="stat-inline"><span className="big c-amber" style={{ color: 'var(--field-pass)' }}>{passRate(q.overall_pass_rate)}</span><span className="note">pass rate</span></span>
         <span className="stat-inline" data-field-tone="pass"><span className="big c-green" style={{ color: 'var(--field-pass)' }}>{formatDashboardCount(q.total_passed)}</span><span className="note">pass</span></span>
         <span className="stat-inline" data-field-tone="fail"><span className="big c-red" style={{ color: 'var(--field-fail)' }}>{formatDashboardCount(q.total_failed)}</span><span className="note">fail</span></span>
-        <span className="stat-inline"><span className="big">{fmtPct(q.escalation_rate)}</span><span className="note">escalation</span></span>
+        <span className="stat-inline"><span className="big">{passRate(q.escalation_rate)}</span><span className="note">escalation</span></span>
       </div>
       <div className="bar-track ev-qg-bar">
         <div className="bar-fill m-green" data-field-tone="pass" data-semantic-concept="field:pass" data-semantic-label="Passed checks" style={{ background: 'var(--field-pass)', width: total > 0 ? `${(q.total_passed / total) * 100}%` : '0%' }} />
@@ -598,9 +606,9 @@ export function DelegationEvidencePage() {
     >
       <div className="grid cols-4">
         <KPI label="Delegations" icon={<Activity size={15} aria-hidden="true" />} tone="blue" value={headline.runs} sub={headline.runsSub ?? undefined} />
-        <KPI label="Quality pass" icon={<Award size={15} aria-hidden="true" />} tone="green" value={summary ? fmtPct(summary.qualityGatePassRate) : '—'} sub={withFixtureNotice('deterministic gate', fixtureNotice)} />
+        <KPI label="Quality pass" icon={<Award size={15} aria-hidden="true" />} tone="green" value={summary ? passRate(summary.qualityGatePassRate) : '—'} sub={withFixtureNotice('deterministic gate', fixtureNotice)} />
         <KPI label="Savings (modelled)" icon={<PiggyBank size={15} aria-hidden="true" />} tone="purple" value={headline.savings} accent sub="vs cloud baseline" />
-        <KPI label="Tokens" icon={<Coins size={15} aria-hidden="true" />} tone="amber" value={headline.tokens} sub={summary ? withFixtureNotice(`avg ${(summary.avgLatencyMs / 1000).toFixed(2)}s latency`, fixtureNotice) : undefined} />
+        <KPI label="Tokens" icon={<Coins size={15} aria-hidden="true" />} tone="amber" value={headline.tokens} sub={summary ? withFixtureNotice(`avg ${formatDuration(summary.avgLatencyMs)} latency`, fixtureNotice) : undefined} />
       </div>
 
       <div className="grid cols-2 ev-selected-run-layout">

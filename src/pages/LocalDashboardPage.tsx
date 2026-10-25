@@ -32,7 +32,7 @@ import { EnvironmentPanel } from '@/pages/local/environment';
 import { failureCauseLabel, failureDetailText, notAvailableYet, plainFailureMessage, taskLabel, tierLabel } from '@/pages/local/plain-text';
 import { RunFilterProvider, causeHref, causeLabelOf, useRunFilter } from '@/pages/local/run-filter';
 import { typedFailureCauseOf } from '@/pages/local/insights';
-import { DashboardAccess } from '@/pages/local/access';
+import { DashboardAccess, dashboardAccessRow } from '@/pages/local/access';
 import { shortId } from '@/components/dashboard/event-dash/primitives';
 import { ConceptIcon, FIELD_ICONS, FieldIcon } from '@/components/dashboard/FieldIcon';
 import { modelIdentityStyle } from '@/components/dashboard/model-identity';
@@ -1381,7 +1381,7 @@ export function CredentialsTable({ rows }: { rows: readonly unknown[] }) {
   return (
     <div className="local-dashboard-table-wrap local-credentials-records">
       <table aria-label="Provider key references">
-        <thead><tr><th>Provider</th><th>Key ref</th><th>Fingerprint</th><th>Set</th><th>Revoked</th></tr></thead>
+        <thead><tr><th>Provider</th><th>Key ref</th><th>Fingerprint</th><th>Set</th><th>Revoked</th><th>Expires</th><th>Bound host</th></tr></thead>
         <tbody>{keys.map((key, index) => (
           <tr key={`${String(key.provider)}-${String(key.name)}-${index}`}>
             <td data-label="Provider">{recorded(key.provider)}</td>
@@ -1389,8 +1389,12 @@ export function CredentialsTable({ rows }: { rows: readonly unknown[] }) {
             {/* OMN-19985: the served fingerprint prefix (8 hex of sha256) and the time the key was set; a row its
                 producer sent without them says so. created_at is when the projection first saw the row, not this. */}
             <td data-label="Fingerprint">{recorded(key.fingerprint)}</td>
-            <td data-label="Set">{recorded(key.set_at)}</td>
-            <td data-label="Revoked">{isMissing(key.revoked_at) ? 'Not revoked' : String(key.revoked_at)}</td>
+            {/* OMN-21166 AC60/AC66: times read as "Oct 14, 08:24:11 UTC" with the served value in the title; the served
+                expiry and bound host are shown, and say so when the producer recorded none. Never a secret. */}
+            <td data-label="Set"><CellTime value={key.set_at} /></td>
+            <td data-label="Revoked">{isMissing(key.revoked_at) ? 'Not revoked' : <CellTime value={key.revoked_at} />}</td>
+            <td data-label="Expires">{isMissing(key.expires_at) ? 'No expiry recorded' : <CellTime value={key.expires_at} />}</td>
+            <td data-label="Bound host">{recorded(key.bound_host)}</td>
           </tr>
         ))}</tbody>
       </table>
@@ -1729,12 +1733,12 @@ export function WorkflowRun({ component, snapshots, requested, onOpen }: Workflo
   );
 }
 
-/** AK-1: the tenant id from a served row; minted-at waits on local-identity.v1. */
+/** AK-1: the tenant id from a served row; no exposure serves when the identity was minted, so that reads Not recorded. */
 export function LocalIdentity({ row }: { row: Record<string, unknown> | null }) {
   return (
     <dl className="local-dashboard-fields">
       <div data-field-tone={fieldTone('Tenant')} data-field-unavailable={isUnavailableField(row?.tenant_id)}><dt><FieldIcon label="Tenant" />Tenant</dt><dd className="local-identity-value"><span>{recorded(row?.tenant_id)}</span>{typeof row?.tenant_id === 'string' && row.tenant_id.trim() !== '' && <CopyButton text={row.tenant_id} label="Copy the tenant identity" />}</dd></div>
-      <div data-field-tone="age" data-field-unavailable="true"><dt><FieldIcon label="Minted" />Minted</dt><dd>Mint time unavailable.</dd></div>
+      <div data-field-tone="age" data-field-unavailable="true"><dt><FieldIcon label="Minted" />Minted</dt><dd>Not recorded</dd></div>
     </dl>
   );
 }
@@ -1934,8 +1938,10 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns, acti
       unavailable={unavailable} display="kpis" />}{daily}</>;
   }
   if (component.component_id === 'api-keys-local-identity') {
-    const first = rawRowsFor(component, snapshots, 0)[0];
-    return <LocalIdentity row={first && typeof first === 'object' ? (first as Record<string, unknown>) : null} />;
+    // OMN-21166 part 11: the tenant comes from the native runtime row of local-environment.v1, the same row the access
+    // card reads, so the identity never depends on whether any savings were recorded.
+    const environment = asRecords(rawRowsFor(component, snapshots, 0));
+    return <LocalIdentity row={dashboardAccessRow(environment)} />;
   }
   // OMN-21015 AC10 (AK-2): the access card reads the native local-runtime row `onex dashboard` writes to
   // local-environment.v1 at each start (OMN-19988); another service's row or a compose row is never the dashboard's.

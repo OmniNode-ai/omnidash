@@ -32,9 +32,10 @@ describe('OMN-19985 Credentials table', () => {
   it('K1: shows the served fingerprint prefix and set time in their own columns', () => {
     render(<CredentialsTable rows={[live]} />);
     const headers = screen.getAllByRole('columnheader').map((header) => header.textContent);
-    expect(headers).toEqual(['Provider', 'Key ref', 'Fingerprint', 'Set', 'Revoked']);
+    // OMN-21166 AC66: the served expiry and bound host sit beside the set and revoke times.
+    expect(headers).toEqual(['Provider', 'Key ref', 'Fingerprint', 'Set', 'Revoked', 'Expires', 'Bound host']);
     expect(cells(/llm\.openrouter\.api_key/)).toEqual([
-      'openrouter', 'llm.openrouter.api_key', '0123abcd', '2026-10-07T07:30:00+00:00', 'Not revoked',
+      'openrouter', 'llm.openrouter.api_key', '0123abcd', 'Oct 7, 07:30:00 UTC', 'Not revoked', 'No expiry recorded', 'Not recorded',
     ]);
   });
 
@@ -53,6 +54,7 @@ describe('OMN-19985 Credentials table', () => {
   it('K4: a revoked key shows its revoke time', () => {
     render(<CredentialsTable rows={[{ ...live, revoked_at: '2026-10-07T07:40:00+00:00' }]} />);
     const [, , , , revoked] = cells(/llm\.openrouter\.api_key/);
-    expect(revoked).toBe('2026-10-07T07:40:00+00:00');
+    // OMN-21166 AC60: the time reads for a person; the served value stays whole in the cell's title.
+    expect(revoked).toBe('Oct 7, 07:40:00 UTC');
   });
 });

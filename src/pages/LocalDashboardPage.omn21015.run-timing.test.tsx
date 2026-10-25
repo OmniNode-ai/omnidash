@@ -57,7 +57,8 @@ describe('OMN-21015: where a run\'s time went', () => {
   it('T1, T2: each served timing has a tile and a bar of its served value, tiles and bars in one order', () => {
     render(<RunSummary decision={run()} />);
     const shown = fields();
-    expect([shown['Queue wait'], shown.Execution, shown.Duration]).toEqual(['12 ms', '4788 ms', '743 ms']);
+    // OMN-21166 AC55: the tiles read as durations (4788 ms reads 4.8 s); a sub-second value keeps its ms.
+    expect([shown['Queue wait'], shown.Execution, shown.Duration]).toEqual(['12 ms', '4.8 s', '743 ms']);
     // The three timing tiles stand together, last in the summary, in the order the bars are drawn in.
     expect(Object.keys(shown).slice(-3)).toEqual(['Queue wait', 'Execution', 'Duration']);
     expect(within(summary()).getByRole('figure', { name: 'Run timing' })).toBeTruthy();
@@ -130,11 +131,12 @@ describe('OMN-21015: where a run\'s time went', () => {
     expect(Object.keys(fields())).not.toContain('Total');
   });
 
-  it('T7: a bar\'s label and the tooltip carry the served text', () => {
+  it('T7: a bar\'s label reads as a duration and the tooltip carries the served text', () => {
     render(<RunSummary decision={run({ execution_ms: '4788', latency_ms: '0743' })} />);
     const option = harness.handed[0]!;
-    expect(option.series[0].label.formatter({ dataIndex: 1 })).toBe('4788 ms');
-    expect(option.series[0].label.formatter({ dataIndex: 2 })).toBe('0743 ms');
+    // OMN-21166 AC55: the label at the bar's end reads as a duration; the tooltip keeps the exact served text.
+    expect(option.series[0].label.formatter({ dataIndex: 1 })).toBe('4.8 s');
+    expect(option.series[0].label.formatter({ dataIndex: 2 })).toBe('743 ms');
     expect(option.tooltip.formatter({ dataIndex: 2, name: 'Duration', marker: '' })).toBe('Duration: 0743 ms');
   });
 

@@ -438,7 +438,7 @@ describe('OMN-19987 / OMN-21015 AC9: the Workflow page shows one run, asked for 
     const summary = within(panel()).getByRole('region', { name: 'Run summary' });
     expect(summary.textContent).toContain(`backend-of-${OLDER}`);
     expect(summary.textContent).toContain(`host-of-${OLDER}`);
-    expect(summary.textContent).toContain('local (free_local)');
+    expect(summary.textContent).toContain('Local (free local)');
     expect(summary.textContent).not.toContain(`backend-of-${NEWEST}`);
   });
 
