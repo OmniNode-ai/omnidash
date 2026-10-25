@@ -1,5 +1,6 @@
 import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
 import { formatDashboardUsd } from '@/lib/dashboard-currency';
+import { formatDuration } from '@/lib/duration';
 import { useEffect, useId, useState } from 'react';
 import { RotateCcw, ScanLine } from 'lucide-react';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
@@ -72,7 +73,7 @@ function RunInspector({ runs, describe }: { runs: readonly ListedRun[]; describe
       {runs.filter(item => item.id !== null).map((item, index) => <option key={`${item.id}-${index}`} value={item.id!}>{item.id} · {item.model}</option>)}
     </select>
     {run && <div className="local-chart-detail" role="status"><span><strong>{run.model}</strong><span className="local-chart-detail-id">{run.id}</span></span>
-      <span>{describe ? describe(run) : `${run.status} · ${point(run.duration).served ?? 'Not recorded'}${point(run.duration).served !== null ? ' ms' : ''}`}</span>
+      <span>{describe ? describe(run) : `${run.status} · ${point(run.duration).served === null ? 'Not recorded' : formatDuration(point(run.duration).served)}`}</span>
       <Link href={workflowHref(run.id!)} className="local-chart-open">Open run</Link></div>}
   </div>;
 }
@@ -362,17 +363,18 @@ export function runTimingBars(timings: readonly RunTiming[]): { bars: RunTimingB
   return { bars, unmeasured };
 }
 
-/** A tick of the milliseconds axis; the origin carries no label, as on the money axis. */
+/** A tick of the milliseconds axis, read as "5.0 s" (OMN-21166 AC55); the origin carries no label, as on the money axis. */
 export function millisecondsAxisLabel(value: number): string {
-  return value === 0 ? '' : `${value} ms`;
+  return value === 0 ? '' : formatDuration(value);
 }
 
 function timingOption(bars: readonly RunTimingBar[], colours: readonly string[], compact = false) {
   const text = tone('--ink-2', 0x8b949e);
   const line = tone('--line', 0x30363d);
   const fontFamily = typeof document === 'undefined' ? '' : getComputedStyle(document.body).fontFamily;
-  // The label at a bar's end and the tooltip both write the served text, not the number the axis needed.
+  // The tooltip writes the served text exactly; the label at a bar's end reads it as a duration (OMN-21166 AC55).
   const servedText = (index: number) => `${bars[index]?.served ?? ''} ms`;
+  const labelText = (index: number) => formatDuration(bars[index]?.served);
   return {
     animationDuration: 250,
     ...(fontFamily ? { textStyle: { fontFamily } } : {}),
@@ -400,7 +402,7 @@ function timingOption(bars: readonly RunTimingBar[], colours: readonly string[],
       type: 'bar',
       barMaxWidth: 18,
       data: bars.map((bar, index) => ({ value: bar.value, itemStyle: { color: colours[index]!, borderRadius: [0, 3, 3, 0] } })),
-      label: { show: true, position: 'right', color: text, ...(compact ? { width: 50, overflow: 'break', distance: 4 } : {}), formatter: (param: { dataIndex: number }) => servedText(param.dataIndex) },
+      label: { show: true, position: 'right', color: text, ...(compact ? { width: 50, overflow: 'break', distance: 4 } : {}), formatter: (param: { dataIndex: number }) => labelText(param.dataIndex) },
     }],
   };
 }

@@ -63,6 +63,18 @@ export function WorkflowDecisionCharts({ decision, children }: { decision: Run; 
   </div>;
 }
 
+/** OMN-21166 part 10 AC56: a served flag reads Yes or No; anything else that is not 1/0/true/false stays as served. */
+function yesNo(value: unknown): unknown {
+  if (value === 1 || value === true || value === '1' || value === 'true') return 'Yes';
+  if (value === 0 || value === false || value === '0' || value === 'false') return 'No';
+  return value;
+}
+
+/** OMN-21166 part 10 AC56: a writer recorded as an unresolved SQL placeholder (<sql:CURRENT_USER>) was not recorded. */
+function writerOf(value: unknown): unknown {
+  return typeof value === 'string' && /^<sql:[^>]*>$/.test(value.trim()) ? 'Not recorded' : value;
+}
+
 export function WorkflowRecordDetails({ decision, steps }: { decision: Run | undefined; steps: Run[] }) {
   const id = useId();
   const durations = steps.map((step, index) => ({ key: `stage-${index}`, label: recorded(step.step_kind).replaceAll('_', ' '), value: step.duration_ms }));
@@ -75,11 +87,11 @@ export function WorkflowRecordDetails({ decision, steps }: { decision: Run | und
           ['Receipt id', decision.correlation_id],
           ['Created at', decision.created_at], ['Written at', decision.written_at],
           ['Recorded cost (USD)', decision.cost_usd], ['Data source', decision.data_source],
-          ['Terminal OK', decision.terminal_ok], ['Session', decision.session_id],
+          ['Terminal OK', yesNo(decision.terminal_ok)], ['Session', decision.session_id],
           ...[
             ['Tokens to compliance', decision.tokens_to_compliance],
             ['Routed model', decision.routed_model], ['Answering backend', decision.answering_backend],
-            ['Score source', decision.score_source], ['Recorded by', decision.writer_identity],
+            ['Score source', decision.score_source], ['Recorded by', writerOf(decision.writer_identity)],
           ].filter(([, value]) => value !== null && value !== undefined && value !== ''),
         ].map(([label, value]) => <div key={String(label)} data-field-tone={fieldTone(label, value)} data-field-unavailable={isUnavailableField(value)}><dt><FieldIcon label={label} value={value} />{String(label)}</dt><dd>{(label === 'Created at' || label === 'Written at') && typeof value === 'string' && Number.isFinite(Date.parse(value))
           ? <time dateTime={value} title={value}>{new Date(value).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'UTC' })} UTC</time>

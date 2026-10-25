@@ -22,7 +22,7 @@ describe('Routing horizontal bars', () => {
   });
   it('keeps inspect and clear controls on each bar', () => {
     render(<TierShareChart variant="bars" byTier={{ tiers: [tier('local', 3, 0.75)] }} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Inspect local' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Inspect Local' }));
     expect(screen.getByRole('status')).toHaveTextContent('3 runs');
     fireEvent.click(screen.getByRole('button', { name: 'Clear tier selection' }));
     expect(screen.queryByRole('status')).toBeNull();

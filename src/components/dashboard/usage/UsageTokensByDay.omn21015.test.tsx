@@ -185,3 +185,28 @@ describe('OMN-21166: every token bar is drawn on one scale', () => {
     expect(barWidth('out', '2026-10-16')).toBeCloseTo(50, 6);
   });
 });
+
+// OMN-21166 AC59 (name the tier): a model served in two tier rows on one day reads as two named entries, never as the
+// same bare name twice, and its rows are neither summed nor dropped.
+describe('UsageTokensByDay names the tier when one model has several rows on a day', () => {
+  const rows = [
+    { usage_day: '2026-10-23', model_id: 'Qwen3.8-27B', cost_tier_name: 'local', input_tokens: 192460, output_tokens: 72682 },
+    { usage_day: '2026-10-23', model_id: 'Qwen3.8-27B', cost_tier_name: 'cheap_cloud', input_tokens: 0, output_tokens: 0 },
+    { usage_day: '2026-10-23', model_id: 'gemini-3.5-flash-lite', cost_tier_name: 'cheap_cloud', input_tokens: 5797, output_tokens: 404 },
+  ];
+
+  it('labels each of the repeated model rows with its tier and leaves a single-row model bare', () => {
+    render(<UsageTokensByDay rows={rows} />);
+    const tokensIn = screen.getByRole('list', { name: 'Tokens in on 2026-10-23, by model' });
+    expect(within(tokensIn).getAllByRole('listitem').map(item => item.textContent)).toEqual([
+      'Qwen3.8-27B · Local: 192,460', 'Qwen3.8-27B · Cheap cloud: 0', 'gemini-3.5-flash-lite: 5,797',
+    ]);
+  });
+
+  it('never shows the same entry name twice on one day', () => {
+    render(<UsageTokensByDay rows={rows} />);
+    const names = within(screen.getByRole('list', { name: 'Tokens out on 2026-10-23, by model' }))
+      .getAllByRole('listitem').map(item => item.textContent!.split(':')[0]);
+    expect(new Set(names).size).toBe(names.length);
+  });
+});

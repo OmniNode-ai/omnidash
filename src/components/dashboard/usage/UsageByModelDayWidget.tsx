@@ -1,4 +1,5 @@
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
+import { tierLabel } from '@/pages/local/plain-text';
 import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
 import { modelColor } from '@/lib/dashboard-colors';
 // OMN-20006: tokens in, tokens out and measured cost per model per UTC day, from usage-by-model-day.v1.
@@ -71,7 +72,7 @@ function unmeasured(value: unknown): string {
 /** OMN-21015: the served tier; a call that named none is served as not_tier_routed, which is not a tier. */
 function tier(value: unknown): string {
   if (isMissing(value)) return 'Not recorded';
-  return value === 'not_tier_routed' ? 'Not tier-routed' : String(value);
+  return tierLabel(value);
 }
 
 /** OMN-21015: the served share of the day's calls (a fraction), shown as a percentage to two decimals at most. */
@@ -151,6 +152,19 @@ const TOKEN_DIRECTIONS = [
   { direction: 'out', field: 'output_tokens' },
 ] as const;
 
+/**
+ * OMN-21166 AC59 (decision 2026-10-25: name the tier): a model served in more than one row on a day is one row per
+ * routing tier, so each entry names its tier ("Qwen3.8-27B · Local") instead of repeating the bare model name. Rows
+ * are never summed and a served zero is still written (OMN-21015 AC4).
+ */
+function dayEntryName(row: UsageByModelDayRow, dayRows: readonly UsageByModelDayRow[]): string {
+  const name = model(row.model_id);
+  // Only rows that differ by tier are told apart by it; rows that read alike for another reason (two unknown model
+  // ids) keep the plain name, as before.
+  const tiers = new Set(dayRows.filter(other => model(other.model_id) === name).map(other => tier(other.cost_tier_name)));
+  return tiers.size > 1 ? `${name} · ${tier(row.cost_tier_name)}` : name;
+}
+
 /** A served token count, grouped for reading. Formatting only: the number is the one the row carries. */
 function groupedCount(value: unknown): string {
   return formatFullCount(value);
@@ -228,7 +242,7 @@ export function UsageTokensByDay({ rows }: { rows: readonly unknown[] }) {
                     <ul className="usage-tokens-legend" aria-label={`Tokens ${direction} on ${day}, by model`}>
                       {counted.map((row, index) => (
                         <li data-semantic-concept={`model:${model(row.model_id)}`} data-semantic-label={model(row.model_id)} data-series={colorIndex(model(row.model_id))} style={{ '--model-color': modelColor(model(row.model_id)) } as CSSProperties} data-highlighted={selection === null || selection === model(row.model_id)} key={`${String(row.model_id)}-${index}`}>
-                          {`${model(row.model_id)}: ${groupedCount(row[field])}`}
+                          {`${dayEntryName(row, dayRows)}: ${groupedCount(row[field])}`}
                         </li>
                       ))}
                     </ul>

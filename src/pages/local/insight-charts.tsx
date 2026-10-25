@@ -2,10 +2,11 @@ import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
 import { modelColor, tierColor, tierConcept } from '@/lib/dashboard-colors';
 import { modelIdentityStyle } from '@/components/dashboard/model-identity';
 import { formatDashboardUsd } from '@/lib/dashboard-currency';
+import { formatDuration } from '@/lib/duration';
 import { createContext, useContext, useId, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { causeHref, useSharedRunFilter } from './run-filter';
-import { failureCauseLabel } from './plain-text';
+import { failureCauseLabel, tierLabel } from './plain-text';
 import { Link } from 'wouter';
 import {
   NOT_RECORDED, causes, countBy, durationBuckets, summary, toInsightRuns, windowDays, windowRuns,
@@ -62,9 +63,7 @@ function verdictCoverage(withVerdict: number, runs: number): string {
   return `${count(withVerdict)} of ${count(runs)} runs have a verdict`;
 }
 
-function duration(ms: number): string {
-  return ms < 1000 ? `${ms.toLocaleString('en-US')} ms` : `${(ms / 1000).toFixed(2)} s`;
-}
+const duration = (ms: number): string => formatDuration(ms);
 
 function dayLabel(day: string): string {
   return new Date(`${day}T00:00:00Z`).toLocaleString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
@@ -375,13 +374,13 @@ function VolumeBars({ runs, field }: { runs: InsightRun[]; field: 'model' | 'tie
   const maximum = Math.max(1, ...groups.map(group => group.runs));
   const active = groups.find(group => group.key === selected);
   return <ChartCard title={field === 'model' ? 'Runs by model' : 'Runs by tier'} concept={field === 'model' ? 'runs-model' : 'runs-tier'} note="Counted from returned runs" delay={120}>
-    <p className="ins-readout" role="status">{active ? <><span style={{ '--field-ink': field === 'model' ? modelColor(active.key) : tierColor(active.key) } as CSSProperties} data-field-tone={field === 'model' ? 'model' : 'tier'} data-field-unavailable={active.key === NOT_RECORDED}>{active.key}</span>: <span data-field-tone="count">{count(active.runs)} runs</span> · {(active.runs / runs.length * 100).toFixed(1)}% of this window</> : 'Select a bar to inspect its count and share'}</p>
+    <p className="ins-readout" role="status">{active ? <><span style={{ '--field-ink': field === 'model' ? modelColor(active.key) : tierColor(active.key) } as CSSProperties} data-field-tone={field === 'model' ? 'model' : 'tier'} data-field-unavailable={active.key === NOT_RECORDED}>{field === 'tier' ? tierLabel(active.key) : active.key}</span>: <span data-field-tone="count">{count(active.runs)} runs</span> · {(active.runs / runs.length * 100).toFixed(1)}% of this window</> : 'Select a bar to inspect its count and share'}</p>
     <div className="overview-volume-bars">
       {groups.map(group => <button type="button" key={group.key} aria-pressed={selected === group.key}
         data-semantic-concept={field === 'model' ? `model:${group.key}` : tierConcept(group.key) ? `field:${tierConcept(group.key)}` : `tier:${group.key}`} data-semantic-label={group.key}
-        aria-label={`${group.key}: ${count(group.runs)} ${group.runs === 1 ? 'run' : 'runs'}`} onClick={() => setSelected(group.key)}
+        aria-label={`${field === 'tier' ? tierLabel(group.key) : group.key}: ${count(group.runs)} ${group.runs === 1 ? 'run' : 'runs'}`} onClick={() => setSelected(group.key)}
         style={{ '--ins-swatch': field === 'model' ? modelColor(group.key) : tierColor(group.key) } as CSSProperties}>
-        <span className="overview-volume-label" style={{ color: field === 'model' ? modelColor(group.key) : tierColor(group.key), '--field-ink': field === 'model' ? modelColor(group.key) : tierColor(group.key) } as CSSProperties} data-field-tone={field === 'model' ? 'model' : 'tier'} data-field-unavailable={group.key === NOT_RECORDED}>{group.key}</span><strong data-field-tone="count">{count(group.runs)}</strong>
+        <span className="overview-volume-label" style={{ color: field === 'model' ? modelColor(group.key) : tierColor(group.key), '--field-ink': field === 'model' ? modelColor(group.key) : tierColor(group.key) } as CSSProperties} data-field-tone={field === 'model' ? 'model' : 'tier'} data-field-unavailable={group.key === NOT_RECORDED}>{field === 'tier' ? tierLabel(group.key) : group.key}</span><strong data-field-tone="count">{count(group.runs)}</strong>
         <span className="overview-volume-track" aria-hidden="true"><span style={{ width: `${group.runs / maximum * 100}%` }} /></span>
       </button>)}
     </div>

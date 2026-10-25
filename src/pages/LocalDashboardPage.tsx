@@ -1,4 +1,6 @@
 import { formatDashboardCount, formatFullCount, wholeCount } from '@/lib/dashboard-count';
+import { readableTime } from '@/lib/readable-time';
+import { exactMs, formatDuration } from '@/lib/duration';
 import { dailyMeteringTokens } from '@/lib/daily-metering-tokens';
 import { DailyMeteringTokens } from '@/components/dashboard/usage/DailyMeteringTokens';
 import { TokenDirections } from '@/components/dashboard/usage/TokenDirections';
@@ -27,7 +29,7 @@ import { UsageInsights } from '@/pages/local/usage-insights';
 import { SinceLastVisit } from '@/pages/local/since-last-visit';
 import { ModelKeys } from '@/pages/local/model-keys';
 import { EnvironmentPanel } from '@/pages/local/environment';
-import { failureCauseLabel, failureDetailText, notAvailableYet, plainFailureMessage } from '@/pages/local/plain-text';
+import { failureCauseLabel, failureDetailText, notAvailableYet, plainFailureMessage, taskLabel, tierLabel } from '@/pages/local/plain-text';
 import { RunFilterProvider, causeHref, causeLabelOf, useRunFilter } from '@/pages/local/run-filter';
 import { typedFailureCauseOf } from '@/pages/local/insights';
 import { DashboardAccess } from '@/pages/local/access';
@@ -698,12 +700,13 @@ export function runModelledCell(run: Row): string {
 /** The route tier as served, with its cost regime beside it when the row carries one (OMN-13649, OMN-20225). */
 function tierOf(decision: Row): string {
   if (isMissing(decision.cost_tier_name)) return 'Not recorded';
-  const name = String(decision.cost_tier_name);
-  return isMissing(decision.cost_tier_type) ? name : `${name} (${String(decision.cost_tier_type)})`;
+  const name = tierLabel(decision.cost_tier_name);
+  return isMissing(decision.cost_tier_type) ? name : `${name} (${tierLabel(decision.cost_tier_type).toLowerCase()})`;
 }
 
+/** OMN-21166 AC55: "12.2 s", one formatter for every page; the exact served milliseconds go in the title. */
 function duration(value: unknown): string {
-  return isMissing(value) ? 'Not recorded' : `${String(value)} ms`;
+  return isMissing(value) ? 'Not recorded' : formatDuration(value);
 }
 
 function age(value: unknown, now: number): string {
@@ -781,16 +784,7 @@ function CellTime({ value }: { value: unknown }) {
   return readable === null ? <>{text}</> : <time className="local-cell-time" dateTime={text} title={text}>{readable}</time>;
 }
 
-/** "Oct 16, 22:11:37 UTC" for an ISO timestamp (its own offset kept, nothing converted); null for any other text. */
-export function readableTime(text: string): string | null {
-  const parts = /^\d{4}-(\d{2})-(\d{2})T(\d{2}:\d{2}:\d{2})(?:\.\d+)?(Z|[+-]\d{2}:\d{2})$/.exec(text);
-  const month = parts ? MONTHS[Number(parts[1]) - 1] : undefined;
-  if (!parts || month === undefined) return null;
-  const zone = parts[4] === 'Z' || parts[4] === '+00:00' ? 'UTC' : parts[4];
-  return `${month} ${Number(parts[2])}, ${parts[3]} ${zone}`;
-}
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+export { readableTime };
 
 /** OV-4: the newest run, its typed cause when it failed, and every figure typed when it is not served. */
 export function LastRunCard({ decisions, sessions, now = Date.now(), compact = false }: RunViewProps & { compact?: boolean }) {
@@ -918,8 +912,8 @@ export function RecentRunsTable({ decisions, sessions, now = Date.now(), showCha
               <td data-label="Cost"><span className="local-recent-value">{costOf(session, decision)}</span></td>
               <td data-label="Duration"><span className="local-recent-value">{duration(decision.latency_ms)}</span></td>
               <td data-label="Age"><span className="local-recent-value">{age(decision.written_at, now)}</span></td>
-              <td data-label="Cause"><span className="local-recent-value" data-failure-cause={causeOf(decision)} title={failureDetailOf(decision) ? failureDetailText(failureDetailOf(decision)!) : undefined}>{displayCauseOf(decision)}</span></td>
-              <td data-label="Task type"><span className="local-recent-value">{recorded(decision.task_type)}</span></td>
+              <td data-label="Cause">{causeOf(decision) === 'none' ? <NoFailure /> : <span className="local-recent-value" data-failure-cause={causeOf(decision)} title={failureDetailOf(decision) ? failureDetailText(failureDetailOf(decision)!) : undefined}>{displayCauseOf(decision)}</span>}</td>
+              <td data-label="Task type"><span className="local-recent-value">{isMissing(decision.task_type) ? recorded(decision.task_type) : taskLabel(decision.task_type)}</span></td>
               <td className="local-dashboard-cell-token" data-label="Backend"><span className="local-recent-value">{recorded(decision.backend_id)}</span></td>
               <td className="local-dashboard-cell-token" data-label="Host"><span className="local-recent-value">{recorded(decision.host)}</span></td>
               <td data-label="Tokens in"><span className="local-recent-value">{recordedTokens(decision.tokens_input)}</span></td>
@@ -967,8 +961,17 @@ function isFixture(decision: Row): boolean {
  * A Runs row's cause (OMN-19919 AC5): the cause the filter and the Overview list use, and the served failure detail it
  * came from, readable on the row (its title, and "Read failure details") whenever it says more than the cause.
  */
+/**
+ * OMN-21166 part 10 AC58: a passed run has no failure cause; its cell reads a dash with an accessible "No failure",
+ * never the word "None". The cause filter keeps its "None" option, which names the served value.
+ */
+function NoFailure() {
+  return <span className="local-runs-cause" data-failure-cause="none" aria-label="No failure" title="No failure">—</span>;
+}
+
 function RunCause({ run }: { run: Row }) {
   const rawCause = causeOf(run);
+  if (rawCause === 'none') return <NoFailure />;
   const cause = displayCauseOf(run);
   const detail = failureDetailText(failureDetailOf(run) ?? cause);
   if (detail === cause && cause.length <= 120) return <span className="local-runs-cause" data-failure-cause={rawCause} title={cause}>{cause}</span>;
@@ -1094,7 +1097,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
         <h3 className="local-dashboard-caption local-section-heading">Tasks</h3>
         <div className="local-dashboard-filters">{tasks.map(name => <button key={name} type="button" aria-label={`Filter task ${name}`} aria-pressed={task === name}
           onClick={() => updateView({ task: task === name ? 'all' : name, page: 1 })}>
-          {name !== 'Not recorded' && <TaskIcon task={name} />}{name}<span>{formatDashboardCount(taskFacetRuns.filter(run => recorded(run.task_type) === name).length)}</span>
+          {name !== 'Not recorded' && <TaskIcon task={name} />}{taskLabel(name)}<span>{formatDashboardCount(taskFacetRuns.filter(run => recorded(run.task_type) === name).length)}</span>
         </button>)}</div>
       </section>
       <div className="local-runs-search">
@@ -1200,8 +1203,8 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                   <td>{runModelledCell(run)}</td>
                   <td>{recorded(isMissing(run.savings_baseline_model) ? session?.baseline_model : run.savings_baseline_model)}</td>
                   <td>{recorded(session?.usage_source)}</td>
-                  <td>{isMissing(run.task_type) ? recorded(run.task_type) : <span className="local-task-cell"><TaskIcon task={String(run.task_type)} />{String(run.task_type)}</span>}</td>
-                  <td>{recorded(run.latency_ms)}</td>
+                  <td>{isMissing(run.task_type) ? recorded(run.task_type) : <span className="local-task-cell"><TaskIcon task={String(run.task_type)} />{taskLabel(run.task_type)}</span>}</td>
+                  <td title={exactMs(run.latency_ms)}>{duration(run.latency_ms)}</td>
                   <td>{recorded(run.tokens_to_compliance)}</td>
                   <td>{tierOf(run)}</td>
                   <td>{recorded(run.actual_score)}</td>
@@ -1217,11 +1220,11 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
               <OutcomePill value={statusOf(selectedRun)} />
               <CellTime value={selectedRun.created_at} />
               {!isMissing(selectedRun.task_type)
-                ? <span className="local-task-cell"><TaskIcon task={String(selectedRun.task_type)} />{String(selectedRun.task_type)}</span>
+                ? <span className="local-task-cell"><TaskIcon task={String(selectedRun.task_type)} />{taskLabel(selectedRun.task_type)}</span>
                 : <span>{recorded(selectedRun.task_type)}</span>}
             </p>
             <dl className="local-dashboard-fields">
-              <div><dt>Task</dt><dd>{recorded(selectedRun.task_type)}</dd></div>
+              <div><dt>Task</dt><dd>{isMissing(selectedRun.task_type) ? recorded(selectedRun.task_type) : taskLabel(selectedRun.task_type)}</dd></div>
               <div><dt>Cause</dt><dd><span className="local-runs-cause" data-failure-cause={causeOf(selectedRun)} title={causeTextOf(selectedRun)}>{causeTextOf(selectedRun)}</span></dd></div>
               <div><dt>Model</dt><dd>{modelOrUnknown(selectedRun.model_name)}</dd></div>
               <div><dt>Route tier</dt><dd>{tierOf(selectedRun)}</dd></div>
@@ -1336,7 +1339,7 @@ export function TierMixPanel({ row, compact = false }: { row: Row | null; compac
               {/* A served share is a long decimal and a name has no break opportunity: each may break inside itself, as
                   the repo's other token cells do, so the Cost column stays inside the panel at 1440x900 with no
                   sideways scroll. Costs wrap at their spaces. */}
-              <td className="local-dashboard-cell-token local-dashboard-cell-name"><span className="local-routing-name"><ConceptIcon concept={concept} label={name} value={name} size={16} />{recorded(tier.cost_tier_name)}</span></td>
+              <td className="local-dashboard-cell-token local-dashboard-cell-name"><span className="local-routing-name"><ConceptIcon concept={concept} label={tierLabel(name)} value={name} size={16} />{isMissing(tier.cost_tier_name) ? recorded(tier.cost_tier_name) : tierLabel(name)}</span></td>
               <td data-column="runs">{recordedCount(tier.count)}</td>
               <td data-column="share" className="local-dashboard-cell-token"><Readable value={tier.pct_of_tier_routed} kind="percent" /></td>
               <td />
@@ -1527,11 +1530,12 @@ export function RunTimeline({ steps }: { steps: readonly unknown[] }) {
         const details: Array<[string, string]> = [
           ...unrecordedRouting,
           ...(routing && !isMissing(row.confidence) ? [['confidence', String(row.confidence)] as [string, string]] : []),
-          ...(isMissing(row.failure_cause) ? [] : [['cause', String(row.failure_cause)] as [string, string]]),
+          ...(isMissing(row.failure_cause) ? [] : [['cause', failureCauseLabel(row.failure_cause)] as [string, string]]),
           ...(isMissing(row.backend_id) ? [] : [['backend', String(row.backend_id)] as [string, string]]),
           ...(isMissing(row.model_id) ? [] : [['model', String(row.model_id)] as [string, string]]),
           ...(isMissing(row.attempt_number) ? [] : [['attempt', String(row.attempt_number)] as [string, string]]),
-          ...(candidates.length === 0 ? [] : [['candidates', candidates.join(', ')] as [string, string]]),
+          // OMN-21166 AC54: candidate tiers read as words; the served keys stay in the data.
+          ...(candidates.length === 0 ? [] : [['candidates', candidates.map(tierLabel).join(', ')] as [string, string]]),
         ];
         return (
           <li

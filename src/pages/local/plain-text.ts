@@ -92,3 +92,27 @@ export function plainFailureMessage(
     }
   }
 }
+
+/**
+ * OMN-21166 part 10 AC54: a routing tier as a reader names it. The served key (cheap_cloud) stays in data attributes,
+ * colours, filters and URLs; only the words on the page change. A key not listed reads in sentence case, never as
+ * snake_case.
+ */
+const TIER_LABELS: Readonly<Record<string, string>> = {
+  local: 'Local', cheap_cloud: 'Cheap cloud', cheap_frontier: 'Cheap frontier', claude: 'Claude', cloud: 'Cloud',
+  not_tier_routed: 'Not tier-routed',
+};
+
+export function tierLabel(name: unknown): string {
+  if (name === null || name === undefined) return 'Not recorded';
+  const key = String(name).trim();
+  if (key === '' || key === 'Not recorded') return 'Not recorded';
+  if (Object.hasOwn(TIER_LABELS, key)) return TIER_LABELS[key];
+  const words = key.replace(/[_-]+/g, ' ').trim();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/** OMN-21166: a task type as words ("code generation"); the served key stays the filter and URL value. */
+export function taskLabel(name: unknown): string {
+  return String(name).trim().replace(/_+/g, ' ');
+}
