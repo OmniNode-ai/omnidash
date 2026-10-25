@@ -10,7 +10,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { fmtMoney4 } from '@/components/dashboard/event-dash/primitives';
-import { escalationReason, pricingLabel } from '@/pages/DelegationEvidencePage';
+import { escalationReason, plainUnservedReason, pricingLabel } from '@/pages/DelegationEvidencePage';
 import { recordedUsd } from '@/pages/local/workflow-analysis';
 
 describe('pricingLabel', () => {
@@ -86,5 +86,52 @@ describe('recordedUsd', () => {
   });
   it('shows a non-numeric served value as served', () => {
     expect(recordedUsd('n/a')).toBe('n/a');
+  });
+});
+
+// OMN-21166 part 10 AC52: no typed code or credential id reaches the escalation panel, mapped or not.
+describe('escalationReason plain words', () => {
+  it.each([
+    ['SHAPE_REFUSED: response is a bare single-word fragment', 'Response too short: response is a bare single-word fragment'],
+    ['MALFORMED: response does not compile as Python: invalid syntax', 'Malformed output: response does not compile as Python: invalid syntax'],
+    ['TASK_MISMATCH: missing @pytest.mark.unit', 'Task mismatch: missing @pytest.mark.unit'],
+    ['WEAK_OUTPUT: provider reported finish_reason=length', 'Weak output: provider reported output limit reached'],
+    ['UNGROUNDED: 2 number(s) stated', 'Ungrounded figures: 2 number(s) stated'],
+    ['RATE_LIMIT: provider refused', 'Rate limit: provider refused'],
+    ['fails semantic_adequacy', 'fails semantic adequacy'],
+  ])('%s reads %s', (served, expected) => {
+    expect(escalationReason(served).text).toBe(expected);
+  });
+
+  it('masks a credential id in the row and in the title', () => {
+    const served = `Delegation refused: credential_rejected for cred_localinstall_openrouter_bca10ee66b1144d898a29ed6af4cf2f3 on backend 'h' ${'x'.repeat(120)}`;
+    const shown = escalationReason(served);
+    expect(shown.text).toContain('key rejected for a stored key');
+    expect(shown.text).not.toMatch(/cred_|[A-Z]{3,}_[A-Z]/);
+    expect(shown.title).not.toContain('cred_');
+  });
+
+  it('leaves no ALL_CAPS code with a colon in any of the served reasons', () => {
+    for (const served of ['SHAPE_REFUSED: a', 'MALFORMED: b; TASK_MISMATCH: c', 'SOMETHING_NEW: d']) {
+      expect(escalationReason(served).text).not.toMatch(/\b[A-Z]{2,}(?:_[A-Z0-9]+)*:/);
+    }
+  });
+});
+
+// OMN-21166 part 10 AC53: an unserved panel names what is missing without an HTTP status.
+describe('plainUnservedReason', () => {
+  it.each([
+    ['HTTP 503', 'This runtime does not provide this data yet'],
+    ['HTTP 404 Not Found', 'This runtime does not provide this data yet'],
+    ['HTTP 500', 'The runtime could not answer'],
+    ['HTTP 400', 'HTTP 400'],
+    ['tenant not configured', 'tenant not configured'],
+  ])('%s reads %s', (reason, expected) => {
+    expect(plainUnservedReason(reason)).toBe(expected);
+  });
+
+  it('keeps a missing reason missing', () => {
+    expect(plainUnservedReason(null)).toBeNull();
+    expect(plainUnservedReason(undefined)).toBeUndefined();
   });
 });

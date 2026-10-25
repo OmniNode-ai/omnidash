@@ -1,0 +1,103 @@
+/*
+ * OMN-21166 part 11: the shared presentation of the seven pages (Overview, Runs, Workflow, Usage, Credentials,
+ * API Keys, Delegation Evidence). Loaded after dashboard-cards.css so it is the last word on layout and type.
+ * Tokens come from globals.css; nothing here sets a colour of its own except through those tokens.
+ */
+
+/* ── KPI strip (AC63): one segmented row, uppercase mono label, large mono figure, muted basis line ─────────── */
+.kpi-strip,
+.local-dashboard-page--overview .local-overview-surface > .local-overview-summary {
+  display: grid;
+  grid-template-columns: repeat(var(--kpi-count, 4), minmax(0, 1fr));
+  gap: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  overflow: hidden;
+}
+.kpi-strip > *,
+.local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel {
+  border: 0;
+  border-radius: 0;
+  border-inline-end: 1px solid var(--line);
+  background: transparent;
+  box-shadow: none;
+  padding: 14px 18px 16px;
+  min-width: 0;
+}
+.kpi-strip > :last-child,
+.local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel:last-child {
+  border-inline-end: 0;
+}
+.kpi-strip .kpi-label,
+.local-dashboard-page--overview .local-overview-summary .local-dashboard-panel > h2.local-dashboard-panel-title,
+.local-dashboard-page--overview .local-overview-summary .local-dashboard-panel > h2 {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.local-dashboard-page--overview .local-overview-summary .local-dashboard-panel > h2 svg { width: 14px; height: 14px; }
+.kpi-strip .kpi-value,
+.local-dashboard-page--overview .local-overview-summary .local-dashboard-metric[data-measured="true"] {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: clamp(24px, 2vw, 30px);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.kpi-strip .kpi-note,
+.local-dashboard-page--overview .local-overview-summary .local-dashboard-caption {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+@media (max-width: 1100px) {
+  .kpi-strip,
+  .local-dashboard-page--overview .local-overview-surface > .local-overview-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kpi-strip > :nth-child(2n),
+  .local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel:nth-child(2n) { border-inline-end: 0; }
+  .kpi-strip > :nth-child(n + 3),
+  .local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel:nth-child(n + 3) { border-top: 1px solid var(--line); }
+}
+@media (max-width: 600px) {
+  .kpi-strip,
+  .local-dashboard-page--overview .local-overview-surface > .local-overview-summary { grid-template-columns: minmax(0, 1fr); }
+  .kpi-strip > *,
+  .local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel { border-inline-end: 0; border-top: 1px solid var(--line); }
+  .kpi-strip > :first-child,
+  .local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel:first-child { border-top: 0; }
+}
+
+/* ── Panels: quiet surfaces, mono section labels, no hover lift ─────────────────────────────────────────── */
+.local-dashboard-page .local-dashboard-panel,
+.local-dashboard-page .local-dashboard-panel:hover { border-radius: 10px; padding: 16px 18px; }
+.local-dashboard-page .local-dashboard-panel > h2 { font-size: 14px; font-weight: 600; letter-spacing: -0.005em; }
+.local-dashboard-page .local-dashboard-header h1 { font-size: 24px; font-weight: 600; letter-spacing: -0.02em; }
+
+/* Figures, ids and table numbers read in the mono face with tabular digits. */
+.local-dashboard-page :is(td, .local-dashboard-metric, .local-recent-value, code),
+main.ev-root[data-destination="delegation-evidence"] :is(.kpi .k-v, .big, td) {
+  font-variant-numeric: tabular-nums;
+}
+.local-dashboard-page table th,
+main.ev-root[data-destination="delegation-evidence"] .dt-head {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* Quality: the latest-runs pass rate reads as one line, label beside its figure and coverage. */
+.local-dashboard-page .ins-pass-headline .ins-pass-line {
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: flex-start; gap: 6px 10px;
+}
+.local-dashboard-page .ins-pass-headline .ins-pass-line strong {
+  font-family: var(--font-mono); font-size: 16px; font-weight: 500; color: var(--ink);
+}
+.local-dashboard-page .local-meter-value { font-family: var(--font-mono); font-weight: 500; letter-spacing: -0.03em; }

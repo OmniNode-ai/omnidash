@@ -480,8 +480,10 @@ export function PassRateSparkline() {
         ? `Previous ${comparisonDays === 1 ? 'day' : `${comparisonDays} days`} has no recorded verdicts to compare`
         : `Previous ${comparisonDays === 1 ? 'day' : `${comparisonDays} days`} not fully returned`
       : `${comparison.passRateDeltaPoints > 0 ? '▲' : comparison.passRateDeltaPoints < 0 ? '▼' : '—'} ${Math.abs(comparison.passRateDeltaPoints).toFixed(1)} percentage points vs previous ${comparisonDays === 1 ? 'day' : `${comparisonDays} days`} (${verdictCoverage(comparison.previousVerdicts, comparison.previousRuns)})`;
+  // OMN-21166 part 11: this rate is over the latest returned runs, not every check the meter above counts, so its
+  // label names that population beside the figure.
   return <section className="ins-pass-headline" aria-label="Pass rate trend">
-    <p className="local-dashboard-caption"><span>Pass rate</span> <strong data-field-unavailable={current.passRate === null}>{rate}</strong> <span className="ins-pass-coverage" data-field-tone="basis">{verdictCoverage(current.passed + current.failed, current.runs)}</span></p>
+    <p className="local-dashboard-caption ins-pass-line"><span>Pass rate · latest returned runs</span> <strong data-field-unavailable={current.passRate === null}>{rate}</strong> <span className="ins-pass-coverage" data-field-tone="basis">{verdictCoverage(current.passed + current.failed, current.runs)}</span></p>
     <p className="local-dashboard-caption ins-pass-delta" data-field-unavailable={comparison?.passRateDeltaPoints === null || comparison === null}>{deltaText}</p>
     <PassRateTrend days={seriesForDays(currentRuns, plottedDays(runs, context.now, window))} />
   </section>;

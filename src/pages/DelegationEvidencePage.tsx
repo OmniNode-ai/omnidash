@@ -39,6 +39,8 @@ import {
   useDelegationSavings,
   useDelegationSummary,
   useDelegationTokenUsage,
+  useExposureCensus,
+  useMeteringSummary,
 } from '@/components/dashboard/event-dash/useEventDashData';
 import type {
   CorrelationTraceRow,
@@ -46,7 +48,9 @@ import type {
   DelegationDecisionRow,
   DelegationSummaryRow,
 } from '@/services/event-dash-api';
-import { runBreakdownText, runModelledCell } from '@/pages/LocalDashboardPage';
+import {
+  captionText, meteringMoneyBasis, meteringTokens, overviewHeadlineSource, pickMeteringRow, runBreakdownText, runModelledCell,
+} from '@/pages/LocalDashboardPage';
 import { overviewRunCount } from '@/lib/dashboard-overview-count';
 import { modelColor } from '@/lib/dashboard-colors';
 import { modelIdentityStyle } from '@/components/dashboard/model-identity';
@@ -90,17 +94,59 @@ export function pricingLabel(version: unknown): string | null {
 
 const REASON_MAX = 120;
 
+// OMN-21166 AC52: the gate's typed codes as a reader names them. A code not listed reads as its words in sentence case.
+const REASON_CODE_LABELS: Readonly<Record<string, string>> = {
+  SHAPE_REFUSED: 'Response too short', MALFORMED: 'Malformed output', TASK_MISMATCH: 'Task mismatch',
+  WEAK_OUTPUT: 'Weak output', UNGROUNDED: 'Ungrounded figures', REFUSAL: 'Response refused',
+  SCHEMA_VIOLATION: 'Schema violation',
+};
+const REASON_PHRASES: ReadonlyArray<[RegExp, string]> = [
+  [/\bfinish_reason=length\b/g, 'output limit reached'],
+  [/\bcredential_rejected\b/g, 'key rejected'],
+];
+
+/** A stored credential's id never reaches the page, in the row or in its title (OMN-21166 AC52). */
+function maskCredentialIds(text: string): string {
+  return text.replace(/\bcred_[A-Za-z0-9_]+/g, 'a stored key');
+}
+
+function sentenceCase(code: string): string {
+  const words = code.toLowerCase().split('_').filter(Boolean).join(' ');
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/** The reason in plain words: typed codes and snake_case names become words; the served wording is kept otherwise. */
+function plainReasonText(text: string): string {
+  let plain = maskCredentialIds(text)
+    .replace(/\b([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+|[A-Z]{3,}):\s*/g, (_, code: string) => `${REASON_CODE_LABELS[code] ?? sentenceCase(code)}: `);
+  for (const [pattern, phrase] of REASON_PHRASES) plain = plain.replace(pattern, phrase);
+  return plain.replace(/\b([a-z]+(?:_[a-z0-9]+)+)\b/g, name => name.replace(/_/g, ' '));
+}
+
 /**
  * OMN-21166: one escalation reason as the panel shows it. A served reason can be a whole provider error, URLs and
- * response body included; the row shows its first line of text, shortened to fit, and the element's title keeps the
- * whole served text. A missing reason is named, never an empty row.
+ * response body included; the row shows its first line of text in plain words (AC52), shortened to fit, and the
+ * element's title keeps the whole served text with any credential id masked. A missing reason is named, never an
+ * empty row.
  */
 export function escalationReason(reason: unknown): { text: string; title: string | undefined } {
   const served = typeof reason === 'string' ? reason : isUnavailableField(reason) ? '' : String(reason);
-  const text = served.replace(/\s+/g, ' ').trim();
+  const text = plainReasonText(served.replace(/\s+/g, ' ').trim());
   if (text === '') return { text: 'Not recorded', title: undefined };
   if (text.length <= REASON_MAX) return { text, title: undefined };
-  return { text: `${text.slice(0, REASON_MAX - 1).trimEnd()}…`, title: served };
+  return { text: `${text.slice(0, REASON_MAX - 1).trimEnd()}…`, title: maskCredentialIds(served) };
+}
+
+/**
+ * OMN-21166 AC53: why a panel has no rows, in plain words with no HTTP status. A runtime that does not serve the data
+ * (404 or 503) says so; another server failure says the runtime could not answer; any other reason is left to EvEmpty.
+ */
+export function plainUnservedReason(reason: string | null | undefined): string | null | undefined {
+  const status = reason ? /^HTTP (\d{3})(?: .*)?$/.exec(reason.trim()) : null;
+  if (!status) return reason;
+  const code = Number(status[1]);
+  if (code === 404 || code === 503) return 'This runtime does not provide this data yet';
+  return code >= 500 ? 'The runtime could not answer' : reason;
 }
 
 // ── golden chain (stage labels justified by the trace row) ───────────────────
@@ -109,19 +155,19 @@ interface ChainStep {
   step: number;
   label: string;
   detail: string;
-  topic: string;
   evidence: 'observed' | 'inferred';
   kind: '' | 'ok' | 'fail';
 }
 
+// OMN-21166 AC51: each step names what happened in plain words; the event and exposure names stay in code.
 function buildChain(row: CorrelationTraceRow): ChainStep[] {
   const ok = row.quality_gate_passed;
   return [
-    { step: 1, label: 'Command envelope', detail: `correlation_id ${shortId(row.correlation_id)}`, topic: 'onex.cmd.delegation.delegate.v1', evidence: 'inferred', kind: '' },
-    { step: 2, label: 'Routing trace', detail: `${row.model_name}${row.routing_rule ? ` (rule: ${row.routing_rule})` : ''}`, topic: 'onex.evt.delegation.routing_trace.v1', evidence: 'observed', kind: '' },
-    { step: 3, label: 'Inference response', detail: row.response_text ? 'response_text present' : 'response_text = null', topic: 'onex.evt.delegation.inference-response.v1', evidence: row.response_text ? 'observed' : 'inferred', kind: '' },
-    { step: 4, label: 'Decision terminal', detail: ok ? 'quality gate passed' : (row.quality_gate_detail ?? 'failed'), topic: 'onex.evt.delegation.decision_terminal.v1', evidence: 'observed', kind: ok ? 'ok' : 'fail' },
-    { step: 5, label: 'Projection row', detail: `id ${shortId(row.id)} · ${fmtLatency(row.latency_ms)}`, topic: 'onex.snapshot.projection.delegation.decisions.v1', evidence: 'observed', kind: ok ? 'ok' : 'fail' },
+    { step: 1, label: 'Request received', detail: `Run ${shortId(row.correlation_id)}`, evidence: 'inferred', kind: '' },
+    { step: 2, label: 'Model routed', detail: `${row.model_name}${row.routing_rule ? ` (rule: ${row.routing_rule})` : ''}`, evidence: 'observed', kind: '' },
+    { step: 3, label: 'Answer returned', detail: row.response_text ? 'Answer recorded' : 'No answer recorded', evidence: row.response_text ? 'observed' : 'inferred', kind: '' },
+    { step: 4, label: 'Quality gate', detail: ok ? 'Passed' : escalationReason(row.quality_gate_detail ?? 'Failed').text, evidence: 'observed', kind: ok ? 'ok' : 'fail' },
+    { step: 5, label: 'Run recorded', detail: fmtLatency(row.latency_ms), evidence: 'observed', kind: ok ? 'ok' : 'fail' },
   ];
 }
 
@@ -136,7 +182,6 @@ function Chain({ steps }: { steps: ChainStep[] }) {
               {c.label} <Badge kind="muted">{c.evidence}</Badge>
             </div>
             <div className="cd">{c.detail}</div>
-            <div className="ct">{c.topic}</div>
           </div>
         </div>
       ))}
@@ -166,7 +211,7 @@ function SelectedRun({ correlationId, decision }: { correlationId: string | null
   if (!row) {
     return (
       <Panel title="SELECTED RUN" sub={shortId(correlationId)}>
-        <EvEmpty title="No trace rows for this correlation" reason={data.degradedReason} note="Nothing was recorded for this run yet." />
+        <EvEmpty title="No trace rows for this correlation" reason={plainUnservedReason(data.degradedReason)} note="Nothing was recorded for this run yet." />
       </Panel>
     );
   }
@@ -188,11 +233,11 @@ function SelectedRun({ correlationId, decision }: { correlationId: string | null
           // event's legacy cost_savings_usd, which is 0 for a run the savings writer never priced.
           { k: 'Savings (modelled)', v: decision ? runModelledCell(decision as unknown as Record<string, unknown>) : 'Not recorded' },
           { k: 'Routing rule', v: row.routing_rule ?? '—' },
-          { k: 'Quality detail', v: row.quality_gate_detail ?? (row.quality_gate_passed ? 'pass' : '—') },
+          { k: 'Quality detail', v: row.quality_gate_detail ? escalationReason(row.quality_gate_detail).text : (row.quality_gate_passed ? 'Passed' : '—') },
         ]}
       />
       <div className="divider" />
-      <div className="section-label">Golden chain · command → projection</div>
+      <div className="section-label">Run path</div>
       <Chain steps={buildChain(row)} />
     </Panel>
   );
@@ -209,7 +254,7 @@ function ModelRouting() {
   if (!agg || agg.rows.length === 0) {
     return (
       <Panel title="MODEL ROUTING">
-        <EvEmpty title="No routing aggregate" reason={data.degradedReason} note="No routing data yet." />
+        <EvEmpty title="No routing aggregate" reason={plainUnservedReason(data.degradedReason)} note="No routing data yet." />
       </Panel>
     );
   }
@@ -244,7 +289,7 @@ function QualityGate() {
   if (!q) {
     return (
       <Panel title="QUALITY GATE">
-        <EvEmpty title="No quality-gate rows" reason={data.degradedReason} />
+        <EvEmpty title="No quality-gate rows" reason={plainUnservedReason(data.degradedReason)} />
       </Panel>
     );
   }
@@ -278,18 +323,27 @@ function QualityGate() {
 
 // ── savings (aggregate) ──────────────────────────────────────────────────────
 
-function SavingsPanel({ overview, unavailable }: { overview: CostSavingsOverviewRow | null; unavailable: string }) {
+/**
+ * OMN-21166 AC37/AC50: the money figures of the savings panel, from the same served row as Overview's Savings card
+ * (cost.savings-overview.v1, or metering-summary.v1 when the old aggregate is not in the local store). Null when that
+ * row cannot be read; the panel then names why instead of showing a figure.
+ */
+interface HeadlineMoney {
+  cloud: unknown; local: unknown; saved: unknown;
+  baselineModel: unknown; pricing: unknown; measuredRuns: unknown;
+  /** The runs the total leaves out, as Overview's basis line names them; null when the source serves no such count. */
+  basis: string | null;
+}
+
+function SavingsPanel({ money, unavailable }: { money: HeadlineMoney | null; unavailable: string }) {
   const { data, isLoading } = useDelegationSavings();
   if (isLoading || !data) {
     return <Panel title="SAVINGS vs CLOUD BASELINE"><EvEmpty title="Loading…" /></Panel>;
   }
-  // OMN-21166 AC37: the money figures are the shared overview row's, the same total Overview's Savings card shows;
-  // delegation.savings.v1 supplies only the baseline model and pricing version it alone serves.
+  // delegation.savings.v1 supplies the baseline model and pricing version only when the headline row serves neither.
   const s = data.rows[0];
   const finite = (value: unknown) => !isUnavailableField(value) && Number.isFinite(Number(value));
-  const cloud = overview?.total_baseline_cost_usd;
-  const local = overview?.total_cost_usd;
-  const saved = overview?.total_savings_usd;
+  const cloud = money?.cloud;
   const width = (value: unknown) => finite(value) && finite(cloud) && Number(cloud) > 0
     ? `${Math.max(0, Math.min(100, (Number(value) / Number(cloud)) * 100))}%` : null;
   const bar = (label: string, value: unknown, concept: 'baseline' | 'cost' | 'savings', tone: string, labelClass = '') => (
@@ -299,21 +353,23 @@ function SavingsPanel({ overview, unavailable }: { overview: CostSavingsOverview
       <div className="track2 bar-track">{width(value) && <div className={`bar-fill ${tone}`} style={{ width: width(value)!, background: 'var(--field-ink)' }} />}</div>
     </div>
   );
+  const baselineModel = !isUnavailableField(money?.baselineModel) ? money?.baselineModel : s?.baseline_model;
+  const pricing = pricingLabel(!isUnavailableField(money?.pricing) ? money?.pricing : s?.pricing_manifest_version);
   return (
     <Panel
       title="SAVINGS vs CLOUD BASELINE"
-      sub={s?.baseline_model || 'Baseline model not recorded'}
-      right={s && pricingLabel(s.pricing_manifest_version) ? <span className="src-tag">{pricingLabel(s.pricing_manifest_version)}</span> : undefined}
+      sub={baselineModel ? String(baselineModel) : 'Baseline model not recorded'}
+      right={pricing ? <span className="src-tag">{pricing}</span> : undefined}
     >
       <span className="stat-inline ev-savings-hero" data-field-tone="savings">
-        <span className="big c-amber" style={{ color: overview && finite(saved) ? 'var(--field-savings)' : 'var(--field-unavailable)' }}>{overview ? servedUsd(saved) : unavailable}</span>
-        <span className="note">cumulative savings (modelled) over {overview ? servedCount(overview.measured_run_count) : 'Not measured'} measured runs</span>
+        <span className="big c-amber" style={{ color: money && finite(money.saved) ? 'var(--field-savings)' : 'var(--field-unavailable)' }}>{money ? servedUsd(money.saved) : unavailable}</span>
+        <span className="note">cumulative savings (modelled) over {money ? servedCount(money.measuredRuns) : 'Not measured'} measured runs</span>
       </span>
-      {/* The money source does not serve an unpriced count; the separate savings population cannot fill it. */}
-      <p className="note">Unpriced runs not recorded</p>
+      {/* The money source names the runs it leaves out where it serves them; the savings population cannot fill it. */}
+      <p className="note">{money?.basis ?? 'Unpriced runs not recorded'}</p>
       {bar('Cloud baseline cost', cloud, 'baseline', 'm-blue')}
-      {bar('Local / delegated cost', local, 'cost', 'm-green')}
-      {bar('Saved', saved, 'savings', 'm-green', 'c-green')}
+      {bar('Local / delegated cost', money?.local, 'cost', 'm-green')}
+      {bar('Saved', money?.saved, 'savings', 'm-green', 'c-green')}
     </Panel>
   );
 }
@@ -329,7 +385,7 @@ function TokenUsage() {
   if (!t) {
     return (
       <Panel title="TOKEN USAGE">
-        <EvEmpty title="No token-usage rows" reason={data.degradedReason} />
+        <EvEmpty title="No token usage by model" reason={plainUnservedReason(data.degradedReason)} />
       </Panel>
     );
   }
@@ -365,25 +421,25 @@ function DecisionDetail({ row }: { row: DelegationDecisionRow }) {
           { k: 'Correlation', v: row.correlation_id, accent: true },
           { k: 'Task type', v: row.task_type },
           { k: 'Model', v: row.model_name },
-          { k: 'Quality detail', v: row.quality_gate_detail ?? '—' },
+          { k: 'Quality detail', v: row.quality_gate_detail ? escalationReason(row.quality_gate_detail).text : '—' },
           { k: 'Tokens in / out', v: `${row.tokens_input == null ? 'Not recorded' : formatFullCount(row.tokens_input)} / ${row.tokens_output == null ? 'Not recorded' : formatFullCount(row.tokens_output)}` },
           { k: 'Latency', v: fmtLatency(row.latency_ms) },
           { k: 'Created', v: row.created_at.replace('T', ' ').slice(0, 19) },
         ]}
       />
       {isLoading ? (
-        <div className="note">loading correlation trace…</div>
+        <div className="note">Loading the run…</div>
       ) : trace && (trace.prompt_text || trace.response_text) ? (
         <div className="grid cols-2">
-          {trace.prompt_text ? <CodeBlock title="prompt_text" lang="text" code={trace.prompt_text} /> : <div className="note">prompt_text = null (not persisted)</div>}
-          {trace.response_text ? <CodeBlock title="response_text" lang="text" code={trace.response_text} /> : <div className="note">response_text = null (not persisted)</div>}
+          {trace.prompt_text ? <CodeBlock title="Prompt" lang="text" code={trace.prompt_text} /> : <div className="note">Prompt not recorded</div>}
+          {trace.response_text ? <CodeBlock title="Answer" lang="text" code={trace.response_text} /> : <div className="note">Answer not recorded</div>}
         </div>
       ) : (
-        <div className="note">prompt / response not persisted for this correlation</div>
+        <div className="note">Prompt and answer not recorded for this run</div>
       )}
       {trace ? (
         <div>
-          <div className="section-label">Event chain</div>
+          <div className="section-label">Run path</div>
           <Chain steps={buildChain(trace)} />
         </div>
       ) : null}
@@ -443,6 +499,55 @@ function withFixtureNotice(text: string, notice: string | null): string {
   return notice ? `${text} · ${notice}` : text;
 }
 
+// ── headline (one source with Overview) ──────────────────────────────────────
+
+interface EvidenceHeadline {
+  runs: ReactNode; runsSub: string | null; savings: ReactNode; tokens: ReactNode;
+  money: HeadlineMoney | null; unavailable: string;
+}
+
+function unavailableHeadline(unavailable: string): EvidenceHeadline {
+  return { runs: unavailable, runsSub: null, savings: unavailable, tokens: unavailable, money: null, unavailable };
+}
+
+/** The cost.savings-overview.v1 headline, as Overview's aggregate cards read it. */
+function aggregateHeadline(rows: readonly CostSavingsOverviewRow[] | undefined, loading: boolean): EvidenceHeadline {
+  const picked = rows ? overviewRowOf(rows) : null;
+  if (picked === 'ambiguous') return unavailableHeadline('Not measured: ambiguous overview totals');
+  if (picked === null) return unavailableHeadline(loading ? '—' : 'Not measured');
+  return {
+    runs: servedCount(overviewRunCount(picked)),
+    runsSub: runBreakdownText(picked as unknown as Record<string, unknown>),
+    savings: servedUsd(picked.total_savings_usd),
+    tokens: servedCount(picked.tokens_total),
+    money: { cloud: picked.total_baseline_cost_usd, local: picked.total_cost_usd, saved: picked.total_savings_usd,
+      baselineModel: null, pricing: null, measuredRuns: picked.measured_run_count, basis: null },
+    unavailable: 'Not measured',
+  };
+}
+
+/**
+ * The metering-summary.v1 headline, as Overview's metering cards read it: the same all-time row (pickMeteringRow),
+ * the same Agent calls figure and run classes, the same token total and the same money basis line.
+ */
+function meteringHeadline(rows: readonly unknown[] | undefined, loading: boolean): EvidenceHeadline {
+  if (!rows) return unavailableHeadline(loading ? '—' : 'Not measured');
+  const picked = pickMeteringRow(rows, 'all');
+  if ('message' in picked) return unavailableHeadline(picked.message);
+  const row = picked.row;
+  const unresolved = row.baseline_state === 'unresolved';
+  return {
+    runs: servedCount(row.runs_measured),
+    runsSub: captionText({ runs_total: row.runs_total, runs_unknown_tokens: row.runs_unknown_tokens, runs_unknown_spend: row.runs_unknown_spend }),
+    savings: unresolved ? 'Baseline unresolved' : servedUsd(row.savings_usd),
+    tokens: servedCount(meteringTokens(row).total),
+    money: { cloud: unresolved ? null : row.counterfactual_usd, local: row.spend_usd, saved: unresolved ? null : row.savings_usd,
+      baselineModel: row.baseline_model, pricing: row.pricing_manifest_version, measuredRuns: row.runs_measured,
+      basis: captionText(meteringMoneyBasis(row)) },
+    unavailable: 'Not measured',
+  };
+}
+
 // ── page ─────────────────────────────────────────────────────────────────────
 
 export function DelegationEvidencePage() {
@@ -457,19 +562,20 @@ export function DelegationEvidencePage() {
   const decisions = decisionsQ.data?.rows ?? [];
   const latestCid = decisions[0]?.correlation_id ?? null;
 
-  // OMN-21166 AC37: savings, tokens and runs come from the same served row as Overview's headline cards, so the two
-  // pages show one figure per concept. The measured population is a labelled breakdown, never a second headline.
-  const picked = overviewQ.data ? overviewRowOf(overviewQ.data.rows) : null;
-  const overview = picked === 'ambiguous' ? null : picked;
-  const unavailable = picked === 'ambiguous' ? 'Not measured: ambiguous overview totals' : overviewQ.isLoading ? '—' : 'Not measured';
-  const kpiRuns: ReactNode = overview ? servedCount(overviewRunCount(overview)) : unavailable;
-  const kpiSavings: ReactNode = overview ? servedUsd(overview.total_savings_usd) : unavailable;
-  const kpiTokens: ReactNode = overview ? servedCount(overview.tokens_total) : unavailable;
-  const runBreakdown = overview ? runBreakdownText(overview as unknown as Record<string, unknown>) : null;
+  // OMN-21166 AC37/AC50: savings, tokens and runs come from the same served row as Overview's headline cards, so the
+  // two pages show one figure per concept. Overview reads metering-summary.v1 when the catalogue says the old
+  // aggregate is not in the local store; Evidence asks the catalogue the same question and reads the same row.
+  const censusQ = useExposureCensus();
+  const source = censusQ.data ? overviewHeadlineSource(censusQ.data) : null;
+  const meteringQ = useMeteringSummary(source === 'metering');
+  const headline = source === 'metering'
+    ? meteringHeadline(meteringQ.data?.rows, meteringQ.isLoading || censusQ.isLoading)
+    : aggregateHeadline(overviewQ.data?.rows, overviewQ.isLoading);
 
   // Include the savings source in freshness alongside the other headline projections.
   // so the header reflects the composite data state, not a single query's freshness.
-  const snapshots: ProjectionSnapshot[] = [summaryQ.data, tokensQ.data, decisionsQ.data, savingsQ.data, overviewQ.data]
+  const headlineSnapshot = source === 'metering' ? meteringQ.data : overviewQ.data;
+  const snapshots: ProjectionSnapshot[] = [summaryQ.data, tokensQ.data, decisionsQ.data, savingsQ.data, headlineSnapshot]
     .filter((d): d is NonNullable<typeof d> => d !== undefined)
     .map((d) => ({ rowCount: d.rowCount, freshness: d.freshness }));
   const badgeState = derivePageBadge(snapshots);
@@ -491,16 +597,16 @@ export function DelegationEvidencePage() {
       headRight={headRight}
     >
       <div className="grid cols-4">
-        <KPI label="Delegations" icon={<Activity size={15} aria-hidden="true" />} tone="blue" value={kpiRuns} sub={runBreakdown ?? undefined} />
+        <KPI label="Delegations" icon={<Activity size={15} aria-hidden="true" />} tone="blue" value={headline.runs} sub={headline.runsSub ?? undefined} />
         <KPI label="Quality pass" icon={<Award size={15} aria-hidden="true" />} tone="green" value={summary ? fmtPct(summary.qualityGatePassRate) : '—'} sub={withFixtureNotice('deterministic gate', fixtureNotice)} />
-        <KPI label="Savings (modelled)" icon={<PiggyBank size={15} aria-hidden="true" />} tone="purple" value={kpiSavings} accent sub="vs cloud baseline" />
-        <KPI label="Tokens" icon={<Coins size={15} aria-hidden="true" />} tone="amber" value={kpiTokens} sub={summary ? withFixtureNotice(`avg ${(summary.avgLatencyMs / 1000).toFixed(2)}s latency`, fixtureNotice) : undefined} />
+        <KPI label="Savings (modelled)" icon={<PiggyBank size={15} aria-hidden="true" />} tone="purple" value={headline.savings} accent sub="vs cloud baseline" />
+        <KPI label="Tokens" icon={<Coins size={15} aria-hidden="true" />} tone="amber" value={headline.tokens} sub={summary ? withFixtureNotice(`avg ${(summary.avgLatencyMs / 1000).toFixed(2)}s latency`, fixtureNotice) : undefined} />
       </div>
 
       <div className="grid cols-2 ev-selected-run-layout">
         <SelectedRun correlationId={latestCid} decision={decisions[0]} />
         <ModelRouting />
-        <SavingsPanel overview={overview} unavailable={unavailable} />
+        <SavingsPanel money={headline.money} unavailable={headline.unavailable} />
       </div>
 
       <div className="grid cols-2 ev-align-start">
@@ -512,7 +618,7 @@ export function DelegationEvidencePage() {
         <Panel title="RECENT DELEGATIONS"><EvEmpty title="Loading…" /></Panel>
       ) : decisions.length === 0 ? (
         <Panel title="RECENT DELEGATIONS">
-          <EvEmpty title="No delegation decisions" reason={decisionsQ.data?.degradedReason} note="No delegation decisions recorded yet." />
+          <EvEmpty title="No delegation decisions" reason={plainUnservedReason(decisionsQ.data?.degradedReason)} note="No delegation decisions recorded yet." />
         </Panel>
       ) : (
         <RecentDelegations decisions={decisions} />

@@ -463,6 +463,14 @@ export const fetchCostSavingsOverview = (): Promise<
   ProjectionResult<CostSavingsOverviewRow>
 > => readProjection<CostSavingsOverviewRow>(TOPICS.costSavingsOverview);
 
+/**
+ * OMN-21166 AC50: the metering fold Overview reads when the old aggregate is not in the local store, so Delegation
+ * Evidence can show the same headline figures from the same row.
+ */
+export const fetchMeteringSummary = (): Promise<
+  ProjectionResult<Record<string, unknown>>
+> => readProjection<Record<string, unknown>>(TOPICS.meteringSummary);
+
 export const fetchDelegationSavings = (): Promise<
   ProjectionResult<SavingsRow>
 > => readProjection<SavingsRow>(TOPICS.delegationSavings);

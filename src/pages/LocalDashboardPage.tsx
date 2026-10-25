@@ -10,7 +10,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { createSnapshotSource } from '@/data-source';
-import { fetchExposureCensus } from '@/data-source/exposure-census';
+import { fetchExposureCensus, type ExposureCensus } from '@/data-source/exposure-census';
 import { resolveEffectiveDataSource } from '@/data-source/data-source-override';
 import { resolveConfiguredTenant } from '@/data-source/projection-tenant';
 import { UsageByModelDayTable, UsageTokensByDay, formatUsd } from '@/components/dashboard/usage/UsageByModelDayWidget';
@@ -37,6 +37,7 @@ import { modelIdentityStyle } from '@/components/dashboard/model-identity';
 import { fieldTone, isUnavailableField } from '@/components/dashboard/field-identity';
 import '@/styles/local-dashboard.css';
 import '@/styles/dashboard-cards.css';
+import '@/styles/seven-page-design.css';
 import { overviewRunCount } from '@/lib/dashboard-overview-count';
 import { DestinationIcon } from '@/navigation/destination-icons';
 import { FlowConnector, RunAnswer, WorkflowDecisionCharts, WorkflowRecordDetails, WorkflowRoutingFlow } from '@/pages/local/workflow-analysis';
@@ -136,7 +137,7 @@ export function PendingState({ componentId }: { componentId: string }) {
 
 const SAVINGS_MODELLED = "Modelled: the runs' tokens priced at the baseline model's list price. The baseline never ran.";
 
-function captionText(caption: Record<string, unknown> | null | undefined): string | null {
+export function captionText(caption: Record<string, unknown> | null | undefined): string | null {
   if (!caption) return null;
   const fields = caption;
   const parts: string[] = [];
@@ -282,6 +283,17 @@ export type OverviewWindow = 'all' | 'today';
 /** Restored by Lakshman's explicit instruction, 2026-10-19: use the populated old Overview aggregate. */
 const LEGACY_OVERVIEW_TOPIC = 'onex.snapshot.projection.cost.savings-overview.v1';
 
+/**
+ * Which exposure the Overview headline reads, decided from the catalogue before any projection read. Only the
+ * explicit local-store absence of the old aggregate selects metering; a read error never changes source. Delegation
+ * Evidence asks the same question (OMN-21166 AC50), so its headline figures come from the same row as Overview's.
+ */
+export function overviewHeadlineSource(census: ExposureCensus): 'savings' | 'metering' {
+  const declared = census.rows.find(row => row.topic === LEGACY_OVERVIEW_TOPIC);
+  return declared?.reachability === 'refused' && declared.backing === 'not_in_local_store'
+    && declared.refusal === 'projection_table_missing' ? 'metering' : 'savings';
+}
+
 export function OverviewAggregateCard({ component, config, rows, window }: {
   component: LocalPageDocument['components'][number]; config: MetricCardConfig;
   rows: readonly unknown[]; window: OverviewWindow;
@@ -365,7 +377,7 @@ const OUTSIDE_WINDOW_NOTE = 'All time: this panel does not follow the window abo
  * a baseline change a window has two. The one refreshed last (newest as_of) is the baseline the runtime resolves now;
  * two refreshed at the same moment cannot be told apart and are refused by name, never one picked silently.
  */
-function pickMeteringRow(
+export function pickMeteringRow(
   rows: readonly unknown[],
   window: OverviewWindow = 'all',
   now: number = Date.now(),
@@ -392,6 +404,31 @@ function pickMeteringRow(
  * are refused by name, never one picked silently. The Savings card's caption is that row's baseline model and pricing
  * manifest version; Measured runs' caption is that row's run classes.
  */
+/**
+ * Tokens in and out of one metering-summary.v1 row. The fold sums tokens only over runs that recorded them, so when
+ * every run is an unknown-token run the served 0 is not a measurement: all three read null, never 0. Shared by the
+ * Overview Tokens card and Delegation Evidence (OMN-21166 AC50), so both pages show one figure.
+ */
+export function meteringTokens(row: Row): { input: bigint | null; output: bigint | null; total: string | null } {
+  const runs = wholeCount(row.runs_total);
+  const unknown = wholeCount(row.runs_unknown_tokens);
+  const allUnknown = runs !== null && unknown !== null && runs <= unknown;
+  const input = allUnknown ? null : wholeCount(row.tokens_in);
+  const output = allUnknown ? null : wholeCount(row.tokens_out);
+  return { input, output, total: input !== null && output !== null ? (input + output).toString() : null };
+}
+
+/**
+ * The basis line beside a metering-summary.v1 money total: baseline, pricing version and the runs the total leaves
+ * out. The fold classes a run with no token counts before it looks at spend, so both classes are left out of the
+ * money total; the second is the unpriced count. Shared by Overview's Spend and Savings and Delegation Evidence.
+ */
+export function meteringMoneyBasis(row: Row): Record<string, unknown> {
+  return { baseline_model: row.baseline_model, pricing_manifest_version: row.pricing_manifest_version,
+    excluded_runs: [[row.runs_unknown_tokens, 'run with no token counts', 'runs with no token counts'],
+      [row.runs_unknown_spend, 'run with no spend recorded', 'runs with no spend recorded']] };
+}
+
 export function MeteringTotalCard({ component, config, rows, window = 'all', now }: {
   component: LocalPageDocument['components'][number];
   config: MetricCardConfig;
@@ -403,23 +440,14 @@ export function MeteringTotalCard({ component, config, rows, window = 'all', now
   if ('message' in picked) return <p className="local-dashboard-metric" data-measured="false">{picked.message}</p>;
   const row = picked.row;
   if (config.metric_key === TOKENS_IN_AND_OUT) {
-    const runs = wholeCount(row.runs_total);
-    const unknown = wholeCount(row.runs_unknown_tokens);
-    const allUnknown = runs !== null && unknown !== null && runs <= unknown;
-    const input = allUnknown ? null : wholeCount(row.tokens_in);
-    const output = allUnknown ? null : wholeCount(row.tokens_out);
-    const total = input !== null && output !== null ? (input + output).toString() : null;
+    const { input, output, total } = meteringTokens(row);
     return <><p className="local-dashboard-metric" data-measured={total !== null}>{formatDashboardCount(total)}</p>
       <TokenDirections input={input?.toString()} output={output?.toString()} /></>;
   }
   const required = component.data_bindings?.[0]?.required_fields ?? [];
   // OMN-21304 AC4: Spend and Savings each name the baseline, the pricing version and the runs left unpriced.
   const caption = SPEND_AND_SAVINGS_CARDS.has(component.component_id)
-    ? { baseline_model: row.baseline_model, pricing_manifest_version: row.pricing_manifest_version,
-      // The fold classes a run with no token counts before it looks at spend, so both classes are left out of the
-      // money total; the second is the unpriced count.
-      excluded_runs: [[row.runs_unknown_tokens, 'run with no token counts', 'runs with no token counts'],
-        [row.runs_unknown_spend, 'run with no spend recorded', 'runs with no spend recorded']] }
+    ? meteringMoneyBasis(row)
     : required.includes('baseline_model')
     ? { baseline_model: row.baseline_model, pricing_manifest_version: row.pricing_manifest_version }
     : required.includes('runs_total')
@@ -2181,10 +2209,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
         // Decide from the catalogue before any projection read. Only the explicit
         // local-store absence selects metering; a read error never changes source.
         if (pageName === 'overview') {
-          const declared = census.rows.find(row => row.topic === LEGACY_OVERVIEW_TOPIC);
-          const localStoreMissing = declared?.reachability === 'refused'
-            && declared.backing === 'not_in_local_store' && declared.refusal === 'projection_table_missing';
-          const selected = loadLocalPageConfig(pageName, localStoreMissing ? 'metering' : 'savings');
+          const selected = loadLocalPageConfig(pageName, overviewHeadlineSource(census));
           if (selected.components[0].data_bindings?.[0]?.projection_topic !== document.components[0].data_bindings?.[0]?.projection_topic) {
             // A changed catalogue must not leave an old source's figures visible.
             latest.current = latest.current.filter(snapshot => snapshot.topic !== LEGACY_OVERVIEW_TOPIC && snapshot.topic !== METERING_SUMMARY_TOPIC);

@@ -8,6 +8,7 @@ import type { AppPage } from '@/store/types';
 import { DestinationIcon } from '@/navigation/destination-icons';
 import '@/styles/event-dash.css';
 import '@/styles/dashboard-cards.css';
+import '@/styles/seven-page-design.css';
 
 export function EvPageShell({
   crumb,
