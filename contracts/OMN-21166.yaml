@@ -476,6 +476,21 @@
           "cwd": "${OMNI_HOME}/omnidash"
         }
       ]
+    },
+    {
+      "id": "dod-omn21166-ac46-accepted-20261025t2245z",
+      "description": "AC46 accepted binding (lane=dod-closeout-accept-2026-10-25T2245Z-c2): the run breakdown shows measured, estimated and unknown as separate labelled counts, each in its own colour in both themes, with absent, zero and malformed cases. Passes on dev b101e49 (9 passed); 8 of 9 fail with the product change of 0d42d90 reverted.",
+      "source": "manual",
+      "binds_ac": [
+        "AC46"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-run-classes-ac46.spec.ts --project=chromium --workers=1 --retries=0",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
     }
   ],
   "context": {
@@ -494,6 +509,14 @@
           "criterion_hash": "117940cd3282defb17f4081f9acfdb8706c0969cbf8d567b3927c3eb8e41ac8a",
           "proposed_by": "lane=dod-closeout-bind-2026-10-25T0045Z-c2",
           "accepted_by": "lane=dod-closeout-accept-2026-10-25T0045Z-c2"
+        }
+      ],
+      "dod-omn21166-ac46-accepted-20261025t2245z": [
+        {
+          "label": "AC46",
+          "criterion_hash": "9fde890e91b326cc989e1f846ca936c8384afececc264b3cbc42a342f02b595a",
+          "proposed_by": "lane=dod-closeout-bind-2026-10-25T2245Z-c2",
+          "accepted_by": "lane=dod-closeout-accept-2026-10-25T2245Z-c2"
         }
       ]
     }
