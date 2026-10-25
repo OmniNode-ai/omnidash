@@ -17,7 +17,7 @@ requirements:
 evidence_requirements:
   - kind: "tests"
     description: "AC3: with the decisions.v1 row the lab served for the keyless refused run, Runs under status=failed lists it by its correlation id, linked into its run, with the cause Refused before dispatch, and the cause filter keeps only it; without the row it is not listed (R1-R4 and the control)."
-    command: "npx vitest run src/pages/LocalDashboardPage.runs.omn21305.test.tsx"
+    command: "npx vitest run tests/pages/LocalDashboardPage.omn21305.refusal.test.tsx"
 dod_evidence:
   - id: "dod-omn21305-ac3-refused-run-on-runs"
     description: "AC3: a vitest over the Runs reader with the served refusal row lists it under status=failed with its correlation link and the label Refused before dispatch. It fails when the label is replaced by the raw code, and when the run link no longer carries the correlation id (both shown on the lab host); without the row nothing is listed."
@@ -25,7 +25,7 @@ dod_evidence:
     binds_ac: ["AC3"]
     checks:
       - check_type: "test_passes"
-        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/LocalDashboardPage.runs.omn21305.test.tsx"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/pages/LocalDashboardPage.omn21305.refusal.test.tsx"
         cwd: "${OMNI_HOME}/omnidash"
 emergency_bypass:
   enabled: false
