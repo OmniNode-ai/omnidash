@@ -29,7 +29,7 @@ for (const width of [1440, 390]) {
       expect(caption.size, caption.text).toBeGreaterThanOrEqual(12);
       expect(caption.weight, caption.text).toBeLessThanOrEqual(500);
       expect(caption.leading, caption.text).toBeGreaterThanOrEqual(1.4);
-      expect(caption.family).toContain('Geist Sans');
+      expect(caption.family).toContain('Inter');
     }
     for (const value of values) {
       expect(value.size, value.text).toBeGreaterThanOrEqual(20);

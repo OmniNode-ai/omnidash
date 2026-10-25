@@ -4,7 +4,7 @@
  * Tokens come from globals.css; nothing here sets a colour of its own except through those tokens.
  */
 
-/* ── KPI strip (AC63): one segmented row, uppercase mono label, large mono figure, muted basis line ─────────── */
+/* ── KPI strip (AC63): one segmented row, uppercase label, large figure with tabular digits, muted basis line ─────────── */
 .kpi-strip,
 .local-dashboard-page--overview .local-overview-surface > .local-overview-summary {
   display: grid;
@@ -32,9 +32,9 @@
 .kpi-strip .kpi-label,
 .local-dashboard-page--overview .local-overview-summary .local-dashboard-panel > h2.local-dashboard-panel-title,
 .local-dashboard-page--overview .local-overview-summary .local-dashboard-panel > h2 {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--ink-3);
@@ -42,8 +42,8 @@
 .local-dashboard-page--overview .local-overview-summary .local-dashboard-panel > h2 svg { width: 14px; height: 14px; }
 .kpi-strip .kpi-value,
 .local-dashboard-page--overview .local-overview-summary .local-dashboard-metric[data-measured="true"] {
-  font-family: var(--font-mono);
-  font-weight: 500;
+  font-family: var(--font-sans);
+  font-weight: 600;
   font-size: clamp(24px, 2vw, 30px);
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
@@ -78,16 +78,16 @@
 .local-dashboard-page .local-dashboard-panel > h2 { font-size: 14px; font-weight: 600; letter-spacing: -0.005em; }
 .local-dashboard-page .local-dashboard-header h1 { font-size: 24px; font-weight: 600; letter-spacing: -0.02em; }
 
-/* Figures, ids and table numbers read in the mono face with tabular digits. */
+/* Figures and table numbers use Inter's tabular digits; JetBrains Mono is kept for ids, code and logs. */
 .local-dashboard-page :is(td, .local-dashboard-metric, .local-recent-value, code),
 main.ev-root[data-destination="delegation-evidence"] :is(.kpi .k-v, .big, td) {
   font-variant-numeric: tabular-nums;
 }
 .local-dashboard-page table th,
 main.ev-root[data-destination="delegation-evidence"] .dt-head {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--ink-3);
@@ -98,6 +98,15 @@ main.ev-root[data-destination="delegation-evidence"] .dt-head {
   display: flex; flex-wrap: wrap; align-items: baseline; justify-content: flex-start; gap: 6px 10px;
 }
 .local-dashboard-page .ins-pass-headline .ins-pass-line strong {
-  font-family: var(--font-mono); font-size: 16px; font-weight: 500; color: var(--ink);
+  font-family: var(--font-sans); font-size: 16px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums;
 }
-.local-dashboard-page .local-meter-value { font-family: var(--font-mono); font-weight: 500; letter-spacing: -0.03em; }
+.local-dashboard-page .local-meter-value { font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
+
+/* AC62 (corrected 2026-10-25): figures, shares, statuses, tier names and times read in Inter with tabular digits;
+ * JetBrains Mono stays only on run ids, model and backend ids, hashes, code, answers and logs. */
+.local-dashboard-page :is(.local-donut-focus-value, .local-share-value, .local-meter-value, .local-readable,
+  .local-routing-name:not(.local-model-identity), .local-run-step-time, .workflow-comparison-row strong),
+.local-dashboard-page [data-environment] :is(span, strong, dd) {
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+}

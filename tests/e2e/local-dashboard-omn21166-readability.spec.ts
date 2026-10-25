@@ -17,7 +17,7 @@ test('recent runs remain readable and retain all fields at desktop and narrow wi
     return { size: parseFloat(css.fontSize), family: css.fontFamily };
   });
   expect(bodyType.size).toBeGreaterThanOrEqual(13);
-  expect(bodyType.family).toContain('Geist Sans');
+  expect(bodyType.family).toContain('Inter');
   expect(bodyType.family).not.toMatch(/mono/i);
   expect(await recent.locator('tbody td[data-label="Time"]').first().evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(12);
   const qualityLabels = page.locator('[data-component="overview-quality"] dt');

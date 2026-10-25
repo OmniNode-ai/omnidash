@@ -26,14 +26,14 @@
 @import './design-tokens.css';
 
 /* Font imports */
-/* OMN-21166 part 11 AC62: Geist Sans for text, Geist Mono for figures, identifiers and labels, bundled (no CDN). */
-@import "@fontsource/geist-sans/400.css";
-@import "@fontsource/geist-sans/500.css";
-@import "@fontsource/geist-sans/600.css";
-@import "@fontsource/geist-sans/700.css";
-@import "@fontsource/geist-mono/400.css";
-@import "@fontsource/geist-mono/500.css";
-@import "@fontsource/geist-mono/600.css";
+/* OMN-21166 part 11 AC62 (corrected 2026-10-25): Inter for all text and figures; JetBrains Mono only for logs, code,
+ * run ids and technical identifiers. Both bundled, no CDN. */
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
 
 /* Brand surface font — Poppins Semibold per the OmniNode branding
  * guideline. Loaded as a single weight (600) because today the only
@@ -70,8 +70,8 @@
        palette changes between modes. If a future theme wants a different
        family (e.g. a "brutalist" theme swapping to Space Grotesk + Space
        Mono), it overrides these two vars in its scope. */
-    --font-sans: "Geist Sans", system-ui, -apple-system, Helvetica, Arial, sans-serif;
-    --font-mono: "Geist Mono", ui-monospace, Menlo, monospace;
+    --font-sans: "Inter", system-ui, -apple-system, Helvetica, Arial, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
     /* Brand-surface font. Currently scoped to the sidebar product
      * wordmark per the branding guideline; do not apply to body text
      * or chrome unless the guideline expands. */
