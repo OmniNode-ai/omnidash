@@ -6,7 +6,9 @@
  * and iconed with, and which rows give an alert_banner line. Nothing is judged here; a verdict the projection does not
  * serve is drawn as unknown under its own word, never as one of the four.
  */
-import { readableTime } from '@/lib/readable-time';
+import { ConceptIcon } from '@/components/dashboard/FieldIcon';
+import { readableTime } from '@/components/format/readable-time';
+import { SettingsEmptyState } from '@/components/dashboard/SettingsEmptyState';
 import { AlertBanner } from '@/components/dashboard/alert-banner/AlertBanner';
 import { StatusGrid } from '@/components/dashboard/status-grid/StatusGrid';
 import { validateStatusGridRow, type AlertBannerRow, type StatusGridRow, type StatusGridSeverity } from '@shared/types/component-manifest';
@@ -99,12 +101,31 @@ export function EnvironmentAlerts({ rows, mode, plain = false, allowClear = true
   </>;
 }
 
+/** OMN-21166 revision 3 (AC162): with no served row, System status says what fills it: `onex dashboard` writes its own row at
+ * each start (access.tsx) and every other service appears once it reports. The title stays OMN-19988's: never all clear. */
+export function NoServiceHealth() {
+  return (
+    <SettingsEmptyState icon={<ConceptIcon concept="host" label="Service health" size={16} />} title="Service health is not available yet">
+      No service has reported yet. Each OmniNode service on this machine appears here once it reports; <code>onex dashboard</code> reports itself each time it starts.
+    </SettingsEmptyState>
+  );
+}
+
+/** OMN-19988 E10: a read that failed, timed out or is not served says so, never "nothing reported" or All clear. */
+export function ServiceHealthUnread() {
+  return (
+    <SettingsEmptyState icon={<ConceptIcon concept="host" label="Service health" size={16} />} title="Service health is not available yet">
+      This dashboard could not read the service health of this machine.
+    </SettingsEmptyState>
+  );
+}
+
 /** Native startup metadata and health stay visible even before the first delegation. */
 export function EnvironmentPanel({ rows, complete = true }: { rows: readonly EnvironmentRow[]; complete?: boolean }) {
   const validModes = new Set(['native', 'compose']);
   const invalidMode = rows.some(row => !validModes.has(text(row.mode)));
   const modes = [...new Set(rows.map(row => text(row.mode)).filter(mode => validModes.has(mode)))];
-  if (rows.length === 0) return <p className="local-dashboard-empty" role="status">Service health is not available yet.</p>;
+  if (rows.length === 0) return <NoServiceHealth />;
   return <>
     {invalidMode && <p className="local-dashboard-empty" role="status">Some service health details are not available.</p>}
     {modes.map(mode => {

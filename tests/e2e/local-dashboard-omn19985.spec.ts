@@ -110,13 +110,16 @@ test('OMN-19985: Credentials lists each key ref with its fingerprint and set tim
   await page.screenshot({ path: screenshotPath('local-dashboard-omn19985-credentials-1440x900.png'), fullPage: false });
 });
 
-test('OMN-19985: with no key set, Credentials shows the onex secret set command, not an empty table', async ({ page }) => {
+test('OMN-19985: with no key set, each provider row shows its onex models add command, not an empty table', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await serve(page, { [CREDENTIALS]: [] });
   await openCredentials(page);
 
-  await expect(page.getByText('No provider credentials recorded')).toBeVisible();
-  await expect(page.getByText('onex secret set')).toBeVisible();
+  // OMN-21166 revision 3 (AC161): keys are added with onex models add (OMN-20816 ruling), shown on each provider's row;
+  // the second "No provider credentials recorded / onex secret set" message is gone.
+  await expect(page.getByText('onex models add gemini', { exact: true })).toBeVisible();
+  await expect(page.getByText('No provider credentials recorded')).toHaveCount(0);
+  await expect(page.getByText('onex secret set')).toHaveCount(0);
   // OMN-21166 part 18 AC128: the one "Model providers" table is always listed (one row per provider); with no key set its
   // key cells read "No key", and neither key-reference table (keys in use, key history) is drawn.
   await expect(page.getByRole('table', { name: 'Provider key references', exact: true })).toHaveCount(0);

@@ -54,10 +54,10 @@ import {
 } from '@/pages/LocalDashboardPage';
 import { overviewRunCount } from '@/lib/dashboard-overview-count';
 import { modelColor } from '@/lib/dashboard-colors';
-import { formatDuration } from '@/lib/duration';
+import { formatDuration } from '@/components/format/duration';
 import { percent as sharePercent } from '@/pages/local/shares';
 import { taskLabel } from '@/pages/local/plain-text';
-import { readableTime } from '@/lib/readable-time';
+import { readableTime } from '@/components/format/readable-time';
 import { modelIdentityStyle } from '@/components/dashboard/model-identity';
 
 /**

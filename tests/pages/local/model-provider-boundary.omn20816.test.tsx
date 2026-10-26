@@ -46,7 +46,7 @@ it.each(['healthy', 'pending', 'missing', 'failed'])('AC1: %s credentials do not
   expect(table.closest('[aria-busy="true"]')).toBeNull();
   const region = screen.getByRole('region', { name: 'Model providers' });
   expect(region.querySelector('input, textarea, select, form, button, [contenteditable="true"]')).toBeNull();
-  if (state === 'healthy') expect(await screen.findByText('No provider credentials recorded')).toBeVisible();
+  if (state === 'healthy') { expect(await within(table).findByText('onex models add gemini')).toBeVisible(); expect(screen.queryByText('No provider credentials recorded')).toBeNull(); }
   if (state === 'pending') expect(screen.getByText('Loading data…')).toBeVisible();
   if (state === 'missing') expect(await screen.findByText('Not available yet: credentials.')).toBeVisible();
   if (state === 'failed') expect(await screen.findByRole('alert')).toHaveTextContent('data is unavailable.');

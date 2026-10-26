@@ -5,8 +5,8 @@
  * mode, the mint time of the token it just minted and how to rotate it. This card shows those three values as
  * served; a value the row does not carry reads "Not recorded", and with no such row the card says what it waits on.
  */
-import { notAvailableYet } from './plain-text';
-import { readableTime } from '@/lib/readable-time';
+import { SettingsEmptyState } from '@/components/dashboard/SettingsEmptyState';
+import { readableTime } from '@/components/format/readable-time';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 
 const DASHBOARD_SERVICE = 'local-runtime';
@@ -41,8 +41,12 @@ function WithCode({ text }: { text: string }) {
 export function DashboardAccess({ rows }: { rows: readonly EnvironmentRow[] }) {
   const row = dashboardAccessRow(rows);
   if (row === null) {
-    // Waits on local-environment.v1; the user reads what it holds (OMN-21166 AC39).
-    return <p className="local-dashboard-empty" role="status">{notAvailableYet('dashboard access details')}</p>;
+    // Waits on local-environment.v1; the user reads what it holds (OMN-21166 AC39) and what writes it (revision 3, AC162).
+    return (
+      <SettingsEmptyState icon={<ConceptIcon concept="local-access" label="Access" size={16} />} title="Access details not reported yet">
+        The access mode, when its token was minted and how to rotate it appear here each time <code>onex dashboard</code> starts on this machine.
+      </SettingsEmptyState>
+    );
   }
   return (
     <dl className="local-dashboard-fields">

@@ -36,7 +36,8 @@ test(`organized cards across all seven MVP pages in ${theme}`, async ({ page }, 
       await activeNav.hover();
       await expect(activeNav).toHaveCSS('background-color', activeBackground);
       await expect(activeNav.locator('.dash-marker')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
-      const cards = page.locator('.local-dashboard-panel, .ev-root .panel');
+      // OMN-21166 revision 3 (AC160): on Settings the card is the section; its embedded panels are flat inside it.
+      const cards = page.locator('.local-dashboard-panel:not(.local-settings-section .local-dashboard-panel), .local-settings-section, .ev-root .panel');
       await expect(cards.first()).toBeVisible();
       const accents = await cards.evaluateAll(elements => elements.map(el => ({
         width: parseFloat(getComputedStyle(el).borderTopWidth), color: getComputedStyle(el).borderTopColor,

@@ -1,5 +1,5 @@
 import { formatDashboardCount } from '@/lib/dashboard-count';
-import { formatDuration } from '@/lib/duration';
+import { formatDuration } from '@/components/format/duration';
 /**
  * OMN-12943 — shared UI primitives for the ported event-dash views.
  *

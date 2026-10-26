@@ -903,7 +903,8 @@ main.ev-root .ev-maple-grid { align-items: start; }
   --sidebar: #faf9f6; --sidebar-line: #e7e4dc; --sidebar-hover: #f1efe9;
 }
 /* Headline cards stay flat (their identity edge sets them apart, and they never lift); other panels carry the shadow. */
-:root:not([data-theme="dark"]) .app:has(.local-dashboard-page) .local-dashboard-panel:not(.local-overview-summary > .local-dashboard-panel),
+:root:not([data-theme="dark"]) .app:has(.local-dashboard-page) .local-dashboard-panel:not(.local-overview-summary > .local-dashboard-panel, .local-settings-section .local-dashboard-panel),
+:root:not([data-theme="dark"]) .app:has(.local-dashboard-page) .local-settings-section,
 :root:not([data-theme="dark"]) .app:has(.ev-root[data-destination="delegation-evidence"]) .panel { box-shadow: 0 1px 2px rgba(60, 50, 30, 0.05); }
 :root[data-theme="dark"] .app:has(.local-dashboard-page),
 :root[data-theme="dark"] .app:has(.ev-root[data-destination="delegation-evidence"]) {

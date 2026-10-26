@@ -5,14 +5,15 @@ import { LocalDashboardPage, type LocalDashboardCache } from './LocalDashboardPa
 // come first, then Access, then System status (OMN-19988's Environment panel; revision 2, AC158), as in comparable
 // products' settings. Each section renders its existing page document embedded, so its panels, states and served reads
 // are unchanged (AC156). /api-keys and /credentials stay retired (AC155). A section takes no landmark name, so the
-// "Model providers" region stays the provider list's own (OMN-20816).
+// "Model providers" region stays the provider list's own (OMN-20816). Revision 3: each section is one card, and a
+// one-panel section shows only its own title (single), as comparable products' settings do.
 const SECTIONS = [
-  { id: 'settings-model-providers', page: 'credentials', title: 'Model providers',
+  { id: 'settings-model-providers', page: 'credentials', title: 'Model providers', single: true,
     description: 'The AI provider accounts OmniNode can use for your delegations.' },
-  { id: 'settings-access', page: 'api-keys', title: 'Access',
+  { id: 'settings-access', page: 'api-keys', title: 'Access', single: false,
     description: 'Your local identity and how this dashboard is protected.' },
   // Revision 2 (AC158): service health is watched, not set, so it comes last, as admin areas place monitoring.
-  { id: 'settings-system-status', page: 'status', title: 'System status',
+  { id: 'settings-system-status', page: 'status', title: 'System status', single: true,
     description: 'Whether the OmniNode services on this machine are running.' },
 ] as const;
 
@@ -24,7 +25,7 @@ export function SettingsPage({ navigationCache }: { navigationCache: LocalDashbo
         <div><h1>Settings</h1></div>
       </div>
     </header>
-    {SECTIONS.map(section => <section key={section.id} id={section.id} className="local-settings-section">
+    {SECTIONS.map(section => <section key={section.id} id={section.id} className={`local-settings-section${section.single ? ' local-settings-section--single' : ''}`}>
       <h2 id={`${section.id}-heading`}>{section.title}</h2>
       <p className="local-settings-description">{section.description}</p>
       <LocalDashboardPage pageName={section.page} embedded navigationCache={navigationCache} />

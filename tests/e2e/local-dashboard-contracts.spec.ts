@@ -472,7 +472,8 @@ test('local panels follow both themes on every page without losing readable surf
       await page.getByTestId(`nav-local-${name}`).click();
       await expect(page.getByRole('heading', { level: 1, name: title, exact: true })).toBeVisible();
       await expect(page.locator('.local-dashboard-panel').first()).toBeVisible();
-      const surfaces = await page.locator('.local-dashboard-panel').evaluateAll((panels) => {
+      // OMN-21166 revision 3 (AC160): on Settings the card is the section; its embedded panels are flat inside it.
+      const surfaces = await page.locator('.local-dashboard-panel:not(.local-settings-section .local-dashboard-panel), .local-settings-section').evaluateAll((panels) => {
         const expected = document.createElement('div');
         expected.style.backgroundColor = getComputedStyle(document.querySelector('.app')!).getPropertyValue('--panel').trim();
         // OMN-21166 AC63/live review: the four KPI tiles are --panel with a 7% tint of their own accent, so they are

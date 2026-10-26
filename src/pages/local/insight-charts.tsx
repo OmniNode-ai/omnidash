@@ -1,7 +1,7 @@
 import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
 import { modelColor } from '@/lib/dashboard-colors';
 import { formatDashboardUsd } from '@/lib/dashboard-currency';
-import { formatDuration } from '@/lib/duration';
+import { formatDuration } from '@/components/format/duration';
 import { createContext, useContext, useId, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { RankedBars } from '@/components/dashboard/RankedBars';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';

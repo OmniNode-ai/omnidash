@@ -2286,7 +2286,25 @@ figure.local-chart.usage-insight { min-width: 0; margin: 0; padding: 14px; }
 .local-token-direction[data-field-tone="tokens-out"] svg { color: var(--field-tokens-out); }
 .local-token-direction:focus-visible { outline: 2px solid var(--field-ink); outline-offset: 3px; border-radius: 2px; }
 
-/* OMN-21166 part 26 revised: Settings is one page of labelled sections; each embeds its page's panels. */
-.local-settings-section { margin-bottom: 32px; }
-.local-settings-section > h2 { margin: 0 0 4px; font-size: 16px; font-weight: 600; }
-.local-settings-description { margin: 0 0 14px; font-size: 13px; color: var(--text-secondary); }
+/* OMN-21166 part 26 revision 3: Settings is one page of section cards; a section's embedded panels are flat inside it,
+   a one-panel section shows only its own title, and an empty section shows one SettingsEmptyState. */
+.local-settings-section { margin-bottom: 16px; padding: 20px 22px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.local-settings-section > h2 { margin: 0 0 2px; font-size: 15px; font-weight: 600; }
+.local-settings-description { margin: 0 0 16px; font-size: 13px; color: var(--text-secondary); }
+/* Scoped to the page (and its hover) so the seven-page panel padding, border and lift rules do not draw a card in the card. */
+.local-dashboard-page .local-settings-section .local-dashboard-panel,
+.local-dashboard-page .local-settings-section .local-dashboard-panel:hover { border: 0; border-radius: 0; background: transparent; box-shadow: none; padding: 0; animation: none; }
+.local-dashboard-page .local-settings-section--single .local-dashboard-panel > h2 {
+  position: absolute; width: 1px; height: 1px; min-height: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; margin: -1px; padding: 0; border: 0;
+}
+.local-dashboard-page .local-settings-section:not(.local-settings-section--single) .local-dashboard-panel + .local-dashboard-panel { border-left: 1px solid var(--line); padding-left: 20px; }
+@media (max-width: 900px) {
+  .local-dashboard-page .local-settings-section:not(.local-settings-section--single) .local-dashboard-panel + .local-dashboard-panel { border-left: 0; padding-left: 0; border-top: 1px solid var(--line); padding-top: 16px; }
+}
+@media (max-width: 600px) {
+  .local-settings-section { padding: 16px 12px; }
+}
+.local-settings-empty { padding: 16px 18px; border: 1px dashed var(--line); border-radius: var(--radius); }
+.local-settings-empty-title { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.local-settings-empty-text { margin: 0 0 0 24px; font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
+.local-settings-empty-action { margin: 10px 0 0 24px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }

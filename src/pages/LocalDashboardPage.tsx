@@ -1,6 +1,6 @@
 import { formatDashboardCount, formatFullCount, wholeCount } from '@/lib/dashboard-count';
-import { readableTime } from '@/lib/readable-time';
-import { exactMs, formatDuration } from '@/lib/duration';
+import { readableTime } from '@/components/format/readable-time';
+import { exactMs, formatDuration } from '@/components/format/duration';
 import { dailyMeteringTokens } from '@/lib/daily-metering-tokens';
 import { DailyMeteringTokens } from '@/components/dashboard/usage/DailyMeteringTokens';
 import { TokenDirections } from '@/components/dashboard/usage/TokenDirections';
@@ -31,7 +31,8 @@ import { InsightsSection, InsightsWindowContext, MeteringActivityInsights, Overv
 import { UsageInsights } from '@/pages/local/usage-insights';
 import { SinceLastVisit } from '@/pages/local/since-last-visit';
 import { ModelKeys } from '@/pages/local/model-keys';
-import { EnvironmentPanel } from '@/pages/local/environment';
+import { EnvironmentPanel, ServiceHealthUnread } from '@/pages/local/environment';
+import { SettingsEmptyState } from '@/components/dashboard/SettingsEmptyState';
 import { failureCauseLabel, failureDetailText, notAvailableYet, plainFailureMessage, taskLabel, tierLabel } from '@/pages/local/plain-text';
 import { RunFilterProvider, causeHref, causeLabelOf, useRunFilter } from '@/pages/local/run-filter';
 import { dailySeries, summary as runSummary, toInsightRuns, typedFailureCauseOf } from '@/pages/local/insights';
@@ -1948,18 +1949,24 @@ export function TierMixPanel({ row, compact = false }: { row: Row | null; compac
   );
 }
 
-/** CR-1 to CR-3: provider key references only (never a value), with their fingerprint prefix and set time, or the
- * command that sets the first one. */
+/** OMN-21166 revision 3 (AC161): no provider listed and no key recorded. `onex models add` stores a provider's key and
+ * tests it with one delegation (OMN-20816 ruling: keys change only in the terminal). */
+function NoProviderKeys() {
+  return (
+    <SettingsEmptyState icon={<ConceptIcon concept="credentials" label="Model providers" size={16} />} title="No model providers listed yet"
+      action={<><code>onex models add &lt;provider&gt;</code><CopyButton text="onex models add" label="Copy the command that adds a provider key" /></>}>
+      Add a provider's key in your terminal: Gemini, OpenRouter, OpenAI, Anthropic, Ollama or a local model server. OmniNode tests it with one delegation and lists it here.
+    </SettingsEmptyState>
+  );
+}
+
+/** CR-1 to CR-3: provider key references only (never a value), with their fingerprint prefix and set time; the key
+ * history keeps the revoked ones. */
 export function CredentialsTable({ rows }: { rows: readonly unknown[] }) {
   const keys = asRecords(rows);
-  if (keys.length === 0) {
-    return (
-      <div className="local-dashboard-empty" role="status">
-        <p>No provider credentials recorded</p>
-        <p>Set one with <code>onex secret set</code> <CopyButton text="onex secret set" label="Copy the command that sets a key" /></p>
-      </div>
-    );
-  }
+  // Revision 3 (AC161): with no key recorded the provider list above says so once (NoProviderKeys) or shows each
+  // provider's own set-up command, so this part draws nothing.
+  if (keys.length === 0) return null;
   // OMN-21166 part 13: the keys in use are in view; revoked history is one click away. Rows stay as served.
   const current = keys.filter(key => isMissing(key.revoked_at));
   const revoked = keys.filter(key => !isMissing(key.revoked_at));
@@ -2968,7 +2975,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
             <WorkflowRun component={component} snapshots={snapshots} requested={requestedRunId} onOpen={openRun} />
           ) : tokenFallback ? <DailyMeteringTokens data={tokenFallback} />
           : environment ? (notServed || bindingFailedEmpty(component, snapshots)
-            ? <p className="local-dashboard-empty" role="status">Service health is not available yet.</p>
+            ? <ServiceHealthUnread />
             : <EnvironmentPanel rows={rows as Record<string, unknown>[]}
                 complete={!bindings.some(binding => snapshots.some(snapshot => snapshot.topic === binding.projection_topic && snapshot.failure))} />)
           : notServed ? <p className="local-dashboard-empty" role="status">{notServed}</p>
@@ -3035,7 +3042,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
         {/* A headline card keeps only its figure; its all-time note is in its hover (QualityCard). */}
         {outsideWindow && slice?.key !== 'card' && <p className="local-dashboard-caption">{OUTSIDE_WINDOW_NOTE}</p>}
         {/* Part 18 AC128: one table; the keys in use (as served, unrevoked) sit on their provider's row. */}
-        {credentialProviders && <ModelKeys keys={asRecords(rows).filter(key => isMissing(key.revoked_at))} />}
+        {credentialProviders && <ModelKeys keys={asRecords(rows).filter(key => isMissing(key.revoked_at))} empty={asRecords(rows).length === 0 ? <NoProviderKeys /> : undefined} />}
         {credentialProviders ? <div aria-busy={pending}>{readContent}</div> : readContent}
       </article>
     );

@@ -100,7 +100,7 @@ describe('OMN-21015 AC10 API Keys page binding', () => {
     await settle();
     const card = accessCard();
     // OMN-21166 AC39: the user reads what is missing in plain words, never an exposure name.
-    expect(within(card).getByRole('status')).toHaveTextContent('Not available yet: dashboard access details');
+    expect(within(card).getByRole('status')).toHaveTextContent('Access details not reported yet');
     expect(within(card).getByRole('status')).not.toHaveTextContent('local-environment');
     expect(within(card).queryByText('compose-mode')).not.toBeInTheDocument();
   });
@@ -136,13 +136,13 @@ describe('OMN-21015 AC10 API Keys page binding', () => {
     const a = native('2026-10-21T09:00:00+00:00');
     const b = { ...native('2026-10-21T09:00:00+00:00'), access_mode: 'other-mode' };
     const card = await renderWith([a, b]);
-    expect(within(card).getByRole('status')).toHaveTextContent('Not available yet: dashboard access details');
+    expect(within(card).getByRole('status')).toHaveTextContent('Access details not reported yet');
     expect(within(card).queryByText('other-mode')).not.toBeInTheDocument();
   });
 
   it('P6c: with several matching rows, one missing or unparseable updated_at shows the not-available state', async () => {
     const card = await renderWith([native('2026-10-21T09:00:00+00:00'), { ...native('x'), updated_at: 'not-a-date' }]);
-    expect(within(card).getByRole('status')).toHaveTextContent('Not available yet: dashboard access details');
+    expect(within(card).getByRole('status')).toHaveTextContent('Access details not reported yet');
   });
 
   it('P7: whitespace-only values say Not recorded, never a blank', async () => {

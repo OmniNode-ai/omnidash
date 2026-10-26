@@ -1,6 +1,6 @@
 import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
 import { formatDashboardUsd } from '@/lib/dashboard-currency';
-import { formatDuration } from '@/lib/duration';
+import { formatDuration } from '@/components/format/duration';
 import { useEffect, useId, useState } from 'react';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { Link } from 'wouter';

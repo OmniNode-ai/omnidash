@@ -9,7 +9,9 @@
  * that changes it.
  */
 import { useEffect, useState, type ReactNode } from 'react';
-import { readableTime } from '@/lib/readable-time';
+import { ConceptIcon } from '@/components/dashboard/FieldIcon';
+import { SettingsEmptyState } from '@/components/dashboard/SettingsEmptyState';
+import { readableTime } from '@/components/format/readable-time';
 import { ModelKeysError, listModelKeys, type ModelProviderId, type ModelProviderRow } from '@/services/models-api';
 
 /** A served key reference row from tenant-credentials.v1: its name, fingerprint prefix and times. Never a value. */
@@ -82,7 +84,7 @@ function message(error: unknown): string {
  * key whose provider GET /models does not list keeps its own row; Expires and Bound host appear only when a key records
  * one. Revoked keys are the page's key history, not this table.
  */
-export function ModelKeys({ client = LIVE_CLIENT, keys = [] }: { client?: ModelKeysClient; keys?: readonly CredentialKeyRow[] }) {
+export function ModelKeys({ client = LIVE_CLIENT, keys = [], empty }: { client?: ModelKeysClient; keys?: readonly CredentialKeyRow[]; empty?: ReactNode }) {
   const [rows, setRows] = useState<ModelProviderRow[] | null>(null);
   const [listError, setListError] = useState<string | null>(null);
 
@@ -120,9 +122,18 @@ export function ModelKeys({ client = LIVE_CLIENT, keys = [] }: { client?: ModelK
       </table>
     </div>
   );
-  if (listError !== null) return <section className="local-model-keys" aria-label="Model providers"><p className="local-dashboard-empty" role="status">{listError}</p>{keysAlone}</section>;
+  // Revision 3 (AC161): an unread list says so once, with the terminal command that shows the same status.
+  if (listError !== null) return (
+    <section className="local-model-keys" aria-label="Model providers">
+      <SettingsEmptyState icon={<ConceptIcon concept="credentials" label="Model providers" size={16} />} title="Model providers could not be read"
+        action={<span className="local-dashboard-caption">See them in your terminal with <code>onex models list</code>.</span>}>{listError}</SettingsEmptyState>
+      {keysAlone}
+    </section>
+  );
   if (rows === null) return <section className="local-model-keys" aria-label="Model providers"><p className="local-dashboard-empty">Reading model providers…</p>{keysAlone}</section>;
 
+  // Revision 3 (AC161): nothing listed and no key recorded is one empty state, never a table of headers.
+  if (rows.length === 0 && keys.length === 0 && empty) return <section className="local-model-keys" aria-label="Model providers">{empty}</section>;
   const keysOf = (provider: string) => keys.filter(key => String(key.provider ?? '').toLowerCase() === provider);
   const listed = new Set(rows.map(row => row.provider as string));
   const unlisted = [...new Set(keys.map(key => String(key.provider ?? '').toLowerCase()).filter(provider => !listed.has(provider)))];

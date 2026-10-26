@@ -48,7 +48,8 @@ describe('OMN-21015 AC10 dashboard access', () => {
 
   it('A3: with no native row it names what it waits on', () => {
     render(<DashboardAccess rows={[]} />);
-    expect(screen.getByText(/Not available yet/)).toBeTruthy();
+    expect(screen.getByRole('status')).toHaveTextContent('Access details not reported yet');
+    expect(screen.getByRole('status')).toHaveTextContent('onex dashboard');
     expect(screen.queryByText('loopback-token')).toBeNull();
   });
 

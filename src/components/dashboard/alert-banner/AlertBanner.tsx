@@ -12,7 +12,7 @@
  */
 import { useState } from 'react';
 import { Text } from '@/components/ui/typography';
-import { readableTime } from '@/lib/readable-time';
+import { readableTime } from '@/components/format/readable-time';
 import { validateAlertBannerRow, type AlertBannerRow } from '@shared/types/component-manifest';
 import { SEVERITY_ORDER, SEVERITY_ROLES, SeverityIcon } from '../status-grid/severity';
 

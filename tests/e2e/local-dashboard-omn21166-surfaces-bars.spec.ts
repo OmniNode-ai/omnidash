@@ -52,7 +52,8 @@ for (const theme of ['light', 'dark'] as const) {
       const want = SURFACES[theme];
       await expect(page.locator('main').first(), `${path} page`).toHaveCSS('background-color', want.page);
       await expect(page.locator('.sidebar').first(), `${path} sidebar`).toHaveCSS('background-color', want.sidebar);
-      const card = page.locator('main .local-dashboard-panel:not(.local-overview-summary > .local-dashboard-panel), main.ev-root .panel').first();
+      // OMN-21166 revision 3 (AC160): on Settings the card is the section; its embedded panels are flat inside it.
+      const card = page.locator('main .local-dashboard-panel:not(.local-overview-summary > .local-dashboard-panel, .local-settings-section .local-dashboard-panel), main .local-settings-section, main.ev-root .panel').first();
       await expect(card, `${path} card`).toHaveCSS('background-color', want.card);
       await expect(card, `${path} card border`).toHaveCSS('border-top-color', want.border);
       if (theme === 'light') await expect(card, `${path} card shadow`).toHaveCSS('box-shadow', 'rgba(60, 50, 30, 0.05) 0px 1px 2px 0px');

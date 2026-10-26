@@ -319,11 +319,11 @@ describe('Partial pages (FR-3, CR-2, CR-3, AK-3, F24)', () => {
     expect(document.querySelector('input, textarea, select, form')).toBeNull();
   });
 
-  it('Credentials with no key ref shows the onex secret set command and no input', async () => {
+  it('Credentials with no key ref draws no second empty message and no input (revision 3, AC161)', async () => {
     render(<LocalDashboardPage pageName="credentials" />);
     await settle();
-    expect(screen.getByText('No provider credentials recorded')).toBeInTheDocument();
-    expect(screen.getByText('onex secret set')).toBeInTheDocument();
+    expect(screen.queryByText('No provider credentials recorded')).not.toBeInTheDocument();
+    expect(screen.queryByText('onex secret set')).not.toBeInTheDocument();
     expect(document.querySelector('input, textarea, form')).toBeNull();
   });
 
