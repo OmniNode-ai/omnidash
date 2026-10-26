@@ -9,22 +9,25 @@ describe('OMN-19921 current local default', () => {
     expect(PAGE_PATHS['local-overview']).toBe('/overview');
   });
 
-  it('keeps the six served local surfaces reachable from the default route family', () => {
+  it('keeps the served local surfaces reachable from the default route family', () => {
     expect([
       pageForPath('/overview'),
       pageForPath('/runs'),
       pageForPath('/workflow'),
       pageForPath('/usage'),
-      pageForPath('/credentials'),
-      pageForPath('/api-keys'),
+      pageForPath('/settings'),
     ]).toEqual([
       'local-overview',
       'local-runs',
       'local-workflow',
       'local-usage',
-      'local-credentials',
-      'local-api-keys',
+      'local-settings',
     ]);
+  });
+
+  it('OMN-21166 part 26 AC155: the retired Credentials and API Keys addresses match no page', () => {
+    expect(pageForPath('/credentials')).toBeNull();
+    expect(pageForPath('/api-keys')).toBeNull();
   });
 
   it('does not restore the retired direct SQLite projection reader', () => {

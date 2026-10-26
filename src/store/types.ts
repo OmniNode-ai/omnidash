@@ -124,8 +124,8 @@ export type AppPage =
   // OMN-19981 Amendment 6 (FR-3): the other four local pages, partial until their exposures are served.
   | 'local-workflow'
   | 'local-usage'
-  | 'local-credentials'
-  | 'local-api-keys'
+  // OMN-21166 part 26: Credentials and API Keys are sections of one Settings page.
+  | 'local-settings'
   // OMN-18771 — Lab observability tab (C4). Additive; existing members untouched.
   | 'lab';
 

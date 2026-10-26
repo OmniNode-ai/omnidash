@@ -28,14 +28,13 @@ import { DeleteDashboardDialog } from './DeleteDashboardDialog';
 import { PAGE_PATHS, pageForPath } from '@/navigation/page-routes';
 import { DestinationIcon } from '@/navigation/destination-icons';
 
-/** The six local pages (requirements FR-3), in the required order. */
+/** The local pages in the required order; Settings holds API Keys and Credentials (OMN-21166 part 26). */
 const LOCAL_PAGES: ReadonlyArray<{ page: AppPage; label: string; icon: React.ReactNode }> = [
   { page: 'local-overview', label: 'Overview', icon: <DestinationIcon page="local-overview" /> },
   { page: 'local-runs', label: 'Runs', icon: <DestinationIcon page="local-runs" /> },
   { page: 'local-workflow', label: 'Workflow', icon: <DestinationIcon page="local-workflow" /> },
   { page: 'local-usage', label: 'Usage', icon: <DestinationIcon page="local-usage" /> },
-  { page: 'local-credentials', label: 'Credentials', icon: <DestinationIcon page="local-credentials" /> },
-  { page: 'local-api-keys', label: 'API Keys', icon: <DestinationIcon page="local-api-keys" /> },
+  { page: 'local-settings', label: 'Settings', icon: <DestinationIcon page="local-settings" /> },
 ];
 
 // Deferred from the default MVP surface; the legacy implementation and stores

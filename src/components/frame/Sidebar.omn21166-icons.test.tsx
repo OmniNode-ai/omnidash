@@ -27,8 +27,7 @@ const MOCKUP_ICONS = [
   ['local-runs', 'lucide-activity'],
   ['local-workflow', 'lucide-workflow'],
   ['local-usage', 'lucide-chart-column'],
-  ['local-credentials', 'lucide-key-round'],
-  ['local-api-keys', 'lucide-lock-keyhole'],
+  ['local-settings', 'lucide-settings'],
   ['delegation-evidence', 'lucide-badge-check'],
 ] as const;
 
@@ -47,12 +46,13 @@ describe('OMN-21166 AC25: sidebar icons follow the approved mockup', () => {
     expect(iconOf(page)?.classList.contains(icon)).toBe(true);
   });
 
-  it('I2: all eleven destinations have different icons', () => {
+  it('I2: all ten destinations have different icons', () => {
     render(<Sidebar />, { wrapper: Wrapper });
     const icons = [...document.querySelectorAll('.mvp-nav-item .dash-marker svg')]
       .map(svg => [...svg.classList].find(name => name.startsWith('lucide-') && name !== 'lucide-icon'));
-    expect(icons).toHaveLength(11);
-    expect(new Set(icons).size).toBe(11);
+    // OMN-21166 part 26: Settings replaced the Credentials and API Keys entries, so eleven became ten.
+    expect(icons).toHaveLength(10);
+    expect(new Set(icons).size).toBe(10);
   });
 
   it('I3: the icon is hidden from assistive technology; the label names the link', () => {

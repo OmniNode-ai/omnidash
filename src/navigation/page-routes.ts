@@ -6,8 +6,7 @@ export const PAGE_PATHS: Record<AppPage, string> = {
   'local-runs': '/runs',
   'local-workflow': '/workflow',
   'local-usage': '/usage',
-  'local-credentials': '/credentials',
-  'local-api-keys': '/api-keys',
+  'local-settings': '/settings',
   dashboard: '/dashboard',
   'delegation-evidence': '/delegation-evidence',
   'event-bus': '/event-bus',
@@ -26,7 +25,7 @@ export function pageForPath(path: string): AppPage | null {
 
 export const PAGE_LABELS: Record<AppPage, string> = {
   'local-overview': 'Overview', 'local-runs': 'Runs', 'local-workflow': 'Workflow',
-  'local-usage': 'Usage', 'local-credentials': 'Credentials', 'local-api-keys': 'API Keys',
+  'local-usage': 'Usage', 'local-settings': 'Settings',
   dashboard: 'Dashboards', 'delegation-evidence': 'Delegation Evidence', 'event-bus': 'Event Bus',
   experiments: 'Experimentation', 'sea-control': 'Agent Workbench', lab: 'Lab',
   'feature-flags': 'Feature Flags', eval: 'Instruction Eval',

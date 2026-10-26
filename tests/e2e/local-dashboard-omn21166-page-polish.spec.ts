@@ -31,7 +31,7 @@ test('local identity values use available width instead of narrow metric columns
   // OMN-21166 part 11: the tenant is read from the native local-runtime row of local-environment.v1, so serve that row.
   await serveCharts(page, { ...chartRows, [prefix + 'local-environment.v1']: [
     { mode: 'native', service: 'local-runtime', tenant_id: 'chart-fixture-tenant', updated_at: '2026-10-17T10:00:00Z' }] });
-  await page.goto('/api-keys');
+  await page.goto('/settings?section=api-keys');
   const values = page.locator('.local-dashboard-fields dd');
   await expect(values.first()).toBeVisible();
   expect(await values.first().evaluate(el => el.getBoundingClientRect().width)).toBeGreaterThanOrEqual(320);

@@ -436,16 +436,18 @@ test('every local page opens in order, names a served exposure, and fits 1440x90
   const nav = page.getByRole('navigation', { name: 'Local' });
   await expect(nav.getByRole('link')).toHaveText([
     // OMN-19987: Workflow reads a served exposure now and carries no "partial" chip.
-    'Overview', 'Runs', 'Workflow', 'Usage', 'Credentials', 'API Keys',
+    // OMN-21166 part 26: Settings holds API Keys and Credentials.
+    'Overview', 'Runs', 'Workflow', 'Usage', 'Settings',
   ].map((label) => new RegExp(`^${label.replace(' partial', '\\s*partial')}$`)));
 
-  for (const [testId, title] of [
-    ['nav-local-workflow', 'Workflow'],
-    ['nav-local-usage', 'Usage'],
-    ['nav-local-credentials', 'Credentials'],
-    ['nav-local-api-keys', 'API Keys'],
+  for (const [testId, title, tab] of [
+    ['nav-local-workflow', 'Workflow', null],
+    ['nav-local-usage', 'Usage', null],
+    ['nav-local-settings', 'Settings', 'settings-tab-credentials'],
+    ['nav-local-settings', 'Settings', 'settings-tab-api-keys'],
   ] as const) {
     await page.getByTestId(testId).click();
+    if (tab) await page.getByTestId(tab).click();
     await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible();
     await expect(page.getByRole('alert')).toHaveCount(0);
     await expect(page.getByText(/As of \d+s ago/).first()).toBeVisible();

@@ -4,10 +4,10 @@ import { serveCharts } from './omn21166-chart-fixtures';
 test.use({ reducedMotion: 'reduce' });
 
 // OMN-21166 live review 2026-10-25: Environment moved from Overview to API Keys (article[data-component="api-keys-environment"]),
-// so the same identity-colour checks run on /api-keys.
+// so the same identity-colour checks run on the API Keys section of Settings (OMN-21166 part 26).
 
 // OMN-21166 live review 2026-10-25: Environment moved from Overview to API Keys (article[data-component="api-keys-environment"]),
-// so the same identity-colour checks run on /api-keys.
+// so the same identity-colour checks run on the API Keys section of Settings (OMN-21166 part 26).
 
 // Resolve actual browser colours, so two differently written CSS values cannot
 // hide the same colour. The temporary child is removed in this read operation.
@@ -27,7 +27,7 @@ async function colours(panel: Locator, canonical: string) {
 for (const dark of [false, true]) {
   test(`Environment and the legacy Cloud keys style use distinct canonical colours (dark: ${dark})`, async ({ page }, info) => {
     await serveCharts(page);
-    await page.goto('/api-keys');
+    await page.goto('/settings?section=api-keys');
     await page.evaluate(darkTheme => document.documentElement.setAttribute('data-theme', darkTheme ? 'dark' : 'light'), dark);
     const environment = page.locator('article[data-component="api-keys-environment"]');
     await expect(environment).toBeVisible();
@@ -58,7 +58,7 @@ for (const dark of [false, true]) {
 
   test(`computed-colour instrument catches a planted equal-colour collision (dark: ${dark})`, async ({ page }, info) => {
     await serveCharts(page);
-    await page.goto('/api-keys');
+    await page.goto('/settings?section=api-keys');
     await page.evaluate(darkTheme => document.documentElement.setAttribute('data-theme', darkTheme ? 'dark' : 'light'), dark);
     const environment = page.locator('article[data-component="api-keys-environment"]');
     await expect(environment).toBeVisible();

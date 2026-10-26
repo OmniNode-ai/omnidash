@@ -11,7 +11,7 @@ import { serveCharts } from './omn21166-chart-fixtures';
 //   S5  a solid Evidence bar left outside the pass/fail strip (the old token bars).
 test.use({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce', trace: 'on' });
 
-const PAGES = ['/overview', '/runs', '/workflow?correlation_id=chart-run-a', '/usage', '/credentials', '/api-keys', '/delegation-evidence'];
+const PAGES = ['/overview', '/runs', '/workflow?correlation_id=chart-run-a', '/usage', '/settings?section=credentials', '/settings?section=api-keys', '/delegation-evidence'];
 const SURFACES = {
   light: { page: 'rgb(246, 245, 241)', card: 'rgb(255, 254, 251)', border: 'rgb(231, 228, 220)', sidebar: 'rgb(250, 249, 246)' },
   dark: { page: 'rgb(15, 18, 24)', card: 'rgb(22, 26, 34)', border: 'rgb(38, 43, 53)', sidebar: 'rgb(18, 21, 28)' },

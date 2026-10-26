@@ -6,6 +6,7 @@ import { useFrameStore } from './store/store';
 import { CommandPalette, useCommandPalette } from './components/dashboard/command-dispatch/CommandPalette';
 import type { AppPage } from './store/types';
 import { LocalDashboardPage, type LocalDashboardCache } from './pages/LocalDashboardPage';
+import { SettingsPage } from './pages/SettingsPage';
 import { DestinationIcon } from './navigation/destination-icons';
 import { PAGE_LABELS, PAGE_PATHS, pageForPath } from './navigation/page-routes';
 
@@ -48,8 +49,7 @@ function PageContent({ page, navigationCache }: { page: AppPage; navigationCache
     case 'local-runs':          return <LocalDashboardPage pageName="runs" syncUrl navigationCache={navigationCache} />;
     case 'local-workflow':      return <LocalDashboardPage pageName="workflow" syncUrl navigationCache={navigationCache} />;
     case 'local-usage':         return <LocalDashboardPage pageName="usage" navigationCache={navigationCache} />;
-    case 'local-credentials':   return <LocalDashboardPage pageName="credentials" navigationCache={navigationCache} />;
-    case 'local-api-keys':      return <LocalDashboardPage pageName="api-keys" navigationCache={navigationCache} />;
+    case 'local-settings':      return <SettingsPage navigationCache={navigationCache} />;
     default:        return <Suspense fallback={<LoadingPage page={page} />}><DashboardView /></Suspense>;
   }
 }

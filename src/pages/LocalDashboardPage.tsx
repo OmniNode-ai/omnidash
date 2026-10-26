@@ -49,6 +49,7 @@ import '@/styles/dashboard-cards.css';
 import '@/styles/seven-page-design.css';
 import { overviewRunCount } from '@/lib/dashboard-overview-count';
 import { DestinationIcon } from '@/navigation/destination-icons';
+import type { AppPage } from '@/store/types';
 import { RunAnswer, WorkflowDecisionCharts, WorkflowRecordDetails, WorkflowRoutingFlow } from '@/pages/local/workflow-analysis';
 import {
   loadLocalPageConfig,
@@ -73,6 +74,8 @@ interface LocalDashboardPageProps {
   pageName: LocalPageName;
   syncUrl?: boolean;
   navigationCache?: LocalDashboardCache;
+  /** OMN-21166 part 26: set when this page is a section of Settings; the header then names Settings. */
+  settingsTabs?: ReactNode;
 }
 
 export interface LocalDashboardCache {
@@ -2710,8 +2713,10 @@ const PAGE_TITLES: Record<LocalPageName, string> = {
   'api-keys': 'API Keys',
 };
 
-export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache }: LocalDashboardPageProps) {
+export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache, settingsTabs }: LocalDashboardPageProps) {
   const [page, setPage] = useState<LocalPageDocument | null>(null);
+  // OMN-21166 part 26: API Keys and Credentials are sections of Settings, so they carry its destination identity.
+  const destination: AppPage = settingsTabs ? 'local-settings' : `local-${pageName}` as AppPage;
   const [snapshots, setSnapshots] = useState<BoundProjectionSnapshot[]>([]);
   // OMN-21166 AC77: Overview and Usage tell the top bar when their rows were last read from the runtime.
   const servedRead = pageName === 'overview' || pageName === 'usage' ? latestServedRead(snapshots) : null;
@@ -3042,12 +3047,12 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
   });
   return (
     <RunFilterProvider>
-    <main data-destination={`local-${pageName}`} aria-label={`${page?.dashboard.name ?? 'Local dashboard'} page`} className={`local-dashboard-page local-dashboard-page--${pageName}`}>
+    <main data-destination={destination} aria-label={settingsTabs ? 'Settings page' : `${page?.dashboard.name ?? 'Local dashboard'} page`} className={`local-dashboard-page local-dashboard-page--${pageName}`}>
       <header className="local-dashboard-header">
         <div className="local-dashboard-title">
-          <span className="local-dashboard-page-icon" aria-hidden="true"><DestinationIcon page={`local-${pageName}`} size={20} /></span>
+          <span className="local-dashboard-page-icon" aria-hidden="true"><DestinationIcon page={destination} size={20} /></span>
           <div>
-            <h1>{page?.dashboard.name ?? PAGE_TITLES[pageName]}</h1>
+            <h1>{settingsTabs ? 'Settings' : page?.dashboard.name ?? PAGE_TITLES[pageName]}</h1>
           </div>
         </div>
         {/* One toolbar row: the page's own control when it has one, and the runtime mode at the right. */}
@@ -3098,6 +3103,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
           return read && !read.failure ? <UsageKpis rows={read.rows} /> : null;
         })()}
       </header>
+      {settingsTabs}
       {loading && <p role="status">Loading runtime exposures…</p>}
       {error && <ReadFailureNotice title="Dashboard" now={now}
         snapshot={{ topic: 'page', failure: { kind: error.includes('no answer') ? 'timeout' : 'error', message: error } }}
@@ -3106,7 +3112,8 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
         snapshot={{ topic: 'catalogue', failure: { kind: refreshError.includes('no answer') ? 'timeout' : 'error', message: refreshError } }}
         savedMessage="Showing saved data. Each panel shows when it was updated." />}
       {!loading && !error && page && (
-        <section className="local-dashboard-grid" aria-label="Dashboard components">
+        <section className="local-dashboard-grid" aria-label="Dashboard components"
+          {...(settingsTabs ? { id: 'settings-section', role: 'tabpanel', 'aria-labelledby': `settings-tab-${pageName}` } : {})}>
           {pageName === 'overview' ? <>
             <OverviewRunsContext.Provider value={(() => {
               const recent = page.components.find(candidate => candidate.component_id === 'overview-recent-runs');

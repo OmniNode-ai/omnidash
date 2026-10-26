@@ -15,9 +15,12 @@ const sourceSha = resolveCensusSourceSha();
 // one concept changing its actual icon/colour, and two concepts sharing a pair.
 // Actions and decoration are recorded explicitly, never dropped via aria-hidden.
 // Fixture rendering evidence is distinct from the main-Chrome shared-data walk.
+// OMN-21166 part 26: Settings holds API Keys and Credentials, so the census visits Settings once per section:
+// eleven visits over ten destinations.
 const destinations: AppPage[] = ['local-overview', 'local-runs', 'local-workflow',
-  'local-usage', 'local-credentials', 'local-api-keys', 'delegation-evidence',
+  'local-usage', 'local-settings', 'local-settings', 'delegation-evidence',
   'experiments', 'sea-control', 'event-bus', 'lab'];
+const SETTINGS_SECTIONS = ['?section=api-keys', '?section=credentials'];
 const routing = chartRows[prefix + 'delegation.model-routing.v1'][0] as Record<string, unknown>;
 const rows = { ...chartRows, [prefix + 'cost.savings-overview.v1']: [{ window: 'all', captured_at: '2026-10-17T10:00:00Z',
   total_baseline_cost_usd: '10.0000', total_cost_usd: '2.0000', total_savings_usd: '8.0000',
@@ -653,8 +656,10 @@ test('AC4 eleven-destination light/dark icon census includes expanded and Develo
   test.setTimeout(180_000);
   await serveCharts(page, rows);
   const states: State[] = [];
+  let settingsVisit = 0;
   for (const destination of destinations) {
-    await page.goto(PAGE_PATHS[destination] + (destination === 'local-workflow' ? '?correlation_id=chart-run-a' : ''));
+    await page.goto(PAGE_PATHS[destination] + (destination === 'local-workflow' ? '?correlation_id=chart-run-a'
+      : destination === 'local-settings' ? SETTINGS_SECTIONS[settingsVisit++] : ''));
     await expect(page.locator('.breadcrumbs .cur')).toHaveText(PAGE_LABELS[destination]);
     await expect(page.locator('h1')).toBeVisible();
     await expect(page.locator('main')).not.toHaveAttribute('aria-busy', 'true');
@@ -684,7 +689,7 @@ test('AC4 eleven-destination light/dark icon census includes expanded and Develo
         states.push({ destination, theme, developer, capturedAt: new Date().toISOString(),
           source: sourceSha, readings });
         writeFileSync(info.outputPath('identity-census.json'), JSON.stringify({ data: 'governed response fixtures', states, defects: defects(states) }, null, 2));
-        await page.screenshot({ path: info.outputPath(`${destination}-${theme}-developer-${developer}.png`), fullPage: true });
+        await page.screenshot({ path: info.outputPath(`${destination}${destination === 'local-settings' ? `-${settingsVisit}` : ''}-${theme}-developer-${developer}.png`), fullPage: true });
         if (destination === 'delegation-evidence') {
           for (const tone of ['pass', 'fail', 'baseline', 'cost', 'savings']) {
             expect(readings.some(row => row.medium === 'graphic' && row.concept === `field:${tone}` && row.canonicalFieldColor !== undefined),
@@ -697,7 +702,7 @@ test('AC4 eleven-destination light/dark icon census includes expanded and Develo
     }
   }
   expect(states).toHaveLength(44);
-  expect(new Set(states.map(state => state.destination)).size).toBe(11);
+  expect(new Set(states.map(state => state.destination)).size).toBe(10);
   expect(states.every(state => state.readings.some(row => row.kind === 'semantic')), 'positive semantic anchors on each loaded page').toBe(true);
   expect(sourceSha, 'census resolves exact tested source SHA').toMatch(/^[0-9a-f]{40}$/);
   expect(defects(states)).toEqual([]);

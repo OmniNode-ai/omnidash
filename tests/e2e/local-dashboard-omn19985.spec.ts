@@ -69,8 +69,10 @@ function screenshotPath(name: string) {
 
 async function openCredentials(page: Page) {
   await page.goto('/');
-  await page.getByTestId('nav-local-credentials').click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Credentials' })).toBeVisible();
+  // OMN-21166 part 26: Credentials is a section of Settings.
+  await page.getByTestId('nav-local-settings').click();
+  await page.getByTestId('settings-tab-credentials').click();
+  await expect(page.getByRole('tab', { name: 'Credentials', exact: true })).toHaveAttribute('aria-selected', 'true');
 }
 
 test('OMN-19985: Credentials lists each key ref with its fingerprint and set time, never a value, at 1440x900', async ({ page }) => {

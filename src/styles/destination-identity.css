@@ -3,8 +3,7 @@
 [data-destination="local-runs"] { --nav-accent: #4D7686; }
 [data-destination="local-workflow"] { --nav-accent: #58724C; }
 [data-destination="local-usage"] { --nav-accent: #70742F; }
-[data-destination="local-credentials"] { --nav-accent: #A45C42; }
-[data-destination="local-api-keys"] { --nav-accent: #876A45; }
+[data-destination="local-settings"] { --nav-accent: #876A45; }
 [data-destination="delegation-evidence"] { --nav-accent: #477B73; }
 [data-destination="experiments"] { --nav-accent: #885B87; }
 [data-destination="sea-control"] { --nav-accent: #65753F; }
@@ -14,8 +13,7 @@
 [data-theme="dark"] [data-destination="local-runs"] { --nav-accent: #91B8C3; }
 [data-theme="dark"] [data-destination="local-workflow"] { --nav-accent: #A3BB8D; }
 [data-theme="dark"] [data-destination="local-usage"] { --nav-accent: #C5C382; }
-[data-theme="dark"] [data-destination="local-credentials"] { --nav-accent: #D6A08B; }
-[data-theme="dark"] [data-destination="local-api-keys"] { --nav-accent: #D6BA92; }
+[data-theme="dark"] [data-destination="local-settings"] { --nav-accent: #D6BA92; }
 [data-theme="dark"] [data-destination="delegation-evidence"] { --nav-accent: #94BFB3; }
 [data-theme="dark"] [data-destination="experiments"] { --nav-accent: #BE9EC3; }
 [data-theme="dark"] [data-destination="sea-control"] { --nav-accent: #B0BD8C; }
