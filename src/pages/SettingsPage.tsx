@@ -1,4 +1,4 @@
-import { useRef, type KeyboardEvent } from 'react';
+import { useEffect, useRef, type KeyboardEvent, type MutableRefObject } from 'react';
 import { useLocation, useSearch } from 'wouter';
 import { SETTINGS_SECTION_ICONS } from '@/navigation/destination-icons';
 import { LocalDashboardPage, type LocalDashboardCache } from './LocalDashboardPage';
@@ -18,8 +18,18 @@ export function readSettingsSection(search: string): SettingsSection {
   return SETTINGS_SECTIONS.find(section => section.id === value)?.id ?? 'api-keys';
 }
 
-function SettingsTabs({ active, onSelect }: { active: SettingsSection; onSelect: (section: SettingsSection) => void }) {
+function SettingsTabs({ active, onSelect, refocus }: {
+  active: SettingsSection;
+  onSelect: (section: SettingsSection, byKeyboard: boolean) => void;
+  refocus: MutableRefObject<boolean>;
+}) {
   const tabs = useRef<Array<HTMLButtonElement | null>>([]);
+  // A section change remounts the page and these tabs with it, so focus moved by the keyboard is restored here.
+  useEffect(() => {
+    if (!refocus.current) return;
+    refocus.current = false;
+    tabs.current[SETTINGS_SECTIONS.findIndex(section => section.id === active)]?.focus();
+  }, [active, refocus]);
   // WAI-ARIA tabs: the arrow keys, Home and End move between sections; only the selected tab is in the tab order.
   const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
     const last = SETTINGS_SECTIONS.length - 1;
@@ -28,8 +38,7 @@ function SettingsTabs({ active, onSelect }: { active: SettingsSection; onSelect:
       : event.key === 'Home' ? 0 : event.key === 'End' ? last : null;
     if (next === null) return;
     event.preventDefault();
-    onSelect(SETTINGS_SECTIONS[next].id);
-    tabs.current[next]?.focus();
+    onSelect(SETTINGS_SECTIONS[next].id, true);
   };
   return <div className="local-settings-tabs" role="tablist" aria-label="Settings sections">
     {SETTINGS_SECTIONS.map(({ id, label }, index) => {
@@ -37,7 +46,7 @@ function SettingsTabs({ active, onSelect }: { active: SettingsSection; onSelect:
       const selected = id === active;
       return <button key={id} ref={element => { tabs.current[index] = element; }} type="button" role="tab"
         id={`settings-tab-${id}`} aria-selected={selected} aria-controls="settings-section" tabIndex={selected ? 0 : -1}
-        data-testid={`settings-tab-${id}`} className="local-settings-tab" onClick={() => onSelect(id)}
+        data-testid={`settings-tab-${id}`} className="local-settings-tab" onClick={() => onSelect(id, false)}
         onKeyDown={event => onKeyDown(event, index)}>
         <Icon size={14} aria-hidden="true" />{label}
       </button>;
@@ -48,9 +57,12 @@ function SettingsTabs({ active, onSelect }: { active: SettingsSection; onSelect:
 export function SettingsPage({ navigationCache }: { navigationCache: LocalDashboardCache }) {
   const [, navigate] = useLocation();
   const section = readSettingsSection(useSearch());
-  const select = (next: SettingsSection) => {
-    if (next !== section) navigate(`/settings?section=${next}`);
+  const refocus = useRef(false);
+  const select = (next: SettingsSection, byKeyboard: boolean) => {
+    if (next === section) return;
+    refocus.current = byKeyboard;
+    navigate(`/settings?section=${next}`);
   };
   return <LocalDashboardPage key={section} pageName={section} navigationCache={navigationCache}
-    settingsTabs={<SettingsTabs active={section} onSelect={select} />} />;
+    settingsTabs={<SettingsTabs active={section} onSelect={select} refocus={refocus} />} />;
 }
