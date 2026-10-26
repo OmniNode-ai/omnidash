@@ -9,7 +9,7 @@ import { createPortal } from 'react-dom';
 import { modelColor, tierColor, tierConcept } from '@/lib/dashboard-colors';
 import { Link, useLocation, useSearch } from 'wouter';
 import {
-  CalendarDays,
+  CalendarDays, Maximize2, X,
   ArrowUpRight, Check, ChevronRight, Copy,
   type LucideIcon,
 } from 'lucide-react';
@@ -1853,10 +1853,9 @@ export function ModelUsagePanel({ row }: { row: Row | null }) {
   if (models.length === 0) return <p className="local-dashboard-empty" role="status">No model usage served yet</p>;
   const share = (value: unknown) => (isMissing(value) || !Number.isFinite(Number(value)) ? null : Number(value));
   return (
-    // OMN-21166 part 22 AC144 (Lakshman 2026-10-26, "All models, panel grows"): every model by its full name; more than six
-    // models are one row each (the panel may grow), six or fewer stay upright bars.
-    <section aria-label="Model usage" className={`local-model-usage local-model-usage--${models.length > 6 ? 'rows' : 'upright'}`}>
-      <RankedBars label="Runs by model" unit="Runs" order="desc" layout={models.length > 6 ? 'auto' : 'vertical'}
+    // AC144: all served models keep upright bars; long names wrap and the plot scrolls inside its panel when narrow.
+    <section aria-label="Model usage" className="local-model-usage local-model-usage--upright">
+      <RankedBars label="Runs by model" unit="Runs" order="desc" layout="vertical"
         items={models.map((model, index) => {
           const name = isMissing(model.model_name) ? 'Not recorded' : String(model.model_name);
           const runs = share(model.total_count);
@@ -2734,6 +2733,20 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
     if (next !== new URLSearchParams(windowSearch).toString()) navigateWindow(`/overview${next ? `?${next}` : ''}`, { replace: true });
   }, [pageName, activityWindow, windowSearch, navigateWindow]);
   const [runChartsSlot, setRunChartsSlot] = useState<HTMLElement | null>(null);
+  const [expandedChart, setExpandedChart] = useState<{ componentId: string; title: string; slice?: PanelSlice } | null>(null);
+  const chartDialog = useRef<HTMLDialogElement>(null);
+  const chartOpener = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const dialog = chartDialog.current;
+    if (!dialog || !expandedChart) return;
+    dialog.showModal();
+    const priorOverflow = document.documentElement.style.overflow;
+    document.documentElement.style.overflow = 'hidden';
+    return () => {
+      document.documentElement.style.overflow = priorOverflow;
+      if (dialog.open) dialog.close();
+    };
+  }, [expandedChart]);
   const windowId = useId();
   const latest = useRef<BoundProjectionSnapshot[]>([]);
   // Memory only: reuse recent successful reads between local destinations, scoped
@@ -2905,7 +2918,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
   const now = Date.now();
   const interval = page?.dashboard.refresh_interval_seconds ?? 30;
 
-  const renderComponent = (component: LocalPageDocument['components'][number], meteringView: 'all' | 'kpis' | 'daily' = 'all', slice?: PanelSlice) => {
+  const renderComponent = (component: LocalPageDocument['components'][number], meteringView: 'all' | 'kpis' | 'daily' = 'all', slice?: PanelSlice, fullView = false) => {
     if (!page) return null;
     const rows = rowsForLocalComponent(component, snapshots);
     const first = (rows[0] ?? {}) as Record<string, unknown>;
@@ -2983,9 +2996,13 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
     </>;
     const cardLink = pageName === 'overview' && (component.component_id !== 'overview-quality' || slice?.key === 'card')
       ? CARD_LINKS[component.component_id] : undefined;
+    const chartTitle = pageName === 'overview' && (
+      component.component_id === 'overview-insights' && (slice?.key === 'runs' || slice?.key === 'tokens')
+      || component.component_id === 'overview-model-usage' || component.component_id === 'overview-tier-mix'
+    ) ? slice?.title ?? component.title : null;
     return (
       <article
-        className="local-dashboard-panel"
+        className={`local-dashboard-panel${fullView ? ' local-dashboard-panel--full-chart' : ''}`}
         data-width={String(MAPLE_WIDTHS[`${pageName}:${component.component_id}${slice ? `:${slice.key}` : ''}`] ?? (pageName === 'overview' && component.component_id === 'overview-spend-by-day' ? 12
           : pageName === 'overview' && ['overview-quality', 'overview-last-run'].includes(component.component_id) ? 6
           : pageName === 'overview' && ['overview-recent-runs', 'overview-tier-mix'].includes(component.component_id) ? 6 : widget?.width ?? 12))}
@@ -2998,6 +3015,10 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
       >
         <h2 data-page-heading={pageName !== 'overview' || ['overview-quality', 'overview-insights', 'overview-spend-by-day', 'overview-last-run', 'overview-recent-runs', 'overview-model-usage', 'overview-tier-mix'].includes(component.component_id) ? '' : undefined} tabIndex={-1}>{slice ? <><ConceptIcon concept={slice.concept} label={slice.title} size={14} />{slice.title}</>
           : <>{panelConcept && <ConceptIcon concept={panelConcept} label={pageName === 'overview' && component.component_id === 'overview-insights' ? 'Activity trends' : component.title} size={14} />}{pageName === 'overview' && component.component_id === 'overview-insights' ? 'Activity trends' : component.title}</>}</h2>
+        {chartTitle && !fullView && <button type="button" className="local-chart-expand" aria-label={`Expand ${chartTitle}`}
+          onClick={(event) => { chartOpener.current = event.currentTarget; setExpandedChart({ componentId: component.component_id, title: chartTitle, slice }); }}>
+          <Maximize2 size={14} aria-hidden="true" /><span>Expand</span>
+        </button>}
         {/* Part 19 AC134: the whole card opens the page that explains it; the info button sits above the link. */}
         {cardLink && <Link href={cardLink.href} className="local-card-link" aria-label={`${slice?.title ?? component.title}: open ${cardLink.page}`} />}
         {/* A headline card keeps only its figure; its all-time note is in its hover (QualityCard). */}
@@ -3167,6 +3188,18 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
           ) : page.components.map(component => renderComponent(component))}
         </section>
       )}
+      <dialog ref={chartDialog} className="local-chart-dialog" aria-label={expandedChart ? `${expandedChart.title} full view` : 'Chart full view'}
+        onClose={() => { setExpandedChart(null); chartOpener.current?.focus(); }}>
+        {expandedChart && page && <>
+          <button type="button" className="local-chart-dialog-close" onClick={() => chartDialog.current?.close()} aria-label={`Close ${expandedChart.title} full view`}>
+            <X size={16} aria-hidden="true" /><span>Close</span>
+          </button>
+          {(() => {
+            const component = page.components.find(candidate => candidate.component_id === expandedChart.componentId);
+            return component ? renderComponent(component, 'all', expandedChart.slice, true) : null;
+          })()}
+        </>}
+      </dialog>
     </main>
     </RunFilterProvider>
   );

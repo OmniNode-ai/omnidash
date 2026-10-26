@@ -10,8 +10,8 @@ import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
 //   E4  a chart prints NaN, undefined, null or Infinity, or draws a bar for a run or count that is not there;
 //   E5  the limit line shows when every run is drawn, or is missing at 500 runs or for undated runs;
 //   E6  the readout keeps a day after focus leaves the chart;
-//   E7  part 22 AC144: a model name is cut, a model is left out, more than six models stay upright, or six or fewer grow
-//       the panel when their full names fit; only the Model usage row may pass 340px.
+//   E7  part 24 AC144: a model name is cut, a model is left out, or a model bar turns horizontal;
+//       only the Model usage row may pass 340px.
 test.use({ reducedMotion: 'reduce', trace: 'on' });
 
 const DAY = 86_400_000;
@@ -70,7 +70,7 @@ async function invariants(page: Page, label: string, opts: { twoColumns: boolean
   const [a, b, c, d] = report.boxes;
   if (opts.twoColumns) {
     expect(a!.top === b!.top && c!.top === d!.top, `${label}: two charts per row`).toBe(true);
-    // Part 22 AC144: with more than six models only the Model usage row (Model usage and Tier mix) may pass 340px.
+    // AC144: long upright model names may grow only the Model usage row (Model usage and Tier mix).
     for (const box of opts.manyModels ? [a!, b!] : report.boxes) expect(box.height, `${label}: ${box.title} at most 340px`).toBeLessThanOrEqual(340);
     expect(c!.height, `${label}: Model usage and Tier mix share a height`).toBe(d!.height);
   } else {
@@ -156,7 +156,7 @@ test('E4 every token count not recorded: no token bar, and the day says not reco
 test('E2 twelve models with long names fit the half-width Model usage chart', async ({ page }, info) => {
   await open(page, { [decisionsTopic]: runs(300), [routingTopic]: routing(twelveModels, [{ cost_tier_name: 'local', count: 3000, tier_routed: true, pct_of_tier_routed: 0.75 },
     { cost_tier_name: 'cheap_cloud', count: 900, tier_routed: true, pct_of_tier_routed: 0.225 }, { cost_tier_name: 'frontier', count: 100, tier_routed: true, pct_of_tier_routed: 0.025 }]) });
-  await expect(panels(page).nth(2).locator('.local-model-usage--rows [data-ranked-item]')).toHaveCount(12);
+  await expect(panels(page).nth(2).locator('.local-model-usage--upright .rb-chart--vertical [data-ranked-item]')).toHaveCount(12);
   for (const name of LONG_MODELS) await expect(panels(page).nth(2).locator('.rb-name', { hasText: name })).toHaveCount(1);
   await invariants(page, 'twelve models', { twoColumns: true, manyModels: true });
   await shot(page, info, 'e2-twelve-models');

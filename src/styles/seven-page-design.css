@@ -1056,3 +1056,74 @@ ul.gdb-plot--names { margin-bottom: 48px; }
 
 /* OMN-21166 part 19 AC133: the change against the previous window, a short line under the figure in the card's colour. */
 .local-overview-summary .local-card-change { margin: 2px 0 0; font-size: 12px; font-weight: 500; color: color-mix(in srgb, var(--panel-accent, var(--ink-3)) 80%, var(--ink)); }
+
+/* Part 24: the whole linked card reveals its explanation; the old info glyph is absent. The small, transparent
+   focus target remains for screen readers and for the existing keyboard path. */
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-info svg { display: none; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel:has(> .local-card-link) .local-card-info,
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-info:focus-visible {
+  opacity: 0; background: transparent; box-shadow: none;
+}
+:is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel:has(.local-card-info:focus-visible) {
+  outline: 2px solid var(--panel-accent, var(--ui-accent)); outline-offset: 2px;
+}
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip { pointer-events: none; z-index: 20; transition: none; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip[data-placement="above"]::after {
+  top: auto; bottom: -7px; border-left: 0; border-top: 0;
+  border-right: 1px solid color-mix(in srgb, var(--panel-accent, var(--ink-3)) 55%, var(--line));
+  border-bottom: 1px solid color-mix(in srgb, var(--panel-accent, var(--ink-3)) 55%, var(--line));
+}
+
+/* The seven-model plot stays upright at every width. A narrow panel scrolls within itself, keeping long names intact
+   and the document free of horizontal scroll. The expanded panel gives each bar more space. */
+:is(.local-dashboard-page, .ev-root) .local-model-usage--upright { overflow-x: auto; padding-bottom: 7px; }
+:is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart { min-width: max(100%, calc(var(--rb-model-count, 7) * 78px)); }
+:is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart.rb-chart--vertical .rb-plot {
+  display: grid; grid-template-columns: repeat(var(--rb-count), minmax(78px, 1fr)); gap: 10px;
+  align-items: start; border-left: 0; border-bottom: 1px solid var(--line); margin-bottom: 0;
+}
+:is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart.rb-chart--vertical .rb-plot > li {
+  display: flex; flex-direction: column; align-items: stretch; grid-template-areas: none;
+}
+:is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart.rb-chart--vertical .rb-track {
+  height: 115px; align-items: flex-end; justify-content: center;
+}
+:is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart.rb-chart--vertical .rb-bar {
+  height: var(--rb-size, 0); width: 72%; max-width: 120px; margin: 0 auto;
+}
+:is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart.rb-chart--vertical .rb-name {
+  position: static; margin: 8px 0 0; text-align: center; overflow-wrap: anywhere; -webkit-line-clamp: unset;
+}
+:is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart.rb-chart--vertical .rb-value {
+  grid-area: auto; margin: 0 0 6px; text-align: center;
+}
+
+/* A native modal keeps the other panels in place and makes the background inert. Its own overflow supplies the
+   full-view scrollbar; the model plot can also scroll horizontally on a phone. */
+.local-dashboard-page--overview .local-dashboard-panel:has(> .local-chart-expand) { position: relative; }
+.local-dashboard-page--overview .local-dashboard-panel > h2:has(+ .local-chart-expand) { padding-right: 85px; }
+.local-dashboard-page--overview .local-chart-expand,
+.local-dashboard-page--overview .local-chart-dialog-close {
+  display: inline-flex; align-items: center; gap: 5px; min-height: 30px; padding: 4px 8px;
+  border: 1px solid var(--line); border-radius: 7px; background: var(--panel-2); color: var(--ink-2);
+  font: inherit; font-size: 12px; cursor: pointer;
+}
+.local-dashboard-page--overview .local-chart-expand { position: absolute; top: 12px; right: 14px; }
+.local-dashboard-page--overview :is(.local-chart-expand, .local-chart-dialog-close):is(:hover, :focus-visible) {
+  color: var(--ink); border-color: var(--ui-accent); outline: 2px solid transparent;
+}
+.local-dashboard-page--overview .local-chart-dialog {
+  box-sizing: border-box; width: min(1100px, calc(100vw - 32px)); max-width: none;
+  max-height: calc(100dvh - 32px); margin: auto; padding: 16px;
+  overflow: auto; border: 1px solid var(--line); border-radius: 12px;
+  background: var(--panel); color: var(--ink); box-shadow: 0 24px 70px rgb(0 0 0 / .35);
+}
+.local-dashboard-page--overview .local-chart-dialog::backdrop { background: rgb(0 0 0 / .72); }
+.local-dashboard-page--overview .local-chart-dialog-close { margin: 0 0 12px auto; }
+.local-dashboard-page--overview .local-dashboard-panel--full-chart {
+  min-width: 0; width: 100%; height: auto; max-height: none; margin: 0; box-shadow: none;
+}
+.local-dashboard-page--overview .local-dashboard-panel--full-chart .ins-bars.gdb-plot { height: 300px; }
+.local-dashboard-page--overview .local-dashboard-panel--full-chart .rb-track { height: 260px; }
+.local-dashboard-page--overview .local-dashboard-panel--full-chart .local-model-usage--upright .rb-chart { min-width: max(100%, calc(var(--rb-model-count, 7) * 110px)); }
+.local-dashboard-page--overview .local-dashboard-panel--full-chart .local-model-usage--upright .rb-chart.rb-chart--vertical .rb-track { height: 260px; }

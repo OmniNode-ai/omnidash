@@ -1,4 +1,4 @@
-import { useId, useState, type ReactNode } from 'react';
+import { useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Info } from 'lucide-react';
 
 /**
@@ -9,15 +9,59 @@ import { Info } from 'lucide-react';
 export function CardBasis({ label, children }: { label: string; children: ReactNode }) {
   const id = useId();
   const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  const tip = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState<CSSProperties | undefined>();
+  const [side, setSide] = useState<'above' | 'below'>('below');
+  useLayoutEffect(() => {
+    const card = root.current?.closest<HTMLElement>('.local-overview-summary > .local-dashboard-panel');
+    if (!card) return;
+    const enter = () => setOpen(true);
+    const leave = () => setOpen(false);
+    card.addEventListener('mouseenter', enter);
+    card.addEventListener('mouseleave', leave);
+    return () => { card.removeEventListener('mouseenter', enter); card.removeEventListener('mouseleave', leave); };
+  }, []);
+  useLayoutEffect(() => {
+    if (!open) return;
+    const card = root.current?.closest<HTMLElement>('.local-overview-summary > .local-dashboard-panel');
+    const bubble = tip.current;
+    if (!card || !bubble) return;
+    const cardBox = card.getBoundingClientRect();
+    const bubbleHeight = bubble.getBoundingClientRect().height;
+    const width = Math.min(300, window.innerWidth - 24);
+    let above = cardBox.top >= bubbleHeight + 24 && cardBox.bottom + bubbleHeight + 24 > window.innerHeight;
+    let top = above ? cardBox.top - bubbleHeight - 12 : cardBox.bottom + 12;
+    const clampLeft = (value: number) => Math.max(12, Math.min(value, window.innerWidth - width - 12));
+    const candidates = [...new Set([
+      cardBox.left, cardBox.right - width, cardBox.left + (cardBox.width - width) / 2,
+      cardBox.left - width - 12, cardBox.right + 12,
+    ].map(clampLeft))];
+    const controls = [...document.querySelectorAll<HTMLElement>('.local-chart-expand')].map(control => control.getBoundingClientRect());
+    const overlap = (left: number, top: number) => controls.reduce((area, control) => area +
+      Math.max(0, Math.min(left + width, control.right) - Math.max(left, control.left)) *
+      Math.max(0, Math.min(top + bubbleHeight, control.bottom) - Math.max(top, control.top)), 0);
+    const pickLeft = (atTop: number) => candidates.sort((a, b) => overlap(a, atTop) - overlap(b, atTop)
+      || Math.abs(a - cardBox.left) - Math.abs(b - cardBox.left))[0]!;
+    let left = pickLeft(top);
+    if (!above && overlap(left, top) > 0 && cardBox.top >= bubbleHeight + 24) {
+      above = true;
+      top = cardBox.top - bubbleHeight - 12;
+      left = pickLeft(top);
+    }
+    setSide(above ? 'above' : 'below');
+    setPosition({ left: left - cardBox.left, right: 'auto', bottom: 'auto', top: above ? -bubbleHeight - 12 : cardBox.height + 12,
+      width, maxWidth: 'none', maxHeight: `calc(100dvh - 24px)`, overflowY: 'auto', transform: 'none' });
+  }, [open]);
   return (
-    <div className="local-card-basis-tip" data-open={open ? 'true' : undefined}
+    <div ref={root} className="local-card-basis-tip" data-open={open ? 'true' : undefined}
       onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
       <button type="button" className="local-card-info" aria-label={`About ${label}`} aria-describedby={id} aria-expanded={open}
         onFocus={() => setOpen(true)} onBlur={() => setOpen(false)}
         onKeyDown={(event) => { if (event.key === 'Escape') { setOpen(false); (event.currentTarget as HTMLButtonElement).blur(); } }}>
         <Info size={14} aria-hidden="true" />
       </button>
-      <div role="tooltip" id={id} className="local-card-tooltip">{children}</div>
+      <div ref={tip} role="tooltip" id={id} className="local-card-tooltip" data-placement={side} style={position}>{children}</div>
     </div>
   );
 }
