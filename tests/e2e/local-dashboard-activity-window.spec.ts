@@ -87,7 +87,7 @@ test('Activity window presets have distinct identities and a selected outline in
 // calendar in Overview's window control, which picks a single served or unserved UTC day (a reversed range can no
 // longer be entered, so its message is gone). Kept from the old checks: the control fits every width with no page
 // overflow, its targets are at least 40px, it is reachable and operable by keyboard, and picking a day drives the
-// charts' window (the Runs per day population names that day).
+// charts' window. OMN-21166 part 21 AC142 removed the population line, so the chart itself proves it: one day, that day.
 for (const width of [1440, 390, 320]) {
   test(`calendar day picker at ${width}px fits, has 40px targets and works by keyboard`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: width === 1440 ? 900 : 844 });
@@ -115,7 +115,9 @@ for (const width of [1440, 390, 320]) {
     await page.keyboard.press('Enter');
     await expect(dialog).toHaveCount(0);
     await expect(calendar).toContainText('Oct 17');
-    await expect(page.getByTestId('insights-total')).toContainText('2026-10-17');
+    const days = page.locator('[data-component="overview-insights"][data-slice="runs"] button.gdb-day');
+    await expect(days).toHaveCount(1);
+    await expect(days.first()).toHaveAccessibleName(/^Oct 17: /);
     await page.screenshot({ path: info.outputPath('calendar.png') });
   });
 }

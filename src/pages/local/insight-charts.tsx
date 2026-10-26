@@ -77,8 +77,13 @@ function readable(key: string): string {
   return key.replace(/_/g, ' ');
 }
 
+/** "1 run", "2 runs" (OMN-21166 part 21 edge case: a day with one run read "1 runs"). */
+function runsWord(value: number): string {
+  return `${count(value)} ${value === 1 ? 'run' : 'runs'}`;
+}
+
 function dayCounts(day: InsightDay): string {
-  const parts = [`${count(day.runs)} runs`, `${count(day.passed)} passed`, `${count(day.failed)} failed`];
+  const parts = [runsWord(day.runs), `${count(day.passed)} passed`, `${count(day.failed)} failed`];
   if (day.unrecorded > 0) parts.push(`${count(day.unrecorded)} not recorded`);
   return parts.join(', ');
 }
@@ -137,9 +142,18 @@ function shortCount(value: number | null): string {
 }
 
 /** Day labels under a grouped chart: every day while they fit, else every few days, always the last. */
-function dayTicks(days: readonly { day: string }[]): Set<number> {
-  const step = Math.max(1, Math.ceil(days.length / 14));
-  return new Set(days.map((_, index) => index).filter(index => index % step === 0 || index === days.length - 1));
+/** OMN-21166 part 21 AC139: at most `maxLabels` day labels, so they never touch; Overview's half-width charts show 8. */
+function dayTicks(days: readonly { day: string }[], maxLabels = 14): Set<number> {
+  if (days.length === 0) return new Set();
+  const step = Math.max(1, Math.ceil(days.length / maxLabels));
+  const last = days.length - 1;
+  const ticks = days.map((_, index) => index).filter(index => index % step === 0);
+  // The last day always has a label; the tick before it goes when it would sit beside it (edge case: 30 days at step 4
+  // labelled both index 28 and 29, which overlapped). Onex delegate run 5406a8e7.
+  const previous = ticks.at(-1);
+  if (previous !== undefined && last - previous < step) ticks.pop();
+  ticks.push(last);
+  return new Set(ticks);
 }
 
 function RunsPerDay({ days }: { days: InsightDay[] }) {
@@ -154,7 +168,7 @@ function RunsPerDay({ days }: { days: InsightDay[] }) {
   const [show, setShow] = useState({ passed: true, failed: true });
   const max = Math.max(1, ...days.flatMap(day => [show.passed ? day.passed : 0, show.failed ? day.failed : 0, day.unrecorded]));
   const active = hover === null ? null : days[hover]!;
-  const ticks = dayTicks(days);
+  const ticks = dayTicks(days, onRuns ? 14 : 8);
   const toggle = (key: 'passed' | 'failed') => setShow(current => {
     const other = key === 'passed' ? 'failed' : 'passed';
     return current[key] && !current[other] ? current : { ...current, [key]: !current[key] };
@@ -163,7 +177,8 @@ function RunsPerDay({ days }: { days: InsightDay[] }) {
     <ChartCard title="Runs per day" concept="runs-daily" delay={0}>
       <Readout testId="runs-per-day-readout" active={active !== null}
         text={active ? <>{dayLabel(active.day)} · <span data-field-tone="count">{count(active.runs)} runs</span> · <span data-field-tone="pass">{count(active.passed)} passed</span> · <span data-field-tone="fail">{count(active.failed)} failed</span>{active.unrecorded ? <> · {count(active.unrecorded)} not recorded</> : null}</> : ''} />
-      <div className="ins-bars gdb-plot" role="group" aria-label="Runs per day" onMouseLeave={() => setHover(null)}>
+      <div className="ins-bars gdb-plot" role="group" aria-label="Runs per day" onMouseLeave={() => setHover(null)}
+        onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setHover(null); }}>
         {days.map((day, index) => (
           <button key={day.day} type="button" className="ins-bar gdb-day" aria-label={`${dayLabel(day.day)}: ${dayCounts(day)}`}
             aria-describedby={opensId} onClick={() => openDay(day.day)}
@@ -256,7 +271,7 @@ function ActivityHeatmap({ runs, days, window }: { runs: InsightRun[]; days: rea
   const [activeCell, setActiveCell] = useState(0);
   const cells = useRef<Array<HTMLButtonElement | null>>([]);
   const helpId = useId();
-  const label = (row: number, hour: number) => `${weekday(grid.days[row]!)} ${String(hour).padStart(2, '0')}:00 UTC · ${count(grid.counts[row]![hour]!)} runs`;
+  const label = (row: number, hour: number) => `${weekday(grid.days[row]!)} ${String(hour).padStart(2, '0')}:00 UTC · ${runsWord(grid.counts[row]![hour]!)}`;
   const inspect = (row: number, hour: number) => {
     setHover([row, hour]);
     setActiveCell(row * 24 + hour);
@@ -336,7 +351,7 @@ function DurationHistogram({ runs }: { runs: InsightRun[] }) {
       <Readout active={hover !== null} text={hover === null ? (median === null ? 'No durations recorded' : <>Median <span data-field-tone="duration">{duration(median)}</span></>) : <><span data-field-tone="duration">{name(hover)}</span> · <span data-field-tone="count">{count(buckets[hover]!)} runs</span></>} />
       <div className="ins-bars ins-bars--short" role="group" aria-label="Duration buckets" onMouseLeave={() => setHover(null)}>
         {buckets.map((runsInBucket, index) => (
-          <button key={index} type="button" className="ins-bar" aria-label={`${name(index)}: ${count(runsInBucket)} runs`}
+          <button key={index} type="button" className="ins-bar" aria-label={`${name(index)}: ${runsWord(runsInBucket)}`}
             data-dim={hover !== null && hover !== index} onMouseEnter={() => setHover(index)} onFocus={() => setHover(index)}>
             {/* Part 18 AC122: one hatched series in the duration colour, as every bar (part 16 AC97). */}
             {runsInBucket > 0 && <span className="ins-seg gdb-bar od-grow" style={{ height: `${(runsInBucket / max) * 100}%`, color: 'var(--field-duration)', animationDelay: `${index * 50}ms` }} />}
@@ -423,11 +438,13 @@ function TokensPerDay({ days }: { days: InsightDay[] }) {
   const side = (value: number | null, missing: number, direction: 'in' | 'out') => `${value === null ? 'not recorded' : formatFullCount(value)} ${direction}${value !== null && missing > 0 ? ` (partial: ${count(missing)} ${missing === 1 ? 'run' : 'runs'} not recorded)` : ''}`;
   const label = (day: InsightDay) => `${dayLabel(day.day)}: ${side(day.tokensIn, day.tokensInUnmeasured, 'in')}, ${side(day.tokensOut, day.tokensOutUnmeasured, 'out')}`;
   const active = hover === null ? null : days[hover]!;
-  const ticks = dayTicks(days);
+  const [location] = useLocation();
+  const ticks = dayTicks(days, location === '/runs' ? 14 : 8);
   return (
     <ChartCard title="Tokens per day" concept="tokens-daily" delay={420}>
       <Readout active={active !== null} text={active ? <>{dayLabel(active.day)} · <span data-field-tone="tokens-in" data-field-unavailable={active.tokensIn === null}>{side(active.tokensIn, active.tokensInUnmeasured, 'in')}</span>, <span data-field-tone="tokens-out" data-field-unavailable={active.tokensOut === null}>{side(active.tokensOut, active.tokensOutUnmeasured, 'out')}</span></> : ''} />
-      <div className="ins-bars gdb-plot" role="group" aria-label="Tokens per day" onMouseLeave={() => setHover(null)}>
+      <div className="ins-bars gdb-plot" role="group" aria-label="Tokens per day" onMouseLeave={() => setHover(null)}
+        onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setHover(null); }}>
         {days.map((day, index) => (
           <button key={day.day} type="button" className="ins-bar gdb-day" aria-label={label(day)}
             data-dim={hover !== null && hover !== index} onMouseEnter={() => setHover(index)} onFocus={() => setHover(index)}>
@@ -699,6 +716,18 @@ function allTimeDays(runs: readonly InsightRun[], now: number): number {
   return Math.min(MAX_ALL_TIME_DAYS, Math.max(7, Math.round((today - oldest) / 86_400_000) + 1));
 }
 
+/** OMN-21166 part 21 AC142: mirrors `limit: 500` on onex.snapshot.projection.delegation.decisions.v1 in omnimarket's
+ * node_projection_delegation contract; a read that returns this many rows may have left older runs out. */
+export const DECISIONS_READ_LIMIT = 500;
+
+/** OMN-21166 part 21 AC142: the line under an Overview chart, only when the chart does not draw every run. */
+export function chartLimitLine(servedCount: number, undatedCount: number): string | null {
+  const parts: string[] = [];
+  if (servedCount >= DECISIONS_READ_LIMIT) parts.push(`Showing the latest ${count(DECISIONS_READ_LIMIT)} runs`);
+  if (undatedCount > 0) parts.push(undatedCount === 1 ? '1 run has no date and is not drawn' : `${count(undatedCount)} runs have no date and are not drawn`);
+  return parts.length > 0 ? parts.join(' · ') : null;
+}
+
 export function InsightsSection({ decisions, now, view = 'all', onInspectFailure, more }: {
   decisions: readonly unknown[]; now: number; view?: 'all' | 'summary' | 'analysis' | 'runs' | 'tokens' | 'failures'; onInspectFailure?: (cause: string) => void;
   /** OMN-21166 part 13: on the summary view, further detail shown inside the section's closed "More activity". */
@@ -728,6 +757,7 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
       ? `Latest ${count(servedCount)} served runs · ${windowCaption(window)}`
       : `${count(runs.length)} of the latest ${count(servedCount)} served runs · ${windowCaption(window)}`;
   const undated = undatedCount > 0 ? ` · ${count(undatedCount)} undated ${undatedCount === 1 ? 'row' : 'rows'} excluded` : '';
+  const limitLine = chartLimitLine(servedCount, undatedCount);
   const emptyMessage = customIncomplete ? 'Choose both UTC dates for this range'
     : customReversed ? 'End date must be on or after the start date'
       : runs.length === 0 ? window.kind === 'custom' ? 'No runs in this date range'
@@ -740,8 +770,8 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
       <NamedByPanel.Provider value>
       <div className="ins-section ins-section--slice">
         {/* Live review 2026-10-25: the window presets moved to the page header (ChartWindowPresets); the panel keeps its population. */}
-        {view === 'runs' && <div className="ins-slice-tools">
-          <p className="local-dashboard-caption ins-sub" data-testid="insights-total">{population}{undated}</p>
+        {view === 'runs' && limitLine !== null && <div className="ins-slice-tools">
+          <p className="local-dashboard-caption ins-sub" data-testid="insights-total">{limitLine}</p>
         </div>}
         {emptyMessage !== null ? <p className="local-dashboard-empty ins-empty" role="status">{emptyMessage}</p>
           : view === 'runs' ? <><RunsPerDay days={chartDays} />

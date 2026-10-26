@@ -70,7 +70,8 @@ test('AC26 Overview applies the selected window to cards and charts and never in
   }
   await expect(page.locator('[data-component="overview-quality"] .local-dashboard-metric')).toHaveText('75.0%');
   await expect(page.locator('[data-component="overview-quality"] [role="tooltip"]')).toContainText('All time: the window above does not change this figure');
-  await expect(page.locator('[data-component="overview-insights"][data-slice="runs"]')).toContainText('last 7 UTC days');
+  // OMN-21166 part 21 AC142: the window is no longer repeated under the chart; the chart draws the window's seven days.
+  await expect(page.locator('[data-component="overview-insights"][data-slice="runs"] button.gdb-day')).toHaveCount(7);
   await expect(page.getByRole('figure', { name: 'Cumulative savings', exact: true })).toHaveCount(0);
   await expect(page.getByRole('figure', { name: 'Spend vs all-cloud', exact: true })).toHaveCount(0);
   await expect(page.getByRole('region', { name: 'Pass rate trend' })).toHaveCount(0);
@@ -80,7 +81,7 @@ test('AC26 Overview applies the selected window to cards and charts and never in
   await page.goto('/runs');
   await page.locator('summary').filter({ hasText: /^More analysis$/ }).click();
   const duration = page.getByRole('figure', { name: 'How long runs take', exact: true });
-  const fiveToTenSeconds = duration.getByRole('button', { name: '5 seconds to 10 seconds: 1 runs' });
+  const fiveToTenSeconds = duration.getByRole('button', { name: '5 seconds to 10 seconds: 1 run' }); // "1 run" since part 21's edge-case check
   await fiveToTenSeconds.focus();
   await expect(duration).toContainText('5 seconds to 10 seconds · 1 runs');
 

@@ -13,7 +13,9 @@ test('page navigation starts at the top while query edits preserve scroll and in
   // OMN-21166 AC86 (Lakshman 2026-10-25): Recent runs is deleted from Overview; its last chart cell anchors the page.
   await expect(page.getByRole('heading', { name: 'Tier mix', exact: true })).toBeVisible();
   await page.locator('main').evaluate(el => { el.scrollTop = el.scrollHeight; });
-  expect(await page.locator('main').evaluate(el => el.scrollTop)).toBeGreaterThan(100);
+  // Positive control: Overview is scrolled before navigating, so the reset to 0 below is real. OMN-21166 part 21 made
+  // Overview about two screens long, so the scroll is shorter than the old 100px bar.
+  expect(await page.locator('main').evaluate(el => el.scrollTop)).toBeGreaterThan(0);
   await page.getByRole('link', { name: 'Runs', exact: true }).click();
   await expect(page.getByRole('searchbox', { name: 'Search runs' })).toBeVisible();
   expect(await page.locator('main').evaluate(el => el.scrollTop)).toBe(0);

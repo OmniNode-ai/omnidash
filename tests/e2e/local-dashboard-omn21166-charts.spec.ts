@@ -98,8 +98,8 @@ test('tier shares read directly from the routing table and preserve served denom
   // readable tier names, tierLabel).
   await page.goto('/overview');
   const overview = page.getByRole('region', { name: 'Tier mix', exact: true });
-  await expect(overview.getByRole('listitem', { name: 'Local: 6 · 75.0%, measured', exact: true })).toBeVisible();
-  await expect(overview.getByRole('listitem', { name: 'Cloud: 2 · 25.0%, measured', exact: true })).toBeVisible();
+  await expect(overview.getByRole('link', { name: 'Local: 6 · 75.0%, measured. Opens Runs filtered to Local', exact: true })).toBeVisible();
+  await expect(overview.getByRole('link', { name: 'Cloud: 2 · 25.0%, measured. Opens Runs filtered to Cloud', exact: true })).toBeVisible();
   await expect(overview).toContainText('2 not tier-routed');
   await page.goto('/runs');
   await page.getByText('More analysis', { exact: true }).press('Enter');

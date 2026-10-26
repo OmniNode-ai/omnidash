@@ -26,7 +26,7 @@ test('compact Overview preserves missing data, quality, chart access and routing
   // OMN-21166 Maple grid: Overview's tier mix is ranked bars with a keyboard link to the routing breakdown; the routing
   // table is Runs' routing breakdown, shown directly under "More analysis".
   const tier = page.locator('[data-component="overview-tier-mix"]');
-  await expect(tier.getByRole('listitem', { name: 'Local: 6 · 75.0%, measured', exact: true })).toBeVisible();
+  await expect(tier.getByRole('link', { name: 'Local: 6 · 75.0%, measured. Opens Runs filtered to Local', exact: true })).toBeVisible();
   // Part 15 AC96: the "View routing breakdown" link is removed; the breakdown stays on Runs.
   await expect(tier.getByRole('link', { name: /View routing breakdown/ })).toHaveCount(0);
   await page.goto('/runs');

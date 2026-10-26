@@ -134,8 +134,8 @@ test('OMN-21015: on Overview a tier slice covers its served share of the ring', 
   }), vertical);
   // Ranked by served share, the largest first.
   expect(drawn.map((item) => item.key.replace(/-\d+$/, ''))).toEqual(['local', 'cheap_cloud', 'claude']);
-  // A track long enough that the comparison means something.
-  expect(drawn[0]!.track).toBeGreaterThan(120);
+  // A track long enough that the comparison means something (OMN-21166 part 21 set Overview's upright bars to 115px).
+  expect(drawn[0]!.track).toBeGreaterThanOrEqual(100);
   // The largest share fills its track; the next is 0.2499 / 0.75 of it (the drawing rounds to 0.1% of the track).
   expect(Math.abs(drawn[0]!.length - drawn[0]!.track)).toBeLessThan(1);
   expect(Math.abs(drawn[1]!.length / drawn[0]!.track - 0.2499 / 0.75)).toBeLessThan(0.005);

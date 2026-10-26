@@ -267,13 +267,43 @@ const OVERVIEW_HEADLINE_CARDS: ReadonlySet<string> = new Set(['overview-spend', 
 export { CardBasis };
 
 /** Overview's "Delegation Quality" card: the served overall pass rate; its hover names the served passed and checked runs. */
-export function QualityCard({ row }: { row: Row | null }) {
+/**
+ * OMN-21166 part 19 AC133: Delegation Quality's change, from the returned decision rows: the pass rate over runs with a
+ * verdict in the last N UTC days against the N days before, in percentage points. Rows that do not reach back over the
+ * whole previous window, or a previous window with no verdict, read "No earlier data" (written by claude-920f62a6 after
+ * onex delegate run a450aca8 failed).
+ */
+export function qualityChangeLine(decisions: readonly unknown[], window: ActivityWindow, now: number = Date.now()): string | null {
+  if (window.kind !== 'days' || ![7, 15, 30].includes(window.days)) return null;
+  const DAY = 86_400_000;
+  const today = Date.parse(`${utcDay(now)}T00:00:00Z`);
+  const currentStart = utcDay(today - (window.days - 1) * DAY);
+  const previousStart = utcDay(today - (2 * window.days - 1) * DAY);
+  const dated = asRecords(decisions).map(row => ({ row, day: utcDay(timeOf(row.created_at ?? row.written_at)) }))
+    .filter(entry => /^\d{4}-\d{2}-\d{2}$/.test(entry.day));
+  if (!dated.some(entry => entry.day <= previousStart)) return 'No earlier data';
+  const rate = (from: string, to: string) => {
+    const verdicts = dated.filter(entry => entry.day >= from && entry.day <= to && typeof entry.row.quality_gate_passed === 'boolean');
+    return verdicts.length === 0 ? null : verdicts.filter(entry => entry.row.quality_gate_passed === true).length / verdicts.length;
+  };
+  const current = rate(currentStart, utcDay(now));
+  if (current === null) return null;
+  const previous = rate(previousStart, utcDay(Date.parse(`${currentStart}T00:00:00Z`) - DAY));
+  if (previous === null) return 'No earlier data';
+  const points = (current - previous) * 100;
+  const span = `vs previous ${window.days} days`;
+  if (Math.abs(points).toFixed(1) === '0.0') return `Last ${window.days} days: no change ${span}`;
+  return `Last ${window.days} days: ${points > 0 ? '+' : '\u2212'}${Math.abs(points).toFixed(1)} pts ${span}`;
+}
+
+export function QualityCard({ row, change = null }: { row: Row | null; change?: string | null }) {
   if (!row || isMissing(row.overall_pass_rate) || !Number.isFinite(Number(row.overall_pass_rate))) {
     return <p className="local-dashboard-metric" data-measured="false">Not measured</p>;
   }
   const count = (value: unknown) => (isMissing(value) || !Number.isFinite(Number(value)) ? 'Not recorded' : formatFullCount(String(value)));
   return <>
     <p className="local-dashboard-metric" data-measured="true">{`${(Number(row.overall_pass_rate) * 100).toFixed(1)}%`}</p>
+    {change && <p className="local-card-change">{change}</p>}
     <HeadlineHover label="Delegation Quality" lines={[`${count(row.total_passed)} of ${count(row.total_checks)} runs passed the quality gate`,
       `${count(row.total_failed)} failed · deterministic checks`, 'All time: the window above does not change this figure']} />
   </>;
@@ -356,6 +386,49 @@ export function meteringRangeFor(days: number, now: number = Date.now()): Overvi
   return `range:${start}..${end}`;
 }
 
+/** OMN-21166 part 19 AC134 (onex delegate run 88c90d98): the page each Overview headline card opens. */
+const CARD_LINKS: Readonly<Record<string, { href: string; page: string }>> = {
+  'overview-spend': { href: '/usage', page: 'Usage' },
+  'overview-savings': { href: '/usage', page: 'Usage' },
+  'overview-tokens': { href: '/usage', page: 'Usage' },
+  'overview-measured': { href: '/runs', page: 'Runs' },
+  'overview-quality': { href: '/delegation-evidence', page: 'Delegation Evidence' },
+};
+
+const WINDOW_DAYS: Readonly<Record<string, number>> = { today: 1, '7d': 7, '15d': 15, '30d': 30 };
+
+/** OMN-21166 part 19 AC136 (onex delegate run abfb8d86, UTC-safe): the Overview window from its address. `?window=today`,
+ * `7d`, `15d` or `30d`, or `?day=YYYY-MM-DD`; anything else is all time and marked malformed so the address is corrected. */
+export function readOverviewWindow(search: string, now: number = Date.now()): { overview: OverviewWindow; activity: ActivityWindow; malformed: boolean } {
+  const params = new URLSearchParams(search);
+  const window = params.get('window');
+  const day = params.get('day');
+  const all = { overview: 'all' as OverviewWindow, activity: { kind: 'all' } as ActivityWindow };
+  if (window === null && day === null) return { ...all, malformed: false };
+  if (window !== null && day !== null) return { ...all, malformed: true };
+  if (window !== null) {
+    const days = WINDOW_DAYS[window];
+    if (days === undefined) return { ...all, malformed: true };
+    return { overview: days === 1 ? 'today' : meteringRangeFor(days, now), activity: { kind: 'days', days }, malformed: false };
+  }
+  const realDay = /^\d{4}-\d{2}-\d{2}$/.test(day!) && !Number.isNaN(Date.parse(`${day}T00:00:00Z`))
+    && new Date(`${day}T00:00:00Z`).toISOString().slice(0, 10) === day;
+  if (!realDay) return { ...all, malformed: true };
+  return { overview: `day:${day!}`, activity: { kind: 'custom', start: day!, end: day! }, malformed: false };
+}
+
+/** OMN-21166 part 19 AC136: the address for an Overview window, keeping every other parameter. */
+export function writeOverviewWindow(search: string, activity: ActivityWindow): string {
+  const params = new URLSearchParams(search);
+  params.delete('window');
+  params.delete('day');
+  if (activity.kind === 'days') {
+    const key = Object.entries(WINDOW_DAYS).find(([, days]) => days === activity.days)?.[0];
+    if (key) params.set('window', key);
+  } else if (activity.kind === 'custom' && activity.start !== '' && activity.start === activity.end) params.set('day', activity.start);
+  return params.toString();
+}
+
 const RANGE_MONEY = ['spend_usd', 'savings_usd', 'counterfactual_usd'] as const;
 const RANGE_COUNTS = ['runs_total', 'runs_measured', 'runs_unknown_tokens', 'runs_unknown_spend', 'tokens_in', 'tokens_out'] as const;
 
@@ -394,6 +467,48 @@ function meteringRangeRow(rows: readonly unknown[], start: string, end: string):
     row[field] = days.some(d => isMissing(d[field]) || !Number.isFinite(Number(d[field]))) ? null : days.reduce((sum, d) => sum + Number(d[field]), 0);
   }
   return { row };
+}
+
+/**
+ * OMN-21166 part 19 AC133: a headline card's change against the previous window of the same length, from served metering
+ * day rows only, summed as the card's own window is (meteringRangeRow). Written by claude-920f62a6 after the onex delegate
+ * draft failed (run a450aca8). A previous window the served day rows do not reach back over reads "No earlier data";
+ * never a 0% or 100% from absent rows.
+ */
+export function periodChangeLine(rows: readonly unknown[], window: string, metricKey: string, current: Record<string, unknown>): string | null {
+  const match = /^range:(\d{4}-\d{2}-\d{2})\.\.(\d{4}-\d{2}-\d{2})$/.exec(window);
+  if (!match) return null;
+  const DAY = 86_400_000;
+  const start = Date.parse(`${match[1]!}T00:00:00Z`);
+  const end = Date.parse(`${match[2]!}T00:00:00Z`);
+  const days = Math.round((end - start) / DAY) + 1;
+  if (!Number.isFinite(days) || days < 1) return null;
+  const iso = (time: number) => new Date(time).toISOString().slice(0, 10);
+  const previousStart = iso(start - days * DAY);
+  const previousEnd = iso(start - DAY);
+  const valueOf = (row: Record<string, unknown>): number | null => {
+    const read = (field: string) => (isMissing(row[field]) || !Number.isFinite(Number(row[field])) ? null : Number(row[field]));
+    if (metricKey === TOKENS_IN_AND_OUT) {
+      const tokensIn = read('tokens_in');
+      const tokensOut = read('tokens_out');
+      return tokensIn === null || tokensOut === null ? null : tokensIn + tokensOut;
+    }
+    return read(metricKey);
+  };
+  const now = valueOf(current);
+  if (now === null) return null;
+  const reachesBack = asRecords(rows).some(row => row.window_kind === 'day' && typeof row.window_start === 'string'
+    && row.window_start.slice(0, 10) <= previousStart);
+  if (!reachesBack) return 'No earlier data';
+  const previousRow = meteringRangeRow(rows, previousStart, previousEnd);
+  const before = 'row' in previousRow ? valueOf(previousRow.row) : null;
+  if (before === null) return 'No earlier data';
+  const span = `vs previous ${days} days`;
+  if (before === 0) return now > 0 ? 'New this period' : `No change ${span}`;
+  const pct = ((now - before) / Math.abs(before)) * 100;
+  const size = Math.abs(pct) < 10 ? Math.abs(pct).toFixed(1) : String(Math.round(Math.abs(pct)));
+  if (Number(size) === 0) return `No change ${span}`;
+  return `${pct > 0 ? '+' : '\u2212'}${size}% ${span}`;
 }
 
 /** Restored by Lakshman's explicit instruction, 2026-10-19: use the populated old Overview aggregate. */
@@ -681,7 +796,9 @@ export function MeteringTotalCard({ component, config, rows, window = 'all', now
     // The window's summed counts are the zeros of its run-less days; they are read, not typed.
     const total = noRunsAtAll ? Number(row.tokens_in) + Number(row.tokens_out) : meteringTokens(row).total;
     // Live review 2026-10-25: the card shows its figure; its hover says tokens in and out in one line.
+    const tokenChange = OVERVIEW_HEADLINE_CARDS.has(component.component_id) ? periodChangeLine(rows, window, TOKENS_IN_AND_OUT, row) : null;
     return <><p className="local-dashboard-metric" data-measured={total !== null}>{formatDashboardCount(total)}</p>
+      {tokenChange && <p className="local-card-change">{tokenChange}</p>}
       <HeadlineHover label={component.title} lines={headlineHoverLines(component.component_id, row, null, window)} /></>;
   }
   const required = component.data_bindings?.[0]?.required_fields ?? [];
@@ -708,6 +825,8 @@ export function MeteringTotalCard({ component, config, rows, window = 'all', now
       ...binding, required_fields: binding.required_fields?.filter(field => field !== pctField) })) };
     return <>
       <MetricCard component={figureComponent} config={config} row={row} caption={null} />
+      {/* Part 19 AC133: the change against the previous window of the same length, only on a 7, 15 or 30 day window. */}
+      {(() => { const change = periodChangeLine(rows, window, config.metric_key, row); return change && <p className="local-card-change">{change}</p>; })()}
       {/* OMN-20008 L6: no figure, no line: the percentage shows only beside a measured saving with a named, resolved baseline. */}
       <HeadlineHover label={component.title} lines={headlineHoverLines(component.component_id, row,
         row.baseline_state === 'unresolved' || isMissing(row[config.metric_key]) || isMissing(row.baseline_model) ? null : pct, window)} />
@@ -1366,13 +1485,18 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
   const [localView, setLocalView] = useState<RunsViewState>(DEFAULT_RUNS_VIEW);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const view = syncUrl ? readRunsSearch(search) : localView;
-  const { status, cause, model, backend, span, day = '', task = 'all', query = '' } = view;
+  const { status, cause, model, backend, tier = 'all', span, day = '', task = 'all', query = '' } = view;
   const pageIndex = view.page - 1;
   const bySession = indexBy(sessions, 'session_id');
   const runs = newestFirst(decisions);
   const models = [...new Set(runs.map((run) => modelOrUnknown(run.model_name)))].sort();
   const causes = [...new Set(runs.filter((run) => statusOf(run) === 'failed').map((run) => causeOf(run)))].sort();
   const backends = [...new Set(runs.map((run) => recorded(run.backend_id)))].sort();
+  // OMN-21166 part 23 AC145 (onex delegate run 33026e86): a run's tier is its served cost_tier_name; a run with none
+  // never matches a named tier.
+  // (Named servedTierOf so it never shadows tierOf, the module's display name for a run's tier.)
+  const servedTierOf = (run: Row): string | null => (typeof run.cost_tier_name === 'string' && run.cost_tier_name !== '' ? run.cost_tier_name : null);
+  const tiers = [...new Set(runs.map(servedTierOf).filter((name): name is string => name !== null))].sort();
   const weekDays = Array.from({ length: 7 }, (_, index) => {
     const todayDate = new Date(`${utcDay(now)}T00:00:00Z`);
     todayDate.setUTCDate(todayDate.getUTCDate() - (6 - index));
@@ -1389,6 +1513,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
     && (cause === 'all' || causeOf(run) === cause)
     && (model === 'all' || modelOrUnknown(run.model_name) === model)
     && (backend === 'all' || recorded(run.backend_id) === backend)
+    && (tier === 'all' || servedTierOf(run) === tier)
     && (span === 'all' || utcDay(timeOf(run.created_at)) === today)
     && (day === '' || utcDay(timeOf(run.created_at)) === day)
     && (needle === '' || [run.correlation_id, run.model_name, run.backend_id, run.task_type, run.host, statusOf(run), causeOf(run), failureDetailOf(run)]
@@ -1418,7 +1543,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
       navigate(`/runs${query ? `?${query}` : ''}`, { replace });
     } else setLocalView(next);
   };
-  const filter = (key: 'status' | 'cause' | 'model' | 'backend' | 'span') => (event: { target: { value: string } }) =>
+  const filter = (key: 'status' | 'cause' | 'model' | 'backend' | 'tier' | 'span') => (event: { target: { value: string } }) =>
     updateView({ [key]: event.target.value, page: 1 });
   const listed: ListedRun[] = page.map((run) => ({
     id: typeof run.correlation_id === 'string' && run.correlation_id !== '' ? run.correlation_id : null,
@@ -1431,7 +1556,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
     score: run.actual_score,
   }));
   const openRun = (runId: string) => navigate(workflowHref(runId));
-  const filtered = status !== 'all' || cause !== 'all' || model !== 'all' || backend !== 'all' || span !== 'all' || day !== '' || task !== 'all' || query !== '';
+  const filtered = status !== 'all' || cause !== 'all' || model !== 'all' || backend !== 'all' || tier !== 'all' || span !== 'all' || day !== '' || task !== 'all' || query !== '';
   const selectedRun = selectedRunId === null ? undefined : runs.find(run => run.correlation_id === selectedRunId);
   const selectedSession = selectedRun ? bySession.get(String(selectedRun.correlation_id)) : undefined;
   const selectedScore = selectedRun && !isMissing(selectedRun.actual_score) ? Number(selectedRun.actual_score) : Number.NaN;
@@ -1520,6 +1645,14 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
         </select>
         </div>
         <div className="local-filter-field">
+        <label htmlFor={`${id}-tier`} className="local-visually-hidden">Tier</label>
+        <select id={`${id}-tier`} value={tier} onChange={filter('tier')}>
+          <option value="all">All tiers</option>
+          {tier !== 'all' && !tiers.includes(tier) && <option value={tier}>{tierLabel(tier)} (not in current data)</option>}
+          {tiers.map((name) => <option key={name} value={name}>{tierLabel(name)}</option>)}
+        </select>
+        </div>
+        <div className="local-filter-field">
         <label htmlFor={`${id}-backend`} className="local-visually-hidden">Backend</label>
         <select id={`${id}-backend`} value={backend} onChange={filter('backend')}>
           <option value="all">All backends</option>
@@ -1535,7 +1668,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
         </select>
         </div>
         {filtered && (
-          <button type="button" className="local-filter-clear" onClick={() => { setSelectedRunId(null); updateView({ ...DEFAULT_RUNS_VIEW, query: '', day: '', task: 'all' }); }}>Clear filters</button>
+          <button type="button" className="local-filter-clear" onClick={() => { setSelectedRunId(null); updateView({ ...DEFAULT_RUNS_VIEW, query: '', day: '', task: 'all', tier: 'all' }); }}>Clear filters</button>
         )}
       </div>
       </div>
@@ -1720,13 +1853,17 @@ export function ModelUsagePanel({ row }: { row: Row | null }) {
   if (models.length === 0) return <p className="local-dashboard-empty" role="status">No model usage served yet</p>;
   const share = (value: unknown) => (isMissing(value) || !Number.isFinite(Number(value)) ? null : Number(value));
   return (
-    <section aria-label="Model usage">
-      <RankedBars label="Runs by model" unit="Runs" order="desc" layout="vertical"
+    // OMN-21166 part 22 AC144 (Lakshman 2026-10-26, "All models, panel grows"): every model by its full name; more than six
+    // models are one row each (the panel may grow), six or fewer stay upright bars.
+    <section aria-label="Model usage" className={`local-model-usage local-model-usage--${models.length > 6 ? 'rows' : 'upright'}`}>
+      <RankedBars label="Runs by model" unit="Runs" order="desc" layout={models.length > 6 ? 'auto' : 'vertical'}
         items={models.map((model, index) => {
           const name = isMissing(model.model_name) ? 'Not recorded' : String(model.model_name);
           const runs = share(model.total_count);
           const pct = share(model.pct_of_total);
-          return { key: `${name}-${index}`, name, value: runs, basis: 'measured' as const, color: modelColor(name),
+          // Part 19 AC135: a named model opens Runs filtered to it; a model the rows do not name opens nothing.
+          const href = isMissing(model.model_name) ? undefined : `/runs?${writeRunsSearch('', { ...DEFAULT_RUNS_VIEW, model: name })}`;
+          return { key: `${name}-${index}`, name, value: runs, basis: 'measured' as const, color: modelColor(name), href, opensLabel: `Opens Runs filtered to ${name}`,
             display: runs === null ? 'Not recorded'
               : `${recordedCount(model.total_count)}${pct === null ? '' : ` · ${pct > 0 && pct * 100 < 0.1 ? '<0.1' : (pct * 100).toFixed(1)}%`}` };
         })} />
@@ -1757,7 +1894,9 @@ export function TierMixPanel({ row, compact = false }: { row: Row | null; compac
           items={tiers.filter(tier => tier.cost_tier_name !== 'not_tier_routed').map((tier, index) => {
             const name = String(tier.cost_tier_name);
             const pct = share(tier.pct_of_tier_routed);
-            return { key: `${name}-${index}`, name: tierLabel(name), value: pct === null ? null : pct * 100, basis: 'measured' as const, color: tierColor(name),
+            // Part 19 AC135 with part 23 AC145: a served tier opens Runs filtered to it (?tier=<served name>).
+            const href = isMissing(tier.cost_tier_name) ? undefined : `/runs?${writeRunsSearch('', { ...DEFAULT_RUNS_VIEW, tier: name })}`;
+            return { key: `${name}-${index}`, name: tierLabel(name), value: pct === null ? null : pct * 100, basis: 'measured' as const, color: tierColor(name), href, opensLabel: `Opens Runs filtered to ${tierLabel(name)}`,
               // A served share above zero but under 0.1% reads "<0.1%", never a rounded 0.0% that hides a real tier.
               display: pct === null ? 'Not recorded' : `${recordedCount(tier.count)} · ${pct > 0 && pct * 100 < 0.1 ? '<0.1' : (pct * 100).toFixed(1)}%` };
           })} />
@@ -2345,7 +2484,10 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns, acti
     const row = first && typeof first === 'object' && !Array.isArray(first) ? (first as Row) : null;
     // Live review 2026-10-25: on Overview, quality is the fifth headline card, "Delegation Quality": its pass rate, and
     // in its hover how many runs passed the deterministic gate.
-    if (component.component_id === 'overview-quality' && slice?.key === 'card') return <QualityCard row={row} />;
+    if (component.component_id === 'overview-quality' && slice?.key === 'card') {
+      const decisions = snapshots.find(snapshot => snapshot.topic === DELEGATION_DECISIONS_TOPIC)?.rows ?? [];
+      return <QualityCard row={row} change={qualityChangeLine(decisions, activityWindow)} />;
+    }
     return component.component_id === 'overview-quality'
       ? <QualityPanel row={row} />
       : <TierMixPanel row={row} compact={component.component_id === 'overview-tier-mix'} />;
@@ -2579,8 +2721,18 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   // OV-3: which fixed window the Overview's metering cards read. Kept by the page so every card moves together.
-  const [overviewWindow, setOverviewWindow] = useState<OverviewWindow>('all');
-  const [activityWindow, setActivityWindow] = useState<ActivityWindow>({ kind: 'all' });
+  // OMN-21166 part 19 AC136: Overview's window starts from its address and is written back to it (replace, so the back
+  // button and a shared link keep it without one history entry per click); a malformed value is all time, corrected.
+  const windowSearch = useSearch();
+  const [, navigateWindow] = useLocation();
+  const initialWindow = pageName === 'overview' ? readOverviewWindow(windowSearch) : null;
+  const [overviewWindow, setOverviewWindow] = useState<OverviewWindow>(initialWindow?.overview ?? 'all');
+  const [activityWindow, setActivityWindow] = useState<ActivityWindow>(initialWindow?.activity ?? { kind: 'all' });
+  useEffect(() => {
+    if (pageName !== 'overview') return;
+    const next = writeOverviewWindow(windowSearch, activityWindow);
+    if (next !== new URLSearchParams(windowSearch).toString()) navigateWindow(`/overview${next ? `?${next}` : ''}`, { replace: true });
+  }, [pageName, activityWindow, windowSearch, navigateWindow]);
   const [runChartsSlot, setRunChartsSlot] = useState<HTMLElement | null>(null);
   const windowId = useId();
   const latest = useRef<BoundProjectionSnapshot[]>([]);
@@ -2829,6 +2981,8 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
           })()}
         {!pending && <WidgetReadState component={component} snapshots={snapshots} now={now} interval={interval} />}
     </>;
+    const cardLink = pageName === 'overview' && (component.component_id !== 'overview-quality' || slice?.key === 'card')
+      ? CARD_LINKS[component.component_id] : undefined;
     return (
       <article
         className="local-dashboard-panel"
@@ -2844,6 +2998,8 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
       >
         <h2 data-page-heading={pageName !== 'overview' || ['overview-quality', 'overview-insights', 'overview-spend-by-day', 'overview-last-run', 'overview-recent-runs', 'overview-model-usage', 'overview-tier-mix'].includes(component.component_id) ? '' : undefined} tabIndex={-1}>{slice ? <><ConceptIcon concept={slice.concept} label={slice.title} size={14} />{slice.title}</>
           : <>{panelConcept && <ConceptIcon concept={panelConcept} label={pageName === 'overview' && component.component_id === 'overview-insights' ? 'Activity trends' : component.title} size={14} />}{pageName === 'overview' && component.component_id === 'overview-insights' ? 'Activity trends' : component.title}</>}</h2>
+        {/* Part 19 AC134: the whole card opens the page that explains it; the info button sits above the link. */}
+        {cardLink && <Link href={cardLink.href} className="local-card-link" aria-label={`${slice?.title ?? component.title}: open ${cardLink.page}`} />}
         {/* A headline card keeps only its figure; its all-time note is in its hover (QualityCard). */}
         {outsideWindow && slice?.key !== 'card' && <p className="local-dashboard-caption">{OUTSIDE_WINDOW_NOTE}</p>}
         {/* Part 18 AC128: one table; the keys in use (as served, unrevoked) sit on their provider's row. */}
@@ -2955,10 +3111,11 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
                 return <>
                   {/* Live review 2026-10-25: every bar chart takes the full row. */}
                   {/* Live review 2026-10-25: Model usage, then Tier mix last. */}
-                  <div className="maple-cell maple-cell--full">{slice('runs', 'Runs per day', 'runs-daily')}</div>
-                  <div className="maple-cell maple-cell--full">{slice('tokens', 'Tokens per day', 'tokens-daily')}</div>
-                  <div className="maple-cell maple-cell--full">{renderGroup(['overview-model-usage'])}</div>
-                  <div className="maple-cell maple-cell--full">{renderGroup(['overview-tier-mix'])}</div>
+                  {/* OMN-21166 part 21 AC139: the four charts in two columns (one under 1100px). */}
+                  <div className="maple-cell maple-cell--half">{slice('runs', 'Runs per day', 'runs-daily')}</div>
+                  <div className="maple-cell maple-cell--half">{slice('tokens', 'Tokens per day', 'tokens-daily')}</div>
+                  <div className="maple-cell maple-cell--half">{renderGroup(['overview-model-usage'])}</div>
+                  <div className="maple-cell maple-cell--half">{renderGroup(['overview-tier-mix'])}</div>
                 </>;
               })()}
             </div>

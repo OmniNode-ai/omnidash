@@ -523,7 +523,8 @@ main.ev-root .ev-maple-grid { align-items: start; }
 /* Live review 2026-10-25 ("each card different color"): every headline tile wears its identity colour (OMN-21308:
    amber spend, teal savings, blue calls, violet tokens) as a top bar, a soft tint and its label; figures stay ink. */
 :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel {
-  background: color-mix(in srgb, var(--panel-accent, var(--ink-3)) 7%, var(--panel));
+  /* OMN-21166 part 21 AC141: the plain card surface; the identity colour stays on the 3px top edge and the icon. */
+  background: var(--panel);
   box-shadow: inset 0 3px 0 var(--panel-accent, var(--ink-3));
 }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > h2 { color: color-mix(in srgb, var(--panel-accent, var(--ink-3)) 75%, var(--ink)); }
@@ -808,14 +809,16 @@ main.ev-root .ev-maple-grid { align-items: start; }
 .rb-chart.rb-chart--vertical .rb-track { justify-content: center; height: 220px; }
 .local-dashboard-page--overview .gdb-col { max-width: none; }
 .local-dashboard-page--overview .gdb-group { gap: 3px; padding: 0 3px; }
-.local-dashboard-page--overview .ins-bars.gdb-plot { gap: 8px; height: 260px; }
+/* OMN-21166 part 21 AC140: shorter Overview charts (day plot 170px, so the 500-run limit line still fits within 340px). */
+.local-dashboard-page--overview .ins-bars.gdb-plot { gap: 8px; height: 170px; }
+.local-dashboard-page--overview .rb-chart.rb-chart--vertical .rb-track { height: 180px; }
 
 /* Live review 2026-10-25 ("remove the number and show them when hover"): bar values appear on hover or keyboard
    focus only; their space stays, so nothing moves, and each bar's accessible name still carries its value. */
 .gdb-val { visibility: hidden; }
 .ins-bar.gdb-day:is(:hover, :focus-visible) .gdb-val { visibility: visible; }
-.rb-chart .rb-plot > li > .rb-value { visibility: hidden; }
-.rb-chart .rb-plot > li:is(:hover, :focus-within) > .rb-value { visibility: visible; }
+.rb-chart .rb-plot > li > .rb-value, .rb-chart .rb-plot > li > .rb-link > .rb-value { visibility: hidden; }
+.rb-chart .rb-plot > li:is(:hover, :focus-within) > .rb-value, .rb-chart .rb-plot > li:is(:hover, :focus-within) > .rb-link > .rb-value { visibility: visible; }
 .rb-chart .rb-plot > li { cursor: default; }
 
 /* OMN-21166 part 14 (AC75, AC76): sortable Runs headers read as the header text with an arrow; the export pair sits
@@ -967,3 +970,89 @@ ul.gdb-plot--names { margin-bottom: 48px; }
    their figures on one line; its button and tooltip still place themselves against the card. */
 :is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel > .local-card-basis-tip { display: contents; }
 /* The bar heights above are their values' shares only (no minimum height); a drawn bar's 2px edge still marks it. */
+
+/* OMN-21166 part 21 AC140: Overview's day charts start right under their title. The hovered day's words (aria-live) sit on
+   the legend row instead of a reserved empty line, and the plot drops its filled box. */
+.local-dashboard-page--overview .local-dashboard-panel[data-slice] .ins-card-head:not(:has(.ins-note)) { display: none; }
+.local-dashboard-page--overview .local-dashboard-panel[data-slice] .ins-card { position: relative; }
+.local-dashboard-page--overview .local-dashboard-panel[data-slice] .ins-readout {
+  position: absolute; bottom: 0; right: 0; min-height: 0; max-width: 60%; line-height: 32px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.local-dashboard-page--overview .local-dashboard-panel[data-slice] .ins-bars.gdb-plot { background: none; border-radius: 0; }
+/* OMN-21166 part 21 AC139: a day label stays inside its own slot, so the last one never passes the panel edge. */
+.local-dashboard-page--overview .gdb-day-label { left: 0; right: 0; }
+
+/* OMN-21166 part 21 AC143 (onex delegate run 1b283439): each day keeps its spacing inside its own slot, so bars span 72%
+   of a day at any day count (fixed 8px gaps left 1px bars at 30 days in a half-width panel). */
+.local-dashboard-page--overview .ins-bars.gdb-plot { gap: 0; }
+.local-dashboard-page--overview .gdb-group { gap: 1px; padding: 0 14%; }
+/* No number above each bar here: a 30-day bar is too narrow for it. The readout on the legend row shows the hovered or
+   focused day's numbers, and each bar's accessible name carries its values. */
+.local-dashboard-page--overview .gdb-val { display: none; }
+/* OMN-21166 part 21 AC139: a day label is as wide as its text and centred on its day; the first and last align to the
+   chart's edges, so no label passes the panel. */
+.local-dashboard-page--overview .gdb-day-label { left: 50%; right: auto; transform: translateX(-50%); }
+.local-dashboard-page--overview .gdb-day:first-child .gdb-day-label { left: 0; transform: none; text-align: left; }
+.local-dashboard-page--overview .gdb-day:last-child .gdb-day-label { left: auto; right: 0; transform: none; text-align: right; }
+/* OMN-21166 part 21 AC140: upright bars 115px tall, so the Model usage and Tier mix row stays within 340px, including the
+   "All time: this panel does not follow the window above" caption a 7, 15 or 30 day window adds (130px measured 349px). */
+.local-dashboard-page--overview .rb-chart.rb-chart--vertical .rb-track { height: 115px; }
+
+/* OMN-21166 part 21 edge cases (Lakshman 2026-10-26: "check all edge cases"). */
+/* AC139: two charts per row from exactly 1100px (the shared grid drops to one column at max-width 1100px, inclusive). */
+@media (min-width: 1100px) { .local-dashboard-page--overview .maple-grid > .maple-cell--half { grid-column: span 6; } }
+/* AC139: a day chart under 420px wide labels only its first and last day, so phone labels never overlap. */
+.local-dashboard-page--overview .ins-bars.gdb-plot { container-type: inline-size; }
+@container (max-width: 420px) {
+  .local-dashboard-page--overview .gdb-day:not(:first-child):not(:last-child) .gdb-day-label { visibility: hidden; }
+}
+/* An upright bar chart under 400px wide runs sideways (name and value above each bar), as the 'auto' charts do under
+   560px, so six long model names fit a phone. */
+@container (max-width: 400px) {
+  :is(.local-dashboard-page, .ev-root) .rb-chart.rb-chart--vertical .rb-plot { display: flex; flex-direction: column; align-items: stretch; gap: 10px; max-width: none; margin-bottom: 0; border-bottom: 0; border-left: 1px solid var(--line); }
+  :is(.local-dashboard-page, .ev-root) .rb-chart.rb-chart--vertical .rb-plot > li { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name value" "track track"; row-gap: 4px; column-gap: 12px; }
+  :is(.local-dashboard-page, .ev-root) .rb-chart.rb-chart--vertical .rb-name { position: static; grid-area: name; text-align: left; margin: 0 0 0 8px; -webkit-line-clamp: 1; }
+  :is(.local-dashboard-page, .ev-root) .rb-chart.rb-chart--vertical .rb-value { grid-area: value; margin: 0; text-align: right; }
+  :is(.local-dashboard-page, .ev-root) .rb-chart.rb-chart--vertical .rb-track { grid-area: track; height: 12px; align-items: stretch; justify-content: flex-start; }
+  :is(.local-dashboard-page, .ev-root) .rb-chart.rb-chart--vertical .rb-bar { height: auto; width: var(--rb-size, 0); max-width: none; margin: 0; }
+  :is(.local-dashboard-page, .ev-root) .rb-chart.rb-chart--vertical .rb-bar[data-pattern="outline"] { width: 14px; height: auto; border: 1px dashed var(--ink-3); border-left: 0; }
+}
+
+/* OMN-21166 part 22 AC144 (onex delegate run 0320afb4, scoped and corrected): Model usage never cuts a model name, in
+   either layout, at any width; names sit in flow under or above their bar and wrap, values wrap rather than ellipsis. */
+:is(.local-dashboard-page, .ev-root) .local-model-usage .rb-chart .rb-name { position: static; display: block; -webkit-line-clamp: unset; overflow: visible; overflow-wrap: anywhere; word-break: normal; }
+:is(.local-dashboard-page, .ev-root) .local-model-usage .rb-chart .rb-value { white-space: normal; overflow: visible; text-overflow: clip; }
+/* Six or fewer models: upright bars whose tops line up, names of any length below their own bar. */
+:is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart .rb-plot { align-items: start; margin-bottom: 0; }
+/* More than six: one row per model at any width, the name on its own line, then the bar and its count with share. */
+:is(.local-dashboard-page, .ev-root) .local-model-usage--rows .rb-chart .rb-plot { display: flex; flex-direction: column; align-items: stretch; gap: 10px; max-width: none; margin-bottom: 0; border-bottom: 0; border-left: 1px solid var(--line); }
+:is(.local-dashboard-page, .ev-root) .local-model-usage--rows .rb-chart .rb-plot > li { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name name" "track value"; row-gap: 4px; column-gap: 12px; align-items: center; }
+:is(.local-dashboard-page, .ev-root) .local-model-usage--rows .rb-chart .rb-name { grid-area: name; text-align: left; margin: 0 0 0 8px; }
+:is(.local-dashboard-page, .ev-root) .local-model-usage--rows .rb-chart .rb-value { grid-area: value; margin: 0; text-align: right; }
+:is(.local-dashboard-page, .ev-root) .local-model-usage--rows .rb-chart .rb-track { grid-area: track; height: 12px; align-items: stretch; }
+:is(.local-dashboard-page, .ev-root) .local-model-usage--rows .rb-chart .rb-bar { height: auto; width: var(--rb-size, 0); max-width: none; margin: 0; }
+
+/* OMN-21166 part 19 AC135: a bar that opens Runs is a link with a box of its own (a display: contents link cannot take
+   keyboard focus, found by the lab e2e): it spans the whole bar and copies the bar's layout, flex column when upright,
+   the grid areas when it runs sideways, so the bar looks the same and its focus ring sits on the link. */
+.rb-chart .rb-plot > li > .rb-link {
+  display: inherit; flex-direction: inherit; align-items: inherit; justify-content: inherit; gap: inherit;
+  grid-template-columns: inherit; grid-template-rows: inherit; grid-template-areas: inherit; row-gap: inherit; column-gap: inherit;
+  grid-column: 1 / -1; grid-row: 1 / -1; flex: 1 1 auto; min-width: 0; position: relative; color: inherit; text-decoration: none; border-radius: 4px;
+}
+.rb-chart .rb-plot > li > .rb-link:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 3px; }
+.rb-chart .rb-plot > li:has(> .rb-link):hover .rb-name { text-decoration: underline; }
+
+/* OMN-21166 part 19 AC134: a headline card that opens a page is one link stretched over it (`a.` outranks the card's
+   rule that lifts its own links and buttons with position: relative, which left this link 0px tall). */
+:is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel:has(> .local-card-link) { position: relative; cursor: pointer; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel > a.local-card-link { position: absolute; inset: 0; z-index: 1; border-radius: inherit; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel > a.local-card-link:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
+/* Its info button is a small visible icon above the link (no longer stretched over the card), and hovering anywhere on
+   the card still shows the details, which never catch the click meant for the link. */
+:is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel:has(> .local-card-link) .local-card-info { inset: auto; top: 13px; right: 14px; width: 20px; height: 20px; opacity: 1; z-index: 2; cursor: help; border-radius: 6px; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel:has(> .local-card-link):hover .local-card-tooltip { visibility: visible; opacity: 1; transform: none; pointer-events: none; }
+
+/* OMN-21166 part 19 AC133: the change against the previous window, a short line under the figure in the card's colour. */
+.local-overview-summary .local-card-change { margin: 2px 0 0; font-size: 12px; font-weight: 500; color: color-mix(in srgb, var(--panel-accent, var(--ink-3)) 80%, var(--ink)); }

@@ -401,8 +401,8 @@ test('Overview quality and tier-mix panels show served fields only (OMN-20225 AC
   // OMN-21166 Maple grid/AC64: Overview's Tier mix is ranked bars that print each served share and count, with the
   // not-tier-routed count; the table with the raw served shares (title 0.7143) is Runs' routing breakdown, below.
   const tierMix = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Tier mix', exact: true }) });
-  await expect(tierMix.getByRole('listitem', { name: 'Local: 5 · 71.4%, measured', exact: true })).toBeVisible();
-  await expect(tierMix.getByRole('listitem', { name: 'Cheap cloud: 2 · 28.6%, measured', exact: true })).toBeVisible();
+  await expect(tierMix.getByRole('link', { name: 'Local: 5 · 71.4%, measured. Opens Runs filtered to Local', exact: true })).toBeVisible();
+  await expect(tierMix.getByRole('link', { name: 'Cheap cloud: 2 · 28.6%, measured. Opens Runs filtered to Cheap cloud', exact: true })).toBeVisible();
   await expect(tierMix.getByText('7 tier-routed · 2 not tier-routed · 9 runs', { exact: true })).toBeVisible();
   // OMN-21166 AC86 (Lakshman 2026-10-25): Recent runs is deleted from Overview; that no panel is cut off is still held.
   await expect(page.getByRole('heading', { name: 'Recent runs' })).toHaveCount(0);
@@ -815,8 +815,8 @@ test('Runs filters, pagination and table hover use readable themed controls', as
     await expect(page.locator('body')).toHaveClass(`theme-${theme}`);
     const selects = page.locator('.local-dashboard-filters select');
     // Status, Cause, Model, Window, and since OMN-21015 AC8 Backend. OMN-21166 Maple grid: the task chips became a
-    // sixth select, Task.
-    await expect(selects).toHaveCount(6);
+    // sixth select, Task; part 23 AC145 added a seventh, Tier.
+    await expect(selects).toHaveCount(7);
     for (const select of await selects.all()) {
       // OMN-21166 Maple grid: the one-row Runs toolbar's selects have a 7px radius and keep the 40px touch target.
       await expect(select).toHaveCSS('border-radius', '7px');

@@ -115,6 +115,9 @@ describe('OMN-21015 AC7: the Overview page', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'setTimeout', 'clearTimeout', 'Date'] });
     vi.setSystemTime(new Date(NOW));
+
+    // OMN-21166 part 19 AC136 keeps Overview's window in the address, which jsdom carries from test to test.
+    window.history.replaceState(null, '', '/');
   });
   afterEach(() => { vi.useRealTimers(); });
 
