@@ -1599,8 +1599,8 @@ figure.local-chart.usage-insight { min-width: 0; margin: 0; padding: 14px; }
 [data-theme="dark"] .local-dashboard-panel[data-component="overview-savings"] { --panel-accent: var(--field-savings); }
 [data-theme="dark"] .local-dashboard-panel[data-component="overview-measured"] { --panel-accent: var(--field-calls); }
 [data-theme="dark"] .local-dashboard-panel[data-component="overview-tokens"] { --panel-accent: var(--field-tokens); }
-.local-dashboard-panel[data-component="overview-environment"], .local-dashboard-panel[data-component="api-keys-environment"] { --panel-accent: var(--field-host); }
-[data-theme="dark"] .local-dashboard-panel[data-component="overview-environment"], [data-theme="dark"] .local-dashboard-panel[data-component="api-keys-environment"] { --panel-accent: var(--field-host); }
+.local-dashboard-panel[data-component="status-environment"] { --panel-accent: var(--field-host); }
+[data-theme="dark"] .local-dashboard-panel[data-component="status-environment"] { --panel-accent: var(--field-host); }
 /* OMN-21166 live review 2026-10-25: Model usage (runs by model) has its own accent, apart from Tier mix's cyan. */
 .local-dashboard-panel[data-component="overview-model-usage"] { --panel-accent: #6D28D9; }
 [data-theme="dark"] .local-dashboard-panel[data-component="overview-model-usage"] { --panel-accent: #A78BFA; }
@@ -2286,10 +2286,7 @@ figure.local-chart.usage-insight { min-width: 0; margin: 0; padding: 14px; }
 .local-token-direction[data-field-tone="tokens-out"] svg { color: var(--field-tokens-out); }
 .local-token-direction:focus-visible { outline: 2px solid var(--field-ink); outline-offset: 3px; border-radius: 2px; }
 
-/* OMN-21166 part 26: the Settings sections, styled as the Overview window switch so one control reads one way. */
-.local-settings-tabs { --tab-selected-ink: #fff; display: inline-flex; flex-wrap: wrap; gap: 2px; margin: -8px 0 20px; padding: 3px; border-radius: 11px; border: 1px solid var(--line); background: var(--panel); }
-[data-theme="dark"] .local-settings-tabs { --tab-selected-ink: var(--bg); }
-.local-settings-tab { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 14px; border: 0; border-radius: 8px; background: transparent; color: var(--nav-accent); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
-.local-settings-tab:hover { background: color-mix(in oklab, var(--nav-accent) 12%, var(--panel)); }
-.local-settings-tab[aria-selected="true"] { background: var(--nav-accent); color: var(--tab-selected-ink); }
-.local-settings-tab:focus-visible { outline: 2px solid var(--nav-accent); outline-offset: 2px; }
+/* OMN-21166 part 26 revised: Settings is one page of labelled sections; each embeds its page's panels. */
+.local-settings-section { margin-bottom: 32px; }
+.local-settings-section > h2 { margin: 0 0 4px; font-size: 16px; font-weight: 600; }
+.local-settings-description { margin: 0 0 14px; font-size: 13px; color: var(--text-secondary); }

@@ -440,14 +440,12 @@ test('every local page opens in order, names a served exposure, and fits 1440x90
     'Overview', 'Runs', 'Workflow', 'Usage', 'Settings',
   ].map((label) => new RegExp(`^${label.replace(' partial', '\\s*partial')}$`)));
 
-  for (const [testId, title, tab] of [
-    ['nav-local-workflow', 'Workflow', null],
-    ['nav-local-usage', 'Usage', null],
-    ['nav-local-settings', 'Settings', 'settings-tab-credentials'],
-    ['nav-local-settings', 'Settings', 'settings-tab-api-keys'],
+  for (const [testId, title] of [
+    ['nav-local-workflow', 'Workflow'],
+    ['nav-local-usage', 'Usage'],
+    ['nav-local-settings', 'Settings'],
   ] as const) {
     await page.getByTestId(testId).click();
-    if (tab) await page.getByTestId(tab).click();
     await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible();
     await expect(page.getByRole('alert')).toHaveCount(0);
     await expect(page.getByText(/As of \d+s ago/).first()).toBeVisible();

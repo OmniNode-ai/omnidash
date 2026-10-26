@@ -9,9 +9,8 @@ import { expect, test, type Page, type TestInfo } from 'playwright/test';
 // preference, builder/assistant mounted, Cloud Keys in local composition, saved data
 // mutated, and category colors/keyboard focus lost between themes. These fixtures
 // prove browser behavior only; they do not replace the populated lab readback.
-// OMN-21166 part 26: Settings holds API Keys and Credentials; the page walks visit both of its sections.
+// OMN-21166 part 26: one Settings page holds API Keys and Credentials.
 const core = ['overview', 'runs', 'workflow', 'usage', 'settings'];
-const walked = ['overview', 'runs', 'workflow', 'usage', 'settings?section=api-keys', 'settings?section=credentials'];
 const tools = ['experiments', 'sea-control', 'event-bus', 'lab'];
 const topics = {
   decisions: 'onex.snapshot.projection.delegation.decisions.v1',
@@ -140,9 +139,9 @@ test('AC3/AC4 builder and assistant are absent with saved layouts preserved', as
 });
 
 test('AC5 local identity remains while Cloud Keys is absent', async ({ page }) => {
-  await page.goto('/settings?section=api-keys');
+  await page.goto('/settings');
   await expect(page.getByRole('heading', { level: 1, name: 'Settings', exact: true })).toBeVisible();
-  await expect(page.getByRole('tab', { name: 'API Keys', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('heading', { level: 2, name: 'Access', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Local identity', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: /cloud keys/i })).toHaveCount(0);
 });
@@ -259,7 +258,7 @@ test(`AC8 page walk ${state} width ${width}`, async ({ page }, info) => {
         tenant_scoped: true, tenant_column: 'tenant_id' })),
     }) }));
       await page.setViewportSize({ width, height: width === 1440 ? 900 : 844 });
-      for (const route of [...walked, 'delegation-evidence']) {
+      for (const route of [...core, 'delegation-evidence']) {
         await page.goto(`/${route}`);
         await expect(page.getByTestId('nav-local-overview')).toBeVisible();
         await expect(page.locator('body')).toHaveClass('theme-light');
@@ -268,14 +267,14 @@ test(`AC8 page walk ${state} width ${width}`, async ({ page }, info) => {
         if (state === 'missing-tenant' && route === 'overview') {
           await expect(page.getByText('Tenant not configured', { exact: true }).first()).toBeVisible();
         }
-        await page.screenshot({ path: info.outputPath(`${state}-${route.replace(/[?=]/g, '-')}-${width}.png`), animations: 'disabled' });
+        await page.screenshot({ path: info.outputPath(`${state}-${route}-${width}.png`), animations: 'disabled' });
         captures.push({ ...page.viewportSize(), theme: await page.locator('body').evaluate(el => el.classList.contains('theme-dark') ? 'dark' : 'light'),
           developerTools: await page.getByRole('checkbox', { name: 'Show developer tools', exact: true }).isChecked(),
           state, url: page.url(), source: 'constructed HTTP fixtures', tenant: state === 'missing-tenant' ? null : '11111111-1111-4111-8111-111111111111' });
       }
   await attachManifest(info, captures);
   const artifact = JSON.parse(readFileSync(info.outputPath('manifest.json'), 'utf8'));
-  expect(artifact.captures.map((capture: {theme: string}) => capture.theme)).toEqual(Array(7).fill('light'));
+  expect(artifact.captures.map((capture: {theme: string}) => capture.theme)).toEqual(Array(6).fill('light'));
   if (state === 'populated-fixture') {
     expect(scopedTenants.length).toBeGreaterThan(0);
     expect([...new Set(scopedTenants)]).toEqual(['11111111-1111-4111-8111-111111111111']);

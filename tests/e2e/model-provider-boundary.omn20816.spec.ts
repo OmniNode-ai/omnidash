@@ -41,8 +41,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
         await page.goto('/');
         // OMN-21166 part 26: Credentials is a section of Settings.
         await page.getByTestId('nav-local-settings').click();
-        await page.getByTestId('settings-tab-credentials').click();
-        await expect(page.getByRole('tab', { name: 'Credentials', exact: true })).toHaveAttribute('aria-selected', 'true');
+        await expect(page.getByRole('heading', { level: 2, name: 'Model providers', exact: true })).toBeVisible();
         const table = page.getByRole('table', { name: 'Model providers' });
         if (state === 'models-failed') {
           await expect(page.getByText('Model provider service unavailable', { exact: true })).toBeVisible();

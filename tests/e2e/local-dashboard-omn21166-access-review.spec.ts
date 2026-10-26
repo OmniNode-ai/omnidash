@@ -17,7 +17,7 @@ test('Credentials keeps reference metadata readable on phones without exposing v
     { provider: 'openai', set_up: false, last_test: null, models: [] },
     { provider: 'ollama', set_up: false, last_test: null, models: [] },
   ] }) }));
-  await page.goto('/settings?section=credentials');
+  await page.goto('/settings');
   const collapse = page.getByRole('button', { name: 'Collapse sidebar', exact: true });
   if (await collapse.isVisible()) await collapse.click();
   const row = page.locator('[data-component="credentials-keys"] tbody tr').filter({ hasText: 'fixture-provider' });
@@ -41,7 +41,7 @@ test('API Keys offers copy only for an actual served tenant identity', async ({ 
   // OMN-21166 part 11: the tenant is read from the native local-runtime row of local-environment.v1, not from savings sessions.
   await serveCharts(page, { ...chartRows, [prefix + 'local-environment.v1']: [
     { mode: 'native', service: 'local-runtime', tenant_id: 'served-fixture-tenant', updated_at: '2026-10-18T10:00:00Z' }] });
-  await page.goto('/settings?section=api-keys');
+  await page.goto('/settings');
   await expect(page.getByRole('button', { name: 'Copy the tenant identity', exact: true })).toBeVisible();
   await expect(page.getByText('served-fixture-tenant', { exact: true })).toBeVisible();
   await expect(page.getByText('Not recorded', { exact: true }).first()).toBeVisible();
@@ -56,7 +56,7 @@ test('API Keys shows the Rotate command as code without backticks, and every acc
   await serveCharts(page, { ...chartRows, [prefix + 'local-environment.v1']: [
     { mode: 'native', service: 'local-runtime', access_mode: 'token', token_minted_at: '2026-10-18T10:00:00Z',
       rotate_hint: 'Run `onex dashboard` again to mint a new token', updated_at: '2026-10-18T10:00:00Z' }] });
-  await page.goto('/settings?section=api-keys');
+  await page.goto('/settings');
   const rotate = page.locator('dl.local-dashboard-fields > div').filter({ has: page.locator('dt', { hasText: 'Rotate' }) });
   await expect(rotate.locator('dd code')).toHaveText('onex dashboard');
   await expect(rotate.locator('dd')).toHaveText('Run onex dashboard again to mint a new token');

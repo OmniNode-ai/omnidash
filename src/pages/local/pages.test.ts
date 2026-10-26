@@ -305,8 +305,9 @@ describe('local pages against the captured lab catalogue', () => {
       'total_cost_usd', 'total_savings_usd', 'run_count', 'tokens_total',
     ]);
     // OMN-21166 live review 2026-10-25: Lakshman deleted the secondary metrics, Spend per day, Last run, Recent runs and
-    // Environment from Overview (Environment moved to API Keys). Overview declares its cards, quality, the activity
-    // charts' decisions and the tier mix; the cards switch to metering-summary.v1 at run time (OMN-19980).
+    // Environment from Overview (Environment is Settings' System status section, part 26 revision 2). Overview declares
+    // its cards, quality, the activity charts' decisions and the tier mix; the cards switch to metering-summary.v1 at
+    // run time (OMN-19980).
     expect(new Set(page.components.flatMap(c=>(c.data_bindings??[]).map(b=>b.projection_topic)))).toEqual(new Set([
       'onex.snapshot.projection.cost.savings-overview.v1', 'onex.snapshot.projection.delegation.decisions.v1',
       'onex.snapshot.projection.delegation.quality-gate.v1', 'onex.snapshot.projection.delegation.model-routing.v1',

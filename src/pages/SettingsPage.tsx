@@ -1,68 +1,32 @@
-import { useEffect, useRef, type KeyboardEvent, type MutableRefObject } from 'react';
-import { useLocation, useSearch } from 'wouter';
-import { SETTINGS_SECTION_ICONS } from '@/navigation/destination-icons';
+import { DestinationIcon } from '@/navigation/destination-icons';
 import { LocalDashboardPage, type LocalDashboardCache } from './LocalDashboardPage';
 
-// OMN-21166 part 26: one Settings page holds API Keys and Credentials, each rendered from its own page document so the
-// panels, states and served reads are the ones the separate pages had (AC156). The section lives in the address
-// (AC154); /api-keys and /credentials no longer exist (AC155).
-export const SETTINGS_SECTIONS = [
-  { id: 'api-keys', label: 'API Keys' },
-  { id: 'credentials', label: 'Credentials' },
+// OMN-21166 part 26 revised: /settings is one page with no tabs and no ?section= handling (AC154). Model providers
+// come first, then Access, then System status (OMN-19988's Environment panel; revision 2, AC158), as in comparable
+// products' settings. Each section renders its existing page document embedded, so its panels, states and served reads
+// are unchanged (AC156). /api-keys and /credentials stay retired (AC155).
+const SECTIONS = [
+  { id: 'settings-model-providers', page: 'credentials', title: 'Model providers',
+    description: 'The AI provider accounts OmniNode can use for your delegations.' },
+  { id: 'settings-access', page: 'api-keys', title: 'Access',
+    description: 'Your local identity and how this dashboard is protected.' },
+  // Revision 2 (AC158): service health is watched, not set, so it comes last, as admin areas place monitoring.
+  { id: 'settings-system-status', page: 'status', title: 'System status',
+    description: 'Whether the OmniNode services on this machine are running.' },
 ] as const;
-export type SettingsSection = typeof SETTINGS_SECTIONS[number]['id'];
-
-/** API Keys for no section or an unknown one. */
-export function readSettingsSection(search: string): SettingsSection {
-  const value = new URLSearchParams(search).get('section');
-  return SETTINGS_SECTIONS.find(section => section.id === value)?.id ?? 'api-keys';
-}
-
-function SettingsTabs({ active, onSelect, refocus }: {
-  active: SettingsSection;
-  onSelect: (section: SettingsSection, byKeyboard: boolean) => void;
-  refocus: MutableRefObject<boolean>;
-}) {
-  const tabs = useRef<Array<HTMLButtonElement | null>>([]);
-  // A section change remounts the page and these tabs with it, so focus moved by the keyboard is restored here.
-  useEffect(() => {
-    if (!refocus.current) return;
-    refocus.current = false;
-    tabs.current[SETTINGS_SECTIONS.findIndex(section => section.id === active)]?.focus();
-  }, [active, refocus]);
-  // WAI-ARIA tabs: the arrow keys, Home and End move between sections; only the selected tab is in the tab order.
-  const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
-    const last = SETTINGS_SECTIONS.length - 1;
-    const next = event.key === 'ArrowRight' ? (index === last ? 0 : index + 1)
-      : event.key === 'ArrowLeft' ? (index === 0 ? last : index - 1)
-      : event.key === 'Home' ? 0 : event.key === 'End' ? last : null;
-    if (next === null) return;
-    event.preventDefault();
-    onSelect(SETTINGS_SECTIONS[next].id, true);
-  };
-  return <div className="local-settings-tabs" role="tablist" aria-label="Settings sections">
-    {SETTINGS_SECTIONS.map(({ id, label }, index) => {
-      const Icon = SETTINGS_SECTION_ICONS[id];
-      const selected = id === active;
-      return <button key={id} ref={element => { tabs.current[index] = element; }} type="button" role="tab"
-        id={`settings-tab-${id}`} aria-selected={selected} aria-controls="settings-section" tabIndex={selected ? 0 : -1}
-        data-testid={`settings-tab-${id}`} className="local-settings-tab" onClick={() => onSelect(id, false)}
-        onKeyDown={event => onKeyDown(event, index)}>
-        <Icon size={14} aria-hidden="true" />{label}
-      </button>;
-    })}
-  </div>;
-}
 
 export function SettingsPage({ navigationCache }: { navigationCache: LocalDashboardCache }) {
-  const [, navigate] = useLocation();
-  const section = readSettingsSection(useSearch());
-  const refocus = useRef(false);
-  const select = (next: SettingsSection, byKeyboard: boolean) => {
-    if (next === section) return;
-    refocus.current = byKeyboard;
-    navigate(`/settings?section=${next}`);
-  };
-  return <LocalDashboardPage key={section} pageName={section} navigationCache={navigationCache}
-    settingsTabs={<SettingsTabs active={section} onSelect={select} refocus={refocus} />} />;
+  return <main data-destination="local-settings" aria-label="Settings page" className="local-dashboard-page local-dashboard-page--settings">
+    <header className="local-dashboard-header">
+      <div className="local-dashboard-title">
+        <span className="local-dashboard-page-icon" aria-hidden="true"><DestinationIcon page="local-settings" size={20} /></span>
+        <div><h1>Settings</h1></div>
+      </div>
+    </header>
+    {SECTIONS.map(section => <section key={section.id} id={section.id} className="local-settings-section" aria-labelledby={`${section.id}-heading`}>
+      <h2 id={`${section.id}-heading`}>{section.title}</h2>
+      <p className="local-settings-description">{section.description}</p>
+      <LocalDashboardPage pageName={section.page} embedded navigationCache={navigationCache} />
+    </section>)}
+  </main>;
 }

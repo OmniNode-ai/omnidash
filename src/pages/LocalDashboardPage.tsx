@@ -74,8 +74,8 @@ interface LocalDashboardPageProps {
   pageName: LocalPageName;
   syncUrl?: boolean;
   navigationCache?: LocalDashboardCache;
-  /** OMN-21166 part 26: set when this page is a section of Settings; the header then names Settings. */
-  settingsTabs?: ReactNode;
+  /** OMN-21166 part 26 revised: a section of the one Settings page, drawn without its own main landmark or header. */
+  embedded?: boolean;
 }
 
 export interface LocalDashboardCache {
@@ -2687,7 +2687,7 @@ function bindingFailedEmpty(
 
 /** The icon beside a panel's title, by component. A component not listed here gets none; nothing depends on it. */
 export const PANEL_CONCEPTS: Readonly<Record<string, string>> = {
-  'overview-environment': 'host', 'api-keys-environment': 'host',
+  'status-environment': 'host',
   'overview-spend': 'cost', 'overview-savings': 'savings', 'overview-measured': 'calls',
   'overview-tokens': 'tokens', 'overview-last-run': 'last', 'overview-recent-runs': 'recent',
   'overview-insights': 'analysis', 'usage-insights': 'usage-analysis', 'runs-insights': 'analysis',
@@ -2711,12 +2711,14 @@ const PAGE_TITLES: Record<LocalPageName, string> = {
   usage: 'Usage',
   credentials: 'Credentials',
   'api-keys': 'API Keys',
+  status: 'System status',
 };
 
-export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache, settingsTabs }: LocalDashboardPageProps) {
+export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache, embedded = false }: LocalDashboardPageProps) {
   const [page, setPage] = useState<LocalPageDocument | null>(null);
   // OMN-21166 part 26: API Keys and Credentials are sections of Settings, so they carry its destination identity.
-  const destination: AppPage = settingsTabs ? 'local-settings' : `local-${pageName}` as AppPage;
+  const destination: AppPage = embedded ? 'local-settings' : `local-${pageName}` as AppPage;
+  const Frame = embedded ? 'div' : 'main';
   const [snapshots, setSnapshots] = useState<BoundProjectionSnapshot[]>([]);
   // OMN-21166 AC77: Overview and Usage tell the top bar when their rows were last read from the runtime.
   const servedRead = pageName === 'overview' || pageName === 'usage' ? latestServedRead(snapshots) : null;
@@ -2954,11 +2956,11 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
       && component.data_bindings?.[0]?.projection_topic !== METERING_SUMMARY_TOPIC
       && component.data_bindings?.[0]?.projection_topic !== LEGACY_OVERVIEW_TOPIC
       // OMN-21166: the trends follow the window themselves.
-      && !['overview-insights', 'overview-environment', 'api-keys-environment'].includes(component.component_id);
+      && !['overview-insights', 'status-environment'].includes(component.component_id);
     // GET /models has its own loading/error state; credential projection availability
     // must only gate the key-reference region, including its aria-busy state.
     const credentialProviders = component.component_id === 'credentials-keys';
-    const environment = component.component_id === 'overview-environment' || component.component_id === 'api-keys-environment';
+    const environment = component.component_id === 'status-environment';
     const readContent = <>
         {pending ? <p className="local-dashboard-caption" role="status">Loading data…</p>
           : unbound && component.component_kind !== 'metric_card' ? <PendingState componentId={component.component_id} />
@@ -3047,12 +3049,13 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
   });
   return (
     <RunFilterProvider>
-    <main data-destination={destination} aria-label={settingsTabs ? 'Settings page' : `${page?.dashboard.name ?? 'Local dashboard'} page`} className={`local-dashboard-page local-dashboard-page--${pageName}`}>
-      <header className="local-dashboard-header">
+    <Frame data-destination={destination} aria-label={embedded ? undefined : `${page?.dashboard.name ?? 'Local dashboard'} page`}
+      className={`local-dashboard-page local-dashboard-page--${pageName}${embedded ? ' local-dashboard-page--embedded' : ''}`}>
+      {!embedded && <header className="local-dashboard-header">
         <div className="local-dashboard-title">
           <span className="local-dashboard-page-icon" aria-hidden="true"><DestinationIcon page={destination} size={20} /></span>
           <div>
-            <h1>{settingsTabs ? 'Settings' : page?.dashboard.name ?? PAGE_TITLES[pageName]}</h1>
+            <h1>{page?.dashboard.name ?? PAGE_TITLES[pageName]}</h1>
           </div>
         </div>
         {/* One toolbar row: the page's own control when it has one, and the runtime mode at the right. */}
@@ -3102,8 +3105,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
           const read = snapshots.find(snapshot => snapshot.topic === METERING_SUMMARY_TOPIC);
           return read && !read.failure ? <UsageKpis rows={read.rows} /> : null;
         })()}
-      </header>
-      {settingsTabs}
+      </header>}
       {loading && <p role="status">Loading runtime exposures…</p>}
       {error && <ReadFailureNotice title="Dashboard" now={now}
         snapshot={{ topic: 'page', failure: { kind: error.includes('no answer') ? 'timeout' : 'error', message: error } }}
@@ -3112,8 +3114,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
         snapshot={{ topic: 'catalogue', failure: { kind: refreshError.includes('no answer') ? 'timeout' : 'error', message: refreshError } }}
         savedMessage="Showing saved data. Each panel shows when it was updated." />}
       {!loading && !error && page && (
-        <section className="local-dashboard-grid" aria-label="Dashboard components"
-          {...(settingsTabs ? { id: 'settings-section', role: 'tabpanel', 'aria-labelledby': `settings-tab-${pageName}` } : {})}>
+        <section className="local-dashboard-grid" aria-label="Dashboard components">
           {pageName === 'overview' ? <>
             <OverviewRunsContext.Provider value={(() => {
               const recent = page.components.find(candidate => candidate.component_id === 'overview-recent-runs');
@@ -3133,7 +3134,8 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
             </div>
             <div className="maple-grid">
               {/* Live review 2026-10-25: no newest-run line and no environment on Overview (requirement Q2 waived by
-                  Lakshman; Environment moved to API Keys); Delegation Quality is the fifth card above. */}
+                  Lakshman); Environment is the System status section of Settings (OMN-21166 part 26 revision 2).
+                  Delegation Quality is the fifth card above. */}
               {(() => {
                 const insights = page.components.find(candidate => candidate.component_id === 'overview-insights');
                 if (!insights) return null;
@@ -3211,7 +3213,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
           })()}
         </>}
       </dialog>
-    </main>
+    </Frame>
     </RunFilterProvider>
   );
 }

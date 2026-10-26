@@ -166,6 +166,8 @@ main.ev-root .ev-acceptance-checks > li > :first-child, main.ev-root .ev-accepta
 /* Page frame */
 .local-dashboard-page, main.ev-root[data-destination="delegation-evidence"] { background: var(--bg); }
 .local-dashboard-page { padding: 20px 24px 40px; }
+/* OMN-21166 part 26 revised: a Settings section draws its panels inside the Settings page's padding, not its own. */
+.local-dashboard-page.local-dashboard-page--embedded { padding: 0; }
 .local-dashboard-page .local-dashboard-header { margin-bottom: 16px; gap: 10px; align-items: center; }
 .local-dashboard-page .local-dashboard-header h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.015em; }
 .local-dashboard-page .local-dashboard-header .local-dashboard-page-icon { width: 20px; height: 20px; color: var(--ink-3); }
@@ -836,8 +838,7 @@ main.ev-root .ev-maple-grid { align-items: start; }
 .rb-chart.rb-chart--vertical .rb-value { overflow: visible; text-overflow: clip; white-space: nowrap; }
 /* Delegation Quality: the fifth headline card, in the pass colour (Quality's teal would repeat Savings). */
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel[data-component="overview-quality"] { --panel-accent: var(--field-pass); }
-.local-dashboard-panel[data-component="api-keys-environment"] { --panel-accent: var(--field-host); }
-.local-dashboard-page--api-keys .local-dashboard-grid > .local-dashboard-panel[data-component="api-keys-environment"] { grid-column: 1 / -1; }
+.local-dashboard-panel[data-component="status-environment"] { --panel-accent: var(--field-host); }
 /* Live review 2026-10-25 ("all bar graphs should have full cards"), on every page since part 15: upright bars fill their
    card, each bar 72% of its column and at most 120px wide (live review 2026-10-26: a three-bar chart draws no slabs). */
 .rb-chart.rb-chart--vertical .rb-plot { grid-template-columns: repeat(var(--rb-count), minmax(0, 1fr)); justify-content: stretch; gap: 24px; }

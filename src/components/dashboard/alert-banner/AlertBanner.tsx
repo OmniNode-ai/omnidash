@@ -12,6 +12,7 @@
  */
 import { useState } from 'react';
 import { Text } from '@/components/ui/typography';
+import { readableTime } from '@/lib/readable-time';
 import { validateAlertBannerRow, type AlertBannerRow } from '@shared/types/component-manifest';
 import { SEVERITY_ORDER, SEVERITY_ROLES, SeverityIcon } from '../status-grid/severity';
 
@@ -56,7 +57,8 @@ function AlertLine({ alert, onDismiss, codeLabel }: { alert: AlertBannerRow; onD
         {alert.subject}
       </Text>
       <Text size="xs" family="mono" color="tertiary">
-        {`since ${alert.since}`}
+        {/* OMN-21166 part 26 AC159: the same readable UTC as the service cards; an unparseable value shows as served. */}
+        {`since ${readableTime(alert.since) ?? alert.since}`}
       </Text>
       <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 10, alignItems: 'center' }}>
         {alert.link ? (

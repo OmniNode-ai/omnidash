@@ -1,0 +1,31 @@
+{
+  "dashboard_id": "906b29ac-70c1-54f9-a7ab-3d480d46b6e8",
+  "name": "System status",
+  "description": "Whether the OmniNode services on this machine are running.",
+  "layout": {
+    "columns": 12,
+    "row_height": 100,
+    "gap": 16,
+    "responsive": true
+  },
+  "refresh_interval_seconds": 30,
+  "theme": "system",
+  "widgets": [
+    {
+      "widget_id": "4f6c2a9e-1d3b-5e7a-9c84-2b0d6e1f3a75",
+      "title": "Environment",
+      "row": 0,
+      "col": 0,
+      "width": 12,
+      "height": 4,
+      "data_source": "status-environment",
+      "config": {
+        "config_kind": "status_grid",
+        "widget_type": "status_grid",
+        "columns": 3,
+        "show_labels": true,
+        "compact": false
+      }
+    }
+  ]
+}

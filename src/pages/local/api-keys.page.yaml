@@ -64,22 +64,6 @@
         "page_size": 1,
         "show_pagination": false
       }
-    },
-    {
-      "widget_id": "4f6c2a9e-1d3b-5e7a-9c84-2b0d6e1f3a75",
-      "title": "Environment",
-      "row": 7,
-      "col": 0,
-      "width": 12,
-      "height": 4,
-      "data_source": "api-keys-environment",
-      "config": {
-        "config_kind": "status_grid",
-        "widget_type": "status_grid",
-        "columns": 3,
-        "show_labels": true,
-        "compact": false
-      }
     }
   ]
 }

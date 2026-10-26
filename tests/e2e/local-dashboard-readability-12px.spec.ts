@@ -13,10 +13,8 @@ const destinations: AppPage[] = [
   'local-settings', 'delegation-evidence',
   'experiments', 'sea-control', 'event-bus', 'lab',
 ];
-// OMN-21166 part 26: Settings holds API Keys and Credentials, so both sections are scanned.
-const visits = destinations.flatMap(destination => destination === 'local-settings'
-  ? [{ destination, suffix: '?section=api-keys', label: 'Settings API Keys' }, { destination, suffix: '?section=credentials', label: 'Settings Credentials' }]
-  : [{ destination, suffix: destination === 'local-workflow' ? '?correlation_id=chart-run-a' : '', label: PAGE_LABELS[destination] }]);
+const visits = destinations.map(destination => ({ destination,
+  suffix: destination === 'local-workflow' ? '?correlation_id=chart-run-a' : '', label: PAGE_LABELS[destination] }));
 const rows = { ...chartRows, [prefix + 'topic-activity.v1']: [{
   topic: 'onex.evt.readability.sample.v1', sampled_at: '2026-10-17T10:00:00Z',
   retained_messages: 1234, messages_last_hour: 12, messages_last_24h: 1234,
