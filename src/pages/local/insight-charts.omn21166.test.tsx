@@ -134,6 +134,12 @@ describe('OMN-21166: Overview insight charts', () => {
     expect(screen.getByTestId('runs-per-day-readout')).toHaveTextContent('Oct 18 · 3 runs · 1 passed · 1 failed · 1 not recorded');
   });
 
+  // OMN-21166 part 15 AC96: the day chart says nothing at rest; its words appear only for the day a reader points at.
+  it('C2: at rest the Runs per day readout is empty', () => {
+    render(<InsightsSection decisions={ROWS} now={NOW} />);
+    expect(screen.getByTestId('runs-per-day-readout')).toHaveTextContent(/^$/);
+  });
+
   it('C3: the range control changes what is counted', () => {
     render(<InsightsSection decisions={ROWS} now={NOW} />);
     expect(screen.getByTestId('insights-total')).toHaveTextContent('Latest 5 served runs');

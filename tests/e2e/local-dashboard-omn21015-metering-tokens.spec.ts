@@ -88,13 +88,17 @@ test('served model/day rows retain their own series rather than being replaced b
     { usage_day: '2026-10-22', model_id: 'model-primary', input_tokens: 17, output_tokens: 3 },
   ], [prefix+'metering-summary.v1']: [context, ...days] });
   await page.goto('/usage');
-  // OMN-21166 Maple grid: served model/day rows draw the page's stacked per-day chart; the per-model day list
-  // ("Tokens by model and day") is the detail under "More usage". Neither is replaced by the metering totals.
+  // OMN-21166 Maple grid: served model/day rows draw the page's stacked per-day chart; part 17 AC116 removes the per-model
+  // day list ("Tokens by model and day", the detail panel), and "Tokens by model" under "More usage" draws the same served
+  // counts as grouped bars. Neither is replaced by the metering totals.
   const panel = page.locator('[data-component="usage-tokens-by-day"]:not([data-slice])');
   const detail = page.locator('[data-component="usage-tokens-by-day"][data-slice="detail"]');
   await expect(panel.getByRole('figure', { name: 'Tokens in per day by model' })).toBeVisible();
   await expect(panel.getByRole('figure', { name: 'Daily metering token totals' })).toHaveCount(0);
   await page.locator('summary').filter({ hasText: /^More usage$/ }).click();
-  await expect(detail.getByRole('figure', { name: 'Tokens by model and day' })).toBeVisible();
-  await expect(detail.getByRole('figure', { name: 'Daily metering token totals' })).toHaveCount(0);
+  await expect(detail).toHaveCount(0);
+  await expect(page.getByRole('figure', { name: 'Tokens by model and day' })).toHaveCount(0);
+  const byModel = page.getByRole('figure', { name: 'Tokens in vs out by model', exact: true });
+  await expect(byModel.getByRole('listitem', { name: 'model-primary: 17 tokens in, 3 tokens out', exact: true })).toBeVisible();
+  await expect(page.getByRole('figure', { name: 'Daily metering token totals' })).toHaveCount(0);
 });

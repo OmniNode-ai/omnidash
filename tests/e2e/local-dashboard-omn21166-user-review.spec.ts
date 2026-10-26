@@ -48,7 +48,8 @@ test('Evidence has a named main landmark and explicitly modelled savings', async
   await page.goto('/delegation-evidence');
   const main = page.getByRole('main', { name: 'Delegation Evidence page' });
   await expect(main).toBeVisible();
-  await expect(main.locator('.kpi').filter({ hasText: 'Savings' })).toContainText('modelled');
+  // Part 15 AC91: an Overview card; "modelled" is in its title and its tooltip.
+  await expect(main.locator('article[data-kpi-card="Savings (modelled)"]')).toContainText('modelled');
   await expect(main.getByRole('heading', { name: 'Delegation Evidence', exact: true })).toBeVisible();
   await page.screenshot({ path: info.outputPath('evidence-landmark.png') });
 });
@@ -96,12 +97,13 @@ test('run chart captions identify the listed records without claiming an obsolet
   await serveCharts(page);
   for (const route of ['/runs']) {
     await page.goto(route);
-    // OMN-21166 part 13: Runs keeps its run charts under a closed "More run charts".
-    await page.locator('summary').filter({ hasText: /^More run charts$/ }).click();
+    // OMN-21166 part 18 AC118: Runs keeps its run charts inside its one closed "More analysis".
+    await page.locator('summary').filter({ hasText: /^More analysis$/ }).click();
     for (const name of ['Duration per run', 'Tokens per run']) {
       const chart = page.getByRole('figure', { name, exact: true });
       await expect(chart).toBeVisible();
-      await expect(chart).toContainText('Explore the listed runs');
+      // OMN-21166 part 18 AC124: the filler subtitle "Explore the listed runs" is removed from the per-run charts.
+      await expect(chart).not.toContainText('Explore the listed runs');
       await expect(chart.locator('figcaption')).toContainText('each listed run');
       await expect(chart).not.toContainText(/listed (?:above|below)/);
     }

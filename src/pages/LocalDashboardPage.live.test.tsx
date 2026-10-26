@@ -312,7 +312,8 @@ describe('Partial pages (FR-3, CR-2, CR-3, AK-3, F24)', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('API Keys');
     const identity = screen.getByRole('heading', { name: 'Local identity' }).closest('article')!;
     expect(within(identity).getByText('820272f9-4aaf-5add-a2df-0af942852ab2')).toBeInTheDocument();
-    expect(within(identity).getByText('Not recorded')).toBeInTheDocument();
+    // Part 18 AC130: the identity's mint time is never served, so its always-empty row is not drawn.
+    expect(within(identity).queryByText('Minted')).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Cloud Keys' })).not.toBeInTheDocument();
     expect(screen.queryByText(/CLOUD_NOT_LINKED/)).not.toBeInTheDocument();
     expect(document.querySelector('input, textarea, select, form')).toBeNull();
@@ -330,9 +331,11 @@ describe('Partial pages (FR-3, CR-2, CR-3, AK-3, F24)', () => {
     harness.answer = () => Promise.resolve([{ provider: 'openrouter', name: 'OPENROUTER_API_KEY', created_at: '2026-10-01T09:00:00Z', revoked_at: null, api_key_value: 'sk-planted' }]);
     render(<LocalDashboardPage pageName="credentials" />);
     await settle();
+    // Part 18 AC128: with GET /models unreachable here, the served key is still listed on its own (Provider key
+    // references); an in-use key has no Revoked column.
     const row = screen.getByRole('row', { name: /OPENROUTER_API_KEY/ });
-    expect(within(row).getByText('openrouter')).toBeInTheDocument();
-    expect(within(row).getByText('Not revoked')).toBeInTheDocument();
+    expect(within(row).getByText('OpenRouter')).toBeInTheDocument(); // one case for provider names (part 18 review)
+    expect(within(row).queryByText('Not revoked')).not.toBeInTheDocument();
     expect(screen.queryByText('sk-planted')).not.toBeInTheDocument();
   });
 });

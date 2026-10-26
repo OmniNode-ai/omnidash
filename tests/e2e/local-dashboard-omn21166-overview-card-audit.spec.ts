@@ -4,10 +4,9 @@ import { serveCharts } from './omn21166-chart-fixtures';
 // Failure modes before edits: chart numbers use unrelated/neutral colors,
 // daily/run token charts disagree, and missing measurements look measured.
 test.use({ viewport: { width: 1440, height: 900 }, trace: 'on' });
-// OMN-21166 part 13: Runs keeps its analysis under the page-level "More analysis" and its run charts under "More run
-// charts"; both are closed on load.
+// OMN-21166 part 18 AC118: Runs keeps its analysis and its run charts under the page's one closed "More analysis".
 async function openRunsDetail(page: Page) {
-  for (const name of ['More analysis', 'More run charts']) await page.locator('summary').filter({ hasText: new RegExp(`^${name}$`) }).click();
+  await page.locator('summary').filter({ hasText: /^More analysis$/ }).click();
 }
 
 test('Overview chart values retain field identities and token legends agree', async ({ page }, info) => {
@@ -32,12 +31,8 @@ test('Overview chart values retain field identities and token legends agree', as
       await expect(legend).toHaveCSS('color', expected);
       await expect(legend.locator('[data-swatch]')).toHaveCSS('background-color', expected);
     }
-    const outcomes = page.getByRole('figure', { name: 'Run outcomes', exact: true });
-    const pass = outcomes.getByRole('button', { name: 'Passed: 2 runs', exact: true });
-    const fail = outcomes.getByRole('button', { name: 'Failed: 1 run', exact: true });
-    expect(await pass.evaluate(el => getComputedStyle(el).color)).not.toBe(await fail.evaluate(el => getComputedStyle(el).color));
-    await outcomes.getByRole('button', { name: 'Failed: 1 run', exact: true }).click();
-    await expect(outcomes.getByRole('status')).toHaveText('Failed: 1 run');
+    // OMN-21166 part 18 AC121: the "Run outcomes" donut is removed; the Runs headline cards hold its figures.
+    await expect(page.getByRole('figure', { name: 'Run outcomes', exact: true })).toHaveCount(0);
     await page.screenshot({ path: info.outputPath(`overview-colors-${theme}.png`) });
   }
 });
@@ -53,9 +48,10 @@ test('Overview expanded cards preserve missing values and fit a phone', async ({
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
   await expect(page.locator('[data-component="overview-spend"]')).toContainText('Not measured');
   await page.goto('/runs');
-  // OMN-21166 part 13: the routing breakdown is inside Runs' closed "More analysis".
+  // OMN-21166 part 13: the routing breakdown is inside Runs' closed "More analysis"; part 18 AC120: its table is shown
+  // directly, with no nested "Full routing breakdown" disclosure.
   await page.locator('summary').filter({ hasText: /^More analysis$/ }).click();
-  await page.getByText('Full routing breakdown', { exact: true }).click();
+  await expect(page.getByText('Full routing breakdown', { exact: true })).toHaveCount(0);
   const tier = page.getByRole('region', { name: 'Tier mix', exact: true });
   await expect(tier.locator('dl > [data-field-tone]')).toHaveCount(3);
   await expect(tier.locator('dl')).toContainText('10');

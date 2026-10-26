@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
-// OMN-21166 AC64: the one ranked bar chart of the local pages (one bar per model, value above, name below, pattern by
-// how the figure was obtained). Failure modes, each with a test below:
+// OMN-21166 AC64: the one ranked bar chart of the local pages (one bar per model, value above, name below). Live review
+// 2026-10-26 ("all bar graph follow this style", option "Hatch all, say it in words"): every drawn bar is hatched, so
+// measured and modelled are told in words (the unit line and each bar's name), not by pattern. Failure modes:
 //   B1  a value that is not served gets a scaled bar or reads $0.00, so it looks measured;
-//   B2  measured and estimated bars share one pattern, so the class is told by colour only;
+//   B2  a not-served item is drawn like a served bar; or the measured/modelled class is in no words at all;
 //   B3  the ranking is wrong, or a not-served item is ranked among the served values;
-//   B4  the legend names a class the chart does not draw, or leaves out one it does;
+//   B4  a pattern key is still drawn, though the pattern no longer carries a class;
 //   B5  a negative served value is drawn as a bar above the baseline;
 //   B6  a measured zero is drawn as not served, or a not-served item as a measured zero.
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { RankedBars, type RankedBarItem } from '@/components/dashboard/RankedBars';
 
@@ -42,10 +43,13 @@ describe('RankedBars', () => {
     expect(bars().find(bar => bar.dataset.rankedItem === 'b')!.dataset.basis).toBe('unknown');
   });
 
-  it('B2: measured, estimated and not-served bars each carry a different pattern class', () => {
+  it('B2: a drawn bar is hatched whatever its class; a not-served item is an outline; the class is in words', () => {
     render(<RankedBars label="x" unit="USD" items={[item('a', 1), item('b', 2, 'estimated'), item('c', null)]} />);
     const patterns = bars().map(bar => bar.querySelector('.rb-bar')!.getAttribute('data-pattern'));
-    expect(new Set(patterns).size).toBe(3);
+    expect(patterns).toEqual(['hatched', 'hatched', 'outline']);
+    expect(screen.getByLabelText('a: $1.00, measured')).toBeInTheDocument();
+    expect(screen.getByLabelText('b: $2.00, modelled')).toBeInTheDocument();
+    expect(screen.getByLabelText('c: Not measured, not measured')).toBeInTheDocument();
   });
 
   it('B3: ranks served values ascending by default and descending on request, with not-served items last', () => {
@@ -56,14 +60,9 @@ describe('RankedBars', () => {
     expect(bars().map(bar => bar.dataset.rankedItem)).toEqual(['big', 'mid', 'small', 'none']);
   });
 
-  it('B4: the legend names exactly the classes drawn', () => {
-    const { unmount } = render(<RankedBars label="x" unit="USD" items={[item('a', 1), item('b', 2)]} />);
-    const legend = screen.getByRole('list', { name: 'Chart key' });
-    expect(within(legend).getAllByRole('listitem').map(entry => entry.textContent)).toEqual(['Measured']);
-    unmount();
+  it('B4: no pattern key is drawn', () => {
     render(<RankedBars label="x" unit="USD" items={[item('a', 1, 'estimated'), item('b', null)]} />);
-    expect(within(screen.getByRole('list', { name: 'Chart key' })).getAllByRole('listitem').map(entry => entry.textContent))
-      .toEqual(['Estimated', 'Not measured']);
+    expect(screen.queryByRole('list', { name: 'Chart key' })).toBeNull();
   });
 
   it('B5: a negative served value keeps its label and draws no bar above the baseline', () => {

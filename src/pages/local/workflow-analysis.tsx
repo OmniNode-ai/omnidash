@@ -152,7 +152,8 @@ export function RunAnswer({ read, runId }: { read: BoundProjectionSnapshot | und
       : answers.length === 0 ? state('No answer recorded for this run')
       : answers.map((row, index) => <div key={index}>
         <AnswerText text={String(row.response_text)} />
-        <p className="local-dashboard-caption">{`Data source: ${recorded(row.data_source)}`}</p>
+        {/* Part 15 AC96: a real answer needs no source line; any other source (fixtures, an unrecorded one) is named. */}
+        {row.data_source !== 'real' && <p className="local-dashboard-caption">{`Data source: ${recorded(row.data_source)}`}</p>}
       </div>);
   }
   return <section className="workflow-analysis-card workflow-analysis-card--answer" aria-labelledby={id}>

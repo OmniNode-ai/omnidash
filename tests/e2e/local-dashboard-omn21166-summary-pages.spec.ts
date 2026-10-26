@@ -39,12 +39,19 @@ test('Overview is a compact summary with exact day links and no detailed tables'
 });
 
 test('Runs owns deep analysis and failure drilldown still filters exact records', async ({ page }, info) => {
+  // Part 15 AC96: Overview has no "Explore run analysis" link; Runs is reached from the sidebar.
   await page.goto('/overview');
-  await page.getByRole('link', { name: 'Explore run analysis', exact: true }).click();
+  await expect(page.getByRole('link', { name: 'Explore run analysis', exact: true })).toHaveCount(0);
+  await page.getByRole('link', { name: 'Runs', exact: true }).click();
   await expect(page).toHaveURL(/\/runs$/);
   // OMN-21166 part 13: the page-level "More analysis" replaces the "Show run analysis" fold on Runs.
   await page.getByText('More analysis', { exact: true }).click();
-  for (const name of ['Runs by model', 'Tasks', 'Run outcomes', 'Pass rate per day', 'Why runs failed', 'How long runs take', 'Model scoreboard', 'When runs happen']) {
+  // OMN-21166 part 18 AC119/AC121: "Runs by model", "Runs by tier" and the "Run outcomes" donut are removed from Runs
+  // (Overview's Model usage and Tier mix, and the Runs headline cards, show the same figures).
+  for (const name of ['Runs by model', 'Runs by tier', 'Run outcomes']) {
+    await expect(page.getByRole('figure', { name, exact: true })).toHaveCount(0);
+  }
+  for (const name of ['Tasks', 'Pass rate per day', 'Why runs failed', 'How long runs take', 'Model scoreboard', 'When runs happen']) {
     await expect(page.getByRole('figure', { name, exact: true })).toBeVisible();
   }
   await page.getByRole('figure', { name: 'Why runs failed', exact: true }).getByRole('button', { name: 'Show runs failed by Failure reason unavailable', exact: true }).click(); // an unmapped raw code reads as unavailable (daa30c81); the filter still carries SUMMARY_FAILURE
@@ -69,7 +76,9 @@ test('Overview fits a phone and Usage detail stays reachable by keyboard', async
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
   await page.screenshot({ path: info.outputPath('overview-phone.png'), fullPage: true });
-  await page.getByRole('link', { name: 'Explore usage', exact: true }).click();
+  // Part 15 AC96: no "Explore usage" link on Overview; Usage is reached from the navigation.
+  await expect(page.getByRole('link', { name: 'Explore usage', exact: true })).toHaveCount(0);
+  await page.goto('/usage');
   // OMN-21166 Maple grid: the by-day table is under the closed "More usage" disclosure.
   await page.getByText('More usage', { exact: true }).press('Enter');
   await expect(page.getByRole('heading', { name: 'Usage by model and day', exact: true })).toBeVisible();

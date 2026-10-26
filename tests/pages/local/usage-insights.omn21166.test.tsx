@@ -13,7 +13,8 @@ it('AC29 shows measured cost per call from served usage rows and labels unmeasur
   const figure = screen.getByRole('figure', { name: 'Cost per run' });
   expect(figure).toHaveTextContent('Oct 21');
   expect(figure).toHaveTextContent('$4.00');
-  expect(figure).toHaveTextContent('1 unmeasured calls excluded');
+  // Part 17 AC113: the day's full sentence, unmeasured calls included, is the focusable bar's name.
+  expect(figure.querySelector('li[aria-label]')?.getAttribute('aria-label')).toContain('1 unmeasured calls');
 });
 
 // AC29 Cost by route, on the shape the served delegation.model-routing.v1 row has: a tier carries cost_tier_name, count,
@@ -21,9 +22,10 @@ it('AC29 shows measured cost per call from served usage rows and labels unmeasur
 // Failure modes: reading a tier-level cost the row does not have (every route "Not measured"); a partial sum shown as a
 // total when a model is unpriced; a tier with no models given a figure.
 // OMN-21166 AC54: a route reads as words (Local, Cloud); the served tier key stays in the data.
+// Part 17 AC115: each route is a ranked bar whose accessible name starts with the route.
 function routeRow(name: string) {
   const region = screen.getByRole('region', { name: 'Cost by route' });
-  return [...region.querySelectorAll('dl > div')].find(div => div.querySelector('dt')?.textContent === name) as HTMLElement;
+  return [...region.querySelectorAll('[data-ranked-item]')].find(item => item.getAttribute('aria-label')?.startsWith(`${name}:`)) as HTMLElement;
 }
 
 it('AC29 Cost by route sums each tier from its served models and never reads a tier-level cost the row does not carry', () => {

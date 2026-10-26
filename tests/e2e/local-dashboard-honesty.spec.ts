@@ -161,11 +161,12 @@ for (const scenario of [
         totalSavingsUsd: 7, avgLatencyMs: 100, fixtureDelegations: scenario.delegations, fixtureSavingsUsd: scenario.savings }],
     });
     await page.goto('/delegation-evidence');
-    const quality = page.locator('.kpi').filter({ has: page.getByText('Quality pass', { exact: true }) });
+    // Part 15 AC91: Overview cards; the fixture notice is in each card's tooltip, still in the card's text.
+    const quality = page.locator('article[data-kpi-card="Quality pass"]');
     await expect(quality).toContainText('%');
     if (scenario.notice) {
       await expect(quality).toContainText(scenario.notice);
-      await expect(page.locator('.kpi').filter({ has: page.getByText('Tokens', { exact: true }) })).toContainText(scenario.notice);
+      await expect(page.locator('article[data-kpi-card="Tokens"]')).toContainText(scenario.notice);
     } else {
       await expect(page.getByText(/fixture (delegation|savings)/i)).toHaveCount(0);
     }

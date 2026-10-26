@@ -193,7 +193,7 @@ test('stored basis, excluded counts and modelled baseline survive native Overvie
   for (const route of ['runs']) {
     if (route === 'runs') {
       await page.getByTestId('nav-local-runs').click();
-      await expect(page.getByRole('heading', { name: 'Runs', exact: true })).toBeVisible();
+      await expect(page.getByRole('heading', { level: 1, name: 'Runs', exact: true })).toBeVisible();
       await revealRunFields(page);
       await expect(page.locator('table thead th').filter({ hasText: 'Basis' })).toHaveCount(1);
     }
@@ -289,17 +289,17 @@ test('Runs lists every decision with typed unmeasured values at 1440x900 (AC4)',
   // OMN-21166 AC63: the Runs summary strip shows the served Failed count; both runs passed, so its 0 is a measured
   // count (the strip's other figures are non-zero). Every other 0 on the page would be an unmeasured value shown as 0.
   const runZeros = await page.getByText('0', { exact: true }).evaluateAll(nodes => nodes.map(el => ({
-    html: el.outerHTML, exempt: !!el.closest('.kpi-item[data-field-tone="fail"] .kpi-value'),
+    html: el.outerHTML, exempt: !!el.closest('article[data-kpi-card="Failed"] .local-dashboard-metric'),
   })));
   expect(runZeros.filter(node => !node.exempt)).toEqual([]);
-  await expect(page.locator('.kpi-item[data-field-tone="fail"]')).toContainText('Failed0');
+  // Part 15 AC91: the strip is Overview cards; the Failed card's face is its title and its served 0.
+  await expect(page.locator('article[data-kpi-card="Failed"] .local-dashboard-metric')).toHaveText('0');
   await expectNoPanelCutOff(page);
-  // OMN-21166 Maple grid: the outcome legend (Passed/Failed/Not recorded) left Overview; it is Runs' "Quality and
-  // outcomes", under "More analysis".
+  // OMN-21166 part 18 AC121: the "Run outcomes" donut and its legend (Passed/Failed/Not recorded) are removed from Runs'
+  // "More analysis"; the Runs, Pass rate and Failed cards above hold the same figures.
   await page.getByText('More analysis', { exact: true }).press('Enter');
-  const outcomes = page.locator('.overview-outcome-legend button');
-  await expect(outcomes).toHaveCount(3);
-  for (const [index, label] of ['Passed: 2 runs', 'Failed: 0 runs', 'Not recorded: 0 runs'].entries()) await expect(outcomes.nth(index)).toHaveAttribute('aria-label', label);
+  await expect(page.locator('.overview-outcome-legend button')).toHaveCount(0);
+  await expect(page.getByRole('figure', { name: 'Run outcomes', exact: true })).toHaveCount(0);
 
   await page.screenshot({ path: screenshotPath('local-dashboard-runs-1440x900.png'), fullPage: false });
 });
@@ -413,7 +413,8 @@ test('Overview quality and tier-mix panels show served fields only (OMN-20225 AC
   await page.goto('/runs');
   await page.getByText('More analysis', { exact: true }).press('Enter');
   const routing = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Routing breakdown', exact: true }) });
-  await routing.locator('summary').filter({ hasText: 'Full routing breakdown' }).press('Enter');
+  // OMN-21166 part 18 AC120: the table is shown directly; the nested "Full routing breakdown" disclosure is removed.
+  await expect(routing.locator('summary').filter({ hasText: 'Full routing breakdown' })).toHaveCount(0);
   for (const value of ['Cheap cloud', '71.4%', '28.6%']) {
     await expect(routing.getByRole('table').getByText(value, { exact: true }), value).toBeVisible();
   }

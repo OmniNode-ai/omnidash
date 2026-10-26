@@ -56,7 +56,7 @@
 .local-dashboard-page .local-dashboard-panel,
 .local-dashboard-page .local-dashboard-panel:hover,
 .local-dashboard-page :is(.local-overview-summary,.local-overview-focus,.local-overview-lower) > .local-dashboard-panel,
-.local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel {
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel {
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 20px;
@@ -65,7 +65,7 @@
 }
 .local-dashboard-page .local-dashboard-panel::before { display: none; }
 .local-dashboard-page .local-dashboard-panel > h2,
-.local-dashboard-page--overview .local-overview-summary .local-dashboard-panel > h2 {
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > h2 {
   margin-bottom: 16px; gap: 8px; min-height: 22px; line-height: 1.4;
   color: var(--text-primary); font-size: 14px; font-weight: 600;
 }
@@ -75,31 +75,31 @@
 }
 .local-dashboard-page .local-overview-summary,
 .local-dashboard-page .local-overview-focus { gap: 16px; border: 0; align-items: stretch; }
-.local-dashboard-page--overview .local-overview-surface > .local-overview-focus.local-overview-focus {
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-focus.local-overview-focus {
   grid-template-columns: minmax(0,1fr); gap: 24px; align-items: stretch;
 }
 .local-dashboard-page :is(.local-run-charts,.workflow-analysis-grid,.workflow-record-grid,.usage-insight-grid) {
   grid-template-columns: minmax(0,1fr); gap: 24px;
 }
-.local-dashboard-page--overview .local-overview-focus > .local-dashboard-panel { align-self: stretch; }
+:is(.local-dashboard-page, .ev-root) .local-overview-focus > .local-dashboard-panel { align-self: stretch; }
 .local-dashboard-page .local-overview-summary .local-dashboard-metric { font-size: clamp(26px,2.3vw,36px); font-weight: 650; line-height: 1.2; }
 .local-dashboard-page .local-overview-summary .local-dashboard-metric[data-measured="false"] { font-size: 14px; line-height: 1.5; }
 /* Keep the accounting basis visible without pushing the newest run below the first screen. */
 @media (min-width: 1101px) {
-  .local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel {
+  :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel {
     display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, auto);
     align-content: start; align-items: center; gap: 4px 8px; padding: 12px 16px;
   }
-  .local-dashboard-page--overview .local-overview-summary .local-dashboard-panel > h2 {
+  :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > h2 {
     grid-column: 1; grid-row: 1; margin: 0; min-width: 0; overflow-wrap: anywhere;
   }
-  .local-dashboard-page--overview .local-overview-summary .local-dashboard-panel > .local-dashboard-metric {
+  :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > .local-dashboard-metric {
     grid-column: 2; grid-row: 1; margin: 0; min-width: 0; overflow-wrap: anywhere; text-align: right;
   }
-  .local-dashboard-page--overview .local-overview-summary .local-dashboard-panel > :not(h2):not(.local-dashboard-metric) {
+  :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > :not(h2):not(.local-dashboard-metric) {
     grid-column: 1 / -1; min-width: 0;
   }
-  .local-dashboard-page--overview .local-overview-summary .local-dashboard-panel > .local-dashboard-metric[data-measured="false"] {
+  :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > .local-dashboard-metric[data-measured="false"] {
     grid-column: 1 / -1; grid-row: auto; text-align: left;
   }
 }
@@ -170,6 +170,6 @@ main.ev-root[data-destination="delegation-evidence"] .ev-selected-run-layout > :
   .local-dashboard-page .local-dashboard-panel,
   .local-dashboard-page .local-dashboard-panel:hover,
   .local-dashboard-page :is(.local-overview-summary,.local-overview-focus,.local-overview-lower) > .local-dashboard-panel,
-.local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel { padding: 16px; }
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel { padding: 16px; }
   .local-dashboard-page .local-token-directions { gap: 12px; }
 }

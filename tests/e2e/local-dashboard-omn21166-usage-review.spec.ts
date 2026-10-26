@@ -11,8 +11,8 @@ const usage = Array.from({ length: 28 }, (_, index) => ({
   measured_cost_usd: index === 1 ? null : '0.00000000', unmeasured_call_count: index === 1 ? 1 : 0,
   call_count: 1, call_share: '0.5', cost_tier_name: index % 2 ? 'cloud' : 'local',
 }));
-// OMN-21166 part 13: the usage-by-model-day records, per-day token detail and model legend sit under the page-level
-// "More usage" section.
+// OMN-21166 part 13: the usage-by-model-day records and the per-model token bars sit under the page-level "More usage"
+// section (part 17: the per-day token detail is removed).
 async function openMoreUsage(page: Page) {
   await page.getByText('More usage', { exact: true }).press('Enter');
   await expect(page.locator('details.local-more').filter({ hasText: 'More usage' }).first()).toHaveAttribute('open', '');
@@ -41,7 +41,7 @@ test('Usage records can be paged and filtered without rewriting served figures',
   await page.screenshot({ path: info.outputPath('usage-records-desktop.png'), fullPage: true, animations: 'disabled' });
 });
 
-test('phone Usage records retain every labelled value and model controls identify their bar colors', async ({ page }, info) => {
+test('phone Usage records retain every labelled value and the model legend identifies its bar colors', async ({ page }, info) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/usage');
   const collapse = page.getByRole('button', { name: 'Collapse sidebar', exact: true });
@@ -52,15 +52,15 @@ test('phone Usage records retain every labelled value and model controls identif
   await expect(row.locator('td[data-label]')).toHaveCount(9);
   expect(await row.locator('td').first().evaluate(element => element.getBoundingClientRect().width)).toBeGreaterThan(200);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
-  const legend = page.getByRole('button', { name: 'Highlight model-alpha', exact: true });
-  const series = await legend.getAttribute('data-series');
-  expect(series).not.toBeNull();
-  await expect(legend.locator('.usage-model-swatch')).toBeVisible();
-  const swatch = await legend.locator('.usage-model-swatch').evaluate(element => getComputedStyle(element).backgroundColor);
-  const bar = page.locator(`.usage-tokens-fill[data-series="${series}"]`).first();
-  expect(await bar.evaluate(element => getComputedStyle(element).backgroundColor)).toBe(swatch);
-  await legend.press('Enter');
-  await expect(legend).toHaveAttribute('aria-pressed', 'true');
+  // OMN-21166 part 17 AC116: the "Tokens per day by model, in detail" panel and its "Highlight model" buttons are removed.
+  // The model's colour is identified by the Tokens per day legend swatch, the stacked bar segment, and the model's name
+  // under its pair in "Tokens by model" (a bar's colour is its CSS color, not background-color: every bar is hatched).
+  await expect(page.getByRole('button', { name: 'Highlight model-alpha', exact: true })).toHaveCount(0);
+  const swatch = await page.locator('.utc-legend li').filter({ hasText: 'model-alpha' }).locator('i').evaluate(element => getComputedStyle(element).backgroundColor);
+  const segment = page.locator('.utc-stack i[data-token-model="model-alpha"]').first();
+  expect(await segment.evaluate(element => getComputedStyle(element).color)).toBe(swatch);
+  const name = page.getByRole('figure', { name: 'Tokens in vs out by model', exact: true }).locator('li.gdb-day[aria-label^="model-alpha:"] .gdb-day-label');
+  expect(await name.evaluate(element => getComputedStyle(element).color)).toBe(swatch);
   await page.screenshot({ path: info.outputPath('usage-records-phone.png'), fullPage: true, animations: 'disabled' });
 });
 

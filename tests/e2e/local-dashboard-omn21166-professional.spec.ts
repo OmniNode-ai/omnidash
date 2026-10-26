@@ -17,8 +17,8 @@ test('page navigation starts at the top while query edits preserve scroll and in
   await page.getByRole('link', { name: 'Runs', exact: true }).click();
   await expect(page.getByRole('searchbox', { name: 'Search runs' })).toBeVisible();
   expect(await page.locator('main').evaluate(el => el.scrollTop)).toBe(0);
-  // OMN-21166 part 13: Runs now fits one screen; open its two closed sections so the page scrolls and the scroll check is real.
-  await page.getByText('More run charts', { exact: true }).press('Enter');
+  // OMN-21166 part 13: Runs now fits one screen; open its closed section so the page scrolls and the scroll check is real.
+  // Part 18 AC118: the run charts are inside the one "More analysis" now.
   await page.getByText('More analysis', { exact: true }).press('Enter');
   expect(await page.locator('main').evaluate(el => el.scrollHeight - el.clientHeight), 'positive control: Runs scrolls').toBeGreaterThan(200);
   const input = page.getByRole('searchbox', { name: 'Search runs' });

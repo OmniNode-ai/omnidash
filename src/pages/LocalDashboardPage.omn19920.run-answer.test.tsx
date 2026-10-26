@@ -383,7 +383,9 @@ describe('OMN-19920: one run whole on the Workflow page', () => {
       readAt: '2026-10-11T15:00:00Z', ...extra,
     });
     const states: Array<[string, Parameters<typeof RunAnswer>[0]['read'], string[]]> = [
-      ['answered', read({ rows: [answerRow(NEWEST, 'Hello')], rowCount: 1 }), ['Hello', 'Data source: real']],
+      // OMN-21166 part 15 AC96: a real answer carries no "Data source: real" line; any other source is still named.
+      ['answered', read({ rows: [answerRow(NEWEST, 'Hello')], rowCount: 1 }), ['Hello']],
+      ['answered from fixtures', read({ rows: [answerRow(NEWEST, 'Hello', { data_source: 'fixture' })], rowCount: 1 }), ['Hello', 'Data source: fixture']],
       ['not served', read({ failure: { kind: 'not-served', message: `Not served: ${ANSWERS} (this store has no table for it)` } }), ['Not available yet']],
       ['no tenant', read({ failure: { kind: 'tenant-not-configured', message: `Tenant not configured. No tenant_id for ${ANSWERS}` } }), ['No tenant is configured']],
       ['read failed', read({ failure: { kind: 'error', message: `${ANSWERS}: HTTP 500 Internal Server Error` } }), ['The answer could not be read', 'HTTP 500']],
@@ -396,6 +398,7 @@ describe('OMN-19920: one run whole on the Workflow page', () => {
       const text = screen.getByRole('region', { name: 'Answer' }).textContent ?? '';
       expect(offences(text), `${name}: ${text}`).toEqual([]);
       for (const words of says) expect(text, name).toContain(words);
+      if (name === 'answered') expect(text, name).not.toContain('Data source');
       unmount();
     }
   });

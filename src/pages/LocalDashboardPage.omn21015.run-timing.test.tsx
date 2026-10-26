@@ -149,10 +149,11 @@ describe('OMN-21015: where a run\'s time went', () => {
 
   it('T8: a timing keeps its colour when another is not measured', () => {
     render(<RunSummary decision={run()} />);
-    const all = harness.handed[0]!.series[0].data.map((entry: Option) => entry.itemStyle.color);
+    // Live review 2026-10-26: a bar is a hatch edged in its colour, so the colour is the edge (and the hatch).
+    const all = harness.handed[0]!.series[0].data.map((entry: Option) => entry.itemStyle.borderColor);
     expect(new Set(all).size).toBe(3);
     render(<RunSummary decision={run({ queue_wait_ms: null })} />);
-    const fewer = harness.handed[1]!.series[0].data.map((entry: Option) => entry.itemStyle.color);
+    const fewer = harness.handed[1]!.series[0].data.map((entry: Option) => entry.itemStyle.borderColor);
     expect(fewer).toEqual([all[1], all[2]]);
   });
 

@@ -99,7 +99,9 @@ describe('OMN-21015 U2: savings per day on Usage, as bars', () => {
     const savingsToken = /--field-savings:\s*(#[0-9a-f]{6});/i.exec(readFileSync('src/styles/field-identity.css', 'utf8'))?.[1]?.toLowerCase();
     expect(savingsToken).toBe('#0f766e');
     await open([row('day', '2026-10-12', '0.300000')]);
-    expect(harness.handed.at(-1)!.series[0].itemStyle.color).toBe(savingsToken);
+    // A hatched bar's colour is its edge and its hatch (live review 2026-10-26).
+    expect(harness.handed.at(-1)!.series[0].itemStyle.borderColor).toBe(savingsToken);
+    expect(harness.handed.at(-1)!.series[0].itemStyle.decal.color).toBe(savingsToken);
   });
 
 });

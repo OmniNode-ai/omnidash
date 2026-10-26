@@ -8,8 +8,8 @@ test.beforeEach(async ({ page }) => { await serveCharts(page); await page.emulat
 
 test('reference theme separates warm cards and inset plots without losing readable text', async ({ page }, info) => {
   await page.goto('/runs');
-  // OMN-21166 part 13: the run charts sit under the closed "More run charts" disclosure; open it first.
-  await page.getByText('More run charts', { exact:true }).press('Enter');
+  // OMN-21166 part 18 AC118: the run charts sit first inside Runs' one closed "More analysis"; open it first.
+  await page.getByText('More analysis', { exact:true }).press('Enter');
   const chart=page.getByRole('figure', { name:'Quality score per run', exact:true });
   await expect(chart.locator('svg').first()).toBeVisible();
   for (const theme of ['light','dark']) {

@@ -9,17 +9,18 @@ import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
  */
 
 import { type ReactNode } from 'react';
-import { Activity, Award, Coins, PiggyBank } from 'lucide-react';
 import { formatUsd } from '@/components/dashboard/usage/UsageByModelDayWidget';
 import { isUnavailableField } from '@/components/dashboard/field-identity';
 import { EvPageShell } from '@/components/dashboard/event-dash/EvPageShell';
+import { KpiStrip } from '@/components/dashboard/KpiStrip';
+import { RankedBars } from '@/components/dashboard/RankedBars';
 import {
   Badge,
   CodeBlock,
   DataTable,
   EvEmpty,
   FreshnessChip,
-  KPI,
+
   KV,
   Panel,
   StateBadge,
@@ -272,19 +273,15 @@ function ModelRouting() {
   // Aggregate by model_name across task types.
   const byModel = new Map<string, number>();
   for (const r of agg.rows) byModel.set(r.model_name, (byModel.get(r.model_name) ?? 0) + r.count);
-  const entries = [...byModel.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
-  const max = Math.max(...entries.map(([, n]) => n));
+  // Live review 2026-10-26 ("all bar graph follow this style"): the hatched ranked bars of the local pages, every
+  // served model (none cut to a top few), its count and share on hover.
   return (
     <Panel title="MODEL ROUTING" sub={`${formatDashboardCount(agg.total_delegations)} delegations by selected model (aggregate)`}>
-      {entries.map(([model, count]) => (
-        <div className="barrow" key={model}>
-          <div className="lab local-model-identity" title={model} style={modelIdentityStyle(model)}>{model}</div>
-          <div className="val">{formatDashboardCount(count)} · {sharePercent(count / agg.total_delegations)}</div>
-          <div className="track2 bar-track">
-            <div className="bar-fill" style={{ width: `${Math.max(3, (count / max) * 100)}%`, background: modelColor(model) }} />
-          </div>
-        </div>
-      ))}
+      <RankedBars label="Delegations by model" unit="Delegations · measured" order="desc" layout="vertical"
+        items={[...byModel.entries()].map(([model, count]) => ({
+          key: model, name: model, value: count, basis: 'measured' as const, color: modelColor(model),
+          display: `${formatDashboardCount(count)} · ${sharePercent(count / agg.total_delegations)}`,
+        }))} />
     </Panel>
   );
 }
@@ -420,15 +417,11 @@ function SavingsPanel({ money, unavailable }: { money: HeadlineMoney | null; una
   const s = data.rows[0];
   const finite = (value: unknown) => !isUnavailableField(value) && Number.isFinite(Number(value));
   const cloud = money?.cloud;
-  const width = (value: unknown) => finite(value) && finite(cloud) && Number(cloud) > 0
-    ? `${Math.max(0, Math.min(100, (Number(value) / Number(cloud)) * 100))}%` : null;
-  const bar = (label: string, value: unknown, concept: 'baseline' | 'cost' | 'savings', tone: string, labelClass = '') => (
-    <div className="barrow" data-field-tone={concept} data-semantic-concept={`field:${concept}`} data-semantic-label={label}>
-      <div className={`lab ${labelClass}`.trim()} style={{ color: 'var(--field-ink)' }}>{label}</div>
-      <div className={`val ${labelClass}`.trim()} style={{ color: finite(value) ? 'var(--field-ink)' : 'var(--field-unavailable)' }}>{finite(value) ? formatUsd(value) : 'Not measured'}</div>
-      <div className="track2 bar-track">{width(value) && <div className={`bar-fill ${tone}`} style={{ width: width(value)!, background: 'var(--field-ink)' }} />}</div>
-    </div>
-  );
+  // Live review 2026-10-26: the three money figures are hatched ranked bars, each in its concept's colour; which are
+  // modelled and which measured is said in the unit line and in each bar's name.
+  const moneyBar = (key: string, name: string, value: unknown, basis: 'measured' | 'estimated', color: string) => ({
+    key, name, basis, color, value: finite(value) ? Number(value) : null, display: finite(value) ? formatUsd(value) : 'Not measured',
+  });
   const baselineModel = !isUnavailableField(money?.baselineModel) ? money?.baselineModel : s?.baseline_model;
   const pricing = pricingLabel(!isUnavailableField(money?.pricing) ? money?.pricing : s?.pricing_manifest_version);
   return (
@@ -443,9 +436,12 @@ function SavingsPanel({ money, unavailable }: { money: HeadlineMoney | null; una
       </span>
       {/* The money source names the runs it leaves out where it serves them; the savings population cannot fill it. */}
       <p className="note">{money?.basis ?? 'Unpriced runs not recorded'}</p>
-      {bar('Cloud baseline cost', cloud, 'baseline', 'm-blue')}
-      {bar('Local / delegated cost', money?.local, 'cost', 'm-green')}
-      {bar('Saved', money?.saved, 'savings', 'm-green', 'c-green')}
+      <RankedBars label="Cost against the cloud baseline" unit="USD · baseline and saving modelled, local cost measured" order="desc" layout="vertical"
+        items={[
+          moneyBar('baseline', 'Cloud baseline cost', cloud, 'estimated', 'var(--field-baseline)'),
+          moneyBar('cost', 'Local / delegated cost', money?.local, 'measured', 'var(--field-cost)'),
+          moneyBar('savings', 'Saved', money?.saved, 'estimated', 'var(--field-savings)'),
+        ]} />
     </Panel>
   );
 }
@@ -467,7 +463,6 @@ function TokenUsage() {
     );
   }
   const models = t.by_model.filter((m) => m.total_tokens > 0 || m.token_provenance === 'measured');
-  const max = Math.max(1, ...models.map((m) => m.total_tokens));
   return (
     <Panel title="TOKEN USAGE" sub={`${formatDashboardCount(t.total_tokens)} total · ${formatUsd(t.total_estimated_cost_usd)}`}>
       <div className="ev-token-summary">
@@ -475,13 +470,14 @@ function TokenUsage() {
         <div data-field-tone="tokens-out"><div className="note">Completion</div><div className="mono ev-token-num">{formatFullCount(t.total_completion_tokens)}</div></div>
         <div data-field-tone="cost"><div className="note">Est. cost</div><div className="mono ev-token-num c-amber">{formatUsd(t.total_estimated_cost_usd)}</div></div>
       </div>
-      {models.map(m => (
-        <div className="barrow" key={m.model_id}>
-          <div className="lab local-model-identity" title={m.model_name} style={modelIdentityStyle(m.model_id)}>{m.model_name.length > 26 ? `${m.model_name.slice(0, 24)}…` : m.model_name}</div>
-          <div className="val">{formatDashboardCount(m.total_tokens)} {m.token_provenance === 'measured' ? <span className="c-green">●</span> : <span className="dim3">○</span>}</div>
-          <div className="track2 bar-track"><div className="bar-fill" data-model-id={m.model_id} style={{ width: `${Math.max(2, (m.total_tokens / max) * 100)}%`, background: modelColor(m.model_id) }} /></div>
-        </div>
-      ))}
+      {/* Part 16 AC97 (review fix): the hatched ranked bars of every other chart, whole model names, and whether each
+          count is measured or estimated said in the bar's name. */}
+      <RankedBars label="Tokens per model" unit="Tokens · each bar says whether its count is measured or estimated" order="desc" layout="vertical"
+        items={models.map(m => ({
+          key: m.model_id, name: m.model_name, value: m.total_tokens, color: modelColor(m.model_id),
+          basis: m.token_provenance === 'measured' ? 'measured' as const : 'estimated' as const,
+          display: `${formatFullCount(m.total_tokens)} tokens`,
+        }))} />
     </Panel>
   );
 }
@@ -686,20 +682,24 @@ export function DelegationEvidencePage() {
       headRight={headRight}
     >
       {/* OMN-21166 AC63: the four headline figures read as one segmented strip, as on the local pages. */}
-      <div className="grid cols-4 ev-kpi-strip">
-        <KPI label="Delegations" icon={<Activity size={15} aria-hidden="true" />} tone="blue" value={headline.runs} sub={headline.runsSub ?? undefined} />
-        <KPI label="Quality pass" icon={<Award size={15} aria-hidden="true" />} tone="green" value={summary ? passRate(summary.qualityGatePassRate) : '—'} sub={withFixtureNotice('deterministic gate', fixtureNotice)} />
-        <KPI label="Savings (modelled)" icon={<PiggyBank size={15} aria-hidden="true" />} tone="purple" value={headline.savings} accent sub="vs cloud baseline" />
-        <KPI label="Tokens" icon={<Coins size={15} aria-hidden="true" />} tone="amber" value={headline.tokens} sub={summary ? withFixtureNotice(`avg ${formatDuration(summary.avgLatencyMs)} latency`, fixtureNotice) : undefined} />
-      </div>
+      {/* OMN-21166 part 15 AC91: the four headline figures are Overview's cards; their captions are in the tooltips. */}
+      <KpiStrip label="Delegation summary" items={[
+        { label: 'Delegations', value: headline.runs, accent: 'var(--field-calls)', concept: 'calls', lines: [headline.runsSub] },
+        { label: 'Quality pass', value: summary ? passRate(summary.qualityGatePassRate) : 'Not measured', unavailable: !summary,
+          accent: 'var(--field-pass)', concept: 'pass', lines: [withFixtureNotice('deterministic gate', fixtureNotice)] },
+        { label: 'Savings (modelled)', value: headline.savings, accent: 'var(--field-savings)', concept: 'savings', lines: ['vs cloud baseline'] },
+        { label: 'Tokens', value: headline.tokens, accent: 'var(--field-tokens)', concept: 'tokens',
+          lines: [summary ? withFixtureNotice(`avg ${formatDuration(summary.avgLatencyMs)} latency`, fixtureNotice) : null] },
+      ]} />
 
-      {/* OMN-21166 Maple grid, as on the local pages: the selected run (8 of 12) beside its quality gate (4), then routing
-          beside savings (6 and 6); token usage is one line when it is not served. */}
+      {/* OMN-21166 Maple grid, as on the local pages: the selected run (8 of 12) beside its quality gate (4); then each bar
+          chart on its own full row, as on Overview (live review 2026-10-26), so no model name is cut; token usage is one
+          line when it is not served. */}
       <div className="maple-grid ev-maple-grid">
         <div className="maple-cell maple-cell--wide"><SelectedRun correlationId={latestCid} decision={decisions[0]} /></div>
         <div className="maple-cell"><QualityGate /></div>
-        <div className="maple-cell maple-cell--half"><ModelRouting /></div>
-        <div className="maple-cell maple-cell--half"><SavingsPanel money={headline.money} unavailable={headline.unavailable} /></div>
+        <div className="maple-cell maple-cell--full"><ModelRouting /></div>
+        <div className="maple-cell maple-cell--full"><SavingsPanel money={headline.money} unavailable={headline.unavailable} /></div>
         <div className="maple-cell maple-cell--full"><TokenUsage /></div>
       </div>
 

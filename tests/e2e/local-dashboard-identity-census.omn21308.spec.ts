@@ -259,13 +259,19 @@ async function collect(page: Page): Promise<Reading[]> {
     // Discover all painted SVG geometry plus the shipped CSS mark classes;
     // never infer a model/series merely from its actual colour (that would
     // conceal the very legend mismatch AC3 is meant to detect).
-    const graphicSelector = 'svg:not(.lucide) path, svg:not(.lucide) circle, svg:not(.lucide) rect, svg:not(.lucide) line, svg:not(.lucide) polygon, svg:not(.lucide) polyline, .local-share-swatch, .local-tier-bar-track > span, .bar-fill, .usage-model-swatch, .usage-model-legend i, .usage-tokens-fill, .usage-token-pair > i, .ins-seg, .ins-fill, .ins-dot, .ins-heat-cell, .ins-money-paid, .ins-money-saved, .ins-money-baseline, .overview-volume-track > span, .usage-donut';
+    const graphicSelector = 'svg:not(.lucide) path, svg:not(.lucide) circle, svg:not(.lucide) rect, svg:not(.lucide) line, svg:not(.lucide) polygon, svg:not(.lucide) polyline, .local-share-swatch, .local-tier-bar-track > span, .bar-fill, .usage-model-swatch, .usage-model-legend i, .usage-tokens-fill, .usage-token-pair > i, .ins-seg, .ins-fill, .ins-dot, .ins-heat-cell, .ins-money-paid, .ins-money-saved, .ins-money-baseline, .overview-volume-track > span, .usage-donut'
+      // Live review 2026-10-26: Evidence's routing and money figures are hatched ranked bars; only these two panels'
+      // bars join the census (each other chart's bars are one chart concept in many model colours).
+      + ', [data-panel-title="MODEL ROUTING"] .rb-bar, [data-panel-title="SAVINGS vs CLOUD BASELINE"] .rb-bar, [data-panel-title="TOKEN USAGE"] .rb-bar';
     for (const el of body.querySelectorAll(graphicSelector)) {
       if (!visible(el) || el.closest('svg.lucide')) continue;
       const css = getComputedStyle(el);
       const paints = el instanceof SVGElement
         ? [['fill', css.fill], ['stroke', css.stroke]]
-        : [['background', css.backgroundImage !== 'none' ? css.backgroundImage : css.backgroundColor]];
+        // A hatched mark is a gradient drawn in currentColor (live review 2026-10-26): its paint is the element's colour.
+        : [['background', css.backgroundImage === 'none' ? css.backgroundColor
+          : /gradient/.test(css.backgroundImage) && /currentcolor/i.test(css.backgroundImage) ? css.color
+          : /gradient/.test(css.backgroundImage) && css.backgroundImage.includes(css.color) ? css.color : css.backgroundImage]];
       const owner = el.closest('[data-semantic-concept]');
       const field = el.closest('[data-field-tone]')?.getAttribute('data-field-tone');
       const tier = el.closest('[data-tier]')?.getAttribute('data-tier');
@@ -282,6 +288,7 @@ async function collect(page: Page): Promise<Reading[]> {
         || el.closest('.ins-ring')?.querySelector('.ins-ring-name')?.textContent
         || el.closest('.barrow')?.querySelector('.lab.local-model-identity')?.getAttribute('title')
         || el.closest('.barrow')?.querySelector('.lab.local-model-identity')?.textContent
+        || (el.closest('[data-panel-title="MODEL ROUTING"], [data-panel-title="TOKEN USAGE"]') ? el.closest('[data-ranked-item]')?.getAttribute('data-ranked-item') : '')
         || el.closest('.overview-volume-bars > button')?.querySelector('[data-field-tone="model"]')?.textContent
         || (el.matches('.usage-model-swatch') ? el.closest('button')?.textContent : '')
         || tokenLegend?.textContent?.replace(/: [\d,\s]+$/, '')
@@ -302,7 +309,7 @@ async function collect(page: Page): Promise<Reading[]> {
       // Exact retained Savings-panel labels preserve the legacy falsifier;
       // arbitrary .barrow labels never make a money figure a model identity.
       const financeLabel = el.closest('[data-panel-title="SAVINGS vs CLOUD BASELINE"]')
-        ? clean(el.closest('.barrow')?.querySelector('.lab')?.textContent) : '';
+        ? clean(el.closest('.barrow')?.querySelector('.lab')?.textContent || el.closest('[data-ranked-item]')?.querySelector('.rb-name')?.textContent) : '';
       const financeTones: Record<string, string> = { 'Cloud baseline cost': 'baseline', 'Local / delegated cost': 'cost', Saved: 'savings' };
       const financeTone = financeTones[financeLabel] ?? '';
       const boundField = financeTone || (qualityTone && qualityLabel ? qualityTone : '')
@@ -577,17 +584,24 @@ test('AC4 census detects duplicate pairs, forged metadata, altered geometry pain
 // Follow-up failure modes: non-icon field graphics can drift across pages;
 // token direction bars can retain a legacy series colour in either theme.
 test('AC4 collector rejects conflicting non-icon field graphic colours', async ({ page }, info) => {
+  // OMN-21166 part 17 AC114: "Tokens in vs out by model" is hatched grouped bars (GroupedBars): a list item per model, a
+  // column per direction, a bar (.gdb-bar.ins-seg) in the direction's colour. The control plants that markup; both bars
+  // carry the tokens-in tone because the control only needs one mismatching paint.
   await page.setContent(`<style>:root { --field-tokens-in: #075985; }
-    .usage-token-pair i { display:block;width:100px;height:8px;background:#075985; }</style>
-    <main><figure aria-label="Tokens in vs out by model"><span class="usage-token-pair">
-      <i data-field-tone="tokens-in"></i><i data-field-tone="tokens-in"></i>
-    </span></figure></main>`);
+    ul.gdb-plot { list-style:none;margin:0;padding:0; } .gdb-group { display:flex;gap:3px; } .gdb-col { display:block; }
+    .gdb-bar.ins-seg { display:block;width:100px;height:8px;color:#075985;background:#075985; }</style>
+    <main><figure aria-label="Tokens in vs out by model"><ul class="ins-bars gdb-plot gdb-plot--list" aria-label="Token counts by model">
+      <li class="ins-bar gdb-day" tabindex="0" aria-label="model-a: 100 tokens in, 20 tokens out"><span class="gdb-group">
+        <span class="gdb-col" data-series="in" data-field-tone="tokens-in"><span class="gdb-bar ins-seg"></span></span>
+        <span class="gdb-col" data-series="out" data-field-tone="tokens-in"><span class="gdb-bar ins-seg"></span></span>
+      </span></li>
+    </ul></figure></main>`);
   const state = (readings: Reading[]): State[] => [{ destination: 'local-usage', theme: 'light', developer: false,
     capturedAt: new Date().toISOString(), source: 'planted graphic collector control', readings }];
   const valid = await collect(page);
   expect(valid.filter(row => row.medium === 'graphic')).toHaveLength(2);
   expect(defects(state(valid))).toEqual([]);
-  await page.locator('i').last().evaluate(el => (el as HTMLElement).style.backgroundColor = '#7e22ce');
+  await page.locator('.gdb-bar').last().evaluate(el => (el as HTMLElement).style.backgroundColor = '#7e22ce');
   const wrong = await collect(page);
   const errors = defects(state(wrong));
   writeFileSync(info.outputPath('graphic-collector-control.json'), JSON.stringify({ valid, wrong, errors }, null, 2));
@@ -613,7 +627,8 @@ test('AC4 Usage token-direction graphics match canonical fields in both themes',
   // OMN-21166 part 13: "Tokens in vs out by model" is under the closed "More usage" section.
   await page.getByText('More usage', { exact: true }).press('Enter');
   const figure = page.getByRole('figure', { name: 'Tokens in vs out by model', exact: true });
-  await expect(figure.getByRole('button')).toHaveAttribute('aria-label', /model-a: 100 tokens in, 20 tokens out/);
+  // Part 17 AC114: the model's pair is one focusable list item (hatched grouped bars) whose name carries both counts.
+  await expect(figure.getByRole('listitem', { name: /model-a: 100 tokens in, 20 tokens out/ })).toHaveCount(1);
   const states: State[] = [];
   for (const theme of ['light', 'dark']) {
     if (!(await page.locator('body').getAttribute('class'))?.split(' ').includes(`theme-${theme}`))
@@ -646,7 +661,8 @@ test('AC4 eleven-destination light/dark icon census includes expanded and Develo
     await expect(page.locator('.main')).not.toContainText(/Dashboard is unavailable|Loading/);
     // OMN-21166 AC86 (Lakshman 2026-10-25): Recent runs and its field view are deleted from Overview; only Runs has them.
     if (destination === 'local-runs') await revealRunFields(page);
-    if (destination === 'local-workflow') await expect(page.locator('[data-step-kind]')).toHaveCount(6);
+    // OMN-21166 part 18 AC125: the step boxes ([data-step-kind]) are removed; the six steps are the timeline's.
+    if (destination === 'local-workflow') await expect(page.locator('ol.local-dashboard-steps > li')).toHaveCount(6);
     if (destination === 'delegation-evidence') {
       const disclosure = page.getByRole('button', { name: 'Toggle details for chart-run-a', exact: true });
       if (await disclosure.getAttribute('aria-expanded') !== 'true') await disclosure.click();

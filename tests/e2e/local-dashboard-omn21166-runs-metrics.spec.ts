@@ -15,10 +15,12 @@ const rows = {
 };
 test.use({ viewport: { width: 1440, height: 900 }, trace: 'on' });
 
-// OMN-21166 part 13: Runs' four run charts and "This week" sit under the closed "More run charts" section.
+// OMN-21166 part 18 AC118: Runs' four run charts and "This week" sit first inside the page's one closed "More analysis"
+// (the "More run charts" disclosure is merged into it).
 async function openRunCharts(page: Page) {
-  await page.getByText('More run charts', { exact: true }).press('Enter');
-  await expect(page.locator('details.local-more').filter({ hasText: 'More run charts' })).toHaveAttribute('open', '');
+  await page.getByText('More analysis', { exact: true }).press('Enter');
+  await expect(page.locator('details.local-more').filter({ has: page.locator('article.local-run-charts-panel') })).toHaveAttribute('open', '');
+  await expect(page.getByText('More run charts', { exact: true })).toHaveCount(0);
 }
 
 test('fractional median duration retains milliseconds instead of the integer count format', async ({ page }, info) => {
@@ -30,7 +32,7 @@ test('fractional median duration retains milliseconds instead of the integer cou
   // OMN-21166 part 13: Runs' analysis sits under the page-level "More analysis".
   await page.getByText('More analysis', { exact: true }).press('Enter');
   await expect(page.getByText('Median 512 ms', { exact: true })).toBeVisible();
-  await expect(page.locator('.kpi-item').filter({ hasText: 'Median duration' }).locator('.kpi-value')).toHaveAttribute('title', '511.5 ms');
+  await expect(page.locator('article[data-kpi-card="Median duration"] .local-dashboard-metric')).toHaveAttribute('title', '511.5 ms');
   await expect(page.getByText('Not measured ms', { exact: true })).toHaveCount(0);
   await page.screenshot({ path: info.outputPath('fractional-duration.png') });
 });
@@ -61,9 +63,14 @@ test('cost and score show precise served values, zero and unknown, and open exac
   await score.getByLabel('Inspect run').selectOption(runIds[0]);
   // Read and activate the actual painted score bar, not chart-library state.
   await score.scrollIntoViewIfNeeded();
-  const color = await score.locator('.local-chart-symbol').evaluate(el => getComputedStyle(el).color);
+  // Part 18 AC124: no icon badge carries the chart's colour any more, so the chart's own accent is read through a probe.
+  const color = await score.evaluate(el => {
+    const probe = document.createElement('span'); probe.style.color = 'var(--panel-accent)'; el.append(probe);
+    try { return getComputedStyle(probe).color; } finally { probe.remove(); }
+  });
   const painted = await score.locator('.local-chart-canvas svg path').evaluateAll((els, color) => els.filter(el => {
-    const b=el.getBoundingClientRect(); return getComputedStyle(el).fill === color && b.width > 3 && b.height > 3;
+    // The bar's colour is its outline's stroke; the hatch is a separate pattern path (live review 2026-10-26).
+    const b=el.getBoundingClientRect(); return getComputedStyle(el).stroke === color && !getComputedStyle(el).fill.startsWith('url(') && b.width > 3 && b.height > 3;
   }).map(el => { const b=el.getBoundingClientRect(); return { x:b.x+b.width/2, y:b.y+b.height/2 }; }), color);
   expect(painted).toHaveLength(1);
   await page.mouse.move(painted[0].x, painted[0].y);

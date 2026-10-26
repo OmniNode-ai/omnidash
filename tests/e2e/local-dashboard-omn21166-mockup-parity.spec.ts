@@ -99,8 +99,9 @@ test('AC26 Overview applies the selected window to cards and charts and never in
 test('AC27 Runs filters by UTC day and task, then shows the selected run without filling missing fields', async ({ page }, info) => {
   await serveCharts(page, fixtureRows());
   await page.goto('/runs');
-  // OMN-21166 part 13: the "This week" chart is under the closed "More run charts", below the run list.
-  await page.locator('summary').filter({ hasText: /^More run charts$/ }).click();
+  // OMN-21166 part 13: the "This week" chart is under the closed "More analysis" (part 18 AC118: merged with "More run
+  // charts"), below the run list.
+  await page.locator('summary').filter({ hasText: /^More analysis$/ }).click();
   const week = page.getByRole('group', { name: 'This week' });
   const listTop = await page.getByRole('heading', { name: 'Run list', exact: true }).evaluate(element => element.getBoundingClientRect().top);
   const weekHeading = page.getByRole('heading', { name: 'This week', exact: true });
@@ -114,7 +115,7 @@ test('AC27 Runs filters by UTC day and task, then shows the selected run without
   // OMN-21166 part 13: the "Days" chip row is gone; a UTC day in the address still filters the list and the week status
   // names it, and the task chips are the Task select (its option counts follow the other filters).
   await page.goto(`/runs?day=${utcDay(0)}`);
-  await page.locator('summary').filter({ hasText: /^More run charts$/ }).click();
+  await page.locator('summary').filter({ hasText: /^More analysis$/ }).click();
   await expect(week.getByRole('status')).toContainText('2 runs · 1 passed · 1 failed');
   await expect(page).toHaveURL(new RegExp(`day=${utcDay(0)}`));
   await expect(page.getByRole('row', { name: /run-today-unmeasured/ })).toBeVisible();
@@ -207,20 +208,31 @@ test('AC29 Usage exposes measured model spend, per-call cost, tokens, and honest
   await expect(bars.getByRole('listitem', { name: /^model-b: Not measured, not measured$/ })).toBeVisible();
   await expect(spend).toContainText('model-a: 1 unmeasured');
   await expect(spend).toContainText('model-b: 1 unmeasured');
-  // OMN-21166 part 13: cost per run, tokens by model, cost by route and the per-day table are under "More usage".
+  // OMN-21166 part 13: cost per run, tokens by model, cost by route and the per-day table are under "More usage"; part 17
+  // AC112: each chart is its own panel (Cost per run, Tokens by model, Cost by route), the first two hatched grouped bars
+  // whose values show on hover or focus and are named in the group's accessible name.
   await page.locator('summary').filter({ hasText: /^More usage$/ }).click();
   const perCall = page.getByRole('figure', { name: 'Cost per run', exact: true });
   await expect(perCall).toContainText('$0.50');
-  const allUnmeasuredDay = perCall.getByRole('button', { name: new RegExp(`${utcDay(-2)}.*measured cost per call Not measured.*2 unmeasured calls`) });
+  const allUnmeasuredDay = perCall.getByRole('listitem', { name: new RegExp(`${utcDay(-2)}.*measured cost per call Not measured.*2 unmeasured calls`) });
   await allUnmeasuredDay.focus();
-  await expect(perCall.getByRole('status')).toContainText('measured cost per call Not measured');
+  await expect(allUnmeasuredDay).toHaveAttribute('aria-label', /measured cost per call Not measured/);
+  // Part 17 AC113: a day with no measured call draws no bar.
+  await expect(allUnmeasuredDay.locator('.gdb-bar')).toHaveCount(0);
   const tokens = page.getByRole('figure', { name: 'Tokens in vs out by model', exact: true });
-  await expect(tokens.getByRole('button', { name: /model-a/ })).toBeVisible();
-  await expect(tokens).toContainText('80 tokens in');
-  await expect(tokens).toContainText('20 tokens out');
+  await expect(tokens.getByRole('listitem', { name: /model-a/ })).toBeVisible();
+  await expect(tokens.getByRole('listitem', { name: 'model-a: 80 tokens in, 20 tokens out', exact: true })).toBeVisible();
+  // Part 17 AC114: a count that is not recorded reads not recorded and draws no bar, never 0.
+  const modelB = tokens.getByRole('listitem', { name: 'model-b: Not recorded tokens in, 3 tokens out', exact: true });
+  await expect(modelB).toBeVisible();
+  await expect(modelB.locator('.gdb-col[data-series="in"] .gdb-bar')).toHaveCount(0);
   await expect(page.getByRole('table', { name: 'Usage by model and day', exact: true })).toContainText('model-b');
-  await expect(page.getByRole('region', { name: 'Cost by route', exact: true })).toContainText('$0.50');
-  await expect(page.getByText('Savings by route is not served yet', { exact: true })).toBeVisible();
+  const route = page.getByRole('region', { name: 'Cost by route', exact: true });
+  await expect(route).toContainText('$0.50');
+  await expect(route.locator('[data-ranked-item]').first()).toHaveAttribute('aria-label', /^Local: \$0\.50 · 2 runs · 66\.7%, measured$/);
+  // Part 17 AC116: "Savings by route is not served yet" and the per-day token list are removed.
+  await expect(page.getByText('Savings by route is not served yet', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Tokens per day by model, in detail' })).toHaveCount(0);
   await page.screenshot({ path: info.outputPath('usage-mockup-parity.png'), fullPage: true });
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 900 });

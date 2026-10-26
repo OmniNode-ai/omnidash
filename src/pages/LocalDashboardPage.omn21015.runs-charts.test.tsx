@@ -110,7 +110,8 @@ describe('OMN-21015: the Runs page draws the runs it lists', () => {
 
   it('R5: a bar carries the colour of its run\'s status, and the two statuses differ', () => {
     open(RUNS);
-    const colours = chart('Duration per run').option.series[0].data.map((entry: Option) => entry.itemStyle.color);
+    // A hatched bar's colour is its edge and its hatch (live review 2026-10-26), not a solid fill.
+    const colours = chart('Duration per run').option.series[0].data.map((entry: Option) => entry.itemStyle.borderColor);
     expect(colours[0]).toBe(colours[2]);
     expect(colours[1]).not.toBe(colours[0]);
     // The key above the chart names each status that is drawn, once, in the rows' order.

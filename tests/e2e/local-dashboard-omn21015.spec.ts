@@ -3,10 +3,12 @@ import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { expect, test, type Page, type Locator } from 'playwright/test';
 
-// OMN-21015 AC4, series half: on the Usage page the drawn width of each model's segment is its served token count's
-// share of the bar. jsdom lays nothing out, so this is measured in a real browser. The rows are constructed: one day,
-// two models, with counts chosen so a label, padding or border on a segment would move the ratio far from the counts'
-// (1 against 1,000 tokens in; 300 against 1,200 tokens out).
+// OMN-21015 AC4, series half: on the Usage page the drawn height of each model's bar in "Tokens by model" is its served
+// token count against the largest served count in the chart. OMN-21166 part 17 AC114: the chart is hatched grouped bars
+// (two per model, tokens in and tokens out); the bar's height is one inline percentage (value over the largest value), so
+// it is read from the bar itself, which a label, padding or border would not move. The rows are constructed: one day, two
+// models, with counts chosen so the ratios are far from any layout rounding (1 against 1,000 tokens in; 300 against 1,200
+// tokens out; 1,200 is the largest).
 const USAGE = 'onex.snapshot.projection.usage-by-model-day.v1';
 
 const usage = [
@@ -43,44 +45,54 @@ function screenshotPath(name: string) {
   return path;
 }
 
-/** The drawn widths, in pixels, of the bar that belongs to the list with this accessible name. */
-async function drawnWidths(page: Page, name: string): Promise<number[]> {
-  const list = page.getByRole('list', { name });
-  await expect(list).toBeVisible();
-  return list.evaluate((element) => {
-    const bar = element.previousElementSibling;
-    if (bar === null || !bar.classList.contains('usage-tokens-bar')) throw new Error('no drawn bar before the list');
-    return [...bar.children].map((child) => child.getBoundingClientRect().width);
-  });
+/** One model's drawn bar height (the inline percentage of the chart's largest count) for one direction, in "Tokens by model". */
+async function drawnHeight(page: Page, model: string, series: 'in' | 'out'): Promise<number> {
+  const group = page.getByRole('figure', { name: 'Tokens in vs out by model', exact: true }).locator(`li.gdb-day[aria-label^="${model}:"]`);
+  await expect(group).toHaveCount(1);
+  return group.locator(`.gdb-col[data-series="${series}"] .gdb-bar`).evaluate((bar) => parseFloat((bar as HTMLElement).style.height));
 }
 
-test('OMN-21015: on Usage a segment is as wide as its share of the served tokens', async ({ page }) => {
+test('OMN-21015: on Usage a bar is as tall as its share of the largest served token count', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await serve(page);
   await page.goto('/usage');
-  // OMN-21166 Maple grid: the per-day, per-model token bars (the series this test measures) are the detail under the
-  // page's closed "More usage"; the page itself shows the stacked "Tokens per day" chart.
+  // OMN-21166 Maple grid: the per-model token bars (the series this test measures) are under the page's closed
+  // "More usage"; the page itself shows the stacked "Tokens per day" chart.
   await page.locator('summary').filter({ hasText: /^More usage$/ }).click();
 
-  const tokensIn = await drawnWidths(page, 'Tokens in on 2026-10-12, by model');
-  const tokensOut = await drawnWidths(page, 'Tokens out on 2026-10-12, by model');
-  expect(tokensIn).toHaveLength(2);
-  expect(tokensOut).toHaveLength(2);
-  // A bar wide enough that the comparison means something. OMN-21166: bars share one scale, so the day's tokens out
-  // (1,500) is the widest bar and tokens in (1,001) is drawn against it.
-  expect(tokensOut[1]!).toBeGreaterThan(300);
-  expect(tokensIn[1]!).toBeGreaterThan(200);
-  const drawn = (widths: number[]) => widths.reduce((sum, width) => sum + width, 0);
-  expect(drawn(tokensIn) / drawn(tokensOut)).toBeCloseTo(1001 / 1500, 1);
-  // 1 : 1,000 and 300 : 1,200, as served. The tolerance is far below what any label or padding would add.
-  expect(tokensIn[0]! / tokensIn[1]!).toBeCloseTo(1 / 1000, 3);
-  expect(tokensOut[0]! / tokensOut[1]!).toBeCloseTo(300 / 1200, 3);
+  const geminiIn = await drawnHeight(page, 'gemini-3.5-flash-lite', 'in');
+  const geminiOut = await drawnHeight(page, 'gemini-3.5-flash-lite', 'out');
+  const qwenIn = await drawnHeight(page, 'qwen3-coder', 'in');
+  const qwenOut = await drawnHeight(page, 'qwen3-coder', 'out');
+  // OMN-21166 part 17 AC114: bars share one scale, so the largest served count (1,200 tokens out) is the full column and
+  // every other bar is its count against it.
+  expect(qwenOut).toBeCloseTo(100, 1);
+  expect(qwenIn / qwenOut).toBeCloseTo(1000 / 1200, 2);
+  expect(geminiOut / qwenOut).toBeCloseTo(300 / 1200, 2);
+  // 1 against 1,200: a hair, never a label, padding or minimum that would make it look like a real share.
+  expect(geminiIn / qwenOut).toBeCloseTo(1 / 1200, 3);
+  // ...and drawn that way: the bar is border-box, so its rendered box is its share or, for a hair, just its 2px edge; never
+  // a CSS minimum height (review fix: the inline percentage alone could not see a min-height; a 3px minimum fails here).
+  const hair = page.getByRole('figure', { name: 'Tokens in vs out by model', exact: true }).locator('li.gdb-day[aria-label^="gemini-3.5-flash-lite:"] .gdb-col[data-series="in"] .gdb-bar');
+  const drawn = await hair.evaluate((bar) => {
+    const css = getComputedStyle(bar);
+    const column = (bar.parentElement as HTMLElement).getBoundingClientRect().height;
+    return { box: bar.getBoundingClientRect().height, edge: parseFloat(css.borderTopWidth), share: (parseFloat((bar as HTMLElement).style.height) / 100) * column };
+  });
+  expect(drawn.box).toBeLessThanOrEqual(Math.max(drawn.edge, drawn.share) + 0.5);
+  // A bar wide and tall enough that the comparison means something.
+  const outBar = page.getByRole('figure', { name: 'Tokens in vs out by model', exact: true }).locator('li.gdb-day[aria-label^="qwen3-coder:"] .gdb-col[data-series="out"] .gdb-bar');
+  expect((await outBar.boundingBox())!.height).toBeGreaterThan(100);
 
-  // Every figure is still written out beside the bar, the small one included.
-  const written = page.getByRole('list', { name: 'Tokens in on 2026-10-12, by model' }).getByRole('listitem');
-  await expect(written).toHaveText(['gemini-3.5-flash-lite: 1', 'qwen3-coder: 1,000']);
+  // Every figure is still written out in the bar group's accessible name, the small one included.
+  const figure = page.getByRole('figure', { name: 'Tokens in vs out by model', exact: true });
+  await expect(figure.locator('li.gdb-day[aria-label^="gemini-3.5-flash-lite:"]')).toHaveAttribute('aria-label', /1 tokens in, 300 tokens out/);
+  await expect(figure.locator('li.gdb-day[aria-label^="qwen3-coder:"]')).toHaveAttribute('aria-label', /1,000 tokens in, 1,200 tokens out/);
+  // OMN-21166 part 17 AC116: the day-by-day list "Tokens per day by model, in detail" is removed (the table holds its rows).
+  await expect(page.getByRole('heading', { name: 'Tokens per day by model, in detail' })).toHaveCount(0);
+  await expect(page.locator('.usage-tokens-bar')).toHaveCount(0);
 
-  await page.getByRole('heading', { name: 'Tokens per day by model, in detail' }).scrollIntoViewIfNeeded();
+  await page.getByRole('heading', { name: 'Tokens by model', exact: true }).scrollIntoViewIfNeeded();
   await page.screenshot({ path: screenshotPath('local-dashboard-omn21015-usage-tokens-1440x900.png'), fullPage: false });
 });
 
@@ -317,7 +329,10 @@ test('OMN-21015: on Workflow a run\'s timings are drawn as bars of their served 
   // bars in over a quarter second, so they are read once two reads in a row agree.
   const read = () => figure.locator('.local-chart-canvas svg').evaluate((svg) => {
     const drawn = [...svg.querySelectorAll('path')]
-      .map((path) => ({ fill: path.getAttribute('fill') ?? '', rect: path.getBoundingClientRect() }))
+      // Live review 2026-10-26: a bar is a hatch edged in its series' colour, so its colour is the outline's stroke.
+      // The hatch is a second path filled with a pattern (url(#…)); a bar is counted once, by its outline.
+      .filter((path) => !(path.getAttribute('fill') ?? '').startsWith('url('))
+      .map((path) => ({ fill: path.getAttribute('stroke') ?? '', rect: path.getBoundingClientRect() }))
       .filter(({ fill, rect }) => /^(#|rgb)/.test(fill) && rect.height > 4 && rect.height < 30 && rect.width > 0.5);
     return drawn.sort((a, b) => a.rect.top - b.rect.top).map(({ fill, rect }) => ({ fill, width: rect.width, left: rect.left }));
   });
@@ -346,11 +361,13 @@ test('OMN-21015: on Workflow a run\'s timings are drawn as bars of their served 
 
   // The run's steps still start on the first screen, under the chart, and nothing scrolls sideways.
   const chart = await placed(page, 'figure.local-chart--timing');
-  const steps = await placed(page, 'nav.local-run-diagram');
+  // OMN-21166 part 18 AC125: the step boxes are removed; the timeline below shows the steps.
+  await expect(page.locator('nav.local-run-diagram')).toHaveCount(0);
+  const steps = await placed(page, 'ol.local-dashboard-steps');
   expect(chart.scrolled).toBe(0);
   expect(steps.top).toBeGreaterThanOrEqual(chart.bottom);
-  await page.locator('nav.local-run-diagram').scrollIntoViewIfNeeded();
-  await expect(page.locator('nav.local-run-diagram')).toBeInViewport();
+  await page.locator('ol.local-dashboard-steps').scrollIntoViewIfNeeded();
+  await expect(page.locator('ol.local-dashboard-steps')).toBeInViewport();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 
   await page.screenshot({ path: screenshotPath('local-dashboard-omn21015-workflow-run-timing-1440x900.png') });
@@ -382,18 +399,21 @@ const listedRuns = [
 
 /** The bars of one figure, left to right, once two reads in a row agree (the chart grows its bars in). */
 async function settledBars(page: Page, name: string) {
-  // OMN-21166 part 13: Runs keeps its run charts under a closed "More run charts"; open it before reading them.
-  const more = page.locator('summary').filter({ hasText: /^More run charts$/ });
+  // OMN-21166 part 18 AC118: Runs keeps its run charts inside its one closed "More analysis"; open it before reading them.
+  const more = page.locator('summary').filter({ hasText: /^More analysis$/ });
   await more.waitFor();
   if (await more.locator('xpath=..').getAttribute('open') === null) await more.click();
   const figure = page.getByRole('figure', { name });
   await expect(figure).toBeVisible();
   await figure.scrollIntoViewIfNeeded();
   const read = () => figure.locator('.local-chart-canvas svg').evaluate((svg) => [...svg.querySelectorAll('path')]
-    .map((path) => ({ fill: path.getAttribute('fill') ?? '', rect: path.getBoundingClientRect() }))
+    // A bar's colour is its outline's stroke (hatched bars, live review 2026-10-26).
+    .filter((path) => !(path.getAttribute('fill') ?? '').startsWith('url('))
+    // The outline is drawn inset by its stroke, so the bar as drawn is the path's box plus the stroke's width.
+    .map((path) => ({ fill: path.getAttribute('stroke') ?? '', rect: path.getBoundingClientRect(), stroke: parseFloat(getComputedStyle(path).strokeWidth) || 0 }))
     .filter(({ fill, rect }) => /^(#|rgb)/.test(fill) && rect.width > 6 && rect.width < 40 && rect.height > 0.5)
     .sort((a, b) => a.rect.left - b.rect.left)
-    .map(({ fill, rect }) => ({ fill, height: rect.height, bottom: rect.bottom, x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 })));
+    .map(({ fill, rect, stroke }) => ({ fill, height: rect.height + stroke, bottom: rect.bottom, x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 })));
   let previous = '';
   await expect.poll(async () => {
     const now = JSON.stringify(await read());

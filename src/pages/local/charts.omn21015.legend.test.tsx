@@ -99,18 +99,28 @@ describe('OMN-21015 U4: the spend chart legend', () => {
 
   it('J3: the series left keep their served values and their colours', async () => {
     render(<SpendByDayChart rows={ROWS} columns={COLUMNS} />);
-    const before = (shown().series as Option[]).map((series) => ({ name: series.name, data: series.data, color: series.itemStyle.color }));
+    const before = (shown().series as Option[]).map((series) => ({ name: series.name, data: series.data, color: series.itemStyle.borderColor }));
     expect(new Set(before.map((series) => series.color)).size).toBe(3);
     await userEvent.click(toggle('Actual spend'));
-    const after = (shown().series as Option[]).map((series) => ({ name: series.name, data: series.data, color: series.itemStyle.color }));
+    const after = (shown().series as Option[]).map((series) => ({ name: series.name, data: series.data, color: series.itemStyle.borderColor }));
     expect(after).toEqual(before.slice(1));
     expect(after[0]!.data).toEqual([0.41, 0.52]);
     expect(after[1]!.data).toEqual([0.3, 0.4]);
   });
 
+  // Live review 2026-10-26: a bar is a hatch edged in its series' colour, so the colour is the edge and the hatch.
+  it('J3: each series is hatched and edged in its own colour, with no solid fill', () => {
+    render(<SpendByDayChart rows={ROWS} columns={COLUMNS} />);
+    for (const series of shown().series as Option[]) {
+      expect(series.itemStyle.decal.color).toBe(series.itemStyle.borderColor);
+      expect(series.itemStyle.color).toBe('rgba(0,0,0,0)');
+    }
+    expect(shown().aria.decal.show).toBe(true);
+  });
+
   it('J3: a toggle carries the colour of its series', async () => {
     render(<SpendByDayChart rows={ROWS} columns={COLUMNS} />);
-    const colours = (shown().series as Option[]).map((series) => series.itemStyle.color);
+    const colours = (shown().series as Option[]).map((series) => series.itemStyle.borderColor);
     const swatches = ['Actual spend', 'Baseline spend', 'Savings'].map((name) => {
       const swatch = toggle(name).querySelector('[data-swatch]') as HTMLElement;
       return swatch.style.backgroundColor;

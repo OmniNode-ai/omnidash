@@ -24,21 +24,20 @@ test('compact Overview preserves missing data, quality, chart access and routing
   await page.getByRole('figure', { name: 'Runs per day', exact: true }).scrollIntoViewIfNeeded();
   await expect(page.getByRole('figure', { name: 'Runs per day', exact: true })).toBeInViewport();
   // OMN-21166 Maple grid: Overview's tier mix is ranked bars with a keyboard link to the routing breakdown; the routing
-  // table is Runs' "Full routing breakdown" disclosure, under "More analysis".
+  // table is Runs' routing breakdown, shown directly under "More analysis".
   const tier = page.locator('[data-component="overview-tier-mix"]');
   await expect(tier.getByRole('listitem', { name: 'Local: 6 · 75.0%, measured', exact: true })).toBeVisible();
-  await expect(tier.getByRole('link', { name: /View routing breakdown/ })).toHaveAttribute('href', /\/runs/);
+  // Part 15 AC96: the "View routing breakdown" link is removed; the breakdown stays on Runs.
+  await expect(tier.getByRole('link', { name: /View routing breakdown/ })).toHaveCount(0);
   await page.goto('/runs');
   await page.getByText('More analysis', { exact: true }).press('Enter');
   const routing = page.locator('[data-component="runs-tier-mix"]');
-  const detail = routing.locator('details.local-tier-details');
-  await expect(detail).not.toHaveAttribute('open', '');
-  await routing.locator('details.local-tier-details > summary').press('Enter');
-  await expect(detail).toHaveAttribute('open', '');
+  // OMN-21166 part 18 AC120: the routing table is shown directly under "More analysis"; the nested "Full routing
+  // breakdown" disclosure is removed.
+  await expect(routing.locator('details')).toHaveCount(0);
   await expect(routing.getByRole('table')).toContainText('Local');
   await expect(routing.getByRole('table')).toContainText('75.0%');
   await page.screenshot({ path: info.outputPath('overview-routing-expanded.png'), fullPage: true });
-  await routing.locator('details.local-tier-details > summary').press('Enter');
   await page.goto('/overview');
   for (const theme of ['light', 'dark']) {
     for (const width of [1440, 390, 320]) {

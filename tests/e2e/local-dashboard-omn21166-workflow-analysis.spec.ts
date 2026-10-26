@@ -98,7 +98,8 @@ test('each analysis card keeps its accent in its chart and icon', async ({ page 
   const timing = page.locator('.workflow-analysis-card--timing');
   await expect(timing.locator('svg').last()).toBeVisible();
   const accent = await timing.evaluate(element => getComputedStyle(element).getPropertyValue('--analysis-accent').trim());
-  await expect(timing.locator(`.local-chart-canvas path[fill="${accent}"]`).first()).toBeVisible();
+  // A hatched bar carries its colour in its outline's stroke (live review 2026-10-26).
+  await expect(timing.locator(`.local-chart-canvas path[stroke="${accent}"]`).first()).toBeVisible();
   const accents = await page.locator('.local-run-summary-group, .workflow-analysis-card').evaluateAll(elements => elements.map(element => {
     const style = getComputedStyle(element);
     return style.getPropertyValue('--fact-accent').trim() || style.getPropertyValue('--analysis-accent').trim();
@@ -106,16 +107,19 @@ test('each analysis card keeps its accent in its chart and icon', async ({ page 
   expect(new Set(accents).size).toBe(accents.length);
 });
 
-test('recorded stage flow keeps keyboard navigation without decorative particles', async ({ page }) => {
+test('recorded steps show in the timeline without a box row or decorative particles', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.goto('/workflow?correlation_id=chart-run-a');
+  // OMN-21166 part 18 AC125: the row of step boxes (and its links) is removed; the timeline below shows the same steps.
   const flow = page.getByRole('navigation', { name: 'Run steps, in the order served', exact: true });
-  await expect(flow.getByRole('link')).toHaveCount(2);
-  await expect(flow.locator('.workflow-flow-particle')).toHaveCount(0);
+  await expect(flow).toHaveCount(0);
+  await expect(page.locator('nav.local-run-diagram')).toHaveCount(0);
+  await expect(page.locator('.workflow-flow-particle')).toHaveCount(0);
+  await expect(page.locator('ol.local-dashboard-steps > li')).toHaveCount(2);
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await expect(flow.getByRole('link')).toHaveCount(2);
-  await flow.getByRole('link').last().press('Enter');
-  await expect(page.locator('#run-step-2')).toBeInViewport();
+  await expect(page.locator('ol.local-dashboard-steps > li')).toHaveCount(2);
+  // Each timeline step keeps its own anchor.
+  await expect(page.locator('ol.local-dashboard-steps > li#run-step-2')).toHaveCount(1);
 });
 
 test('a run with no trace retains its recorded routing fields without filler labels', async ({ page }) => {

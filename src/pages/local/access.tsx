@@ -7,6 +7,7 @@
  */
 import { notAvailableYet } from './plain-text';
 import { readableTime } from '@/lib/readable-time';
+import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 
 const DASHBOARD_SERVICE = 'local-runtime';
 
@@ -32,6 +33,11 @@ function served(value: unknown): string {
   return typeof value === 'string' && value.trim() !== '' ? value : 'Not recorded';
 }
 
+/** Served text with its `backticked` commands as code (part 18 AC131): the words are the served ones, unchanged. */
+function WithCode({ text }: { text: string }) {
+  return <>{text.split('`').map((part, index) => (index % 2 === 1 ? <code key={index}>{part}</code> : part))}</>;
+}
+
 export function DashboardAccess({ rows }: { rows: readonly EnvironmentRow[] }) {
   const row = dashboardAccessRow(rows);
   if (row === null) {
@@ -40,10 +46,11 @@ export function DashboardAccess({ rows }: { rows: readonly EnvironmentRow[] }) {
   }
   return (
     <dl className="local-dashboard-fields">
-      <div><dt>Access</dt><dd>{served(row.access_mode)}</dd></div>
+      {/* Part 18 AC129: every field label has its icon, as Local identity's do. */}
+      <div><dt><ConceptIcon concept="local-access" label="Access" />Access</dt><dd>{served(row.access_mode)}</dd></div>
       {/* OMN-21166 AC60: "Oct 25, 10:36:18 UTC", the served timestamp kept in the title. */}
-      <div><dt>Token minted</dt><dd title={served(row.token_minted_at)}>{readableTime(served(row.token_minted_at)) ?? served(row.token_minted_at)}</dd></div>
-      <div><dt>Rotate</dt><dd>{served(row.rotate_hint)}</dd></div>
+      <div><dt><ConceptIcon concept="age" label="Token minted" />Token minted</dt><dd title={served(row.token_minted_at)}>{readableTime(served(row.token_minted_at)) ?? served(row.token_minted_at)}</dd></div>
+      <div><dt><ConceptIcon concept="credentials" label="Rotate" />Rotate</dt><dd><WithCode text={served(row.rotate_hint)} /></dd></div>
     </dl>
   );
 }

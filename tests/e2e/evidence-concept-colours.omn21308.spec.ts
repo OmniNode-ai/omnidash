@@ -27,27 +27,28 @@ for (const theme of ['light', 'dark']) {
     await expect(page.locator('body')).toHaveClass(new RegExp(`theme-${theme}`));
 
     const targets = [
-      { name: 'pass bar', token: 'pass', property: 'backgroundColor', locator: page.locator('.ev-qg-bar > .bar-fill').nth(0) },
-      { name: 'fail bar', token: 'fail', property: 'backgroundColor', locator: page.locator('.ev-qg-bar > .bar-fill').nth(1) },
+      // Live review 2026-10-26: every bar is a hatch drawn in currentColor, so a bar's concept colour is its text colour.
+      { name: 'pass bar', token: 'pass', property: 'color', locator: page.locator('.ev-qg-bar > .bar-fill').nth(0) },
+      { name: 'fail bar', token: 'fail', property: 'color', locator: page.locator('.ev-qg-bar > .bar-fill').nth(1) },
       ...['pass', 'fail'].map(tone => ({ name: `${tone} statistic`, token: tone, property: 'color',
         locator: page.locator('.ev-qg-stats .stat-inline').filter({ has: page.locator('.note', { hasText: new RegExp(`^${tone}$`) }) }).locator('.big') })),
       ...[
         ['Cloud baseline cost', 'baseline', '$10.00'],
         ['Local / delegated cost', 'cost', '$2.00'],
         ['Saved', 'savings', '$8.00'],
-      ].map(([label, token, value]) => ({ name: label!, token: token!, property: 'backgroundColor', value,
-        locator: page.locator('.barrow').filter({ has: page.locator('.lab', { hasText: new RegExp(`^${label!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`) }) }).locator('.bar-fill') })),
+      ].map(([label, token, value]) => ({ name: label!, token: token!, property: 'color', value,
+        locator: page.locator(`[data-ranked-item="${token}"]`).filter({ has: page.locator('.rb-name', { hasText: label! }) }).locator('.rb-bar') })),
       { name: 'savings hero', token: 'savings', property: 'color', locator: page.locator('.ev-savings-hero .big') },
     ];
     for (const target of targets) {
       await expect(target.locator, target.name).toHaveCount(1);
       await expect(target.locator, target.name).toBeVisible();
-      if ('value' in target) await expect(target.locator.locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " barrow ")][1]').locator('.val')).toHaveText(target.value!);
+      if ('value' in target) await expect(target.locator.locator('xpath=ancestor::li[@data-ranked-item][1]').locator('.rb-value')).toHaveText(target.value!);
     }
     // Wait for measured colours themselves to stop changing, without disabling
     // transitions or requiring them to converge to the expected (possibly wrong) palette.
     await page.evaluate(async () => {
-      const sample = () => [...document.querySelectorAll('.ev-qg-stats .big, .ev-qg-bar .bar-fill, .barrow .bar-fill, .ev-savings-hero .big')]
+      const sample = () => [...document.querySelectorAll('.ev-qg-stats .big, .ev-qg-bar .bar-fill, [data-panel-title="SAVINGS vs CLOUD BASELINE"] .rb-bar, .ev-savings-hero .big')]
         .map(el => { const s = getComputedStyle(el); return `${s.color}/${s.backgroundColor}`; }).join('|');
       let previous = sample(), stable = 0;
       const deadline = performance.now() + 2000;

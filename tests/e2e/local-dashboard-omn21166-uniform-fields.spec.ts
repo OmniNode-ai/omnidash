@@ -83,6 +83,8 @@ test('shared field colors stay readable in both themes with phone-safe expanded 
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
       // OMN-21166 live review 2026-10-25: Overview has no dt/dd fields now; its tone-coloured text is the Tokens per day
       // legend and readout, so those are measured too.
+      // Part 15 AC96: the readout is empty at rest and fills for the day a reader points at, so a day is focused first.
+      if (route === 'overview') await page.getByRole('group', { name: 'Tokens per day', exact: true }).getByRole('button').last().focus();
       const contrasts = await page.locator('[data-field-tone] > dt, [data-field-tone] > dd, [data-field-tone] > .k, [data-field-tone] > .v, .ins-token-legend > [data-field-tone], .ins-readout > [data-field-tone]').evaluateAll(els => {
         const canvas = document.createElement('canvas'); canvas.width = canvas.height = 1;
         const ctx = canvas.getContext('2d')!;

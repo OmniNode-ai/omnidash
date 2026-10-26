@@ -1,10 +1,10 @@
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { RankedBars } from '@/components/dashboard/RankedBars';
 import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
-import { modelColor } from '@/lib/dashboard-colors';
+import { modelColor, tierColor } from '@/lib/dashboard-colors';
 import { formatDashboardUsd } from '@/lib/dashboard-currency';
 import { sumDashboardUsd } from '@/lib/dashboard-money-total';
-import { useState } from 'react';
+import { GroupedBars } from '@/components/dashboard/GroupedBars';
 import { aggregateUsageRows, type UsageAggregates } from './insight-aggregates';
 import { tierLabel } from './plain-text';
 
@@ -33,7 +33,7 @@ function share(value: number | null): string {
  * cost_usd. A model with no cost or with unmeasured runs is said so beside the figure; nothing unserved is added in,
  * and a partial sum is never shown as the route's total.
  */
-function routeCost(tier: Row): string {
+function routeCost(tier: Row): { text: string; usd: string | null } {
   const models = Array.isArray(tier.models) ? records(tier.models) : [];
   const costs: string[] = [];
   let unmeasured = 0;
@@ -49,21 +49,27 @@ function routeCost(tier: Row): string {
   }
   const gap = unmeasured > 0 ? `${formatDashboardCount(unmeasured)} unmeasured` : unknownGap ? 'some runs unmeasured' : null;
   const total = sumDashboardUsd(costs);
-  if (total === null) return gap === null ? 'Not measured' : `Not measured · ${gap}`;
-  return gap === null ? money(total) : `${money(total)} measured · ${gap}`;
+  if (total === null) return { usd: null, text: gap === null ? 'Not measured' : `Not measured · ${gap}` };
+  return { usd: total, text: gap === null ? money(total) : `${money(total)} measured · ${gap}` };
 }
 
-function routeSpendByTier(row: Row): Array<{ route: string; runs: string; share: string; cost: string }> {
+interface RouteRow { key: string; route: string; tier: string; runs: number | null; share: number | null; cost: { text: string; usd: string | null }; tierRouted: boolean }
+
+function routeSpendByTier(row: Row): RouteRow[] {
   const byTier = row.by_tier;
   if (byTier === null || typeof byTier !== 'object' || Array.isArray(byTier)) return [];
   const tiers = (byTier as Row).tiers;
-  return Array.isArray(tiers) ? records(tiers).map(tier => {
-    const cost = routeCost(tier);
+  return Array.isArray(tiers) ? records(tiers).map((tier, index) => {
+    const name = typeof tier.cost_tier_name === 'string' ? tier.cost_tier_name : '';
     return {
-      route: typeof tier.cost_tier_name === 'string' ? tierLabel(tier.cost_tier_name) : 'Not recorded',
-      runs: count(typeof tier.count === 'number' ? tier.count : null),
-      share: share(typeof tier.pct_of_tier_routed === 'number' ? tier.pct_of_tier_routed : null),
-      cost,
+      key: `${name}-${index}`,
+      tier: name,
+      route: name ? tierLabel(name) : 'Not recorded',
+      runs: typeof tier.count === 'number' ? tier.count : null,
+      share: typeof tier.pct_of_tier_routed === 'number' ? tier.pct_of_tier_routed : null,
+      cost: routeCost(tier),
+      // Part 17 AC115: runs outside the tier routing have no share of the tier-routed runs.
+      tierRouted: (tier.tier_routed === true || tier.tier_routed === 1) && name !== 'not_tier_routed',
     };
   }) : [];
 }
@@ -89,13 +95,11 @@ function SpendByModel({ data }: { data: UsageAggregates }) {
 }
 
 /**
- * OMN-21166 AC60: cost per run as one compact bar per UTC day (bar height is that day's served measured cost per call
- * against the highest day's, layout only), its value above and its date below; the full sentence stays in each bar's
- * accessible label and the readout. A day with no measured call draws no bar and says so.
+ * OMN-21166 AC60, reworked by part 17 AC113: cost per run as hatched day bars in the Overview day-chart look, one per
+ * served UTC day in the cost colour, its value on hover or focus. Each day's accessible name carries the full sentence
+ * (cost per call and unmeasured calls); a day with no measured call draws no bar.
  */
-function CostPerRun({ data }: { data: UsageAggregates }) {
-  const [active, setActive] = useState<string | null>(null);
-  const activeDay = data.days.find(day => day.day === active);
+function CostPerRun({ data, titled }: { data: UsageAggregates; titled: boolean }) {
   const date = (day: string) => new Date(`${day}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
   const text = (day: UsageAggregates['days'][number]) => `${day.day} · measured cost per call ${money(day.measuredCostPerCallUsd)} · ${count(day.unmeasuredCalls)} unmeasured calls`;
   const shown = data.days.filter(day => day.measuredCalls !== null || day.unmeasuredCalls !== null);
@@ -103,76 +107,79 @@ function CostPerRun({ data }: { data: UsageAggregates }) {
     const n = Number(day.measuredCostPerCallUsd);
     return day.measuredCostPerCallUsd === null || !Number.isFinite(n) ? null : n;
   };
-  const max = Math.max(0, ...shown.map(value).filter((n): n is number => n !== null));
   return <figure className="local-chart usage-insight" aria-label="Cost per run">
-    <h3><ConceptIcon concept="cost-per-run" size={16} />Cost per run</h3>
-    <p role="status" className="ins-readout">{activeDay ? text(activeDay) : 'Measured cost per call; unmeasured calls are excluded from the denominator'}</p>
-    <div className="usage-cost-days usage-cost-bars" role="group" aria-label="Cost per run by UTC day">
-      {shown.map(day => {
-        const n = value(day);
-        return <button type="button" key={day.day} aria-label={text(day)} aria-pressed={active === day.day} onMouseEnter={() => setActive(day.day)} onFocus={() => setActive(day.day)} onMouseLeave={() => setActive(null)} onBlur={() => setActive(null)}>
-          <span className="usage-cost-value">{n === null ? 'Not measured' : money(day.measuredCostPerCallUsd)}</span>
-          <span className="usage-cost-track" aria-hidden="true">{n !== null && <i style={{ height: `${max > 0 ? Math.max(2, (n / max) * 100) : 2}%` }} />}</span>
-          <strong>{date(day.day)}</strong>
-          {day.unmeasuredCalls !== null && day.unmeasuredCalls > 0 && <span className="usage-cost-unmeasured">{day.unmeasuredCalls} unmeasured calls excluded</span>}
-        </button>;
-      })}
-    </div>
-    <figcaption>Cost per call = measured spend divided by calls with measured cost.</figcaption>
+    {titled && <h3><ConceptIcon concept="cost-per-run" size={16} />Cost per run</h3>}
+    <GroupedBars label="Cost per run by UTC day" groups={shown.map(day => ({
+      key: day.day, name: date(day.day), label: text(day),
+      values: [{ key: 'cost', value: value(day), display: value(day) === null ? 'Not measured' : money(day.measuredCostPerCallUsd), color: 'var(--field-cost)', tone: 'cost' }],
+    }))} />
+    <figcaption className="local-dashboard-caption">Measured spend divided by calls with measured cost; unmeasured calls are left out.</figcaption>
   </figure>;
 }
 
-function TokensByModel({ data }: { data: UsageAggregates }) {
-  const [active, setActive] = useState<string | null>(null);
-  const selected = data.models.find(model => model.model === active);
-  const tokenCounts = data.models.flatMap(model => [model.inputTokens, model.outputTokens])
-    .filter((value): value is number => value !== null);
-  const max = Math.max(1, ...tokenCounts);
+/** Part 17 AC114: tokens in and out per model as hatched grouped bars; a count not recorded draws no bar. */
+function TokensByModel({ data, titled }: { data: UsageAggregates; titled: boolean }) {
+  const words = (value: number | null) => (value === null ? 'Not recorded' : formatFullCount(value));
   return <figure className="local-chart usage-insight" aria-label="Tokens in vs out by model">
-    <h3><ConceptIcon concept="tokens-model" size={16} />Tokens in vs out by model</h3>
-    {(selected || data.models.length === 0) && <p role="status" className="ins-readout">{selected ? `${selected.model} · ${(selected.inputTokens === null ? 'Not recorded' : formatFullCount(selected.inputTokens))} tokens in · ${(selected.outputTokens === null ? 'Not recorded' : formatFullCount(selected.outputTokens))} tokens out` : 'No token data available'}</p>}
-    <div className="usage-token-models" role="group" aria-label="Token counts by model">
-      {data.models.map(model => <button type="button" key={model.model} aria-label={`${model.model}: ${(model.inputTokens === null ? 'Not recorded' : formatFullCount(model.inputTokens))} tokens in, ${(model.outputTokens === null ? 'Not recorded' : formatFullCount(model.outputTokens))} tokens out`} onMouseEnter={() => setActive(model.model)} onFocus={() => setActive(model.model)} onMouseLeave={() => setActive(null)} onBlur={() => setActive(null)}>
-        <strong>{model.model}</strong><span className="usage-token-pair">
-          {model.inputTokens === null ? <span className="usage-token-missing">In not recorded</span> : <i data-field-tone="tokens-in" data-direction="in" style={{ width: `${model.inputTokens / max * 100}%` }} />}
-          {model.outputTokens === null ? <span className="usage-token-missing">Out not recorded</span> : <i data-field-tone="tokens-out" data-direction="out" style={{ width: `${model.outputTokens / max * 100}%` }} />}
-        </span>
-        <span>{(model.inputTokens === null ? 'Not recorded' : formatFullCount(model.inputTokens))} tokens in · {(model.outputTokens === null ? 'Not recorded' : formatFullCount(model.outputTokens))} tokens out</span>
-      </button>)}
-    </div>
+    {titled && <h3><ConceptIcon concept="tokens-model" size={16} />Tokens in vs out by model</h3>}
+    {data.models.length === 0 ? <p role="status" className="local-dashboard-empty">No token data available</p> : (
+      <GroupedBars label="Token counts by model" wrapNames
+        legend={[{ label: 'Tokens in', color: 'var(--field-tokens-in)' }, { label: 'Tokens out', color: 'var(--field-tokens-out)' }]}
+        groups={data.models.map(model => ({
+          key: model.model, name: model.model, nameColor: modelColor(model.model),
+          label: `${model.model}: ${words(model.inputTokens)} tokens in, ${words(model.outputTokens)} tokens out`,
+          values: [
+            { key: 'in', value: model.inputTokens, display: words(model.inputTokens), color: 'var(--field-tokens-in)', tone: 'tokens-in' },
+            { key: 'out', value: model.outputTokens, display: words(model.outputTokens), color: 'var(--field-tokens-out)', tone: 'tokens-out' },
+          ],
+        }))} />
+    )}
   </figure>;
 }
 
 export function UsageInsights({ usageRows, decisionRows, routingRows, now = Date.now(), part = 'all' }: {
   usageRows: readonly unknown[]; decisionRows: readonly unknown[]; routingRows: readonly unknown[]; now?: number;
-  /** OMN-21166 Maple grid: 'spend' is the spend-by-model panel; 'more' is the rest, under the page's "More usage". */
-  part?: 'all' | 'spend' | 'more';
+  /** 'spend' is Spend by model; part 17: each "More usage" chart is its own panel, so each is its own part. */
+  part?: 'all' | 'spend' | 'cost-per-run' | 'tokens-by-model' | 'cost-by-route';
 }) {
   const data = aggregateUsageRows(usageRows, decisionRows, now, USAGE_WINDOW_DAYS);
   const routing = routeSpendByTier(records(routingRows)[0] ?? {});
+  // A part sits in a panel whose title names it, so it draws no heading of its own.
   if (part === 'spend') return <section className="usage-insights" aria-label="Usage insights"><SpendByModel data={data} /></section>;
-  if (part === 'more') return <section className="usage-insights" aria-label="Usage insights">
-    <div className="usage-insight-grid"><CostPerRun data={data} /><TokensByModel data={data} /></div>
-    <CostByRoute routing={routing} />
-  </section>;
+  if (part === 'cost-per-run') return <section className="usage-insights" aria-label="Usage insights"><CostPerRun data={data} titled={false} /></section>;
+  if (part === 'tokens-by-model') return <section className="usage-insights" aria-label="Usage insights"><TokensByModel data={data} titled={false} /></section>;
+  if (part === 'cost-by-route') return <section className="usage-insights" aria-label="Usage insights"><CostByRoute routing={routing} titled={false} /></section>;
   return <section className="usage-insights" aria-label="Usage insights">
     <h3 className="local-dashboard-caption">Latest {USAGE_WINDOW_DAYS} UTC days · counted from served usage rows</h3>
     <div className="usage-insight-grid"><SpendByModel data={data} /></div>
     {/* OMN-21166 part 13: cost per run, tokens by model and cost by route are one click away. */}
     <details className="local-more">
     <summary>More usage</summary>
-    <div className="usage-insight-grid"><CostPerRun data={data} /><TokensByModel data={data} /></div>
-    <CostByRoute routing={routing} />
+    <CostPerRun data={data} titled /><TokensByModel data={data} titled /><CostByRoute routing={routing} titled />
     </details>
   </section>;
 }
 
-function CostByRoute({ routing }: { routing: ReturnType<typeof routeSpendByTier> }) {
+/**
+ * Part 17 AC115: each tier-routed route's served cost as a hatched ranked bar, its runs and share in the bar's name and on
+ * hover; runs outside the tier routing are a count under the chart, with no share (they are outside the tier shares).
+ */
+function CostByRoute({ routing, titled }: { routing: RouteRow[]; titled: boolean }) {
+  const routed = routing.filter(row => row.tierRouted);
+  const outside = routing.filter(row => !row.tierRouted);
   return (
     <section className="local-chart usage-cost-by-route" aria-label="Cost by route">
-      <h3 className="local-dashboard-caption"><ConceptIcon concept="cost-route" size={16} />Cost by route</h3>
-      {routing.length === 0 ? <p className="local-dashboard-caption" role="status">Route cost is not served yet.</p> : <dl className="local-dashboard-fields local-routing-counts">{routing.map(row => <div key={row.route}><dt>{row.route}</dt><dd>{row.runs} runs · {row.share}</dd><dd>{row.cost}</dd></div>)}</dl>}
-      <p role="status">Savings by route is not served yet</p>
+      {titled && <h3><ConceptIcon concept="cost-route" size={16} />Cost by route</h3>}
+      {routing.length === 0 ? <p className="local-dashboard-caption" role="status">Route cost is not served yet.</p> : <>
+        <RankedBars layout="vertical" label="Cost per route" unit="USD · measured cost per route" order="desc"
+          items={routed.map(row => {
+            const value = row.cost.usd === null ? null : Number(row.cost.usd);
+            return { key: row.key, name: row.route, basis: 'measured' as const, color: tierColor(row.tier),
+              value: value !== null && Number.isFinite(value) ? value : null,
+              display: `${row.cost.text} · ${count(row.runs)} runs · ${share(row.share)}` };
+          })} />
+        {outside.map(row => <p key={row.key} className="local-dashboard-caption">{`${count(row.runs)} runs not tier-routed (${row.cost.text}), outside the tier shares`}</p>)}
+      </>}
     </section>
   );
 }

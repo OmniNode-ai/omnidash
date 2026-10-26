@@ -4,9 +4,9 @@
  * Tokens come from globals.css; nothing here sets a colour of its own except through those tokens.
  */
 
-/* ── KPI strip (AC63): one segmented row, uppercase label, large figure with tabular digits, muted basis line ─────────── */
-.kpi-strip,
-.local-dashboard-page--overview .local-overview-surface > .local-overview-summary {
+/* ── Headline cards (AC63, part 15 AC91): one segmented row on every page, uppercase label, large figure with tabular
+   digits, details in a tooltip ────────────────────────────────────────────────────────────────────────────────── */
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary {
   display: grid;
   grid-template-columns: repeat(var(--kpi-count, 4), minmax(0, 1fr));
   gap: 0;
@@ -15,8 +15,7 @@
   background: var(--panel);
   overflow: hidden;
 }
-.kpi-strip > *,
-.local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel {
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel {
   border: 0;
   border-radius: 0;
   border-inline-end: 1px solid var(--line);
@@ -25,13 +24,11 @@
   padding: 14px 18px 16px;
   min-width: 0;
 }
-.kpi-strip > :last-child,
-.local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel:last-child {
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel:last-child {
   border-inline-end: 0;
 }
-.kpi-strip .kpi-label,
-.local-dashboard-page--overview .local-overview-summary .local-dashboard-panel > h2.local-dashboard-panel-title,
-.local-dashboard-page--overview .local-overview-summary .local-dashboard-panel > h2 {
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > h2.local-dashboard-panel-title,
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > h2 {
   font-family: var(--font-sans);
   font-size: 12px;
   font-weight: 600;
@@ -39,9 +36,8 @@
   text-transform: uppercase;
   color: var(--ink-3);
 }
-.local-dashboard-page--overview .local-overview-summary .local-dashboard-panel > h2 svg { width: 14px; height: 14px; }
-.kpi-strip .kpi-value,
-.local-dashboard-page--overview .local-overview-summary .local-dashboard-metric[data-measured="true"] {
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > h2 svg { width: 14px; height: 14px; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-metric[data-measured="true"] {
   font-family: var(--font-sans);
   font-weight: 600;
   font-size: clamp(24px, 2vw, 30px);
@@ -49,27 +45,20 @@
   font-variant-numeric: tabular-nums;
   color: var(--ink);
 }
-.kpi-strip .kpi-note,
-.local-dashboard-page--overview .local-overview-summary .local-dashboard-caption {
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-caption {
   font-size: 12px;
   line-height: 1.45;
   color: var(--ink-3);
 }
 @media (max-width: 1100px) {
-  .kpi-strip,
-  .local-dashboard-page--overview .local-overview-surface > .local-overview-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .kpi-strip > :nth-child(2n),
-  .local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel:nth-child(2n) { border-inline-end: 0; }
-  .kpi-strip > :nth-child(n + 3),
-  .local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel:nth-child(n + 3) { border-top: 1px solid var(--line); }
+  :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel:nth-child(2n) { border-inline-end: 0; }
+  :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel:nth-child(n + 3) { border-top: 1px solid var(--line); }
 }
 @media (max-width: 600px) {
-  .kpi-strip,
-  .local-dashboard-page--overview .local-overview-surface > .local-overview-summary { grid-template-columns: minmax(0, 1fr); }
-  .kpi-strip > *,
-  .local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel { border-inline-end: 0; border-top: 1px solid var(--line); }
-  .kpi-strip > :first-child,
-  .local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel:first-child { border-top: 0; }
+  :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary { grid-template-columns: minmax(0, 1fr); }
+  :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel { border-inline-end: 0; border-top: 1px solid var(--line); }
+  :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel:first-child { border-top: 0; }
 }
 
 /* ── Panels: quiet surfaces, mono section labels, no hover lift ─────────────────────────────────────────── */
@@ -112,20 +101,14 @@ main.ev-root[data-destination="delegation-evidence"] .dt-head {
 }
 
 /* Usage › Cost per run (AC60): one compact bar per UTC day instead of a column of boxed lines. */
-.local-dashboard-page .usage-insights .usage-cost-bars {
-  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(36px, 1fr); align-items: end; gap: 6px;
-  overflow-x: auto; padding-bottom: 2px;
-}
-.local-dashboard-page .usage-insights .usage-cost-bars > button {
-  display: grid; grid-template-rows: auto 120px auto; justify-items: center; gap: 4px; padding: 4px 2px;
-  border: 0; border-radius: 6px; background: transparent; text-align: center; font-size: 12px;
-}
-.local-dashboard-page .usage-insights .usage-cost-bars > button:is(:hover, :focus-visible, [aria-pressed="true"]) { background: var(--panel-2); }
+
+
+
 .local-dashboard-page .usage-cost-value { font-variant-numeric: tabular-nums; color: var(--ink-2); white-space: nowrap; }
 .local-dashboard-page .usage-cost-track { display: flex; align-items: flex-end; width: 18px; height: 100%; border-bottom: 1px solid var(--line); }
 .local-dashboard-page .usage-cost-track > i { display: block; width: 100%; border-radius: 3px 3px 0 0; background: var(--field-cost, var(--ui-accent)); }
-.local-dashboard-page .usage-cost-bars strong { font-weight: 500; color: var(--ink-3); white-space: nowrap; }
-.local-dashboard-page .usage-insights .usage-cost-bars > button { grid-template-rows: auto 120px auto auto; }
+
+
 .local-dashboard-page .usage-cost-unmeasured { max-width: 9ch; color: var(--ink-3); line-height: 1.3; }
 
 /* Evidence › Acceptance checks (AC66): served check types and the cost of compliance, compact rows. */
@@ -164,8 +147,8 @@ main.ev-root .ev-acceptance-checks > li > :first-child, main.ev-root .ev-accepta
 .local-dashboard-page .ins-window-kpis--metering > .ins-kpi:only-child > strong { font-size: 18px; }
 
 /* Overview › routing and recent activity (AC60): each panel keeps its own height, so no empty band under Tier mix. */
-.local-dashboard-page--overview .local-overview-bottom { align-items: start; }
-.local-dashboard-page--overview .local-overview-bottom > .local-dashboard-panel { align-self: start; }
+:is(.local-dashboard-page, .ev-root) .local-overview-bottom { align-items: start; }
+:is(.local-dashboard-page, .ev-root) .local-overview-bottom > .local-dashboard-panel { align-self: start; }
 
 /* Labels keep the sentence case they are written in ("Quality gate refused"), as everywhere else on the pages. */
 .local-dashboard-page .ins-list-name { text-transform: none; }
@@ -251,23 +234,10 @@ main.ev-root[data-destination="delegation-evidence"] :is(.kv .k, .kpi .k-l, .not
 
 /* Charts sit on the panel surface: no grey plot fill, hairline grid */
 .local-dashboard-page :is(.ins-card, .local-chart, .usage-insight, .workflow-analysis-card) { background: transparent; box-shadow: none; }
-.local-dashboard-page :is(.ins-bars, .ins-plot, .overview-volume-bars, .usage-tokens-day) { background: transparent; }
+
 .local-dashboard-page .ins-card { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
 
 /* KPI strip (AC63): label, figure, note, then the sparkline under them */
-.kpi-strip { margin-bottom: 16px; }
-.kpi-strip > .kpi-item { display: grid; align-content: start; gap: 4px; padding: 14px 18px 12px; min-width: 0; }
-.kpi-strip .kpi-label { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
-.kpi-strip .kpi-value { font-size: clamp(20px, 1.8vw, 26px); font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: var(--ink); overflow-wrap: anywhere; }
-.kpi-strip [data-field-unavailable="true"] .kpi-value { font-size: 14px; font-weight: 500; color: var(--ink-3); }
-.kpi-strip [data-field-tone="fail"] .kpi-value { color: var(--ui-fail); }
-.kpi-strip .kpi-note { font-size: 12px; color: var(--ink-3); line-height: 1.4; }
-.kpi-strip .kpi-sparkline { width: 100%; height: 24px; margin-top: 4px; color: var(--ui-accent); opacity: 0.85; }
-.kpi-strip [data-field-tone="savings"] .kpi-sparkline { color: var(--ui-pass); }
-.kpi-strip [data-field-tone="tokens-in"] .kpi-sparkline { color: var(--ins-series-1); }
-.kpi-strip [data-field-tone="tokens-out"] .kpi-sparkline { color: var(--ins-series-4); }
-@media (max-width: 1280px) { .kpi-strip { grid-template-columns: repeat(min(var(--kpi-count, 4), 3), minmax(0, 1fr)); } }
-.kpi-strip [data-field-tone] .kpi-note { color: var(--ink-3) !important; }
 
 /* Filter chips: compact, neutral, monochrome icon; the pressed chip takes the ink */
 .local-dashboard-page .local-dashboard-filters > button,
@@ -285,58 +255,41 @@ main.ev-root[data-destination="delegation-evidence"] :is(.kv .k, .kpi .k-l, .not
 .local-dashboard-page h3.local-dashboard-caption { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3); }
 
 /* One ink in every strip: the old per-field colours no longer tint labels or figures (status keeps its colour). */
-.kpi-strip .kpi-label { color: var(--ink-3) !important; }
-.kpi-strip .kpi-value { color: var(--ink) !important; }
-.kpi-strip [data-field-tone="fail"] .kpi-value { color: var(--ui-fail) !important; }
-.kpi-strip [data-field-unavailable="true"] .kpi-value { color: var(--ink-3) !important; }
 
 /* Overview's strip reads like the others: label on top, figure under it, basis lines below. */
 @media (min-width: 1101px) {
-  .local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel {
+  :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel {
     display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 4px; padding: 14px 18px 12px;
   }
-  .local-dashboard-page--overview .local-overview-summary .local-dashboard-panel > :is(h2, .local-dashboard-metric) {
+  :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > :is(h2, .local-dashboard-metric) {
     grid-column: 1; grid-row: auto; text-align: left; margin: 0;
   }
 }
-.local-dashboard-page--overview .local-overview-summary .local-dashboard-panel > h2 { margin: 0; }
-.local-dashboard-page--overview .local-overview-summary .local-dashboard-metric[data-measured="true"] { font-size: clamp(20px, 1.8vw, 26px); font-weight: 600; }
-.local-dashboard-page--overview .local-overview-summary .local-token-directions { color: var(--ink-2); font-size: 12px; }
-.local-dashboard-page--overview .local-overview-summary .local-token-directions strong { color: var(--ink) !important; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > h2 { margin: 0; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-metric[data-measured="true"] { font-size: clamp(20px, 1.8vw, 26px); font-weight: 600; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-token-directions { color: var(--ink-2); font-size: 12px; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-token-directions strong { color: var(--ink) !important; }
 
 /* Overview › Quality and Last run side by side on wide screens (their declared half widths), so the newest run's
  * status, model and age sit in the first screen at 1440x900 (AC49) and the page reads as one dense summary. */
 @media (min-width: 1101px) {
-  .local-dashboard-page--overview .local-overview-surface > .local-overview-focus.local-overview-focus {
+  :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-focus.local-overview-focus {
     grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; align-items: start;
   }
-  .local-dashboard-page--overview .local-overview-focus > .local-dashboard-panel { align-self: start; }
+  :is(.local-dashboard-page, .ev-root) .local-overview-focus > .local-dashboard-panel { align-self: start; }
 }
 .local-dashboard-page--overview .local-meter-value { font-size: 40px; line-height: 1.1; }
 
-/* Delegation Evidence in the same look: compact page head, a segmented KPI strip, values in Inter (ids stay mono). */
+/* Delegation Evidence in the same look: compact page head, Overview's headline cards, values in Inter (ids stay mono). */
 main.ev-root[data-destination="delegation-evidence"] .ev-page-head { padding: 20px 24px 12px; border-bottom: 0; background: var(--bg); }
 main.ev-root[data-destination="delegation-evidence"] .ev-page-head :is(h1, .ev-title) { font-size: 20px; font-weight: 600; letter-spacing: -0.015em; }
-main.ev-root[data-destination="delegation-evidence"] .ev-kpi-strip {
-  gap: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); overflow: hidden;
-}
-main.ev-root[data-destination="delegation-evidence"] .ev-kpi-strip > .kpi {
-  border: 0 !important; border-radius: 0 !important; border-inline-end: 1px solid var(--line) !important; background: transparent !important; padding: 14px 18px 12px;
-}
-main.ev-root[data-destination="delegation-evidence"] .ev-kpi-strip > .kpi:last-child { border-inline-end: 0 !important; }
-main.ev-root[data-destination="delegation-evidence"] .ev-kpi-strip .k-l { font-size: 12px !important; font-weight: 600; letter-spacing: 0.06em !important; text-transform: uppercase !important; }
-main.ev-root[data-destination="delegation-evidence"] .ev-kpi-strip .k-v { font-size: clamp(20px, 1.8vw, 26px); font-weight: 600; letter-spacing: -0.02em; }
 main.ev-root[data-destination="delegation-evidence"] .kv .v { font-family: var(--font-sans); font-variant-numeric: tabular-nums; }
 main.ev-root[data-destination="delegation-evidence"] .kv .v.accent,
 main.ev-root[data-destination="delegation-evidence"] .kv [data-field-tone="model"] .v { font-family: var(--font-mono); font-size: 12px; }
-@media (max-width: 900px) {
-  main.ev-root[data-destination="delegation-evidence"] .ev-kpi-strip > .kpi { border-inline-end: 0 !important; border-bottom: 1px solid var(--line) !important; }
-}
 .local-dashboard-page .local-dashboard-header { flex-wrap: wrap; }
-.local-dashboard-page .local-dashboard-header > .kpi-strip { flex: 1 0 100%; order: 10; margin: 4px 0 0; }
 
 /* ── Overview headline cards: figure only, basis in a tooltip (part 12 AC73) ────────────────────────────────── */
-.local-dashboard-page--overview .local-overview-summary > .local-dashboard-panel { position: relative; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel { position: relative; }
 .local-card-basis-tip { position: absolute; top: 12px; right: 12px; z-index: 5; }
 .local-card-info {
   display: inline-grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%;
@@ -356,11 +309,11 @@ main.ev-root[data-destination="delegation-evidence"] .kv [data-field-tone="model
 .local-card-basis-tip:focus-within .local-card-tooltip { visibility: visible; opacity: 1; transform: none; pointer-events: auto; }
 @media (prefers-reduced-motion: reduce) { .local-card-tooltip { transition: none; } }
 /* The strip lets the tooltip out; its outer cards round their own corners instead of clipping. */
-.local-dashboard-page--overview .local-overview-surface > .local-overview-summary { overflow: visible; }
-.local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel:first-child { border-radius: 10px 0 0 10px; }
-.local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel:last-child { border-radius: 0 10px 10px 0; }
-.local-dashboard-page--overview .local-overview-summary > .local-dashboard-panel:has(.local-card-basis-tip[data-open="true"], .local-card-basis-tip:focus-within) { z-index: 6; }
-.local-dashboard-page--overview .local-overview-summary > .local-dashboard-panel.local-dashboard-panel { overflow: visible; }
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary { overflow: visible; }
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel:first-child { border-radius: 10px 0 0 10px; }
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel:last-child { border-radius: 0 10px 10px 0; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel:has(.local-card-basis-tip[data-open="true"], .local-card-basis-tip:focus-within) { z-index: 6; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel.local-dashboard-panel { overflow: visible; }
 
 /* ── Part 13: "More …" disclosures and one-line status ─────────────────────────────────────────────────────── */
 .local-dashboard-page details.local-more { margin-top: 10px; border-top: 1px solid var(--line-2); padding-top: 8px; }
@@ -401,30 +354,13 @@ main.ev-root[data-destination="delegation-evidence"] .kv [data-field-tone="model
 .rb-chart [data-basis="unknown"] > .rb-value { color: var(--ink-3); font-family: var(--font-sans); }
 .rb-chart .rb-track { height: 180px; display: flex; align-items: flex-end; }
 .rb-chart .rb-bar { display: block; width: 100%; height: var(--rb-size, 0); min-height: 0; box-sizing: border-box; color: var(--rb-color); }
-.rb-chart .rb-bar[data-pattern="measured"] {
-  border-top: 2px solid currentColor;
-  background-image: radial-gradient(currentColor 1.15px, transparent 1.35px);
-  background-size: 5px 5px; background-position: 1px 0;
-  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 55%, rgba(0,0,0,.35) 100%);
-          mask-image: linear-gradient(to bottom, #000 0%, #000 55%, rgba(0,0,0,.35) 100%);
-}
-.rb-chart .rb-bar[data-pattern="estimated"] {
-  border-top: 2px solid currentColor;
-  background-image: repeating-linear-gradient(135deg, currentColor 0 1.5px, transparent 1.5px 6px);
-}
-.rb-chart .rb-bar[data-pattern="unknown"] { height: 14px; border: 1px dashed var(--ink-3); border-bottom: 0; background: none; }
+.rb-chart .rb-bar[data-pattern="outline"] { height: 14px; border: 1px dashed var(--ink-3); border-bottom: 0; background: none; }
 .rb-chart .rb-name {
   margin-top: 8px; font-size: 12px; line-height: 1.3; color: var(--rb-color); text-align: center;
   overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-break: break-word;
   position: absolute; top: 100%; left: 0; right: 0;
 }
 .rb-chart .rb-plot { margin-bottom: calc(2.6em + 10px); }
-.rb-chart .rb-key { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--ink-3); }
-.rb-chart .rb-key li { display: inline-flex; align-items: center; gap: 6px; }
-.rb-chart .rb-key i { width: 14px; height: 10px; color: var(--ink-2); display: inline-block; }
-.rb-chart .rb-key i[data-pattern="measured"] { background-image: radial-gradient(currentColor 1px, transparent 1.2px); background-size: 4px 4px; border-top: 2px solid currentColor; }
-.rb-chart .rb-key i[data-pattern="estimated"] { background-image: repeating-linear-gradient(135deg, currentColor 0 1.5px, transparent 1.5px 5px); border-top: 2px solid currentColor; }
-.rb-chart .rb-key i[data-pattern="unknown"] { border: 1px dashed var(--ink-3); border-bottom: 0; }
 .rb-chart .rb-footnote { margin: 0; font-size: 12px; color: var(--ink-3); }
 
 /* AC71: below 560 px of chart width the bars run sideways (name, bar, value per row), so no label is cut to an ellipsis. */
@@ -435,10 +371,7 @@ main.ev-root[data-destination="delegation-evidence"] .kv [data-field-tone="model
   .rb-chart .rb-value { grid-area: value; margin: 0; text-align: right; }
   .rb-chart .rb-track { grid-area: track; height: 12px; align-items: stretch; }
   .rb-chart .rb-bar { height: auto; width: var(--rb-size, 0); }
-  .rb-chart .rb-bar[data-pattern="measured"], .rb-chart .rb-bar[data-pattern="estimated"] { border-top: 0; border-right: 2px solid currentColor; }
-  .rb-chart .rb-bar[data-pattern="measured"] { -webkit-mask-image: linear-gradient(to left, #000 0%, #000 55%, rgba(0,0,0,.35) 100%); mask-image: linear-gradient(to left, #000 0%, #000 55%, rgba(0,0,0,.35) 100%); }
-  .rb-chart .rb-bar[data-pattern="estimated"] { background-image: repeating-linear-gradient(45deg, currentColor 0 1.5px, transparent 1.5px 6px); }
-  .rb-chart .rb-bar[data-pattern="unknown"] { width: 14px; height: auto; border: 1px dashed var(--ink-3); border-left: 0; }
+  .rb-chart .rb-bar[data-pattern="outline"] { width: 14px; height: auto; border: 1px dashed var(--ink-3); border-left: 0; }
 }
 
 /* ── Maple grid (2026-10-25, chosen by Lakshman): KPI strip, then rows of chart (8/12) beside its ranking (4/12),
@@ -548,10 +481,7 @@ main.ev-root[data-destination="delegation-evidence"] .kv [data-field-tone="model
 
 /* Maple grid: the savings day chart drawn flat in its panel (the panel heading names it; no inner card, no zoom bar). */
 .maple-cell .local-usage-savings > figure.local-chart { border: 0; background: none; box-shadow: none; padding: 0; margin: 0; }
-.maple-cell .local-usage-savings > figure.local-chart .local-chart-symbol,
-.maple-cell .local-usage-savings > figure.local-chart .local-chart-heading h3,
-.maple-cell .local-usage-savings > figure.local-chart .local-chart-inspect-icon { display: none; }
-/* The zoom range (first/last point, reset) stays: it is the chart's keyboard and touch access to its days. */
+.maple-cell .local-usage-savings > figure.local-chart .local-chart-heading h3 { display: none; }
 .maple-cell .local-usage-savings > figure.local-chart .local-chart-heading { min-height: 0; margin: 0 0 6px; }
 .maple-cell .local-usage-savings > figure.local-chart .local-chart-heading p { margin: 0; font-size: 12px; color: var(--ink-3); }
 .maple-cell .local-usage-savings > figure.local-chart .local-chart-canvas { background: transparent; }
@@ -578,74 +508,72 @@ main.ev-root .ev-maple-grid { align-items: start; }
 }
 
 /* Live review 2026-10-25: Overview headline tiles end with their day sparkline; the info icon sits on the label line. */
-.local-dashboard-page--overview .local-overview-summary > .local-dashboard-panel { display: flex; flex-direction: column; }
-.local-dashboard-page--overview .local-overview-summary .local-card-spark { margin-top: auto; padding-top: 10px; color: var(--panel-accent, var(--ink-3)); }
-.local-dashboard-page--overview .local-overview-summary .local-card-spark .kpi-sparkline { display: block; width: 100%; height: 28px; }
-.local-dashboard-page--overview .local-overview-summary .local-dashboard-panel > h2 { align-items: center; }
-.local-dashboard-page--overview .local-overview-summary .local-card-basis-button,
-.local-dashboard-page--overview .local-overview-summary .local-dashboard-panel > h2 button { align-self: center; margin-top: 0; }
-.local-dashboard-page--overview .local-overview-summary .local-card-basis-tip { top: 15px; right: 16px; }
-.local-dashboard-page--overview .local-overview-summary .local-card-info { display: inline-grid; place-items: center; width: 20px; height: 20px; padding: 0; color: var(--ink-3); }
-.local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel { display: flex; flex-direction: column; gap: 6px; }
-.local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel { align-items: stretch; text-align: left; min-height: 0; }
-.local-dashboard-page--overview .local-overview-summary .local-dashboard-panel > h2 { justify-content: flex-start; }
-.local-dashboard-page--overview .local-overview-summary .local-token-directions { justify-content: flex-start; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel { display: flex; flex-direction: column; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-spark { margin-top: auto; padding-top: 10px; color: var(--panel-accent, var(--ink-3)); }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > h2 { align-items: center; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-basis-button,
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > h2 button { align-self: center; margin-top: 0; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-basis-tip { top: 15px; right: 16px; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-info { display: inline-grid; place-items: center; width: 20px; height: 20px; padding: 0; color: var(--ink-3); }
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel { display: flex; flex-direction: column; gap: 6px; }
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel { align-items: stretch; text-align: left; min-height: 0; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > h2 { justify-content: flex-start; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-token-directions { justify-content: flex-start; }
 
 /* Live review 2026-10-25 ("each card different color"): every headline tile wears its identity colour (OMN-21308:
    amber spend, teal savings, blue calls, violet tokens) as a top bar, a soft tint and its label; figures stay ink. */
-.local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel {
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel {
   background: color-mix(in srgb, var(--panel-accent, var(--ink-3)) 7%, var(--panel));
   box-shadow: inset 0 3px 0 var(--panel-accent, var(--ink-3));
 }
-.local-dashboard-page--overview .local-overview-summary .local-dashboard-panel > h2 { color: color-mix(in srgb, var(--panel-accent, var(--ink-3)) 75%, var(--ink)); }
-.local-dashboard-page--overview .local-overview-summary .local-dashboard-panel > h2 svg { color: var(--panel-accent, var(--ink-3)); }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > h2 { color: color-mix(in srgb, var(--panel-accent, var(--ink-3)) 75%, var(--ink)); }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > h2 svg { color: var(--panel-accent, var(--ink-3)); }
 
 /* Live review 2026-10-25: four separate headline cards, each bordered in its identity colour; the basis tooltip opens
    inside its own card so it is never cut off; the sparkline is labelled. */
-.local-dashboard-page--overview .local-overview-surface > .local-overview-summary { gap: 12px; border: 0; background: transparent; }
-.local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel,
-.local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel:first-child,
-.local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel:last-child {
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary { gap: 12px; border: 0; background: transparent; }
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel,
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel:first-child,
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel:last-child {
   border: 1px solid color-mix(in srgb, var(--panel-accent, var(--ink-3)) 45%, var(--line));
   border-top: 3px solid var(--panel-accent, var(--ink-3));
   border-radius: 10px; box-shadow: none;
 }
-.local-dashboard-page--overview .local-overview-summary .local-card-basis-tip { position: static; }
-.local-dashboard-page--overview .local-overview-summary .local-card-info { position: absolute; top: 13px; right: 14px; }
-.local-dashboard-page--overview .local-overview-summary .local-card-tooltip { top: 44px; left: 12px; right: 12px; width: auto; }
-.local-dashboard-page--overview .local-overview-summary .local-card-spark { display: flex; flex-direction: column; gap: 4px; cursor: default; }
-.local-dashboard-page--overview .local-overview-summary .local-card-spark-label { font-size: 12px; color: var(--ink-3); }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-basis-tip { position: static; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-info { position: absolute; top: 13px; right: 14px; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip { top: 44px; left: 12px; right: 12px; width: auto; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-spark { display: flex; flex-direction: column; gap: 4px; cursor: default; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-spark-label { font-size: 12px; color: var(--ink-3); }
 @media (max-width: 1100px) {
-  .local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel { border-top-width: 3px; }
+  :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel { border-top-width: 3px; }
 }
-.local-dashboard-page--overview .local-overview-summary .local-card-figure-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
-.local-dashboard-page--overview .local-overview-summary .local-card-figure-row .local-token-directions { margin: 0; font-size: 12px; }
-.local-dashboard-page--overview .local-overview-summary .local-card-spark { margin-top: 8px; }
-.local-dashboard-page--overview .local-overview-summary .local-card-figure-row { flex-wrap: nowrap; align-items: center; }
-.local-dashboard-page--overview .local-overview-summary .local-card-figure-row .local-token-directions { display: flex; flex-direction: column; align-items: flex-start; gap: 0; line-height: 1.35; white-space: nowrap; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-figure-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-figure-row .local-token-directions { margin: 0; font-size: 12px; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-spark { margin-top: 8px; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-figure-row { flex-wrap: nowrap; align-items: center; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-figure-row .local-token-directions { display: flex; flex-direction: column; align-items: flex-start; gap: 0; line-height: 1.35; white-space: nowrap; }
 
 /* Live review 2026-10-25: label and figure only; hovering anywhere on a headline card opens its details. */
-.local-dashboard-page--overview .local-overview-summary > .local-dashboard-panel:hover .local-card-tooltip { visibility: visible; opacity: 1; transform: none; pointer-events: auto; }
-.local-dashboard-page--overview .local-overview-summary .local-card-tooltip { top: 40px; z-index: 6; }
-.local-dashboard-page--overview .local-overview-summary .local-card-tooltip .local-token-directions { display: flex; gap: 12px; margin: 0 0 8px; font-size: 12px; }
-.local-dashboard-page--overview .local-overview-summary .local-card-tooltip .local-card-spark { margin-top: 6px; color: var(--panel-accent, var(--ink-3)); }
-.local-dashboard-page--overview .local-overview-summary .local-card-tooltip .kpi-sparkline { display: block; width: 100%; height: 32px; }
-.local-dashboard-page--overview .local-overview-summary .local-card-tooltip { top: calc(100% + 6px); left: 0; right: 0; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel:hover .local-card-tooltip { visibility: visible; opacity: 1; transform: none; pointer-events: auto; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip { top: 40px; z-index: 6; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip .local-token-directions { display: flex; gap: 12px; margin: 0 0 8px; font-size: 12px; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip .local-card-spark { margin-top: 6px; color: var(--panel-accent, var(--ink-3)); }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip { top: calc(100% + 6px); left: 0; right: 0; }
 
 /* Live review 2026-10-25 ("remove i"): no info icon on the headline cards; the whole card is the focus and hover target
    (the button stays for keyboard and screen readers, stretched invisibly over the card). */
-.local-dashboard-page--overview .local-overview-summary .local-card-info { inset: 0; top: 0; right: 0; width: 100%; height: 100%; border-radius: 10px; opacity: 0; cursor: default; }
-.local-dashboard-page--overview .local-overview-summary .local-card-info:focus-visible { opacity: 1; background: transparent; box-shadow: 0 0 0 2px var(--panel-accent, var(--ui-accent)) inset; }
-.local-dashboard-page--overview .local-overview-summary .local-card-info:focus-visible svg { display: none; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-info { inset: 0; top: 0; right: 0; width: 100%; height: 100%; border-radius: 10px; opacity: 0; cursor: default; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-info:focus-visible { opacity: 1; background: transparent; box-shadow: 0 0 0 2px var(--panel-accent, var(--ui-accent)) inset; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-info:focus-visible svg { display: none; }
 /* The card-wide hover button must not swallow a card's own controls: a read-failure notice's "Technical details" and
    "Try again" were unclickable under it (found by the lab e2e run, refresh-ux, 2026-10-25). */
-.local-dashboard-page--overview .local-overview-summary > .local-dashboard-panel :is([role="alert"], [role="status"], details, summary, a, button:not(.local-card-info)) { position: relative; z-index: 6; }
-.local-dashboard-page--overview .local-overview-summary .local-card-tooltip { width: auto; padding: 8px 12px; }
-.local-dashboard-page--overview .local-overview-summary .local-card-tooltip .local-dashboard-caption { margin: 0 0 2px; }
-.local-dashboard-page--overview .local-overview-summary .local-card-tooltip .local-dashboard-caption:first-child { color: var(--ink) !important; font-weight: 500; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel :is([role="alert"], [role="status"], details, summary, a, button:not(.local-card-info)) { position: relative; z-index: 6; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip { width: auto; padding: 8px 12px; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip .local-dashboard-caption { margin: 0 0 2px; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip .local-dashboard-caption:first-child { color: var(--ink) !important; font-weight: 500; }
 
 /* Live review 2026-10-25: the headline hover is a tooltip bubble above its card, pointing down at it, in the card's colour. */
-.local-dashboard-page--overview .local-overview-summary .local-card-tooltip {
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip {
   top: auto; bottom: calc(100% + 12px); left: 50%; right: auto; width: max-content; max-width: min(300px, 92%);
   padding: 9px 12px; border-radius: 10px; overflow: visible;
   background: color-mix(in srgb, var(--panel-accent, var(--ink-3)) 12%, var(--panel));
@@ -653,17 +581,17 @@ main.ev-root .ev-maple-grid { align-items: start; }
   box-shadow: 0 6px 18px rgb(0 0 0 / 0.12);
   transform: translate(-50%, 4px);
 }
-.local-dashboard-page--overview .local-overview-summary .local-card-tooltip::after {
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip::after {
   content: ''; position: absolute; left: 50%; bottom: -7px; width: 12px; height: 12px;
   background: inherit; border-right: inherit; border-bottom: inherit; transform: translateX(-50%) rotate(45deg);
 }
-.local-dashboard-page--overview .local-overview-summary > .local-dashboard-panel:hover .local-card-tooltip,
-.local-dashboard-page--overview .local-overview-summary .local-card-basis-tip[data-open="true"] .local-card-tooltip,
-.local-dashboard-page--overview .local-overview-summary .local-card-basis-tip:focus-within .local-card-tooltip { transform: translate(-50%, 0); }
-.local-dashboard-page--overview .local-overview-summary .local-card-tooltip .local-dashboard-caption:first-child { color: color-mix(in srgb, var(--panel-accent, var(--ink)) 70%, var(--ink)) !important; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel:hover .local-card-tooltip,
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-basis-tip[data-open="true"] .local-card-tooltip,
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-basis-tip:focus-within .local-card-tooltip { transform: translate(-50%, 0); }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip .local-dashboard-caption:first-child { color: color-mix(in srgb, var(--panel-accent, var(--ink)) 70%, var(--ink)) !important; }
 /* The bubble opens below its card (above, the top bar cut it off), its arrow pointing up at the card. */
-.local-dashboard-page--overview .local-overview-summary .local-card-tooltip { bottom: auto; top: calc(100% + 12px); }
-.local-dashboard-page--overview .local-overview-summary .local-card-tooltip::after {
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip { bottom: auto; top: calc(100% + 12px); }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip::after {
   bottom: auto; top: -7px; border-right: 0; border-bottom: 0;
   border-left: 1px solid color-mix(in srgb, var(--panel-accent, var(--ink-3)) 55%, var(--line));
   border-top: 1px solid color-mix(in srgb, var(--panel-accent, var(--ink-3)) 55%, var(--line));
@@ -827,11 +755,7 @@ main.ev-root .ev-maple-grid { align-items: start; }
 .gdb-col { flex: 1 1 0; max-width: 28px; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; min-width: 0; }
 .gdb-val { font-family: var(--font-mono); font-weight: 500; font-size: 12px; color: var(--ink); text-align: center; line-height: 1; margin-bottom: 4px; white-space: nowrap; }
 .gdb-bar.ins-seg {
-  display: block; width: 100%; min-height: 3px; border-radius: 0; animation: none; background: none !important;
-  border-top: 2px solid currentColor;
-  background-image: radial-gradient(currentColor 1.15px, transparent 1.35px) !important; background-size: 5px 5px !important;
-  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 55%, rgba(0,0,0,.4) 100%);
-          mask-image: linear-gradient(to bottom, #000 0%, #000 55%, rgba(0,0,0,.4) 100%);
+  display: block; width: 100%; min-height: 0; border-radius: 0; animation: none; background: none !important;
 }
 .gdb-day-label { position: absolute; top: calc(100% + 6px); left: -4px; right: -4px; text-align: center; font-size: 12px; color: var(--ink-3); white-space: nowrap; }
 .gdb-legend { display: flex; flex-wrap: wrap; gap: 16px; margin: 4px 0 0; padding: 0; list-style: none; }
@@ -849,17 +773,12 @@ main.ev-root .ev-maple-grid { align-items: start; }
   .rb-chart.rb-chart--vertical .rb-value { margin: 0 0 6px; text-align: center; }
   .rb-chart.rb-chart--vertical .rb-track { height: 180px; align-items: flex-end; }
   .rb-chart.rb-chart--vertical .rb-bar { width: 100%; height: var(--rb-size, 0); }
-  .rb-chart.rb-chart--vertical .rb-bar[data-pattern="measured"], .rb-chart.rb-chart--vertical .rb-bar[data-pattern="estimated"] { border-right: 0; border-top: 2px solid currentColor; }
-  .rb-chart.rb-chart--vertical .rb-bar[data-pattern="measured"] { -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 55%, rgba(0,0,0,.35) 100%); mask-image: linear-gradient(to bottom, #000 0%, #000 55%, rgba(0,0,0,.35) 100%); }
-  .rb-chart.rb-chart--vertical .rb-bar[data-pattern="estimated"] { background-image: repeating-linear-gradient(135deg, currentColor 0 1.5px, transparent 1.5px 6px); }
-  .rb-chart.rb-chart--vertical .rb-bar[data-pattern="unknown"] { width: 100%; height: 14px; border: 1px dashed var(--ink-3); border-bottom: 0; }
+  .rb-chart.rb-chart--vertical .rb-bar[data-pattern="outline"] { width: 100%; height: 14px; border: 1px dashed var(--ink-3); border-bottom: 0; }
 }
 
-/* Usage's stacked tokens chart: the same dotted fill, segment by segment. */
-.utc-stack i { background-image: radial-gradient(currentColor 1.15px, transparent 1.35px); background-size: 5px 5px; }
 .gdb-col { max-width: 40px; } .gdb-group { gap: 4px; padding: 0 2px; }
-/* Upright ranked bars keep the reference's proportions (bars at most 64px wide), and "Not measured" wraps, never cut. */
-.rb-chart.rb-chart--vertical .rb-plot { grid-template-columns: repeat(var(--rb-count), minmax(0, 64px)); justify-content: space-around; max-width: none; }
+/* "Not measured" wraps, never cut. */
+.rb-chart.rb-chart--vertical .rb-plot { max-width: none; }
 .rb-chart [data-basis="unknown"] > .rb-value { white-space: normal; line-height: 1.2; }
 
 /* Live review 2026-10-25 ("slim strip"): newest run, pass rate and environment in one compact row under the cards. */
@@ -879,18 +798,14 @@ main.ev-root .ev-maple-grid { align-items: start; }
 .overview-slim-environment details.local-more { margin-top: 4px; padding-top: 4px; border-top: 0; }
 .rb-chart.rb-chart--vertical .rb-value { overflow: visible; text-overflow: clip; white-space: nowrap; }
 /* Delegation Quality: the fifth headline card, in the pass colour (Quality's teal would repeat Savings). */
-.local-dashboard-page--overview .local-overview-summary .local-dashboard-panel[data-component="overview-quality"] { --panel-accent: var(--field-pass); }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel[data-component="overview-quality"] { --panel-accent: var(--field-pass); }
 .local-dashboard-panel[data-component="api-keys-environment"] { --panel-accent: var(--field-host); }
 .local-dashboard-page--api-keys .local-dashboard-grid > .local-dashboard-panel[data-component="api-keys-environment"] { grid-column: 1 / -1; }
-/* Full-width upright bars: columns wide enough for model names, bars still at most 64px. */
-.rb-chart.rb-chart--vertical .rb-plot { grid-template-columns: repeat(var(--rb-count), minmax(0, 160px)); }
-.rb-chart.rb-chart--vertical .rb-bar { max-width: 64px; margin: 0 auto; }
-.rb-chart.rb-chart--vertical .rb-track { justify-content: center; }
-
-/* Live review 2026-10-25 ("all bar graphs should have full cards"): on Overview the bars fill their card. */
-.local-dashboard-page--overview .rb-chart.rb-chart--vertical .rb-plot { grid-template-columns: repeat(var(--rb-count), minmax(0, 1fr)); justify-content: stretch; gap: 24px; }
-.local-dashboard-page--overview .rb-chart.rb-chart--vertical .rb-bar { max-width: none; width: 72%; }
-.local-dashboard-page--overview .rb-chart.rb-chart--vertical .rb-track { height: 220px; }
+/* Live review 2026-10-25 ("all bar graphs should have full cards"), on every page since part 15: upright bars fill their
+   card, each bar 72% of its column and at most 120px wide (live review 2026-10-26: a three-bar chart draws no slabs). */
+.rb-chart.rb-chart--vertical .rb-plot { grid-template-columns: repeat(var(--rb-count), minmax(0, 1fr)); justify-content: stretch; gap: 24px; }
+.rb-chart.rb-chart--vertical .rb-bar { width: 72%; max-width: 120px; margin: 0 auto; }
+.rb-chart.rb-chart--vertical .rb-track { justify-content: center; height: 220px; }
 .local-dashboard-page--overview .gdb-col { max-width: none; }
 .local-dashboard-page--overview .gdb-group { gap: 3px; padding: 0 3px; }
 .local-dashboard-page--overview .ins-bars.gdb-plot { gap: 8px; height: 260px; }
@@ -936,3 +851,119 @@ main.ev-root .ev-maple-grid { align-items: start; }
   .local-dashboard-page .local-day-pop.local-calendar { position: fixed; left: 10px; right: 10px; width: auto; max-width: 320px; margin-inline: auto; padding: 8px; }
   .local-dashboard-page .local-day-pop.local-calendar .local-calendar-grid { gap: 0; }
 }
+
+/* OMN-21166 part 15 AC94 (Lakshman 2026-10-25: "instead of pure black and pure white BG - use best one for us"):
+   one cool family for page, cards and sidebar in each theme, none of them pure black or pure white. Only surfaces and
+   lines change; the navigation's active state keeps its dev colours (AC69) and every ink keeps 4.5:1 (checked by the
+   AC95 walk). The :root prefix outranks the page-scoped tokens in dashboard-cards.css. */
+:root .app:has(.local-dashboard-page),
+:root .app:has(.ev-root[data-destination="delegation-evidence"]) {
+  /* Part 20 AC137 (Lakshman 2026-10-26, option "A: warm paper"): warm off-white page, near-white cards, warm borders. */
+  --bg: #f6f5f1; --panel: #fffefb; --panel-2: #f1efe9; --line: #e7e4dc; --line-2: #e7e4dc;
+  --sidebar: #faf9f6; --sidebar-line: #e7e4dc; --sidebar-hover: #f1efe9;
+}
+/* Headline cards stay flat (their identity edge sets them apart, and they never lift); other panels carry the shadow. */
+:root:not([data-theme="dark"]) .app:has(.local-dashboard-page) .local-dashboard-panel:not(.local-overview-summary > .local-dashboard-panel),
+:root:not([data-theme="dark"]) .app:has(.ev-root[data-destination="delegation-evidence"]) .panel { box-shadow: 0 1px 2px rgba(60, 50, 30, 0.05); }
+:root[data-theme="dark"] .app:has(.local-dashboard-page),
+:root[data-theme="dark"] .app:has(.ev-root[data-destination="delegation-evidence"]) {
+  --bg: #0f1218; --panel: #161a22; --panel-2: #1c212b; --line: #262b35; --line-2: #1e232c;
+  --sidebar: #12151c; --sidebar-line: #232833; --sidebar-hover: #1c212b;
+}
+
+/* Part 15 AC91: the Runs and Usage headline cards sit on their own full row under the page title, as on Overview. */
+.local-dashboard-page .local-dashboard-header:has(> .local-kpi-cards) { flex-wrap: wrap; row-gap: 16px; }
+.local-dashboard-page .local-dashboard-header > .local-kpi-cards { flex: 1 1 100%; min-width: 0; }
+
+/* Live review 2026-10-26 ("all bar graph follow this style"): every bar on the local pages and Evidence is one hatch in
+   its own colour under a 2px edge of that colour: ranked bars, grouped day bars and Usage's token stack. What a figure is
+   (measured or modelled) is said in words; a value that is not served stays a dashed outline. */
+.rb-chart .rb-bar[data-pattern="hatched"],
+.gdb-bar.ins-seg,
+.utc-stack i {
+  border-top: 2px solid currentColor;
+  background: repeating-linear-gradient(135deg, currentColor 0 1.5px, transparent 1.5px 6px) !important;
+  -webkit-mask-image: none; mask-image: none;
+}
+@container (max-width: 560px) {
+  .rb-chart:not(.rb-chart--vertical) .rb-bar[data-pattern="hatched"] { border-top: 0; border-right: 2px solid currentColor; }
+}
+/* The day's total shows on hover or keyboard focus only, as on every other bar chart (live review 2026-10-26). */
+.utc-value { visibility: hidden; }
+.utc-plot > li:is(:hover, :focus-visible) .utc-value { visibility: visible; color: var(--ink); }
+/* Evidence's pass/fail strip: the same hatch, each part in its field colour, tall enough to read as hatching (scoped to win
+   over event-dash's .ev-root .bar-track / .ev-root .ev-qg-bar). */
+main.ev-root .bar-track.ev-qg-bar { height: 14px; background: none; gap: 2px; }
+.ev-qg-bar > .bar-fill { color: var(--field-ink); border-top: 2px solid currentColor; border-radius: 0;
+  background: repeating-linear-gradient(135deg, currentColor 0 1.5px, transparent 1.5px 6px) !important; }
+/* Wide charts that are not marked vertical draw upright bars the same size; sideways bars below 560px keep their length
+   as the value. */
+@container (min-width: 561px) { .rb-chart:not(.rb-chart--vertical) .rb-bar { width: 72%; max-width: 120px; margin-inline: auto; } }
+/* A headline card's figure sits on the card's last line, so figures share one baseline when a title wraps ("Median
+   duration" in a six-card row). */
+:is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel { display: flex; flex-direction: column; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel > .local-dashboard-metric { margin-top: auto; }
+/* Part 17: grouped bars drawn as a list (GroupedBars), in the day-chart look; long model names wrap under their column. */
+ul.gdb-plot--list { list-style: none; margin: 0 0 26px; }
+.gdb-plot--list > .ins-bar.gdb-day:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
+ul.gdb-plot--names { margin-bottom: 48px; }
+.gdb-plot--names .gdb-day-label { white-space: normal; line-height: 1.25; overflow-wrap: anywhere; }
+/* Part 18 AC124: no card inside a card. A chart inside a panel draws no box of its own; its title row is the Overview
+   one (icon, then a neutral title). */
+.local-dashboard-panel .local-chart:not(.ins-card) { border: 0; padding: 0; border-radius: 0; background: none; box-shadow: none; }
+.local-chart-heading { align-items: flex-start; gap: 8px; }
+.local-chart-heading > svg { flex: none; margin-top: 1px; color: var(--panel-accent, var(--ink-2)); }
+.local-chart-heading h3 { font-size: 13px; font-weight: 600; color: var(--ink); }
+
+/* Part 18 AC124 on Runs: chart titles are neutral, as on Overview (the icon carries the colour); cause names are whole;
+   each analysis chart has its own row inside the panel, with no card inside the card. */
+.local-dashboard-page .ins-card .ins-title { color: var(--ink); font-size: 13px; }
+.local-dashboard-page .ins-list-name { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+.local-dashboard-page--runs .overview-chart-row { grid-template-columns: minmax(0, 1fr); }
+/* The panel keeps its surface like every panel; its charts draw no box of their own, one per row under a hairline. */
+.local-dashboard-page--runs .local-dashboard-panel[data-component="runs-insights"] .ins-card { border: 0; border-top: 1px solid var(--line); border-radius: 0; background: none; box-shadow: none; padding: 16px 0 4px; }
+.local-run-charts-panel .local-run-charts { grid-template-columns: minmax(0, 1fr); }
+.local-run-charts-slot:empty { display: none; }
+/* "This week": each day's passed and failed runs, hatched in their colours like every bar (part 16 AC97). */
+.local-runs-week-bar { height: 12px; background: none; gap: 2px; border-radius: 0; }
+.local-runs-week-bar > i { border-top: 2px solid currentColor; background: repeating-linear-gradient(135deg, currentColor 0 1.5px, transparent 1.5px 6px) !important; }
+.local-runs-week-bar > i[data-outcome="passed"] { color: var(--ins-pass); }
+.local-runs-week-bar > i[data-outcome="failed"] { color: var(--ins-fail); }
+.local-runs-week-bar > i[data-outcome="unknown"] { color: var(--ins-unknown); }
+/* Part 18 AC124: an open page-level "More …" is not a card around cards; its panels sit on the page as Overview's do. */
+.local-dashboard-page details.local-more--page[open] { border-color: transparent; background: none; padding-left: 0; padding-right: 0; }
+.local-dashboard-page details.local-more--page[open] > summary { padding: 0 0 8px; }
+.local-dashboard-page details.local-more--page[open] > :not(summary) + :not(summary) { margin-top: 16px; }
+/* Part 16 AC97 on list bars (Tasks, Why runs failed): the same hatch in each row's colour, on no grey track. */
+.local-dashboard-page .ins-track { background: none; height: 12px; }
+.local-dashboard-page .ins-fill { color: var(--ins-swatch); border-radius: 0; border-right: 2px solid currentColor; background: repeating-linear-gradient(135deg, currentColor 0 1.5px, transparent 1.5px 6px) !important; }
+/* A cause row has no icon column: name, bar, count (the icon rows' 26px first column made names break letter by letter). */
+.local-dashboard-page .ins-list-row.ins-list-row--plain { grid-template-columns: minmax(10rem, 0.8fr) minmax(0, 1.4fr) auto; }
+.local-dashboard-page .ins-list-row--plain > .ins-list-seen { grid-column: 1 / -1; }
+/* Part 18 AC128: provider names read as names (one case, the body colour), not as column headers; the merged table
+   fits the panel, its long command and model cells wrapping. */
+.local-model-keys tbody th[scope="row"] { text-transform: none; letter-spacing: 0; font-weight: 600; color: var(--ink); background: none; font-size: 13px; }
+.local-model-keys table { table-layout: auto; width: 100%; }
+.local-model-keys td, .local-model-keys th { white-space: normal; overflow-wrap: normal; }
+/* Identifiers stay whole on desktop (the column takes their width); words wrap at their spaces. */
+.local-model-keys tbody th[scope="row"] { white-space: nowrap; overflow-wrap: normal; }
+/* Headline card icons are bare 14px glyphs on every page, as on Overview (the older panel rule pads title icons). */
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > h2 svg { padding: 0; border-radius: 0; background: none; }
+/* The Savings chart's own heading (title and icon) is hidden inside its panel, whose heading names it. */
+.maple-cell .local-usage-savings > figure.local-chart .local-chart-heading > svg { display: none; }
+/* Part 18 AC128 on phones: the one Credentials table reads as a card per provider, as the key table it replaced did:
+   each field on its own line under its label, the provider name heading the card. */
+@media (max-width: 760px) {
+  .local-model-keys .local-dashboard-table-wrap { overflow: visible; }
+  .local-model-keys table { min-width: 0 !important; width: 100%; }
+  .local-model-keys thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .local-model-keys tbody { display: grid; gap: 12px; }
+  .local-model-keys tbody tr { display: grid; padding: 12px; border: 1px solid color-mix(in oklab, var(--panel-accent) 45%, var(--line)); border-radius: 10px; background: var(--panel-2); }
+  .local-model-keys tbody :is(td, th[scope="row"]) { display: block; min-width: 0; padding: 7px 0; border: 0; white-space: normal; overflow-wrap: anywhere; }
+  .local-model-keys tbody td::before { content: attr(data-label); display: block; margin-bottom: 3px; font-size: 12px; color: var(--text-secondary); }
+}
+
+/* Review fix (AC109): the tooltip's wrapper takes no place in the card's flow, so a card with details and one without keep
+   their figures on one line; its button and tooltip still place themselves against the card. */
+:is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel > .local-card-basis-tip { display: contents; }
+/* The bar heights above are their values' shares only (no minimum height); a drawn bar's 2px edge still marks it. */

@@ -36,7 +36,8 @@ test('local identity values use available width instead of narrow metric columns
   await expect(values.first()).toBeVisible();
   expect(await values.first().evaluate(el => el.getBoundingClientRect().width)).toBeGreaterThanOrEqual(320);
   await expect(page.getByText('Tenant', { exact: true })).toBeVisible();
-  await expect(page.getByText('Minted', { exact: true })).toBeVisible();
+  // Part 18 AC130: the identity's mint time is never served, so its always-empty row is gone.
+  await expect(page.getByText('Minted', { exact: true })).toHaveCount(0);
   await page.screenshot({ path: info.outputPath('identity-readable.png') });
 });
 

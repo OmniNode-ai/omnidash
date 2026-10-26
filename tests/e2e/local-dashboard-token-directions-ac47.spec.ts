@@ -17,7 +17,10 @@ const now = () => new Date().toISOString();
 const INCOMPATIBLE_USAGE = [{ tokens_input: 7771, tokens_output: 3331, total_tokens: 11102, prompt_tokens: 7771,
   completion_tokens: 3331, delegation_count: 4 }];
 
-function overviewRow(directions: { tokens_input?: number; tokens_output?: number }) {
+// cost.savings-overview.v1 serves the directions as tokens_input_total and tokens_output_total (omnimarket#4341);
+// omnidash#462 moved the card onto those names, so the fixture serves them too (the 10-25 closer found this control
+// serving the old names and failing on dev b101e493).
+function overviewRow(directions: { tokens_input_total?: number; tokens_output_total?: number }) {
   return [{ window: 'all', captured_at: now(), total_cost_usd: 0.25, total_baseline_cost_usd: 1, total_savings_usd: 0.75,
     tokens_total: 120, run_count: 3, measured_run_count: 3, estimated_run_count: 0, unknown_run_count: 0, ...directions }];
 }
@@ -40,7 +43,7 @@ test('AC47 the aggregate serves a total but no directions: both read Not measure
 });
 
 test('AC47 the aggregate serves its directions: each shows its own value (control)', async ({ page }) => {
-  await serveCharts(page, { ...chartRows, [OVERVIEW]: overviewRow({ tokens_input: 100, tokens_output: 20 }),
+  await serveCharts(page, { ...chartRows, [OVERVIEW]: overviewRow({ tokens_input_total: 100, tokens_output_total: 20 }),
     [TOKEN_USAGE]: INCOMPATIBLE_USAGE });
   await page.goto('/');
   const { card, directions } = await tokenDirections(page);

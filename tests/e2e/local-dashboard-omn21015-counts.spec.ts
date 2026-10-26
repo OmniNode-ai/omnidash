@@ -22,6 +22,11 @@ for (const theme of ['light', 'dark'] as const) {
     await expect(page.locator('[data-component="overview-measured"] .local-dashboard-metric')).toHaveText('59.18K');
     const tokens = page.locator('[data-component="overview-tokens"]');
     await expect(tokens.locator('.local-dashboard-metric')).toHaveText('309.27M');
+    // OMN-21166 part 12 AC73 (live review 2026-10-25, "in out token also - show it when hover it"): the directions are
+    // in the card's tooltip, opened as a keyboard reader opens it, by focusing the card's info button.
+    const about = tokens.getByRole('button', { name: 'About Tokens processed', exact: true });
+    await about.focus();
+    await expect(tokens.locator('[data-field-tone="tokens-in"]')).toBeVisible();
     await expect(tokens.locator('[data-field-tone="tokens-in"]')).toContainText('300,000,001');
     await expect(tokens.locator('[data-field-tone="tokens-out"]')).toContainText('9,271,490');
     await expect(tokens.getByLabel('Input tokens: 300,000,001', { exact: true })).toHaveAttribute('title', 'Input tokens: 300,000,001');
@@ -38,6 +43,7 @@ for (const theme of ['light', 'dark'] as const) {
     const collapse = page.getByRole('button', { name: 'Collapse sidebar', exact: true });
     if (await collapse.isVisible()) await collapse.click();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+    await about.focus();
     await expect(tokens.locator('[data-field-tone="tokens-in"]')).toBeVisible();
     const smallPair = await tokens.locator('.local-token-direction').all();
     expect(Math.abs((await smallPair[0]!.boundingBox())!.y - (await smallPair[1]!.boundingBox())!.y)).toBeLessThan(2);
@@ -94,8 +100,8 @@ test('Overview and Evidence derive missing calls from complete same-row model gr
   await page.goto('/overview');
   await expect(page.locator('[data-component="overview-measured"] .local-dashboard-metric')).toHaveText('59.18K');
   await page.goto('/delegation-evidence');
-  const calls = page.locator('.kpi').filter({has:page.getByText('Delegations',{exact:true})});
-  await expect(calls.locator('.k-v')).toHaveText('59.18K');
+  const calls = page.locator('article[data-kpi-card="Delegations"]'); // part 15 AC91: an Overview card
+  await expect(calls.locator('.local-dashboard-metric')).toHaveText('59.18K');
   await page.screenshot({path:info.outputPath('derived-calls-evidence.png'),fullPage:true});
 });
 

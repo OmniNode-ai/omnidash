@@ -21,7 +21,8 @@ test('review fixes: exact median and keyboard/touch hourly inspection', async ({
   await page.goto('/runs');
   await page.getByText('More analysis', { exact: true }).press('Enter');
   await page.waitForLoadState('networkidle');
-  await expect(page.getByRole('heading', { name: 'Runs', exact: true })).toBeVisible();
+  // Part 15 AC91: the Runs headline card is also titled "Runs", so the page title is asked for by its level.
+  await expect(page.getByRole('heading', { level: 1, name: 'Runs', exact: true })).toBeVisible();
   await expect(page.getByRole('figure', { name: 'How long runs take', exact: true })).toContainText('Median 960 ms');
   const heat = page.getByRole('group', { name: /Runs by UTC hour for all served UTC dates/ });
   const cells = heat.getByRole('button');
@@ -38,7 +39,7 @@ test('review fixes: exact median and keyboard/touch hourly inspection', async ({
   await populated.press('ArrowRight');
   await expect(page.getByTestId('activity-hour-readout')).toHaveText(`${weekday} 09:00 UTC · 0 runs`);
   // A readout must survive the pointer leaving the chart after keyboard selection.
-  await page.getByRole('heading', { name: 'Runs', exact: true }).hover();
+  await page.getByRole('heading', { level: 1, name: 'Runs', exact: true }).hover();
   await expect(page.getByTestId('activity-hour-readout')).toHaveText(`${weekday} 09:00 UTC · 0 runs`);
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 900 });

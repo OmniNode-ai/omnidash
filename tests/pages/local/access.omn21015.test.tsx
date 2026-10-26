@@ -29,7 +29,9 @@ describe('OMN-21015 AC10 dashboard access', () => {
     render(<DashboardAccess rows={[native]} />);
     expect(field('Access')).toBe('loopback-token');
     expect(field('Token minted')).toBe('Oct 17, 10:00:00 UTC');
-    expect(field('Rotate')).toBe(native.rotate_hint);
+    // Part 18 AC131: the served words, with the backticked command drawn as code instead of literal backticks.
+    expect(field('Rotate')).toBe(native.rotate_hint.replace(/`/g, ''));
+    expect(screen.getByText('onex dashboard').tagName).toBe('CODE');
   });
 
   it('A1: a field the row does not carry says Not recorded', () => {

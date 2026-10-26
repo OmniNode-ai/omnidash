@@ -36,17 +36,17 @@ for (const theme of ['light', 'dark'] as const) {
       await activeNav.hover();
       await expect(activeNav).toHaveCSS('background-color', activeBackground);
       await expect(activeNav.locator('.dash-marker')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
-      const cards = page.locator('.local-dashboard-panel, .ev-root .panel, .ev-root .kpi');
+      const cards = page.locator('.local-dashboard-panel, .ev-root .panel');
       await expect(cards.first()).toBeVisible();
       const accents = await cards.evaluateAll(elements => elements.map(el => ({
-        // OMN-21166 AC63: Evidence's KPI tiles are cells of one divided strip; the strip carries the single 1px border.
-        width: parseFloat(getComputedStyle(el.parentElement?.matches('.ev-kpi-strip') ? el.parentElement : el).borderTopWidth), color: getComputedStyle(el).borderTopColor,
+        width: parseFloat(getComputedStyle(el).borderTopWidth), color: getComputedStyle(el).borderTopColor,
         background: getComputedStyle(el).backgroundColor,
         image: getComputedStyle(el).backgroundImage,
         headline: el.closest('.local-overview-summary') !== null,
       })));
-      // Live review 2026-10-25 ("each card different color"): Overview's four headline cards wear their identity colour
-      // as a 3px top edge, each a different colour; every other card keeps the single subtle 1px border.
+      // Live review 2026-10-25 ("each card different color"): the headline cards wear their identity colour as a 3px top
+      // edge, each a different colour, on Overview and (part 15 AC91) on Runs, Usage and Evidence; every other card keeps
+      // the single subtle 1px border.
       expect(accents.filter(card => !card.headline).every(card => card.width === 1), 'Cards use a single subtle border').toBe(true);
       const headlines = accents.filter(card => card.headline);
       if (headlines.length > 0) {

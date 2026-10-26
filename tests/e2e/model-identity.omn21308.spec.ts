@@ -45,15 +45,17 @@ async function theme(page: Page, requested: string) {
 
 async function usageColors(page: Page, names: string[]) {
   // OMN-21166 Maple grid + AC64: Spend by model is ranked bars (no donut or legend buttons) and the page's Tokens per day
-  // is a stacked chart; the highlight buttons and per-day bars are the detail under "More usage". One model keeps one colour in all.
+  // is a stacked chart; "Tokens by model" (hatched grouped bars, the model's name under its pair in the model's colour) is
+  // under "More usage" (part 17: the highlight buttons and per-day bars are removed). One model keeps one colour in all.
   const spend = page.getByRole('figure', { name: 'Spend by model', exact: true });
   const chart = page.getByRole('figure', { name: 'Tokens in per day by model', exact: true });
-  const tokens = page.getByRole('figure', { name: 'Tokens by model and day', exact: true });
+  const tokens = page.getByRole('figure', { name: 'Tokens in vs out by model', exact: true });
   await expect(spend.locator('li[data-ranked-item]')).toHaveCount(names.length);
   await expect(chart.getByRole('list', { name: 'Models', exact: true }).getByRole('listitem')).toHaveCount(names.length);
-  await expect(tokens.getByRole('group', { name: 'Model highlight' }).getByRole('button')).toHaveCount(names.length);
+  await expect(tokens.locator('li.gdb-day')).toHaveCount(names.length);
+  await expect(page.getByRole('group', { name: 'Model highlight' })).toHaveCount(0); // part 17 AC116: removed with the detail panel
   const result: Record<string, string> = {};
-  for (const [index, name] of names.entries()) {
+  for (const name of names) {
     const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const item = spend.locator(`li[data-ranked-item="${name}"]`);
     const color = await item.locator('.rb-name').evaluate(el => getComputedStyle(el).color);
@@ -61,10 +63,10 @@ async function usageColors(page: Page, names: string[]) {
     const bar = item.locator('.rb-bar');
     if (name === 'unpriced-model') {
       // An unpriced model is drawn as not measured: an outline with no height, never a zero-cost bar.
-      await expect(bar).toHaveAttribute('data-pattern', 'unknown');
+      await expect(bar).toHaveAttribute('data-pattern', 'outline');
       expect(await bar.getAttribute('style'), 'unpriced model must not create a zero-cost bar').toBeNull();
     } else {
-      await expect(bar).toHaveAttribute('data-pattern', 'measured');
+      await expect(bar).toHaveAttribute('data-pattern', 'hatched');
       expect(await bar.evaluate(el => getComputedStyle(el).color), `bar for ${name}`).toBe(color);
       expect(await bar.getAttribute('style'), `bar size for ${name}`).toContain('--rb-size');
     }
@@ -72,15 +74,14 @@ async function usageColors(page: Page, names: string[]) {
     await expect(chartLegend).toHaveCount(1);
     expect(await chartLegend.locator('i').evaluate(el => getComputedStyle(el).backgroundColor), `${name}: token chart legend`).toBe(color);
     const segment = chart.locator(`i[data-token-model="${name}"]`).first();
-    // OMN-21166 live review 2026-10-25: token segments are dotted marks drawn in currentColor (a radial-gradient
+    // OMN-21166 live review 2026-10-25: token segments are hatched marks drawn in currentColor (a repeating-linear-gradient
     // background-image), so the model colour is the segment's text colour and its top edge, not its background-color.
     expect(await segment.evaluate(el => getComputedStyle(el).color), `${name}: token chart segment`).toBe(color);
     expect(await segment.evaluate(el => getComputedStyle(el).borderTopColor), `${name}: token chart segment edge`).toBe(color);
-    const highlight = tokens.getByRole('button', { name: `Highlight ${name}`, exact: true });
-    await expect(highlight.locator('.usage-model-swatch')).toHaveCSS('background-color', color);
-    await expect(tokens.locator('.usage-tokens-bar').first().locator('.usage-tokens-fill').nth(index)).toHaveCSS('background-color', color);
-    const tokenLegend = tokens.locator('.usage-tokens-legend').first().getByRole('listitem').nth(index);
-    expect(await tokenLegend.evaluate(el => getComputedStyle(el, '::before').backgroundColor)).toBe(color);
+    // Part 17 AC114: the model's name under its pair of bars is in the model's colour.
+    const pairName = tokens.locator('li.gdb-day').filter({ has: page.locator('.gdb-day-label', { hasText: new RegExp(`^${escaped}$`) }) }).locator('.gdb-day-label');
+    await expect(pairName).toHaveCount(1);
+    expect(await pairName.evaluate(el => getComputedStyle(el).color), `${name}: Tokens by model name`).toBe(color);
     result[name] = color;
   }
   return result;
@@ -99,8 +100,9 @@ for (const selectedTheme of ['light', 'dark']) {
     const before = await usageColors(page, names);
     rows[USAGE] = [...rows[USAGE]].reverse();
     await page.getByRole('button', { name: 'Refresh', exact: true }).click();
-    const tokens = page.getByRole('figure', { name: 'Tokens by model and day', exact: true });
-    await expect(tokens.getByRole('group', { name: 'Model highlight' }).getByRole('button').first()).toHaveText('model-b');
+    const tokens = page.getByRole('figure', { name: 'Tokens in vs out by model', exact: true });
+    // Part 17 AC114: the model pairs follow the served order; the reordered refresh puts model-b first (the highlight buttons are removed).
+    await expect(tokens.locator('li.gdb-day .gdb-day-label').first()).toHaveText('model-b');
     expect(await usageColors(page, [...names].reverse())).toEqual(before);
     await page.screenshot({ path: info.outputPath('model-identity-reordered.png'), fullPage: true, animations: 'disabled' });
     await info.attach('model-colors', { body: JSON.stringify({ theme: selectedTheme, before }), contentType: 'application/json' });
@@ -124,7 +126,8 @@ for (const selectedTheme of ['light', 'dark']) {
     await page.goto('/runs');
     await theme(page, selectedTheme);
     await page.getByText('More analysis', { exact: true }).press('Enter');
-    await page.locator('[data-component="runs-tier-mix"] details.local-tier-details > summary').press('Enter');
+    // OMN-21166 part 18 AC120: the routing table is shown directly; there is no nested disclosure to open.
+    await expect(page.locator('[data-component="runs-tier-mix"] details')).toHaveCount(0);
     const colors: Record<string, { ring: string; name: string; routing: string }> = {};
     for (const name of names) {
       const mark = page.getByRole('figure', { name: 'Pass rate by model', exact: true }).locator(`li[data-ranked-item="${name}"]`);

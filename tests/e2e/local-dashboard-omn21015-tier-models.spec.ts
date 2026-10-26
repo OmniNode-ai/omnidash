@@ -62,14 +62,14 @@ test('OMN-21015 AC2: Overview lists each model under its tier with its served ru
   await page.setViewportSize({ width: 1440, height: 900 });
   await serve(page, { [ROUTING]: routing });
   // OMN-21166 Maple grid / part 13: Overview's Tier mix is ranked bars (tier shares only); the models under each tier,
-  // with their runs, share and cost, are Runs' routing breakdown, under its closed "More analysis".
+  // with their runs, share and cost, are Runs' routing breakdown table, under its closed "More analysis".
   await page.goto('/runs');
   await page.locator('summary').filter({ hasText: /^More analysis$/ }).click();
 
   const panel = page.getByRole('region', { name: 'Tier mix' });
   await expect(panel).toBeVisible();
-  await panel.locator('details > summary').press('Enter');
-  await expect(panel.locator('details')).toHaveAttribute('open', '');
+  // OMN-21166 part 18 AC120: the table is shown directly; the nested "Full routing breakdown" disclosure is removed.
+  await expect(panel.locator('details')).toHaveCount(0);
   await expect(panel.getByRole('table')).toBeVisible();
   await expect(panel.getByRole('table').locator('tbody tr')).toHaveCount(5);
   // Two models in one tier are two rows, each listed under its own tier.

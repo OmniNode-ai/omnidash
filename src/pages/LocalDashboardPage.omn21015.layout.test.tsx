@@ -63,10 +63,10 @@ const RENDERED_ORDER: Record<PageName, Array<[title: string, width: number]>> = 
     ['Actual spend', 3], ['Savings', 3], ['Agent calls', 3], ['Tokens processed', 3], ['Delegation Quality', 3],
     ['Runs per day', 12], ['Tokens per day', 12], ['Model usage', 12], ['Tier mix', 12],
   ],
-  // Each chart takes the full row; cost per run, the token detail and the model-by-day table are under "More usage".
+  // Each chart takes the full row; under "More usage" each chart is its own panel, then the model-by-day table (part 17).
   usage: [
     ['Savings per day', 12], ['Savings by model', 12], ['Spend by model', 12], ['Tokens per day', 12],
-    ['Cost per run, tokens by model and cost by route', 12], ['Tokens per day by model, in detail', 12], ['Usage by model and day', 12],
+    ['Cost per run', 12], ['Tokens by model', 12], ['Cost by route', 12], ['Usage by model and day', 12],
   ],
 };
 const HEADLINE_STRIP = new Set(['Actual spend', 'Savings', 'Agent calls', 'Tokens processed', 'Delegation Quality']);
@@ -77,10 +77,10 @@ const BEFORE: Record<PageName, string[]> = {
   // Live review 2026-10-25: Overview draws the four headline cards, recent runs, quality, runs and tokens per day and
   // tier mix; Environment and the "Additional runtime metrics" panels are not drawn there.
   overview: ['Actual spend', 'Savings', 'Agent calls', 'Tokens processed', 'Delegation Quality', 'Runs per day', 'Tokens per day', 'Model usage', 'Tier mix'].sort(),
-  // OMN-21166 Maple grid: Usage insights is drawn as Spend by model and the "More usage" slice; savings by model and the
-  // token detail are slices of their panels, each once.
-  usage: ['Savings per day', 'Savings by model', 'Tokens per day', 'Spend by model', 'Cost per run, tokens by model and cost by route',
-    'Tokens per day by model, in detail', 'Usage by model and day'].sort(),
+  // OMN-21166 Maple grid: Usage insights is drawn as Spend by model and, under "More usage", one panel per chart (part 17:
+  // Cost per run, Tokens by model, Cost by route); the day-by-day token list is gone (the table holds its rows).
+  usage: ['Savings per day', 'Savings by model', 'Tokens per day', 'Spend by model', 'Cost per run', 'Tokens by model', 'Cost by route',
+    'Usage by model and day'].sort(),
 };
 
 async function panels(pageName: PageName): Promise<Array<[string, number]>> {

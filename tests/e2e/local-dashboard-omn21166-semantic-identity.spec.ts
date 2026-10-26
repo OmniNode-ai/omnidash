@@ -53,8 +53,8 @@ test('the same recent-run and daily-token concepts keep their icons on owner pag
   const tokenIcon = await tokens.locator('h3 svg').getAttribute('class');
   expect(tokenIcon).toBeTruthy();
   await page.goto('/usage');
-  // OMN-21166 Maple grid: the token panel is drawn twice on Usage (the chart, and the detail under "More usage"); the
-  // page's own panel is the one with no data-slice.
+  // OMN-21166 Maple grid: the page's own token panel is the one with no data-slice (part 17 AC116 removed the detail
+  // panel that "More usage" used to repeat).
   await expect(page.locator('[data-component="usage-tokens-by-day"]:not([data-slice]) h2 svg')).toHaveAttribute('class', tokenIcon!);
 });
 
