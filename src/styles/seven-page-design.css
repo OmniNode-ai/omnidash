@@ -166,8 +166,6 @@ main.ev-root .ev-acceptance-checks > li > :first-child, main.ev-root .ev-accepta
 /* Page frame */
 .local-dashboard-page, main.ev-root[data-destination="delegation-evidence"] { background: var(--bg); }
 .local-dashboard-page { padding: 20px 24px 40px; }
-/* OMN-21166 part 26 revised: a Settings section draws its panels inside the Settings page's padding, not its own. */
-.local-dashboard-page.local-dashboard-page--embedded { padding: 0; }
 .local-dashboard-page .local-dashboard-header { margin-bottom: 16px; gap: 10px; align-items: center; }
 .local-dashboard-page .local-dashboard-header h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.015em; }
 .local-dashboard-page .local-dashboard-header .local-dashboard-page-icon { width: 20px; height: 20px; color: var(--ink-3); }
@@ -499,7 +497,9 @@ main.ev-root[data-destination="delegation-evidence"] .kv [data-field-tone="model
   border-top: 3px solid var(--fact-accent);
   border-radius: 12px;
   background: color-mix(in srgb, var(--fact-accent) 7%, var(--panel));
-  box-shadow: 0 6px 18px rgb(0 0 0 / .08);
+  /* The subject colour (edge, tint, heading) makes each card distinct (AC150); nested panels stay flat, no shadow
+     (OMN-21015 cards rule). */
+  box-shadow: none;
 }
 .local-dashboard-page--workflow .local-run-summary-groups > .local-run-summary-group:first-child:has([data-field-tone="fail"]) {
   --fact-accent: var(--field-fail);

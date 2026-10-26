@@ -23,7 +23,10 @@ export function CardBasis({ label, children }: { label: string; children: ReactN
     return () => { card.removeEventListener('mouseenter', enter); card.removeEventListener('mouseleave', leave); };
   }, []);
   useLayoutEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setPosition(undefined);
+      return;
+    }
     const card = root.current?.closest<HTMLElement>('.local-overview-summary > .local-dashboard-panel');
     const bubble = tip.current;
     if (!card || !bubble) return;
@@ -50,8 +53,17 @@ export function CardBasis({ label, children }: { label: string; children: ReactN
       left = pickLeft(top);
     }
     setSide(above ? 'above' : 'below');
-    setPosition({ left: left - cardBox.left, right: 'auto', bottom: 'auto', top: above ? -bubbleHeight - 12 : cardBox.height + 12,
+    // Fixed bubble is outside the card's scrollable overflow, so the card keeps its own width; AC147 placement unchanged.
+    setPosition({ position: 'fixed', left: left, right: 'auto', bottom: 'auto', top: top,
       width, maxWidth: 'none', maxHeight: `calc(100dvh - 24px)`, overflowY: 'auto', transform: 'none' });
+    const closeOnScroll = () => setOpen(false);
+    const closeOnResize = () => setOpen(false);
+    window.addEventListener('scroll', closeOnScroll, { capture: true, passive: true });
+    window.addEventListener('resize', closeOnResize);
+    return () => {
+      window.removeEventListener('scroll', closeOnScroll, { capture: true });
+      window.removeEventListener('resize', closeOnResize);
+    };
   }, [open]);
   return (
     <div ref={root} className="local-card-basis-tip" data-open={open ? 'true' : undefined}

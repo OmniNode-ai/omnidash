@@ -162,7 +162,7 @@ test('AC7 theme switching and sidebar collapse preserve the current Runs view', 
   }
 });
 
-test('AC9 all eleven destinations have distinct icons and theme-safe accents', async ({ page }) => {
+test('AC9 all ten destinations have distinct icons and theme-safe accents', async ({ page }) => {
   await page.goto('/overview');
   await page.getByRole('checkbox', { name: 'Show developer tools', exact: true }).check();
   for (const theme of ['dark', 'light']) {
@@ -171,9 +171,10 @@ test('AC9 all eleven destinations have distinct icons and theme-safe accents', a
       color: getComputedStyle(link.querySelector('.dash-marker')!).color,
       icon: link.querySelector('svg')?.getAttribute('class'),
     })));
-    expect(entries).toHaveLength(11);
-    expect(new Set(entries.map(entry => entry.color)).size).toBe(11);
-    expect(new Set(entries.map(entry => entry.icon)).size).toBe(11);
+    // OMN-21166 part 26: Settings replaced the Credentials and API Keys entries, so eleven became ten.
+    expect(entries).toHaveLength(10);
+    expect(new Set(entries.map(entry => entry.color)).size).toBe(10);
+    expect(new Set(entries.map(entry => entry.icon)).size).toBe(10);
   }
   await page.keyboard.press('Tab');
   await page.getByTestId('nav-local-runs').focus();

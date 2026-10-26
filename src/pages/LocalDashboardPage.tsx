@@ -3050,7 +3050,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
   return (
     <RunFilterProvider>
     <Frame data-destination={destination} aria-label={embedded ? undefined : `${page?.dashboard.name ?? 'Local dashboard'} page`}
-      className={`local-dashboard-page local-dashboard-page--${pageName}${embedded ? ' local-dashboard-page--embedded' : ''}`}>
+      className={`${embedded ? 'local-settings-embed' : 'local-dashboard-page'} local-dashboard-page--${pageName}`}>
       {!embedded && <header className="local-dashboard-header">
         <div className="local-dashboard-title">
           <span className="local-dashboard-page-icon" aria-hidden="true"><DestinationIcon page={destination} size={20} /></span>

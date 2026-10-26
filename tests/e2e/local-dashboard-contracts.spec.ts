@@ -466,8 +466,8 @@ test('local panels follow both themes on every page without losing readable surf
     if ((await page.locator('html').getAttribute('data-theme') === 'dark' ? 'dark' : 'light') !== theme) await page.getByRole('button', { name: 'Toggle theme', exact: true }).click();
     await expect(page.locator('body')).toHaveClass(`theme-${theme}`);
     for (const [name, title] of [
-      ['overview', 'Overview'], ['runs', 'Runs'], ['workflow', 'Workflow'],
-      ['usage', 'Usage'], ['credentials', 'Credentials'], ['api-keys', 'API Keys'],
+      // OMN-21166 part 26: Settings holds API Keys and Credentials.
+      ['overview', 'Overview'], ['runs', 'Runs'], ['workflow', 'Workflow'], ['usage', 'Usage'], ['settings', 'Settings'],
     ]) {
       await page.getByTestId(`nav-local-${name}`).click();
       await expect(page.getByRole('heading', { level: 1, name: title, exact: true })).toBeVisible();
@@ -661,10 +661,10 @@ test('local pages have real links, canonical URLs and survive direct opens and r
   await serveFixtures(page);
   await page.goto('/');
   await expect(page).toHaveURL(/\/overview$/);
-  await expect(page.getByRole('navigation', { name: 'Local' }).getByRole('link')).toHaveCount(6);
+  // OMN-21166 part 26: Settings holds API Keys and Credentials.
+  await expect(page.getByRole('navigation', { name: 'Local' }).getByRole('link')).toHaveCount(5);
   for (const [path, title] of [
-    ['overview', 'Overview'], ['runs', 'Runs'], ['workflow', 'Workflow'],
-    ['usage', 'Usage'], ['credentials', 'Credentials'], ['api-keys', 'API Keys'],
+    ['overview', 'Overview'], ['runs', 'Runs'], ['workflow', 'Workflow'], ['usage', 'Usage'], ['settings', 'Settings'],
   ]) {
     const link = page.getByTestId(`nav-local-${path}`);
     await expect(link).toHaveAttribute('href', `/${path}`);
@@ -743,7 +743,7 @@ test('navigation selection, hover and keyboard focus remain distinct in both the
   for (const theme of ['dark', 'light']) {
     if ((await page.locator('html').getAttribute('data-theme') === 'dark' ? 'dark' : 'light') !== theme) await page.getByRole('button', { name: 'Toggle theme' }).click();
     await expect(page.locator('body')).toHaveClass(`theme-${theme}`);
-    for (const path of ['overview', 'runs', 'workflow', 'usage', 'credentials', 'api-keys']) {
+    for (const path of ['overview', 'runs', 'workflow', 'usage', 'settings']) {
       const selected = page.getByTestId(`nav-local-${path}`);
       await selected.click();
       await page.mouse.move(700, 60);
@@ -782,9 +782,14 @@ test('navigation selection, hover and keyboard focus remain distinct in both the
 
 test('breadcrumbs describe the actual page through navigation and direct URLs', async ({ page }) => {
   await serveFixtures(page);
-  for (const [path, title] of [['overview', 'Overview'], ['runs', 'Runs'], ['workflow', 'Workflow'], ['usage', 'Usage'], ['credentials', 'Credentials'], ['api-keys', 'API Keys']]) {
+  for (const [path, title] of [['overview', 'Overview'], ['runs', 'Runs'], ['workflow', 'Workflow'], ['usage', 'Usage'], ['settings', 'Settings']]) {
     await page.goto(`/${path}`);
     await expect(page.locator('.breadcrumbs .cur')).toHaveText(title);
+  }
+  // OMN-21166 part 26 AC155: the retired addresses name no page.
+  for (const path of ['api-keys', 'credentials']) {
+    await page.goto(`/${path}`);
+    await expect(page.locator('.breadcrumbs .cur')).toHaveText('Page not found');
   }
   await page.goto('/no-such-page');
   await expect(page.locator('.breadcrumbs .cur')).toHaveText('Page not found');

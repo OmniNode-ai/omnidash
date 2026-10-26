@@ -211,7 +211,9 @@ async function collect(page: Page): Promise<Reading[]> {
         'arrow-up-right', 'external-link', 'rotate-ccw', 'refresh-cw', 'panel-left-close',
         'panel-left-open', 'menu', 'x', 'sun', 'moon', 'search', 'filter', 'settings', 'ellipsis',
         // OMN-21166 live review 2026-10-25: the Overview window control's calendar button (Pick a UTC day).
-        'calendar-days']);
+        'calendar-days',
+        // OMN-21166 part 24 AC148: each Overview graph's labelled "Expand" button opens its larger view.
+        'maximize2', 'maximize-2']);
       if (!concept && control && label && actionIcons.has(icon)) { kind = 'action'; concept = `action:${icon}`; }
       if (!concept && icon === 'check' && control && /^copy/i.test(label)) { kind = 'action'; concept = 'action:copy-confirmation'; }
       if (!concept && icon === 'scan-line' && svg.classList.contains('local-chart-inspect-icon')) {
