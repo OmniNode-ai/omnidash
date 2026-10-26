@@ -949,7 +949,7 @@
 
 /* Keep complete Runs headers readable without hiding columns or adding sideways scroll. */
 @media(min-width:1025px) {
-  .local-dashboard-page--runs .local-dashboard-table-wrap--fit table { table-layout: fixed; }
+  .local-dashboard-page--runs .local-dashboard-table-wrap--fit table { width: calc(100% - 1px); table-layout: fixed; }
   .local-dashboard-page--runs .local-dashboard-table-wrap--fit th { font-size: 12px; text-transform: none; overflow-wrap: normal; word-break: normal; letter-spacing: 0; }
   .local-dashboard-page--runs .local-dashboard-table-wrap--fit :is(th,td):nth-child(1) { width: 6%; }
   .local-dashboard-page--runs .local-dashboard-table-wrap--fit :is(th,td):nth-child(2) { width: 8%; }
