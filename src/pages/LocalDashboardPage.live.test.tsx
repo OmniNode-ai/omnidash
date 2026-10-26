@@ -302,6 +302,22 @@ describe('Partial pages (FR-3, CR-2, CR-3, AK-3, F24)', () => {
     expect(within(panel).queryByText(/^\$?0(?:\.0+)?$/)).not.toBeInTheDocument();
   });
 
+  it('an empty service-health read followed by a failed refresh says it could not read, never that nothing reported (OMN-21166 AC162)', async () => {
+    // Found by review of eddb28d6: the loader keeps the earlier empty rows beside the failure, so the panels saw "no rows".
+    harness.reachable = new Set([ENVIRONMENT]);
+    harness.answer = () => Promise.resolve([]);
+    render(<><LocalDashboardPage pageName="status" embedded /><LocalDashboardPage pageName="api-keys" embedded /></>);
+    await settle();
+    expect(screen.getByText(/No service has reported yet\./)).toBeInTheDocument();
+    expect(screen.getByText('Access details not reported yet')).toBeInTheDocument();
+    harness.answer = () => Promise.reject(new Error(`Projection ${ENVIRONMENT} failed: HTTP 503 Service Unavailable`));
+    await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
+    expect(screen.getByText(/could not read the service health/)).toBeInTheDocument();
+    expect(screen.queryByText(/No service has reported yet\./)).not.toBeInTheDocument();
+    expect(screen.getByText('Access details could not be read')).toBeInTheDocument();
+    expect(screen.queryByText('Access details not reported yet')).not.toBeInTheDocument();
+  });
+
   it('API Keys preserves served local identity without the deferred Cloud Keys panel (OMN-21166 AC5)', async () => {
     // OMN-21166 part 11: the identity reads the native runtime row of local-environment.v1, not the savings rows.
     harness.reachable = new Set([ENVIRONMENT]);
@@ -322,6 +338,8 @@ describe('Partial pages (FR-3, CR-2, CR-3, AK-3, F24)', () => {
   it('Credentials with no key ref draws no second empty message and no input (revision 3, AC161)', async () => {
     render(<LocalDashboardPage pageName="credentials" />);
     await settle();
+    // The control: the page drew its provider region (GET /models is unreachable here), so the absences below are read.
+    expect(screen.getByRole('region', { name: 'Model providers' })).toBeInTheDocument();
     expect(screen.queryByText('No provider credentials recorded')).not.toBeInTheDocument();
     expect(screen.queryByText('onex secret set')).not.toBeInTheDocument();
     expect(document.querySelector('input, textarea, form')).toBeNull();

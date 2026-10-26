@@ -2559,7 +2559,11 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns, acti
   }
   // OMN-21015 AC10 (AK-2): the access card reads the native local-runtime row `onex dashboard` writes to
   // local-environment.v1 at each start (OMN-19988); another service's row or a compose row is never the dashboard's.
-  if (component.component_id === 'api-keys-access') return <DashboardAccess rows={asRecords(rawRowsFor(component, snapshots, 0))} />;
+  if (component.component_id === 'api-keys-access') {
+    const topic = component.data_bindings?.[0]?.projection_topic;
+    return <DashboardAccess rows={asRecords(rawRowsFor(component, snapshots, 0))}
+      complete={!snapshots.some(snapshot => snapshot.topic === topic && snapshot.failure)} />;
+  }
   return rows.length === 0 ? <NoRunsYet /> : <RunsTable decisions={rows} sessions={lookup} pageSize={pageSize} syncUrl={syncUrl}
     truncated={snapshots.find(snapshot => snapshot.topic === DELEGATION_DECISIONS_TOPIC)?.truncated} />;
 }

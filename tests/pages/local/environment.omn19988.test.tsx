@@ -10,12 +10,15 @@
 //   E5  a verdict outside the four the projection serves is shown as one of them instead of as unknown;
 //   E6  rows of another mode are mixed into the panel's mode;
 //   E7  a served word that names an inherited object key (constructor, toString, __proto__) is drawn as that key's
-//       value instead of as unknown.
+//       value instead of as unknown;
+//   E8  a read that failed after an earlier empty read keeps those empty rows, and the panel says no service has
+//       reported when it could not read (OMN-21166 revision 3, AC162; found by review of eddb28d6).
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import {
   ENVIRONMENT_TOPIC,
   EnvironmentAlerts,
+  EnvironmentPanel,
   EnvironmentStatus,
   environmentAlertRows,
   environmentTileRows,
@@ -131,5 +134,18 @@ describe('OMN-19988 Environment panel rendering', () => {
     expect(screen.getAllByTestId('alert-banner-critical')).toHaveLength(1);
     render(<EnvironmentStatus rows={[]} mode="compose" />);
     expect(screen.getByText(ENVIRONMENT_TOPIC, { exact: false })).toBeTruthy();
+  });
+});
+
+describe('OMN-19988 Environment panel with no rows', () => {
+  it('E8: no rows from a complete read say no service has reported (the control)', () => {
+    render(<EnvironmentPanel rows={[]} complete />);
+    expect(screen.getByRole('status')).toHaveTextContent('No service has reported yet.');
+  });
+
+  it('E8: no rows kept beside a failed read say the dashboard could not read, never that nothing reported', () => {
+    render(<EnvironmentPanel rows={[]} complete={false} />);
+    expect(screen.getByRole('status')).toHaveTextContent('could not read the service health');
+    expect(screen.getByRole('status')).not.toHaveTextContent('No service has reported yet.');
   });
 });

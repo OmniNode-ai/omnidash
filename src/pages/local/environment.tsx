@@ -125,7 +125,8 @@ export function EnvironmentPanel({ rows, complete = true }: { rows: readonly Env
   const validModes = new Set(['native', 'compose']);
   const invalidMode = rows.some(row => !validModes.has(text(row.mode)));
   const modes = [...new Set(rows.map(row => text(row.mode)).filter(mode => validModes.has(mode)))];
-  if (rows.length === 0) return <NoServiceHealth />;
+  // Rows kept from an earlier empty read beside a failed one are not a read that found nothing (review of eddb28d6).
+  if (rows.length === 0) return complete ? <NoServiceHealth /> : <ServiceHealthUnread />;
   return <>
     {invalidMode && <p className="local-dashboard-empty" role="status">Some service health details are not available.</p>}
     {modes.map(mode => {

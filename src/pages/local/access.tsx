@@ -38,8 +38,16 @@ function WithCode({ text }: { text: string }) {
   return <>{text.split('`').map((part, index) => (index % 2 === 1 ? <code key={index}>{part}</code> : part))}</>;
 }
 
-export function DashboardAccess({ rows }: { rows: readonly EnvironmentRow[] }) {
+export function DashboardAccess({ rows, complete = true }: { rows: readonly EnvironmentRow[]; complete?: boolean }) {
   const row = dashboardAccessRow(rows);
+  if (row === null && !complete) {
+    // No row because the read failed is not "not reported yet" (OMN-19988 E10; found by review of eddb28d6).
+    return (
+      <SettingsEmptyState icon={<ConceptIcon concept="local-access" label="Access" size={16} />} title="Access details could not be read">
+        This dashboard could not read the access details of this machine.
+      </SettingsEmptyState>
+    );
+  }
   if (row === null) {
     // Waits on local-environment.v1; the user reads what it holds (OMN-21166 AC39) and what writes it (revision 3, AC162).
     return (

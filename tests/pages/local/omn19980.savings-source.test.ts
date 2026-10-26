@@ -1,6 +1,6 @@
 // 2026-10-19 user override: Overview headlines use the restored legacy all-time aggregate.
 // All other metering/per-run source boundaries and their negative controls remain enforced.
-// OMN-19980 AC2d: no page of the six shows a savings figure from any exposure other than metering-summary.v1.
+// OMN-19980 AC2d: no page of the seven shows a savings figure from any exposure other than metering-summary.v1.
 // The dashboard-side twin of omnimarket's SQL savings guard; both name the one allowed source, metering-summary.v1.
 //
 // Failure modes (Amendment 1, Approach), each with a planted control below:
@@ -92,7 +92,7 @@ function isSavingsField(name: string): boolean {
 /**
  * Step A (Amendment 1, ruling 1 and open question 2) let the Overview Savings total read cost.savings-overview.v1
  * through one named entry here. Step B rebinds it to metering-summary.v1's all-time row, so the list is empty and
- * asserted empty below: no savings figure on the six pages is exempt from R1 and R2 any more.
+ * asserted empty below: no savings figure on the seven pages is exempt from R1 and R2 any more.
  */
 // Lakshman 2026-10-19: restore Overview to its populated old aggregate; no other page/source is exempt.
 const OVERVIEW_RESTORE_ALLOWLIST: ReadonlyArray<{ component_id: string; binding_id: string; projection_topic: string; fields: readonly string[] }> = [
@@ -106,7 +106,7 @@ function allowlisted(binding: Binding, field: string, componentId: string): bool
     && entry.projection_topic === binding.projection_topic && entry.fields.includes(field));
 }
 
-// ---- The six pages ----------------------------------------------------------------------------------------------
+// ---- The seven pages --------------------------------------------------------------------------------------------
 interface LoadedPage { name: string; doc: LocalPageDocument }
 
 const PAGES_DIR = resolve(process.cwd(), 'src/pages/local');
@@ -151,7 +151,7 @@ function bindingsOf(page: LoadedPage): Array<{ component: ModelComponentContract
   return page.doc.components.flatMap((component) => (component.data_bindings ?? []).map((binding) => ({ component, binding })));
 }
 
-/** Every field name the six pages declare: binding fields, metric keys and table column keys. */
+/** Every field name the seven pages declare: binding fields, metric keys and table column keys. */
 function fieldNames(pages: readonly LoadedPage[]): Set<string> {
   return new Set(pages.flatMap((page) => [
     ...bindingsOf(page).flatMap(({ binding }) => binding.required_fields ?? []),
@@ -452,10 +452,11 @@ function ruleR4Source(files: ReadonlyArray<{ file: string; source: string }>, al
 
 const readSources = () => SOURCE_FILES.map((file) => ({ file, source: readFileSync(resolve(process.cwd(), file), 'utf8') }));
 
-/** The instrument: all six pages loaded and at least one binding read, or nothing above proves anything. */
+/** The instrument: all seven pages loaded and at least one binding read, or nothing above proves anything. */
 function instrumentProblems(pages: readonly LoadedPage[]): string[] {
   const problems: string[] = [];
-  if (pages.length !== 6) problems.push(`expected the six local pages, loaded ${pages.length}`);
+  // OMN-21166 part 26 revision 2 (AC158) added status, the System status section of Settings.
+  if (pages.length !== 7) problems.push(`expected the seven local pages, loaded ${pages.length}`);
   if (pages.flatMap(bindingsOf).length === 0) problems.push('no binding read');
   return problems;
 }
@@ -505,16 +506,16 @@ const plantedOnly = (findings: string[]) => findings.filter((finding) => finding
 
 // ---- Tests ------------------------------------------------------------------------------------------------------
 describe('OMN-19980 AC2d: savings figures come from metering-summary.v1 only', () => {
-  it('instrument: loads the six local pages and reads their bindings', () => {
+  it('instrument: loads the seven local pages and reads their bindings', () => {
     const pages = loadPages();
-    expect(pageNames).toEqual(['api-keys', 'credentials', 'overview', 'runs', 'usage', 'workflow']);
+    expect(pageNames).toEqual(['api-keys', 'credentials', 'overview', 'runs', 'status', 'usage', 'workflow']);
     expect(instrumentProblems(pages)).toEqual([]);
     // The allowed topic is the loader's metering-summary topic, the one Overview's headline cards read.
     expect(ALLOWED_TOPIC).toBe(METERING_SUMMARY_TOPIC);
   });
 
   it('instrument: an empty or binding-free load is reported, never read as clean', () => {
-    expect(instrumentProblems([])).toEqual(['expected the six local pages, loaded 0', 'no binding read']);
+    expect(instrumentProblems([])).toEqual(['expected the seven local pages, loaded 0', 'no binding read']);
     const unbound = loadPages().map((page) => ({ ...page, doc: { ...page.doc, components: [] } }));
     expect(instrumentProblems(unbound)).toEqual(['no binding read']);
   });
@@ -541,7 +542,7 @@ describe('OMN-19980 AC2d: savings figures come from metering-summary.v1 only', (
 });
 
 describe('OMN-19980 AC2d: field classifier', () => {
-  it('classes every pattern-matching field name on the six pages on purpose, and the list agrees with the pattern', () => {
+  it('classes every pattern-matching field name on the seven pages on purpose, and the list agrees with the pattern', () => {
     const names = [...fieldNames(loadPages())];
     expect(names.length).toBeGreaterThan(0);
     const unclassed = names.filter((name) => SAVINGS_NAME.test(name) && !SAVINGS_FIELDS.has(name) && !SAVINGS_LABELS.has(name));
@@ -903,7 +904,7 @@ describe('Savings source boundary with exact user-authorized Overview restoratio
     ]);
   });
 
-  it('every bound savings figure on the six pages reads metering-summary.v1, but the one per-run exception, and there is at least one', () => {
+  it('every bound savings figure on the seven pages reads metering-summary.v1, but the one per-run exception, and there is at least one', () => {
     const pages = loadPages();
     // OMN-21015 AC3: the PER_RUN_SAVING field is the one savings figure allowed off metering-summary.v1; it is set
     // aside here by exact match and asserted below to be where the exception says, so nothing else can hide behind it.
