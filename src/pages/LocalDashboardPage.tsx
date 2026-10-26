@@ -2051,11 +2051,11 @@ export function RunSummary({ decision, showAnalysis = false }: { decision: Row |
     <section aria-label="Run summary" className="local-dashboard-run-summary">
       <div className="local-run-summary-groups">
         {[
-          { name: 'Run outcome', concept: 'run-outcome', labels: ['Cause', 'Quality score', 'Required bar', 'Task type'] },
-          { name: 'Routing and model', concept: 'routing-model', labels: ['Model', 'Requested model', 'Backend', 'Host', 'Route tier'] },
-          { name: 'Tokens and completion', concept: 'tokens-completion', labels: ['Tokens in', 'Tokens out', 'Finish reason', 'Truncated', 'Escalations'] },
-          { name: 'Timing', concept: 'timing', labels: ['Queue wait', 'Execution', 'Duration'] },
-        ].map(({ name, concept, labels }, index) => <section key={name} className="local-run-summary-group" aria-labelledby={`${sectionId}-${index}`}>
+          { name: 'Run outcome', concept: 'run-outcome', labels: ['Cause', 'Quality score', 'Required bar', 'Task type'], help: 'Final status and quality result from this run’s decision record.' },
+          { name: 'Routing and model', concept: 'routing-model', labels: ['Model', 'Requested model', 'Backend', 'Host', 'Route tier'], help: 'The requested model and recorded answering route. Not recorded means the run supplied no value.' },
+          { name: 'Tokens and completion', concept: 'tokens-completion', labels: ['Tokens in', 'Tokens out', 'Finish reason', 'Truncated', 'Escalations'], help: 'Token counts and completion details recorded for this run.' },
+          { name: 'Timing', concept: 'timing', labels: ['Queue wait', 'Execution', 'Duration'], help: 'Recorded decision timings. Duration here is the latency field; timeline steps carry separate durations.' },
+        ].map(({ name, concept, labels, help }, index) => <section key={name} className="local-run-summary-group" tabIndex={0} aria-labelledby={`${sectionId}-${index}`} aria-describedby={`${sectionId}-${index}-help`}>
           <h3 className="local-dashboard-caption" id={`${sectionId}-${index}`}><ConceptIcon concept={concept} label={name} size={16} />{name}</h3>
           <dl className="local-dashboard-fields">
             {index === 0 && <div data-field-tone={fieldTone('Status', status)}><dt><FieldIcon label="Status" value={status} />Status</dt><dd><OutcomePill value={status} /></dd></div>}
@@ -2063,6 +2063,7 @@ export function RunSummary({ decision, showAnalysis = false }: { decision: Row |
               ? <details className="local-run-failure-details"><summary title={value}>Show failure reason</summary><p>{value}</p></details>
               : value}</dd></div>)}
           </dl>
+          <p className="local-run-summary-help" role="tooltip" id={`${sectionId}-${index}-help`}>{help}</p>
         </section>)}
       </div>
       {/* The same three timings as bars, under the labels their tiles carry. */}
@@ -2288,7 +2289,10 @@ export function WorkflowRun({ component, snapshots, requested, onOpen }: Workflo
       )}
       {stepsUnread || foreign ? null : (
         <>
-          <RunTimeline steps={rows} run={decisions.find((row) => row.correlation_id === runId)} />
+          <section className="local-run-timeline" aria-label="Run timeline">
+            <h3 className="local-dashboard-caption" data-page-heading tabIndex={-1}>Run timeline</h3>
+            <RunTimeline steps={rows} run={decisions.find((row) => row.correlation_id === runId)} />
+          </section>
           {stepsRead?.truncated && (
             <p className="local-dashboard-empty" role="status">
               {`Not the whole run: run-trace.v1 answered a truncated page of ${formatDashboardCount(rows.length)} steps`}

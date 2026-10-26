@@ -488,11 +488,47 @@ main.ev-root[data-destination="delegation-evidence"] .kv [data-field-tone="model
 .maple-cell .local-usage-savings > figure.local-chart .local-chart-legend { display: none; }
 .maple-cell .local-usage-savings select { width: auto; max-width: 260px; }
 
-/* Maple grid: Workflow's four summary groups as one divided strip (no card inside the panel's card). */
-.local-dashboard-page--workflow .local-run-summary-groups { gap: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
-.local-dashboard-page--workflow .local-run-summary-groups > .local-run-summary-group { border: 0; border-radius: 0; border-inline-end: 1px solid var(--line); box-shadow: none; background: transparent; }
-.local-dashboard-page--workflow .local-run-summary-groups > .local-run-summary-group:last-child { border-inline-end: 0; }
-@media (max-width: 1100px) { .local-dashboard-page--workflow .local-run-summary-groups > .local-run-summary-group { border-inline-end: 0; border-bottom: 1px solid var(--line); } }
+/* Workflow's four facts groups are distinct cards; each colour identifies its subject without recolouring data. */
+.local-dashboard-page--workflow .local-run-summary-groups { gap: 12px; border: 0; border-radius: 0; overflow: visible; }
+.local-dashboard-page--workflow .local-run-summary-groups > .local-run-summary-group {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid color-mix(in srgb, var(--fact-accent) 42%, var(--line));
+  border-top: 3px solid var(--fact-accent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--fact-accent) 7%, var(--panel));
+  box-shadow: 0 6px 18px rgb(0 0 0 / .08);
+}
+.local-dashboard-page--workflow .local-run-summary-groups > .local-run-summary-group:first-child:has([data-field-tone="fail"]) {
+  --fact-accent: var(--field-fail);
+}
+.local-dashboard-page--workflow .local-run-summary-group h3 { color: var(--fact-accent); }
+.local-dashboard-page--workflow .local-run-summary-group:focus-visible {
+  outline: 2px solid var(--fact-accent);
+  outline-offset: 2px;
+}
+.local-dashboard-page--workflow .local-run-summary-help {
+  margin: auto 0 0;
+  padding: 10px 0 0;
+  min-height: 58px;
+  border-top: 1px solid transparent;
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 1.45;
+  visibility: hidden;
+  opacity: 0;
+}
+.local-dashboard-page--workflow .local-run-summary-group:is(:hover, :focus, :focus-within) .local-run-summary-help {
+  border-top-color: color-mix(in srgb, var(--fact-accent) 30%, var(--line));
+  visibility: visible;
+  opacity: 1;
+}
+.local-dashboard-page--workflow .local-run-timeline > h3 {
+  margin: 12px 0;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 650;
+}
 .maple-cell > .panel { flex: 1; margin: 0; }
 main.ev-root .maple-grid { margin-bottom: 16px; }
 main.ev-root details.ev-more { margin-top: 12px; border-top: 1px solid var(--line-2); padding-top: 8px; }
