@@ -16,4 +16,8 @@ describe('evidenceScopeLine', () => {
   it('V2: an unserved count stays in words', () => {
     expect(evidenceScopeLine('Not measured')).toBe('All time · delegations served: Not measured');
   });
+
+  it('V3: a metered subset is named as measured, not as every served decision', () => {
+    expect(evidenceScopeLine('650', 'measured')).toBe('All time · 650 measured delegations');
+  });
 });

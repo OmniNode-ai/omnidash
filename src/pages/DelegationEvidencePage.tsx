@@ -628,7 +628,12 @@ function meteringHeadline(rows: readonly unknown[] | undefined, loading: boolean
  * OMN-21166 AC79: the page's scope in one line: the window (all time, as the headline row is) and the same served
  * delegation count the Delegations figure shows. A count that is not a number stays in words.
  */
-export function evidenceScopeLine(runs: ReactNode): ReactNode {
+export function evidenceScopeLine(runs: ReactNode, basis: 'served' | 'measured' = 'served'): ReactNode {
+  if (basis === 'measured') {
+    if (typeof runs !== 'string') return <>All time · measured delegations: {runs}</>;
+    if (!/^\d[\d,.]*[KMB]?$/.test(runs)) return `All time · measured delegations: ${runs}`;
+    return `All time · ${runs} measured ${runs === '1' ? 'delegation' : 'delegations'}`;
+  }
   if (typeof runs !== 'string') return <>All time · delegations served: {runs}</>;
   if (!/^\d[\d,.]*[KMB]?$/.test(runs)) return `All time · delegations served: ${runs}`;
   return `All time · ${runs} ${runs === '1' ? 'delegation' : 'delegations'} served`;
@@ -678,7 +683,7 @@ export function DelegationEvidencePage() {
       crumb="OmniDash · Delegation Evidence"
       title="Delegation Evidence"
       sub="Routing, quality gate, savings & per-correlation trace — live projections"
-      scope={evidenceScopeLine(headline.runs)}
+      scope={evidenceScopeLine(headline.runs, source === 'metering' ? 'measured' : 'served')}
       headRight={headRight}
     >
       {/* OMN-21166 AC63: the four headline figures read as one segmented strip, as on the local pages. */}
