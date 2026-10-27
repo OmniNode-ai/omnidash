@@ -171,7 +171,7 @@
         },
         {
           "check_type": "test_passes",
-          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-charts.spec.ts --project=chromium --workers=1 --retries=0 --grep \"chart zoom/reset\"",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-charts.spec.ts --project=chromium --workers=1 --retries=0 --grep \"a chart has no range slider\"",
           "cwd": "${OMNI_HOME}/omnidash"
         },
         {
@@ -181,7 +181,7 @@
         },
         {
           "check_type": "test_passes",
-          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-charts.spec.ts --project=chromium --workers=1 --retries=0 --grep \"usage model highlighting\"",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-charts.spec.ts --project=chromium --workers=1 --retries=0 --grep \"usage model bars do not change figures\"",
           "cwd": "${OMNI_HOME}/omnidash"
         },
         {
@@ -457,7 +457,7 @@
       "checks": [
         {
           "check_type": "test_passes",
-          "check_value": "CI=1 npx playwright test tests/e2e/local-dashboard-contracts.spec.ts --project=chromium --workers=1 --retries=0 --grep \"Overview is the default page and fits 1440x900\"",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-contracts.spec.ts --project=chromium --workers=1 --retries=0 --grep \"Overview is the default page and fits 1440x900\"",
           "cwd": "${OMNI_HOME}/omnidash"
         }
       ]
