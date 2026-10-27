@@ -1478,3 +1478,14 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ui-accent); outline-o
   .ev-savings-equation { display: grid; gap: 8px; }
   .ev-savings-equation > div { padding: 4px 0; }
 }
+
+/* OMN-21166 AC213 (Lakshman 2026-10-28, "the x axis labels need to be fixed"): an upright chart with more than 10 bars
+   splits its width too thin for any name, so it runs sideways at every width: name, bar, then value on one row each, the
+   name wrapping on its own words and the value always shown. */
+.rb-chart.rb-chart--rows .rb-plot { display: flex; flex-direction: column; align-items: stretch; gap: 8px; max-width: none; margin-bottom: 0; border-bottom: 0; }
+.rb-chart.rb-chart--rows .rb-plot > li { display: grid; grid-template-columns: minmax(7rem, min(18rem, 40%)) minmax(0, 1fr) auto; grid-template-areas: "name track value"; align-items: center; column-gap: 12px; }
+.rb-chart.rb-chart--rows .rb-plot > li .rb-name { position: static; grid-area: name; margin: 0; text-align: left; display: block; overflow: visible; -webkit-line-clamp: unset; overflow-wrap: anywhere; }
+.rb-chart.rb-chart--rows .rb-plot > li .rb-track { grid-area: track; height: 12px; align-items: stretch; justify-content: flex-start; }
+.rb-chart.rb-chart--rows .rb-plot > li .rb-bar { width: var(--rb-size, 0); max-width: none; height: auto; margin: 0; }
+.rb-chart.rb-chart--rows .rb-plot > li .rb-bar[data-pattern="outline"] { width: 14px; height: auto; border: 1px dashed var(--ink-3); border-left: 0; }
+.rb-chart.rb-chart--rows .rb-plot > li .rb-value { grid-area: value; margin: 0; text-align: right; visibility: visible; overflow: visible; text-overflow: clip; white-space: nowrap; }
