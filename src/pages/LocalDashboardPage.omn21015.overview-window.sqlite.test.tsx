@@ -154,7 +154,8 @@ describe('OMN-21015 AC7: the Overview tiles switch between today (UTC) and all t
     await open('overview', [ALL_ROW, older, TODAY_ROW]);
     chooseWindow('today');
     expect(figure('Savings')).toBe('$1.20');
-    expect(caption('Savings')).toContain('claude-sonnet-5-5');
+    // OMN-21166 part 29 AC191: the drawn caption keeps the model name on one line with non-breaking hyphens.
+    expect(caption('Savings').replace(/\u2011/g, '-')).toContain('claude-sonnet-5-5');
   });
 
   it('W5: two baselines refreshed at the same moment are refused by name, not picked', async () => {

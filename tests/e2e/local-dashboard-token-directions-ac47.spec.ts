@@ -67,7 +67,7 @@ test('AC47 the metering aggregate serves no directions: both read Not measured, 
   // OMN-21166 live review 2026-10-25: on the metering path the headline card shows its figure only; its input and output
   // directions are one line in the card's hover ("<in> in · <out> out"), shown on keyboard focus of the card. The row
   // serves neither tokens_in nor tokens_out, so each reads "Not recorded", and nothing is borrowed from token-usage.
-  await card.getByRole('button', { name: 'About Tokens processed', exact: true }).focus();
+  // Part 29 AC191: the basis is the card's caption, always in the page; no About button to focus.
   await expect(card.getByText('Not recorded in · Not recorded out', { exact: true })).toBeVisible(MISSING);
   await expect(card.locator('.local-token-direction')).toHaveCount(0);
   await expect(card).not.toContainText(/7,?771|3,?331/);

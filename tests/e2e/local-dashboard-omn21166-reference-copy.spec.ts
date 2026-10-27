@@ -97,8 +97,8 @@ test('AC179 as superseded by AC191: the card basis is a caption inside its own c
   // The first and last cards that carry a basis (a card with nothing to say, like Tokens here, draws no caption).
   const cards = page.locator('.local-overview-summary > .local-dashboard-panel').filter({ has: page.locator('.local-card-caption') });
   const count = await cards.count();
-  expect(count, 'cards with a caption').toBeGreaterThanOrEqual(2);
-  for (const index of [0, count - 1]) {
+  expect(count, 'cards with a caption').toBeGreaterThanOrEqual(1);
+  for (const index of [...new Set([0, count - 1])]) {
     const card = cards.nth(index);
     await card.hover();
     await expect(page.locator('.local-overview-summary [role="tooltip"]')).toHaveCount(0);

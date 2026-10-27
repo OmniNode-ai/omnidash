@@ -164,7 +164,7 @@ export function captionText(caption: Record<string, unknown> | null | undefined)
   if ('basis_not_served' in fields) parts.push('Baseline model not recorded', 'Pricing manifest not recorded');
   if ('pricing_manifest_version' in fields) {
     parts.push(isMissing(fields.pricing_manifest_version)
-      ? 'Pricing manifest not recorded' : `pricing manifest v${String(fields.pricing_manifest_version)}`);
+      ? 'Pricing manifest not recorded' : `pricing manifest ${pricingLabel(fields.pricing_manifest_version)}`);
   }
   // OMN-21304 AC4: an exposure that serves no count of unpriced runs says so, rather than standing another count in.
   if ('unpriced_not_served' in fields) parts.push('Unpriced runs not recorded');
@@ -319,6 +319,11 @@ export function QualityCard({ row, change = null }: { row: Row | null; change?: 
  * or fell. The arrow is decoration (the words already say +/−); 'New this period', 'No change' and 'No earlier data'
  * carry none.
  */
+/** A model name in a drawn caption, kept on one line: its hyphens become non-breaking (the full lines keep plain text). */
+export function unbroken(name: string): string {
+  return name.replace(/-/g, '\u2011');
+}
+
 export function ChangeLine({ text }: { text: string }) {
   const sign = /(?:^|\s)([+\u2212])\d/.exec(text)?.[1];
   return <p className="local-card-change">
@@ -458,6 +463,13 @@ const RANGE_COUNTS = ['runs_total', 'runs_measured', 'runs_unknown_tokens', 'run
  * value is unknown, not zero), and with no metering rows at all nothing was read, so the window is Not measured. Money
  * adds as exact decimals; the baseline and pricing come from the all-time row; no single-day percentage is carried.
  */
+/** A window whose summed days carry more than one pricing manifest version (AC200): its basis is mixed, never one version. */
+export const MIXED_PRICING = 'mixed basis';
+/** A served pricing manifest version as words: 'v1.0.0', or 'mixed basis (several versions)' for a mixed window. */
+export function pricingLabel(version: unknown): string {
+  return version === MIXED_PRICING ? 'mixed basis (several versions)' : `v${String(version)}`;
+}
+
 function meteringRangeRow(rows: readonly unknown[], start: string, end: string): { row: Record<string, unknown> } | { message: string } {
   const records = asRecords(rows);
   const allRows = records.filter(r => r.window_kind === 'all');
@@ -475,9 +487,16 @@ function meteringRangeRow(rows: readonly unknown[], start: string, end: string):
     if (!held || timeOf(r.as_of) > timeOf(held.as_of)) byDay.set(date, r);
   }
   const days = dates.flatMap(date => (byDay.has(date) ? [byDay.get(date)!] : []));
+  // Part 29 AC200 (Codex MSGs a9bd908d, b53ca31a): the window's price basis is the versions of the days actually summed.
+  // One version on every day is named; several, or a version beside an unversioned day, read as a mixed basis. Days that
+  // record no version at all keep the all-time row's basis, as before (the summed rows offer no other evidence).
+  const versions = new Set(days.map(d => d.pricing_manifest_version).filter(v => !isMissing(v)).map(String));
+  const unversioned = days.some(d => isMissing(d.pricing_manifest_version));
+  const pricing = versions.size > 1 || (versions.size === 1 && unversioned) ? MIXED_PRICING
+    : versions.size === 1 ? [...versions][0] : allRow.pricing_manifest_version;
   const row: Record<string, unknown> = {
     window_kind: start === end ? 'day' : 'range', window_start: start, window_end: end, as_of: allRow.as_of,
-    baseline_model: allRow.baseline_model, pricing_manifest_version: allRow.pricing_manifest_version, baseline_state: allRow.baseline_state,
+    baseline_model: allRow.baseline_model, pricing_manifest_version: pricing, baseline_state: allRow.baseline_state,
     days_without_runs: dates.length - days.length,
   };
   for (const field of RANGE_MONEY) row[field] = days.some(d => isMissing(d[field])) ? null : days.length === 0 ? NO_RUNS_USD : sumDashboardUsd(days.map(d => d[field]));
@@ -776,18 +795,19 @@ export function headlineHoverLines(componentId: string, row: Row, pctLine: strin
     ].filter((part): part is string => part !== null);
     return parts.length === 0 ? null : `Not counted: ${parts.join(', ')}`;
   })();
-  const basis = `Baseline ${isMissing(row.baseline_model) ? 'Not recorded' : String(row.baseline_model)} · pricing ${isMissing(row.pricing_manifest_version) ? 'Not recorded' : `v${String(row.pricing_manifest_version)}`}`;
+  const basis = `Baseline ${isMissing(row.baseline_model) ? 'Not recorded' : String(row.baseline_model)} · pricing ${isMissing(row.pricing_manifest_version) ? 'Not recorded' : pricingLabel(row.pricing_manifest_version)}`;
   const noRuns = Number(row.days_without_runs);
   if (Number.isFinite(noRuns) && noRuns > 0 && row.window_kind === 'day') {
     const named = window === 'today' ? 'No runs today (UTC)' : `No runs on ${window.slice(4)} (UTC)`;
     return componentId === 'overview-spend' || componentId === 'overview-savings'
-      ? [named, `Baseline ${isMissing(row.baseline_model) ? 'Not recorded' : String(row.baseline_model)} · pricing ${isMissing(row.pricing_manifest_version) ? 'Not recorded' : `v${String(row.pricing_manifest_version)}`}`]
+      ? [named, `Baseline ${isMissing(row.baseline_model) ? 'Not recorded' : String(row.baseline_model)} · pricing ${isMissing(row.pricing_manifest_version) ? 'Not recorded' : pricingLabel(row.pricing_manifest_version)}`]
       : [named];
   }
   const when = window === 'all' ? 'all time' : window === 'today' ? 'today (UTC)'
     : window.startsWith('range:') ? `${window.slice(6).replaceAll('..', ' to ')} (UTC)` : `on ${window.slice(4)} (UTC)`;
   const lines: Array<string | null> = componentId === 'overview-spend' ? [window === 'all' ? 'What you paid, all time' : `What you paid ${when}`, excluded, basis]
-    : componentId === 'overview-savings' ? [`Modelled at ${isMissing(row.baseline_model) ? 'the cloud baseline' : String(row.baseline_model)} prices. The baseline never ran.`, pctLine, excluded, basis]
+    // Part 29 AC191: the first line is the short drawn caption; the full sentence stays in the page for screen readers.
+    : componentId === 'overview-savings' ? [`Modelled vs ${isMissing(row.baseline_model) ? 'the cloud baseline' : unbroken(String(row.baseline_model))}`, `Modelled at ${isMissing(row.baseline_model) ? 'the cloud baseline' : String(row.baseline_model)} prices. The baseline never ran.`, pctLine, excluded, basis]
       : componentId === 'overview-measured' ? [`${count(row.runs_measured)} of ${count(row.runs_total)} runs measured`, excluded]
         : componentId === 'overview-tokens' ? [`${count(row.tokens_in)} in · ${count(row.tokens_out)} out`]
           : [];
@@ -927,7 +947,7 @@ export function UsageKpis({ rows }: { rows: readonly unknown[] }) {
     { label: 'You paid', value: money(row.spend_usd), unavailable: isMissing(row.spend_usd), accent: 'var(--field-cost)', concept: 'cost',
       lines: ['Measured spend, all time'], trend: { days: dayKeys, values: series('spend_usd'), format: usd, scope } },
     { label: 'Baseline cost', value: unresolved ? 'Baseline unresolved' : money(row.counterfactual_usd), unavailable: unresolved || isMissing(row.counterfactual_usd),
-      accent: 'var(--field-baseline)', concept: 'baseline', lines: [`Same tokens at ${baseline} list price (modelled)`],
+      accent: 'var(--field-baseline)', concept: 'baseline', lines: [`At ${unbroken(baseline)} list price, modelled`, `Same tokens at ${baseline} list price (modelled)`],
       trend: unresolved ? null : { days: dayKeys, values: series('counterfactual_usd'), format: usd, scope } },
     { label: 'Saved', value: unresolved ? 'Baseline unresolved' : money(row.savings_usd), unavailable: unresolved || isMissing(row.savings_usd),
       accent: 'var(--field-savings)', concept: 'savings', lines: ['Modelled · vs cloud baseline'],
@@ -2210,8 +2230,9 @@ export function RunTimeline({ steps, run }: {
             {(() => {
               const at = timed[index];
               return <div className="local-run-waterfall" data-waterfall data-positioned={at ? 'true' : 'false'}>
-                {at ? <span data-waterfall-bar title={`${duration(row.duration_ms)} from ${duration(at.start - origin)}`}
-                  style={{ '--wf-left': `${((at.start - origin) / span) * 100}%`, '--wf-width': `${Math.max(0.4, ((at.end - at.start) / span) * 100)}%` } as CSSProperties} />
+                {/* A measured 0 ms step is an instant marker at its start, never a widened bar (Codex MSG a9bd908d). */}
+                {at ? <span data-waterfall-bar data-instant={at.end === at.start ? 'true' : undefined} title={`${duration(row.duration_ms)} from ${duration(at.start - origin)}`}
+                  style={{ '--wf-left': `${((at.start - origin) / span) * 100}%`, '--wf-width': `${((at.end - at.start) / span) * 100}%` } as CSSProperties} />
                   : <span className="local-run-waterfall-missing">start or duration not recorded</span>}
               </div>;
             })()}

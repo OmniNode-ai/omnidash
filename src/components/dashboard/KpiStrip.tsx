@@ -47,13 +47,24 @@ export function trendLine(trend: KpiTrend): string | null {
   return `${trend.scope ?? `Latest ${trend.days.length} UTC days`}: peak ${trend.format(peak.value)} on ${dayName(peak.day)} · latest ${trend.format(latest.value)} on ${dayName(latest.day)}`;
 }
 
+/** Part 29 AC191: a trend's short caption, its peak served day (the full sentence stays in the page); null under two days. */
+export function trendCaption(trend: KpiTrend): string | null {
+  const served = trend.days.map((day, index) => ({ day, value: trend.values[index] }))
+    .filter((point): point is { day: string; value: number } => typeof point.value === 'number' && Number.isFinite(point.value));
+  if (served.length < 2) return null;
+  const peak = served.reduce((best, point) => (point.value > best.value ? point : best));
+  return `Peak ${trend.format(peak.value)} on ${dayName(peak.day)}`;
+}
+
 export function KpiStrip({ label, items }: { label: string; items: readonly KpiItem[] }) {
   return (
     <div className="local-overview-surface local-kpi-cards">
       <section className="local-overview-summary" aria-label={label} style={{ '--kpi-count': items.length } as CSSProperties}>
         {items.map((item) => {
           const trend = item.trend && !item.unavailable ? trendLine(item.trend) : null;
-          const lines = [...(item.lines ?? []), trend].filter((line): line is string => Boolean(line));
+          // A card whose only fact is its trend draws the short peak caption first (AC191), the trend sentence after it.
+          const short = trend && (item.lines ?? []).filter(Boolean).length === 0 ? trendCaption(item.trend!) : null;
+          const lines = [...(item.lines ?? []), short, trend].filter((line): line is string => Boolean(line));
           return (
             <article key={item.label} className="local-dashboard-panel" data-kpi-card={item.label}
               data-field-unavailable={item.unavailable ? 'true' : undefined} style={{ '--panel-accent': item.accent } as CSSProperties}>

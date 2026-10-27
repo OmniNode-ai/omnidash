@@ -21,8 +21,10 @@ function asRecords(rows: readonly unknown[]): Row[] {
   return rows.filter((row): row is Row => typeof row === 'object' && row !== null && !Array.isArray(row));
 }
 
+/** A served number: a finite number, or a string that is one plain decimal; anything else (blank, a flag, a list) is missing. */
 function number(value: unknown): number | null {
-  if (isMissing(value)) return null;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value !== 'string' || !/^\s*-?\d+(\.\d+)?(e[+-]?\d+)?\s*$/i.test(value)) return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
@@ -33,13 +35,18 @@ function verdict(value: unknown): boolean | null {
   return null;
 }
 
-/** The row's UTC day from created_at, else written_at; null when neither is a date. */
-export function dayOf(row: Row): string | null {
+/** The row's time from a valid created_at, else a valid written_at; null when neither is a date. */
+function stampOf(row: Row): string | null {
   for (const field of ['created_at', 'written_at']) {
-    const time = typeof row[field] === 'string' ? Date.parse(row[field] as string) : Number.NaN;
-    if (Number.isFinite(time)) return new Date(time).toISOString().slice(0, 10);
+    if (typeof row[field] === 'string' && Number.isFinite(Date.parse(row[field] as string))) return row[field] as string;
   }
   return null;
+}
+
+/** The row's UTC day from the same stamp as its time (stampOf); null when it has none. */
+export function dayOf(row: Row): string | null {
+  const stamp = stampOf(row);
+  return stamp === null ? null : new Date(Date.parse(stamp)).toISOString().slice(0, 10);
 }
 
 /** Nearest-rank percentile of recorded values; null when there are none. */
@@ -63,8 +70,7 @@ export function totalsOf(rows: readonly unknown[]): Totals {
   const costs = records.map(row => number(row.cost_usd)).filter((value): value is number => value !== null);
   const verdicts = records.map(row => verdict(row.quality_gate_passed)).filter((value): value is boolean => value !== null);
   const latencies = records.map(row => number(row.latency_ms)).filter((value): value is number => value !== null && value >= 0);
-  const stamps = records.map(row => (typeof row.created_at === 'string' ? row.created_at : typeof row.written_at === 'string' ? row.written_at : null))
-    .filter((value): value is string => value !== null && Number.isFinite(Date.parse(value)));
+  const stamps = records.map(stampOf).filter((value): value is string => value !== null);
   return {
     runs: records.length,
     spend: costs.length === 0 ? null : costs.reduce((sum, value) => sum + value, 0), spendMeasured: costs.length,

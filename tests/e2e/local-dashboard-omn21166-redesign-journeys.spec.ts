@@ -1,6 +1,6 @@
 import { writeFileSync } from 'node:fs';
 import { expect, test, type Page } from 'playwright/test';
-import { serveCharts } from './omn21166-chart-fixtures';
+import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
 import { withAllTime, withAnalysis, withTrace } from './omn21166-redesign-fixtures';
 
 // OMN-21166 part 29, revision 6 (Lakshman 2026-10-27: "based on delegation data you can redesign all pages and make a best
@@ -16,7 +16,8 @@ import { withAllTime, withAnalysis, withTrace } from './omn21166-redesign-fixtur
 //   J8  a day before the sample's coverage drawn as 0 in the sparkline (AC194);
 //   J9  a measured $0 model hidden, or an unmeasured model drawn at 0 on the cost-versus-quality chart (AC195);
 //   J10 the Runs totals line does not follow the filter (AC196);
-//   J11 a waterfall bar drawn for a step without both a start and a duration, or at a wrong offset or width (AC197).
+//   J11 a waterfall bar drawn for a step without both a start and a duration, or at a wrong offset or width (AC197);
+//   J12 a window summed over days on two pricing versions names one version (AC200, Codex MSG a9bd908d).
 test.use({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce', trace: 'on' });
 
 const HEADLINE_PAGES = ['/overview', '/runs', '/usage', '/delegation-evidence'];
@@ -50,6 +51,7 @@ test('AC191 headline cards carry a short caption under the figure instead of a h
         lines: basis ? basis.children.length : 0, visibleLines: visible.length,
         captionLines: first ? Math.round(first.getBoundingClientRect().height / parseFloat(getComputedStyle(first).lineHeight)) : 0,
         captionSize: first ? getComputedStyle(first).fontSize : null,
+        cut: first ? first.scrollHeight > first.clientHeight + 1 : false,
         basisText: basis?.textContent ?? '',
       };
     }));
@@ -60,6 +62,8 @@ test('AC191 headline cards carry a short caption under the figure instead of a h
       expect(card.visibleLines, `${path} ${card.label}: one visible caption`).toBe(1);
       expect(card.captionLines, `${path} ${card.label}: at most two lines`).toBeLessThanOrEqual(2);
       expect(card.captionSize, `${path} ${card.label}: 12px caption`).toBe('12px');
+      // Lakshman 2026-10-27 ('in cards why text big so it ...?'): a caption is short enough to show whole, never cut with '...'.
+      expect(card.cut, `${path} ${card.label}: caption shown whole`).toBe(false);
     }
     // J2: every basis line stays in the page text even when only the first is drawn.
     for (const card of withBasis.filter(item => item.lines > 1)) expect(card.basisText.length, `${path} ${card.label}: full basis kept`).toBeGreaterThan(20);
@@ -179,4 +183,34 @@ test('AC197 Workflow draws the run as a waterfall: bars only for steps with a st
   await expect(rows.nth(3)).toContainText('attempt: 2');
   await expect(page.locator('[data-escalation-text]')).toHaveCount(0);
   await page.screenshot({ path: info.outputPath('ac197-waterfall.png'), fullPage: true });
+});
+
+test('AC200 a window summed over days on two pricing versions reads as a mixed basis, one version as that version (control)', async ({ page }) => {
+  const day = (ago: number) => new Date(Date.now() - ago * 86_400_000).toISOString().slice(0, 10);
+  const meteringDay = (ago: number, version: string) => ({ tenant_id: 'chart-fixture-tenant', window_kind: 'day', window_start: day(ago),
+    as_of: new Date().toISOString(), baseline_model: 'baseline-a', baseline_state: 'resolved', pricing_manifest_version: version === '' ? null : version,
+    spend_usd: '0.010000', counterfactual_usd: '0.050000', savings_usd: '0.040000', runs_total: 1, runs_measured: 1, runs_unknown_tokens: 0,
+    runs_unknown_spend: 0, tokens_in: 10, tokens_out: 5 });
+  const all = { ...meteringDay(0, '2.0.0'), window_kind: 'all', window_start: '' };
+  // The metering source: the catalogue says the old aggregate has no local table, so Overview's windows read metering rows
+  // (as overview-links.spec's serveMetering does); with the old aggregate a window reads 'daily totals unavailable'.
+  const serve = async (versions: string[]) => {
+    const rows = { ...chartRows, [prefix + 'metering-summary.v1']: [all, ...versions.map((v, i) => meteringDay(i + 1, v))] };
+    await serveCharts(page, rows);
+    const legacy = prefix + 'cost.savings-overview.v1';
+    await page.route('**/projections', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ topics:
+      Object.keys(rows).map(topic => topic === legacy
+        ? { topic, status: 'degraded', backing: 'not_in_local_store', bus_backed: false, degraded_reason: 'projection_table_missing' }
+        : { topic, status: 'ok', backing: 'bus', bus_backed: true, tenant_scoped: false }) }) }));
+  };
+  // Codex MSG b53ca31a: a versioned day beside an unversioned one is a mixed basis too, never the one version it does see.
+  for (const [versions, expected] of [[['1.0.0', '2.0.0'], 'pricing mixed basis (several versions)'], [['', '2.0.0'], 'pricing mixed basis (several versions)'], [['2.0.0', '2.0.0'], 'pricing v2.0.0']] as const) {
+    await page.unrouteAll({ behavior: 'ignoreErrors' });
+    await serve([...versions]);
+    await settle(page, '/overview');
+    await page.getByRole('radio', { name: 'Last 7 days (UTC)', exact: true }).click();
+    const caption = page.locator('[data-component="overview-savings"] .local-card-caption');
+    await expect(caption).toContainText(expected);
+    if (versions[0] !== versions[1]) await expect(caption).not.toContainText(/pricing v\d/);
+  }
 });

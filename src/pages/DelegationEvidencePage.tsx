@@ -786,7 +786,9 @@ export function DelegationEvidencePage() {
       {/* OMN-21166 AC63: the four headline figures read as one segmented strip, as on the local pages. */}
       {/* OMN-21166 part 15 AC91: the four headline figures are Overview's cards; their captions are in the tooltips. */}
       <KpiStrip label="Delegation summary" items={[
-        { label: 'Delegations', value: headline.runs, accent: 'var(--field-calls)', concept: 'calls', lines: [headline.runsSub] },
+        // Part 29 AC191: one fact per line, so the drawn caption is the short first one ('Of N runs') and the exclusions
+        // stay in the page instead of being cut off.
+        { label: 'Delegations', value: headline.runs, accent: 'var(--field-calls)', concept: 'calls', lines: headline.runsSub ? String(headline.runsSub).split(' \u00b7 ') : [] },
         { label: 'Quality pass', value: summary ? passRate(summary.qualityGatePassRate) : 'Not measured', unavailable: !summary,
           accent: 'var(--field-pass)', concept: 'pass', lines: [withFixtureNotice('deterministic gate', fixtureNotice)] },
         { label: 'Savings (modelled)', value: headline.savings, accent: 'var(--field-savings)', concept: 'savings', lines: [moneyBasis(headline.money)] },

@@ -1354,3 +1354,37 @@ html .app svg.field-icon.field-icon:is([data-field-icon^="tier-"], [data-semanti
 .local-dashboard-steps > li[data-outcome="failed"] .local-run-waterfall [data-waterfall-bar] { background: var(--ins-fail, var(--field-fail)); }
 .local-run-waterfall[data-positioned="false"] { height: auto; background: none; }
 .local-run-waterfall-missing { font-size: 12px; color: var(--ink-3); border: 1px dashed var(--line); border-radius: 4px; padding: 1px 6px; }
+/* Chrome review on Lakshman's data: the group-by control stays above the table (the shared filter bar's own ordering does
+   not apply here), row names read as names, not column headers, and the table fits the panel without sideways scroll. */
+.usage-analysis > * { order: 0; }
+.usage-analysis > .usage-analysis-group { order: 1; margin: 0; }
+.usage-analysis > .local-dashboard-table-wrap { order: 2; overflow-x: visible; }
+.usage-analysis > .usage-analysis-quality { order: 3; }
+.usage-analysis table { width: 100%; table-layout: auto; }
+.usage-analysis tbody th[scope="row"] { text-transform: none; letter-spacing: normal; font-family: var(--font-mono); font-size: 12px;
+  font-weight: 500; overflow-wrap: anywhere; min-width: 120px; max-width: 240px; }
+.usage-analysis td { white-space: normal; }
+.usage-analysis td[data-cell="spark"] { white-space: nowrap; }
+/* Codex review 2026-10-27 05:56Z (MSGs a9bd908d, 3ab10059). AC197: a measured 0 ms step is an instant marker, not a bar
+   widened to be seen. */
+.local-run-waterfall [data-waterfall-bar][data-instant="true"] { width: 0; box-shadow: 0 0 0 1px var(--ink-3); }
+/* AC195: the hovered or focused point's values, read in a line under the chart; empty until a point is chosen. */
+.usage-analysis-readout { min-height: 1.4em; font-family: var(--font-mono); }
+/* Usage analysis on a phone: the section never grows past its card. The table and chart scroll inside the card, the
+   group control wraps, and the chart keeps a legible size instead of shrinking its labels. */
+.usage-analysis { grid-template-columns: minmax(0, 1fr); min-width: 0; }
+.usage-analysis > .local-dashboard-caption { overflow-wrap: anywhere; }
+.usage-analysis > .usage-analysis-group { width: auto; max-width: 100%; }
+@media (max-width: 760px) {
+  .usage-analysis > .local-dashboard-table-wrap { overflow-x: auto; }
+  .usage-analysis-quality { overflow-x: auto; }
+  .usage-analysis-quality svg { min-width: 560px; }
+}
+/* Tokens per day on a phone: every other day label, so labels stop running into one unreadable line. */
+@media (max-width: 600px) {
+  .utc-plot > li:nth-child(even) .utc-day { visibility: hidden; }
+}
+/* AC191: a card's token directions read on one line in its caption ("<in> in · <out> out"), as they did in the old tooltip. */
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-caption .local-token-directions {
+  display: inline-flex; flex-direction: row; flex-wrap: nowrap; align-items: baseline; gap: 6px; margin: 0; white-space: nowrap;
+}

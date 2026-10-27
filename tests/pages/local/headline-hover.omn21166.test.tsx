@@ -20,7 +20,9 @@ describe('headlineHoverLines', () => {
   it('H3: savings names that it is modelled and carries the served percentage line when there is one', () => {
     const lines = headlineHoverLines('overview-savings', ROW, '94% below the claude-sonnet-5-5 baseline (modelled)');
     // Jonah's savings handoff on OMN-19981, item 5: a modelled saving says the baseline never ran.
-    expect(lines[0]).toBe('Modelled at claude-sonnet-5-5 prices. The baseline never ran.');
+    // OMN-21166 part 29 AC191: the drawn caption is short (name kept whole); the full sentence follows it in the page.
+    expect(lines[0]).toBe('Modelled vs claude\u2011sonnet\u20115\u20115');
+    expect(lines[1]).toBe('Modelled at claude-sonnet-5-5 prices. The baseline never ran.');
     expect(lines).toContain('94% below the claude-sonnet-5-5 baseline (modelled)');
     expect(headlineHoverLines('overview-savings', ROW, null)).toContain('Baseline claude-sonnet-5-5 · pricing v1.0.0');
   });

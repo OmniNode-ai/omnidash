@@ -44,33 +44,43 @@ function Sparkline({ group }: { group: Group }) {
 }
 
 function QualityChart({ groups }: { groups: Group[] }) {
+  const [active, setActive] = useState<string | null>(null);
   const plotted = groups.filter(group => group.name !== NOT_RECORDED && group.spend !== null && group.spendMeasured > 0 && group.verdicts > 0);
   const unplotted = groups.filter(group => !plotted.includes(group));
   const perRun = (group: Group) => group.spend! / group.spendMeasured;
   const maxCost = Math.max(...plotted.map(perRun), 0);
-  const W = 640, H = 240, PAD = { left: 56, right: 24, top: 16, bottom: 40 };
-  const x = (value: number) => PAD.left + (maxCost === 0 ? 0 : (value / maxCost) * (W - PAD.left - PAD.right));
-  const y = (rate: number) => PAD.top + (1 - rate) * (H - PAD.top - PAD.bottom);
+  // The plot starts INSET past the axes so a point at $0 or at 100% never sits on an axis label or leaves the frame.
+  const W = 640, H = 260, INSET = 24, PAD = { left: 56, right: 200, top: 24, bottom: 40 };
+  const x = (value: number) => PAD.left + INSET + (maxCost === 0 ? 0 : (value / maxCost) * (W - PAD.left - INSET - PAD.right));
+  const y = (rate: number) => PAD.top + INSET + (1 - rate) * (H - PAD.top - INSET - PAD.bottom);
   const maxRuns = Math.max(1, ...plotted.map(group => group.runs));
+  // Nothing measured to plot: no axes and no $0 ticks, only the list of what could not be drawn.
+  if (plotted.length === 0) return <figure className="local-chart usage-analysis-quality" aria-label="Cost versus quality per model">
+    <p className="local-dashboard-caption" data-quality-unplotted>No model has both a measured cost and a verdict yet{unplotted.length > 0 ? `: ${unplotted.map(group => group.name).join(', ')}` : ''}</p>
+  </figure>;
   return <figure className="local-chart usage-analysis-quality" aria-label="Cost versus quality per model">
     <figcaption className="local-dashboard-caption">Cost per measured run against quality pass rate; point area is runs</figcaption>
     <svg viewBox={`0 0 ${W} ${H}`} role="group" aria-label="Cost versus quality per model">
       <line x1={PAD.left} x2={W - PAD.right} y1={H - PAD.bottom} y2={H - PAD.bottom} className="usage-analysis-axis" />
       <line x1={PAD.left} x2={PAD.left} y1={PAD.top} y2={H - PAD.bottom} className="usage-analysis-axis" />
       {[0, 0.5, 1].map(rate => <text key={rate} x={PAD.left - 8} y={y(rate) + 4} textAnchor="end" className="usage-analysis-tick">{`${rate * 100}%`}</text>)}
-      <text x={PAD.left} y={H - 12} className="usage-analysis-tick">{formatUsd(0)}</text>
-      <text x={W - PAD.right} y={H - 12} textAnchor="end" className="usage-analysis-tick">{usd(maxCost)}</text>
+      <text x={x(0)} y={H - 12} textAnchor="middle" className="usage-analysis-tick">{formatUsd(0)}</text>
+      <text x={x(maxCost)} y={H - 12} textAnchor="middle" className="usage-analysis-tick">{usd(maxCost)}</text>
       {plotted.map(group => {
         const rate = group.passed / group.verdicts;
         const radius = 5 + 13 * Math.sqrt(group.runs / maxRuns);
+        const detail = `${group.name}: ${usd(perRun(group))} per measured run, ${passText(group).replace(' (', ' passed (')}, ${group.runs} runs`;
+        // The same words on hover and keyboard focus (the readout under the chart), not only for screen readers.
         return <g key={group.name}>
           <circle data-quality-point={group.name} data-cost={String(perRun(group))} cx={x(perRun(group))} cy={y(rate)} r={radius} tabIndex={0}
-            role="img" aria-label={`${group.name}: ${usd(perRun(group))} per measured run, ${passText(group).replace(' (', ' passed (')}, ${group.runs} runs`}
-            style={{ '--point-color': modelColor(group.name) } as CSSProperties} />
+            role="img" aria-label={detail} onMouseEnter={() => setActive(detail)} onFocus={() => setActive(detail)}
+            onMouseLeave={() => setActive(null)} onBlur={() => setActive(null)}
+            style={{ '--point-color': modelColor(group.name) } as CSSProperties}><title>{detail}</title></circle>
           <text x={x(perRun(group)) + radius + 4} y={y(rate) + 4} className="usage-analysis-point-name">{group.name}</text>
         </g>;
       })}
     </svg>
+    <p className="local-dashboard-caption usage-analysis-readout" data-quality-readout aria-hidden="true">{active ?? ''}</p>
     {unplotted.length > 0 && <p className="local-dashboard-caption" data-quality-unplotted>
       Not drawn (no measured cost or no verdicts): {unplotted.map(group => group.name).join(', ')}</p>}
   </figure>;
