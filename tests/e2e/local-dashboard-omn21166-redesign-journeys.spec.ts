@@ -131,6 +131,8 @@ test('AC194 AC195 Usage analysis groups the served sample with its own denominat
   await analysis.getByRole('radio', { name: 'Tier', exact: true }).check();
   await expect(analysis.locator('table[data-analysis-table] tbody tr')).toHaveCount(1);
   // J9: cost versus quality; a measured $0 model is a real point at the left edge, the unrecorded model is listed.
+  // Part 30 AC202: the chart is the Usage analysis's Cost versus quality tab.
+  await page.getByRole('tablist', { name: 'Usage analysis views', exact: true }).getByRole('tab', { name: 'Cost versus quality', exact: true }).click();
   const points = analysis.locator('[data-quality-point]');
   await expect(points).toHaveCount(2);
   await expect(analysis.locator('[data-quality-point="model-b"]')).toHaveAttribute('data-cost', '0');

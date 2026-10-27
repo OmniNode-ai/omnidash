@@ -3,10 +3,10 @@ import {
   Building2, CalendarClock, CalendarDays, CalendarRange, ChartArea, ChartBar, ChartBarStacked, ChartColumnStacked,
   ChartGantt, ChartLine, ChartPie, ChartSpline, CheckCheck, CircleCheck, CircleDollarSign, CircleDot, CircleEllipsis,
   CircleHelp, CircleX, ClipboardCheck, Clock3, Cloud, Cloudy, CodeXml, Coins, Cpu, DatabaseZap, Divide, Feather,
-  FileClock, FileText, Files, Fingerprint, Flag, FlagTriangleRight, Footprints, GitBranch,
+  FileClock, FileText, Files, Fingerprint, Flag, FlagTriangleRight, Footprints, GitBranch, GitFork,
   GitPullRequest, Globe, HardDrive, Hash, History, Hourglass, House, IdCard, Inbox, Key, KeyRound, Layers, Layers2,
   ListChecks, LockKeyhole, Logs, Medal, MessageSquareText, MessagesSquare, Milestone, Monitor, MousePointerClick,
-  Network, OctagonAlert, Percent, PiggyBank, PlugZap, Receipt, Rocket, Route, RouteOff, Rows3, Ruler, Scale,
+  Network, OctagonAlert, PanelsTopLeft, Percent, PiggyBank, PlugZap, Receipt, Rocket, Route, RouteOff, Rows3, Ruler, Scale,
   ScrollText, Server, Sheet, ShieldCheck, Shrink, Shuffle, Signpost, Snail, Sparkles, Split, Star, TableProperties,
   Target, TestTube, Timer, TimerReset, TrendingUp, TriangleAlert, Trophy, UserLock, Waypoints, Zap, type LucideIcon
 } from 'lucide-react';
@@ -55,6 +55,8 @@ export const FIELD_ICONS: Readonly<Record<string, LucideIcon>> = {
   'tier-mix': ChartPie, 'usage-analysis': ChartColumnStacked,
   'load-slow': Snail, 'load-error': TriangleAlert,
   selected: MousePointerClick, 'recorded-rows': Sheet,
+  // OMN-21166 part 30 (revision 7): Runs' analysis views and its routing groups.
+  'runs-analysis': PanelsTopLeft, 'run-routes': GitFork,
 };
 
 /** Canonical readable names for consumers whose label is not a field alias. */
@@ -92,6 +94,7 @@ export const CONCEPT_LABELS: Readonly<Record<string, string>> = {
   'tier-mix': 'Tier mix', 'usage-analysis': 'Usage analysis',
   'load-slow': 'Data read delayed', 'load-error': 'Data read failed',
   selected: 'Selected run', 'recorded-rows': 'Recorded rows',
+  'runs-analysis': 'Analysis views', 'run-routes': 'Routing',
 };
 
 export function ConceptIcon({ concept, label, value, size = 12 }: { concept: string; label?: string; value?: unknown; size?: number }) {

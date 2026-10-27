@@ -1384,13 +1384,11 @@ html .app svg.field-icon.field-icon:is([data-field-icon^="tier-"], [data-semanti
 @media (max-width: 600px) {
   .utc-plot > li:nth-child(even) .utc-day { visibility: hidden; }
 }
-/* AC191: a card's token directions read on one line in its caption ("<in> in · <out> out"), as they did in the old tooltip;
-   on a phone too narrow for both (320px), the two halves wrap whole instead of pushing the row sideways. */
+/* AC191: a card's token directions read on one line in its caption ("<in> in · <out> out") when they fit; on a card too
+   narrow for both, the two halves wrap whole instead of running past the card's edge (lab 2026-10-27: "Not measured ·
+   Not measured" is 198px, and long counts outgrow a four-across card at 1440). */
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-caption .local-token-directions {
-  display: inline-flex; flex-direction: row; flex-wrap: nowrap; align-items: baseline; gap: 0 6px; margin: 0;
-}
-@media (max-width: 479px) {
-  :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-caption .local-token-directions { flex-wrap: wrap; max-width: 100%; }
+  display: inline-flex; flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 0 6px; margin: 0; max-width: 100%;
 }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-caption .local-token-direction { white-space: nowrap; }
 /* OMN-21166 part 30 (revision 7) AC201: the shared tabs and toggle use the neutral segmented control (AC178). The tab list
@@ -1401,18 +1399,57 @@ html .app svg.field-icon.field-icon:is([data-field-icon^="tier-"], [data-semanti
 .ev-root .local-dashboard-filters.local-dashboard-tablist,
 .ev-root .local-dashboard-filters.local-dashboard-toggle {
   display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 2px; margin: 0; width: max-content; max-width: 100%;
-  border: 1px solid var(--line); border-radius: 6px; background: var(--panel); align-items: center;
+  border: 1px solid var(--line); border-radius: 6px; background: var(--panel); align-items: center; order: 0; flex: 0 1 auto;
 }
-.local-dashboard-tablist [role="tab"] { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; min-height: 32px;
+/* Above the shared filter part's 40px control height (dashboard-cards.css) and its order: 2 (local-dashboard.css). */
+.local-dashboard-tablist.local-dashboard-filters [role="tab"] { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; min-height: 32px;
   padding: 0 12px; border-radius: 6px; font-size: 13px; font-weight: 500; color: var(--ink-2); cursor: pointer; }
-.local-dashboard-tablist [role="tab"][aria-selected="true"] { background: var(--panel-2); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
-.local-dashboard-tablist [role="tab"]:hover { color: var(--ink); }
-.local-dashboard-tablist [role="tab"]:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 1px; }
+.local-dashboard-tablist.local-dashboard-filters [role="tab"][aria-selected="true"] { background: var(--panel-2); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+.local-dashboard-tablist.local-dashboard-filters [role="tab"]:hover { color: var(--ink); }
+.local-dashboard-tablist.local-dashboard-filters [role="tab"]:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 1px; }
 .local-dashboard-tabpanel { min-width: 0; display: grid; gap: 12px; }
 .local-dashboard-tabpanel:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 4px; border-radius: 4px; }
-.local-dashboard-toggle label { display: inline-flex; align-items: center; min-height: 28px; padding: 0 10px; border-radius: 6px;
+.local-dashboard-toggle.local-dashboard-filters label { display: inline-flex; align-items: center; min-height: 28px; padding: 0 10px; border-radius: 6px;
   font-size: 12px; color: var(--ink-2); cursor: pointer; }
-.local-dashboard-toggle input { position: absolute; opacity: 0; width: 1px; height: 1px; }
-.local-dashboard-toggle label:has(input:checked) { background: var(--panel-2); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
-.local-dashboard-toggle label:has(input:focus-visible) { outline: 2px solid var(--ui-accent); outline-offset: 1px; }
+.local-dashboard-toggle.local-dashboard-filters input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.local-dashboard-toggle.local-dashboard-filters label:has(input:checked) { background: var(--panel-2); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+.local-dashboard-toggle.local-dashboard-filters label:has(input:focus-visible) { outline: 2px solid var(--ui-accent); outline-offset: 1px; }
 .local-dashboard-toggles { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+/* AC203: Model by task. Each cell is its figure over its denominator line; a small sample is set in the secondary ink with
+   the words "small sample", a pair with no runs reads no runs. The whole cell is the link to its runs. */
+.usage-matrix-wrap { overflow-x: auto; }
+.usage-analysis table[data-decision-matrix] { width: 100%; }
+[data-decision-matrix] td { vertical-align: top; min-width: 120px; }
+[data-decision-matrix] td a { display: grid; gap: 2px; color: inherit; text-decoration: none; padding: 4px 6px; margin: -4px -6px; border-radius: 4px; }
+[data-decision-matrix] td a:hover { background: var(--panel-2); }
+[data-decision-matrix] td a:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 1px; }
+[data-decision-matrix] td:not(:has(a)) { display: table-cell; }
+.usage-matrix-figure { display: block; font-family: var(--font-mono); font-size: 14px; font-weight: 500; color: var(--ink); }
+.usage-matrix-basis { display: block; font-size: 12px; color: var(--ink-2); }
+[data-decision-matrix] td[data-small="true"] .usage-matrix-figure { color: var(--ink-2); }
+[data-decision-matrix] td[data-state="no-runs"] { color: var(--ink-2); font-size: 12px; }
+[data-decision-matrix] tbody th[data-model-name] { color: var(--model-color); }
+.usage-analysis .local-dashboard-toggles { order: 0; }
+/* AC204: Quality over time, one row of 14 daily bars per series. An outlined day is before the sample, a dashed one has runs
+   but no verdict (pass rate), a hairline one no runs; a measured 0% is a short bar in the failure colour, never empty. */
+.usage-trend { margin: 0; display: grid; gap: 10px; min-width: 0; }
+.usage-trend-rows { display: grid; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.usage-trend-row { display: grid; grid-template-columns: minmax(96px, 180px) minmax(420px, 1fr); gap: 12px; align-items: end; }
+.usage-trend-name { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); overflow-wrap: anywhere; }
+.usage-trend-name[data-model-name] { color: var(--model-color); }
+.usage-trend-days { display: grid; grid-template-columns: repeat(14, minmax(0, 1fr)); gap: 3px; list-style: none; margin: 0; padding: 0;
+  height: 56px; align-items: end; }
+.usage-trend-axis .usage-trend-days { height: auto; }
+.usage-trend-days > li { height: 100%; display: flex; align-items: flex-end; min-width: 0; }
+.usage-trend-day { display: flex; align-items: flex-end; width: 100%; height: 100%; border-radius: 2px; }
+a.usage-trend-day:hover { background: var(--panel-2); }
+a.usage-trend-day:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 1px; }
+.usage-trend-bar { display: block; width: 100%; height: var(--trend-height, 0); background: var(--model-color, var(--ink-3)); border-radius: 2px 2px 0 0; }
+.usage-trend-bar[data-zero="true"] { height: 3px; background: var(--ins-fail, var(--field-fail)); }
+.usage-trend-day[data-state="not-covered"] .usage-trend-bar { height: 100%; background: transparent; box-shadow: inset 0 0 0 1px var(--line); }
+[data-metric="pass"] .usage-trend-day[data-state="no-verdicts"] .usage-trend-bar { height: 100%; background: transparent; border: 1px dashed var(--line); box-sizing: border-box; }
+.usage-trend-day[data-state="no-runs"] .usage-trend-bar { height: 1px; background: var(--line); }
+.usage-trend-date { font-size: 11px; color: var(--ink-2); white-space: nowrap; font-family: var(--font-mono); }
+/* AC206: Runs' routing groups; a reroute is named beside the routed model. */
+[data-routing-table] .local-route-changed { margin-left: 6px; font-size: 11px; padding: 0 6px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink-2); }
+[data-routing-table] td { white-space: nowrap; }

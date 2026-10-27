@@ -353,14 +353,21 @@ svg.field-icon[data-field-tone] { color: var(--field-ink); }
 :root {
   --field-tier-mix: oklch(46% 0.11 351.38394);
   --field-usage-analysis: oklch(46% 0.11 169.12599);
+  /* OMN-21166 part 30: Runs' analysis views and routing groups. */
+  --field-runs-analysis: oklch(46% 0.11 214.40213);
+  --field-run-routes: oklch(46% 0.11 31.80466);
   --field-load-slow: var(--field-threshold);
   --field-load-error: var(--field-fail);
 }
 [data-theme="dark"] {
   --field-tier-mix: oklch(79% 0.11 351.38394);
   --field-usage-analysis: oklch(79% 0.11 169.12599);
+  --field-runs-analysis: oklch(79% 0.11 214.40213);
+  --field-run-routes: oklch(79% 0.11 31.80466);
 }
 [data-field-tone="tier-mix"] { --field-ink: var(--field-tier-mix); }
 [data-field-tone="usage-analysis"] { --field-ink: var(--field-usage-analysis); }
+[data-field-tone="runs-analysis"] { --field-ink: var(--field-runs-analysis); }
+[data-field-tone="run-routes"] { --field-ink: var(--field-run-routes); }
 [data-field-tone="load-slow"] { --field-ink: var(--field-load-slow); }
 [data-field-tone="load-error"] { --field-ink: var(--field-load-error); }

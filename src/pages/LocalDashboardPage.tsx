@@ -29,7 +29,8 @@ import { RunDurationChart, RunMetricChart, RunTimingChart, RunTokensChart, Spend
 import { PassRateMeter, TIER_TONES } from '@/pages/local/shares';
 import { InsightsSection, InsightsWindowContext, MeteringActivityInsights, OverviewRunsContext, PassRateSparkline, TaskIcon, type ActivityWindow } from '@/pages/local/insight-charts';
 import { UsageInsights } from '@/pages/local/usage-insights';
-import { RunsTotals } from '@/pages/local/usage-analysis';
+import { RoutingAnalysis, RunsTotals } from '@/pages/local/usage-analysis';
+import { DashboardTabs } from '@/components/dashboard/DashboardTabs';
 import { SinceLastVisit } from '@/pages/local/since-last-visit';
 import { ModelKeys, providerName } from '@/pages/local/model-keys';
 import { EnvironmentPanel, ServiceHealthUnread } from '@/pages/local/environment';
@@ -261,6 +262,8 @@ const MAPLE_WIDTHS: Readonly<Record<string, number>> = {
  * click-to-open), so the list draws them into this slot inside the page's "More analysis" instead of a second disclosure.
  */
 const RunChartsSlot = createContext<HTMLElement | null | undefined>(undefined);
+/** Part 30 AC206: the Routing tab of Runs' "More analysis"; the run list draws its routing groups into it. */
+const RunRoutingSlot = createContext<HTMLElement | null | undefined>(undefined);
 
 /** Runs' secondary panels, shown under its "More analysis" (part 13 AC74). */
 const RUNS_SECONDARY: ReadonlySet<string> = new Set(['runs-tier-mix', 'runs-insights']);
@@ -1520,9 +1523,12 @@ function RunCause({ run }: { run: Row }) {
  */
 export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25, syncUrl = false, truncated = false }: RunsTableProps) {
   const chartsSlot = useContext(RunChartsSlot);
+  const routingSlot = useContext(RunRoutingSlot);
   const id = useId();
   // OMN-21166 AC27: the table opens on its primary fields; every one of the 18 stays in the page, one switch away.
   const [showAllFields, setShowAllFields] = useState(false);
+  // Part 30 AC206: the routing fields as columns beside model, backend and tier.
+  const [showRouting, setShowRouting] = useState(false);
   const search = useSearch();
   const [, navigate] = useLocation();
   const [localView, setLocalView] = useState<RunsViewState>(DEFAULT_RUNS_VIEW);
@@ -1719,6 +1725,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
         ? `${formatDashboardCount(runs.length)} recent runs returned; earlier history is not included. Search, filters and charts use these records.`
         : `${formatDashboardCount(runs.length)} returned runs. Search, filters and charts use these records.`}</p>
       <RunsTotals rows={matching} sample={runs.length} />
+      {routingSlot && createPortal(<RoutingAnalysis rows={runs} />, routingSlot)}
       {shown.length === 0 ? <p className="local-dashboard-empty" role="status">No runs match these filters</p> : (
         <>
           <div className={`local-runs-list-detail${selectedRun ? ' local-runs-list-detail--selected' : ''}`}>
@@ -1728,6 +1735,10 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
             <input type="checkbox" checked={showAllFields} onChange={event => setShowAllFields(event.target.checked)} aria-controls={`${id}-table`} />
             Show all run fields
           </label>
+          <label>
+            <input type="checkbox" checked={showRouting} onChange={event => setShowRouting(event.target.checked)} aria-controls={`${id}-table`} />
+            Routing columns
+          </label>
           <span className="local-runs-export" role="group" aria-label="Export the matching runs">
             <button type="button" onClick={() => exportRuns('csv')}>Export CSV</button>
             <button type="button" onClick={() => exportRuns('json')}>Export JSON</button>
@@ -1736,7 +1747,8 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
             <table id={`${id}-table`}>
               <thead>
                 <tr>
-                  <th>Run</th>{sortHeader('created', 'Created')}<th>Status</th><th>Cause</th><th>Model</th><th>Backend</th><th>Host</th>
+                  <th>Run</th>{sortHeader('created', 'Created')}<th>Status</th><th>Cause</th><th>Model</th><th>Backend</th>
+                  {showRouting && <><th>Requested model</th><th>Finish reason</th><th>Escalations</th></>}<th>Host</th>
                   <th>Tokens in</th><th>Tokens out</th>{sortHeader('cost', 'Local cost')}<th>Modelled saving</th><th>Baseline model</th>
                   <th>Basis</th><th>Task type</th>{sortHeader('duration', 'Duration')}<th>Tokens to compliance</th><th>Route tier</th><th>Quality score</th>
                 </tr>
@@ -1765,6 +1777,11 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                       {recorded(run.backend_id)}
                     </button>
                   </td>
+                  {showRouting && <>
+                    <td className="local-dashboard-cell-token" data-cell="requested-model">{recorded(run.requested_model)}</td>
+                    <td data-cell="finish-reason">{recorded(run.finish_reason)}</td>
+                    <td data-cell="escalations">{recordedCount(run.escalation_count)}</td>
+                  </>}
                   <td className="local-dashboard-cell-token">{recorded(run.host)}</td>
                   <td>{recordedTokens(run.tokens_input)}</td>
                   <td>{recordedTokens(run.tokens_output)}</td>
@@ -2822,6 +2839,9 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
     if (next !== new URLSearchParams(windowSearch).toString()) navigateWindow(`/overview${next ? `?${next}` : ''}`, { replace: true });
   }, [pageName, activityWindow, windowSearch, navigateWindow]);
   const [runChartsSlot, setRunChartsSlot] = useState<HTMLElement | null>(null);
+  const [runRoutingSlot, setRunRoutingSlot] = useState<HTMLElement | null>(null);
+  // Part 30 AC201: a link to one of Runs' analysis tabs opens "More analysis" on it.
+  const [runsAnalysisOpen] = useState(() => typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('analysis'));
   const [expandedChart, setExpandedChart] = useState<{ componentId: string; title: string; slice?: PanelSlice } | null>(null);
   const chartDialog = useRef<HTMLDialogElement>(null);
   const chartOpener = useRef<HTMLButtonElement>(null);
@@ -3270,15 +3290,26 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
           })() : pageName === 'runs' ? (
             <InsightsWindowContext.Provider value={{ window: activityWindow, setWindow: setActivityWindow }}>
             <RunChartsSlot.Provider value={runChartsSlot}>
+            <RunRoutingSlot.Provider value={runRoutingSlot}>
               {/* OMN-21166 part 13: the run list in view; run charts, routing and analysis in one "More analysis" (part 18
                   AC118); Run locally is Overview's, so Runs does not repeat it. */}
               {page.components.filter(component => !RUNS_SECONDARY.has(component.component_id) && component.component_id !== 'overview-run-locally')
                 .map(component => renderComponent(component))}
-              <details className="local-overview-secondary local-more local-more--page">
+              <details className="local-overview-secondary local-more local-more--page" open={runsAnalysisOpen || undefined}>
                 <summary>More analysis</summary>
-                <div className="local-run-charts-slot" ref={setRunChartsSlot} />
-                {page.components.filter(component => RUNS_SECONDARY.has(component.component_id)).map(component => renderComponent(component))}
+                {/* Part 30 AC206: the run charts and analysis in one tab, the routing groups in another, in one panel (OMN-21015 K1). */}
+                <article className="local-dashboard-panel local-runs-analysis" aria-label="Analysis views" aria-busy="false">
+                <h2 className="local-dashboard-panel-title"><ConceptIcon concept="runs-analysis" label="Analysis views" size={16} />Analysis views</h2>
+                <DashboardTabs label="Runs analysis views" param="analysis" tabs={[
+                  { id: 'charts', label: 'Charts and causes', panel: () => <>
+                    <div className="local-run-charts-slot" ref={setRunChartsSlot} />
+                    {page.components.filter(component => RUNS_SECONDARY.has(component.component_id)).map(component => renderComponent(component))}
+                  </> },
+                  { id: 'routing', label: 'Routing', panel: () => <div className="local-run-routing-slot" ref={setRunRoutingSlot} /> },
+                ]} />
+                </article>
               </details>
+            </RunRoutingSlot.Provider>
             </RunChartsSlot.Provider>
             </InsightsWindowContext.Provider>
           ) : page.components.map(component => renderComponent(component))}

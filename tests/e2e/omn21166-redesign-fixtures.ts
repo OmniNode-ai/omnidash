@@ -45,3 +45,37 @@ export const traceSteps = [
   step(6, 'terminal', null, 0),
 ];
 export const withTrace = { ...withAnalysis, [RUN_TRACE]: traceSteps };
+
+// OMN-21166 part 30 (revision 7) AC202 to AC206: ten served decisions over Oct 14 to 17 with the edges the decision views
+// must keep apart. Expected by hand (pass rate over runs with a verdict):
+//   model-a x summarization 6 runs, 5 of 6 passed (83.3%), not a small sample;
+//   model-a x code_generation 2 runs, 1 of 2 (50.0%), a small sample (fewer than 5 verdicts);
+//   model-b x summarization 1 run with no verdict; model-b x code_generation no runs;
+//   no recorded model (and no tier, requested model or backend) x summarization 1 run, 0 of 1.
+//   Days: Oct 4 to 13 not covered, Oct 14 runs but no verdicts, Oct 15 1 of 3 (33.3%), Oct 16 3 of 3, Oct 17 2 of 3.
+//   Routing: one run asked for model-big, ran on model-a, stopped at the output limit after 2 escalations.
+const rev7 = (id: string, at: string, model: string | null, task: string, passed: boolean | null, extra: Record<string, unknown> = {}) => ({
+  correlation_id: id, created_at: at, written_at: at, model_name: model, requested_model: model, task_type: task,
+  cost_tier_name: model === null ? null : 'local', backend_id: model === null ? null : 'local', finish_reason: 'stop', escalation_count: 0,
+  quality_gate_passed: passed, latency_ms: 200, cost_usd: model === null ? null : '0.000000', tokens_input: 100, tokens_output: 20, data_source: 'fixture',
+  ...extra,
+});
+export const rev7Decisions = [
+  rev7('r7-1', '2026-10-15T08:00:00Z', 'model-a', 'summarization', true),
+  rev7('r7-2', '2026-10-15T09:00:00Z', 'model-a', 'summarization', false, { latency_ms: 900 }),
+  rev7('r7-3', '2026-10-16T08:00:00Z', 'model-a', 'summarization', true),
+  rev7('r7-4', '2026-10-16T09:00:00Z', 'model-a', 'summarization', true),
+  rev7('r7-5', '2026-10-17T08:00:00Z', 'model-a', 'summarization', true),
+  rev7('r7-6', '2026-10-17T09:00:00Z', 'model-a', 'summarization', true),
+  rev7('r7-7', '2026-10-16T10:00:00Z', 'model-a', 'code_generation', true),
+  rev7('r7-8', '2026-10-17T10:00:00Z', 'model-a', 'code_generation', false, { requested_model: 'model-big', finish_reason: 'length', escalation_count: 2 }),
+  rev7('r7-9', '2026-10-14T10:00:00Z', 'model-b', 'summarization', null),
+  rev7('r7-10', '2026-10-15T10:00:00Z', null, 'summarization', false),
+];
+export const withRev7 = { ...withAllTime, [DECISIONS]: rev7Decisions };
+// AC204: seven models with one run each on Oct 17 and three runs with no recorded model: ranked by runs, Not recorded (3)
+// is drawn first by name, then m1 to m4 (ties by name), and m5 to m7 are Other (Codex MSG 2793fa16).
+export const withSevenModels = { ...withAllTime, [DECISIONS]: [
+  ...['m1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7'].map((model, index) => rev7(`r7-m${index}`, '2026-10-17T08:00:00Z', model, 'summarization', true)),
+  ...[0, 1, 2].map(index => rev7(`r7-nr${index}`, '2026-10-17T09:00:00Z', null, 'summarization', false)),
+] };

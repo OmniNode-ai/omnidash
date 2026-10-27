@@ -111,3 +111,103 @@ export function groupDecisions(rows: readonly unknown[], by: GroupBy, days = SPA
     daily: window.map(day => ({ day, runs: coverage && day < coverage.first ? null : members.filter(row => dayOf(row) === day).length })),
   })).sort((a, b) => (a.name === NOT_RECORDED ? 1 : b.name === NOT_RECORDED ? -1 : b.runs - a.runs || a.name.localeCompare(b.name)));
 }
+
+/** Part 30 (revision 7) AC203: a cell with fewer verdicts than this is marked a small sample. */
+export const SMALL_SAMPLE = 5;
+/** Part 30 AC204: the series drawn by name; the rest are summed as Other. */
+export const TOP_SERIES = 5;
+export const OTHER = 'Other';
+
+const nameOf = (row: Row, by: GroupBy): string => (isMissing(row[GROUP_FIELDS[by]]) ? NOT_RECORDED : String(row[GROUP_FIELDS[by]]));
+const notRecordedLast = (a: string, b: string): number => (a === NOT_RECORDED ? 1 : b === NOT_RECORDED ? -1 : 0);
+
+export interface Matrix {
+  /** Row names, most runs first; Not recorded last. */
+  rows: string[];
+  /** Column names in name order; Not recorded last. */
+  columns: string[];
+  /** The cell's totals, or null when no run has that row and column. */
+  cell: (row: string, column: string) => Totals | null;
+}
+
+/** AC203: the served sample cross-tabulated by two fields, each cell with its own denominators (totalsOf). */
+export function matrixOf(rows: readonly unknown[], rowBy: GroupBy, columnBy: GroupBy): Matrix {
+  const cells = new Map<string, Row[]>();
+  const rowRuns = new Map<string, number>();
+  const columns = new Set<string>();
+  for (const row of asRecords(rows)) {
+    const rowName = nameOf(row, rowBy), columnName = nameOf(row, columnBy);
+    const key = `${rowName}\u0000${columnName}`;
+    cells.set(key, [...(cells.get(key) ?? []), row]);
+    rowRuns.set(rowName, (rowRuns.get(rowName) ?? 0) + 1);
+    columns.add(columnName);
+  }
+  const totals = new Map([...cells.entries()].map(([key, members]) => [key, totalsOf(members)]));
+  return {
+    rows: [...rowRuns.keys()].sort((a, b) => notRecordedLast(a, b) || rowRuns.get(b)! - rowRuns.get(a)! || a.localeCompare(b)),
+    columns: [...columns].sort((a, b) => notRecordedLast(a, b) || a.localeCompare(b)),
+    cell: (row, column) => totals.get(`${row}\u0000${column}`) ?? null,
+  };
+}
+
+export type TrendSeriesBy = 'all' | 'model' | 'task';
+export interface TrendDay {
+  day: string;
+  /** not-covered: before the sample's first day (never 0); no-runs: covered, no run; no-verdicts: runs, none judged. */
+  state: 'not-covered' | 'no-runs' | 'no-verdicts' | 'value';
+  runs: number; passed: number; verdicts: number; p95: number | null;
+}
+export interface TrendSeries {
+  name: string;
+  /** The field and value this series filters Runs by (Not recorded included); absent for All runs and Other. */
+  filter?: { by: GroupBy; value: string };
+  days: TrendDay[];
+}
+
+/**
+ * AC204: per UTC day of the 14 ending on the sample's last day, the pass rate and p95 of one series of runs: every run, or
+ * one row per model or task (the five with most runs by name, the rest as Other).
+ */
+export function qualityTrend(rows: readonly unknown[], by: TrendSeriesBy, days = SPARK_DAYS): TrendSeries[] {
+  const records = asRecords(rows);
+  const coverage = coverageOf(records);
+  if (!coverage) return [];
+  const end = Date.parse(`${coverage.last}T00:00:00Z`);
+  const window = Array.from({ length: days }, (_, index) => new Date(end - (days - 1 - index) * 86_400_000).toISOString().slice(0, 10));
+  const series = (name: string, members: Row[], filter?: TrendSeries['filter']): TrendSeries => ({
+    name, ...(filter ? { filter } : {}),
+    days: window.map(day => {
+      if (day < coverage.first) return { day, state: 'not-covered', runs: 0, passed: 0, verdicts: 0, p95: null };
+      const totals = totalsOf(members.filter(row => dayOf(row) === day));
+      return { day, state: totals.runs === 0 ? 'no-runs' : totals.verdicts === 0 ? 'no-verdicts' : 'value',
+        runs: totals.runs, passed: totals.passed, verdicts: totals.verdicts, p95: totals.p95 };
+    }),
+  });
+  if (by === 'all') return [series('All runs', records)];
+  // Ranked by runs alone (Codex MSG 2793fa16): a large Not recorded group is drawn by name, not hidden in Other.
+  const groups = groupDecisions(records, by).sort((a, b) => b.runs - a.runs || a.name.localeCompare(b.name));
+  const named = groups.slice(0, TOP_SERIES).map(group => series(group.name, records.filter(row => nameOf(row, by) === group.name), { by, value: group.name }));
+  const rest = new Set(groups.slice(TOP_SERIES).map(group => group.name));
+  return rest.size === 0 ? named : [...named, series(OTHER, records.filter(row => rest.has(nameOf(row, by))))];
+}
+
+export interface Route {
+  requested: string; routed: string; tier: string; backend: string; finish: string; escalations: string;
+  totals: Totals;
+}
+
+/** AC206: the sample grouped by how each run was routed; a field a run did not record is Not recorded, not a failure. */
+export function routesOf(rows: readonly unknown[]): Route[] {
+  const field = (row: Row, name: string) => (isMissing(row[name]) ? NOT_RECORDED : String(row[name]));
+  const groups = new Map<string, { route: Omit<Route, 'totals'>; members: Row[] }>();
+  for (const row of asRecords(rows)) {
+    const route = { requested: field(row, 'requested_model'), routed: field(row, 'model_name'), tier: field(row, 'cost_tier_name'),
+      backend: field(row, 'backend_id'), finish: field(row, 'finish_reason'), escalations: field(row, 'escalation_count') };
+    const key = Object.values(route).join('\u0000');
+    const entry = groups.get(key) ?? { route, members: [] };
+    entry.members.push(row);
+    groups.set(key, entry);
+  }
+  return [...groups.values()].map(({ route, members }) => ({ ...route, totals: totalsOf(members) }))
+    .sort((a, b) => b.totals.runs - a.totals.runs || a.requested.localeCompare(b.requested) || a.routed.localeCompare(b.routed));
+}
