@@ -7,7 +7,7 @@ import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
 //   L1  the four charts stay stacked full width, or a pair does not share a top edge or a width (AC139);
 //   L2  under 1100px a chart stays half width, or the page scrolls sideways at 390px (AC139);
 //   L3  a chart panel or its plot stays tall (AC140);
-//   L4  a headline card keeps a tinted fill, or loses its 3px identity edge, in either theme (AC141);
+//   L4  a headline card keeps a tinted fill or a coloured edge, in either theme (AC141, edge superseded by AC167);
 //   L5  the line under Runs per day shows when every run is drawn, is missing when the 500-row read limit or an undated
 //       run cuts runs off, or says "served" (AC142);
 //   L6  a day's bars span less than 60% of their day's slot (AC143).
@@ -117,7 +117,7 @@ test('AC139: under 1100px each chart takes the full width, and 390px never scrol
 });
 
 for (const theme of ['light', 'dark'] as const) {
-  test(`AC141: headline cards use the plain card surface and keep their 3px edge in ${theme}`, async ({ page }, info) => {
+  test(`AC141 AC167: headline cards use the plain card surface and the neutral 1px edge in ${theme}`, async ({ page }, info) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.emulateMedia({ colorScheme: theme });
     await page.addInitScript(value => localStorage.setItem('omnidash.theme.v1', value), theme);
@@ -131,14 +131,14 @@ for (const theme of ['light', 'dark'] as const) {
       await expect(headline.first()).toBeVisible();
       const plain = await page.locator('main .local-dashboard-panel:not(.local-overview-summary > .local-dashboard-panel), main.ev-root .panel').first()
         .evaluate(el => getComputedStyle(el).backgroundColor);
-      // The 3px edge is the card's top border (the cards spec reads the same property).
+      // The edge is the card's top border (the cards spec reads the same property).
       const cards = await headline.evaluateAll(els => els.map(el => ({ fill: getComputedStyle(el).backgroundColor,
         edge: getComputedStyle(el).borderTopWidth, edgeColor: getComputedStyle(el).borderTopColor })));
       for (const card of cards) {
         expect(card.fill, `${path}: no tinted fill`).toBe(plain);
-        expect(card.edge, `${path}: the 3px identity edge`).toBe('3px');
+        expect(card.edge, `${path}: the neutral 1px edge`).toBe('1px');
       }
-      expect(new Set(cards.map(card => card.edgeColor)).size, `${path}: each card's edge has its own colour`).toBe(cards.length);
+      expect(new Set(cards.map(card => card.edgeColor)).size, `${path}: one neutral edge colour`).toBe(1);
       if (path === '/overview') await page.screenshot({ path: info.outputPath(`overview-cards-${theme}.png`) });
     }
   });

@@ -50,7 +50,8 @@ test('Overview charts retain reduced motion and controls in both themes at narro
   for (const theme of ['light', 'dark']) {
     for (const width of [390, 320]) {
       await page.setViewportSize({ width, height: 844 });
-      if (theme === 'light' && width === 390) await page.getByRole('button', { name: 'Collapse sidebar', exact: true }).click();
+      // OMN-21166 part 27 AC173: at phone width the sidebar is already folded.
+      await expect(page.locator('.sidebar')).toHaveClass(/collapsed/);
       await page.emulateMedia({ reducedMotion: 'reduce' });
       expect(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches)).toBe(true);
       // OMN-21166 AC86: the Recent runs figures are gone; the charts that remain are the day bars (Runs per day, Tokens per day).

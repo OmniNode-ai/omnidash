@@ -30,30 +30,19 @@ export function CardBasis({ label, children }: { label: string; children: ReactN
     const card = root.current?.closest<HTMLElement>('.local-overview-summary > .local-dashboard-panel');
     const bubble = tip.current;
     if (!card || !bubble) return;
+    // Part 28 AC179: directly under its card, on the card's left edge (its right edge when the left would leave the
+    // viewport), above only when it fits there and not below; never beside the card. It may cover what lies below, since
+    // it closes as soon as the pointer or focus leaves the card.
     const cardBox = card.getBoundingClientRect();
     const bubbleHeight = bubble.getBoundingClientRect().height;
-    const width = Math.min(300, window.innerWidth - 24);
-    let above = cardBox.top >= bubbleHeight + 24 && cardBox.bottom + bubbleHeight + 24 > window.innerHeight;
-    let top = above ? cardBox.top - bubbleHeight - 12 : cardBox.bottom + 12;
-    const clampLeft = (value: number) => Math.max(12, Math.min(value, window.innerWidth - width - 12));
-    const candidates = [...new Set([
-      cardBox.left, cardBox.right - width, cardBox.left + (cardBox.width - width) / 2,
-      cardBox.left - width - 12, cardBox.right + 12,
-    ].map(clampLeft))];
-    const controls = [...document.querySelectorAll<HTMLElement>('.local-chart-expand')].map(control => control.getBoundingClientRect());
-    const overlap = (left: number, top: number) => controls.reduce((area, control) => area +
-      Math.max(0, Math.min(left + width, control.right) - Math.max(left, control.left)) *
-      Math.max(0, Math.min(top + bubbleHeight, control.bottom) - Math.max(top, control.top)), 0);
-    const pickLeft = (atTop: number) => candidates.sort((a, b) => overlap(a, atTop) - overlap(b, atTop)
-      || Math.abs(a - cardBox.left) - Math.abs(b - cardBox.left))[0]!;
-    let left = pickLeft(top);
-    if (!above && overlap(left, top) > 0 && cardBox.top >= bubbleHeight + 24) {
-      above = true;
-      top = cardBox.top - bubbleHeight - 12;
-      left = pickLeft(top);
-    }
+    const width = Math.min(window.innerWidth - 24, Math.max(260, Math.min(320, cardBox.width)));
+    const above = cardBox.bottom + bubbleHeight + 8 > window.innerHeight - 12 && cardBox.top - bubbleHeight - 8 >= 12;
+    const top = above ? cardBox.top - bubbleHeight - 8 : cardBox.bottom + 8;
+    let left = cardBox.left;
+    if (left + width > window.innerWidth - 12) left = cardBox.right - width;
+    left = Math.max(12, left);
     setSide(above ? 'above' : 'below');
-    // Fixed bubble is outside the card's scrollable overflow, so the card keeps its own width; AC147 placement unchanged.
+    // Fixed bubble is outside the card's scrollable overflow, so the card keeps its own width.
     setPosition({ position: 'fixed', left: left, right: 'auto', bottom: 'auto', top: top,
       width, maxWidth: 'none', maxHeight: `calc(100dvh - 24px)`, overflowY: 'auto', transform: 'none' });
     const closeOnScroll = () => setOpen(false);

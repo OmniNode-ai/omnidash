@@ -158,6 +158,17 @@ export function Sidebar() {
   const [location] = useLocation();
   const activePage = pageForPath(location);
   const setActivePage = useFrameStore((s) => s.setActivePage);
+  const setSidebarCollapsed = useFrameStore((s) => s.setSidebarCollapsed);
+  // OMN-21166 part 27 (Codex's review): the store reads the width once at start, so narrowing a desktop window to phone
+  // width left the sidebar open over a 56px page. Crossing the 1024px line folds it (or opens it again on the way
+  // back); a manual toggle within either width is kept until the next crossing.
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+    const narrow = window.matchMedia('(max-width: 1024px)');
+    const follow = (event: MediaQueryListEvent) => setSidebarCollapsed(event.matches);
+    narrow.addEventListener('change', follow);
+    return () => narrow.removeEventListener('change', follow);
+  }, [setSidebarCollapsed]);
 
   // Preserve native modified clicks/new tabs; ordinary clicks stay within the app.
   const followPage = (event: MouseEvent<HTMLAnchorElement>, page: AppPage) => {
@@ -245,7 +256,8 @@ export function Sidebar() {
       <nav aria-label="Local" className="local-nav">
         {!collapsed && (
           <div className="sidebar-bottom-title" style={{ padding: '4px 12px 2px' }}>
-            <Text size="xs" color="tertiary" transform="uppercase" weight="semibold">
+            {/* OMN-21166 part 27 AC166: section labels in the monospace of the card labels. */}
+            <Text size="xs" color="tertiary" transform="uppercase" weight="regular" family="mono">
               Local
             </Text>
           </div>
@@ -343,13 +355,13 @@ export function Sidebar() {
       </>}
 
       <nav aria-label="Evidence" className="local-nav evidence-nav">
-        {!collapsed && <div className="mvp-nav-title"><Text size="xs" color="tertiary" transform="uppercase" weight="semibold">Evidence</Text></div>}
+        {!collapsed && <div className="mvp-nav-title"><Text size="xs" color="tertiary" transform="uppercase" weight="regular" family="mono">Evidence</Text></div>}
         {renderNavItem({ page: 'delegation-evidence', label: 'Delegation Evidence', icon: <DestinationIcon page="delegation-evidence" /> })}
       </nav>
 
       {showDeveloperTools && (
         <nav id="developer-navigation" aria-label="Developer" className="local-nav developer-nav">
-          {!collapsed && <div className="mvp-nav-title"><Text size="xs" color="tertiary" transform="uppercase" weight="semibold">Developer</Text></div>}
+          {!collapsed && <div className="mvp-nav-title"><Text size="xs" color="tertiary" transform="uppercase" weight="regular" family="mono">Developer</Text></div>}
           {DEVELOPER_PAGES.map(renderNavItem)}
         </nav>
       )}

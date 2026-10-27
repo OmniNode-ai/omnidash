@@ -105,7 +105,8 @@ test('OMN-19985: Credentials lists each key ref with its fingerprint and set tim
 
   await expect(page.getByText(PLANTED)).toHaveCount(0);
   expect(await page.content()).not.toContain(PLANTED);
-  await expect(page.locator('input, textarea, form')).toHaveCount(0);
+  // Settings' Appearance choice (OMN-21166 part 27 AC169) is a theme switch, not a value field; nothing else takes input.
+  await expect(page.locator('input:not(#settings-appearance input), textarea, form')).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1440);
   await page.screenshot({ path: screenshotPath('local-dashboard-omn19985-credentials-1440x900.png'), fullPage: false });
 });

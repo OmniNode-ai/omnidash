@@ -318,6 +318,16 @@ describe('Partial pages (FR-3, CR-2, CR-3, AK-3, F24)', () => {
     expect(screen.queryByText('Access details not reported yet')).not.toBeInTheDocument();
   });
 
+  it('Access whose exposure is not served says so once for the section, not once per panel (OMN-21166 part 27)', async () => {
+    // Found on Lakshman's own onex 0.47.48, which does not serve local-environment.v1: both panels repeated "Not available
+    // yet: dashboard access details", even under Local identity.
+    harness.reachable = new Set([DECISIONS]);
+    render(<LocalDashboardPage pageName="api-keys" embedded />);
+    await settle();
+    expect(screen.getAllByText('Access details are not available yet')).toHaveLength(1);
+    expect(screen.queryByText(/Not available yet: dashboard access details/)).not.toBeInTheDocument();
+  });
+
   it('API Keys preserves served local identity without the deferred Cloud Keys panel (OMN-21166 AC5)', async () => {
     // OMN-21166 part 11: the identity reads the native runtime row of local-environment.v1, not the savings rows.
     harness.reachable = new Set([ENVIRONMENT]);

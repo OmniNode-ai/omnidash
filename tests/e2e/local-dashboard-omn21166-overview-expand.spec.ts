@@ -43,15 +43,16 @@ for (const [width, height] of [[1440, 900], [390, 844]] as const) {
       expect(bounds.right, `card ${index + 1} tooltip right`).toBeLessThanOrEqual(bounds.width);
       expect(bounds.top, `card ${index + 1} tooltip top`).toBeGreaterThanOrEqual(0);
       expect(bounds.bottom, `card ${index + 1} tooltip bottom`).toBeLessThanOrEqual(bounds.height);
-      const overlapsControl = await tip.evaluate(el => {
+      // Part 28 AC179 (supersedes AC147's control rule): the details sit directly under or over their own card, never
+      // beside it, on one of its edges; they may cover what lies below, since they close when focus or the pointer leaves.
+      const place = await tip.evaluate(el => {
         const tipBox = el.getBoundingClientRect();
-        return [...document.querySelectorAll('.local-chart-expand')].some(control => {
-          const controlBox = control.getBoundingClientRect();
-          return tipBox.left < controlBox.right && tipBox.right > controlBox.left
-            && tipBox.top < controlBox.bottom && tipBox.bottom > controlBox.top;
-        });
+        const cardBox = el.closest('.local-overview-summary > .local-dashboard-panel')!.getBoundingClientRect();
+        return { stacked: tipBox.top >= cardBox.bottom - 1 || tipBox.bottom <= cardBox.top + 1,
+          edge: Math.abs(tipBox.left - cardBox.left) <= 1 || Math.abs(tipBox.right - cardBox.right) <= 1 || tipBox.left <= 13 };
       });
-      expect(overlapsControl, `card ${index + 1} tooltip avoids chart controls`).toBe(false);
+      expect(place.stacked, `card ${index + 1} details under or over the card, never beside it`).toBe(true);
+      expect(place.edge, `card ${index + 1} details on one of the card's edges`).toBe(true);
     }
     const model = page.locator('.maple-cell--half > [data-component="overview-model-usage"]');
     await expect(model.locator('.rb-chart--vertical [data-ranked-item]')).toHaveCount(7);

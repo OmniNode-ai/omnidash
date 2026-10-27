@@ -437,7 +437,9 @@ function defects(states: State[]): string[] {
 
 test.use({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce', trace: 'on' });
 
-test('core headline identities use amber spend, teal savings, blue calls and violet tokens with readable contrast', async ({ page }, info) => {
+// OMN-21166 part 28a (Lakshman 2026-10-27, grey icons with unique glyphs): the headline icons are one readable grey; each
+// concept stays unique by its own glyph (AC1 is checked by the census below), and its colour lives on its chart marks.
+test('core headline icons are one readable grey, each its own glyph, with readable contrast', async ({ page }, info) => {
   await serveCharts(page, rows);
   await page.goto('/overview');
   await expect(page.locator('.local-overview-summary article')).toHaveCount(5); // OMN-21166 live review 2026-10-25: Delegation Quality is the fifth headline card.
@@ -507,14 +509,14 @@ test('core headline identities use amber spend, teal savings, blue calls and vio
       colors.push(measured.color);
       // Persist measurements before an assertion: the failed base is an artifact.
       writeFileSync(info.outputPath('core-palette-contrast.json'), JSON.stringify(readings, null, 2));
-      expect(measured.hue, `${concept.label} is chromatic`).not.toBeNull();
-      expect(measured.hue!, `${concept.label} is ${concept.family}`).toBeGreaterThanOrEqual(concept.hue[0]!);
-      expect(measured.hue!, `${concept.label} is ${concept.family}`).toBeLessThanOrEqual(concept.hue[1]!);
+      expect(measured.hue, `${concept.label} icon is grey`).toBeNull();
       expect(measured.iconContrast, `${concept.label} icon/background`).toBeGreaterThanOrEqual(3);
       expect(measured.textContrast, `${concept.label} caption/background`).toBeGreaterThanOrEqual(4.5);
       expect(measured.valueContrast, `${concept.label} value/background`).toBeGreaterThanOrEqual(4.5);
     }
-    expect(new Set(colors).size).toBe(5);
+    expect(new Set(colors).size, 'one interface grey').toBe(1);
+    const glyphs = await page.locator('.local-overview-summary article h2 svg').evaluateAll(els => els.map(el => el.getAttribute('data-field-icon')));
+    expect(new Set(glyphs).size, 'each headline concept keeps its own glyph').toBe(5);
     await page.screenshot({ path: info.outputPath(`core-palette-${theme}.png`), fullPage: true });
   }
 });

@@ -30,7 +30,7 @@ import { PassRateMeter, TIER_TONES } from '@/pages/local/shares';
 import { InsightsSection, InsightsWindowContext, MeteringActivityInsights, OverviewRunsContext, PassRateSparkline, TaskIcon, type ActivityWindow } from '@/pages/local/insight-charts';
 import { UsageInsights } from '@/pages/local/usage-insights';
 import { SinceLastVisit } from '@/pages/local/since-last-visit';
-import { ModelKeys } from '@/pages/local/model-keys';
+import { ModelKeys, providerName } from '@/pages/local/model-keys';
 import { EnvironmentPanel, ServiceHealthUnread } from '@/pages/local/environment';
 import { SettingsEmptyState } from '@/components/dashboard/SettingsEmptyState';
 import { failureCauseLabel, failureDetailText, notAvailableYet, plainFailureMessage, taskLabel, tierLabel } from '@/pages/local/plain-text';
@@ -40,7 +40,7 @@ import { RankedBars } from '@/components/dashboard/RankedBars';
 import { NO_RUNS_USD, sumDashboardUsd } from '@/lib/dashboard-money-total';
 import { KpiStrip, type KpiItem } from '@/components/dashboard/KpiStrip';
 import { CardBasis } from '@/components/dashboard/CardBasis';
-import { DashboardAccess, dashboardAccessRow } from '@/pages/local/access';
+import { AccessNotServed, DashboardAccess, dashboardAccessRow } from '@/pages/local/access';
 import { shortId } from '@/components/dashboard/event-dash/primitives';
 import { ConceptIcon, FIELD_ICONS, FieldIcon } from '@/components/dashboard/FieldIcon';
 import { modelIdentityStyle } from '@/components/dashboard/model-identity';
@@ -230,7 +230,8 @@ export function MetricCard({ component, config, row, caption, figureLine, figure
   const hasDetails = Boolean((figure && figureLine) || line || modelled || basisExtra);
   return (
     <>
-      <p className="local-dashboard-metric" data-measured={figure} title={figure && config.format === 'number' ? String(row[config.metric_key]) : undefined}>{text}</p>
+      <p className="local-dashboard-metric" data-measured={figure} title={figure && config.format === 'number' ? String(row[config.metric_key]) : undefined}
+        style={{ '--figure-chars': String(text).length } as CSSProperties}>{text}</p>
       {/* OMN-21166 part 12 AC73 (Lakshman, 2026-10-25, "Figure only, details on hover"): an Overview headline card shows
           its figure; its basis lines live in the card's tooltip, still in the page as the info button's description.
           Every other card keeps its lines in view. */}
@@ -1976,7 +1977,8 @@ export function CredentialsTable({ rows }: { rows: readonly unknown[] }) {
         <thead><tr><th>Provider</th><th>Key ref</th><th>Fingerprint</th><th>Set</th><th>Revoked</th><th>Expires</th><th>Bound host</th></tr></thead>
         <tbody>{list.map((key, index) => (
           <tr key={`${String(key.provider)}-${String(key.name)}-${index}`}>
-            <td data-label="Provider">{recorded(key.provider)}</td>
+            {/* Part 27 round 7: the provider's name in the one case the Model providers table uses (Gemini, not gemini). */}
+            <td data-label="Provider">{isMissing(key.provider) ? recorded(key.provider) : providerName(key.provider)}</td>
             <td data-label="Key ref">{recorded(key.name)}</td>
             {/* OMN-19985: the served fingerprint prefix (8 hex of sha256) and the time the key was set; a row its
                 producer sent without them says so. created_at is when the projection first saw the row, not this. */}
@@ -3124,7 +3126,10 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
       {refreshError && <ReadFailureNotice title="Dashboard connection" now={now}
         snapshot={{ topic: 'catalogue', failure: { kind: refreshError.includes('no answer') ? 'timeout' : 'error', message: refreshError } }}
         savedMessage="Showing saved data. Each panel shows when it was updated." />}
-      {!loading && !error && page && (
+      {/* Part 27: Access whose exposure is not served at all says so once for the section (AccessNotServed). */}
+      {embedded && pageName === 'api-keys' && !loading && !error && page && page.components.length > 0
+        && page.components.every(component => notServedTopic(component, snapshots) !== null) ? <AccessNotServed />
+        : !loading && !error && page && (
         <section className="local-dashboard-grid" aria-label="Dashboard components">
           {pageName === 'overview' ? <>
             <OverviewRunsContext.Provider value={(() => {

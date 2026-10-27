@@ -74,10 +74,10 @@ test('Overview ignores unused cost failures while the Runs list displaying cost 
   await expect(insights.getByRole('alert').first()).toContainText('Run data is unavailable');
 });
 
-test('all eleven destinations have matching icons, browser titles and a single page heading', async ({ page }, info) => {
+test('all ten destinations have matching icons, browser titles and a single page heading', async ({ page }, info) => {
   const pages = [
     ['overview','Overview'],['runs','Runs'],['workflow','Workflow'],['usage','Usage'],
-    ['credentials','Credentials'],['api-keys','API Keys'],['delegation-evidence','Delegation Evidence'],
+    ['settings','Settings'],['delegation-evidence','Delegation Evidence'],
     ['experiments','Experimentation'],['agent-workbench','Agent Workbench'],['event-bus','Event Bus'],['lab','Lab'],
   ];
   await page.emulateMedia({ reducedMotion: 'reduce' });

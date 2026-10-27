@@ -59,12 +59,13 @@ for (const route of ['delegation-evidence', 'experiments', 'agent-workbench', 'e
     const title = page.locator('.ev-root .ev-title');
     await expect(title).toBeVisible();
     // OMN-21166 seven-page look: Delegation Evidence is one of the seven pages and carries the compact page head
-    // (20px title, 24px side padding, at every width); the other advanced pages keep the 30/36 desktop and 24 phone scale.
+    // (24px side padding; since part 27 AC168 the page title of every other page, 28px and 24px on phones); the other
+    // advanced pages keep the 30/36 desktop and 24 phone scale.
     const compact = route === 'delegation-evidence';
-    expect(await title.evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBe(compact ? 20 : 30);
+    expect(await title.evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBe(compact ? 28 : 30);
     expect(await page.locator('.ev-page-head').evaluate(el => parseFloat(getComputedStyle(el).paddingLeft))).toBe(compact ? 24 : 36);
     await page.setViewportSize({ width: 390, height: 844 });
-    expect(await title.evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBe(compact ? 20 : 24);
+    expect(await title.evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBe(24);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     await page.screenshot({ path: info.outputPath(`${route}-narrow.png`), fullPage: true });
   });

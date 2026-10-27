@@ -29,12 +29,13 @@
 }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > h2.local-dashboard-panel-title,
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > h2 {
-  font-family: var(--font-sans);
+  /* Part 27 AC166: monospace labels, as in the reference style. */
+  font-family: var(--font-mono);
   font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  font-weight: 400;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--ink-3);
+  color: var(--ink-2);
 }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > h2 svg { width: 14px; height: 14px; }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-metric[data-measured="true"] {
@@ -165,9 +166,18 @@ main.ev-root .ev-acceptance-checks > li > :first-child, main.ev-root .ev-accepta
 
 /* Page frame */
 .local-dashboard-page, main.ev-root[data-destination="delegation-evidence"] { background: var(--bg); }
+/* Part 27 round 7: the scrolling page region contains its absolutely positioned children (visually hidden titles, the
+   "As of" line). Without it they were placed against the body, far below the window, so the document grew taller than the
+   viewport and focus or scrollIntoView lifted the whole app frame, leaving a blank band under it. */
+.local-dashboard-page { position: relative; }
 .local-dashboard-page { padding: 20px 24px 40px; }
 .local-dashboard-page .local-dashboard-header { margin-bottom: 16px; gap: 10px; align-items: center; }
-.local-dashboard-page .local-dashboard-header h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.015em; }
+.local-dashboard-page .local-dashboard-header h1 { font-size: 28px; font-weight: 500; letter-spacing: -0.015em; }
+@media (max-width: 600px) {
+  .local-dashboard-page .local-dashboard-header h1 { font-size: 24px; }
+  /* Part 27 round 4: the stacked header starts at the left, so a title-only header (Settings) is not centred. */
+  .local-dashboard-page .local-dashboard-header { align-items: flex-start; }
+}
 .local-dashboard-page .local-dashboard-header .local-dashboard-page-icon { width: 20px; height: 20px; color: var(--ink-3); }
 
 /* Controls: outline buttons and a segmented window switch, in the one accent */
@@ -189,11 +199,11 @@ main.ev-root .ev-acceptance-checks > li > :first-child, main.ev-root .ev-accepta
 .local-dashboard-page .local-dashboard-panel,
 .local-dashboard-page .local-dashboard-panel:hover,
 main.ev-root[data-destination="delegation-evidence"] :is(.panel, .kpi, .kpi[data-tone]:hover) {
-  border: 1px solid var(--line); border-radius: 10px; background: var(--panel); box-shadow: none; transform: none; animation: none;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--panel); box-shadow: none; transform: none; animation: none;
 }
 /* Hover keeps the resting padding: a panel's content no longer shifts 2px when pointed at (found 2026-10-25). */
 .local-dashboard-page .local-dashboard-panel, .local-dashboard-page .local-dashboard-panel:hover { padding: 14px 16px; }
-.local-dashboard-page .local-dashboard-panel > h2 { margin-bottom: 12px; font-size: 13px; font-weight: 600; color: var(--ink); }
+.local-dashboard-page .local-dashboard-panel > h2 { margin-bottom: 12px; font-size: 13px; font-weight: 500; color: var(--ink); }
 .local-dashboard-page .local-dashboard-panel > h2 svg,
 .local-dashboard-page .local-section-heading svg,
 .local-dashboard-page .overview-chart-heading svg,
@@ -266,7 +276,19 @@ main.ev-root[data-destination="delegation-evidence"] :is(.kv .k, .kpi .k-l, .not
   }
 }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > h2 { margin: 0; }
-:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-metric[data-measured="true"] { font-size: clamp(20px, 1.8vw, 26px); font-weight: 600; }
+/* Part 27 AC166/AC168: measured headline figures in monospace, 32px (24px on phones); "Not measured" stays text. A long
+   full count (Usage tokens, 409,870,123) steps down just enough to stay on one line: the card is the size container
+   and --figure-chars is the figure's length, a monospace character being 0.6em wide. */
+:is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel { container-type: inline-size; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-metric:not([data-measured="false"]) {
+  font-family: var(--font-mono); font-size: min(32px, calc(100cqi / (var(--figure-chars, 1) * 0.6))); font-weight: 500;
+  letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; overflow-wrap: normal;
+}
+@media (max-width: 600px) {
+  :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-metric:not([data-measured="false"]) { font-size: min(24px, calc(100cqi / (var(--figure-chars, 1) * 0.6))); }
+}
+/* "This week" and the other uppercase section labels share the monospace label style. */
+.local-dashboard-page .local-section-heading.local-dashboard-caption { font-family: var(--font-mono); font-weight: 400; letter-spacing: .04em; text-transform: uppercase; }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-token-directions { color: var(--ink-2); font-size: 12px; }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-token-directions strong { color: var(--ink) !important; }
 
@@ -459,9 +481,11 @@ main.ev-root[data-destination="delegation-evidence"] .kv [data-field-tone="model
 .utc-switch { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
 .utc-switch button { height: 26px; padding: 0 10px; border: 0; background: transparent; color: var(--ink-3); font-size: 12px; cursor: pointer; }
 .utc-switch button + button { border-left: 1px solid var(--line); }
-.utc-switch button[aria-pressed="true"] { background: var(--ink); color: var(--panel); }
-.utc-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--ink-2); }
-.utc-legend li { display: inline-flex; align-items: center; gap: 6px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Part 27 round 1: the selected option is Paradev's accent tint with an accent edge, as on the window switch. */
+.utc-switch button[aria-pressed="true"] { background: color-mix(in srgb, var(--ui-accent) 6%, transparent); color: var(--ui-accent); box-shadow: inset 0 0 0 1px var(--ui-accent); }
+.utc-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--ink-2); flex: 1 1 320px; min-width: 0; justify-content: flex-end; }
+/* Part 27 round 2: a model's whole name; a flex item draws no ellipsis, so the 220px cap cut names mid-word. */
+.utc-legend li { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .utc-legend i { width: 8px; height: 8px; border-radius: 2px; flex: none; }
 .utc-plot { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(var(--utc-count), minmax(0, 1fr)); gap: 6px; align-items: end; border-bottom: 1px solid var(--line); }
 .utc-plot > li { display: flex; flex-direction: column; align-items: stretch; min-width: 0; position: relative; }
@@ -488,23 +512,22 @@ main.ev-root[data-destination="delegation-evidence"] .kv [data-field-tone="model
 .maple-cell .local-usage-savings > figure.local-chart .local-chart-legend { display: none; }
 .maple-cell .local-usage-savings select { width: auto; max-width: 260px; }
 
-/* Workflow's four facts groups are distinct cards; each colour identifies its subject without recolouring data. */
+/* Workflow's four facts groups are distinct cards (AC150); since part 27 (revision 4, Codex's review against the
+   references) they are the neutral card, and each subject's colour stays on its title only. */
 .local-dashboard-page--workflow .local-run-summary-groups { gap: 12px; border: 0; border-radius: 0; overflow: visible; }
 .local-dashboard-page--workflow .local-run-summary-groups > .local-run-summary-group {
   display: flex;
   flex-direction: column;
-  border: 1px solid color-mix(in srgb, var(--fact-accent) 42%, var(--line));
-  border-top: 3px solid var(--fact-accent);
+  border: 1px solid var(--line);
   border-radius: 12px;
-  background: color-mix(in srgb, var(--fact-accent) 7%, var(--panel));
-  /* The subject colour (edge, tint, heading) makes each card distinct (AC150); nested panels stay flat, no shadow
-     (OMN-21015 cards rule). */
+  background: var(--panel);
+  /* Nested panels stay flat, no shadow (OMN-21015 cards rule). */
   box-shadow: none;
 }
 .local-dashboard-page--workflow .local-run-summary-groups > .local-run-summary-group:first-child:has([data-field-tone="fail"]) {
   --fact-accent: var(--field-fail);
 }
-.local-dashboard-page--workflow .local-run-summary-group h3 { color: var(--fact-accent); }
+.local-dashboard-page--workflow .local-run-summary-group h3 { color: var(--fact-accent); font-family: var(--font-mono); font-weight: 500; letter-spacing: .04em; }
 .local-dashboard-page--workflow .local-run-summary-group:focus-visible {
   outline: 2px solid var(--fact-accent);
   outline-offset: 2px;
@@ -526,10 +549,14 @@ main.ev-root[data-destination="delegation-evidence"] .kv [data-field-tone="model
   opacity: 1;
 }
 .local-dashboard-page--workflow .local-run-timeline > h3 {
-  margin: 12px 0;
-  color: var(--ink);
-  font-size: 16px;
-  font-weight: 650;
+  /* Part 27 round 4: the section label style of This week and the card labels (AC174), still a visible heading (AC152). */
+  margin: 16px 0 10px;
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: .04em;
+  text-transform: uppercase;
 }
 .maple-cell > .panel { flex: 1; margin: 0; }
 main.ev-root .maple-grid { margin-bottom: 16px; }
@@ -558,34 +585,24 @@ main.ev-root .ev-maple-grid { align-items: start; }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > h2 { justify-content: flex-start; }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-token-directions { justify-content: flex-start; }
 
-/* Live review 2026-10-25 ("each card different color"): every headline tile wears its identity colour (OMN-21308:
-   amber spend, teal savings, blue calls, violet tokens) as a top bar, a soft tint and its label; figures stay ink. */
-:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel {
-  /* OMN-21166 part 21 AC141: the plain card surface; the identity colour stays on the 3px top edge and the icon. */
-  background: var(--panel);
-  box-shadow: inset 0 3px 0 var(--panel-accent, var(--ink-3));
-}
-:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > h2 { color: color-mix(in srgb, var(--panel-accent, var(--ink-3)) 75%, var(--ink)); }
+/* Part 27 AC167 (revision 4): headline cards are the plain neutral card; each keeps its identity colour (OMN-21308: amber
+   spend, teal savings, blue calls, violet tokens) on its icon only. */
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel { background: var(--panel); }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > h2 svg { color: var(--panel-accent, var(--ink-3)); }
 
-/* Live review 2026-10-25: four separate headline cards, each bordered in its identity colour; the basis tooltip opens
-   inside its own card so it is never cut off; the sparkline is labelled. */
+/* Separate headline cards with the one neutral border (part 27 AC167); the basis tooltip opens inside its own card so it
+   is never cut off; the sparkline is labelled. */
 :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary { gap: 12px; border: 0; background: transparent; }
 :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel,
 :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel:first-child,
 :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel:last-child {
-  border: 1px solid color-mix(in srgb, var(--panel-accent, var(--ink-3)) 45%, var(--line));
-  border-top: 3px solid var(--panel-accent, var(--ink-3));
-  border-radius: 10px; box-shadow: none;
+  border: 1px solid var(--line); border-radius: 12px; box-shadow: none;
 }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-basis-tip { position: static; }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-info { position: absolute; top: 13px; right: 14px; }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip { top: 44px; left: 12px; right: 12px; width: auto; }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-spark { display: flex; flex-direction: column; gap: 4px; cursor: default; }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-spark-label { font-size: 12px; color: var(--ink-3); }
-@media (max-width: 1100px) {
-  :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel { border-top-width: 3px; }
-}
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-figure-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-figure-row .local-token-directions { margin: 0; font-size: 12px; }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-spark { margin-top: 8px; }
@@ -824,7 +841,7 @@ main.ev-root .ev-maple-grid { align-items: start; }
 .maple-cell--slim-5 { grid-column: span 5; } .maple-cell--slim-3 { grid-column: span 3; } .maple-cell--slim-4 { grid-column: span 4; }
 @media (max-width: 1100px) { .maple-cell--slim-5, .maple-cell--slim-3, .maple-cell--slim-4 { grid-column: 1 / -1; } }
 .maple-grid > [class*="maple-cell--slim"] > .local-dashboard-panel { padding: 10px 14px; }
-.maple-grid > [class*="maple-cell--slim"] > .local-dashboard-panel > h2 { margin-bottom: 6px; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-3); }
+.maple-grid > [class*="maple-cell--slim"] > .local-dashboard-panel > h2 { margin-bottom: 6px; font-family: var(--font-mono); font-size: 12px; font-weight: 400; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-3); }
 .maple-grid > [class*="maple-cell--slim"] .local-dashboard-asof { display: none; }
 .local-newest-run { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 0; font-size: 13px; }
 .local-newest-run a { margin-left: auto; font-size: 12px; display: inline-flex; align-items: center; gap: 2px; }
@@ -892,25 +909,28 @@ main.ev-root .ev-maple-grid { align-items: start; }
   .local-dashboard-page .local-day-pop.local-calendar .local-calendar-grid { gap: 0; }
 }
 
-/* OMN-21166 part 15 AC94 (Lakshman 2026-10-25: "instead of pure black and pure white BG - use best one for us"):
-   one cool family for page, cards and sidebar in each theme, none of them pure black or pure white. Only surfaces and
-   lines change; the navigation's active state keeps its dev colours (AC69) and every ink keeps 4.5:1 (checked by the
-   AC95 walk). The :root prefix outranks the page-scoped tokens in dashboard-cards.css. */
+/* OMN-21166 part 27 AC164/AC165 (revision 4, Lakshman 2026-10-27: the paradev.com and entire.com reference style):
+   one neutral family in each theme, flat cards on a 1px line, none of it pure black or pure white. Replaces part 15's
+   cool dark and part 20's warm paper and shadow. Every ink keeps 4.5:1 (the AC170 walk). The :root prefix outranks the
+   page-scoped tokens in dashboard-cards.css. */
 :root .app:has(.local-dashboard-page),
 :root .app:has(.ev-root[data-destination="delegation-evidence"]) {
-  /* Part 20 AC137 (Lakshman 2026-10-26, option "A: warm paper"): warm off-white page, near-white cards, warm borders. */
-  --bg: #f6f5f1; --panel: #fffefb; --panel-2: #f1efe9; --line: #e7e4dc; --line-2: #e7e4dc;
-  --sidebar: #faf9f6; --sidebar-line: #e7e4dc; --sidebar-hover: #f1efe9;
+  /* Amendment (Lakshman 2026-10-27, "more contrast like paradev.com and entire.io"): darker ink, firmer lines. */
+  --bg: #f5f5f3; --panel: #fdfdfc; --panel-2: #efefec; --line: #d4d4cf; --line-2: #e4e4e0;
+  --sidebar: #f2f2ef; --sidebar-line: #d4d4cf; --sidebar-hover: #efefec;
+  --ink: #111111; --ink-2: #3d3d3d; --ink-3: #555555; --ui-accent: #a14a0c;
 }
-/* Headline cards stay flat (their identity edge sets them apart, and they never lift); other panels carry the shadow. */
-:root:not([data-theme="dark"]) .app:has(.local-dashboard-page) .local-dashboard-panel:not(.local-overview-summary > .local-dashboard-panel, .local-settings-section .local-dashboard-panel),
-:root:not([data-theme="dark"]) .app:has(.local-dashboard-page) .local-settings-section,
-:root:not([data-theme="dark"]) .app:has(.ev-root[data-destination="delegation-evidence"]) .panel { box-shadow: 0 1px 2px rgba(60, 50, 30, 0.05); }
 :root[data-theme="dark"] .app:has(.local-dashboard-page),
 :root[data-theme="dark"] .app:has(.ev-root[data-destination="delegation-evidence"]) {
-  --bg: #0f1218; --panel: #161a22; --panel-2: #1c212b; --line: #262b35; --line-2: #1e232c;
-  --sidebar: #12151c; --sidebar-line: #232833; --sidebar-hover: #1c212b;
+  /* Amendment: Paradev's near-black page (about #0d0d0d), brighter ink and muted text (about #c0c0c0). */
+  --bg: #0e0e0e; --panel: #161616; --panel-2: #1e1e1e; --line: #2b2b2b; --line-2: #222222;
+  --sidebar: #111111; --sidebar-line: #2b2b2b; --sidebar-hover: #1e1e1e;
+  --ink: #fafafa; --ink-2: #c2c2c2; --ink-3: #a8a8a8; --ui-accent: #e9a050;
 }
+/* Part 27 AC168: the active item is the neutral raised surface alone; the destination marker light theme already hides
+   goes in dark too. */
+.app:has(.local-dashboard-page) .sidebar .mvp-nav-item.active::before,
+.app:has(.ev-root[data-destination="delegation-evidence"]) .sidebar .mvp-nav-item.active::before { display: none; }
 
 /* Part 15 AC91: the Runs and Usage headline cards sit on their own full row under the page title, as on Overview. */
 .local-dashboard-page .local-dashboard-header:has(> .local-kpi-cards) { flex-wrap: wrap; row-gap: 16px; }
@@ -954,7 +974,7 @@ ul.gdb-plot--names { margin-bottom: 48px; }
 .local-dashboard-panel .local-chart:not(.ins-card) { border: 0; padding: 0; border-radius: 0; background: none; box-shadow: none; }
 .local-chart-heading { align-items: flex-start; gap: 8px; }
 .local-chart-heading > svg { flex: none; margin-top: 1px; color: var(--panel-accent, var(--ink-2)); }
-.local-chart-heading h3 { font-size: 13px; font-weight: 600; color: var(--ink); }
+.local-chart-heading h3 { font-size: 13px; font-weight: 500; color: var(--ink); }
 
 /* Part 18 AC124 on Runs: chart titles are neutral, as on Overview (the icon carries the colour); cause names are whole;
    each analysis chart has its own row inside the panel, with no card inside the card. */
@@ -999,7 +1019,7 @@ ul.gdb-plot--names { margin-bottom: 48px; }
   .local-model-keys table { min-width: 0 !important; width: 100%; }
   .local-model-keys thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .local-model-keys tbody { display: grid; gap: 12px; }
-  .local-model-keys tbody tr { display: grid; padding: 12px; border: 1px solid color-mix(in oklab, var(--panel-accent) 45%, var(--line)); border-radius: 10px; background: var(--panel-2); }
+  .local-model-keys tbody tr { display: grid; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
   .local-model-keys tbody :is(td, th[scope="row"]) { display: block; min-width: 0; padding: 7px 0; border: 0; white-space: normal; overflow-wrap: anywhere; }
   .local-model-keys tbody td::before { content: attr(data-label); display: block; margin-bottom: 3px; font-size: 12px; color: var(--text-secondary); }
 }
@@ -1115,9 +1135,10 @@ ul.gdb-plot--names { margin-bottom: 48px; }
 /* The seven-model plot stays upright at every width. A narrow panel scrolls within itself, keeping long names intact
    and the document free of horizontal scroll. The expanded panel gives each bar more space. */
 :is(.local-dashboard-page, .ev-root) .local-model-usage--upright { overflow-x: auto; padding-bottom: 7px; }
-:is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart { min-width: max(100%, calc(var(--rb-model-count, 7) * 78px)); }
+/* Part 27 round 1: 64px columns let seven models fit a half-width panel at 1440 without a scrollbar or a cut name. */
+:is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart { min-width: max(100%, calc(var(--rb-model-count, 7) * 70px)); }
 :is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart.rb-chart--vertical .rb-plot {
-  display: grid; grid-template-columns: repeat(var(--rb-count), minmax(78px, 1fr)); gap: 10px;
+  display: grid; grid-template-columns: repeat(var(--rb-count), minmax(64px, 1fr)); gap: 6px;
   align-items: start; border-left: 0; border-bottom: 1px solid var(--line); margin-bottom: 0;
 }
 :is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart.rb-chart--vertical .rb-plot > li {
@@ -1130,7 +1151,8 @@ ul.gdb-plot--names { margin-bottom: 48px; }
   height: var(--rb-size, 0); width: 72%; max-width: 120px; margin: 0 auto;
 }
 :is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart.rb-chart--vertical .rb-name {
-  position: static; margin: 8px 0 0; text-align: center; overflow-wrap: anywhere; -webkit-line-clamp: unset;
+  /* Names break at their own hyphens first, and inside a part only when that part is wider than the column. */
+  position: static; margin: 8px 0 0; text-align: center; overflow-wrap: break-word; word-break: normal; hyphens: manual; -webkit-line-clamp: unset;
 }
 :is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart.rb-chart--vertical .rb-value {
   grid-area: auto; margin: 0 0 6px; text-align: center;
@@ -1161,7 +1183,120 @@ ul.gdb-plot--names { margin-bottom: 48px; }
 .local-dashboard-page--overview .local-dashboard-panel--full-chart {
   min-width: 0; width: 100%; height: auto; max-height: none; margin: 0; box-shadow: none;
 }
+/* Part 27 round 6: the dialog is the frame; the chart inside it draws no second card border. */
+.local-dashboard-page--overview .local-chart-dialog .local-dashboard-panel--full-chart,
+.local-dashboard-page--overview .local-chart-dialog .local-dashboard-panel--full-chart:hover { border: 0; padding: 0; background: transparent; }
 .local-dashboard-page--overview .local-dashboard-panel--full-chart .ins-bars.gdb-plot { height: 300px; }
 .local-dashboard-page--overview .local-dashboard-panel--full-chart .rb-track { height: 260px; }
 .local-dashboard-page--overview .local-dashboard-panel--full-chart .local-model-usage--upright .rb-chart { min-width: max(100%, calc(var(--rb-model-count, 7) * 110px)); }
 .local-dashboard-page--overview .local-dashboard-panel--full-chart .local-model-usage--upright .rb-chart.rb-chart--vertical .rb-track { height: 260px; }
+/* Part 27 round 1: Delegation Evidence's title is the page title of every other page (AC168). */
+main.ev-root[data-destination="delegation-evidence"] .ev-page-head .ev-title { font-size: 28px; font-weight: 500; letter-spacing: -0.015em; }
+@media (max-width: 600px) { main.ev-root[data-destination="delegation-evidence"] .ev-page-head .ev-title { font-size: 24px; } }
+/* Part 27 round 9: Evidence's section labels (Run path) share the mono label style of the seven pages (AC174). */
+main.ev-root[data-destination="delegation-evidence"] .section-label { font-family: var(--font-mono); font-weight: 500; letter-spacing: .04em; }
+
+/* ── Part 28 (revision 5): Paradev and Entire, copied more literally ──────────────────────────────────────────────────
+   Lakshman 2026-10-27: monochrome interface, solid flat bars, 8px corners. Colour lives only inside the data (bars,
+   legend swatches, status pills, the quality strip); the interface around it is grey and white. */
+
+/* AC177 with part 28a (grey icons, unique glyphs): one grey for every interface icon on every page, so a concept is never
+   drawn in two colours (OMN-21308) and stays unique by its own glyph. The current page is marked by its lifted item, not
+   by its icon. Status pills and alerts keep their colour, and so do tier and per-model icons, which are data identities. */
+.sidebar .dash-marker svg, .sidebar .mvp-nav-item.active .dash-marker svg, main :is(.ev-title-icon, .local-dashboard-page-icon) svg,
+.app svg.field-icon, :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) svg.lucide { color: var(--icon-grey) !important; }
+/* One literal grey per theme for every page: the developer pages keep older text tokens (their tertiary is a warm
+   #6B655E), so var(--ink-3) alone would draw the same icon in two greys across pages (OMN-21308 census). */
+:root { --icon-grey: #555555; }
+:root[data-theme="dark"] { --icon-grey: #a8a8a8; }
+:is(.local-run-pill, .badge, .chain-node, .live-pill, [role="alert"]) svg.lucide { color: inherit !important; }
+/* Specificity (0,4,2) on purpose: it must outrank the page-scoped grey rule above (0,3,2), or tier and model icons turn grey. */
+html .app svg.field-icon.field-icon:is([data-field-icon^="tier-"], [data-semantic-concept^="model:"]) { color: var(--field-ink, currentColor) !important; }
+/* AC177 as amended by part 28a (Lakshman's hybrid choice, which keeps OMN-21308's identities): colour stays on what
+   names the data beside it (model names and legend labels, tier icons by their bars, Evidence's money and quality
+   figures); interface words are grey: the Workflow subject titles, control titles and every link. */
+.local-dashboard-page .usage-record-controls-title { color: var(--ink-2) !important; }
+.local-dashboard-page .local-run-summary-group > h3, .local-dashboard-page .local-run-summary-group > h3 * { color: var(--ink-3) !important; }
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) a:not(.dash-item):not(.local-card-link):not(.rb-link) { color: var(--ink); text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) a:not(.dash-item):not(.local-card-link):not(.rb-link):hover { text-decoration-color: currentColor; }
+.local-dashboard-page details.local-run-failure > summary { color: var(--ink-2); }
+.local-overview-summary .local-card-change { color: var(--ink-2); }
+
+/* AC178: every selected option is the raised surface, primary text and a 1px border; the accent is only the focus ring. */
+.local-dashboard-page .local-window-switch .local-window-options button[aria-checked="true"],
+.local-dashboard-page .local-window-options button[aria-checked="true"],
+.local-dashboard-page .local-window-switch .local-window-options .local-day-button[aria-pressed="true"],
+.utc-switch button[aria-pressed="true"],
+.local-settings-choice label:has(input:checked),
+.ins-toggles:not(.gdb-legend) .ins-toggle[aria-pressed="true"] {
+  background: var(--panel-2) !important; color: var(--ink) !important; box-shadow: inset 0 0 0 1px var(--line) !important;
+}
+.local-runs-week-days > div[data-selected="true"] { border-color: var(--ink-3); box-shadow: inset 0 0 0 1px var(--ink-3); }
+
+/* AC179: the headline card's details are a neutral popover under the card (placed by CardBasis); no arrow, no tint. */
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip {
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.08);
+}
+/* Codex 2026-10-27 (MSG 2ea675d9): Entire's popover is a framed panel with no prominent shadow; dark keeps a little more. */
+[data-theme="dark"] :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip { box-shadow: 0 2px 10px rgb(0 0 0 / 0.35); }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip::after { display: none; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip .local-dashboard-caption { color: var(--ink-2) !important; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip .local-dashboard-caption:first-child { color: var(--ink) !important; font-weight: 500; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip .local-card-spark { color: var(--ink-3); }
+
+/* AC180: every bar is a solid flat fill in its series colour; a value that is not served stays a dashed outline. */
+.rb-chart .rb-bar[data-pattern="hatched"], .gdb-bar.ins-seg, .utc-stack i, .ev-qg-bar > .bar-fill,
+.local-runs-week-bar > i, .local-dashboard-page .ins-fill { background: currentColor !important; }
+
+/* AC181: cards, panels, tables and popovers 8px; buttons, inputs and segmented controls 6px. */
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) :is(article.local-dashboard-panel, .local-overview-surface,
+  section.local-overview-summary, .panel, .local-run-summary-group, .local-settings-section, .workflow-analysis-card, .local-dashboard-filters,
+  .local-dashboard-table-wrap, details.local-more, .usage-record-controls, .local-card-tooltip, figure.ins-card, dialog.local-chart-dialog, a.local-card-link) {
+  border-radius: 8px !important;
+}
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel { border-radius: 8px; }
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) :is(button:not(.local-card-info):not(.rb-link), input:not([type="checkbox"]):not([type="radio"]), select, .local-window-options, .local-settings-choice, .local-settings-choice label, .utc-switch) {
+  border-radius: 6px;
+}
+
+/* AC182: secondary buttons are transparent with a 1px border and secondary text; none is blue. */
+.local-dashboard-page :is(.local-chart-expand, .local-runs-export > button, form.local-dashboard-filters > button[type="submit"], .local-copy, .local-chart-open, .local-run-neighbours > a) {
+  background: transparent !important; border: 1px solid var(--line) !important; color: var(--ink-2) !important;
+  border-radius: 6px; text-decoration: none !important; box-shadow: none !important;
+}
+.local-dashboard-page :is(.local-chart-expand, .local-runs-export > button, form.local-dashboard-filters > button[type="submit"], .local-copy, .local-chart-open, .local-run-neighbours > a):hover {
+  background: var(--panel-2) !important; color: var(--ink) !important;
+}
+
+/* AC183: Overview's paired charts share a baseline and legend row; every chart title has the panel divider. */
+.local-dashboard-page--overview .local-dashboard-panel[data-component="overview-insights"]:not(.local-dashboard-panel--full-chart) { display: flex; flex-direction: column; }
+.local-dashboard-page--overview .local-dashboard-panel[data-component="overview-insights"]:not(.local-dashboard-panel--full-chart) > .ins-section { margin-top: auto; }
+/* The divider costs no height: 8px under the title and 8px after it keep the day charts inside AC140's 340px cap. */
+.local-dashboard-panel[data-component="overview-insights"] > h2 { border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 8px; }
+
+/* AC184: Delegation Evidence's content lines up with its title (24px on desktop, 16px on phones). */
+@media (min-width: 641px) { main.ev-root[data-destination="delegation-evidence"] .ev-scroll { padding: 12px 24px 24px; } }
+/* AC183: both legend rows on an Overview pair are one height (the Passed/Failed toggles are 32px), so the bars share a baseline. */
+.local-dashboard-page--overview .ins-token-legend.gdb-legend { min-height: 32px; align-items: center; margin-bottom: 0; }
+/* AC179 (Lakshman 2026-10-27, "why right corner hover show question mark"): the card's hidden details button keeps the
+   card's own pointer, not a help cursor in the top-right corner; it stays for the keyboard and screen readers. */
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-info { cursor: inherit !important; }
+/* AC186 (Lakshman 2026-10-27, "current selected page should be highlighted in side bar in both theme"): the raised
+   surface alone was nearly the sidebar's own colour (#EFEFEC on #F2F2EF in light). The current page is a lifted, bordered
+   item with a 2px ink bar on its left edge and primary text at 500, neutral in both themes and distinct from hover. */
+/* The surface is the shell's own --shell-active-surface (dashboard-cards.css reads it), so every rule and check that
+   reads the variable agrees with what is drawn. */
+.app:has(.local-dashboard-page, .ev-root[data-destination="delegation-evidence"]) { --shell-active-surface: var(--panel); --shell-active-line: var(--line); }
+[data-theme="dark"] .app:has(.local-dashboard-page, .ev-root[data-destination="delegation-evidence"]) { --shell-active-surface: #262626; --shell-active-line: #343434; }
+.app:has(.local-dashboard-page, .ev-root[data-destination="delegation-evidence"]) .sidebar .mvp-nav-item.active,
+.app:has(.local-dashboard-page, .ev-root[data-destination="delegation-evidence"]) .sidebar .mvp-nav-item.active:hover {
+  background: var(--shell-active-surface) !important; color: var(--ink) !important;
+  box-shadow: inset 2px 0 0 var(--ink), inset 0 0 0 1px var(--shell-active-line) !important;
+}
+.app:has(.local-dashboard-page, .ev-root[data-destination="delegation-evidence"]) .sidebar .mvp-nav-item.active .dash-name { color: var(--ink) !important; font-weight: 500; }
+/* Codex review 2026-10-27 04:17Z (MSG 01e39e9a): on a phone the stacked header lines its children up at the start
+   (part 27), which shrank Usage's and Runs' headline row to 38px with its figures hidden; the row spans the page again. */
+@media (max-width: 600px) {
+  .local-dashboard-page .local-dashboard-header > .local-kpi-cards { align-self: stretch; width: 100%; }
+}

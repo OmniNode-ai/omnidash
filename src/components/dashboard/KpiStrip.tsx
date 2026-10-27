@@ -59,7 +59,8 @@ export function KpiStrip({ label, items }: { label: string; items: readonly KpiI
             <article key={item.label} className="local-dashboard-panel" data-kpi-card={item.label}
               data-field-unavailable={item.unavailable ? 'true' : undefined} style={{ '--panel-accent': item.accent } as CSSProperties}>
               <h2>{item.concept && <ConceptIcon concept={item.concept} label={item.label} size={14} />}{item.label}</h2>
-              <p className="local-dashboard-metric" data-measured={item.unavailable ? 'false' : 'true'} title={item.title}>{item.value}</p>
+              <p className="local-dashboard-metric" data-measured={item.unavailable ? 'false' : 'true'} title={item.title}
+                style={{ '--figure-chars': String(item.value).length } as CSSProperties}>{item.value}</p>
               {lines.length > 0 && <CardBasis label={item.label}>{lines.map(line => <p key={line} className="local-dashboard-caption">{line}</p>)}</CardBasis>}
             </article>
           );

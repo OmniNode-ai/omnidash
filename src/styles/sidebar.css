@@ -19,11 +19,11 @@
   top: 0;
   z-index: 1;
   background: var(--sidebar);
-  padding: 18px 16px 14px;
+  padding: 18px 14px 14px;
   border-bottom: 1px solid var(--sidebar-line);
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 .sidebar-toggle {
   margin-left: auto;
@@ -91,7 +91,8 @@
 .brand-name .parent {
   font-family: var(--font-mono);
   font-size: 12px; font-weight: 500;
-  letter-spacing: 0.1em; text-transform: uppercase;
+  /* OMN-21166 part 27 (Lakshman 2026-10-27: "an omninode product - keep this in one line"): one line at the 12px floor. */
+  letter-spacing: 0.01em; text-transform: uppercase; white-space: nowrap;
   color: var(--sidebar-ink-2); opacity: 1;
   margin-top: 2px;
 }

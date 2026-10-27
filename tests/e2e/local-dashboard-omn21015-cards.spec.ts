@@ -31,7 +31,8 @@ test(`organized cards across all seven MVP pages in ${theme}`, async ({ page }, 
       await expect(page.getByText('Latest five returned runs', { exact: true })).toHaveCount(0);
       if (path === '/overview') await expect(page.getByRole('status', { name: 'Since your last visit' })).toHaveCount(0);
       const activeNav = page.locator('.sidebar .mvp-nav-item.active');
-      const activeBackground = theme === 'dark' ? 'rgb(32, 46, 73)' : 'rgb(238, 243, 255)';
+      // OMN-21166 part 28a AC186: the active item is a lifted neutral surface (card surface in light, #262626 in dark).
+      const activeBackground = theme === 'dark' ? 'rgb(38, 38, 38)' : 'rgb(253, 253, 252)';
       await expect(activeNav).toHaveCSS('background-color', activeBackground);
       await activeNav.hover();
       await expect(activeNav).toHaveCSS('background-color', activeBackground);
@@ -45,15 +46,10 @@ test(`organized cards across all seven MVP pages in ${theme}`, async ({ page }, 
         image: getComputedStyle(el).backgroundImage,
         headline: el.closest('.local-overview-summary') !== null,
       })));
-      // Live review 2026-10-25 ("each card different color"): the headline cards wear their identity colour as a 3px top
-      // edge, each a different colour, on Overview and (part 15 AC91) on Runs, Usage and Evidence; every other card keeps
-      // the single subtle 1px border.
-      expect(accents.filter(card => !card.headline).every(card => card.width === 1), 'Cards use a single subtle border').toBe(true);
-      const headlines = accents.filter(card => card.headline);
-      if (headlines.length > 0) {
-        expect(headlines.every(card => card.width === 3), 'Headline cards carry a 3px identity edge').toBe(true);
-        expect(new Set(headlines.map(card => card.color)).size, 'Each headline card has its own colour').toBe(headlines.length);
-      }
+      // OMN-21166 part 27 AC167: every card, headline cards included, keeps the single subtle 1px border in one colour;
+      // a headline card's identity colour is on its icon (checked in the reference-style spec), not on an edge.
+      expect(accents.every(card => card.width === 1), 'Cards use a single subtle border').toBe(true);
+      expect(new Set(accents.map(card => card.color)).size, 'Every card border is the one line colour').toBe(1);
       expect(accents.every(card => card.image === 'none'), 'Cards use flat surfaces, without decorative gradients').toBe(true);
       const nestedSurfaces = page.locator('.local-run-summary-group, .workflow-analysis-card, .workflow-flow-node, .local-chart.ins-card, .usage-insight');
       const nestedStyles = await nestedSurfaces.evaluateAll(elements => elements.map(el => ({
@@ -67,10 +63,9 @@ test(`organized cards across all seven MVP pages in ${theme}`, async ({ page }, 
         await expect(visibleNested.first()).toHaveCSS('box-shadow', 'none');
       }
       if (path === '/overview') {
-        // OMN-21166 live review 2026-10-25: the five headline cards each wear their own edge colour (asserted above), so the
-        // old "first four cards share one border colour" check is replaced by the count. Under this snapshot
-        // (cost.savings-overview) source the Tokens card still keeps its two direction figures in view.
-        expect(headlines.length, 'Five headline cards').toBe(5);
+        // Overview keeps its five headline cards. Under this snapshot (cost.savings-overview) source the Tokens card still
+        // keeps its two direction figures in view.
+        expect(accents.filter(card => card.headline).length, 'Five headline cards').toBe(5);
         await expect(page.locator('[data-component="overview-tokens"] .local-token-direction')).toHaveCount(2);
         await expect(page.locator('[data-component="overview-spend"] .local-dashboard-metric')).toHaveText('$3.59');
       }
@@ -95,8 +90,8 @@ test(`organized cards across all seven MVP pages in ${theme}`, async ({ page }, 
       await page.screenshot({path:info.outputPath(`${path.split('?')[0]!.slice(1)}-${theme}-desktop.png`),fullPage:true});
       for (const width of [390,320]) {
         await page.setViewportSize({width,height:844});
-        const collapse = page.getByRole('button', {name:'Collapse sidebar',exact:true});
-        if (await collapse.isVisible()) await collapse.click();
+        // OMN-21166 part 27 AC173: crossing into phone width folds the sidebar by itself.
+        await expect(page.locator('.sidebar')).toHaveClass(/collapsed/);
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
       }
       await page.screenshot({path:info.outputPath(`${path.split('?')[0]!.slice(1)}-${theme}-mobile.png`),fullPage:true});

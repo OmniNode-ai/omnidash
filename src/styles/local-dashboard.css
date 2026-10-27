@@ -1812,7 +1812,7 @@ figure.local-chart.usage-insight { min-width: 0; margin: 0; padding: 14px; }
 .local-run-summary-group { --fact-accent: #047857; border-color: var(--line); background: var(--panel); }
 .local-run-summary-group:nth-child(2) { --fact-accent: #1D4ED8; }
 .local-run-summary-group:nth-child(3) { --fact-accent: #7E22CE; }
-.local-run-summary-group:nth-child(4) { --fact-accent: #B45309; }
+.local-run-summary-group:nth-child(4) { --fact-accent: #92400E; } /* part 27 AC170: #B45309 read 4.45:1 on its tint */
 [data-theme="dark"] .local-run-summary-group { --fact-accent: #34D399; }
 [data-theme="dark"] .local-run-summary-group:nth-child(2) { --fact-accent: #60A5FA; }
 [data-theme="dark"] .local-run-summary-group:nth-child(3) { --fact-accent: #C084FC; }
@@ -1938,14 +1938,14 @@ figure.local-chart.usage-insight { min-width: 0; margin: 0; padding: 14px; }
   .local-credentials-records table { min-width: 0 !important; width: 100%; }
   .local-credentials-records thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .local-credentials-records tbody { display: grid; gap: 12px; }
-  .local-credentials-records tbody tr { display: grid; padding: 12px; border: 1px solid color-mix(in oklab, var(--panel-accent) 45%, var(--line)); border-radius: 10px; background: var(--panel-2); }
+  .local-credentials-records tbody tr { display: grid; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
   .local-credentials-records tbody td { display: block; min-width: 0; padding: 7px 0; border: 0; white-space: normal; overflow-wrap: anywhere; }
   .local-credentials-records tbody td::before { content: attr(data-label); display: block; margin-bottom: 3px; font-size: 12px; color: var(--text-secondary); }
   .local-dashboard-page--usage .local-dashboard-table-wrap { overflow: visible; }
   .local-dashboard-page--usage table { min-width: 0 !important; width: 100%; }
   .local-dashboard-page--usage thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .local-dashboard-page--usage tbody { display: grid; gap: 12px; }
-  .local-dashboard-page--usage tbody tr { display: grid; padding: 12px; border: 1px solid color-mix(in oklab, var(--panel-accent) 45%, var(--line)); border-radius: 10px; background: var(--panel-2); }
+  .local-dashboard-page--usage tbody tr { display: grid; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
   .local-dashboard-page--usage tbody td { display: block; min-width: 0; padding: 7px 0; border: 0; white-space: normal; overflow-wrap: anywhere; }
   .local-dashboard-page--usage tbody td::before { content: attr(data-label); display: block; margin-bottom: 3px; font-size: 12px; color: var(--text-secondary); }
   .usage-record-controls { align-items: stretch; }
@@ -2050,15 +2050,10 @@ figure.local-chart.usage-insight { min-width: 0; margin: 0; padding: 14px; }
 .local-chart-coverage { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; min-height: 24px; margin-bottom: 8px; color: var(--text-secondary); font-size: 12px; }
 .local-chart-coverage strong { color: var(--text-primary); font-weight: 500; }
 
-/* The supplied monitor reference: quiet warm cards with inset plotting surfaces. */
-.local-dashboard-page .local-chart-canvas {
-  background: var(--panel-2);
-  border-radius: 10px;
-}
-.local-dashboard-page :is(.ins-bars, .ins-plot, .ins-heat) {
-  background: var(--panel-2);
-  border-radius: 10px;
-}
+/* Part 27 round 3: plots sit straight on their card, as in the paradev.com and entire.com references; the grey inset
+   plotting box of the earlier monitor reference is gone, and the axis and baseline carry the plot. */
+.local-dashboard-page .local-chart-canvas,
+.local-dashboard-page :is(.ins-bars, .ins-plot, .ins-heat) { background: transparent; }
 .local-dashboard-page .ins-bars { padding: 10px 8px 0; border-bottom: 0; }
 .local-dashboard-page .ins-heat { padding: 10px; }
 .local-dashboard-page .ins-seg { border-radius: 2px; }
@@ -2289,7 +2284,13 @@ figure.local-chart.usage-insight { min-width: 0; margin: 0; padding: 14px; }
 /* OMN-21166 part 26 revision 3: Settings is one page of section cards; a section's embedded panels are flat inside it,
    a one-panel section shows only its own title, and an empty section shows one SettingsEmptyState. */
 .local-settings-section { margin-bottom: 16px; padding: 20px 22px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
-.local-settings-section > h2 { margin: 0 0 2px; font-size: 15px; font-weight: 600; }
+.local-settings-section > h2 { margin: 0 0 2px; font-size: 15px; font-weight: 500; }
+/* Part 27 (Codex's review against Entire's settings): one readable column, as settings pages keep, not the full width;
+   960px keeps Access's two columns wide enough for a tenant id. */
+.local-dashboard-page--settings > .local-settings-section { max-width: 960px; }
+.local-access-unserved-titles { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 12px; }
+.local-access-unserved-titles > h2 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 13px; font-weight: 500; color: var(--ink); }
+@media (max-width: 600px) { .local-access-unserved-titles { grid-template-columns: 1fr; gap: 8px; } }
 .local-settings-description { margin: 0 0 16px; font-size: 13px; color: var(--text-secondary); }
 /* Scoped to the page (and its hover) so the seven-page panel padding, border and lift rules do not draw a card in the card. */
 .local-dashboard-page .local-settings-section .local-dashboard-panel,
@@ -2308,3 +2309,10 @@ figure.local-chart.usage-insight { min-width: 0; margin: 0; padding: 14px; }
 .local-settings-empty-title { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; font-size: 14px; font-weight: 600; color: var(--text-primary); }
 .local-settings-empty-text { margin: 0 0 0 24px; font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
 .local-settings-empty-action { margin: 10px 0 0 24px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* OMN-21166 part 27 AC169: the Appearance choice, one segmented Light/Dark control with native radios. */
+.local-settings-choice { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); }
+.local-settings-choice label { position: relative; display: inline-flex; align-items: center; min-height: 32px; padding: 0 14px; border-radius: 6px; font-size: 13px; font-weight: 500; color: var(--ink-2); cursor: pointer; }
+.local-settings-choice input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+/* A 6% tint keeps the accent text at 4.79:1 on the raised light surface (12% read 4.40, the AC170 walk). */
+.local-settings-choice label:has(input:checked) { background: color-mix(in srgb, var(--ui-accent) 6%, transparent); color: var(--ui-accent); box-shadow: inset 0 0 0 1px var(--ui-accent); }
+.local-settings-choice label:has(input:focus-visible) { outline: 2px solid var(--ui-accent); outline-offset: 2px; }

@@ -41,7 +41,9 @@ for (const width of [1440, 390]) {
     for (const value of values) {
       expect(value.size, value.text).toBeGreaterThanOrEqual(20);
       expect(value.weight, value.text).toBeLessThanOrEqual(700);
-      expect(value.weight, value.text).toBeGreaterThanOrEqual(600);
+      // OMN-21166 part 27 AC166: figures are JetBrains Mono at its bundled 500 weight (no new weight file).
+      expect(value.weight, value.text).toBeGreaterThanOrEqual(500);
+      expect(value.family, value.text).toMatch(/JetBrains Mono/);
     }
     await page.screenshot({ path: info.outputPath('summary-type.png'), fullPage: true });
   });

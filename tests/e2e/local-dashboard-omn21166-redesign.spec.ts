@@ -67,13 +67,13 @@ test('unavailable figures remain honest and are readable messages rather than gi
   await expect(page.locator('[data-component="overview-tier-mix"]')).toContainText('75.0%');
 });
 
-test('final redesign captures all eleven pages, themes and widths without lost fields or overflow', async ({ page }, info) => {
+test('final redesign captures all ten pages, themes and widths without lost fields or overflow', async ({ page }, info) => {
   test.setTimeout(180000);
   const captures: Record<string, unknown>[] = [];
   for (const width of [1440,390,320]) {
     await page.setViewportSize({ width, height: width === 1440 ? 900 : 844 });
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    for (const route of ['overview','runs','workflow','usage','credentials','api-keys','delegation-evidence','experiments','agent-workbench','event-bus','lab']) {
+    for (const route of ['overview','runs','workflow','usage','settings','delegation-evidence','experiments','agent-workbench','event-bus','lab']) {
       await page.goto('/' + route);
       await expect(page.locator('.breadcrumbs .cur')).not.toHaveText('');
       for (const theme of ['light','dark']) {

@@ -639,7 +639,8 @@ test('sidebar surfaces and controls follow the theme in expanded and collapsed l
 
     for (const width of [1440, 390]) {
       await page.setViewportSize({ width, height: 900 });
-      await page.getByRole('button', { name: 'Collapse sidebar', exact: true }).click();
+      // OMN-21166 part 27 AC173: crossing into phone width folds the sidebar by itself; at desktop width fold it by hand.
+      if (width > 1024) await page.getByRole('button', { name: 'Collapse sidebar', exact: true }).click();
       await expect(sidebar).toHaveClass('sidebar collapsed');
       await expectColor(sidebar, 'background-color', background);
       await page.getByRole('button', { name: 'Expand sidebar', exact: true }).click();
@@ -824,8 +825,8 @@ test('Runs filters, pagination and table hover use readable themed controls', as
     // sixth select, Task; part 23 AC145 added a seventh, Tier.
     await expect(selects).toHaveCount(7);
     for (const select of await selects.all()) {
-      // OMN-21166 Maple grid: the one-row Runs toolbar's selects have a 7px radius and keep the 40px touch target.
-      await expect(select).toHaveCSS('border-radius', '7px');
+      // OMN-21166 part 28 AC181: the one-row Runs toolbar's selects have the 6px control radius and keep the 40px touch target.
+      await expect(select).toHaveCSS('border-radius', '6px');
       await expect(select).toHaveCSS('min-height', '40px');
       await expect(select).toHaveCSS('border-top-style', 'solid');
     }

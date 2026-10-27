@@ -38,6 +38,24 @@ function WithCode({ text }: { text: string }) {
   return <>{text.split('`').map((part, index) => (index % 2 === 1 ? <code key={index}>{part}</code> : part))}</>;
 }
 
+/** Part 27: when the data server serves no access exposure at all (an older onex dashboard), the Access section says so
+ * once, instead of each of its two panels repeating the same not-served line. */
+export function AccessNotServed() {
+  // Both subtitles stay (AC5: Local identity remains); the one message under them replaces two identical lines.
+  return (
+    <div className="local-access-unserved">
+      <div className="local-access-unserved-titles">
+        <h2><ConceptIcon concept="local-identity" label="Local identity" size={15} />Local identity</h2>
+        <h2><ConceptIcon concept="local-access" label="Dashboard access" size={15} />Dashboard access</h2>
+      </div>
+      <SettingsEmptyState icon={<ConceptIcon concept="local-access" label="Access" size={16} />} title="Access details are not available yet">
+        The data server on this machine does not serve them yet. Your local identity and how this dashboard is protected
+        appear here once <code>onex dashboard</code> serves them.
+      </SettingsEmptyState>
+    </div>
+  );
+}
+
 export function DashboardAccess({ rows, complete = true }: { rows: readonly EnvironmentRow[]; complete?: boolean }) {
   const row = dashboardAccessRow(rows);
   if (row === null && !complete) {
