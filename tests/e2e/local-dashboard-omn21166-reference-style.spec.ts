@@ -104,9 +104,9 @@ for (const theme of ['light', 'dark'] as const) {
   });
 }
 
-// Amendment 30c AC169a (Lakshman 2026-10-27, "remove Appearance from settings as we already have toggle theme"): Settings has
+// Amendment 30c, criterion AC208 (spec label AC169a; the contract schema takes only plain numbered labels) (Lakshman 2026-10-27, "remove Appearance from settings as we already have toggle theme"): Settings has
 // no Appearance section or theme choice; the header toggle is the one theme control and still switches and keeps it.
-test('AC169a Settings has no Appearance section; the header toggle switches the theme and keeps it on reload', async ({ page }, info) => {
+test('AC208 Settings has no Appearance section; the header toggle switches the theme and keeps it on reload', async ({ page }, info) => {
   await openTheme(page, 'light');
   await page.goto('/settings');
   await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
