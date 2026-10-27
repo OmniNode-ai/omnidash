@@ -57,7 +57,8 @@ describe('OMN-21015: where a run\'s time went', () => {
   it('T1, T2: each served timing has a tile and a bar of its served value, tiles and bars in one order', () => {
     render(<RunSummary decision={run()} />);
     const shown = fields();
-    expect([shown['Queue wait'], shown.Execution, shown.Duration]).toEqual(['12 ms', '4788 ms', '743 ms']);
+    // OMN-21166 AC55: the tiles read as durations (4788 ms reads 4.8 s); a sub-second value keeps its ms.
+    expect([shown['Queue wait'], shown.Execution, shown.Duration]).toEqual(['12 ms', '4.8 s', '743 ms']);
     // The three timing tiles stand together, last in the summary, in the order the bars are drawn in.
     expect(Object.keys(shown).slice(-3)).toEqual(['Queue wait', 'Execution', 'Duration']);
     expect(within(summary()).getByRole('figure', { name: 'Run timing' })).toBeTruthy();
@@ -66,17 +67,24 @@ describe('OMN-21015: where a run\'s time went', () => {
   });
 
   it('T3: a timing the row does not carry has no bar and its tile says Not recorded', () => {
-    render(<RunSummary decision={run({ queue_wait_ms: null, execution_ms: undefined })} />);
+    render(<RunSummary decision={run({ queue_wait_ms: null })} />);
     const shown = fields();
-    expect([shown['Queue wait'], shown.Execution]).toEqual(['Not recorded', 'Not recorded']);
-    expect(drawn()).toEqual([['Duration', 743]]);
-    expect(within(summary()).getByRole('figure', { name: 'Run timing' }).textContent).toContain('No measured value to draw for: Queue wait, Execution');
+    expect(shown['Queue wait']).toBe('Not recorded');
+    expect(drawn()).toEqual([['Execution', 4788], ['Duration', 743]]);
+    expect(within(summary()).getByRole('figure', { name: 'Run timing' }).textContent).toContain('No measured value to draw for: Queue wait');
   });
 
-  it('T11: with one timing measured the caption does not speak of several', () => {
-    render(<RunSummary decision={run({ queue_wait_ms: null, execution_ms: null })} />);
-    const caption = within(summary()).getByRole('figure', { name: 'Run timing' }).querySelector('figcaption')?.textContent;
-    expect(caption).toBe('Duration of this run in milliseconds, as served. No measured value to draw for: Queue wait, Execution.');
+  // OMN-21166 part 13: with only the total measured, a one-bar chart would repeat the Duration tile, so none is drawn.
+  it('T11: with only the duration measured no chart is drawn and the other tiles say Not recorded', () => {
+    render(<RunSummary decision={run({ queue_wait_ms: null, execution_ms: undefined })} />);
+    const shown = fields();
+    expect([shown['Queue wait'], shown.Execution, shown.Duration]).toEqual(['Not recorded', 'Not recorded', '743 ms']);
+    expect(within(summary()).queryByRole('figure', { name: 'Run timing' })).toBeNull();
+  });
+
+  it('T11: a duration with one other timing that is not a number draws no chart either', () => {
+    render(<RunSummary decision={run({ queue_wait_ms: 'soon', execution_ms: -5 })} />);
+    expect(within(summary()).queryByRole('figure', { name: 'Run timing' })).toBeNull();
   });
 
   it('T11: with several measured the caption says they are not added together', () => {
@@ -86,8 +94,8 @@ describe('OMN-21015: where a run\'s time went', () => {
   });
 
   it('T3: a timing that is not a number is not drawn', () => {
-    render(<RunSummary decision={run({ queue_wait_ms: 'soon', execution_ms: -5 })} />);
-    expect(drawn()).toEqual([['Duration', 743]]);
+    render(<RunSummary decision={run({ queue_wait_ms: 'soon' })} />);
+    expect(drawn()).toEqual([['Execution', 4788], ['Duration', 743]]);
   });
 
   it.each([
@@ -130,20 +138,22 @@ describe('OMN-21015: where a run\'s time went', () => {
     expect(Object.keys(fields())).not.toContain('Total');
   });
 
-  it('T7: a bar\'s label and the tooltip carry the served text', () => {
+  it('T7: a bar\'s label reads as a duration and the tooltip carries the served text', () => {
     render(<RunSummary decision={run({ execution_ms: '4788', latency_ms: '0743' })} />);
     const option = harness.handed[0]!;
-    expect(option.series[0].label.formatter({ dataIndex: 1 })).toBe('4788 ms');
-    expect(option.series[0].label.formatter({ dataIndex: 2 })).toBe('0743 ms');
+    // OMN-21166 AC55: the label at the bar's end reads as a duration; the tooltip keeps the exact served text.
+    expect(option.series[0].label.formatter({ dataIndex: 1 })).toBe('4.8 s');
+    expect(option.series[0].label.formatter({ dataIndex: 2 })).toBe('743 ms');
     expect(option.tooltip.formatter({ dataIndex: 2, name: 'Duration', marker: '' })).toBe('Duration: 0743 ms');
   });
 
   it('T8: a timing keeps its colour when another is not measured', () => {
     render(<RunSummary decision={run()} />);
-    const all = harness.handed[0]!.series[0].data.map((entry: Option) => entry.itemStyle.color);
+    // Live review 2026-10-26: a bar is a hatch edged in its colour, so the colour is the edge (and the hatch).
+    const all = harness.handed[0]!.series[0].data.map((entry: Option) => entry.itemStyle.borderColor);
     expect(new Set(all).size).toBe(3);
     render(<RunSummary decision={run({ queue_wait_ms: null })} />);
-    const fewer = harness.handed[1]!.series[0].data.map((entry: Option) => entry.itemStyle.color);
+    const fewer = harness.handed[1]!.series[0].data.map((entry: Option) => entry.itemStyle.borderColor);
     expect(fewer).toEqual([all[1], all[2]]);
   });
 

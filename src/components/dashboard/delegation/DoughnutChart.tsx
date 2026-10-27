@@ -149,7 +149,7 @@ const LIGHT_DOUGHNUT_THEME: DoughnutTheme = {
 function makeLabelObject(text: string, color: string): CSS2DObject {
   const el = document.createElement('div');
   el.textContent = text;
-  el.style.fontFamily = "'IBM Plex Sans', system-ui, sans-serif";
+  el.style.fontFamily = "var(--font-sans)";
   el.style.fontSize = '11px';
   el.style.fontWeight = '600';
   el.style.lineHeight = '1';

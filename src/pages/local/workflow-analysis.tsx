@@ -48,19 +48,37 @@ function Comparison({ title, kind, values }: {
   </figure>;
 }
 
-export function WorkflowDecisionCharts({ decision, children }: { decision: Run; children: ReactNode }) {
+export function WorkflowDecisionCharts({ decision, children, show = 'all' }: {
+  decision: Run; children: ReactNode;
+  /** OMN-21166 Maple grid: the page shows the timing card; the token and score comparisons repeat the summary fields,
+   *  so they sit under "More run details". */
+  show?: 'all' | 'timing' | 'comparisons';
+}) {
+  // OMN-21166 part 13: no timing card when the run summary left its one-bar chart out.
   return <div className="workflow-analysis-grid">
-    <div className="workflow-analysis-card workflow-analysis-card--timing">
+    {show !== 'comparisons' && children !== null && children !== undefined && <div className="workflow-analysis-card workflow-analysis-card--timing">
       <h3 className="local-dashboard-caption" data-page-heading tabIndex={-1}><ConceptIcon concept="timing" size={16} />Run timing</h3>
       {children}
-    </div>
-    <Comparison title="Token flow" kind="tokens" values={[
+    </div>}
+    {show !== 'timing' && <><Comparison title="Token flow" kind="tokens" values={[
       { label: 'Input tokens', value: decision.tokens_input }, { label: 'Output tokens', value: decision.tokens_output },
     ]} />
     <Comparison title="Quality score and threshold" kind="quality" values={[
       { label: 'Actual score', value: decision.actual_score }, { label: 'Required threshold', value: decision.required_bar },
-    ]} />
+    ]} /></>}
   </div>;
+}
+
+/** OMN-21166 part 10 AC56: a served flag reads Yes or No; anything else that is not 1/0/true/false stays as served. */
+function yesNo(value: unknown): unknown {
+  if (value === 1 || value === true || value === '1' || value === 'true') return 'Yes';
+  if (value === 0 || value === false || value === '0' || value === 'false') return 'No';
+  return value;
+}
+
+/** OMN-21166 part 10 AC56: a writer recorded as an unresolved SQL placeholder (<sql:CURRENT_USER>) was not recorded. */
+function writerOf(value: unknown): unknown {
+  return typeof value === 'string' && /^<sql:[^>]*>$/.test(value.trim()) ? 'Not recorded' : value;
 }
 
 export function WorkflowRecordDetails({ decision, steps }: { decision: Run | undefined; steps: Run[] }) {
@@ -75,11 +93,13 @@ export function WorkflowRecordDetails({ decision, steps }: { decision: Run | und
           ['Receipt id', decision.correlation_id],
           ['Created at', decision.created_at], ['Written at', decision.written_at],
           ['Recorded cost (USD)', decision.cost_usd], ['Data source', decision.data_source],
-          ['Terminal OK', decision.terminal_ok], ['Session', decision.session_id],
+          ['Terminal OK', yesNo(decision.terminal_ok)], ['Session', decision.session_id],
           ...[
             ['Tokens to compliance', decision.tokens_to_compliance],
             ['Routed model', decision.routed_model], ['Answering backend', decision.answering_backend],
-            ['Score source', decision.score_source], ['Recorded by', decision.writer_identity],
+            ['Score source', decision.score_source], ['Recorded by', writerOf(decision.writer_identity)],
+            // OMN-21166 AC66: a retried run names the run it retried and how; a run with no lineage leaves both out.
+            ['Retry of', decision.parent_correlation_id], ['Lineage', decision.lineage_kind],
           ].filter(([, value]) => value !== null && value !== undefined && value !== ''),
         ].map(([label, value]) => <div key={String(label)} data-field-tone={fieldTone(label, value)} data-field-unavailable={isUnavailableField(value)}><dt><FieldIcon label={label} value={value} />{String(label)}</dt><dd>{(label === 'Created at' || label === 'Written at') && typeof value === 'string' && Number.isFinite(Date.parse(value))
           ? <time dateTime={value} title={value}>{new Date(value).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'UTC' })} UTC</time>
@@ -132,7 +152,8 @@ export function RunAnswer({ read, runId }: { read: BoundProjectionSnapshot | und
       : answers.length === 0 ? state('No answer recorded for this run')
       : answers.map((row, index) => <div key={index}>
         <AnswerText text={String(row.response_text)} />
-        <p className="local-dashboard-caption">{`Data source: ${recorded(row.data_source)}`}</p>
+        {/* Part 15 AC96: a real answer needs no source line; any other source (fixtures, an unrecorded one) is named. */}
+        {row.data_source !== 'real' && <p className="local-dashboard-caption">{`Data source: ${recorded(row.data_source)}`}</p>}
       </div>);
   }
   return <section className="workflow-analysis-card workflow-analysis-card--answer" aria-labelledby={id}>

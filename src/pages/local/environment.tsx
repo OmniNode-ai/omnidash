@@ -6,6 +6,9 @@
  * and iconed with, and which rows give an alert_banner line. Nothing is judged here; a verdict the projection does not
  * serve is drawn as unknown under its own word, never as one of the four.
  */
+import { ConceptIcon } from '@/components/dashboard/FieldIcon';
+import { readableTime } from '@/components/format/readable-time';
+import { SettingsEmptyState } from '@/components/dashboard/SettingsEmptyState';
 import { AlertBanner } from '@/components/dashboard/alert-banner/AlertBanner';
 import { StatusGrid } from '@/components/dashboard/status-grid/StatusGrid';
 import { validateStatusGridRow, type AlertBannerRow, type StatusGridRow, type StatusGridSeverity } from '@shared/types/component-manifest';
@@ -98,12 +101,32 @@ export function EnvironmentAlerts({ rows, mode, plain = false, allowClear = true
   </>;
 }
 
+/** OMN-21166 revision 3 (AC162): with no served row, System status says what fills it: `onex dashboard` writes its own row at
+ * each start (access.tsx) and every other service appears once it reports. The title stays OMN-19988's: never all clear. */
+export function NoServiceHealth() {
+  return (
+    <SettingsEmptyState icon={<ConceptIcon concept="host" label="Service health" size={16} />} title="Service health is not available yet">
+      No service has reported yet. Each OmniNode service on this machine appears here once it reports; <code>onex dashboard</code> reports itself each time it starts.
+    </SettingsEmptyState>
+  );
+}
+
+/** OMN-19988 E10: a read that failed, timed out or is not served says so, never "nothing reported" or All clear. */
+export function ServiceHealthUnread() {
+  return (
+    <SettingsEmptyState icon={<ConceptIcon concept="host" label="Service health" size={16} />} title="Service health is not available yet">
+      This dashboard could not read the service health of this machine.
+    </SettingsEmptyState>
+  );
+}
+
 /** Native startup metadata and health stay visible even before the first delegation. */
 export function EnvironmentPanel({ rows, complete = true }: { rows: readonly EnvironmentRow[]; complete?: boolean }) {
   const validModes = new Set(['native', 'compose']);
   const invalidMode = rows.some(row => !validModes.has(text(row.mode)));
   const modes = [...new Set(rows.map(row => text(row.mode)).filter(mode => validModes.has(mode)))];
-  if (rows.length === 0) return <p className="local-dashboard-empty" role="status">Service health is not available yet.</p>;
+  // Rows kept from an earlier empty read beside a failed one are not a read that found nothing (review of eddb28d6).
+  if (rows.length === 0) return complete ? <NoServiceHealth /> : <ServiceHealthUnread />;
   return <>
     {invalidMode && <p className="local-dashboard-empty" role="status">Some service health details are not available.</p>}
     {modes.map(mode => {
@@ -117,19 +140,37 @@ export function EnvironmentPanel({ rows, complete = true }: { rows: readonly Env
     const versions = first.versions && typeof first.versions === 'object' && !Array.isArray(first.versions)
       ? Object.entries(first.versions) : [];
     const labels: Readonly<Record<string, string>> = { omnimarket: 'Runtime', omnibase_core: 'Core', omnidash: 'Dashboard' };
+    // OMN-21166 part 13: one status line in view (mode, runtime, store, services running, alerts), every served
+    // word; the full table is one click away in "Environment details".
+    const runtimeVersion = versions.find(([name]) => name === 'omnimarket')?.[1];
+    const runningCount = selected.filter(row => text(row.verdict) === 'running').length;
+    const alertCount = environmentAlertRows(selected, mode).length;
+    const statusParts = [
+      mode,
+      text(runtimeVersion) ? `runtime ${text(runtimeVersion)}` : null,
+      text(first.store_kind) || null,
+      `${runningCount} of ${selected.length} ${selected.length === 1 ? 'service' : 'services'} running`,
+      alertCount === 0 ? (allowClear ? 'no open alerts' : null) : `${alertCount} open ${alertCount === 1 ? 'alert' : 'alerts'}`,
+    ].filter((part): part is string => part !== null);
     return <section key={mode} data-environment-mode={mode} aria-label={`${mode} environment`}>
+      <p className="local-environment-line" role="status" data-environment-state={alertCount > 0 ? 'alert' : allowClear ? 'clear' : 'unknown'}>
+        <span className="local-environment-dot" aria-hidden="true" />{statusParts.join(' · ')}
+      </p>
+      <details className="local-more">
+      <summary>Environment details</summary>
       <dl className="local-dashboard-fields">
         <div><dt>Mode</dt><dd>{mode}</dd></div>
         {mode === 'native' && <>
           {versions.length > 0 ? versions.map(([name, version]) => <div key={name}><dt>{labels[name] ?? name}</dt><dd>{text(version) || 'Not recorded'}</dd></div>)
             : <div><dt>Versions</dt><dd>Not recorded</dd></div>}
           <div><dt>Store</dt><dd>{text(first.store_kind) || 'Not recorded'}</dd></div>
-          <div><dt>Last start</dt><dd>{text(first.token_minted_at) || 'Not recorded'}</dd></div>
+          <div><dt>Last start</dt><dd title={text(first.token_minted_at) || undefined}>{text(first.token_minted_at) ? readableTime(text(first.token_minted_at)) ?? text(first.token_minted_at) : 'Not recorded'}</dd></div>
         </>}
       </dl>
       {refusedHealth && <p className="local-dashboard-empty" role="status">Some service health details are not available.</p>}
       {validHealth.length > 0 && <div role="status"><EnvironmentStatus rows={validHealth} mode={mode} plain /></div>}
       <div role="status"><EnvironmentAlerts rows={selected} mode={mode} plain allowClear={allowClear} /></div>
+      </details>
     </section>;
   })}</>;
 }

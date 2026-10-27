@@ -26,17 +26,14 @@
 @import './design-tokens.css';
 
 /* Font imports */
+/* OMN-21166 part 11 AC62 (corrected 2026-10-25): Inter for all text and figures; JetBrains Mono only for logs, code,
+ * run ids and technical identifiers. Both bundled, no CDN. */
 @import "@fontsource/inter/400.css";
 @import "@fontsource/inter/500.css";
 @import "@fontsource/inter/600.css";
 @import "@fontsource/inter/700.css";
-@import "@fontsource/ibm-plex-sans/400.css";
-@import "@fontsource/ibm-plex-sans/500.css";
-@import "@fontsource/ibm-plex-sans/600.css";
-@import "@fontsource/ibm-plex-sans/700.css";
-@import "@fontsource/ibm-plex-mono/400.css";
-@import "@fontsource/ibm-plex-mono/500.css";
-@import "@fontsource/ibm-plex-mono/600.css";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
 
 /* Brand surface font — Poppins Semibold per the OmniNode branding
  * guideline. Loaded as a single weight (600) because today the only
@@ -74,7 +71,7 @@
        family (e.g. a "brutalist" theme swapping to Space Grotesk + Space
        Mono), it overrides these two vars in its scope. */
     --font-sans: "Inter", system-ui, -apple-system, Helvetica, Arial, sans-serif;
-    --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    --font-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
     /* Brand-surface font. Currently scoped to the sidebar product
      * wordmark per the branding guideline; do not apply to body text
      * or chrome unless the guideline expands. */
@@ -352,32 +349,55 @@
 
 @media(min-width:1025px) { .app:not(.sidebar-collapsed) { --sidebar-w: 232px; } }
 
-/* Soft native-style layers, inspired by NanoUI's light monitor and dark gallery. */
+/*
+ * OMN-21166 part 11 AC61/AC62: the one design system for the seven pages. Light is the default; the near-black dark
+ * theme follows the reference observability views. Every ink tone below clears 4.5:1 on every surface in its theme
+ * (lowest: light accent on --panel-2, 4.60:1). Colour carries status and series only; figures use --ink.
+ */
 :root:not([data-theme="dark"]) {
-  --bg: #faf9f6;
-  --panel: #f0eee7;
-  --panel-2: #e6e5db;
-  --ink: #252821;
-  --ink-2: #53574b;
-  --ink-3: #64685c;
-  --line: #d8d7ce;
-  --line-2: #e6e4dc;
-  --sidebar: #f3f0e9;
+  --bg: #fafaf9;
+  --panel: #ffffff;
+  --panel-2: #f5f5f4;
+  --ink: #1c1917;
+  --ink-2: #44403c;
+  --ink-3: #6b655e;
+  --line: #e7e5e4;
+  --line-2: #f1f0ee;
+  --sidebar: #fafaf9;
+  --sidebar-line: #e7e5e4;
+  --sidebar-hover: #f1f0ee;
+  --ui-accent: #b4530f;
+  --ui-accent-soft: #fbeee3;
+  --ui-pass: #15803d;
+  --ui-fail: #b91c1c;
+  --link-ink: #1d4ed8;
   --run-cost-accent: #a35d09;
   --run-score-accent: #14735c;
+  --shadow-sm: 0 1px 2px rgb(28 25 23 / 0.04);
+  --shadow-md: 0 2px 8px rgb(28 25 23 / 0.06);
 }
 :root[data-theme="dark"] {
-  --bg: #191b1e;
-  --panel: #24272b;
-  --panel-2: #2c3035;
-  --line: #41464d;
-  --line-2: #33383e;
-  --sidebar: #1f2226;
-  --sidebar-line: #363b42;
-  --sidebar-hover: #2d333c;
-  --sidebar-ink-2: #b0b8c5;
+  --bg: #121110;
+  --panel: #191817;
+  --panel-2: #201f1d;
+  --ink: #eceae6;
+  --ink-2: #bdb8b0;
+  --ink-3: #948f86;
+  --line: #2b2927;
+  --line-2: #232120;
+  --sidebar: #141312;
+  --sidebar-line: #262422;
+  --sidebar-hover: #211f1d;
+  --sidebar-ink-2: #b5b0a8;
+  --ui-accent: #e9a050;
+  --ui-accent-soft: #2c2117;
+  --ui-pass: #4ade80;
+  --ui-fail: #f87171;
+  --link-ink: #8ab4f8;
   --run-cost-accent: #f3bf6b;
   --run-score-accent: #69d4b4;
+  --shadow-sm: none;
+  --shadow-md: 0 2px 10px rgb(0 0 0 / 0.35);
 }
 
 /* nanomon image palette: the same series token colors its mark and legend. */

@@ -35,7 +35,7 @@ describe('RunsTable', () => {
     const row = screen.getByRole('row', { name: /session-42/ });
     for (const value of [
       'session-42', 'local-model', '120', '45',
-      '$0.01', 'cloud-model', 'measured', 'delegation', '250', '165',
+      '$0.01', 'cloud-model', 'measured', 'delegation', '250 ms', '165',
     ]) {
       expect(within(row).getByText(value)).toBeInTheDocument();
     }

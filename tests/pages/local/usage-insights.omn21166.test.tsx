@@ -13,16 +13,19 @@ it('AC29 shows measured cost per call from served usage rows and labels unmeasur
   const figure = screen.getByRole('figure', { name: 'Cost per run' });
   expect(figure).toHaveTextContent('Oct 21');
   expect(figure).toHaveTextContent('$4.00');
-  expect(figure).toHaveTextContent('1 unmeasured calls excluded');
+  // Part 17 AC113: the day's full sentence, unmeasured calls included, is the focusable bar's name.
+  expect(figure.querySelector('li[aria-label]')?.getAttribute('aria-label')).toContain('1 unmeasured calls');
 });
 
 // AC29 Cost by route, on the shape the served delegation.model-routing.v1 row has: a tier carries cost_tier_name, count,
 // models, pct_of_tier_routed and tier_routed, with NO cost_usd; cost_usd and unmeasured_cost_count are on tiers[].models[].
 // Failure modes: reading a tier-level cost the row does not have (every route "Not measured"); a partial sum shown as a
 // total when a model is unpriced; a tier with no models given a figure.
+// OMN-21166 AC54: a route reads as words (Local, Cloud); the served tier key stays in the data.
+// Part 17 AC115: each route is a ranked bar whose accessible name starts with the route.
 function routeRow(name: string) {
   const region = screen.getByRole('region', { name: 'Cost by route' });
-  return [...region.querySelectorAll('dl > div')].find(div => div.querySelector('dt')?.textContent === name) as HTMLElement;
+  return [...region.querySelectorAll('[data-ranked-item]')].find(item => item.getAttribute('aria-label')?.startsWith(`${name}:`)) as HTMLElement;
 }
 
 it('AC29 Cost by route sums each tier from its served models and never reads a tier-level cost the row does not carry', () => {
@@ -40,15 +43,15 @@ it('AC29 Cost by route sums each tier from its served models and never reads a t
     ] },
     { cost_tier_name: 'bare', count: 1, tier_routed: true, pct_of_tier_routed: 0.1, cost_usd: '9.99' },
   ] } }]} />);
-  expect(routeRow('local')).toHaveTextContent('$0.75');
-  expect(routeRow('local')).not.toHaveTextContent(/unmeasured|Not measured/);
+  expect(routeRow('Local')).toHaveTextContent('$0.75');
+  expect(routeRow('Local')).not.toHaveTextContent(/unmeasured|Not measured/);
   // A partial sum is labelled as measured, with what is missing, and is not shown as the route's total.
-  expect(routeRow('cloud')).toHaveTextContent('$0.40 measured');
-  expect(routeRow('cloud')).toHaveTextContent('1 unmeasured');
-  expect(routeRow('edge')).toHaveTextContent('Not measured');
-  expect(routeRow('edge')).toHaveTextContent('2 unmeasured');
-  expect(routeRow('edge')).not.toHaveTextContent('$');
+  expect(routeRow('Cloud')).toHaveTextContent('$0.40 measured');
+  expect(routeRow('Cloud')).toHaveTextContent('1 unmeasured');
+  expect(routeRow('Edge')).toHaveTextContent('Not measured');
+  expect(routeRow('Edge')).toHaveTextContent('2 unmeasured');
+  expect(routeRow('Edge')).not.toHaveTextContent('$');
   // No models served: not measured, and a cost_usd the tier does not officially carry is not read.
-  expect(routeRow('bare')).toHaveTextContent('Not measured');
-  expect(routeRow('bare')).not.toHaveTextContent('9.99');
+  expect(routeRow('Bare')).toHaveTextContent('Not measured');
+  expect(routeRow('Bare')).not.toHaveTextContent('9.99');
 });

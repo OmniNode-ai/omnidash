@@ -62,6 +62,9 @@ async function read(res: Response): Promise<unknown> {
 }
 
 export async function listModelKeys(): Promise<ModelProviderRow[]> {
-  const body = (await read(await fetchWithTimeout(`${base()}${MODELS_PATH}`))) as { providers?: ModelProviderRow[] };
-  return Array.isArray(body?.providers) ? body.providers : [];
+  const res = await fetchWithTimeout(`${base()}${MODELS_PATH}`);
+  const body = (await read(res)) as { providers?: ModelProviderRow[] } | null;
+  // OMN-21166 revision 3: an answer with no providers list (a page served in its place) is not "no providers".
+  if (!Array.isArray(body?.providers)) throw new ModelKeysError(res.status, 'bad_response', 'The dashboard did not list model providers.');
+  return body.providers;
 }

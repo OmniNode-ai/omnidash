@@ -85,8 +85,8 @@ const config: Config = {
         ring: "var(--ring)",
       },
       fontFamily: {
-        sans: ['"IBM Plex Sans"', "system-ui", "-apple-system", "Helvetica", "Arial", "sans-serif"],
-        mono: ['"IBM Plex Mono"', "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
+        sans: ['"Inter"', "system-ui", "-apple-system", "Helvetica", "Arial", "sans-serif"],
+        mono: ['"JetBrains Mono"', "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
       },
       borderRadius: {
         DEFAULT: "var(--radius)",

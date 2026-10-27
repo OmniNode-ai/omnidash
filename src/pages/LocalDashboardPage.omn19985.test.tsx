@@ -8,9 +8,15 @@
 //       guessed value instead of a typed Not recorded;
 //   K3  "Set" shows the projection's own created_at (when the row was first seen) instead of the served set_at;
 //   K4  a revoked key reads as live, or its revoke time is dropped.
+// OMN-21166 part 18 AC128: the keys in use sit on their providers' rows of the one Model providers table (ModelKeys); the
+// key history (revoked keys) stays under CredentialsTable. Each failure mode is held where its key now shows.
 import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { CredentialsTable } from './LocalDashboardPage';
+import { ModelKeys } from '@/pages/local/model-keys';
+import type { ModelProviderRow } from '@/services/models-api';
+
+vi.mock('@/data-source/projection-base-url', () => ({ resolveCommandBaseUrl: () => '' }));
 
 const live = {
   provider: 'openrouter',
@@ -21,38 +27,43 @@ const live = {
   created_at: '2026-10-07T07:30:02+00:00',
   revoked_at: null,
 };
+const providers = [{ provider: 'openrouter', set_up: true, models: ['m'], last_test: null }] as unknown as ModelProviderRow[];
+const client = { list: async () => providers };
 
-function cells(rowName: RegExp): string[] {
-  return within(screen.getByRole('row', { name: rowName }))
-    .getAllByRole('cell')
-    .map((cell) => cell.textContent ?? '');
+async function keyCells(keys: Record<string, unknown>[]): Promise<string[]> {
+  render(<ModelKeys client={client} keys={keys} />);
+  await screen.findByRole('table', { name: 'Model providers' });
+  return within(screen.getByRole('row', { name: /^OpenRouter/ })).getAllByRole('cell').map((cell) => cell.textContent ?? '');
 }
 
-describe('OMN-19985 Credentials table', () => {
-  it('K1: shows the served fingerprint prefix and set time in their own columns', () => {
-    render(<CredentialsTable rows={[live]} />);
+describe('OMN-19985 Credentials keys', () => {
+  it('K1: shows the served fingerprint prefix and set time in their own columns', async () => {
+    const cells = await keyCells([live]);
     const headers = screen.getAllByRole('columnheader').map((header) => header.textContent);
-    expect(headers).toEqual(['Provider', 'Key ref', 'Fingerprint', 'Set', 'Revoked']);
-    expect(cells(/llm\.openrouter\.api_key/)).toEqual([
-      'openrouter', 'llm.openrouter.api_key', '0123abcd', '2026-10-07T07:30:00+00:00', 'Not revoked',
-    ]);
+    expect(headers.slice(3, 6)).toEqual(['Key ref', 'Fingerprint', 'Set']);
+    expect(cells.slice(2, 5)).toEqual(['llm.openrouter.api_key', '0123abcd', 'Oct 7, 07:30:00 UTC']);
   });
 
-  it('K2: a row without them says Not recorded for each, never a blank', () => {
-    render(<CredentialsTable rows={[{ ...live, fingerprint: null, set_at: undefined }]} />);
-    const [, , fingerprint, set] = cells(/llm\.openrouter\.api_key/);
-    expect(fingerprint).toBe('Not recorded');
-    expect(set).toBe('Not recorded');
+  it('K2: a row without them says Not recorded for each, never a blank', async () => {
+    const cells = await keyCells([{ ...live, fingerprint: null, set_at: undefined }]);
+    expect(cells.slice(3, 5)).toEqual(['Not recorded', 'Not recorded']);
   });
 
-  it('K3: Set is the served set_at, not the projection created_at', () => {
-    render(<CredentialsTable rows={[live]} />);
+  it('K3: Set is the served set_at, not the projection created_at', async () => {
+    await keyCells([live]);
     expect(screen.queryByText(live.created_at)).toBeNull();
   });
 
-  it('K4: a revoked key shows its revoke time', () => {
+  it('K4: a revoked key shows its revoke time, in the key history', () => {
     render(<CredentialsTable rows={[{ ...live, revoked_at: '2026-10-07T07:40:00+00:00' }]} />);
-    const [, , , , revoked] = cells(/llm\.openrouter\.api_key/);
-    expect(revoked).toBe('2026-10-07T07:40:00+00:00');
+    const history = screen.getByRole('table', { name: 'Revoked key references' });
+    const cells = within(history).getAllByRole('cell').map((cell) => cell.textContent ?? '');
+    // OMN-21166 AC60: the time reads for a person; the served value stays whole in the cell's title.
+    expect(cells[4]).toBe('Oct 7, 07:40:00 UTC');
+  });
+
+  it('part 18 AC128: the keys in use are not drawn as a second table', () => {
+    render(<CredentialsTable rows={[live]} />);
+    expect(screen.queryByRole('table')).toBeNull();
   });
 });

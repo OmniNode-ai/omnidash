@@ -5,8 +5,10 @@ import { loadLocalPageConfig, resolveLocalPageEmptyState, DELEGATION_DECISIONS_T
 // not run evidence and must not suppress the page's existing empty-run state.
 const ENVIRONMENT = 'onex.snapshot.projection.local-environment.v1';
 const page = loadLocalPageConfig('overview');
+// OMN-21166 live review 2026-10-25: Overview no longer binds Environment (it moved to API Keys); an Environment read is
+// still supplied here, so a health snapshot beside Overview's run reads still cannot stand in for run evidence.
 function snapshots(): BoundProjectionSnapshot[] {
-  return [...new Set(page.components.flatMap(component => component.data_bindings?.map(binding => binding.projection_topic) ?? []))]
+  return [...new Set([...page.components.flatMap(component => component.data_bindings?.map(binding => binding.projection_topic) ?? []), ENVIRONMENT])]
     .map(topic => ({ topic, rows: [], rowCount: 0, dataFreshness: 'fresh', latestEventAt: null, readAt: '2026-10-24T05:12:00Z' }));
 }
 

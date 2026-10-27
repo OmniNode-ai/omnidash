@@ -40,17 +40,14 @@ import { LastRunCard, LocalDashboardPage } from './LocalDashboardPage';
 
 type PageName = 'overview' | 'usage';
 const ORDER: Record<PageName, Array<[title: string, width: number]>> = {
+  // The flat page declaration after the live review of 2026-10-25 (Lakshman removed Environment, Last run, Recent runs,
+  // Spend per day and the secondary metrics from Overview; Environment moved to API Keys).
   overview: [
-    // The first screen: the four headline tiles (requirement Q3), then quality beside the newest run, then the trends
-    // (OMN-21166 mockup build, 2026-10-18), spend beside routing, and the recent runs across the page.
     ['Actual spend', 3], ['Savings', 3], ['Agent calls', 3], ['Tokens processed', 3],
     ['Quality', 12],
     ['Trends and breakdowns', 12],
-    ['Spend per day', 8], ['Last run', 4],
-    ['Recent runs', 8], ['Tier mix', 4],
-    ['Run locally', 4], ['Avg saving / call', 4], ['Baseline spend', 4],
-    ['Compression', 6], ['Cache hit rate', 6],
-    ['Environment', 12],
+    ['Model usage', 12],
+    ['Tier mix', 12],
   ],
   usage: [
     ['Savings per day', 12], ['Tokens per day', 12],
@@ -59,23 +56,31 @@ const ORDER: Record<PageName, Array<[title: string, width: number]>> = {
   ],
 };
 const RENDERED_ORDER: Record<PageName, Array<[title: string, width: number]>> = {
-  // Lakshman's 2026-10-18 Overview reorganization: latest execution beside
-  // Quality, grouped insights next, cost/routing together, then full-width runs.
-  // The original declarative grid is still checked separately by Y4/Y5.
+  // Live review 2026-10-25: five headline cards (Delegation Quality is the fifth), then Runs per day, Tokens per day
+  // Model usage and Tier mix, each the full row. The cards are one strip of five equal cells, so the twelve-column row check (Y3)
+  // runs on the panels after it. The original declarative grid is still checked separately by Y4/Y5.
   overview: [
-    ['Actual spend', 3], ['Savings', 3], ['Agent calls', 3], ['Tokens processed', 3],
-    ['Quality', 6], ['Last run', 6], ['Environment', 12], ['Activity trends', 12],
-    ['Tier mix', 6], ['Recent runs', 6],
-    ['Run locally', 4], ['Avg saving / call', 4], ['Baseline spend', 4],
-    ['Compression', 6], ['Cache hit rate', 6], ['Spend per day', 12],
+    ['Actual spend', 3], ['Savings', 3], ['Agent calls', 3], ['Tokens processed', 3], ['Delegation Quality', 3],
+    ['Runs per day', 12], ['Tokens per day', 12], ['Model usage', 12], ['Tier mix', 12],
   ],
-  usage: ORDER.usage,
+  // Each chart takes the full row; under "More usage" each chart is its own panel, then the model-by-day table (part 17).
+  usage: [
+    ['Savings per day', 12], ['Savings by model', 12], ['Spend by model', 12], ['Tokens per day', 12],
+    ['Cost per run', 12], ['Tokens by model', 12], ['Cost by route', 12], ['Usage by model and day', 12],
+  ],
 };
+const HEADLINE_STRIP = new Set(['Actual spend', 'Savings', 'Agent calls', 'Tokens processed', 'Delegation Quality']);
 /** The preserved panel set, plus the approved OMN-19988 Environment addition; each appears once. */
 // D2 (Lakshman2026-10-20): all secondary metrics remain on Overview in its native disclosure.
 const BEFORE: Record<PageName, string[]> = {
-  overview: ['Actual spend', 'Savings', 'Agent calls', 'Tokens processed', 'Quality', 'Last run', 'Activity trends', 'Tier mix', 'Recent runs', 'Run locally', 'Avg saving / call', 'Baseline spend', 'Compression', 'Cache hit rate', 'Spend per day', 'Environment'].sort(),
-  usage: ['Savings per day', 'Tokens per day', 'Usage insights', 'Usage by model and day'].sort(),
+  // OMN-21166 Maple grid: "Activity trends" is drawn as its three slices, each once.
+  // Live review 2026-10-25: Overview draws the four headline cards, recent runs, quality, runs and tokens per day and
+  // tier mix; Environment and the "Additional runtime metrics" panels are not drawn there.
+  overview: ['Actual spend', 'Savings', 'Agent calls', 'Tokens processed', 'Delegation Quality', 'Runs per day', 'Tokens per day', 'Model usage', 'Tier mix'].sort(),
+  // OMN-21166 Maple grid: Usage insights is drawn as Spend by model and, under "More usage", one panel per chart (part 17:
+  // Cost per run, Tokens by model, Cost by route); the day-by-day token list is gone (the table holds its rows).
+  usage: ['Savings per day', 'Savings by model', 'Tokens per day', 'Spend by model', 'Cost per run', 'Tokens by model', 'Cost by route',
+    'Usage by model and day'].sort(),
 };
 
 async function panels(pageName: PageName): Promise<Array<[string, number]>> {
@@ -102,7 +107,7 @@ describe.each(['overview', 'usage'] as const)('OMN-21015: %s puts its charts fir
   it('Y3: every row of panels fills the twelve columns exactly', async () => {
     const rows: number[] = [];
     let open = 0;
-    for (const [title, width] of await panels(pageName)) {
+    for (const [title, width] of (await panels(pageName)).filter(([title]) => !HEADLINE_STRIP.has(title))) {
       expect(`${title}: ${open + width <= 12 ? 'fits its row' : 'OVERFLOWS its row'}`).toBe(`${title}: fits its row`);
       open += width;
       if (open === 12) { rows.push(open); open = 0; }

@@ -244,6 +244,23 @@ describe('ProjectionFreshness stale handling (OMN-13016)', () => {
     expect(result.isDegraded).toBe(true);
   });
 
+  // OMN-21166 (2026-10-25): the runtime says "idle" for a fresh cache whose source has gone quiet
+  // (src/data-source/protocol-snapshot-source.ts). Read as unknown, Delegation Evidence showed "stale" and marked every
+  // quiet source degraded while its rows were current.
+  it('reads idle as a current, fresh read, not stale or degraded', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ rows: [{ id: 'd1' }], row_count: 1, data_freshness: 'idle', latest_event_at: '2026-10-25T17:57:18Z' }),
+      }),
+    );
+
+    const result = await fetchDelegationDecisions();
+    expect(result.freshness).toBe('fresh');
+    expect(result.isDegraded).toBe(false);
+  });
+
   it('still maps unrecognized freshness strings to unknown', async () => {
     vi.stubGlobal(
       'fetch',

@@ -149,8 +149,8 @@
 
 /* type */
 :root {
-  --font-sans: "Inter Tight", -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --font-mono: "JetBrains Mono", "SF Mono", "IBM Plex Mono", Menlo, Consolas, monospace;
+  --font-sans: "Inter", -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
   --tracking-eyebrow: 0.18em;
 }
 

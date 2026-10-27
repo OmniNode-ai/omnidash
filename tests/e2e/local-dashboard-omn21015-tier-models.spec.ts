@@ -61,17 +61,21 @@ async function cells(page: Page, name: string): Promise<string[]> {
 test('OMN-21015 AC2: Overview lists each model under its tier with its served runs, share and cost', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await serve(page, { [ROUTING]: routing });
-  await page.goto('/');
+  // OMN-21166 Maple grid / part 13: Overview's Tier mix is ranked bars (tier shares only); the models under each tier,
+  // with their runs, share and cost, are Runs' routing breakdown table, under its closed "More analysis".
+  await page.goto('/runs');
+  await page.locator('summary').filter({ hasText: /^More analysis$/ }).click();
 
   const panel = page.getByRole('region', { name: 'Tier mix' });
   await expect(panel).toBeVisible();
-  await panel.locator('details > summary').press('Enter');
-  await expect(panel.locator('details')).toHaveAttribute('open', '');
+  // OMN-21166 part 18 AC120: the table is shown directly; the nested "Full routing breakdown" disclosure is removed.
+  await expect(panel.locator('details')).toHaveCount(0);
   await expect(panel.getByRole('table')).toBeVisible();
   await expect(panel.getByRole('table').locator('tbody tr')).toHaveCount(5);
   // Two models in one tier are two rows, each listed under its own tier.
   const names = await panel.getByRole('row').evaluateAll((rows) => rows.slice(1).map((r) => r.querySelector('td')?.textContent ?? ''));
-  expect(names).toEqual(['local', 'qwen-a', 'qwen-b', 'cheap_cloud', 'gemini']);
+  // OMN-21166 (readable tier names, 0d7d6df3): a tier is written "Local" and "Cheap cloud", not its served key.
+  expect(names).toEqual(['Local', 'qwen-a', 'qwen-b', 'Cheap cloud', 'gemini']);
 
   // Runs, share and cost exactly as served; an unpriced model is never $0, and a model with no served unmeasured count is
   // never shown as fully measured.

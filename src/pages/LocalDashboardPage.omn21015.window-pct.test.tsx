@@ -7,7 +7,7 @@
 //   Q1  today is chosen and the line still shows the all-time ratio beside today's saving (two windows in one tile)
 //   Q2  all time is chosen and the line shows a day row's ratio
 //   Q3  today's row serves no ratio and the line falls back to the all-time ratio instead of going away
-//   Q4  today has no row and a line is shown anyway, under "Not measured"
+//   Q4  today has no row (no runs, so a zero day: Lakshman 2026-10-25) and a percentage line is shown anyway
 //   Q5  on the page, the switch moves the figure but not the line under it, or does not bring the line back
 //   Q6  today is chosen and a panel that reads another exposure (Run locally, Tier mix) still shows all-time counts
 //       with nothing saying so, beside tiles that show today's (seen on a lab store of two real days, 2026-10-14)
@@ -106,9 +106,11 @@ describe('OMN-21015 AC7: the Savings percentage line follows the chosen window',
     expect(shown.join('\n')).not.toMatch(ANY_LINE);
   });
 
-  it('Q4: a day with no row says so and shows no line', () => {
+  it('Q4: a day with no row is a zero day, says so, and shows no percentage line', () => {
     const shown = card([ALL_ROW, YESTERDAY_ROW], 'today');
-    expect(shown).toEqual(['Not measured: daily metering data unavailable (UTC)']);
+    expect(shown[0]).toBe('$0.00');
+    expect(shown).toContain('No runs today (UTC)');
+    expect(shown.filter(line => /below|above/.test(line))).toEqual([]);
   });
 });
 
@@ -116,6 +118,8 @@ describe('OMN-21015 AC7: the Overview page', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'setTimeout', 'clearTimeout', 'Date'] });
     vi.setSystemTime(new Date(NOW));
+    // OMN-21166 part 19 AC136 keeps Overview's window in the address, which jsdom carries from test to test.
+    window.history.replaceState(null, '', '/');
   });
   afterEach(() => { vi.useRealTimers(); });
 
@@ -145,16 +149,17 @@ describe('OMN-21015 AC7: the Overview page', () => {
   const article = (title: string) => screen.getByRole('heading', { name: title }).closest('article') as HTMLElement;
   // By the exposure each panel is bound to in overview.contracts.yaml: metering-summary.v1 has a row per window, the
   // decisions, model-routing and quality-gate exposures do not.
-  const FOLLOWS = ['Actual spend', 'Savings', 'Agent calls', 'Tokens processed', 'Avg saving / call', 'Baseline spend',
-    'Compression', 'Cache hit rate', 'Spend per day'];
-  const DOES_NOT = ['Run locally', 'Tier mix', 'Quality', 'Last run', 'Recent runs'];
+  // OMN-21166 live review 2026-10-25: Overview is the four headline cards and Delegation Quality, Runs and Tokens per
+  // day (which follow the window), then Model usage and Tier mix (all time). Delegation Quality is a headline card
+  // whose all-time note is in its hover.
+  const FOLLOWS = ['Actual spend', 'Savings', 'Agent calls', 'Tokens processed', 'Runs per day', 'Tokens per day'];
+  const DOES_NOT = ['Model usage', 'Tier mix'];
 
   async function openOverview() {
     harness.reachable = new Set([METERING, OVERVIEW]);
     harness.answer = (topic) => Promise.resolve(topic === OVERVIEW ? [{ window: 'all', captured_at: '2026-10-09T12:00:00Z', total_savings_usd: '0.0089' }] : topic === METERING ? [ALL_ROW, YESTERDAY_ROW, TODAY_ROW] : []);
     render(<LocalDashboardPage pageName="overview" />);
     await act(async () => { await vi.advanceTimersByTimeAsync(0); });
-    fireEvent.click(screen.getByText('Additional runtime metrics', { selector: 'summary' }));
   }
 
   it('Q6: with today chosen, every panel that does not follow the window says it shows all time', async () => {

@@ -110,7 +110,8 @@ describe('OMN-21015: the Runs page draws the runs it lists', () => {
 
   it('R5: a bar carries the colour of its run\'s status, and the two statuses differ', () => {
     open(RUNS);
-    const colours = chart('Duration per run').option.series[0].data.map((entry: Option) => entry.itemStyle.color);
+    // A hatched bar's colour is its edge and its hatch (live review 2026-10-26), not a solid fill.
+    const colours = chart('Duration per run').option.series[0].data.map((entry: Option) => entry.itemStyle.borderColor);
     expect(colours[0]).toBe(colours[2]);
     expect(colours[1]).not.toBe(colours[0]);
     // The key above the chart names each status that is drawn, once, in the rows' order.
@@ -205,7 +206,8 @@ describe('OMN-21015: the Runs page draws the runs it lists', () => {
       const label = chart(name).option.yAxis.axisLabel.formatter as (value: number) => string;
       expect(label(0)).toBe('');
     }
-    expect(chart('Duration per run').option.yAxis.axisLabel.formatter(2000)).toBe('2000 ms');
+    // OMN-21166 AC55: the duration axis reads in seconds once a tick passes a second.
+    expect(chart('Duration per run').option.yAxis.axisLabel.formatter(2000)).toBe('2.0 s');
     expect(chart('Tokens per run').option.yAxis.axisLabel.formatter(300)).toBe('300');
   });
 

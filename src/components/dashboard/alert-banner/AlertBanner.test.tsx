@@ -4,6 +4,10 @@ import { AlertBanner } from './AlertBanner';
 import { SEVERITY_ROLES } from '../status-grid/severity';
 import { SEED_ALERT_ROWS, SEED_ALERTS_TOPIC } from '../status-grid/seed-rows';
 
+const READABLE_SINCE: Record<string, string> = {
+  'fixture-alert-001': 'Oct 7, 11:58:51 UTC', 'fixture-alert-002': 'Oct 7, 11:56:10 UTC', 'fixture-alert-003': 'Oct 7, 11:55:00 UTC',
+};
+
 // OMN-19993: the open-alerts banner (OV-6). One banner per open critical alert, one collapsed line for
 // the rest, each with code, subject and since-when; dismissing hides for the session and does not clear.
 describe('AlertBanner', () => {
@@ -24,7 +28,9 @@ describe('AlertBanner', () => {
       expect(within(b).getByText(SEVERITY_ROLES.critical.label)).toBeTruthy();
       expect(within(b).getByText(alert.code)).toBeTruthy();
       expect(within(b).getByText(alert.subject)).toBeTruthy();
-      expect(within(b).getByText(`since ${alert.since}`)).toBeTruthy();
+      // OMN-21166 part 26 AC159: the time reads as readable UTC, never the served ISO text.
+      expect(within(b).getByText(`since ${READABLE_SINCE[alert.alert_id]}`)).toBeTruthy();
+      expect(within(b).queryByText(`since ${alert.since}`)).toBeNull();
       expect(b.style.borderLeft).toBe(`4px solid ${SEVERITY_ROLES.critical.edge}`);
     }
   });

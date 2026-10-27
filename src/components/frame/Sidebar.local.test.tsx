@@ -20,13 +20,13 @@ function Wrapper({ children }: { children: React.ReactNode }) {
   );
 }
 
+// OMN-21166 part 26 AC153: Settings holds API Keys and Credentials, so they are not entries of their own.
 const SIX = [
   ['local-overview', 'Overview'],
   ['local-runs', 'Runs'],
   ['local-workflow', 'Workflow'],
   ['local-usage', 'Usage'],
-  ['local-credentials', 'Credentials'],
-  ['local-api-keys', 'API Keys'],
+  ['local-settings', 'Settings'],
 ] as const;
 
 describe('Sidebar local pages (FR-3, F23)', () => {
@@ -35,7 +35,7 @@ describe('Sidebar local pages (FR-3, F23)', () => {
     useFrameStore.setState({ dashboards: [], activeDashboardId: null, activeDashboard: null, sidebarCollapsed: false, showDeveloperTools: false, activePage: 'local-overview' });
   });
 
-  it('lists the six local pages first, in the required order', () => {
+  it('lists the local pages first, in the required order', () => {
     render(<Sidebar />, { wrapper: Wrapper });
     const group = screen.getByRole('navigation', { name: 'Local' });
     const items = within(group).getAllByRole('link');

@@ -11,6 +11,7 @@
  *
  * The grid maps an upstream verdict to presentation. It never computes one.
  */
+import { readableTime } from '@/components/format/readable-time';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { Text } from '@/components/ui/typography';
 import { validateStatusGridRow, type StatusGridRow } from '@shared/types/component-manifest';
@@ -89,18 +90,20 @@ export function StatusGrid({ title, rows, waitsOn, isLoading, error, fileMode, c
                 <Text size="xs" color={role.textColor} style={{ display: 'inline-flex' }}>
                   <SeverityIcon severity={row.severity} />
                 </Text>
-                <Text size="xs" family="mono" weight="bold" color="primary">
+                <Text size="xs" weight="bold" color="primary">
                   {statusLabel ? statusLabel(row) : row.status}
                 </Text>
-                <Text size="xs" family="mono" color="secondary">
+                <Text size="xs" color="secondary">
                   {role.label}
                 </Text>
               </span>
               <Text size="xs" color="secondary" style={{ overflowWrap: 'anywhere' }}>
                 {row.status_reason}
               </Text>
-              <Text size="xs" family="mono" color="tertiary">
-                {row.last_seen ? `last seen ${row.last_seen}` : 'never seen'}
+              {/* OMN-21166 AC60/AC62: a status reads in the text face, its time as "Oct 25, 11:24:36 UTC"; the
+                  served timestamp stays in the title. */}
+              <Text size="xs" color="tertiary" title={row.last_seen || undefined}>
+                {row.last_seen ? `last seen ${readableTime(row.last_seen) ?? row.last_seen}` : 'never seen'}
               </Text>
             </div>
           );
@@ -108,7 +111,7 @@ export function StatusGrid({ title, rows, waitsOn, isLoading, error, fileMode, c
       </div>
       {counts.length > 0 ? (
         <div data-testid="status-grid-summary" style={{ marginTop: 8 }}>
-          <Text size="xs" family="mono" color="tertiary">
+          <Text size="xs" color="tertiary">
             {counts.map((c) => `${c.n} ${SEVERITY_ROLES[c.severity].label.toLowerCase()}`).join(' · ')}
           </Text>
         </div>

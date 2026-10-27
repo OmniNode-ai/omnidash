@@ -24,10 +24,22 @@ const rows = [
   },
 ];
 
+// OMN-21166 part 18 AC128: the keys in use sit on their provider's row of the one "Model providers" table, whose rows come
+// from GET /models; the page reads it beside the credentials projection, so the test serves it.
+const MODEL_PROVIDERS = [
+  { provider: 'gemini', set_up: false, last_test: null, models: [] },
+  { provider: 'openrouter', set_up: true, last_test: { status: 'passed' }, models: ['openrouter/model-a'] },
+  { provider: 'openai', set_up: false, last_test: null, models: [] },
+  { provider: 'ollama', set_up: false, last_test: null, models: [] },
+];
+
 async function serve(page: Page, served: Record<string, unknown[]>) {
   await page.addInitScript(() => {
     localStorage.clear();
     localStorage.setItem('omnidash.dataSourceOverride.v1', JSON.stringify({ mode: 'live', baseUrl: window.location.origin }));
+  });
+  await page.route('**/models', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ providers: MODEL_PROVIDERS }) });
   });
   await page.route('**/projections', async (route) => {
     await route.fulfill({
@@ -57,8 +69,9 @@ function screenshotPath(name: string) {
 
 async function openCredentials(page: Page) {
   await page.goto('/');
-  await page.getByTestId('nav-local-credentials').click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Credentials' })).toBeVisible();
+  // OMN-21166 part 26: Credentials is a section of Settings.
+  await page.getByTestId('nav-local-settings').click();
+  await expect(page.getByRole('heading', { level: 2, name: 'Model providers', exact: true })).toBeVisible();
 }
 
 test('OMN-19985: Credentials lists each key ref with its fingerprint and set time, never a value, at 1440x900', async ({ page }) => {
@@ -66,14 +79,29 @@ test('OMN-19985: Credentials lists each key ref with its fingerprint and set tim
   await serve(page, { [CREDENTIALS]: rows });
   await openCredentials(page);
 
-  const table = page.locator('table').filter({ has: page.getByRole('columnheader', { name: 'Fingerprint' }) });
-  await expect(table.getByRole('columnheader')).toHaveText(['Provider', 'Key ref', 'Fingerprint', 'Set', 'Revoked']);
+  // OMN-21166 part 13/part 10/AC60: the keys in use are in view; the revoked one is under "Show key history (1 revoked)".
+  // Part 18 AC128: the keys in use are columns of the one "Model providers" table (one row per provider; no "Revoked"
+  // column, and Expires and Bound host only when a key records one), and times read as "Oct 7, 07:35:00 UTC" with the
+  // served value kept in the <time> element (datetime and title).
+  await expect(page.getByRole('table', { name: 'Provider key references', exact: true })).toHaveCount(0);
+  const table = page.getByRole('table', { name: 'Model providers', exact: true });
+  await expect(table.getByRole('columnheader')).toHaveText(['Provider', 'State', 'Models', 'Key ref', 'Fingerprint', 'Set', 'Set up with']);
+  await expect(table.getByRole('columnheader', { name: 'Revoked', exact: true })).toHaveCount(0);
+  await expect(page.getByText('No key records an expiry or a bound host.', { exact: true })).toBeVisible();
   const live = table.getByRole('row').filter({ hasText: '89abcdef' });
+  await expect(live.getByRole('rowheader')).toHaveText('OpenRouter');
   await expect(live.getByRole('cell')).toHaveText([
-    'openrouter', 'llm.openrouter.api_key', '89abcdef', '2026-10-07T07:35:00+00:00', 'Not revoked',
+    'Last test passed', 'openrouter/model-a', 'llm.openrouter.api_key', '89abcdef', 'Oct 7, 07:35:00 UTC', 'onex models add openrouter',
   ]);
-  const revoked = table.getByRole('row').filter({ hasText: '0123abcd' });
-  await expect(revoked.getByRole('cell').last()).toHaveText('2026-10-07T07:35:00+00:00');
+  await expect(live.locator('td[data-label="Set"] time')).toHaveAttribute('datetime', '2026-10-07T07:35:00+00:00');
+  await expect(live.locator('td[data-label="Set"] time')).toHaveAttribute('title', '2026-10-07T07:35:00+00:00');
+  await expect(table.getByRole('row').filter({ hasText: '0123abcd' })).toHaveCount(0);
+  const history = page.getByText('Show key history (1 revoked)', { exact: true });
+  await history.press('Enter');
+  const revokedTable = page.getByRole('table', { name: 'Revoked key references', exact: true });
+  const revoked = revokedTable.getByRole('row').filter({ hasText: '0123abcd' });
+  await expect(revoked.locator('td[data-label="Revoked"]')).toHaveText('Oct 7, 07:35:00 UTC');
+  await expect(revoked.locator('td[data-label="Revoked"] time')).toHaveAttribute('datetime', '2026-10-07T07:35:00+00:00');
 
   await expect(page.getByText(PLANTED)).toHaveCount(0);
   expect(await page.content()).not.toContain(PLANTED);
@@ -82,13 +110,20 @@ test('OMN-19985: Credentials lists each key ref with its fingerprint and set tim
   await page.screenshot({ path: screenshotPath('local-dashboard-omn19985-credentials-1440x900.png'), fullPage: false });
 });
 
-test('OMN-19985: with no key set, Credentials shows the onex secret set command, not an empty table', async ({ page }) => {
+test('OMN-19985: with no key set, each provider row shows its onex models add command, not an empty table', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await serve(page, { [CREDENTIALS]: [] });
   await openCredentials(page);
 
-  await expect(page.getByText('No provider credentials recorded')).toBeVisible();
-  await expect(page.getByText('onex secret set')).toBeVisible();
-  await expect(page.getByRole('columnheader', { name: 'Fingerprint' })).toHaveCount(0);
+  // OMN-21166 revision 3 (AC161): keys are added with onex models add (OMN-20816 ruling), shown on each provider's row;
+  // the second "No provider credentials recorded / onex secret set" message is gone.
+  await expect(page.getByText('onex models add gemini', { exact: true })).toBeVisible();
+  await expect(page.getByText('No provider credentials recorded')).toHaveCount(0);
+  await expect(page.getByText('onex secret set')).toHaveCount(0);
+  // OMN-21166 part 18 AC128: the one "Model providers" table is always listed (one row per provider); with no key set its
+  // key cells read "No key", and neither key-reference table (keys in use, key history) is drawn.
+  await expect(page.getByRole('table', { name: 'Provider key references', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('table', { name: 'Revoked key references', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('table', { name: 'Model providers', exact: true }).locator('td[data-label="Key ref"]')).toHaveText(['No key', 'No key', 'No key', 'No key']);
   await page.screenshot({ path: screenshotPath('local-dashboard-omn19985-credentials-empty-1440x900.png'), fullPage: false });
 });

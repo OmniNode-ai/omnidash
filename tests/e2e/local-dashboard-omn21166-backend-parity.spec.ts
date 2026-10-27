@@ -54,8 +54,9 @@ for (const scenario of [
     });
     if (scenario.error) await page.route('**/projection/**cost.savings-overview.v1*', route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'not_yet_bus_backed' }) }));
     await page.goto('/delegation-evidence');
-    const kpi = page.locator('.kpi').filter({ has: page.getByText('Savings (modelled)', { exact: true }) });
-    await expect(kpi.locator('.k-v')).toHaveText(scenario.expected);
+    // Part 15 AC91: the Evidence headline figures are Overview cards.
+    const kpi = page.locator('article[data-kpi-card="Savings (modelled)"]');
+    await expect(kpi.locator('.local-dashboard-metric')).toHaveText(scenario.expected);
     const panel = page.locator('[data-panel-title="SAVINGS vs CLOUD BASELINE"]');
     await expect(panel.locator('.ev-savings-hero .big')).toHaveText(scenario.expected);
     await expect(panel).toContainText('Baseline model not recorded');

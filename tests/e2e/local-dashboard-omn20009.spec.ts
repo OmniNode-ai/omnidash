@@ -78,64 +78,36 @@ async function serve(page: Page, rows: Record<string, unknown[]>) {
   });
 }
 
-const panel = (page: Page, title: string) =>
-  page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: title, exact: true }) });
-
 function screenshotPath(name: string) {
   const path = resolve(process.cwd(), `tests/e2e/screenshots/${name}`);
   mkdirSync(dirname(path), { recursive: true });
   return path;
 }
 
-test('OMN-20009: Run locally shows the served share and Avg saving / call the served per-run saving, at 1440x900', async ({ page }) => {
+// OMN-21166 AC86 (Lakshman 2026-10-25): Run locally and Avg saving / call (the "Additional runtime metrics" cards) are
+// deleted from Overview. The honesty property these tests held, no invented 0 and no overflow at 1440x900 from served
+// exposures only, is retargeted to the Overview that remains; the deleted cards must stay gone.
+test('OMN-20009: the deleted Run locally and Avg saving / call cards stay gone and Overview fits 1440x900', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await serve(page, served);
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
-  await page.locator('.local-overview-secondary > summary').click();
-
-  const share = panel(page, 'Run locally');
-  await expect(share.getByText('83.9%', { exact: true })).toBeVisible();
-  await expect(share.locator('dl.local-routing-counts dt')).toHaveText(['Local runs', 'All runs', 'Without a tier']);
-  await expect(share.locator('dl.local-routing-counts dd')).toHaveText(['104', '124', '20']);
-  // The tier-routed share the view also serves (local 100 %) is never the run-locally figure.
-  await expect(share.getByText('100.0%')).toHaveCount(0);
-
-  const saving = panel(page, 'Avg saving / call');
-  await expect(saving.getByText('$0.50', { exact: true })).toBeVisible();
-  await expect(saving.getByText(/0\.9666/)).toHaveCount(0);
-
-  // The two cards sit in the row under Last run: each fits one 1440x900 screen whole once scrolled to, and nothing
-  // is cut off sideways. (Above the fold stay Spend, Savings, Measured runs and Last run, the existing AC4 check.)
-  for (const card of [share, saving]) {
-    await card.evaluate((element) => element.scrollIntoView({ block: 'center' }));
-    await expect(card).toBeInViewport({ ratio: 1 });
-    const bounds = await card.boundingBox();
-    expect(bounds).not.toBeNull();
-    expect(bounds!.height).toBeLessThanOrEqual(900);
-    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(1440);
-    expect(await card.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(0);
-  }
+  await expect(page.getByRole('heading', { name: 'Run locally', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Avg saving / call', exact: true })).toHaveCount(0);
+  await expect(page.getByText('Additional runtime metrics', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('0.9666')).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1440);
-  await share.evaluate((element) => element.scrollIntoView({ block: 'center' }));
   await page.screenshot({ path: screenshotPath('local-dashboard-omn20009-overview-1440x900.png'), fullPage: false });
 });
 
-test('OMN-20009: with neither exposure served, both cards say why and neither shows 0', async ({ page }) => {
+test('OMN-20009: with neither routing nor usage summary served, Overview shows no invented 0%, $0 or share', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const withoutRouting = Object.fromEntries(Object.entries(served).filter(([topic]) => topic !== ROUTING && topic !== METERING));
   await serve(page, withoutRouting);
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
-  await page.locator('.local-overview-secondary > summary').click();
-
-  const share = panel(page, 'Run locally');
-  await expect(share.getByText('Not available yet: model routing.')).toBeVisible();
-  await expect(share.getByText(/%/)).toHaveCount(0);
-  const saving = panel(page, 'Avg saving / call');
-  await expect(saving.getByText('Not available yet: usage summary.')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Run locally', exact: true })).toHaveCount(0);
   await expect(page.getByText('0%', { exact: true })).toHaveCount(0);
   await expect(page.getByText('$0', { exact: true })).toHaveCount(0);
-  await share.evaluate((element) => element.scrollIntoView({ block: 'center' }));
   await page.screenshot({ path: screenshotPath('local-dashboard-omn20009-overview-unserved-1440x900.png'), fullPage: false });
 });

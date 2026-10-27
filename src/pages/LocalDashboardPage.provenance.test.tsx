@@ -61,24 +61,25 @@ describe('excluded counts beside measured figures', () => {
     render(<MeteringTotalCard component={measured} config={config}
       rows={allRow({ runs_measured: 7, runs_total: 39, runs_unknown_tokens: 23, runs_unknown_spend: 9 })} />);
     expect(screen.getByText('7')).toBeInTheDocument();
-    expect(screen.getByText(/Unknown-token runs excluded: 23/)).toBeInTheDocument();
-    expect(screen.getByText(/Unknown-spend runs excluded: 9/)).toBeInTheDocument();
+    // OMN-21166 live review 2026-10-25: the counts are in the card's hover.
+    expect(screen.getByText('7 of 39 runs measured')).toBeInTheDocument();
+    expect(screen.getByText('Not counted: 23 runs without token counts, 9 runs without spend')).toBeInTheDocument();
   });
 
   it('makes unavailable excluded counts explicit, never inventing zero', () => {
     render(<MeteringTotalCard component={measured} config={config} rows={allRow({ runs_measured: 7, runs_total: 7 })} />);
-    expect(screen.getByText(/Unknown-token runs excluded: Not recorded/)).toBeInTheDocument();
-    expect(screen.getByText(/Unknown-spend runs excluded: Not recorded/)).toBeInTheDocument();
+    expect(screen.getByText('Runs not counted: Not recorded')).toBeInTheDocument();
+    expect(screen.queryByText(/Not counted: 0/)).toBeNull();
   });
 
   it('declares excluded counts and basis in every consuming binding', () => {
     expect(overviewMeasured.data_bindings?.[0]?.projection_topic).toBe('onex.snapshot.projection.cost.savings-overview.v1');
     // OMN-21166 AC37: the card reads every call; its caption shows the served run classes.
     expect(overviewMeasured.data_bindings?.[0]?.required_fields).toEqual(['window', 'captured_at', 'run_count']);
-    for (const id of ['overview-last-run', 'overview-recent-runs']) {
-      const component = document.components.find(candidate => candidate.component_id === id)!;
-      expect(component.data_bindings?.[1]?.required_fields, id).toContain('usage_source');
-    }
+    // OMN-21166 live review 2026-10-25: Overview's run tables were deleted; the Runs list is the run table that remains.
+    const runs = JSON.parse(readFileSync('src/pages/local/runs.contracts.yaml', 'utf8')) as Pick<LocalPageDocument, 'components'>;
+    const recent = runs.components.find(candidate => candidate.component_id === 'recent-runs')!;
+    expect(recent.data_bindings?.[1]?.required_fields).toContain('usage_source');
   });
 
   it('retains baseline identity and the never-ran explanation without a verified claim', () => {

@@ -16,42 +16,11 @@
 //   P1  on the page, the Run locally card reads delegation.model-routing.v1 and shows its served share;
 //   P2  on the page, the per-run saving card waits on metering-summary.v1 while the lab does not serve it, and shows
 //       the served value once it does.
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
-const ROUTING = 'onex.snapshot.projection.delegation.model-routing.v1';
-const OVERVIEW = 'onex.snapshot.projection.cost.savings-overview.v1';
-const METERING = 'onex.snapshot.projection.metering-summary.v1';
-
-// The per-run card binds once the captured lab catalogue lists its column (omn20009.contracts.test.ts C2).
-const perRunColumnServed = (JSON.parse(readFileSync(resolve(process.cwd(), 'src/pages/local/served-catalogue.lab.json'), 'utf8')) as {
-  exposures: Array<{ topic: string; columns?: string[] }>;
-}).exposures.find((exposure) => exposure.topic === METERING)?.columns?.includes('savings_per_measured_run_usd') ?? false;
-
-const harness = vi.hoisted(() => ({
-  reachable: new Set<string>(),
-  answer: (_topic: string): Promise<unknown[]> => Promise.resolve([]),
-}));
-
-vi.mock('@/data-source', () => ({
-  createSnapshotSource: () => ({
-    async *readAll() { yield []; },
-    readSnapshot: async (topic: string) => {
-      const rows = await harness.answer(topic);
-      return { rows, rowCount: rows.length, dataFreshness: 'fresh', latestEventAt: null, readAt: new Date().toISOString() };
-    },
-  }),
-}));
-vi.mock('@/data-source/data-source-override', () => ({ resolveEffectiveDataSource: () => ({ mode: 'http' }) }));
-vi.mock('@/data-source/exposure-census', () => ({
-  fetchExposureCensus: async () => ({
-    rows: [...harness.reachable].map((topic) => ({ topic, reachability: 'reachable' })),
-  }),
-}));
-
-import { LocalDashboardPage, RunLocallyCard, SavingsPerRunCard } from './LocalDashboardPage';
+import { render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+// OMN-21166 live review 2026-10-25: Run locally and Avg saving / call left Overview; the Run locally card's own checks
+// remain, and the page and saving-per-call checks were retired with those panels.
+import { RunLocallyCard } from './LocalDashboardPage';
 
 /** The lab's model-routing by_tier on 2026-10-04 14:26Z, with the keys the OMN-20009 view adds. */
 const labByTier = {
@@ -67,10 +36,6 @@ const labByTier = {
   local_call_share: 104 / 124,
 };
 
-const allRow = (fields: Record<string, unknown> = {}) => ({
-  window_kind: 'all', window_start: '', baseline_model: 'claude-opus-4-6', baseline_state: 'resolved',
-  runs_total: 4, runs_measured: 3, savings_usd: '2.9', savings_per_measured_run_usd: '0.966667', ...fields,
-});
 
 describe('RunLocallyCard (OMN-20009 AC1, AC2, AC4)', () => {
   it('H1: shows the served share, not the tier-routed share and not a ratio of the counts', () => {
@@ -131,147 +96,6 @@ describe('RunLocallyCard (OMN-20009 AC1, AC2, AC4)', () => {
   });
 });
 
-describe('SavingsPerRunCard (OMN-20009 AC1, AC2, AC3)', () => {
-  it('S1: shows the served decimal text unchanged, not savings over runs', () => {
-    // 2.9 / 3 = 0.966667 and 2.9 / 4 = 0.725; the served value is deliberately neither.
-    render(<SavingsPerRunCard rows={[allRow({ savings_per_measured_run_usd: '0.500000' })]} />);
-    expect(screen.getByText('$0.50')).toBeInTheDocument();
-    expect(screen.queryByText(/0\.9666|0\.725/)).toBeNull();
-    expect(screen.getByText('Over 3 measured runs · baseline claude-opus-4-6')).toBeInTheDocument();
-  });
 
-  // Review failure: JSON money may be a finite numeric zero/value, not only
-  // decimal text. Preserve the supplied value and its sign, never mark it absent.
-  it.each([[0, '$0.00'], [1.25, '$1.25'], [-1.25, '-$1.25']])('S1 numeric money: %s stays measured as %s', (value, shown) => {
-    render(<SavingsPerRunCard rows={[allRow({ savings_per_measured_run_usd: value })]} />);
-    expect(screen.getByText(String(shown), { exact: true })).toBeInTheDocument();
-    expect(screen.queryByText('Not measured', { exact: true })).toBeNull();
-  });
-
-  it('S2: no measured run is Not measured with its reason, never $0', () => {
-    render(<SavingsPerRunCard rows={[allRow({ runs_measured: 0, savings_usd: null, savings_per_measured_run_usd: null })]} />);
-    expect(screen.getByText('Not measured: no measured runs')).toBeInTheDocument();
-    expect(screen.queryByText(/\$0/)).toBeNull();
-  });
-
-  it('S2: an unresolved baseline is Baseline unresolved, never $0', () => {
-    render(<SavingsPerRunCard rows={[allRow({ baseline_state: 'unresolved', savings_usd: null, savings_per_measured_run_usd: null })]} />);
-    expect(screen.getByText('Baseline unresolved')).toBeInTheDocument();
-    expect(screen.queryByText(/\$0/)).toBeNull();
-  });
-
-  it('S3: a row without the field says what it waits on', () => {
-    const { savings_per_measured_run_usd: _drop, ...older } = allRow();
-    render(<SavingsPerRunCard rows={[older]} />);
-    expect(screen.getByText('Not available yet: savings per run')).toBeInTheDocument();
-  });
-
-  it('S4: reads only the all-time row', () => {
-    render(<SavingsPerRunCard rows={[
-      { ...allRow({ savings_per_measured_run_usd: '9.000000' }), window_kind: 'day', window_start: '2026-10-04' },
-      allRow(),
-    ]} />);
-    expect(screen.getByText('$0.96')).toBeInTheDocument();
-    expect(screen.queryByText('$9.00')).toBeNull();
-  });
-
-  it('S4: no all-time row is a typed state', () => {
-    render(<SavingsPerRunCard rows={[{ ...allRow(), window_kind: 'day', window_start: '2026-10-04' }]} />);
-    expect(screen.getByText('Not measured: no all-time row')).toBeInTheDocument();
-  });
-
-  it('S4: two all-time rows refreshed at the same moment are not guessed between', () => {
-    render(<SavingsPerRunCard rows={[
-      allRow({ as_of: '2026-10-04T14:00:00Z' }),
-      allRow({ as_of: '2026-10-04T14:00:00Z', baseline_model: 'gpt-5', savings_per_measured_run_usd: '0.1' }),
-    ]} />);
-    expect(screen.getByText('Not measured: 2 baseline models')).toBeInTheDocument();
-    expect(screen.queryByText(/\$/)).toBeNull();
-  });
-
-  it('S4b: after a baseline change the newest as_of all-time row is shown with its baseline', () => {
-    render(<SavingsPerRunCard rows={[
-      allRow({ as_of: '2026-10-04T14:00:00Z', baseline_model: 'claude-opus-4-6', savings_per_measured_run_usd: '0.1' }),
-      allRow({ as_of: '2026-10-05T09:30:00Z', baseline_model: 'gpt-5', savings_per_measured_run_usd: '0.250000' }),
-    ]} />);
-    expect(screen.getByText('$0.25')).toBeInTheDocument();
-    expect(screen.getByText('Over 3 measured runs · baseline gpt-5')).toBeInTheDocument();
-    expect(screen.queryByText(/baseline models/)).toBeNull();
-    expect(screen.queryByText('$0.10')).toBeNull();
-  });
-
-  it('S4b: the newest row wins whichever order the rows are served in', () => {
-    render(<SavingsPerRunCard rows={[
-      allRow({ as_of: '2026-10-05T09:30:00Z', baseline_model: 'gpt-5', savings_per_measured_run_usd: '0.250000' }),
-      allRow({ as_of: '2026-10-04T14:00:00Z', savings_per_measured_run_usd: '0.1' }),
-    ]} />);
-    expect(screen.getByText('$0.25')).toBeInTheDocument();
-  });
-
-  it('S4c: a day row newer than the all-time row is ignored', () => {
-    render(<SavingsPerRunCard rows={[
-      allRow({ as_of: '2026-10-04T14:00:00Z', savings_per_measured_run_usd: '0.500000' }),
-      { ...allRow({ as_of: '2026-10-06T01:00:00Z', savings_per_measured_run_usd: '9.000000' }), window_kind: 'day', window_start: '2026-10-06' },
-    ]} />);
-    expect(screen.getByText('$0.50')).toBeInTheDocument();
-    expect(screen.queryByText('$9.00')).toBeNull();
-  });
-
-  it('S5: a negative saving keeps its sign', () => {
-    render(<SavingsPerRunCard rows={[allRow({ savings_per_measured_run_usd: '-0.500000' })]} />);
-    expect(screen.getByText('-$0.50')).toBeInTheDocument();
-  });
-});
-
-describe('Overview page (OMN-20009 P1, P2)', () => {
-  beforeEach(() => {
-    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'setTimeout', 'clearTimeout', 'Date'] });
-    vi.setSystemTime(new Date('2026-10-04T14:30:00Z'));
-    harness.reachable = new Set([ROUTING, OVERVIEW]);
-    harness.answer = (topic) => Promise.resolve(topic === ROUTING
-      ? [{ tenant_id: 'tenant-a', total_delegations: 124, captured_at: '2026-10-04T14:26:13Z', by_tier: labByTier }]
-      : [{ total_cost_usd: 0.01, total_savings_usd: 1.29, total_baseline_cost_usd: 1.3, measured_run_count: 124, zero_token_run_count: 0 }]);
-  });
-  afterEach(() => { vi.useRealTimers(); });
-
-  async function panel(title: string) {
-    render(<LocalDashboardPage pageName="overview" />);
-    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
-    const disclosure = screen.getByText('Additional runtime metrics', { selector: 'summary' });
-    fireEvent.click(disclosure);
-    expect(disclosure.closest('details')).toHaveAttribute('open');
-    return screen.getByRole('heading', { name: title }).closest('article') as HTMLElement;
-  }
-
-  it('P1: the Run locally panel shows the served share from delegation.model-routing.v1', async () => {
-    const card = await panel('Run locally');
-    expect(within(card).getByText('83.9%')).toBeInTheDocument();
-    expect([...card.querySelectorAll('dl.local-routing-counts dt')].map(node => node.textContent)).toEqual(['Local runs', 'All runs', 'Without a tier']);
-    expect([...card.querySelectorAll('dl.local-routing-counts dd')].map(node => node.textContent)).toEqual(['104', '124', '20']);
-  });
-
-  it('P1: the Run locally panel says the exposure is not served when the census does not serve it', async () => {
-    harness.reachable = new Set([OVERVIEW]);
-    const card = await panel('Run locally');
-    expect(within(card).getByText('Not available yet: model routing.')).toBeInTheDocument();
-    expect(within(card).queryByText(/%/)).toBeNull();
-  });
-
-  it('P2: the Avg saving / call panel shows the served per-run saving once the lab serves it, and waits on it until then, never $0', async () => {
-    if (perRunColumnServed) {
-      // The lab catalogue was recaptured (2026-10-07) after metering_summary 0002 reached the lane: the card is bound.
-      harness.reachable = new Set([ROUTING, OVERVIEW, METERING]);
-      const answer = harness.answer;
-      harness.answer = (topic) => (topic === METERING
-        ? Promise.resolve([allRow({ as_of: '2026-10-04T14:26:13Z', savings_per_measured_run_usd: '0.500000' })])
-        : answer(topic));
-      const card = await panel('Avg saving / call');
-      expect(within(card).getByText('$0.50')).toBeInTheDocument();
-      expect(within(card).queryByText(/Not available yet/)).toBeNull();
-    } else {
-      const card = await panel('Avg saving / call');
-      expect(within(card).getByText('Not available yet: savings per run')).toBeInTheDocument();
-      expect(within(card).queryByText(/\$0/)).toBeNull();
-    }
-  });
-});
+// OMN-21166 live review 2026-10-25: Lakshman removed Run locally and Avg saving / call from Overview ("delete them");
+// the card components above keep their tests, and no page draws them now.

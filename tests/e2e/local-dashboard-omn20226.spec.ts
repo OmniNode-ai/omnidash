@@ -52,19 +52,28 @@ function screenshotPath(name: string) {
   return path;
 }
 
-test('OMN-20226: on a fresh store Compression and Cache hit rate are Not measured, never 0, at 1440x900', async ({ page }) => {
+// OMN-21166 AC86 (Lakshman 2026-10-25): the Compression and Cache hit rate cards (and the whole "Additional runtime
+// metrics" disclosure, Avg saving / call included) are deleted from Overview. What these tests protect still applies to
+// the surviving headline cards: they fit at 1440x900, and an unserved metering-summary.v1 shows a typed state,
+// never a number.
+const SUMMARY_CARDS = ['overview-spend', 'overview-savings', 'overview-measured', 'overview-tokens'] as const;
+
+test('OMN-20226: on a fresh store the deleted cards stay gone and the headline cards read the fresh row and fit, at 1440x900', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await serve(page, { [METERING]: [freshAllRow] });
+  // The all-time spend and savings cards read cost.savings-overview.v1 beside the metering row (as on dev).
+  await serve(page, { [METERING]: [freshAllRow], 'onex.snapshot.projection.cost.savings-overview.v1': [{
+    window: 'all', captured_at: '2026-10-07T06:00:57Z', total_cost_usd: '0.0', total_savings_usd: '0.003134', run_count: 3 }] });
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
-  await page.locator('.local-overview-secondary > summary').click();
 
-  // The control: the same row's measured per-run saving renders, so the page did read this row.
-  await expect(panel(page, 'Avg saving / call').getByText('$0.01', { exact: true })).toBeVisible();
-  for (const title of CARDS) {
-    const card = panel(page, title);
-    await expect(card.locator('.local-dashboard-metric')).toHaveText('Not measured');
-    await expect(card.getByText(/^-?\d|%$|x$/)).toHaveCount(0);
+  // The control: the same row's measured figures render, so the page did read this row.
+  await expect(page.locator('[data-component="overview-measured"] .local-dashboard-metric')).toHaveText('3');
+  // OMN-21166 AC86 (Lakshman 2026-10-25): Compression, Cache hit rate and Avg saving / call are deleted from Overview.
+  for (const title of [...CARDS, 'Avg saving / call']) await expect(panel(page, title)).toHaveCount(0);
+  await expect(page.locator('.local-overview-secondary')).toHaveCount(0);
+  await expect(page.locator('.local-dashboard-page')).not.toContainText(/Compression|Cache hit rate/);
+  for (const id of SUMMARY_CARDS) {
+    const card = page.locator(`[data-component="${id}"]`);
     await card.evaluate((element) => element.scrollIntoView({ block: 'center' }));
     await expect(card).toBeInViewport({ ratio: 1 });
     const bounds = await card.boundingBox();
@@ -76,18 +85,19 @@ test('OMN-20226: on a fresh store Compression and Cache hit rate are Not measure
   await page.screenshot({ path: screenshotPath('local-dashboard-omn20226-overview-1440x900.png'), fullPage: false });
 });
 
-test('OMN-20226: with metering-summary.v1 not served, both cards say so and show no number', async ({ page }) => {
+test('OMN-20226: with metering-summary.v1 not served, the headline cards say so and show no number', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await serve(page, {});
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
-  await page.locator('.local-overview-secondary > summary').click();
 
-  for (const title of CARDS) {
-    const card = panel(page, title);
-    await expect(card.getByText('Not available yet: usage summary.')).toBeVisible();
+  for (const id of SUMMARY_CARDS) {
+    const card = page.locator(`[data-component="${id}"]`);
+    await expect(card).toBeVisible();
     await expect(card.locator('.local-dashboard-metric')).toHaveCount(0);
+    await expect(card.getByRole('status')).toContainText('Not available yet');
+    await expect(card).not.toContainText(/\d/);
   }
-  await panel(page, 'Compression').evaluate((element) => element.scrollIntoView({ block: 'center' }));
+  await page.locator('[data-component="overview-spend"]').evaluate((element) => element.scrollIntoView({ block: 'center' }));
   await page.screenshot({ path: screenshotPath('local-dashboard-omn20226-overview-unserved-1440x900.png'), fullPage: false });
 });

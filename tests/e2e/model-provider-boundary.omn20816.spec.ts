@@ -39,8 +39,9 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
       });
       try {
         await page.goto('/');
-        await page.getByTestId('nav-local-credentials').click();
-        await expect(page.getByRole('heading', { level: 1, name: 'Credentials' })).toBeVisible();
+        // OMN-21166 part 26: Credentials is a section of Settings.
+        await page.getByTestId('nav-local-settings').click();
+        await expect(page.getByRole('heading', { level: 2, name: 'Model providers', exact: true })).toBeVisible();
         const table = page.getByRole('table', { name: 'Model providers' });
         if (state === 'models-failed') {
           await expect(page.getByText('Model provider service unavailable', { exact: true })).toBeVisible();
@@ -56,7 +57,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
           expect(await table.evaluate(el => el.closest('[aria-busy="true"]') === null)).toBe(true);
           await expect(page.getByRole('region', { name: 'Model providers' }).locator('input, textarea, select, form, button, [contenteditable]')).toHaveCount(0);
         }
-        if (state === 'healthy') await expect(page.getByText('No provider credentials recorded')).toBeVisible();
+        if (state === 'healthy') { await expect(table.getByText('onex models add gemini', { exact: true })).toBeVisible(); await expect(page.getByText('No provider credentials recorded')).toHaveCount(0); }
         if (state === 'pending') await expect(page.getByText('Loading data…', { exact: true })).toBeVisible();
         if (['missing', 'models-failed'].includes(state)) await expect(page.getByText('Not available yet: credentials.', { exact: true })).toBeVisible();
         if (state === 'failed') await expect(page.getByRole('alert')).toContainText('data is unavailable.');

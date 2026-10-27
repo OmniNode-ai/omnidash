@@ -8,6 +8,8 @@ test.beforeEach(async ({ page }) => { await serveCharts(page); await page.emulat
 
 test('reference theme separates warm cards and inset plots without losing readable text', async ({ page }, info) => {
   await page.goto('/runs');
+  // OMN-21166 part 18 AC118: the run charts sit first inside Runs' one closed "More analysis"; open it first.
+  await page.getByText('More analysis', { exact:true }).press('Enter');
   const chart=page.getByRole('figure', { name:'Quality score per run', exact:true });
   await expect(chart.locator('svg').first()).toBeVisible();
   for (const theme of ['light','dark']) {
@@ -22,8 +24,10 @@ test('reference theme separates warm cards and inset plots without losing readab
       const l=[lum(rgb(bg)),lum(rgb(ink))].sort((a,b)=>b-a);
       return { canvas:root.getPropertyValue('--bg').trim(), card:bg, inset:root.getPropertyValue('--panel-2').trim(), contrast:(l[0]+.05)/(l[1]+.05) };
     });
-    expect(layers.canvas).toBe(theme==='light'?'#faf9f6':'#191b1e');
-    expect(layers.card).toBe(theme==='light'?'#f0eee7':'#24272b');
+    // OMN-21166 token palette (commit c8d5ab0f, Geist light/dark tokens): warm canvas, card and inset values moved.
+    expect(layers.canvas).toBe(theme==='light'?'#fafaf9':'#121110');
+    expect(layers.card).toBe(theme==='light'?'#ffffff':'#191817');
+    expect(layers.card).not.toBe(layers.canvas);
     expect(layers.inset).not.toBe(layers.card);
     expect(layers.contrast).toBeGreaterThanOrEqual(4.5);
     await chart.scrollIntoViewIfNeeded();
@@ -54,11 +58,15 @@ test('navigation stays blue and outcome plots match their semantic legend', asyn
   const chart=page.getByRole('figure', { name:'Runs per day', exact:true });
   const passed=chart.getByRole('button', { name:'Passed', exact:true });
   await expect(passed).toHaveAttribute('aria-pressed','true');
-  const before=await chart.locator('.ins-seg').evaluateAll(els=>els.map(el=>getComputedStyle(el).backgroundColor));
+  // OMN-21166 live review 2026-10-25: the dotted grouped bars are painted in currentColor (their colour property); their
+  // background is no longer a solid fill, so the mark colour is read from `color`.
+  const marks=()=>chart.locator('.gdb-col[data-series="passed"] .ins-seg').evaluateAll(els=>els.map(el=>getComputedStyle(el).color));
+  const before=await marks();
   const passColor = await passed.evaluate(el => getComputedStyle(el, '::before').backgroundColor);
+  expect(before.length).toBeGreaterThan(0);
   expect(before).toContain(passColor);
   await passed.click();
-  expect(await chart.locator('.ins-seg').evaluateAll(els=>els.map(el=>getComputedStyle(el).backgroundColor))).not.toContain(passColor);
+  expect(await marks()).toEqual([]);
   await passed.click();
   await expect(passed).toHaveAttribute('aria-pressed','true');
   await chart.scrollIntoViewIfNeeded();

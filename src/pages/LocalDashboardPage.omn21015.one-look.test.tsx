@@ -8,7 +8,8 @@
 //   K1  a page draws text outside its header and its panels (a bare figure on the page);
 //   K2  a panel draws text outside the shared parts (a bare figure in a panel);
 //   K3  a panel has no heading, or its heading has no icon;
-//   K4  a page's header has no icon, or is missing;
+//   K4  a page's header has no icon, or is missing (credentials and api-keys are sections of Settings since OMN-21166
+//       part 26, so their header is Settings');
 //   K5  the guard is vacuous: the page it looked at drew no panel, or a served page drew no figure at all.
 // Each page is read twice: with every exposure it binds served (constructed rows), and with nothing served, because
 // the typed empty states are parts too.
@@ -34,9 +35,12 @@ vi.mock('@/data-source/exposure-census', () => ({
 }));
 
 import { LocalDashboardPage } from './LocalDashboardPage';
+import { SettingsPage } from './SettingsPage';
 
 type PageName = 'overview' | 'runs' | 'workflow' | 'usage' | 'credentials' | 'api-keys';
 const PAGES: PageName[] = ['overview', 'runs', 'workflow', 'usage', 'credentials', 'api-keys'];
+// The pages with their own header; the other two render only inside Settings (OMN-21166 part 26).
+const HEADED: PageName[] = ['overview', 'runs', 'workflow', 'usage'];
 const RUN = '11111111-1111-4111-8111-111111111111';
 const TENANT = '22222222-2222-4222-8222-222222222222';
 
@@ -69,6 +73,8 @@ const SERVED: Array<[string, unknown[]]> = [
   ['delegation.quality-gate.v1', [{ tenant_id: TENANT, overall_pass_rate: 0.5, total_passed: 1, total_failed: 1, total_checks: 2, avg_actual_score: 0.9, avg_required_bar: 0.8, captured_at: '2026-10-13T10:52:43+00:00' }]],
   ['usage-by-model-day.v1', [{ tenant_id: TENANT, usage_day: '2026-10-13', model_id: 'local-model', input_tokens: 729, output_tokens: 747, cost_usd: 0, measured_cost_usd: 0, unmeasured_call_count: 0, call_count: 2 }]],
   ['run-trace.v1', ['request', 'routing_decision', 'provider_call', 'quality_gate', 'terminal'].map((kind, index) => step(index + 1, kind))],
+  // OMN-21166 part 11: API Keys reads its identity and access from the native runtime row.
+  ['local-environment.v1', [{ tenant_id: TENANT, mode: 'native', service: 'local-runtime', access_mode: 'loopback-token', token_minted_at: '2026-10-13T10:00:00+00:00', rotate_hint: 'Restart onex dashboard', updated_at: '2026-10-13T10:00:00Z' }]],
   ['tenant-credentials.v1', [{ api_key_ref: 'ref-1', tenant_id: TENANT, name: 'openai-main', provider: 'openai', created_at: '2026-10-12T09:00:00+00:00', revoked_at: null }]],
 ];
 
@@ -78,8 +84,13 @@ const PARTS = [
   '.local-dashboard-table-wrap', '.local-dashboard-empty', '[role="status"]', '[role="alert"]', 'figure.local-chart',
   '.local-share', '.local-meter', '.local-dashboard-filters', '.local-dashboard-pager', '.local-run-title',
   'nav.local-run-diagram', 'ol.local-dashboard-steps', '.usage-tokens-day',
+  // OMN-21166 part 24 (AC148) each graph's Expand control and part 25 (AC151) each summary card's hover help.
+  '.local-chart-expand', '.local-run-summary-help',
   'ul.local-run-preview', '.local-runs-search', 'dl.local-routing-counts', '.local-routing-note',
   'nav.local-summary-links', '.local-token-directions',
+  // OMN-21166: the shared ranked bars (AC64), the stacked tokens chart, the window presets of the activity panels, and
+  // labels kept only for screen readers.
+  'figure.rb-chart', 'figure.utc-chart', '.ins-range-presets', '.local-visually-hidden',
 ].join(', ');
 /** Where a page may draw text at all. */
 const PAGE_PARTS = 'details.local-overview-secondary > summary, header.local-dashboard-header, article.local-dashboard-panel, main > [role="status"], main > [role="alert"]';
@@ -121,13 +132,26 @@ describe.each([[true, 'every bound exposure served'], [false, 'nothing served']]
     expect(bare.map(where)).toEqual([]);
   });
 
-  it.each(PAGES)('K3, K4: %s has a header with an icon, and every panel a heading with an icon', async (pageName) => {
+  it.each(HEADED)('K4: %s has a header with an icon', async (pageName) => {
     const container = await open(pageName, served);
     expect(container.querySelector('header.local-dashboard-header .local-dashboard-page-icon svg')).not.toBeNull();
+  });
+
+  it('K4: Settings, which holds credentials and api-keys, has a header with an icon', async () => {
+    harness.served = new Map(served ? SERVED.map(([name, rows]) => [P + name, rows]) : []);
+    const { container } = render(<SettingsPage navigationCache={{ context: null, snapshots: new Map() }} />);
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    expect(container.querySelector('header.local-dashboard-header .local-dashboard-page-icon svg')).not.toBeNull();
+    expect(container.querySelectorAll('header.local-dashboard-header')).toHaveLength(1);
+  });
+
+  it.each(PAGES)('K3: every panel of %s has a heading with an icon', async (pageName) => {
+    const container = await open(pageName, served);
     const headings = [...container.querySelectorAll('article.local-dashboard-panel')].map((panel) => {
       const heading = panel.querySelector(':scope > h2');
       return `${heading?.textContent ?? '(no heading)'}: ${heading?.querySelector('svg.lucide') ? 'icon' : 'NO ICON'}`;
     });
+    expect(headings.length).toBeGreaterThan(0);
     expect(headings.filter((line) => line.startsWith('(no heading)') || line.endsWith('NO ICON'))).toEqual([]);
   });
 });

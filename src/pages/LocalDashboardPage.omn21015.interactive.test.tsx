@@ -6,19 +6,19 @@
 //   I1  a run named in Overview (last run, recent runs) opens another run, or a run with no id gets a link;
 //   I2  the copy button copies something other than the text it sits beside;
 //   I3  with no clipboard the button throws, or says it copied;
-//   I4  the diagram re-orders the served steps, drops one, or drops a kind it does not know;
-//   I5  the diagram marks a step other than the one the terminal names as failing, or marks one when none is named;
-//   I6  a diagram node leads to another step of the timeline than its own;
-//   I7  a run with no steps draws an empty diagram;
+//   I4  the steps are re-ordered, one is dropped, or a kind the page does not know is dropped (on the timeline since
+//       part 18 AC125 removed the diagram);
+//   I5  a step other than the one the terminal names is marked failing, or one is marked when none is named;
+//   (I6 and I7 were the diagram's own: a node leading to its timeline step, and no diagram without steps.)
 //   I9  after a copy the text beside the button changes (Workflow moves to a newer run) and the button still says
 //       Copied, although the clipboard holds the earlier text;
 //   I10 a copy still unanswered when the text changes marks the new text Copied, or Copy failed, when it answers;
 //   I11 dropping stale feedback also drops it for the text that was copied: a re-render with the same text, or a
 //       copy of the new text, no longer says Copied;
 //   I12 two copies overlap and the older one answers last, and its answer replaces the newer one's.
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { CopyButton, LastRunCard, RecentRunsTable, RunDiagram, RunTimeline } from './LocalDashboardPage';
+import { CopyButton, LastRunCard, RecentRunsTable, RunTimeline } from './LocalDashboardPage';
 
 const NOW = Date.parse('2026-10-13T12:00:00Z');
 const decision = (id: string | null, writtenAt: string) => ({
@@ -181,48 +181,36 @@ describe('OMN-21015 U4: copy', () => {
   });
 });
 
-describe('OMN-21015 U3: the run as a diagram', () => {
+// OMN-21166 part 18 AC125 (Lakshman 2026-10-26): the step diagram above the timeline is removed; the timeline shows the
+// same steps with time and detail. What the diagram tests held for the steps is held on the timeline now; I6 (a node
+// leads to its timeline step) and I7 (no steps, no diagram) went with the diagram.
+describe('OMN-21015 U3, on the timeline (part 18 AC125)', () => {
   const served = [step(1, 'request'), step(2, 'routing_decision'), step(3, 'provider_call'), step(4, 'quality_gate'), step(5, 'terminal')];
-  const nodes = () => within(screen.getByRole('navigation', { name: 'Run steps, in the order served' })).getAllByRole('link');
+  const items = () => screen.getAllByRole('listitem');
 
-  it('I4: one node per served step, in the order served, whatever that order is', () => {
-    render(<RunDiagram steps={[served[4], served[0], served[2], served[1], served[3]]} />);
-    expect(nodes().map((node) => node.getAttribute('data-step-kind'))).toEqual(['terminal', 'request', 'provider_call', 'routing_decision', 'quality_gate']);
+  it('I4: one step per served row, in the order served, whatever that order is', () => {
+    render(<RunTimeline steps={[served[4], served[0], served[2], served[1], served[3]]} />);
+    expect(items().map((item) => item.querySelector('strong')?.textContent)).toEqual(['Terminal', 'Request', 'Provider call', 'Routing decision', 'Quality gate']);
   });
 
-  it('I4: a kind the page does not know is a node, named as served', () => {
-    render(<RunDiagram steps={[served[0], step(2, 'cache_lookup'), served[4]]} />);
-    expect(nodes().map((node) => node.textContent)).toEqual(['Requestsucceeded', 'cache_lookupsucceeded', 'Terminalsucceeded']);
+  it('I4: a kind the page does not know is a step, named as served', () => {
+    render(<RunTimeline steps={[served[0], step(2, 'cache_lookup'), served[4]]} />);
+    expect(items().map((item) => item.querySelector('strong')?.textContent)).toEqual(['Request', 'cache_lookup', 'Terminal']);
   });
 
-  it('I5: the failing node is the one the terminal names, and only that one', () => {
+  it('I5: the failing step is the one the terminal names, and only that one', () => {
     const failed = [
       served[0],
       step(2, 'provider_call', { outcome: 'failed', failure_cause: 'rate_limited' }),
       step(3, 'provider_call', { outcome: 'failed', failure_cause: 'timeout' }),
       step(4, 'terminal', { outcome: 'failed', failure_cause: 'timeout', failing_step_sequence: 3 }),
     ];
-    render(<RunDiagram steps={failed} />);
-    expect(nodes().map((node) => node.getAttribute('data-failing-step'))).toEqual([null, null, 'true', null]);
+    render(<RunTimeline steps={failed} />);
+    expect(items().map((item) => item.getAttribute('data-failing-step'))).toEqual([null, null, 'true', null]);
   });
 
   it('I5: a run with a failed step and no named failing step marks none', () => {
-    render(<RunDiagram steps={[served[0], step(2, 'provider_call', { outcome: 'failed' }), step(3, 'terminal')]} />);
-    expect(nodes().every((node) => node.getAttribute('data-failing-step') === null)).toBe(true);
-  });
-
-  it('I6: each node leads to its own step in the timeline', () => {
-    render(<><RunDiagram steps={served} /><RunTimeline steps={served} /></>);
-    const targets = nodes().map((node) => node.getAttribute('href'));
-    expect(targets).toEqual(['#run-step-1', '#run-step-2', '#run-step-3', '#run-step-4', '#run-step-5']);
-    const items = screen.getAllByRole('listitem');
-    expect(items.map((item) => `#${item.id}`)).toEqual(targets);
-    expect(items[2].querySelector('strong')?.textContent).toBe('Provider call');
-    expect(nodes()[2].getAttribute('data-step-kind')).toBe('provider_call');
-  });
-
-  it('I7: no steps, no diagram', () => {
-    const { container } = render(<RunDiagram steps={[]} />);
-    expect(container.firstChild).toBeNull();
+    render(<RunTimeline steps={[served[0], step(2, 'provider_call', { outcome: 'failed' }), step(3, 'terminal')]} />);
+    expect(items().every((item) => item.getAttribute('data-failing-step') === null)).toBe(true);
   });
 });

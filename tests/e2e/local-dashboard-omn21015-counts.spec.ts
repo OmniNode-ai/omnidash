@@ -10,7 +10,8 @@ for (const theme of ['light', 'dark'] as const) {
     await serveCharts(page, { ...chartRows,
       [prefix + 'cost.savings-overview.v1']: [{ window: 'all', captured_at: '2026-10-22T10:00:00Z',
         total_cost_usd: '3.5923', total_savings_usd: '1074.2157', run_count: '59188',
-        tokens_total: '309271491', tokens_input: '300000001', tokens_output: '9271490' }],
+        // Dev #462 (omnimarket#4341): cost.savings-overview.v1 serves its directions as tokens_input_total / tokens_output_total.
+        tokens_total: '309271491', tokens_input_total: '300000001', tokens_output_total: '9271490' }],
       [prefix + 'usage-by-model-day.v1']: [{ usage_day: '2026-10-01', model_id: 'model-a',
         input_tokens: '300000001', output_tokens: '9271490', call_count: 59188, measured_cost_usd: '3.5923', cost_tier_name: 'local', call_share: 1 }],
       [prefix + 'metering-summary.v1']: [{ window_kind: 'day', window_start: '2026-10-01',
@@ -21,6 +22,11 @@ for (const theme of ['light', 'dark'] as const) {
     await expect(page.locator('[data-component="overview-measured"] .local-dashboard-metric')).toHaveText('59.18K');
     const tokens = page.locator('[data-component="overview-tokens"]');
     await expect(tokens.locator('.local-dashboard-metric')).toHaveText('309.27M');
+    // OMN-21166 part 12 AC73 (live review 2026-10-25, "in out token also - show it when hover it"): the directions are
+    // in the card's tooltip, opened as a keyboard reader opens it, by focusing the card's info button.
+    const about = tokens.getByRole('button', { name: 'About Tokens processed', exact: true });
+    await about.focus();
+    await expect(tokens.locator('[data-field-tone="tokens-in"]')).toBeVisible();
     await expect(tokens.locator('[data-field-tone="tokens-in"]')).toContainText('300,000,001');
     await expect(tokens.locator('[data-field-tone="tokens-out"]')).toContainText('9,271,490');
     await expect(tokens.getByLabel('Input tokens: 300,000,001', { exact: true })).toHaveAttribute('title', 'Input tokens: 300,000,001');
@@ -37,6 +43,7 @@ for (const theme of ['light', 'dark'] as const) {
     const collapse = page.getByRole('button', { name: 'Collapse sidebar', exact: true });
     if (await collapse.isVisible()) await collapse.click();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+    await about.focus();
     await expect(tokens.locator('[data-field-tone="tokens-in"]')).toBeVisible();
     const smallPair = await tokens.locator('.local-token-direction').all();
     expect(Math.abs((await smallPair[0]!.boundingBox())!.y - (await smallPair[1]!.boundingBox())!.y)).toBeLessThan(2);
@@ -61,10 +68,12 @@ test('metering-backed Overview uses the same compact total and arrow-only full d
   await page.goto('/overview');
   const tokens = page.locator('[data-component="overview-tokens"]');
   await expect(tokens.locator('.local-dashboard-metric')).toHaveText('6.13K');
-  await expect(tokens.locator('[data-field-tone="tokens-in"]')).toContainText('5,756');
-  await expect(tokens.locator('[data-field-tone="tokens-out"]')).toContainText('378');
-  await expect(tokens.locator('.local-token-directions')).not.toContainText('Input');
-  await expect(tokens.locator('.local-token-directions')).not.toContainText('Output');
+  // OMN-21166 live review 2026-10-25: on the metering path the Tokens card is its compact total, and the full
+  // directions (whole integers, never compacted) are its hover line, a tooltip that is the info button's description.
+  await expect(tokens.locator('[role="tooltip"]')).toHaveText('5,756 in · 378 out');
+  await expect(tokens.getByRole('button', { name: 'About Tokens processed' })).toHaveAttribute('aria-describedby', await tokens.locator('[role="tooltip"]').getAttribute('id') ?? '');
+  await expect(tokens).not.toContainText('Input');
+  await expect(tokens).not.toContainText('Output');
 });
 
 test('Evidence selected-run directional counts remain full integers', async ({ page }, info) => {
@@ -91,8 +100,8 @@ test('Overview and Evidence derive missing calls from complete same-row model gr
   await page.goto('/overview');
   await expect(page.locator('[data-component="overview-measured"] .local-dashboard-metric')).toHaveText('59.18K');
   await page.goto('/delegation-evidence');
-  const calls = page.locator('.kpi').filter({has:page.getByText('Delegations',{exact:true})});
-  await expect(calls.locator('.k-v')).toHaveText('59.18K');
+  const calls = page.locator('article[data-kpi-card="Delegations"]'); // part 15 AC91: an Overview card
+  await expect(calls.locator('.local-dashboard-metric')).toHaveText('59.18K');
   await page.screenshot({path:info.outputPath('derived-calls-evidence.png'),fullPage:true});
 });
 
@@ -118,12 +127,19 @@ for (const theme of ['light','dark'] as const) {
     ]});
     await page.goto('/runs');
     await expect(page.locator('body')).toHaveClass(new RegExp(`\\btheme-${theme}\\b`));
-    await page.locator('summary').filter({hasText:/^Show run analysis$/}).click();
-    const model = page.locator('.ins-ring').filter({has:page.getByText('model-a',{exact:true})});
+    // OMN-21166 part 13 + AC64: Runs' analysis is under the page's closed "More analysis", and the model scoreboard
+    // rings are ranked bars ("Pass rate by model") whose name is written in the model's colour.
+    await page.locator('summary').filter({hasText:/^More analysis$/}).click();
+    const model = page.getByRole('figure',{name:'Pass rate by model',exact:true}).locator('[data-ranked-item]').filter({has:page.getByText('model-a',{exact:true})});
     await expect(model).toBeVisible();
-    const color = await model.locator('circle.od-ring').evaluate(el => getComputedStyle(el).stroke);
+    const color = await model.locator('.rb-name').evaluate(el => getComputedStyle(el).color);
     await page.goto('/usage');
-    const legend = page.locator('.usage-model-legend button').filter({hasText:'model-a'});
+    // OMN-21166 AC64: Usage's spend donut and legend buttons are ranked bars ("Measured spend per model"); the
+    // stacked "Tokens per day" chart's legend swatch carries the same model colour.
+    const spend = page.getByRole('figure',{name:'Measured spend per model',exact:true}).locator('[data-ranked-item]').filter({has:page.getByText('model-a',{exact:true})});
+    await expect(spend).toBeVisible();
+    expect(await spend.locator('.rb-name').evaluate(el => getComputedStyle(el).color)).toBe(color);
+    const legend = page.locator('.utc-legend li').filter({hasText:'model-a'});
     await expect(legend).toBeVisible();
     expect(await legend.locator('i').evaluate(el => getComputedStyle(el).backgroundColor)).toBe(color);
     await page.screenshot({path:info.outputPath(`model-colors-${theme}.png`),fullPage:true});

@@ -81,6 +81,9 @@ function asString(v: unknown): string | null {
 }
 
 function asFreshness(v: unknown): ProjectionFreshness {
+  // "idle" is the API's word for a fresh cache whose source has gone quiet (protocol-snapshot-source.ts): a current
+  // read, so it is fresh, not stale (OMN-21166, 2026-10-25).
+  if (v === "idle") return "fresh";
   return v === "fresh" || v === "stale" || v === "degraded" ? v : "unknown";
 }
 
@@ -254,6 +257,12 @@ export interface QualityGateRow {
   escalation_count: number;
   escalation_rate: number;
   failure_categories: QualityGateFailureCategory[];
+  /** OMN-21166 AC66: the acceptance checks, as served; absent fields stay absent, never 0. */
+  by_check_type?: Array<{ check_type?: string | null; passed?: number | null; failed?: number | null; total?: number | null; pass_rate?: number | null }> | null;
+  tokens_to_compliance_by_model?: Array<{ model_name?: string | null; avg_tokens?: number | null; avg_attempts?: number | null; sample_count?: number | null }> | null;
+  median_tokens_to_compliance?: number | null;
+  avg_tokens_to_compliance?: number | null;
+  avg_compliance_attempts?: number | null;
 }
 
 /**
@@ -462,6 +471,14 @@ export const fetchDelegationQualityGate = (): Promise<
 export const fetchCostSavingsOverview = (): Promise<
   ProjectionResult<CostSavingsOverviewRow>
 > => readProjection<CostSavingsOverviewRow>(TOPICS.costSavingsOverview);
+
+/**
+ * OMN-21166 AC50: the metering fold Overview reads when the old aggregate is not in the local store, so Delegation
+ * Evidence can show the same headline figures from the same row.
+ */
+export const fetchMeteringSummary = (): Promise<
+  ProjectionResult<Record<string, unknown>>
+> => readProjection<Record<string, unknown>>(TOPICS.meteringSummary);
 
 export const fetchDelegationSavings = (): Promise<
   ProjectionResult<SavingsRow>

@@ -2,22 +2,22 @@
 :root {
   --card-spend: #047857; --card-savings: #0f766e; --card-calls: #b45309;
   --card-tokens: #2563eb; --card-quality: #7e22ce; --card-activity: #4338ca;
-  --card-surface: #ffffff; --card-canvas: #f7f8fa;
+  --card-surface: var(--panel); --card-canvas: var(--bg);
   --card-routing: #c2410c; --card-identity: #be185d; --card-insights: #0369a1;
 }
 [data-theme="dark"] {
   --card-spend: #6ee7b7; --card-savings: #5eead4; --card-calls: #fbbf24;
   --card-tokens: #93c5fd; --card-quality: #d8b4fe; --card-activity: #a5b4fc;
-  --card-surface: #171b23; --card-canvas: #101319;
+  --card-surface: var(--panel); --card-canvas: var(--bg);
   --card-routing: #fdba74; --card-identity: #f9a8d4; --card-insights: #7dd3fc;
 }
-/* The app frame and page content share one neutral surface palette. */
+/* The app frame and page content share one neutral surface palette: the part-11 tokens in globals.css (OMN-21166
+ * AC61/AC62). Only the active destination and the chart series are set here. */
 .app:has(.local-dashboard-page),
 .app:has(.ev-root[data-destination="delegation-evidence"]) {
-  --bg: var(--card-canvas); --panel: var(--card-surface); --panel-2: #f1f3f6;
-  --ink: #202733; --ink-2: #525d6e; --ink-3: #657184;
   --text-primary: var(--ink); --text-secondary: var(--ink-2); --text-tertiary: var(--ink-3);
-  --line: #e0e4eb; --line-2: #edf0f4;
+  /* AC69: the navigation is unchanged, so the sidebar keeps dev's surface and blue active state; the warm accent is
+     for primary actions only. */
   --sidebar: #ffffff; --sidebar-ink: var(--ink); --sidebar-ink-2: var(--ink-2);
   --sidebar-line: var(--line); --sidebar-hover: var(--panel-2);
   --shell-active: #1d4ed8; --shell-active-surface: #eef3ff;
@@ -30,9 +30,7 @@
 }
 [data-theme="dark"] .app:has(.local-dashboard-page),
 [data-theme="dark"] .app:has(.ev-root[data-destination="delegation-evidence"]) {
-  --panel-2: #222833; --ink: #edf0f5; --ink-2: #b0b9c8; --ink-3: #95a1b4;
-  --line: #303846; --line-2: #252d39; --sidebar: #14181f;
-  --shell-active: #a5c2ff; --shell-active-surface: #202e49;
+  --sidebar: #14181f; --shell-active: #a5c2ff; --shell-active-surface: #202e49;
   --entity-color-lightness: 68%;
   --ins-series-1: #60a5fa; --ins-series-2: #4ade80; --ins-series-3: #fb923c;
   --ins-series-4: #c4b5fd; --ins-series-5: #fde047; --ins-series-6: #e879f9;
@@ -58,7 +56,7 @@
 .local-dashboard-page .local-dashboard-panel,
 .local-dashboard-page .local-dashboard-panel:hover,
 .local-dashboard-page :is(.local-overview-summary,.local-overview-focus,.local-overview-lower) > .local-dashboard-panel,
-.local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel {
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel {
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 20px;
@@ -67,7 +65,7 @@
 }
 .local-dashboard-page .local-dashboard-panel::before { display: none; }
 .local-dashboard-page .local-dashboard-panel > h2,
-.local-dashboard-page--overview .local-overview-summary .local-dashboard-panel > h2 {
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > h2 {
   margin-bottom: 16px; gap: 8px; min-height: 22px; line-height: 1.4;
   color: var(--text-primary); font-size: 14px; font-weight: 600;
 }
@@ -77,31 +75,31 @@
 }
 .local-dashboard-page .local-overview-summary,
 .local-dashboard-page .local-overview-focus { gap: 16px; border: 0; align-items: stretch; }
-.local-dashboard-page--overview .local-overview-surface > .local-overview-focus.local-overview-focus {
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-focus.local-overview-focus {
   grid-template-columns: minmax(0,1fr); gap: 24px; align-items: stretch;
 }
 .local-dashboard-page :is(.local-run-charts,.workflow-analysis-grid,.workflow-record-grid,.usage-insight-grid) {
   grid-template-columns: minmax(0,1fr); gap: 24px;
 }
-.local-dashboard-page--overview .local-overview-focus > .local-dashboard-panel { align-self: stretch; }
+:is(.local-dashboard-page, .ev-root) .local-overview-focus > .local-dashboard-panel { align-self: stretch; }
 .local-dashboard-page .local-overview-summary .local-dashboard-metric { font-size: clamp(26px,2.3vw,36px); font-weight: 650; line-height: 1.2; }
 .local-dashboard-page .local-overview-summary .local-dashboard-metric[data-measured="false"] { font-size: 14px; line-height: 1.5; }
 /* Keep the accounting basis visible without pushing the newest run below the first screen. */
 @media (min-width: 1101px) {
-  .local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel {
+  :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel {
     display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, auto);
     align-content: start; align-items: center; gap: 4px 8px; padding: 12px 16px;
   }
-  .local-dashboard-page--overview .local-overview-summary .local-dashboard-panel > h2 {
+  :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > h2 {
     grid-column: 1; grid-row: 1; margin: 0; min-width: 0; overflow-wrap: anywhere;
   }
-  .local-dashboard-page--overview .local-overview-summary .local-dashboard-panel > .local-dashboard-metric {
+  :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > .local-dashboard-metric {
     grid-column: 2; grid-row: 1; margin: 0; min-width: 0; overflow-wrap: anywhere; text-align: right;
   }
-  .local-dashboard-page--overview .local-overview-summary .local-dashboard-panel > :not(h2):not(.local-dashboard-metric) {
+  :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > :not(h2):not(.local-dashboard-metric) {
     grid-column: 1 / -1; min-width: 0;
   }
-  .local-dashboard-page--overview .local-overview-summary .local-dashboard-panel > .local-dashboard-metric[data-measured="false"] {
+  :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > .local-dashboard-metric[data-measured="false"] {
     grid-column: 1 / -1; grid-row: auto; text-align: left;
   }
 }
@@ -172,6 +170,6 @@ main.ev-root[data-destination="delegation-evidence"] .ev-selected-run-layout > :
   .local-dashboard-page .local-dashboard-panel,
   .local-dashboard-page .local-dashboard-panel:hover,
   .local-dashboard-page :is(.local-overview-summary,.local-overview-focus,.local-overview-lower) > .local-dashboard-panel,
-.local-dashboard-page--overview .local-overview-surface > .local-overview-summary > .local-dashboard-panel { padding: 16px; }
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel { padding: 16px; }
   .local-dashboard-page .local-token-directions { gap: 12px; }
 }

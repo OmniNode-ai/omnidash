@@ -7,22 +7,26 @@ test.use({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce', trac
 test('missing spend is a compact notice, while measured charts and run identity survive', async ({ page }, info) => {
   await serveCharts(page, { ...chartRows, [prefix + 'metering-summary.v1']: [] });
   await page.goto('/overview');
-  await page.getByText('Additional runtime metrics', { exact: true }).press('Enter');
-  const spend = page.locator('[data-component="overview-spend-by-day"]');
-  await expect(spend).toContainText('No day rows yet');
+  // OMN-21166 AC86 (Lakshman 2026-10-25): "Additional runtime metrics", the Spend per day chart ("No day rows yet") and
+  // the Last run card are deleted from Overview. The same property is held on what survives: an unserved spend is a
+  // compact notice on its headline card, never a chart-sized blank, and the measured quality card and the run charts
+  // beside it are untouched.
+  const spend = page.locator('[data-component="overview-spend"]');
+  await expect(spend).toContainText('Not measured: overview totals unavailable');
   expect(await spend.evaluate(el => el.getBoundingClientRect().height)).toBeLessThanOrEqual(150);
-  const latest = page.locator('[data-component="overview-last-run"]');
-  expect(await latest.evaluate(el => el.getBoundingClientRect().height)).toBeLessThanOrEqual(220);
-  await expect(latest.getByRole('link', { name: 'chart-run-a', exact: true })).toHaveAttribute('href', /correlation_id=chart-run-a/);
-  await latest.getByText('Execution details', { exact: true }).click();
-  await expect(latest.getByText('Quality score', { exact: true })).toBeVisible();
+  await expect(page.locator('[data-component="overview-quality"][data-slice="card"] .local-dashboard-metric')).toHaveText('75.0%');
+  await expect(page.getByRole('figure', { name: 'Runs per day', exact: true }).getByRole('button', { name: /^Oct 17: 3 runs/ })).toBeVisible();
+  // Run identity survives on Runs, which still links each run (the Last run card that linked it is gone from Overview).
+  await page.goto('/runs');
+  await expect(page.getByRole('link', { name: 'chart-run-a', exact: true })).toHaveAttribute('href', /correlation_id=chart-run-a/);
   await page.screenshot({ path: info.outputPath('missing-compact.png'), fullPage: true });
   await serveCharts(page);
-  await page.reload();
-  await page.getByText('Additional runtime metrics', { exact: true }).press('Enter');
-  await expect(page.locator('[data-component="overview-spend-by-day"] .local-chart-canvas')).toBeVisible();
-  await expect(page.locator('[data-component="overview-spend-by-day"] tr').filter({ hasText: '2026-10-02' }).locator('td').nth(1)).toHaveText('$0.00');
-  await expect(page.locator('[data-component="overview-spend-by-day"] tr').filter({ hasText: '2026-10-03' }).locator('td').nth(1)).toHaveText('Not measured');
+  await page.goto('/usage');
+  // The served day rows: a measured value is drawn, a day whose value is not served reads Not measured, never $0.
+  await page.getByText('Savings by day as a table', { exact: true }).press('Enter');
+  const days = page.getByRole('table', { name: /Savings per day/ });
+  await expect(days.getByRole('row').filter({ hasText: '2026-10-01' }).getByRole('cell').nth(1)).toHaveText('$0.01');
+  await expect(days.getByRole('row').filter({ hasText: '2026-10-03' }).getByRole('cell').nth(1)).toHaveText('Not measured');
   await page.setViewportSize({ width: 320, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
   await page.screenshot({ path: info.outputPath('populated-narrow.png'), fullPage: true });

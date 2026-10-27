@@ -1,4 +1,4 @@
-import { Activity, BadgeCheck, Blocks, ChartColumn, FlaskConical, Gauge, KeyRound, LayoutDashboard, LockKeyhole, Radio, Workflow, type LucideIcon } from 'lucide-react';
+import { Activity, BadgeCheck, Blocks, ChartColumn, FlaskConical, Gauge, LayoutDashboard, Radio, Settings, Workflow, type LucideIcon } from 'lucide-react';
 import type { AppPage } from '@/store/types';
 import { PAGE_LABELS } from './page-routes';
 import '@/styles/destination-identity.css';
@@ -9,8 +9,7 @@ export const DESTINATION_ICONS: Partial<Record<AppPage, LucideIcon>> = {
   'local-runs': Activity,
   'local-workflow': Workflow,
   'local-usage': ChartColumn,
-  'local-credentials': KeyRound,
-  'local-api-keys': LockKeyhole,
+  'local-settings': Settings,
   'delegation-evidence': BadgeCheck,
   experiments: FlaskConical,
   'sea-control': Blocks,

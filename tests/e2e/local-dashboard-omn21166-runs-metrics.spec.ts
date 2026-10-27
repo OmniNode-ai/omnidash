@@ -1,4 +1,4 @@
-import { expect, test } from 'playwright/test';
+import { expect, test, type Page } from 'playwright/test';
 import { chartRows, prefix, runIds, serveCharts } from './omn21166-chart-fixtures';
 
 // Before implementation: catch wrong source/identity, zero replaced by missing,
@@ -15,15 +15,24 @@ const rows = {
 };
 test.use({ viewport: { width: 1440, height: 900 }, trace: 'on' });
 
+// OMN-21166 part 18 AC118: Runs' four run charts and "This week" sit first inside the page's one closed "More analysis"
+// (the "More run charts" disclosure is merged into it).
+async function openRunCharts(page: Page) {
+  await page.getByText('More analysis', { exact: true }).press('Enter');
+  await expect(page.locator('details.local-more').filter({ has: page.locator('article.local-run-charts-panel') })).toHaveAttribute('open', '');
+  await expect(page.getByText('More run charts', { exact: true })).toHaveCount(0);
+}
+
 test('fractional median duration retains milliseconds instead of the integer count format', async ({ page }, info) => {
   // Two integer durations, 813 and 210, produce a valid fractional median.
   await serveCharts(page, rows);
-  await page.goto('/overview');
-  const metric = page.locator('.local-dashboard-metric').filter({ has: page.getByText('Median duration', { exact: true }) });
-  await expect(metric).toContainText('511.5 ms');
+  // OMN-21166 AC86 (Lakshman 2026-10-25): "More activity" and its Median duration card are deleted from Overview; AC55's
+  // one duration formatter (whole milliseconds, exact median in the title) is checked on Runs' analysis below.
   await page.goto('/runs');
-  await page.getByText('Show run analysis', { exact: true }).press('Enter');
-  await expect(page.getByText('Median 511.5 ms', { exact: true })).toBeVisible();
+  // OMN-21166 part 13: Runs' analysis sits under the page-level "More analysis".
+  await page.getByText('More analysis', { exact: true }).press('Enter');
+  await expect(page.getByText('Median 512 ms', { exact: true })).toBeVisible();
+  await expect(page.locator('article[data-kpi-card="Median duration"] .local-dashboard-metric')).toHaveAttribute('title', '511.5 ms');
   await expect(page.getByText('Not measured ms', { exact: true })).toHaveCount(0);
   await page.screenshot({ path: info.outputPath('fractional-duration.png') });
 });
@@ -32,6 +41,7 @@ test('cost and score show precise served values, zero and unknown, and open exac
   await serveCharts(page, rows);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/runs');
+  await openRunCharts(page);
   const cost = page.getByRole('figure', { name: 'Local cost per run', exact: true });
   const score = page.getByRole('figure', { name: 'Quality score per run', exact: true });
   for (const chart of [cost, score]) await expect(chart.locator('.local-chart-canvas svg')).toBeVisible();
@@ -53,9 +63,14 @@ test('cost and score show precise served values, zero and unknown, and open exac
   await score.getByLabel('Inspect run').selectOption(runIds[0]);
   // Read and activate the actual painted score bar, not chart-library state.
   await score.scrollIntoViewIfNeeded();
-  const color = await score.locator('.local-chart-symbol').evaluate(el => getComputedStyle(el).color);
+  // Part 18 AC124: no icon badge carries the chart's colour any more, so the chart's own accent is read through a probe.
+  const color = await score.evaluate(el => {
+    const probe = document.createElement('span'); probe.style.color = 'var(--panel-accent)'; el.append(probe);
+    try { return getComputedStyle(probe).color; } finally { probe.remove(); }
+  });
   const painted = await score.locator('.local-chart-canvas svg path').evaluateAll((els, color) => els.filter(el => {
-    const b=el.getBoundingClientRect(); return getComputedStyle(el).fill === color && b.width > 3 && b.height > 3;
+    // The bar's colour is its outline's stroke; the hatch is a separate pattern path (live review 2026-10-26).
+    const b=el.getBoundingClientRect(); return getComputedStyle(el).stroke === color && !getComputedStyle(el).fill.startsWith('url(') && b.width > 3 && b.height > 3;
   }).map(el => { const b=el.getBoundingClientRect(); return { x:b.x+b.width/2, y:b.y+b.height/2 }; }), color);
   expect(painted).toHaveLength(1);
   await page.mouse.move(painted[0].x, painted[0].y);
@@ -68,6 +83,7 @@ test('cost and score show precise served values, zero and unknown, and open exac
 test('missing and malformed metric values remain explicit instead of zero charts', async ({ page }, info) => {
   await serveCharts(page, { ...rows, [savings]: [], [decisions]: rows[decisions].map(row => ({ ...row, cost_usd: null, actual_score: [] })) });
   await page.goto('/runs');
+  await openRunCharts(page);
   for (const name of ['Local cost per run', 'Quality score per run']) {
     const chart = page.getByRole('figure', { name, exact: true });
     await expect(chart).toContainText('No recorded values for these runs');
@@ -83,6 +99,7 @@ test('metrics follow pagination and keep compact equal cards in both themes and 
   await serveCharts(page, { ...rows, [decisions]: many });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/runs');
+  await openRunCharts(page);
   const cost = page.getByRole('figure', { name: 'Local cost per run', exact: true });
   await expect(cost).toHaveAttribute('data-motion', 'reduced');
   await cost.getByLabel('Inspect run').selectOption('metric-0');
@@ -109,6 +126,7 @@ test('metrics follow pagination and keep compact equal cards in both themes and 
 test('measured zero cost has a visible explanation and keeps missing costs separate', async ({ page }) => {
   await serveCharts(page, { ...rows, [savings]: [], [decisions]: rows[decisions].map((row, i) => ({ ...row, cost_usd: i === 2 ? null : 0 })) });
   await page.goto('/runs');
+  await openRunCharts(page);
   const chart = page.getByRole('figure', { name: 'Local cost per run', exact: true });
   await expect(chart).toContainText('2 of 3 recorded');
   await expect(chart).toContainText('Recorded costs are $0');

@@ -12,11 +12,13 @@
       "data_bindings": [
         {
           "binding_id": "api-keys-tenant",
-          "projection_topic": "onex.snapshot.projection.delegation.savings.v1",
-          "ordering_authority_field": "captured_at",
+          "projection_topic": "onex.snapshot.projection.local-environment.v1",
+          "ordering_authority_field": "updated_at",
           "ordering_direction": "descending",
           "required_fields": [
-            "tenant_id"
+            "tenant_id",
+            "mode",
+            "service"
           ]
         }
       ],

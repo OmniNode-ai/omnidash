@@ -13,6 +13,7 @@ const OVERVIEW_ALL_ROW = { window: 'all', captured_at: '2026-10-02T10:07:00Z', t
 const CREDENTIALS = 'onex.snapshot.projection.tenant-credentials.v1';
 const USAGE = 'onex.snapshot.projection.usage-by-model-day.v1';
 const RUN_TRACE = 'onex.snapshot.projection.run-trace.v1';
+const ENVIRONMENT = 'onex.snapshot.projection.local-environment.v1';
 
 const harness = vi.hoisted(() => ({
   reads: [] as string[],
@@ -122,8 +123,9 @@ describe('LocalDashboardPage widget states (F26, F27)', () => {
     await settle();
     const spend = screen.getByRole('heading', { name: 'Actual spend' }).closest('article')!;
     expect(within(spend).getByText('Not available yet: savings summary.')).toBeInTheDocument();
-    const lastRun = screen.getByRole('heading', { name: 'Last run' }).closest('article')!;
-    expect(within(lastRun).getByText('run-1')).toBeInTheDocument();
+    // OMN-21166 live review 2026-10-25: Last run left Overview; Runs per day reads the served decisions instead.
+    const runsPerDay = screen.getByRole('heading', { name: 'Runs per day' }).closest('article')!;
+    expect(within(runsPerDay).queryByText(/Not available yet/)).toBeNull();
     expect(screen.queryByRole('alert', { name: /page/i })).not.toBeInTheDocument();
   });
 
@@ -300,25 +302,46 @@ describe('Partial pages (FR-3, CR-2, CR-3, AK-3, F24)', () => {
     expect(within(panel).queryByText(/^\$?0(?:\.0+)?$/)).not.toBeInTheDocument();
   });
 
+  it('an empty service-health read followed by a failed refresh says it could not read, never that nothing reported (OMN-21166 AC162)', async () => {
+    // Found by review of eddb28d6: the loader keeps the earlier empty rows beside the failure, so the panels saw "no rows".
+    harness.reachable = new Set([ENVIRONMENT]);
+    harness.answer = () => Promise.resolve([]);
+    render(<><LocalDashboardPage pageName="status" embedded /><LocalDashboardPage pageName="api-keys" embedded /></>);
+    await settle();
+    expect(screen.getByText(/No service has reported yet\./)).toBeInTheDocument();
+    expect(screen.getByText('Access details not reported yet')).toBeInTheDocument();
+    harness.answer = () => Promise.reject(new Error(`Projection ${ENVIRONMENT} failed: HTTP 503 Service Unavailable`));
+    await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
+    expect(screen.getByText(/could not read the service health/)).toBeInTheDocument();
+    expect(screen.queryByText(/No service has reported yet\./)).not.toBeInTheDocument();
+    expect(screen.getByText('Access details could not be read')).toBeInTheDocument();
+    expect(screen.queryByText('Access details not reported yet')).not.toBeInTheDocument();
+  });
+
   it('API Keys preserves served local identity without the deferred Cloud Keys panel (OMN-21166 AC5)', async () => {
-    harness.reachable = new Set([SAVINGS]);
-    harness.answer = () => Promise.resolve([{ tenant_id: '820272f9-4aaf-5add-a2df-0af942852ab2', sessions: [] }]);
+    // OMN-21166 part 11: the identity reads the native runtime row of local-environment.v1, not the savings rows.
+    harness.reachable = new Set([ENVIRONMENT]);
+    harness.answer = () => Promise.resolve([{ tenant_id: '820272f9-4aaf-5add-a2df-0af942852ab2', mode: 'native', service: 'local-runtime',
+      access_mode: 'loopback-token', token_minted_at: '2026-10-25T10:36:18.358815+00:00', rotate_hint: 'Restart onex dashboard', updated_at: '2026-10-25T10:36:18Z' }]);
     render(<LocalDashboardPage pageName="api-keys" />);
     await settle();
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('API Keys');
     const identity = screen.getByRole('heading', { name: 'Local identity' }).closest('article')!;
     expect(within(identity).getByText('820272f9-4aaf-5add-a2df-0af942852ab2')).toBeInTheDocument();
-    expect(within(identity).getByText('Mint time unavailable.')).toBeInTheDocument();
+    // Part 18 AC130: the identity's mint time is never served, so its always-empty row is not drawn.
+    expect(within(identity).queryByText('Minted')).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Cloud Keys' })).not.toBeInTheDocument();
     expect(screen.queryByText(/CLOUD_NOT_LINKED/)).not.toBeInTheDocument();
     expect(document.querySelector('input, textarea, select, form')).toBeNull();
   });
 
-  it('Credentials with no key ref shows the onex secret set command and no input', async () => {
+  it('Credentials with no key ref draws no second empty message and no input (revision 3, AC161)', async () => {
     render(<LocalDashboardPage pageName="credentials" />);
     await settle();
-    expect(screen.getByText('No provider credentials recorded')).toBeInTheDocument();
-    expect(screen.getByText('onex secret set')).toBeInTheDocument();
+    // The control: the page drew its provider region (GET /models is unreachable here), so the absences below are read.
+    expect(screen.getByRole('region', { name: 'Model providers' })).toBeInTheDocument();
+    expect(screen.queryByText('No provider credentials recorded')).not.toBeInTheDocument();
+    expect(screen.queryByText('onex secret set')).not.toBeInTheDocument();
     expect(document.querySelector('input, textarea, form')).toBeNull();
   });
 
@@ -326,9 +349,11 @@ describe('Partial pages (FR-3, CR-2, CR-3, AK-3, F24)', () => {
     harness.answer = () => Promise.resolve([{ provider: 'openrouter', name: 'OPENROUTER_API_KEY', created_at: '2026-10-01T09:00:00Z', revoked_at: null, api_key_value: 'sk-planted' }]);
     render(<LocalDashboardPage pageName="credentials" />);
     await settle();
+    // Part 18 AC128: with GET /models unreachable here, the served key is still listed on its own (Provider key
+    // references); an in-use key has no Revoked column.
     const row = screen.getByRole('row', { name: /OPENROUTER_API_KEY/ });
-    expect(within(row).getByText('openrouter')).toBeInTheDocument();
-    expect(within(row).getByText('Not revoked')).toBeInTheDocument();
+    expect(within(row).getByText('OpenRouter')).toBeInTheDocument(); // one case for provider names (part 18 review)
+    expect(within(row).queryByText('Not revoked')).not.toBeInTheDocument();
     expect(screen.queryByText('sk-planted')).not.toBeInTheDocument();
   });
 });

@@ -5,10 +5,10 @@ import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
 // data, null becomes zero, zero disappears, scores imply a made-up verdict,
 // foreign trace rows are plotted, or phone charts overflow.
 test.use({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce', trace: 'on' });
-test.beforeEach(async ({ page }) => {
-  await serveCharts(page, { ...chartRows,
-    [prefix + 'delegation.decisions.v1']: [{
-      ...(chartRows[prefix + 'delegation.decisions.v1'][0] as object),
+const decisionsTopic = prefix + 'delegation.decisions.v1';
+const baseRows = { ...chartRows,
+    [decisionsTopic]: [{
+      ...(chartRows[decisionsTopic][0] as object),
       tokens_input: 0, tokens_output: null, actual_score: '0.40', required_bar: '0.80',
       cost_usd: '0.000000', data_source: 'fixture', terminal_ok: false,
       latency_ms: 69555,
@@ -19,13 +19,20 @@ test.beforeEach(async ({ page }) => {
       { correlation_id: 'chart-run-a', step_sequence: 1, step_kind: 'request', duration_ms: 0, outcome: 'succeeded' },
       { correlation_id: 'chart-run-a', step_sequence: 2, step_kind: 'provider_call', duration_ms: 120, outcome: 'succeeded' },
     ],
-  });
-});
+};
+// OMN-21166 part 13: the Run timing card is left out when only the total duration is drawable (the Duration tile says
+// the same). The timing-chart tests serve the run's queue wait and execution too, so the card is drawn.
+const timedRows = { ...baseRows,
+  [decisionsTopic]: [{ ...(baseRows[decisionsTopic][0] as object), queue_wait_ms: 1200, execution_ms: 68355 }],
+};
+test.beforeEach(async ({ page }) => { await serveCharts(page, baseRows); });
 
 // Served decision extensions must preserve zero, remain scoped to the selected
 // run, and omit unavailable optional provenance rather than add empty cards.
 test('Workflow exposes available backend decision fields compactly', async ({ page }, info) => {
   await page.goto('/workflow?correlation_id=chart-run-a');
+  // OMN-21166 part 13: Recorded run details sit under the closed "More run details".
+  await page.getByText('More run details', { exact: true }).press('Enter');
   const details = page.getByRole('region', { name: 'Recorded run details', exact: true });
   for (const value of ['served-routed-model', 'served-answering-backend', 'served-score-source', 'served-writer']) {
     await expect(details).toContainText(value);
@@ -40,6 +47,8 @@ test('Workflow exposes available backend decision fields compactly', async ({ pa
 
 test('Workflow charts and recorded details read the selected run without inventing values', async ({ page }, info) => {
   await page.goto('/workflow?correlation_id=chart-run-a');
+  // OMN-21166 part 13: Token flow, Quality score comparison and Recorded run details are under "More run details".
+  await page.getByText('More run details', { exact: true }).press('Enter');
   const tokens = page.getByRole('figure', { name: 'Token flow', exact: true });
   await expect(tokens).toBeVisible();
   await expect(tokens).toContainText('Input tokens');
@@ -69,11 +78,13 @@ test('an unknown run does not inherit the newest run charts or foreign stage dur
 });
 
 test('compact timing ticks remain readable without overlapping', async ({ page }) => {
+  await serveCharts(page, timedRows);
   await page.goto('/workflow?correlation_id=chart-run-a');
   const chart = page.getByRole('figure', { name: 'Run timing', exact: true });
   await expect(chart.locator('svg')).toBeVisible();
   const ticks = await chart.locator('svg text').evaluateAll(elements => elements
-    .filter(element => /^\d[\d,.]* ms$/.test(element.textContent?.trim() ?? ''))
+    // OMN-21166 part 13: with the queue and execution bars served the axis runs to 70 s, so tick labels read in s and min as well as ms.
+    .filter(element => /^\d[\d,.]* (ms|s)$|^\d+ min \d+ s$/.test(element.textContent?.trim() ?? ''))
     .map(element => { const rect = element.getBoundingClientRect(); return { x: rect.x, y: Math.round(rect.y), right: rect.right, width: rect.width }; })
     .filter(rect => rect.width > 0));
   expect(ticks.length).toBeGreaterThan(1);
@@ -82,11 +93,13 @@ test('compact timing ticks remain readable without overlapping', async ({ page }
 });
 
 test('each analysis card keeps its accent in its chart and icon', async ({ page }) => {
+  await serveCharts(page, timedRows);
   await page.goto('/workflow?correlation_id=chart-run-a');
   const timing = page.locator('.workflow-analysis-card--timing');
   await expect(timing.locator('svg').last()).toBeVisible();
   const accent = await timing.evaluate(element => getComputedStyle(element).getPropertyValue('--analysis-accent').trim());
-  await expect(timing.locator(`.local-chart-canvas path[fill="${accent}"]`).first()).toBeVisible();
+  // A hatched bar carries its colour in its outline's stroke (live review 2026-10-26).
+  await expect(timing.locator(`.local-chart-canvas path[stroke="${accent}"]`).first()).toBeVisible();
   const accents = await page.locator('.local-run-summary-group, .workflow-analysis-card').evaluateAll(elements => elements.map(element => {
     const style = getComputedStyle(element);
     return style.getPropertyValue('--fact-accent').trim() || style.getPropertyValue('--analysis-accent').trim();
@@ -94,16 +107,19 @@ test('each analysis card keeps its accent in its chart and icon', async ({ page 
   expect(new Set(accents).size).toBe(accents.length);
 });
 
-test('recorded stage flow keeps keyboard navigation without decorative particles', async ({ page }) => {
+test('recorded steps show in the timeline without a box row or decorative particles', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.goto('/workflow?correlation_id=chart-run-a');
+  // OMN-21166 part 18 AC125: the row of step boxes (and its links) is removed; the timeline below shows the same steps.
   const flow = page.getByRole('navigation', { name: 'Run steps, in the order served', exact: true });
-  await expect(flow.getByRole('link')).toHaveCount(2);
-  await expect(flow.locator('.workflow-flow-particle')).toHaveCount(0);
+  await expect(flow).toHaveCount(0);
+  await expect(page.locator('nav.local-run-diagram')).toHaveCount(0);
+  await expect(page.locator('.workflow-flow-particle')).toHaveCount(0);
+  await expect(page.locator('ol.local-dashboard-steps > li')).toHaveCount(2);
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await expect(flow.getByRole('link')).toHaveCount(2);
-  await flow.getByRole('link').last().press('Enter');
-  await expect(page.locator('#run-step-2')).toBeInViewport();
+  await expect(page.locator('ol.local-dashboard-steps > li')).toHaveCount(2);
+  // Each timeline step keeps its own anchor.
+  await expect(page.locator('ol.local-dashboard-steps > li#run-step-2')).toHaveCount(1);
 });
 
 test('a run with no trace retains its recorded routing fields without filler labels', async ({ page }) => {
@@ -118,6 +134,7 @@ test('a run with no trace retains its recorded routing fields without filler lab
 });
 
 test('phone timing labels stay inside the chart without clipping their units', async ({ page }) => {
+  await serveCharts(page, timedRows);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/workflow?correlation_id=chart-run-a');
   const collapse = page.getByRole('button', { name: 'Collapse sidebar', exact: true });

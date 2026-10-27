@@ -79,7 +79,7 @@ describe('OMN-21015 AC10 API Keys page binding', () => {
     expect(harness.reads).toContain(ENVIRONMENT);
     const card = accessCard();
     expect(field(card, 'Access')).toBe('loopback-token');
-    expect(field(card, 'Token minted')).toBe('2026-10-21T09:00:00+00:00');
+    expect(field(card, 'Token minted')).toBe('Oct 21, 09:00:00 UTC');
     expect(field(card, 'Rotate')).toContain('every start mints a new token');
   });
 
@@ -87,11 +87,11 @@ describe('OMN-21015 AC10 API Keys page binding', () => {
     harness.answer = (topic) => Promise.resolve(topic === ENVIRONMENT ? [native('2026-10-21T09:00:00+00:00')] : []);
     render(<LocalDashboardPage pageName="api-keys" />);
     await settle();
-    expect(field(accessCard(), 'Token minted')).toBe('2026-10-21T09:00:00+00:00');
+    expect(field(accessCard(), 'Token minted')).toBe('Oct 21, 09:00:00 UTC');
     harness.answer = (topic) => Promise.resolve(topic === ENVIRONMENT ? [native('2026-10-21T09:45:00+00:00')] : []);
     await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
     await settle();
-    expect(field(accessCard(), 'Token minted')).toBe('2026-10-21T09:45:00+00:00');
+    expect(field(accessCard(), 'Token minted')).toBe('Oct 21, 09:45:00 UTC');
   });
 
   it('P4: with no native row served the card says what it waits on and shows no value', async () => {
@@ -100,7 +100,7 @@ describe('OMN-21015 AC10 API Keys page binding', () => {
     await settle();
     const card = accessCard();
     // OMN-21166 AC39: the user reads what is missing in plain words, never an exposure name.
-    expect(within(card).getByRole('status')).toHaveTextContent('Not available yet: dashboard access details');
+    expect(within(card).getByRole('status')).toHaveTextContent('Access details not reported yet');
     expect(within(card).getByRole('status')).not.toHaveTextContent('local-environment');
     expect(within(card).queryByText('compose-mode')).not.toBeInTheDocument();
   });
@@ -129,20 +129,20 @@ describe('OMN-21015 AC10 API Keys page binding', () => {
     const newer = { ...native('2026-10-21T09:30:00+00:00'), access_mode: 'loopback-token-v2' };
     const card = await renderWith([older, newer]);
     expect(field(card, 'Access')).toBe('loopback-token-v2');
-    expect(field(card, 'Token minted')).toBe('2026-10-21T09:30:00+00:00');
+    expect(field(card, 'Token minted')).toBe('Oct 21, 09:30:00 UTC');
   });
 
   it('P6b: two matching rows tied on the newest updated_at show the not-available state, not a guess', async () => {
     const a = native('2026-10-21T09:00:00+00:00');
     const b = { ...native('2026-10-21T09:00:00+00:00'), access_mode: 'other-mode' };
     const card = await renderWith([a, b]);
-    expect(within(card).getByRole('status')).toHaveTextContent('Not available yet: dashboard access details');
+    expect(within(card).getByRole('status')).toHaveTextContent('Access details not reported yet');
     expect(within(card).queryByText('other-mode')).not.toBeInTheDocument();
   });
 
   it('P6c: with several matching rows, one missing or unparseable updated_at shows the not-available state', async () => {
     const card = await renderWith([native('2026-10-21T09:00:00+00:00'), { ...native('x'), updated_at: 'not-a-date' }]);
-    expect(within(card).getByRole('status')).toHaveTextContent('Not available yet: dashboard access details');
+    expect(within(card).getByRole('status')).toHaveTextContent('Access details not reported yet');
   });
 
   it('P7: whitespace-only values say Not recorded, never a blank', async () => {
@@ -158,6 +158,6 @@ describe('OMN-21015 AC10 API Keys page binding', () => {
     );
     const card = await renderWith([single]);
     expect(field(card, 'Access')).toBe('loopback-token');
-    expect(field(card, 'Token minted')).toBe('2026-10-21T09:00:00+00:00');
+    expect(field(card, 'Token minted')).toBe('Oct 21, 09:00:00 UTC');
   });
 });

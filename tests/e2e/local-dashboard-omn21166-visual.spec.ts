@@ -54,7 +54,8 @@ async function theme(page: Page, value: string) {
     await page.getByRole('button', { name: 'Toggle theme', exact: true }).click();
 }
 
-test('AC10 bundled Inter typography preserves the Poppins wordmark', async ({ page }) => {
+// OMN-21166 part 11 AC62 (corrected): Inter is the bundled text face, JetBrains Mono the identifier face; Poppins stays on the wordmark.
+test('AC62 bundled Inter and JetBrains Mono typography preserves the Poppins wordmark', async ({ page }) => {
   const external: string[] = [];
   page.on('request', request => {
     if (['fonts.googleapis.com', 'fonts.gstatic.com'].includes(new URL(request.url()).hostname)) external.push(request.url());
@@ -63,21 +64,31 @@ test('AC10 bundled Inter typography preserves the Poppins wordmark', async ({ pa
   await expect(page.locator('.local-dashboard-panel').first()).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
   expect(await page.locator('body').evaluate(el => getComputedStyle(el).fontFamily)).toContain('Inter');
-  expect(await page.evaluate(() => document.fonts.check('14px Inter'))).toBe(true);
+  // fonts.check() is true only once a face was used; part 13 keeps most identifiers in closed sections, so the mono
+  // face may not be fetched on load. load() resolves the bundled faces for the family (none when nothing is bundled).
+  expect(await page.evaluate(async () => (await document.fonts.load('14px Inter')).length)).toBeGreaterThan(0);
+  expect(await page.evaluate(async () => (await document.fonts.load('14px "JetBrains Mono"')).length)).toBeGreaterThan(0);
   expect(await page.locator('.brand-name .primary').evaluate(el => getComputedStyle(el).fontFamily)).toContain('Poppins');
   expect(external).toEqual([]);
 });
 
 test('AC10 sentence case headings and semantic panel icon badges', async ({ page }) => {
   await page.goto('/overview');
+  // OMN-21166 AC63: the five KPI strip labels (OMN-21166 live review 2026-10-25: Delegation Quality is the fifth card) are uppercase by design; every other panel heading stays sentence case.
   const headings = page.locator('.local-dashboard-panel h2');
   await expect(headings.first()).toBeVisible();
-  expect(await headings.first().evaluate(el => getComputedStyle(el).textTransform)).toBe('none');
-  const icons = await page.locator('.local-dashboard-panel h2 svg').evaluateAll(els => els.slice(0, 4).map(el => ({
-    color: getComputedStyle(el).color, background: getComputedStyle(el).backgroundColor,
+  const transforms = await headings.evaluateAll(els => els.map(el => ({
+    kpi: !!el.closest('.local-overview-summary'), transform: getComputedStyle(el).textTransform })));
+  expect(transforms.filter(item => item.kpi)).toHaveLength(5);
+  expect(transforms.filter(item => !item.kpi).length).toBeGreaterThan(0);
+  for (const item of transforms.filter(item => !item.kpi)) expect(item.transform).toBe('none');
+  // The five KPI icons are unbadged glyphs, each in its own field colour (and each naming its own field).
+  const icons = await page.locator('.local-dashboard-panel h2 svg').evaluateAll(els => els.slice(0, 5).map(el => ({
+    color: getComputedStyle(el).color, background: getComputedStyle(el).backgroundColor, field: el.getAttribute('data-field-icon'),
   })));
-  expect(icons).toHaveLength(4);
-  expect(new Set(icons.map(icon => icon.color)).size).toBe(4);
+  expect(icons).toHaveLength(5);
+  expect(new Set(icons.map(icon => icon.color)).size).toBe(5);
+  expect(new Set(icons.map(icon => icon.field)).size).toBe(5);
   for (const icon of icons) expect(icon.background).toBe('rgba(0, 0, 0, 0)');
 });
 

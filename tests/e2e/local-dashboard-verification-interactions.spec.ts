@@ -8,20 +8,21 @@ import { chartRows, prefix, runIds, serveCharts } from './omn21166-chart-fixture
 // These fixtures exercise the UI contract and do not certify a live runtime.
 test.use({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce', trace: 'on' });
 
-test('Usage zoom and reset preserve the selected day and exact served table', async ({ page }, info) => {
+// OMN-21166 live review 2026-10-26: the range slider and Reset view are removed; the selected day and table still hold.
+test('Usage savings chart has no range slider and keeps the selected day and exact served table', async ({ page }, info) => {
   await serveCharts(page);
   await page.goto('/usage');
   const panel = page.locator('[data-component="usage-savings-series"]');
   const chart = panel.getByRole('figure', { name: 'Savings per day vs baseline-a', exact: true });
   await expect(chart.locator('.local-chart-canvas svg')).toBeVisible();
+  // OMN-21166 part 13: the savings day table is under "Savings by day as a table".
+  await panel.getByText('Savings by day as a table', { exact: true }).press('Enter');
   const before = await panel.getByRole('table').innerText();
   await chart.getByLabel('Inspect day', { exact: true }).selectOption('1');
   await expect(chart.getByRole('status')).toContainText('2026-10-02');
   await expect(chart.getByRole('status')).toContainText(/Savings: \$0\.03$/);
-  await chart.getByLabel('First point', { exact: true }).press('ArrowRight');
-  await expect(chart.getByText('Showing 2–3 of 3', { exact: true })).toBeVisible();
-  await chart.getByRole('button', { name: 'Reset view', exact: true }).click();
-  await expect(chart.getByText('Showing 1–3 of 3', { exact: true })).toBeVisible();
+  await expect(chart.locator('input[type="range"]')).toHaveCount(0);
+  await expect(chart.getByRole('button', { name: 'Reset view', exact: true })).toHaveCount(0);
   await expect(chart.getByLabel('Inspect day', { exact: true })).toHaveValue('1');
   expect(await panel.getByRole('table').innerText()).toBe(before);
   await page.screenshot({ path: info.outputPath('usage-reset.png'), fullPage: true });
@@ -33,6 +34,8 @@ test('a refresh inserting a newer run preserves the selected full run id', async
   const decisions = chartRows[topic].map(row => ({ ...row as Record<string, unknown> }));
   await serveCharts(page, { ...chartRows, [topic]: decisions });
   await page.goto('/runs');
+  // OMN-21166 part 18 AC118: the run charts sit first inside Runs' one closed "More analysis"; open it first.
+  await page.getByText('More analysis', { exact: true }).press('Enter');
   const chart = page.getByRole('figure', { name: 'Duration per run', exact: true });
   const selector = chart.getByLabel('Inspect run', { exact: true });
   await selector.selectOption(runIds[1]);
@@ -50,6 +53,8 @@ test('a refresh inserting a newer run preserves the selected full run id', async
 test('filtering the selected run off the chart clears it without selecting another run', async ({ page }, info) => {
   await serveCharts(page);
   await page.goto('/runs');
+  // OMN-21166 part 18 AC118: the run charts sit first inside Runs' one closed "More analysis"; open it first.
+  await page.getByText('More analysis', { exact: true }).press('Enter');
   const chart = page.getByRole('figure', { name: 'Duration per run', exact: true });
   const selector = chart.getByLabel('Inspect run', { exact: true });
   await selector.selectOption(runIds[1]);
@@ -72,6 +77,8 @@ test('chart run identity stays exact after pagination removes the selection', as
   const served = { ...chartRows, [decisionsTopic]: many };
   await serveCharts(page, served);
   await page.goto('/runs');
+  // OMN-21166 part 18 AC118: the run charts sit first inside Runs' one closed "More analysis"; open it first.
+  await page.getByText('More analysis', { exact: true }).press('Enter');
   const chart = page.getByRole('figure', { name: 'Duration per run', exact: true });
   await chart.getByLabel('Inspect run', { exact: true }).selectOption('paged-run-1');
   await expect(chart.getByRole('link', { name: 'Open run', exact: true })).toHaveAttribute('href', /correlation_id=paged-run-1$/);
@@ -87,6 +94,8 @@ test('a reordered refresh never substitutes another id for the selected run', as
   const decisions = chartRows[topic].map(row => ({ ...row as Record<string, unknown> }));
   await serveCharts(page, { ...chartRows, [topic]: decisions });
   await page.goto('/runs');
+  // OMN-21166 part 18 AC118: the run charts sit first inside Runs' one closed "More analysis"; open it first.
+  await page.getByText('More analysis', { exact: true }).press('Enter');
   const chart = page.getByRole('figure', { name: 'Duration per run', exact: true });
   await chart.getByLabel('Inspect run', { exact: true }).selectOption(runIds[1]);
   await expect(chart.getByRole('link', { name: 'Open run', exact: true })).toHaveAttribute('href', /correlation_id=chart-run-b$/);
@@ -106,6 +115,8 @@ test('a run with no recorded id is absent from the chart selector and cannot rep
   const missing = { ...(chartRows[topic][0] as object), correlation_id: null };
   await serveCharts(page, { ...chartRows, [topic]: [missing, chartRows[topic][1]] });
   await page.goto('/runs');
+  // OMN-21166 part 18 AC118: the run charts sit first inside Runs' one closed "More analysis"; open it first.
+  await page.getByText('More analysis', { exact: true }).press('Enter');
   const chart = page.getByRole('figure', { name: 'Duration per run', exact: true });
   await expect(chart.locator('.local-chart-canvas svg')).toBeVisible();
   const options = chart.getByLabel('Inspect run', { exact: true }).getByRole('option');
@@ -135,28 +146,26 @@ test.describe('touch Evidence rows', () => {
   });
 });
 
-test('Workflow step icons identify served kinds and preserve repeated provider attempts in order', async ({ page }, info) => {
+test('Workflow steps name served kinds and preserve repeated provider attempts in order', async ({ page }, info) => {
   const kinds = ['request', 'routing_decision', 'provider_call', 'provider_call', 'quality_gate', 'terminal'];
+  const labels = ['Request', 'Routing decision', 'Provider call', 'Provider call', 'Quality gate', 'Terminal'];
   const steps = kinds.map((step_kind, index) => ({ correlation_id: runIds[0], step_sequence: index + 1,
     step_kind, duration_ms: index, outcome: 'succeeded',
     ...(step_kind === 'provider_call' ? { attempt_number: index - 1 } : {}),
   }));
   await serveCharts(page, { ...chartRows, [prefix + 'run-trace.v1']: steps });
   await page.goto('/workflow?correlation_id=chart-run-a');
-  const flow = page.getByRole('navigation', { name: 'Run steps, in the order served', exact: true });
-  const links = flow.getByRole('link');
-  await expect(links).toHaveCount(kinds.length);
-  expect(await links.evaluateAll(elements => elements.map(element => element.getAttribute('data-step-kind')))).toEqual(kinds);
-  const icons = links.locator('.local-run-node-icon svg');
-  await expect(icons).toHaveCount(kinds.length);
-  const classes = await icons.evaluateAll(elements => elements.map(element => element.getAttribute('class')));
-  expect(new Set(classes).size).toBe(5);
-  expect(classes[2]).toBe(classes[3]);
+  // OMN-21166 part 18 AC125: the step boxes (with their kind icons and links) are removed; the timeline below shows the
+  // steps, in the order served, each with its own #run-step-N anchor.
+  await expect(page.locator('nav.local-run-diagram')).toHaveCount(0);
+  await expect(page.getByRole('navigation', { name: 'Run steps, in the order served', exact: true })).toHaveCount(0);
+  const timeline = page.locator('ol.local-dashboard-steps');
+  await expect(timeline.locator('> li')).toHaveCount(kinds.length);
+  await expect(timeline.locator('> li .local-run-step-head > strong')).toHaveText(labels);
   await expect(page.locator('#run-step-3 .local-run-chips')).toContainText('attempt: 1');
   await expect(page.locator('#run-step-4 .local-run-chips')).toContainText('attempt: 2');
   await expect(page.locator('#run-step-6 .local-run-chip').filter({ hasText: 'attempt:' })).toHaveCount(0);
-  await links.nth(3).click();
-  await expect(page.locator('#run-step-4')).toBeInViewport();
+  await expect(timeline.locator('> li').nth(3)).toHaveAttribute('id', 'run-step-4');
   await page.screenshot({ path: info.outputPath('workflow-step-attempts.png'), fullPage: true });
-  writeFileSync(info.outputPath('receipt.json'), JSON.stringify({ kinds, iconClasses: classes, steps }, null, 2));
+  writeFileSync(info.outputPath('receipt.json'), JSON.stringify({ kinds, labels, steps }, null, 2));
 });

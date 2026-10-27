@@ -167,7 +167,7 @@ describe('OMN-21015 U2: the spend chart on the page', () => {
   it('G13: a panel can say which colour each plotted column takes, so a figure is one colour on every page', () => {
     const colours = (columns: typeof COLUMNS, places?: number[]) => {
       const { unmount } = render(<SpendByDayChart columns={columns} rows={[day('2026-10-12')]} colourPlaces={places} />);
-      const found = Object.fromEntries(options().at(-1)!.series.map((series: any) => [series.name, series.itemStyle.color]));
+      const found = Object.fromEntries(options().at(-1)!.series.map((series: any) => [series.name, series.itemStyle.borderColor]));
       unmount();
       return found;
     };
@@ -181,10 +181,10 @@ describe('OMN-21015 U2: the spend chart on the page', () => {
 
   it('G13: a place off the palette, or none, leaves a series the colour of its own place', () => {
     render(<SpendByDayChart columns={COLUMNS} rows={[day('2026-10-12')]} />);
-    const byPlace = options().at(-1)!.series.map((series: any) => series.itemStyle.color);
-    for (const odd of [[0, 5, 2.5], ['3' as unknown as number], []]) {
+    const byPlace = options().at(-1)!.series.map((series: any) => series.itemStyle.borderColor);
+    for (const odd of [[0, 6, 2.5], ['3' as unknown as number], []]) {
       render(<SpendByDayChart columns={COLUMNS} rows={[day('2026-10-12')]} colourPlaces={odd} />);
-      expect(options().at(-1)!.series.map((series: any) => series.itemStyle.color)).toEqual(byPlace);
+      expect(options().at(-1)!.series.map((series: any) => series.itemStyle.borderColor)).toEqual(byPlace);
     }
   });
 

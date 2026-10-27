@@ -1,3 +1,10 @@
+/**
+ * The amount of a UTC window that holds no runs. The runtime writes a day row only for a day with runs, so a window
+ * with no day row in it ran nothing and cost nothing (Lakshman, OMN-21166 live review 2026-10-25: "instead of not
+ * measured say 0"). It is the empty sum; it is never a fallback for a value a served row leaves out.
+ */
+export const NO_RUNS_USD = '0';
+
 /** Add served decimal amounts before display truncation. Numbers are used only for chart geometry. */
 export function sumDashboardUsd(values: readonly unknown[]): string | null {
   let total = 0n;

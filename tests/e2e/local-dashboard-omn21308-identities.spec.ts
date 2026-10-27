@@ -43,18 +43,19 @@ test('AC2 Without a tier uses RouteOff, distinct from tier-routed runs in both t
   await serveCharts(page, { ...chartRows, [prefix + 'delegation.model-routing.v1']: [{ ...routing,
     by_tier: { ...routing.by_tier as object, local_call_share: .6, local_call_count: 6, total_call_count: 10 },
   }] });
-  await page.goto('/overview');
-  await page.locator('summary').filter({ hasText: 'Additional runtime metrics' }).click();
-  const untiered = page.locator('[data-routing-count="untiered"]');
-  // The native routing count section can be folded under its existing disclosure.
-  const fold = page.locator('details').filter({ has: untiered });
-  if (await fold.count() && await fold.getAttribute('open') === null) await fold.locator(':scope > summary').click();
-  await expect(untiered).toContainText('Without a tier');
+  // OMN-21166 AC86 (Lakshman 2026-10-25): Run locally and its "Without a tier" count are deleted from Overview and Runs
+  // does not repeat them. The same identity is checked where it remains: "Not tier-routed" in Runs' tier mix, under "More analysis".
+  await page.goto('/runs');
+  await page.getByText('More analysis', { exact: true }).press('Enter');
+  const untiered = page.locator('[data-component="runs-tier-mix"] div[data-field-tone="unrouted"]');
+  await expect(untiered).toContainText('Not tier-routed');
+  const routed = page.locator('[data-component="runs-tier-mix"] div[data-field-tone="routing"]');
   for (const theme of ['light', 'dark']) {
     const current = await page.locator('html').getAttribute('data-theme');
     if ((current === 'dark' ? 'dark' : 'light') !== theme) await page.getByRole('button', { name: 'Toggle theme' }).click();
     await expect(untiered.locator('dt svg')).toHaveClass(/lucide-route-off/);
     await expect(untiered.locator('dt svg')).not.toHaveClass(/lucide-route(?:\s|$)/);
+    await expect(routed.locator('dt svg')).toHaveClass(/lucide-route(?:\s|$)/);
     await page.screenshot({ path: info.outputPath(`without-tier-${theme}.png`) });
   }
 });

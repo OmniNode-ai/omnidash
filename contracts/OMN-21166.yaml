@@ -171,7 +171,7 @@
         },
         {
           "check_type": "test_passes",
-          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-charts.spec.ts --project=chromium --workers=1 --retries=0 --grep \"chart zoom/reset\"",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-charts.spec.ts --project=chromium --workers=1 --retries=0 --grep \"a chart has no range slider\"",
           "cwd": "${OMNI_HOME}/omnidash"
         },
         {
@@ -181,7 +181,7 @@
         },
         {
           "check_type": "test_passes",
-          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-charts.spec.ts --project=chromium --workers=1 --retries=0 --grep \"usage model highlighting\"",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-charts.spec.ts --project=chromium --workers=1 --retries=0 --grep \"usage model bars do not change figures\"",
           "cwd": "${OMNI_HOME}/omnidash"
         },
         {
@@ -457,7 +457,7 @@
       "checks": [
         {
           "check_type": "test_passes",
-          "check_value": "CI=1 npx playwright test tests/e2e/local-dashboard-contracts.spec.ts --project=chromium --workers=1 --retries=0 --grep \"Overview is the default page and fits 1440x900\"",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-contracts.spec.ts --project=chromium --workers=1 --retries=0 --grep \"Overview is the default page and fits 1440x900\"",
           "cwd": "${OMNI_HOME}/omnidash"
         }
       ]
@@ -488,6 +488,21 @@
         {
           "check_type": "test_passes",
           "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-run-classes-ac46.spec.ts --project=chromium --workers=1 --retries=0",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
+    },
+    {
+      "id": "dod-omn21166-ac26-overview-window-cards",
+      "description": "AC26 (time range applied to every panel): the Overview KPI cards read one window. A 3, 7, 15 or 30 day window sums the served UTC day rows, counts a day with no runs as zero and says so, never adds an older baseline's rows, and the card hover names the window it covers (a range reads its first and last UTC day). The test files sit under tests/ so the merge-base control can lay them over the merge base, where meteringRangeFor and headlineHoverLines are not exported.",
+      "source": "manual",
+      "binds_ac": [
+        "AC26"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/pages/local/overview-range-window.omn21166.test.tsx tests/pages/local/headline-hover.omn21166.test.tsx",
           "cwd": "${OMNI_HOME}/omnidash"
         }
       ]

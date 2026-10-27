@@ -10,9 +10,11 @@ import { chartRows, prefix, revealRunFields, serveCharts } from './omn21166-char
 // These governed response fixtures prove rendering, not a live producer write.
 const destinations: AppPage[] = [
   'local-overview', 'local-runs', 'local-workflow', 'local-usage',
-  'local-credentials', 'local-api-keys', 'delegation-evidence',
+  'local-settings', 'delegation-evidence',
   'experiments', 'sea-control', 'event-bus', 'lab',
 ];
+const visits = destinations.map(destination => ({ destination,
+  suffix: destination === 'local-workflow' ? '?correlation_id=chart-run-a' : '', label: PAGE_LABELS[destination] }));
 const rows = { ...chartRows, [prefix + 'topic-activity.v1']: [{
   topic: 'onex.evt.readability.sample.v1', sampled_at: '2026-10-17T10:00:00Z',
   retained_messages: 1234, messages_last_hour: 12, messages_last_24h: 1234,
@@ -74,17 +76,17 @@ test('font scanner detects planted 10px HTML, SVG and generated text, ignores hi
 });
 
 for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
-  for (const destination of destinations) {
-    test(`${PAGE_LABELS[destination]} at ${viewport.width}x${viewport.height} has no visible text below 12px`, async ({ page }, info) => {
+  for (const { destination, suffix, label } of visits) {
+    test(`${label} at ${viewport.width}x${viewport.height} has no visible text below 12px`, async ({ page }, info) => {
       await page.setViewportSize(viewport);
       await serveCharts(page, rows);
-      const suffix = destination === 'local-workflow' ? '?correlation_id=chart-run-a' : '';
       await page.goto(PAGE_PATHS[destination] + suffix);
       await expect(page.locator('.breadcrumbs .cur')).toHaveText(PAGE_LABELS[destination]);
       await expect(page.locator('main')).not.toHaveAttribute('aria-busy', 'true');
       await expect(page.locator('h1')).toBeVisible();
       await expect(page.locator('.main')).not.toContainText(/Dashboard is unavailable|Loading/);
-      if (destination === 'local-overview' || destination === 'local-runs') await revealRunFields(page);
+      // OMN-21166 AC86 (Lakshman 2026-10-25): Recent runs and its field view are deleted from Overview; only Runs has them.
+      if (destination === 'local-runs') await revealRunFields(page);
       if (destination === 'lab') await expect(page.getByTestId('topic-activity-row')).toHaveCount(1);
       // Exercise rendered disclosures, including fields that are hidden at rest.
       for (const disclosure of await page.locator('main details').all()) {
@@ -104,7 +106,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
           await expect(toggle).toHaveAttribute('aria-checked', String(developer));
           const result = await scanText(page);
           expect(result.checked, 'positive rendered-text control alongside the loaded page heading').toBeGreaterThan(0);
-          results.push({ destination, path: PAGE_PATHS[destination], viewport, theme, developer, ...result });
+          results.push({ destination, path: PAGE_PATHS[destination] + suffix, viewport, theme, developer, ...result });
           await page.screenshot({ path: info.outputPath(`${theme}-developer-${developer}.png`), fullPage: true });
         }
       }

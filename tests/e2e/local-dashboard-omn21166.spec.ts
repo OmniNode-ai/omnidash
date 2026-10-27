@@ -9,7 +9,8 @@ import { expect, test, type Page, type TestInfo } from 'playwright/test';
 // preference, builder/assistant mounted, Cloud Keys in local composition, saved data
 // mutated, and category colors/keyboard focus lost between themes. These fixtures
 // prove browser behavior only; they do not replace the populated lab readback.
-const core = ['overview', 'runs', 'workflow', 'usage', 'credentials', 'api-keys'];
+// OMN-21166 part 26: one Settings page holds API Keys and Credentials.
+const core = ['overview', 'runs', 'workflow', 'usage', 'settings'];
 const tools = ['experiments', 'sea-control', 'event-bus', 'lab'];
 const topics = {
   decisions: 'onex.snapshot.projection.delegation.decisions.v1',
@@ -55,7 +56,7 @@ test('AC1/AC6 core navigation stays ordered and evidence stays visible', async (
   await page.goto('/overview');
   await expect(page.getByRole('heading', { name: 'Overview', exact: true })).toBeVisible();
   const local = page.getByRole('navigation', { name: 'Local', exact: true });
-  await expect(local.getByRole('link')).toHaveCount(6);
+  await expect(local.getByRole('link')).toHaveCount(5);
   expect(await local.getByRole('link').evaluateAll(links => links.map(link => link.getAttribute('href'))))
     .toEqual(core.map(route => `/${route}`));
   for (const route of core) {
@@ -138,8 +139,9 @@ test('AC3/AC4 builder and assistant are absent with saved layouts preserved', as
 });
 
 test('AC5 local identity remains while Cloud Keys is absent', async ({ page }) => {
-  await page.goto('/api-keys');
-  await expect(page.getByRole('heading', { name: 'API Keys', exact: true })).toBeVisible();
+  await page.goto('/settings');
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: 'Access', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Local identity', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: /cloud keys/i })).toHaveCount(0);
 });
@@ -160,7 +162,7 @@ test('AC7 theme switching and sidebar collapse preserve the current Runs view', 
   }
 });
 
-test('AC9 all eleven destinations have distinct icons and theme-safe accents', async ({ page }) => {
+test('AC9 all ten destinations have distinct icons and theme-safe accents', async ({ page }) => {
   await page.goto('/overview');
   await page.getByRole('checkbox', { name: 'Show developer tools', exact: true }).check();
   for (const theme of ['dark', 'light']) {
@@ -169,9 +171,10 @@ test('AC9 all eleven destinations have distinct icons and theme-safe accents', a
       color: getComputedStyle(link.querySelector('.dash-marker')!).color,
       icon: link.querySelector('svg')?.getAttribute('class'),
     })));
-    expect(entries).toHaveLength(11);
-    expect(new Set(entries.map(entry => entry.color)).size).toBe(11);
-    expect(new Set(entries.map(entry => entry.icon)).size).toBe(11);
+    // OMN-21166 part 26: Settings replaced the Credentials and API Keys entries, so eleven became ten.
+    expect(entries).toHaveLength(10);
+    expect(new Set(entries.map(entry => entry.color)).size).toBe(10);
+    expect(new Set(entries.map(entry => entry.icon)).size).toBe(10);
   }
   await page.keyboard.press('Tab');
   await page.getByTestId('nav-local-runs').focus();
@@ -260,7 +263,8 @@ test(`AC8 page walk ${state} width ${width}`, async ({ page }, info) => {
         await page.goto(`/${route}`);
         await expect(page.getByTestId('nav-local-overview')).toBeVisible();
         await expect(page.locator('body')).toHaveClass('theme-light');
-        if (state === 'populated-fixture' && route === 'overview') await expect(page.getByLabel('Recent runs preview', { exact: true }).getByRole('link', { name: 'omn21166-fixture-run', exact: true })).toBeVisible();
+        // OMN-21166 AC86 (Lakshman 2026-10-25): Recent runs preview deleted from Overview; the served fixture run is shown by its Runs per day bar.
+        if (state === 'populated-fixture' && route === 'overview') await expect(page.locator('[data-slice="runs"] button.gdb-day').first()).toHaveAccessibleName(/^Oct 17: 1 runs?, 1 passed, 0 failed$/);
         if (state === 'missing-tenant' && route === 'overview') {
           await expect(page.getByText('Tenant not configured', { exact: true }).first()).toBeVisible();
         }
@@ -271,7 +275,7 @@ test(`AC8 page walk ${state} width ${width}`, async ({ page }, info) => {
       }
   await attachManifest(info, captures);
   const artifact = JSON.parse(readFileSync(info.outputPath('manifest.json'), 'utf8'));
-  expect(artifact.captures.map((capture: {theme: string}) => capture.theme)).toEqual(Array(7).fill('light'));
+  expect(artifact.captures.map((capture: {theme: string}) => capture.theme)).toEqual(Array(6).fill('light'));
   if (state === 'populated-fixture') {
     expect(scopedTenants.length).toBeGreaterThan(0);
     expect([...new Set(scopedTenants)]).toEqual(['11111111-1111-4111-8111-111111111111']);

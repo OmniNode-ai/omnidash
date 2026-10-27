@@ -92,8 +92,8 @@ describe('OMN-21015 U2: the tier bar and the pass-rate meter on the page', () =>
     ]);
     // Each slice is drawn as the arc of exactly that start and sweep.
     expect(segments().map((s) => arc(s).d)).toEqual([arcPath(0, 0.25), arcPath(0.25, 0.75)]);
-    expect(screen.getByText('cheap_cloud').closest('li')?.textContent).toContain('25.0%');
-    expect(screen.getByText('local').closest('li')?.textContent).toContain('75.0%');
+    expect(screen.getByText('Cheap cloud').closest('li')?.textContent).toContain('25.0%');
+    expect(screen.getByText('Local').closest('li')?.textContent).toContain('75.0%');
   });
 
   it('H4: a share on another scale says why there is no bar', () => {
@@ -105,7 +105,7 @@ describe('OMN-21015 U2: the tier bar and the pass-rate meter on the page', () =>
   it('H5: a tier with no served share is named under the bar', () => {
     render(<TierShareChart byTier={{ tiers: [tier('local', 5, 0.5), tier('cheap_cloud', 2, null)] }} />);
     expect(segments()).toHaveLength(1);
-    expect(screen.getByText(/No share served for: cheap_cloud/)).toBeInTheDocument();
+    expect(screen.getByText(/No share served for: Cheap cloud/)).toBeInTheDocument();
   });
 
   it('H7: the meter shows the served pass rate, not passed over total', () => {
@@ -212,10 +212,10 @@ describe('OMN-21015 U2: the tier bar and the pass-rate meter on the page', () =>
   it('H10: a share above zero is never written as 0.0%, and one below the whole never as 100.0%', () => {
     render(<TierShareChart byTier={{ tiers: [tier('local', 9999, 0.9999), tier('claude', 1, 0.0001), tier('cheap_cloud', 0, 0)] }} />);
     const written = within(screen.getByRole('list')).getAllByRole('listitem').map((item) => item.textContent);
-    expect(written).toEqual(['local>99.9%', 'claude<0.1%', 'cheap_cloud0.0%']);
-    expect(screen.getByRole('img', { name: /Tier mix/ }).getAttribute('aria-label')).toBe('Tier mix: local >99.9%, claude <0.1%, cheap_cloud 0.0%');
+    expect(written).toEqual(['Local>99.9%', 'Claude<0.1%', 'Cheap cloud0.0%']);
+    expect(screen.getByRole('img', { name: /Tier mix/ }).getAttribute('aria-label')).toBe('Tier mix: Local >99.9%, Claude <0.1%, Cheap cloud 0.0%');
     expect(segments().map((segment) => segment.querySelector('title')?.textContent)).toEqual([
-      'local: >99.9% of tier-routed runs', 'claude: <0.1% of tier-routed runs', 'cheap_cloud: 0.0% of tier-routed runs',
+      'Local: >99.9% of tier-routed runs', 'Claude: <0.1% of tier-routed runs', 'Cheap cloud: 0.0% of tier-routed runs',
     ]);
     // The slices stay the served shares, exactly.
     expect(segments().map((segment) => arc(segment).sweep)).toEqual([0.9999, 0.0001, 0]);
@@ -224,10 +224,10 @@ describe('OMN-21015 U2: the tier bar and the pass-rate meter on the page', () =>
   it('H10: a whole share is 100.0%, and one that rounds inside the scale is written as rounded', () => {
     const written = () => within(screen.getByRole('list')).getAllByRole('listitem').map((item) => item.textContent);
     const { unmount } = render(<TierShareChart byTier={{ tiers: [tier('local', 5, 1)] }} />);
-    expect(written()).toEqual(['local100.0%']);
+    expect(written()).toEqual(['Local100.0%']);
     unmount();
     render(<TierShareChart byTier={{ tiers: [tier('claude', 1, 0.0006), tier('cheap_cloud', 1, 0.9994)] }} />);
-    expect(written()).toEqual(['claude0.1%', 'cheap_cloud99.9%']);
+    expect(written()).toEqual(['Claude0.1%', 'Cheap cloud99.9%']);
   });
 
   it('H10: the pass-rate meter follows the same rule', () => {

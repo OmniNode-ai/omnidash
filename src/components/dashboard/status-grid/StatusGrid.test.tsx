@@ -69,7 +69,9 @@ describe('StatusGrid', () => {
     ];
     render(<StatusGrid title="Services" rows={rows} waitsOn={[SEED_ENVIRONMENT_TOPIC]} />);
     const [a, b] = screen.getAllByTestId('status-grid-tile');
-    expect(within(a!).getByText(/last seen 2026-10-07T11:00:00Z/)).toBeTruthy();
+    // OMN-21166 AC60: the time reads for a person; the served timestamp stays in the title.
+    expect(within(a!).getByText(/last seen Oct 7, 11:00:00 UTC/)).toBeTruthy();
+    expect(within(a!).getByTitle('2026-10-07T11:00:00Z')).toBeTruthy();
     expect(within(b!).getByText('never seen')).toBeTruthy();
   });
 

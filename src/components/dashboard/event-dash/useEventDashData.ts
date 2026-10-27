@@ -14,6 +14,7 @@ import {
   fetchDelegationModelRouting,
   fetchDelegationQualityGate,
   fetchCostSavingsOverview,
+  fetchMeteringSummary,
   fetchDelegationSavings,
   fetchDelegationTokenUsage,
   fetchCorrelationTrace,
@@ -33,6 +34,7 @@ import {
   type AbCompareRow,
   type ContextExperimentScoreRow,
 } from '@/services/event-dash-api';
+import { fetchExposureCensus, type ExposureCensus } from '@/data-source/exposure-census';
 
 // Live ticker poll cadence (ms). The bus view polls newest rows so the
 // "now on bus" surface tracks real event arrival, never a simulated playback.
@@ -53,6 +55,11 @@ export const useDelegationQualityGate = (): UseQueryResult<ProjectionResult<Qual
 export const useCostSavingsOverview = (): UseQueryResult<ProjectionResult<CostSavingsOverviewRow>> =>
   useQuery({ queryKey: ['ev', 'cost', 'savings-overview'], queryFn: fetchCostSavingsOverview, refetchInterval: POLL_MS });
 
+// OMN-21166 AC50: the catalogue decides which headline source Overview reads; Evidence follows the same decision.
+export const useExposureCensus = (): UseQueryResult<ExposureCensus> =>
+  useQuery({ queryKey: ['ev', 'census'], queryFn: fetchExposureCensus, refetchInterval: POLL_MS });
+export const useMeteringSummary = (enabled: boolean): UseQueryResult<ProjectionResult<Record<string, unknown>>> =>
+  useQuery({ queryKey: ['ev', 'metering', 'summary'], queryFn: fetchMeteringSummary, refetchInterval: POLL_MS, enabled });
 export const useDelegationSavings = (): UseQueryResult<ProjectionResult<SavingsRow>> =>
   useQuery({ queryKey: ['ev', 'delegation', 'savings'], queryFn: fetchDelegationSavings, refetchInterval: POLL_MS });
 

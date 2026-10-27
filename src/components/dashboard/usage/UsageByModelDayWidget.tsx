@@ -1,4 +1,5 @@
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
+import { tierLabel } from '@/pages/local/plain-text';
 import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
 import { modelColor } from '@/lib/dashboard-colors';
 // OMN-20006: tokens in, tokens out and measured cost per model per UTC day, from usage-by-model-day.v1.
@@ -17,7 +18,7 @@ import { modelColor } from '@/lib/dashboard-colors';
 //   * OMN-21015 AC4: each row's tier is the served `cost_tier_name` (one model under two tiers is two rows), and its
 //     share of calls is the served `call_share`, the row's calls over its tenant's calls that UTC day, formatted as a
 //     percentage. A row with no served share says so; no share is worked out here from the call counts.
-import { useEffect, useId, useState, type CSSProperties } from 'react';
+import { useId, useState, type CSSProperties } from 'react';
 import { ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionSnapshotQuery } from '@/hooks/useProjectionSnapshotQuery';
@@ -71,7 +72,7 @@ function unmeasured(value: unknown): string {
 /** OMN-21015: the served tier; a call that named none is served as not_tier_routed, which is not a tier. */
 function tier(value: unknown): string {
   if (isMissing(value)) return 'Not recorded';
-  return value === 'not_tier_routed' ? 'Not tier-routed' : String(value);
+  return tierLabel(value);
 }
 
 /** OMN-21015: the served share of the day's calls (a fraction), shown as a percentage to two decimals at most. */
@@ -146,106 +147,9 @@ export function UsageByModelDayTable({ rows, interactive = false }: { rows: read
   );
 }
 
-const TOKEN_DIRECTIONS = [
-  { direction: 'in', field: 'input_tokens' },
-  { direction: 'out', field: 'output_tokens' },
-] as const;
-
 /** A served token count, grouped for reading. Formatting only: the number is the one the row carries. */
 function groupedCount(value: unknown): string {
   return formatFullCount(value);
-}
-
-/**
- * OMN-21015 AC4 (US-1): tokens in and tokens out per UTC day as a stacked series split by model, in the order the
- * exposure serves its rows. Each segment is one served row's count, and the stacking is the layout's: a segment's
- * flex-grow is that count, so nothing is added up here and no total is written (SV-3: tokens in and out stay apart).
- * A drawn segment starts from a zero basis and holds no text, padding or border, so its width is its count's share of
- * the bar and nothing else; the figures are written in the list beside the bar, where a very small count still reads.
- * A model whose count was not recorded is named under the bar; it is never drawn as zero. A served zero is written.
- * OMN-21166 (U10): every bar is drawn on one scale, the largest drawn bar, so a day's 377 tokens out is not as long as
- * its 5,133 tokens in. The scale is layout only: the bar's own width is its counts' sum against the largest bar's, and
- * that sum is never written.
- */
-export function UsageTokensByDay({ rows }: { rows: readonly unknown[] }) {
-  const [selected, setSelected] = useState<string | null>(null);
-  const usage = asRows(rows);
-  const models = [...new Set(usage.map(row => model(row.model_id)))];
-  const selection = selected !== null && models.includes(selected) ? selected : null;
-  const modelIdentity = JSON.stringify(models);
-  useEffect(() => { if (selected !== null && !JSON.parse(modelIdentity).includes(selected)) setSelected(null); }, [modelIdentity, selected]);
-  // Stable identity controls presentation color, never a measured figure.
-  const colorIndex = (name: string) => [...name].reduce((hash, char) => (hash * 31 + char.charCodeAt(0)) >>> 0, 0) % 6;
-  if (usage.length === 0) {
-    return <p className="local-dashboard-empty" role="status">{NO_TOKEN_ROWS}</p>;
-  }
-  const days = new Map<string, UsageByModelDayRow[]>();
-  for (const row of usage) {
-    const day = recorded(row.usage_day);
-    days.set(day, [...(days.get(day) ?? []), row]);
-  }
-  const drawnLength = (dayRows: readonly UsageByModelDayRow[], field: 'input_tokens' | 'output_tokens') =>
-    dayRows.reduce((length, row) => (isMissing(row[field]) ? length : length + Number(row[field])), 0);
-  const scale = Math.max(0, ...[...days.values()].flatMap(dayRows => TOKEN_DIRECTIONS.map(({ field }) => drawnLength(dayRows, field))));
-  const barWidth = (dayRows: readonly UsageByModelDayRow[], field: 'input_tokens' | 'output_tokens') =>
-    // With nothing drawn anywhere (every count a served zero) no width is set and the bar keeps its own.
-    scale > 0 ? `${(drawnLength(dayRows, field) / scale) * 100}%` : undefined;
-  return (
-    <figure className="local-chart usage-token-explorer" aria-label="Tokens by model and day">
-      <div className="local-chart-legend" role="group" aria-label="Model highlight">
-        {models.map(name => <button type="button" className="local-chart-toggle" key={name} aria-label={`Highlight ${name}`}
-          data-semantic-concept={`model:${name}`} data-semantic-label={name} data-series={colorIndex(name)} style={{ '--model-color': modelColor(name) } as CSSProperties} aria-pressed={selection === name} onClick={() => setSelected(current => current === name ? null : name)}><span className="usage-model-swatch" aria-hidden="true" />{name}</button>)}
-        {selection && <button type="button" className="local-chart-reset" onClick={() => setSelected(null)}>Clear model highlight</button>}
-      </div>
-      {selection && <div className="local-chart-detail" role="status"><strong>{selection}</strong>
-        {usage.filter(row => model(row.model_id) === selection).map((row, index) => <span key={index}>
-          {recorded(row.usage_day)} · {tier(row.cost_tier_name)} · Tokens in: {recorded(row.input_tokens)} · Tokens out: {recorded(row.output_tokens)}
-        </span>)}
-      </div>}
-      {[...days.entries()].map(([day, dayRows]) => (
-        <section className="usage-tokens-day" key={day}>
-          <h3>{day}</h3>
-          {TOKEN_DIRECTIONS.map(({ direction, field }) => {
-            const counted = dayRows.filter((row) => !isMissing(row[field]));
-            const uncounted = dayRows.filter((row) => isMissing(row[field]));
-            return (
-              <div className="usage-tokens-direction" key={direction}>
-                <span className="usage-tokens-label"><ConceptIcon concept={direction === 'in' ? 'tokens-in' : 'tokens-out'} size={14} />{`Tokens ${direction}`}</span>
-                {counted.length > 0 && (
-                  <div className="usage-tokens-series">
-                    <div className="usage-tokens-bar" aria-hidden="true" style={{ width: barWidth(dayRows, field) }}>
-                      {counted.map((row, index) => (
-                        <span
-                          className="usage-tokens-fill"
-                          data-semantic-concept={`model:${model(row.model_id)}`} data-semantic-label={model(row.model_id)}
-                          data-series={colorIndex(model(row.model_id))}
-                          data-highlighted={selection === null || selection === model(row.model_id)}
-                          key={`${String(row.model_id)}-${index}`}
-                          style={{ '--model-color': modelColor(model(row.model_id)), flexGrow: Number(row[field]), flexShrink: 1, flexBasis: '0px', minWidth: '0px' } as CSSProperties}
-                        />
-                      ))}
-                    </div>
-                    <ul className="usage-tokens-legend" aria-label={`Tokens ${direction} on ${day}, by model`}>
-                      {counted.map((row, index) => (
-                        <li data-semantic-concept={`model:${model(row.model_id)}`} data-semantic-label={model(row.model_id)} data-series={colorIndex(model(row.model_id))} style={{ '--model-color': modelColor(model(row.model_id)) } as CSSProperties} data-highlighted={selection === null || selection === model(row.model_id)} key={`${String(row.model_id)}-${index}`}>
-                          {`${model(row.model_id)}: ${groupedCount(row[field])}`}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {uncounted.length > 0 && (
-                  <p className="local-dashboard-caption">
-                    {`Tokens ${direction} not recorded: ${uncounted.map((row) => model(row.model_id)).join(', ')}`}
-                  </p>
-                )}
-              </div>
-            );
-          })}
-        </section>
-      ))}
-    </figure>
-  );
 }
 
 /** The palette widget: the same table over the served exposure. */
@@ -267,5 +171,73 @@ export default function UsageByModelDayWidget() {
     >
       <UsageByModelDayTable rows={rows} />
     </ComponentWrapper>
+  );
+}
+
+/**
+ * OMN-21166 Maple grid: tokens per UTC day as one vertical stacked chart, days across, one colour per model, with a
+ * switch between tokens in and tokens out. Each segment is a served count (rows of one model under two tiers add up);
+ * a count that is not served draws no segment, adds nothing to the scale and is named in the day's label.
+ */
+export function UsageTokensChart({ rows, days = 14 }: { rows: readonly unknown[]; days?: number }) {
+  const [direction, setDirection] = useState<'in' | 'out'>('in');
+  const usage = asRows(rows);
+  const field = direction === 'in' ? 'input_tokens' : 'output_tokens';
+  const byDay = new Map<string, Map<string, { value: number; missing: boolean }>>();
+  for (const entry of usage) {
+    if (isMissing(entry.usage_day)) continue;
+    const day = String(entry.usage_day);
+    const name = model(entry.model_id);
+    const models = byDay.get(day) ?? new Map<string, { value: number; missing: boolean }>();
+    const cell = models.get(name) ?? { value: 0, missing: false };
+    const served = entry[field];
+    if (typeof served === 'number' && Number.isFinite(served)) cell.value += served;
+    else cell.missing = true;
+    models.set(name, cell);
+    byDay.set(day, models);
+  }
+  const shown = [...byDay.keys()].sort().slice(-days);
+  const names = [...new Set(shown.flatMap(day => [...byDay.get(day)!.keys()]))];
+  const total = (day: string) => [...byDay.get(day)!.values()].reduce((sum, cell) => sum + cell.value, 0);
+  const max = Math.max(0, ...shown.map(total));
+  if (shown.length === 0) return <p className="local-dashboard-empty" role="status">{NO_TOKEN_ROWS}</p>;
+  const short = (day: string) => new Date(`${day}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  return (
+    <figure className="utc-chart" aria-label={`Tokens ${direction} per day by model`}>
+      <div className="utc-tools">
+        <div className="utc-switch" role="group" aria-label="Direction">
+          <button type="button" aria-pressed={direction === 'in'} onClick={() => setDirection('in')}>Tokens in</button>
+          <button type="button" aria-pressed={direction === 'out'} onClick={() => setDirection('out')}>Tokens out</button>
+        </div>
+        <ul className="utc-legend" aria-label="Models">
+          {names.map(name => <li key={name}><i aria-hidden="true" style={{ background: modelColor(name) }} />{name}</li>)}
+        </ul>
+      </div>
+      <ol className="utc-plot" style={{ '--utc-count': shown.length } as CSSProperties}>
+        {shown.map(day => {
+          const models = [...byDay.get(day)!.entries()];
+          const label = `${day}: ${models.map(([name, cell]) => `${name}: ${cell.missing && cell.value === 0 ? 'not recorded' : `${formatFullCount(cell.value)}${cell.missing ? ' (some rows not recorded)' : ''}`}`).join('; ')}`;
+          const dayTotal = total(day);
+          return (
+            // Focusable, so a keyboard reader reveals the day's total as a pointer does on hover (live review 2026-10-26).
+            <li key={day} data-token-day={day} aria-label={label} title={label} tabIndex={0}>
+              {/* A day whose every count is not recorded has no total; a day with some not recorded totals only the rest. */}
+              <span className="utc-value">{models.length > 0 && models.every(([, cell]) => cell.missing && cell.value === 0) ? 'Not recorded'
+                : `${formatDashboardCount(dayTotal)}${models.some(([, cell]) => cell.missing) ? ' (partial)' : ''}`}</span>
+              <span className="utc-track">
+                <span className="utc-stack" style={{ height: `${max > 0 ? Math.round((dayTotal / max) * 1000) / 10 : 0}%` }}>
+                  {models.filter(([, cell]) => cell.value > 0).map(([name, cell]) => (
+                    <i key={name} data-token-model={name} style={{ flex: cell.value, color: modelColor(name), borderTop: `2px solid ${modelColor(name)}` }} />
+                  ))}
+                </span>
+              </span>
+              {models.some(([, cell]) => cell.missing) && <span className="utc-missing" data-token-missing aria-hidden="true">n/r</span>}
+              <span className="utc-day">{short(day)}</span>
+            </li>
+          );
+        })}
+      </ol>
+      <figcaption className="local-dashboard-caption">{`Tokens ${direction} per UTC day, latest ${shown.length} served ${shown.length === 1 ? 'day' : 'days'}; n/r marks a day with a count not recorded.`}</figcaption>
+    </figure>
   );
 }

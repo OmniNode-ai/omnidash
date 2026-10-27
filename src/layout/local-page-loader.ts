@@ -5,7 +5,7 @@ import type { ModelComponentContract } from '../shared/types/generated/onex-mode
 import { COMPONENT_WIDGET_KINDS } from '@shared/types/component-manifest';
 import { isTenantNotConfiguredError } from '../data-source/projection-tenant';
 
-export type LocalPageName = 'overview' | 'runs' | 'workflow' | 'usage' | 'credentials' | 'api-keys';
+export type LocalPageName = 'overview' | 'runs' | 'workflow' | 'usage' | 'credentials' | 'api-keys' | 'status';
 export type LocalPageEmptyState = 'NO_RUNS_YET' | 'BASELINE_UNRESOLVED';
 
 /** Narrow dashboard fields consumed by this renderer; the YAML itself is a core config. */

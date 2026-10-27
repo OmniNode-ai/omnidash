@@ -62,7 +62,9 @@ test('unavailable figures remain honest and are readable messages rather than gi
   await expect(card).toContainText('Not measured');
   const missing = card.locator('.local-dashboard-metric');
   expect(await missing.evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBeLessThanOrEqual(22);
-  await expect(page.locator('[data-component="overview-tier-mix"]')).toContainText('local');
+  // OMN-21166 readable tier names + Maple grid: Overview's tier mix is ranked bars that print the served tier ("Local") and its share.
+  await expect(page.locator('[data-component="overview-tier-mix"]')).toContainText('Local');
+  await expect(page.locator('[data-component="overview-tier-mix"]')).toContainText('75.0%');
 });
 
 test('final redesign captures all eleven pages, themes and widths without lost fields or overflow', async ({ page }, info) => {

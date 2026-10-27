@@ -32,7 +32,8 @@ describe('OMN-21015 AC2: the Tier mix lists each model under its tier', () => {
   it('T1: two models in one tier are two rows, each under its tier', () => {
     render(<TierMixPanel row={ROW} />);
     const names = screen.getAllByRole('row').slice(1).map((r) => within(r).getAllByRole('cell')[0]!.textContent);
-    expect(names).toEqual(['local', 'qwen-a', 'qwen-b', 'cheap_cloud', 'gemini']);
+    // OMN-21166 AC54: tier rows read as words; model rows keep the served model id.
+    expect(names).toEqual(['Local', 'qwen-a', 'qwen-b', 'Cheap cloud', 'gemini']);
   });
 
   // OMN-21166 (Lakshman, 2026-10-18): the share reads as a percent; the exact served fraction stays as its title.
@@ -54,7 +55,7 @@ describe('OMN-21015 AC2: the Tier mix lists each model under its tier', () => {
 
   it('T4: a tier row shows no cost of its own, since none is served for it', () => {
     render(<TierMixPanel row={ROW} />);
-    expect(cells('local')[3]).toBe('');
+    expect(cells('Local')[3]).toBe('');
   });
 
   it('T6: a model served with a cost but no unmeasured count never reads as fully measured', () => {
@@ -72,6 +73,6 @@ describe('OMN-21015 AC2: the Tier mix lists each model under its tier', () => {
     const old = { ...ROW, by_tier: { ...ROW.by_tier, tiers: ROW.by_tier.tiers.map(({ models: _models, ...tier }) => tier) } };
     render(<TierMixPanel row={old} />);
     const names = screen.getAllByRole('row').slice(1).map((r) => within(r).getAllByRole('cell')[0]!.textContent);
-    expect(names).toEqual(['local', 'cheap_cloud']);
+    expect(names).toEqual(['Local', 'Cheap cloud']);
   });
 });

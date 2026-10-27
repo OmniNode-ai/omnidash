@@ -57,10 +57,24 @@ test('metering chooses newest all-time and day baseline and refuses ties on all 
   await page.getByRole('radio', { name: 'Today (UTC)', exact: true }).click();
   await totals(page, ids.map(() => 'Not measured: 2 baseline models'));
 });
-test('missing current-day metering never becomes zero, yesterday or legacy savings', async ({ page }) => {
+test('a UTC day with no served metering row is a day with no runs, never yesterday, all-time or legacy figures', async ({ page }) => {
+  // OMN-21166 AC85 (live review 2026-10-25) replaces the old missing-day rule: a day with no served day row is a day with
+  // no runs, so Today reads $0.00 / 0 with a hover "No runs today (UTC)"; it still never borrows yesterday, the all-time row or
+  // the legacy savings (99 / 98 / 97 / 96).
   await serve(page, 'not_in_local_store', [all, { ...day, window_start: '2000-01-01' }]);
   await page.getByRole('radio', { name: 'Today (UTC)', exact: true }).click();
-  await totals(page, ids.map(() => 'Not measured: daily metering data unavailable (UTC)'));
+  await totals(page, ['$0.00', '$0.00', '0', '0']);
+  await card(page, 'overview-spend').getByRole('button', { name: 'About Actual spend', exact: true }).focus();
+  await expect(card(page, 'overview-spend').locator('[role="tooltip"]')).toContainText("No runs today (UTC)"); // the Today preset names the day as "today"
+  await expect(page.locator('.local-overview-summary')).not.toContainText('12.30');
+  await expect(page.locator('.local-overview-summary')).not.toContainText('$99');
+});
+test('with no metering row read at all, Today stays Not measured rather than zero', async ({ page }) => {
+  // OMN-21166 AC85: the zero rule needs metering rows to have been read; with none, the figure is unmeasured.
+  await serve(page, 'not_in_local_store', []);
+  await page.getByRole('radio', { name: 'Today (UTC)', exact: true }).click();
+  for (const id of ids) await expect(figure(page, id)).toContainText('Not measured');
+  for (const id of ids) await expect(figure(page, id)).not.toHaveText('$0.00');
 });
 test('metering keeps measured zero and independent missing token or spend values', async ({ page }) => {
   await serve(page, 'not_in_local_store', [{ ...all, spend_usd: 0, savings_usd: null, runs_measured: 0, tokens_in: 0, tokens_out: 0 }]);

@@ -1,5 +1,5 @@
 import { expect, test } from 'playwright/test';
-import { revealRunFields, serveCharts } from './omn21166-chart-fixtures';
+import { chartRows, prefix, revealRunFields, serveCharts } from './omn21166-chart-fixtures';
 
 // Visual failures found in main Chrome: split header words, narrow identity values,
 // inconsistent advanced-page titles and horizontally overflowing pipeline stages.
@@ -12,8 +12,9 @@ test('Runs retains all eighteen columns without splitting header words', async (
   const headers = page.locator('[data-component="recent-runs"] .local-dashboard-table-wrap--fit th');
   await expect(headers).toHaveCount(18);
   const splitWords = await headers.evaluateAll(elements => elements.flatMap(element => {
-    const text = element.firstChild;
-    if (!text || text.nodeType !== Node.TEXT_NODE) throw new Error('Header text control missing');
+    // OMN-21166 AC75: a sortable header's text sits inside its sort button, so the first text node is looked for inside.
+    const text = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, { acceptNode: node => (node.textContent ?? '').trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP }).nextNode();
+    if (!text) throw new Error('Header text control missing');
     return [...(text.textContent ?? '').matchAll(/\S+/g)].flatMap(match => {
       const range = document.createRange();
       range.setStart(text, match.index!);
@@ -27,12 +28,16 @@ test('Runs retains all eighteen columns without splitting header words', async (
 });
 
 test('local identity values use available width instead of narrow metric columns', async ({ page }, info) => {
-  await page.goto('/api-keys');
+  // OMN-21166 part 11: the tenant is read from the native local-runtime row of local-environment.v1, so serve that row.
+  await serveCharts(page, { ...chartRows, [prefix + 'local-environment.v1']: [
+    { mode: 'native', service: 'local-runtime', tenant_id: 'chart-fixture-tenant', updated_at: '2026-10-17T10:00:00Z' }] });
+  await page.goto('/settings');
   const values = page.locator('.local-dashboard-fields dd');
   await expect(values.first()).toBeVisible();
   expect(await values.first().evaluate(el => el.getBoundingClientRect().width)).toBeGreaterThanOrEqual(320);
   await expect(page.getByText('Tenant', { exact: true })).toBeVisible();
-  await expect(page.getByText('Minted', { exact: true })).toBeVisible();
+  // Part 18 AC130: the identity's mint time is never served, so its always-empty row is gone.
+  await expect(page.getByText('Minted', { exact: true })).toHaveCount(0);
   await page.screenshot({ path: info.outputPath('identity-readable.png') });
 });
 
@@ -53,10 +58,13 @@ for (const route of ['delegation-evidence', 'experiments', 'agent-workbench', 'e
     // The lazy-route placeholder also has an h1; inspect the loaded page shell.
     const title = page.locator('.ev-root .ev-title');
     await expect(title).toBeVisible();
-    expect(await title.evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBe(30);
-    expect(await page.locator('.ev-page-head').evaluate(el => parseFloat(getComputedStyle(el).paddingLeft))).toBe(36);
+    // OMN-21166 seven-page look: Delegation Evidence is one of the seven pages and carries the compact page head
+    // (20px title, 24px side padding, at every width); the other advanced pages keep the 30/36 desktop and 24 phone scale.
+    const compact = route === 'delegation-evidence';
+    expect(await title.evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBe(compact ? 20 : 30);
+    expect(await page.locator('.ev-page-head').evaluate(el => parseFloat(getComputedStyle(el).paddingLeft))).toBe(compact ? 24 : 36);
     await page.setViewportSize({ width: 390, height: 844 });
-    expect(await title.evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBe(24);
+    expect(await title.evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBe(compact ? 20 : 24);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     await page.screenshot({ path: info.outputPath(`${route}-narrow.png`), fullPage: true });
   });

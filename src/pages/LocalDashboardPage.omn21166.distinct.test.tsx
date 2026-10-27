@@ -28,6 +28,7 @@ function accent(componentId: string, dark: boolean): string | undefined {
 
 // Owner2026-10-19T11:15Z: different things differ, and vice versa.
 // The same recent-run/routing/activity component reused across pages remains one concept.
+// Environment lives on Overview again (OMN-21166 part 26 revised): one concept, one id.
 const concept = (id: string) => ({ 'overview-recent-runs': 'recent-runs', 'runs-tier-mix': 'overview-tier-mix', 'runs-insights': 'overview-insights' } as Record<string, string>)[id] ?? id;
 
 describe('OMN-21166: each different concept has its own icon and colour', () => {

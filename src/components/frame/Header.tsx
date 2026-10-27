@@ -12,13 +12,13 @@
 //     control but had no onClick. Keeping them invited users to click things that did
 //     nothing.
 
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { useLocation } from 'wouter';
 import { PAGE_LABELS, pageForPath } from '@/navigation/page-routes';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '@/theme';
 import { Moon, RefreshCw, Sun } from 'lucide-react';
-import { requestLocalPageRefresh } from '@/services/local-page-refresh';
+import { currentLocalPageRead, requestLocalPageRefresh, subscribeLocalPageRead, updatedLabel } from '@/services/local-page-refresh';
 
 // Length of the visual spin after a manual refresh. Long enough to
 // register as deliberate feedback, short enough that a chain of
@@ -33,6 +33,9 @@ export function Header() {
   const { theme, setTheme, availableThemes } = useTheme();
   const queryClient = useQueryClient();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  // OMN-21166 AC77: the page's latest served read, shown only on the page that published it.
+  const read = useSyncExternalStore(subscribeLocalPageRead, currentLocalPageRead);
+  const readAt = read.page !== null && page === `local-${read.page}` ? read.readAt : null;
 
   const nextThemeName = availableThemes[(availableThemes.indexOf(theme) + 1) % availableThemes.length];
   const nextTheme = () => setTheme(nextThemeName);
@@ -59,6 +62,7 @@ export function Header() {
 
       {/* Right — action cluster */}
       <div className="topbar-right">
+        {readAt !== null && <span className="topbar-updated" title={`Rows last read from the runtime at ${readAt}`}>{updatedLabel(readAt, Date.now())}</span>}
         <button
           className="icon-btn"
           title="Refresh"

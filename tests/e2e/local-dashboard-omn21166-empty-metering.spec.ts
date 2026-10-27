@@ -6,28 +6,24 @@ import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
 // says no runs today even when the same response serves today's decisions.
 test.use({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce', trace: 'on' });
 
-test('empty daily spend is compact with its cause accessible and no empty chart column', async ({ page }, info) => {
+// OMN-21166 AC86 (Lakshman 2026-10-25): Spend per day is deleted from Overview. Its property (an empty daily money
+// chart is compact, says why in an accessible status, and leaves no empty chart column) still applies to the surviving
+// daily money chart, Usage's "Savings per day", so the test runs there.
+test('empty daily savings is compact with its cause accessible and no empty chart column', async ({ page }, info) => {
   await serveCharts(page, { ...chartRows, [prefix + 'metering-summary.v1']: [] });
-  await page.goto('/overview');
-  await page.getByText('Additional runtime metrics', { exact: true }).press('Enter');
-  const spend = page.locator('[data-component="overview-spend-by-day"]');
-  await expect(spend.getByRole('status')).toHaveText('Daily spend data unavailable.');
-  await expect(spend.locator('.local-chart-canvas')).toHaveCount(0);
+  await page.goto('/usage');
+  const savings = page.locator('[data-component="usage-savings-series"]:not([data-slice])');
+  await expect(savings.getByRole('status')).toHaveText('No daily savings data available yet.');
+  await expect(savings.locator('.local-chart-canvas')).toHaveCount(0);
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 844 });
     const collapse = page.getByRole('button', { name: 'Collapse sidebar', exact: true });
     if (width < 768 && await collapse.isVisible()) await collapse.click();
-    expect(await spend.evaluate(el => el.getBoundingClientRect().height)).toBeLessThanOrEqual(width === 1440 ? 130 : 190);
-    const previous = page.locator('[data-component="overview-cache-hit-rate"]');
-    const boxes = await Promise.all([spend.boundingBox(), previous.boundingBox()]);
-    expect(boxes[0]!.y).toBeGreaterThanOrEqual(boxes[1]!.y + boxes[1]!.height);
-    expect(boxes[0]!.y - boxes[1]!.y - boxes[1]!.height).toBeLessThanOrEqual(24);
+    expect(await savings.evaluate(el => el.getBoundingClientRect().height)).toBeLessThanOrEqual(width === 1440 ? 130 : 190);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
-    await spend.screenshot({ path: info.outputPath(`empty-spend-${width}.png`) });
+    await savings.screenshot({ path: info.outputPath(`empty-savings-${width}.png`) });
   }
-  await spend.getByText('Why is this unavailable?', { exact: true }).press('Enter');
-  await expect(spend.getByText('No day rows yet.', { exact: true })).toBeVisible();
-  await page.screenshot({ path: info.outputPath('empty-spend-cause.png'), fullPage: true });
+  await page.screenshot({ path: info.outputPath('empty-savings-cause.png'), fullPage: true });
 });
 
 test('missing daily metering never claims no runs; measured zero still renders exactly', async ({ page }) => {
@@ -44,7 +40,10 @@ test('missing daily metering never claims no runs; measured zero still renders e
   }
   await expect(page.getByRole('button', { name: /3 runs, 2 passed, 1 failed/ })).toBeVisible();
   await expect(summary).not.toContainText('no runs today');
-  await expect(summary.locator('[data-measured="true"]')).toHaveCount(0);
+  // OMN-21166 live review 2026-10-25: the Delegation Quality card is an all-time figure that this window does not change,
+  // so only the four metering-backed cards are checked for a measured value.
+  await expect(summary.locator(['overview-spend', 'overview-savings', 'overview-measured', 'overview-tokens']
+    .map(id => `[data-component="${id}"] [data-measured="true"]`).join(', '))).toHaveCount(0);
   await serveCharts(page, { ...chartRows, [prefix + 'cost.savings-overview.v1']: [{ window: 'all', captured_at: `${day}T11:00:00Z`, total_cost_usd: 0, total_savings_usd: 0, run_count: 1, measured_run_count: 1, tokens_total: 0 }], [prefix + 'metering-summary.v1']: [{
     window_kind: 'day', window_start: day, as_of: `${day}T11:00:00Z`,
     baseline_model: 'baseline-a', baseline_state: 'resolved', pricing_manifest_version: '1',

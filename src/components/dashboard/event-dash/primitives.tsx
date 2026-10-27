@@ -1,4 +1,5 @@
 import { formatDashboardCount } from '@/lib/dashboard-count';
+import { formatDuration } from '@/components/format/duration';
 /**
  * OMN-12943 — shared UI primitives for the ported event-dash views.
  *
@@ -41,10 +42,8 @@ export const fmtTokens = (n: number | null | undefined): string => {
   if (n >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}K`;
   return String(n);
 };
-export const fmtLatency = (ms: number | null | undefined): string => {
-  if (ms == null) return '—';
-  return ms >= 1000 ? `${(ms / 1000).toFixed(2)}s` : `${ms}ms`;
-};
+// OMN-21166 AC55: the one duration formatter, so Evidence reads "23.5 s" as every local page does.
+export const fmtLatency = (ms: number | null | undefined): string => (ms == null ? '—' : formatDuration(ms));
 // OMN-21166 AC6: delegation.decisions.v1 serves `id` as an integer, so an id
 // may arrive as a number; it is shown as its digits, and only null, undefined
 // or an empty string read as missing.

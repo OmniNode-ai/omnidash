@@ -5,7 +5,9 @@
  * mode, the mint time of the token it just minted and how to rotate it. This card shows those three values as
  * served; a value the row does not carry reads "Not recorded", and with no such row the card says what it waits on.
  */
-import { notAvailableYet } from './plain-text';
+import { SettingsEmptyState } from '@/components/dashboard/SettingsEmptyState';
+import { readableTime } from '@/components/format/readable-time';
+import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 
 const DASHBOARD_SERVICE = 'local-runtime';
 
@@ -31,17 +33,36 @@ function served(value: unknown): string {
   return typeof value === 'string' && value.trim() !== '' ? value : 'Not recorded';
 }
 
-export function DashboardAccess({ rows }: { rows: readonly EnvironmentRow[] }) {
+/** Served text with its `backticked` commands as code (part 18 AC131): the words are the served ones, unchanged. */
+function WithCode({ text }: { text: string }) {
+  return <>{text.split('`').map((part, index) => (index % 2 === 1 ? <code key={index}>{part}</code> : part))}</>;
+}
+
+export function DashboardAccess({ rows, complete = true }: { rows: readonly EnvironmentRow[]; complete?: boolean }) {
   const row = dashboardAccessRow(rows);
+  if (row === null && !complete) {
+    // No row because the read failed is not "not reported yet" (OMN-19988 E10; found by review of eddb28d6).
+    return (
+      <SettingsEmptyState icon={<ConceptIcon concept="local-access" label="Access" size={16} />} title="Access details could not be read">
+        This dashboard could not read the access details of this machine.
+      </SettingsEmptyState>
+    );
+  }
   if (row === null) {
-    // Waits on local-environment.v1; the user reads what it holds (OMN-21166 AC39).
-    return <p className="local-dashboard-empty" role="status">{notAvailableYet('dashboard access details')}</p>;
+    // Waits on local-environment.v1; the user reads what it holds (OMN-21166 AC39) and what writes it (revision 3, AC162).
+    return (
+      <SettingsEmptyState icon={<ConceptIcon concept="local-access" label="Access" size={16} />} title="Access details not reported yet">
+        The access mode, when its token was minted and how to rotate it appear here each time <code>onex dashboard</code> starts on this machine.
+      </SettingsEmptyState>
+    );
   }
   return (
     <dl className="local-dashboard-fields">
-      <div><dt>Access</dt><dd>{served(row.access_mode)}</dd></div>
-      <div><dt>Token minted</dt><dd>{served(row.token_minted_at)}</dd></div>
-      <div><dt>Rotate</dt><dd>{served(row.rotate_hint)}</dd></div>
+      {/* Part 18 AC129: every field label has its icon, as Local identity's do. */}
+      <div><dt><ConceptIcon concept="local-access" label="Access" />Access</dt><dd>{served(row.access_mode)}</dd></div>
+      {/* OMN-21166 AC60: "Oct 25, 10:36:18 UTC", the served timestamp kept in the title. */}
+      <div><dt><ConceptIcon concept="age" label="Token minted" />Token minted</dt><dd title={served(row.token_minted_at)}>{readableTime(served(row.token_minted_at)) ?? served(row.token_minted_at)}</dd></div>
+      <div><dt><ConceptIcon concept="credentials" label="Rotate" />Rotate</dt><dd><WithCode text={served(row.rotate_hint)} /></dd></div>
     </dl>
   );
 }
