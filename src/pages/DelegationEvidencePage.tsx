@@ -772,25 +772,34 @@ function EvidenceClaim({ money, unavailable }: { money: HeadlineMoney | null; un
   );
 }
 
+/**
+ * A served dollar figure exactly as served (amendment 30b, AC207a): thousands separated, every served decimal kept, none
+ * added or rounded away. A number is written in its shortest exact form, so a parsed 4.743332 never prints float noise.
+ */
+function exactUsd(value: unknown): string {
+  if (isUnavailableField(value)) return 'Not measured';
+  const text = typeof value === 'number' ? (Number.isFinite(value) ? String(value) : '') : typeof value === 'string' ? value.trim() : '';
+  const match = /^(-)?(\d+)(?:\.(\d+))?$/.exec(text);
+  if (!match) return 'Not measured';
+  const [, sign, whole, fraction] = match;
+  return `${sign ?? ''}$${whole!.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}${fraction ? `.${fraction}` : ''}`;
+}
+
 /** AC207: the equation reads one all-time metering row, never the latest decision sample. */
 function SavingsBridge({ rows, loading }: { rows: readonly unknown[] | undefined; loading: boolean }) {
   const canonical = meteringHeadline(rows, loading);
   const money = canonical.money;
-  const fourDecimals = (value: unknown) => isUnavailableField(value) || !Number.isFinite(Number(value))
-    ? 'Not measured' : Number(value).toLocaleString('en-US', {
-      style: 'currency', currency: 'USD', minimumFractionDigits: 4, maximumFractionDigits: 4,
-    });
   return <Panel title="SAVINGS BRIDGE" sub="All-time metering">
     <section className="ev-savings-bridge" aria-label="Savings bridge">
       <p className="note">{moneyBasis(money)}</p>
       <div className="ev-savings-equation">
-        <div><span className="section-label">Baseline cost (modelled)</span><strong>{money ? fourDecimals(money.cloud) : canonical.unavailable}</strong></div>
+        <div><span className="section-label">Baseline cost (modelled)</span><strong>{money ? exactUsd(money.cloud) : canonical.unavailable}</strong></div>
         <span className="ev-savings-operator" aria-label="minus">−</span>
-        <div><span className="section-label">Actual spend</span><strong>{money ? fourDecimals(money.local) : canonical.unavailable}</strong></div>
+        <div><span className="section-label">Actual spend</span><strong>{money ? exactUsd(money.local) : canonical.unavailable}</strong></div>
         <span className="ev-savings-operator" aria-label="equals">=</span>
-        <div><span className="section-label">Saving (modelled)</span><strong>{money ? fourDecimals(money.saved) : canonical.unavailable}</strong></div>
+        <div><span className="section-label">Saving (modelled)</span><strong>{money ? exactUsd(money.saved) : canonical.unavailable}</strong></div>
       </div>
-      <p className="note">Headline cards round to cents; modelled saving is computed from unrounded served values.</p>
+      <p className="note">Each figure is shown exactly as served, so baseline cost minus actual spend equals the saving; headline cards round to cents.</p>
     </section>
   </Panel>;
 }

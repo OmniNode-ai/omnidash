@@ -80,22 +80,25 @@ test('An absent quality aggregate has a typed triage state without losing served
   await info.attach('failure-triage-absent-aggregate', { body: JSON.stringify({ aggregateRows: 0, latestServedRuns: 4, latestFailedRuns: 3 }), contentType: 'application/json' });
 });
 
-test('Savings bridge uses the canonical all-time metering row at four decimals', async ({ page }, info) => {
-  const canonical = { ...evidenceMetering, counterfactual_usd: '30.0004', spend_usd: '12.0001', savings_usd: '18.0003' };
+// Amendment 30b AC207a (Lakshman 2026-10-27, "show full cost don't round up"): the bridge shows each served value exactly.
+// These are his local all-time figures: rounded to four decimals they read 4.9754 - 0.2320 = 4.7433, which does not add up.
+test('Savings bridge shows the canonical all-time metering row exactly as served, so it adds up', async ({ page }, info) => {
+  const canonical = { ...evidenceMetering, counterfactual_usd: '4.975354', spend_usd: '0.232022', savings_usd: '4.743332' };
   await serveEvidence(page, {
     [evidenceTopic('metering-summary.v1')]: [canonical],
     [evidenceTopic('delegation.decisions.v1')]: evidenceDecisions.map(row => ({ ...row, modelled_savings_usd: '9999.9999' })),
   });
   await page.goto('/delegation-evidence');
   const bridge = page.getByRole('region', { name: 'Savings bridge' });
-  await expect(bridge).toContainText('$30.0004');
-  await expect(bridge).toContainText('$12.0001');
-  await expect(bridge).toContainText('$18.0003');
+  const figures = bridge.locator('.ev-savings-equation strong');
+  await expect(figures).toHaveText(['$4.975354', '$0.232022', '$4.743332']);
+  // Control: the four-decimal rendering this replaces would have shown these, and they do not add up.
+  await expect(bridge).not.toContainText('$4.9754');
   await expect(bridge).toContainText('cloud-baseline');
   await expect(bridge).toContainText('pricing v3');
-  await expect(bridge).toContainText('unrounded served values');
+  await expect(bridge).toContainText('exactly as served');
   await expect(bridge).not.toContainText('9999');
-  await expect(page.getByRole('region', { name: 'Evidence claim' })).toContainText('$18.00');
+  await expect(page.getByRole('region', { name: 'Evidence claim' })).toContainText('Savings were $4.74');
   await info.attach('canonical-savings-bridge', { body: JSON.stringify({ canonical, decisionSavingsPoison: '9999.9999' }), contentType: 'application/json' });
   await bridge.scrollIntoViewIfNeeded();
   await page.screenshot({ path: info.outputPath('savings-bridge-desktop.png') });
