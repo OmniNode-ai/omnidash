@@ -215,4 +215,15 @@ test('AC201 AC203 AC204 AC206 the decision views stay inside their card on a pho
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
     await page.screenshot({ path: info.outputPath(`phone-${path.replace(/\W+/g, '-')}.png`) });
   }
+  // D12 (Codex MSGs 753d170c, 9668c17c, confirmed in Chrome): on a phone the Usage tables become stacked cards that name each
+  // value by its column label; a matrix or group value shown without its task, tier or column name has lost its meaning.
+  const label = (cell: import('playwright/test').Locator) => cell.evaluate(el => getComputedStyle(el, '::before').content);
+  await settle(page, '/usage?analysis=matrix');
+  const matrixCell = page.locator('table[data-decision-matrix] td[data-row="model-a"][data-col="code_generation"]');
+  await expect(matrixCell).toBeVisible();
+  expect(await label(matrixCell)).toBe('"code generation"');
+  await page.getByRole('radiogroup', { name: 'Matrix columns', exact: true }).getByRole('radio', { name: 'Tier', exact: true }).check();
+  expect(await label(page.locator('table[data-decision-matrix] td[data-row="model-a"][data-col="local"]'))).toBe('"local"');
+  await settle(page, '/usage?analysis=groups');
+  expect(await label(page.locator('table[data-analysis-table] tbody tr').first().locator('td[data-cell="pass"]'))).toBe('"Pass rate"');
 });

@@ -103,3 +103,22 @@ test('Savings bridge shows the canonical all-time metering row exactly as served
   await bridge.scrollIntoViewIfNeeded();
   await page.screenshot({ path: info.outputPath('savings-bridge-desktop.png') });
 });
+
+// AC207a, Codex MSG 2afcf6ae: a metering row may serve numbers, and a small number prints in exponent form (3e-7). The
+// bridge expands it exactly instead of reading "Not measured", and at 390px the exact figures stay inside their card.
+test('Savings bridge expands small numeric values exactly and fits a phone', async ({ page }, info) => {
+  const canonical = { ...evidenceMetering, counterfactual_usd: 0.0000003, spend_usd: 0.0000001, savings_usd: 0.0000002 };
+  await page.setViewportSize({ width: 390, height: 844 });
+  await serveEvidence(page, { [evidenceTopic('metering-summary.v1')]: [canonical] });
+  await page.goto('/delegation-evidence');
+  const bridge = page.getByRole('region', { name: 'Savings bridge' });
+  await expect(bridge.locator('.ev-savings-equation strong')).toHaveText(['$0.0000003', '$0.0000001', '$0.0000002']);
+  await expect(bridge).not.toContainText('Not measured');
+  await bridge.scrollIntoViewIfNeeded();
+  const edge = (await bridge.boundingBox())!;
+  for (const figure of await bridge.locator('.ev-savings-equation strong').all()) {
+    const box = (await figure.boundingBox())!;
+    expect(box.x + box.width).toBeLessThanOrEqual(edge.x + edge.width + 0.5);
+  }
+  await page.screenshot({ path: info.outputPath('savings-bridge-phone-exponent.png') });
+});

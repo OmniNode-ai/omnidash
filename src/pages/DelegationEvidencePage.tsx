@@ -778,11 +778,23 @@ function EvidenceClaim({ money, unavailable }: { money: HeadlineMoney | null; un
  */
 function exactUsd(value: unknown): string {
   if (isUnavailableField(value)) return 'Not measured';
-  const text = typeof value === 'number' ? (Number.isFinite(value) ? String(value) : '') : typeof value === 'string' ? value.trim() : '';
+  const text = expandExponent(typeof value === 'number' ? (Number.isFinite(value) ? String(value) : '') : typeof value === 'string' ? value.trim() : '');
   const match = /^(-)?(\d+)(?:\.(\d+))?$/.exec(text);
   if (!match) return 'Not measured';
   const [, sign, whole, fraction] = match;
   return `${sign ?? ''}$${whole!.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}${fraction ? `.${fraction}` : ''}`;
+}
+
+/** A decimal in exponent form (3e-7, as a small number prints) written out by moving the point, with no arithmetic. */
+function expandExponent(text: string): string {
+  const match = /^(-)?(\d+)(?:\.(\d+))?e([+-]?\d+)$/i.exec(text);
+  if (!match) return text;
+  const [, sign = '', whole, fraction = '', power] = match;
+  const digits = `${whole}${fraction}`;
+  const point = whole!.length + Number(power);
+  const body = point <= 0 ? `0.${'0'.repeat(-point)}${digits}` : point >= digits.length ? `${digits}${'0'.repeat(point - digits.length)}`
+    : `${digits.slice(0, point)}.${digits.slice(point)}`;
+  return `${sign}${body.replace(/^0+(?=\d)/, '')}`;
 }
 
 /** AC207: the equation reads one all-time metering row, never the latest decision sample. */

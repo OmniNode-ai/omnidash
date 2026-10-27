@@ -117,13 +117,14 @@ function GroupsView({ decisionRows }: { decisionRows: readonly unknown[] }) {
         <tbody>{sorted.map(group => <tr key={group.name}>
           <th scope="row" data-model-name={by === 'model' && group.name !== NOT_RECORDED ? '' : undefined}
             style={by === 'model' && group.name !== NOT_RECORDED ? { '--model-color': modelColor(group.name) } as CSSProperties : undefined}>{group.name}</th>
-          <td data-cell="runs">{group.runs}</td>
-          <td data-cell="spend">{money(group.spend, group.spendMeasured, group.runs)}</td>
-          <td data-cell="pass">{passText(group)}</td>
-          <td data-cell="p50">{latency(group.p50)}</td>
-          <td data-cell="p95">{latency(group.p95)}</td>
-          <td data-cell="last">{lastText(group.last)}</td>
-          <td data-cell="spark"><Sparkline group={group} /></td>
+          {/* data-label names each value when a phone stacks the rows as cards (Codex MSG 753d170c). */}
+          <td data-cell="runs" data-label="Runs">{group.runs}</td>
+          <td data-cell="spend" data-label="Spend">{money(group.spend, group.spendMeasured, group.runs)}</td>
+          <td data-cell="pass" data-label="Pass rate">{passText(group)}</td>
+          <td data-cell="p50" data-label="p50 latency">{latency(group.p50)}</td>
+          <td data-cell="p95" data-label="p95 latency">{latency(group.p95)}</td>
+          <td data-cell="last" data-label="Last run">{lastText(group.last)}</td>
+          <td data-cell="spark" data-label={`Runs per day (${SPARK_DAYS} days)`}><Sparkline group={group} /></td>
         </tr>)}</tbody>
       </table>
     </div>
@@ -165,6 +166,8 @@ function DecisionMatrix({ decisionRows }: { decisionRows: readonly unknown[] }) 
   const [columnsBy, setColumnsBy] = useState<'task' | 'tier'>('task');
   const matrix = useMemo(() => matrixOf(decisionRows, 'model', columnsBy), [decisionRows, columnsBy]);
   const columnLabel = MATRIX_COLUMNS.find(option => option.value === columnsBy)!.label;
+  // The column's name in the header and, on a phone where rows stack as cards, beside each value (Codex MSG 753d170c).
+  const columnName = (column: string) => (columnsBy === 'task' && column !== NOT_RECORDED ? column.replace(/_+/g, ' ') : column);
   return <>
     <div className="local-dashboard-toggles">
       <DashboardToggle label="Matrix metric" options={MATRIX_METRICS} value={metric} onChange={setMetric} />
@@ -173,20 +176,19 @@ function DecisionMatrix({ decisionRows }: { decisionRows: readonly unknown[] }) 
     <p className="local-dashboard-caption">{`Models by ${columnLabel.toLowerCase()}. A cell with fewer than ${SMALL_SAMPLE} verdicts is a small sample; a pair with no runs reads no runs. Each cell opens its runs.`}</p>
     <div className="local-dashboard-table-wrap usage-matrix-wrap">
       <table data-decision-matrix aria-label={`Models by ${columnLabel.toLowerCase()}`}>
-        <thead><tr><th scope="col">Model</th>{matrix.columns.map(column => <th key={column} scope="col" data-col={column}>
-          {columnsBy === 'task' && column !== NOT_RECORDED ? column.replace(/_+/g, ' ') : column}</th>)}</tr></thead>
+        <thead><tr><th scope="col">Model</th>{matrix.columns.map(column => <th key={column} scope="col" data-col={column}>{columnName(column)}</th>)}</tr></thead>
         <tbody>{matrix.rows.map(row => <tr key={row}>
           <th scope="row" data-model-name={row !== NOT_RECORDED ? '' : undefined}
             style={row !== NOT_RECORDED ? { '--model-color': modelColor(row) } as CSSProperties : undefined}>{row}</th>
           {matrix.columns.map(column => {
             const totals = matrix.cell(row, column);
-            if (totals === null) return <td key={column} data-row={row} data-col={column} data-state="no-runs">no runs</td>;
+            if (totals === null) return <td key={column} data-row={row} data-col={column} data-label={columnName(column)} data-state="no-runs">no runs</td>;
             const [figure, basis] = matrixFigure(totals, metric);
             const small = totals.verdicts < SMALL_SAMPLE;
             const href = runsHref([runsFilter('model', row), runsFilter(columnsBy, column)]);
             const body = <><span className="usage-matrix-figure">{figure}</span>
               <span className="usage-matrix-basis">{small ? `${basis} · small sample` : basis}</span></>;
-            return <td key={column} data-row={row} data-col={column} data-state={totals.verdicts === 0 ? 'no-verdicts' : 'value'} data-small={small ? 'true' : undefined}
+            return <td key={column} data-row={row} data-col={column} data-label={columnName(column)} data-state={totals.verdicts === 0 ? 'no-verdicts' : 'value'} data-small={small ? 'true' : undefined}
               data-metric={metric}>
               {href ? <Link href={href} aria-label={`${row}, ${column}: ${figure}, ${basis}${small ? ', small sample' : ''}. Opens these runs.`}>{body}</Link> : body}
             </td>;
