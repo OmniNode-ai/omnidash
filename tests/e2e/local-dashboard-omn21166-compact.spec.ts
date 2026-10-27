@@ -30,11 +30,10 @@ test('card details stay accessible by keyboard focus', async ({page},info) => {
   // OMN-21166 live review 2026-10-25: the keyboard property retargets to the cards: focusing a card opens its served details.
   const quality=page.locator('[data-component="overview-quality"]');
   await expect(quality).toContainText('75.0%');
-  const about=quality.getByRole('button',{name:'About Delegation Quality',exact:true});
-  await about.focus();
-  await expect(quality.getByRole('tooltip')).toBeVisible();
-  await expect(quality.getByRole('tooltip')).toContainText('6 of 8 runs passed the quality gate');
-  await expect(about).toHaveAttribute('aria-expanded','true');
+  // Part 29 AC191: the card's caption shows its basis under the figure; no popover and no About button.
+  await expect(quality.locator('.local-card-caption')).toContainText('6 of 8 runs passed the quality gate');
+  await expect(quality.locator('.local-card-caption > :first-child')).toBeVisible();
+  await expect(quality.getByRole('button',{name:'About Delegation Quality',exact:true})).toHaveCount(0);
   await page.screenshot({path:info.outputPath('compact-required-details.png')});
 });
 

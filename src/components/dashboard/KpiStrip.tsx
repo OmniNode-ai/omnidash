@@ -1,9 +1,8 @@
 /**
  * OMN-21166 part 11 AC63, reworked by part 15 AC91: the headline figures of Runs and Usage, drawn as Overview's cards.
- * A card shows its title and its served figure only, in its own identity colour; everything that used to sit under the
- * figure (captions, run counts, baseline, and what the sparkline showed) is in a tooltip of the card's colour that
- * opens on hover and on keyboard focus. Every figure is a served value formatted by its caller; a figure that is not
- * served reads its typed state.
+ * A card shows its title, its served figure and, since part 29 AC191, a caption under the figure: the first of its lines
+ * (captions, run counts, baseline, and what the sparkline showed) is drawn, and every line stays in the page. Every
+ * figure is a served value formatted by its caller; a figure that is not served reads its typed state.
  */
 import type { CSSProperties, ReactNode } from 'react';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
@@ -26,7 +25,7 @@ export interface KpiItem {
   accent: string;
   /** The concept whose icon heads the card (ConceptIcon). */
   concept?: string;
-  /** The short facts that sat under the figure; shown in the tooltip. */
+  /** The short facts under the figure: the first is the drawn caption, the rest stay in the page (AC191). */
   lines?: ReadonlyArray<string | null | undefined>;
   title?: string;
   unavailable?: boolean;

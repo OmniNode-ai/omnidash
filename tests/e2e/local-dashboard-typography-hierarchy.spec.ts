@@ -18,15 +18,15 @@ for (const width of [1440, 390]) {
     // summary now. A card's caption lines sit in its tooltip (opened by hovering the card), its value is the metric.
     const cards = page.locator('.local-overview-summary article[data-component]');
     await expect(cards.first()).toBeVisible();
-    await cards.nth(2).hover();
-    await expect(cards.nth(2).getByRole('tooltip')).toBeVisible();
+    // Part 29 AC191: the small text is the drawn caption under each figure (no popover to open).
+    await expect(cards.locator('.local-card-caption > :first-child').first()).toBeVisible();
     const read = (selector: string, tag: string) => cards.locator(selector).evaluateAll((elements, tagName) => elements.map(element => {
       const css = getComputedStyle(element);
       return { tag: tagName, text: element.textContent?.trim(),
         size: parseFloat(css.fontSize), weight: Number(css.fontWeight),
         leading: parseFloat(css.lineHeight) / parseFloat(css.fontSize), family: css.fontFamily };
     }), tag);
-    const readings = [...await read('.local-card-tooltip .local-dashboard-caption', 'small'), ...await read('.local-dashboard-metric', 'strong')];
+    const readings = [...await read('.local-card-caption > :first-child', 'small'), ...await read('.local-dashboard-metric', 'strong')];
     writeFileSync(info.outputPath('summary-type.json'), JSON.stringify({ route, readings }, null, 2));
     const captions = readings.filter(item => item.tag === 'small');
     const values = readings.filter(item => item.tag === 'strong');

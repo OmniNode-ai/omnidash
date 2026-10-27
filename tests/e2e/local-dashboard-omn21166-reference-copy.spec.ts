@@ -1,5 +1,6 @@
 import { expect, test, type Page } from 'playwright/test';
 import { serveCharts } from './omn21166-chart-fixtures';
+import { withAllTime } from './omn21166-redesign-fixtures';
 
 // OMN-21166 part 28, revision 5 (Lakshman 2026-10-27: "take help of codex and paradev and entire style copy it"; he chose
 // a monochrome interface, solid flat bars and 8px corners). Failure modes declared before the code:
@@ -86,31 +87,28 @@ for (const theme of ['light', 'dark'] as const) {
   });
 }
 
-test('AC179 the card details open under their own card, aligned to its edge, neutral and without an arrow', async ({ page }) => {
-  await openTheme(page, 'dark');
+test('AC179 as superseded by AC191: the card basis is a caption inside its own card, under the figure, with no popover', async ({ page }) => {
+  // Part 29 AC191 replaced AC179's popover (it covered the next chart's title, Codex MSG 9def29ce): the basis now sits
+  // in the card under its figure, so nothing opens over the page and no help cursor appears in the card's corner.
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.addInitScript(() => localStorage.setItem('omnidash.theme.v1', 'dark'));
+  await serveCharts(page, withAllTime);
   await settle(page, '/overview');
-  const cards = page.locator('.local-overview-summary > .local-dashboard-panel');
+  // The first and last cards that carry a basis (a card with nothing to say, like Tokens here, draws no caption).
+  const cards = page.locator('.local-overview-summary > .local-dashboard-panel').filter({ has: page.locator('.local-card-caption') });
   const count = await cards.count();
-  expect(count).toBeGreaterThanOrEqual(5);
+  expect(count, 'cards with a caption').toBeGreaterThanOrEqual(2);
   for (const index of [0, count - 1]) {
     const card = cards.nth(index);
     await card.hover();
-    const tip = card.locator('.local-card-tooltip');
-    await expect(tip).toBeVisible();
-    const [box, tipBox, figure] = await Promise.all([card.boundingBox(), tip.boundingBox(), card.locator('.local-dashboard-metric').boundingBox()]);
-    expect(tipBox!.y, 'below the card').toBeGreaterThanOrEqual(box!.y + box!.height);
-    expect(tipBox!.y - (box!.y + box!.height), 'directly under it').toBeLessThanOrEqual(12);
-    if (index === 0) expect(Math.abs(tipBox!.x - box!.x), 'on its left edge').toBeLessThanOrEqual(1);
-    else expect(Math.abs(tipBox!.x + tipBox!.width - (box!.x + box!.width)), 'on its right edge').toBeLessThanOrEqual(1);
-    expect(tipBox!.y, 'never over its own figure').toBeGreaterThanOrEqual(figure!.y + figure!.height);
-    await expect(tip).toHaveCSS('background-color', RAISED.dark);
-    await expect(tip).toHaveCSS('border-top-color', LINE.dark);
-    expect(await tip.evaluate(el => getComputedStyle(el, '::after').display)).toBe('none');
-    // No help (question-mark) cursor in the card's corner: the hidden details button takes the card's own cursor.
-    expect(await card.locator('.local-card-info').evaluate(el => getComputedStyle(el).cursor)).toBe(await card.evaluate(el => getComputedStyle(el).cursor));
-    expect(await card.locator('.local-card-info').evaluate(el => getComputedStyle(el).cursor)).not.toBe('help');
-    await page.mouse.move(5, 890);
-    await expect(tip).toBeHidden();
+    await expect(page.locator('.local-overview-summary [role="tooltip"]')).toHaveCount(0);
+    const caption = card.locator('.local-card-caption > :first-child');
+    await expect(caption).toBeVisible();
+    const [box, captionBox, figure] = await Promise.all([card.boundingBox(), caption.boundingBox(), card.locator('.local-dashboard-metric').boundingBox()]);
+    expect(captionBox!.y, 'under the figure').toBeGreaterThanOrEqual(figure!.y + figure!.height - 1);
+    expect(captionBox!.y + captionBox!.height, 'inside its card').toBeLessThanOrEqual(box!.y + box!.height + 1);
+    expect(captionBox!.x, 'inside its card').toBeGreaterThanOrEqual(box!.x);
+    expect(await card.evaluate(el => [el, ...el.querySelectorAll('*')].some(node => getComputedStyle(node).cursor === 'help')), 'no help cursor').toBe(false);
   }
 });
 

@@ -85,11 +85,11 @@ const OVERVIEW = prefix + 'cost.savings-overview.v1';
 async function basisOf(page: Page, card: string, line = '.local-card-basis') {
   const panel = page.locator(`[data-component="${card}"]`);
   await expect(panel.locator('.local-dashboard-metric')).toHaveAttribute('data-measured', 'true');
-  // OMN-21166 part 12 AC73: the four headline cards keep their basis in a tooltip behind the keyboard-focusable
-  // "About <card>" button, which opens on focus; open it through the keyboard path, then require the basis in view.
-  await panel.getByRole('button', { name: /^About /i }).focus();
+  // OMN-21166 part 29 AC191 (superseding part 12 AC73's tooltip): the headline cards keep their basis as the caption
+  // under the figure; the first line is drawn and every line stays in the page, so the basis is read in place.
   const basis = panel.locator(line);
-  await expect(basis, `${card} shows its basis`).toBeVisible({ timeout: 3000 });
+  await expect(basis, `${card} shows its basis`).toBeAttached({ timeout: 3000 });
+  await expect(panel.locator('.local-card-caption > :first-child')).toBeVisible();
   return basis;
 }
 
@@ -138,7 +138,7 @@ for (const scenario of [
     // OMN-21166 live review 2026-10-25: on the metering source the headline cards' basis is the tooltip's lines
     // ("Not counted: ...", "Baseline X · pricing vN"); a class with a zero count is left out rather than written as 0.
     for (const card of ['overview-spend', 'overview-savings']) {
-      const details = await basisOf(page, card, '[role="tooltip"]');
+      const details = await basisOf(page, card, '.local-card-caption');
       await expect(details).toContainText(scenario.expected);
       if (!scenario.spendNamed) await expect(details).not.toContainText('without spend');
       await expect(details).toContainText('Baseline baseline-a');

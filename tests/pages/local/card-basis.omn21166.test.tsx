@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-// OMN-21166 part 12 AC73: Overview headline cards show their figure; the basis lines sit in a tooltip behind an info
-// button. Failure modes: a fact dropped in the move, a tooltip only a mouse can open, a non-headline card losing its
-// visible lines, an empty tooltip.
-import { fireEvent, render, screen, within } from '@testing-library/react';
+// OMN-21166 part 12 AC73, as superseded by part 29 AC191: Overview headline cards show their figure with its basis as a
+// caption under it (no popover). Failure modes: a fact dropped in the move, a button or popover left behind, a
+// non-headline card losing its visible lines, an empty caption.
+import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { CardBasis, MetricCard } from '@/pages/LocalDashboardPage';
 
@@ -13,37 +13,34 @@ const BASIS = { baseline_model: 'claude-sonnet-5-5', pricing_manifest_version: '
   excluded_runs: [[7, 'run with no token counts', 'runs with no token counts'], [0, 'run with no spend recorded', 'runs with no spend recorded']] };
 
 describe('CardBasis', () => {
-  it('opens on keyboard focus, closes on Escape, and describes the button with its facts', () => {
-    render(<CardBasis label="Actual spend"><p>Baseline claude-sonnet-5-5</p></CardBasis>);
-    const button = screen.getByRole('button', { name: 'About Actual spend' });
-    const tip = document.getElementById(button.getAttribute('aria-describedby')!)!;
-    expect(tip).toHaveAttribute('role', 'tooltip');
-    expect(tip.textContent).toBe('Baseline claude-sonnet-5-5');
-    fireEvent.focus(button);
-    expect(button).toHaveAttribute('aria-expanded', 'true');
-    fireEvent.keyDown(button, { key: 'Escape' });
-    expect(button).toHaveAttribute('aria-expanded', 'false');
+  // Part 29 AC191: an inline caption, no button and no popover; every line it is given stays in the page.
+  it('keeps its facts in the page as the card caption, with no button or popover', () => {
+    const { container } = render(<CardBasis label="Actual spend"><p>Baseline claude-sonnet-5-5</p><p>pricing manifest v1.0.0</p></CardBasis>);
+    const caption = container.querySelector('.local-card-caption')!;
+    expect(caption.textContent).toBe('Baseline claude-sonnet-5-5pricing manifest v1.0.0');
+    expect(screen.queryByRole('button')).toBeNull();
+    expect(screen.queryByRole('tooltip')).toBeNull();
   });
 });
 
 describe('MetricCard on an Overview headline card', () => {
-  it('keeps the figure in view and puts every basis fact in the tooltip', () => {
+  it('keeps the figure in view and puts every basis fact in the caption', () => {
     const { container } = render(<MetricCard component={component('overview-spend', 'Actual spend', ['window_kind', 'as_of', 'spend_usd'])}
       config={{ metric_key: 'spend_usd', format: 'currency' } as never} row={ROW} caption={BASIS} />);
     expect(container.querySelector('.local-dashboard-metric')?.textContent).toBe('$0.23');
-    const tip = screen.getByRole('tooltip');
+    const caption = container.querySelector('.local-card-caption')!;
     for (const fact of ['Baseline claude-sonnet-5-5', 'pricing manifest v1.0.0', '7 runs with no token counts', '0 runs with no spend recorded']) {
-      expect(tip.textContent).toContain(fact);
+      expect(caption.textContent).toContain(fact);
     }
-    // No basis line outside the tooltip.
-    const outside = [...container.querySelectorAll('.local-dashboard-caption')].filter(node => !tip.contains(node));
+    // No basis line outside the caption.
+    const outside = [...container.querySelectorAll('.local-dashboard-caption')].filter(node => !caption.contains(node));
     expect(outside).toEqual([]);
   });
 
-  it('draws no tooltip when the card has no basis to tell', () => {
-    render(<MetricCard component={component('overview-tokens', 'Tokens processed', ['window_kind', 'as_of', 'spend_usd'])}
+  it('draws no caption when the card has no basis to tell', () => {
+    const { container } = render(<MetricCard component={component('overview-tokens', 'Tokens processed', ['window_kind', 'as_of', 'spend_usd'])}
       config={{ metric_key: 'spend_usd', format: 'currency' } as never} row={ROW} caption={null} />);
-    expect(screen.queryByRole('tooltip')).toBeNull();
+    expect(container.querySelector('.local-card-caption')).toBeNull();
     expect(screen.queryByRole('button', { name: /About/ })).toBeNull();
   });
 });

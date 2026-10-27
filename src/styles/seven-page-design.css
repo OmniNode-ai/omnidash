@@ -1300,3 +1300,57 @@ html .app svg.field-icon.field-icon:is([data-field-icon^="tier-"], [data-semanti
 @media (max-width: 600px) {
   .local-dashboard-page .local-dashboard-header > .local-kpi-cards { align-self: stretch; width: 100%; }
 }
+
+/* ── Part 29 (revision 6): the delegation-data redesign ─────────────────────────────────────────────────────────────
+   AC191: a headline card's basis is a caption under its figure (Entire's figure-and-caption card), not a hover popover.
+   The figure sits under its label; the caption is pinned to the card's foot, so figures share one line across a row
+   whatever each caption's length. Only the first basis line is drawn (two lines at most); the rest stay in the page for
+   screen readers. */
+:is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel > .local-dashboard-metric { margin-top: 6px; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-caption { margin-top: auto; padding-top: 8px; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-caption > * {
+  margin: 0; font-size: 12px; line-height: 1.4; font-weight: 400; color: var(--ink-2) !important;
+}
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-caption > :first-child {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+}
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-caption > :not(:first-child) {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+/* AC192: the change line's arrow sits before its words, in the same neutral colour. */
+.local-overview-summary .local-card-change-arrow { margin-right: 4px; }
+/* AC194: the group-by control is the neutral segmented control (AC178), the sparkline solid bars (AC180) with days before
+   the sample drawn as a hollow outline (not covered, never 0). */
+.usage-analysis { display: grid; gap: 12px; }
+.usage-analysis-group { display: inline-flex; gap: 2px; padding: 2px; width: max-content; max-width: 100%; flex-wrap: wrap;
+  border: 1px solid var(--line); border-radius: 6px; background: var(--panel); }
+.usage-analysis-group label { display: inline-flex; align-items: center; min-height: 32px; padding: 0 12px; border-radius: 6px;
+  font-size: 13px; color: var(--ink-2); cursor: pointer; }
+.usage-analysis-group input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.usage-analysis-group label:has(input:checked) { background: var(--panel-2); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+.usage-analysis-group label:has(input:focus-visible) { outline: 2px solid var(--ui-accent); outline-offset: 1px; }
+.usage-analysis table th[data-model-name] { color: var(--model-color); }
+.usage-analysis table thead button { all: unset; cursor: pointer; font: inherit; color: inherit; }
+.usage-analysis table thead button:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
+.usage-analysis-spark { display: inline-flex; align-items: flex-end; gap: 2px; height: 20px; width: 98px; }
+.usage-analysis-spark i { flex: 1; min-width: 4px; height: var(--spark-height); background: var(--ink-3); border-radius: 1px; }
+.usage-analysis-spark i[data-covered="false"] { background: transparent; box-shadow: inset 0 0 0 1px var(--line); height: 100%; }
+.usage-analysis-spark i[data-covered="true"][data-runs="0"] { height: 1px; }
+/* AC195: cost versus quality, hairline axes, each model point in its identity colour. */
+.usage-analysis-quality { margin: 0; }
+.usage-analysis-quality svg { width: 100%; height: auto; max-height: 260px; display: block; }
+.usage-analysis-axis { stroke: var(--line); stroke-width: 1; }
+.usage-analysis-tick, .usage-analysis-point-name { fill: var(--ink-2); font-size: 12px; font-family: var(--font-mono); }
+.usage-analysis-quality circle { fill: var(--point-color); fill-opacity: .85; stroke: var(--point-color); stroke-width: 1.5; }
+.usage-analysis-quality circle:focus-visible { outline: none; stroke: var(--ink); stroke-width: 3; }
+/* AC196: Runs' totals line under its scope note. */
+.local-runs-totals { margin: 4px 0 8px; color: var(--ink-2); }
+.local-runs-totals [data-total] { color: var(--ink); font-family: var(--font-mono); font-size: 12px; }
+/* AC197: each step's place on the run's time axis, a hairline track with a solid bar; a step without both times reads
+   not recorded instead of a bar. */
+.local-run-waterfall { position: relative; height: 10px; margin: 6px 0 2px; border-radius: 2px; background: var(--line-2); max-width: 520px; }
+.local-run-waterfall [data-waterfall-bar] { position: absolute; top: 0; bottom: 0; left: var(--wf-left); width: var(--wf-width);
+  background: var(--ink-3); border-radius: 2px; }
+.local-dashboard-steps > li[data-outcome="failed"] .local-run-waterfall [data-waterfall-bar] { background: var(--ins-fail, var(--field-fail)); }
+.local-run-waterfall[data-positioned="false"] { height: auto; background: none; }
+.local-run-waterfall-missing { font-size: 12px; color: var(--ink-3); border: 1px dashed var(--line); border-radius: 4px; padding: 1px 6px; }

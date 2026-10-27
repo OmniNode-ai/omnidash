@@ -2,20 +2,21 @@
 // OMN-21166 part 11 AC63, reworked by part 15 AC91 (Lakshman 2026-10-25: "make sure all pages follow overview page
 // style"): the headline figures of Runs and Usage are Overview's cards. Failure modes, each with a test below:
 //   K1  a figure changes value on the way into a card (or a missing one reads 0);
-//   K2  a caption or a sparkline is still drawn on the card face;
-//   K3  a detail that sat on the card (its caption, run counts, baseline) is missing from the card's tooltip;
-//   K4  the tooltip opens only for a mouse: the card has no focusable control describing it;
+//   K2  a sparkline is still drawn on the card face, or the caption is mixed into the title and figure;
+//   K3  a detail that sat on the card (its caption, run counts, baseline) is missing from the card's caption
+//       (part 29 AC191: the caption under the figure replaced the tooltip);
+//   K4  a keyboard or screen-reader user cannot reach the details: they must be page text, not behind a control;
 //   K5  two cards share an identity colour;
 //   K6  the trend sentence (what the sparkline showed) counts a day with no served value as zero, or invents a trend
 //       from fewer than two served days; an unavailable figure carries no trend.
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { KpiStrip, trendLine } from '@/components/dashboard/KpiStrip';
 import { RunsKpis, UsageKpis } from '@/pages/LocalDashboardPage';
 
 const cards = (region: HTMLElement) => [...region.querySelectorAll('article')] as HTMLElement[];
-const face = (card: HTMLElement) => [...card.children].filter(child => !child.matches('.local-card-basis-tip')).map(child => child.textContent).join('|');
-const tooltip = (card: HTMLElement) => card.querySelector('[role="tooltip"]')?.textContent ?? '';
+const face = (card: HTMLElement) => [...card.children].filter(child => !child.matches('.local-card-caption')).map(child => child.textContent).join('|');
+const tooltip = (card: HTMLElement) => card.querySelector('.local-card-caption')?.textContent ?? '';
 
 const ALL = { window_kind: 'all', window_start: '', as_of: '2026-10-25T10:00:00Z', baseline_model: 'claude-sonnet-5-5', baseline_state: 'resolved',
   spend_usd: '0.232022', counterfactual_usd: '3.997402', savings_usd: '3.765380', runs_total: 605, runs_unknown_tokens: 7, tokens_in: 578671, tokens_out: 284006 };
@@ -36,12 +37,12 @@ describe('KpiStrip as Overview cards', () => {
     expect(screen.getByRole('region', { name: 'Strip' }).querySelector('svg.kpi-sparkline')).toBeNull();
   });
 
-  it('K4: a keyboard user reaches each card\'s details through a control the tooltip describes', () => {
+  it('K4: each card\'s details are page text under its figure, reachable without any control', () => {
     render(<KpiStrip label="Strip" items={items} />);
-    const button = screen.getByRole('button', { name: 'About You paid' });
-    expect(button).toHaveAccessibleDescription('Measured spend, all time');
-    fireEvent.focus(button);
-    expect(button.closest('.local-card-basis-tip')).toHaveAttribute('data-open', 'true');
+    const [paid] = cards(screen.getByRole('region', { name: 'Strip' }));
+    expect(within(paid!).getByText('Measured spend, all time')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'About You paid' })).toBeNull();
+    expect(screen.queryByRole('tooltip')).toBeNull();
   });
 
   it('K6: an unavailable figure carries no trend sentence', () => {
