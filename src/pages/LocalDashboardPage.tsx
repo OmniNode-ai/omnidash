@@ -1916,7 +1916,7 @@ export function ModelUsagePanel({ row }: { row: Row | null }) {
   return (
     // AC144: all served models keep upright bars; long names wrap and the plot scrolls inside its panel when narrow.
     <section aria-label="Model usage" className="local-model-usage local-model-usage--upright">
-      <RankedBars label="Runs by model" unit="Runs" order="desc" layout="vertical"
+      <RankedBars label="Runs by model" unit="Runs" order="desc" layout="vertical" many="scroll"
         items={models.map((model, index) => {
           const name = isMissing(model.model_name) ? 'Not recorded' : String(model.model_name);
           const runs = share(model.total_count);

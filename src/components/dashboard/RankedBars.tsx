@@ -31,9 +31,12 @@ const BASIS_WORDS: Readonly<Record<RankedBarBasis, string>> = {
   unknown: 'not measured',
 };
 
-export function RankedBars({ label, unit, items, order = 'asc', note, footnote, layout = 'auto' }: {
-  /** 'vertical' keeps upright bars in a narrow panel (live review 2026-10-25); 'auto' turns them sideways below 560px. */
+export function RankedBars({ label, unit, items, order = 'asc', note, footnote, layout = 'auto', many = 'sideways' }: {
+  /** 'vertical' keeps upright bars in a narrow panel (live review 2026-10-25), up to 10 of them (AC213); 'auto' turns them
+   * sideways below 560px. */
   layout?: 'auto' | 'vertical';
+  /** Past 10 upright bars: 'sideways' (AC213), or 'scroll' for a caller whose panel scrolls to keep every name whole (AC144). */
+  many?: 'sideways' | 'scroll';
   label: string;
   /** The unit and reading direction under the title, e.g. "USD · lower is better". */
   unit: string;
@@ -50,8 +53,11 @@ export function RankedBars({ label, unit, items, order = 'asc', note, footnote, 
   const ranked = [...served].sort((a, b) => (order === 'asc' ? a.value! - b.value! : b.value! - a.value!));
   const ordered = [...ranked, ...shown.filter(item => item.basis === 'unknown')];
   const max = Math.max(0, ...served.map(item => item.value!));
+  // OMN-21166 AC213 (Lakshman 2026-10-28): past 10 bars an upright chart splits its width too thin for any name, so it
+  // runs sideways. Every drawn item counts, an unserved outline included.
+  const sideways = layout === 'vertical' && many === 'sideways' && ordered.length > 10;
   return (
-    <figure className={`rb-chart${layout === 'vertical' ? ' rb-chart--vertical' : ''}`} aria-label={label}>
+    <figure className={`rb-chart${layout === 'vertical' && !sideways ? ' rb-chart--vertical' : ''}${sideways ? ' rb-chart--rows' : ''}`} aria-label={label}>
       <figcaption className="rb-head">
         <span className="rb-unit">{unit}</span>
         {note}

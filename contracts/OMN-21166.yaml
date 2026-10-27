@@ -178,6 +178,16 @@
           "statement": "AC208: (approved plan amendment 30c, 2026-10-27, Lakshman) Settings has no Appearance section or theme choice, and the header's theme toggle still switches the theme and keeps it on reload -- falsifier: the bound check dod-omn21166-ac208-no-appearance fails at the merge base"
         }
       ]
+    },
+    {
+      "id": "req-amendment-31c-many-bars-sideways",
+      "statement": "Amendment 31c, approved by Lakshman in chat on 2026-10-28 after his report that Usage's Savings by model x-axis labels were unreadable, and copied into the live ticket body: an upright ranked bar chart turns sideways past 10 items. The ticket remains the source.",
+      "acceptance": [
+        {
+          "id": "AC213",
+          "statement": "AC213: (approved plan amendment part 31c, 2026-10-28, Lakshman) a ranked bar chart asked for upright bars draws them sideways when it has more than 10 items: one row per item with the full name on the left, the value on the right and the bar between, every name and value readable at 1440x900 and on a phone, the same order, colours, links and hatching as before; with 10 items or fewer it stays upright as today; a chart that already scrolls sideways to keep every name whole (Overview's Runs by model, pinned by the E2 and E3 edge tests) keeps scrolling -- falsifier: the bound check dod-omn21166-ac213-many-bars-sideways fails at the merge base"
+        }
+      ]
     }
   ],
   "evidence_requirements": [
@@ -857,6 +867,31 @@
         {
           "check_type": "test_passes",
           "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-reference-style.spec.ts -g \"AC208\" --project=chromium --workers=1 --retries=0",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
+    },
+    {
+      "id": "dod-omn21166-ac213-many-bars-sideways",
+      "description": "AC213 (amendment 31c): with 39 served models Usage's Savings by model runs sideways at 1440 and 390 with every name and value whole and the value right of its name; 11 items with one unserved also run sideways; 7 models stay upright. Fails at merge base c540e77a, where the 39-model and 11-item cases stay upright and clip names (3 of 4 failed on .201 2026-10-27 19:22Z).",
+      "source": "manual",
+      "binds_ac": [
+        "AC213"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-ranked-many.spec.ts -g \"AC213 39 models turn sideways\" --project=chromium --workers=1 --retries=0",
+          "cwd": "${OMNI_HOME}/omnidash"
+        },
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-ranked-many.spec.ts -g \"AC213 11 items\" --project=chromium --workers=1 --retries=0",
+          "cwd": "${OMNI_HOME}/omnidash"
+        },
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-ranked-many.spec.ts -g \"AC213 control\" --project=chromium --workers=1 --retries=0",
           "cwd": "${OMNI_HOME}/omnidash"
         }
       ]
