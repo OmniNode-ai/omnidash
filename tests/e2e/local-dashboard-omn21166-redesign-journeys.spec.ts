@@ -204,13 +204,15 @@ test('AC200 a window summed over days on two pricing versions reads as a mixed b
         : { topic, status: 'ok', backing: 'bus', bus_backed: true, tenant_scoped: false }) }) }));
   };
   // Codex MSG b53ca31a: a versioned day beside an unversioned one is a mixed basis too, never the one version it does see.
-  for (const [versions, expected] of [[['1.0.0', '2.0.0'], 'pricing mixed basis (several versions)'], [['', '2.0.0'], 'pricing mixed basis (several versions)'], [['2.0.0', '2.0.0'], 'pricing v2.0.0']] as const) {
+  // Codex MSG 7b7cfb30: days with no version at all are Not recorded; a window with no day rows keeps the all row's (control).
+  for (const [versions, expected] of [[['1.0.0', '2.0.0'], 'pricing mixed basis (several versions)'], [['', '2.0.0'], 'pricing mixed basis (several versions)'],
+    [['', ''], 'pricing Not recorded'], [['2.0.0', '2.0.0'], 'pricing v2.0.0'], [[], 'pricing v2.0.0']] as const) {
     await page.unrouteAll({ behavior: 'ignoreErrors' });
     await serve([...versions]);
     await settle(page, '/overview');
     await page.getByRole('radio', { name: 'Last 7 days (UTC)', exact: true }).click();
     const caption = page.locator('[data-component="overview-savings"] .local-card-caption');
     await expect(caption).toContainText(expected);
-    if (versions[0] !== versions[1]) await expect(caption).not.toContainText(/pricing v\d/);
+    if (versions.length === 2 && versions[0] !== versions[1] || versions.join() === ',') await expect(caption).not.toContainText(/pricing v\d/);
   }
 });

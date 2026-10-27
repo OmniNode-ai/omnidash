@@ -488,12 +488,14 @@ function meteringRangeRow(rows: readonly unknown[], start: string, end: string):
   }
   const days = dates.flatMap(date => (byDay.has(date) ? [byDay.get(date)!] : []));
   // Part 29 AC200 (Codex MSGs a9bd908d, b53ca31a): the window's price basis is the versions of the days actually summed.
-  // One version on every day is named; several, or a version beside an unversioned day, read as a mixed basis. Days that
-  // record no version at all keep the all-time row's basis, as before (the summed rows offer no other evidence).
+  // One version on every day is named; several, or a version beside an unversioned day, read as a mixed basis; summed
+  // days that record no version at all are not recorded (Codex MSG 7b7cfb30: the all-time row cannot vouch for them); a
+  // window with no day rows keeps the all-time row's basis.
   const versions = new Set(days.map(d => d.pricing_manifest_version).filter(v => !isMissing(v)).map(String));
   const unversioned = days.some(d => isMissing(d.pricing_manifest_version));
-  const pricing = versions.size > 1 || (versions.size === 1 && unversioned) ? MIXED_PRICING
-    : versions.size === 1 ? [...versions][0] : allRow.pricing_manifest_version;
+  const pricing = days.length === 0 ? allRow.pricing_manifest_version
+    : versions.size > 1 || (versions.size === 1 && unversioned) ? MIXED_PRICING
+      : versions.size === 1 ? [...versions][0] : null;
   const row: Record<string, unknown> = {
     window_kind: start === end ? 'day' : 'range', window_start: start, window_end: end, as_of: allRow.as_of,
     baseline_model: allRow.baseline_model, pricing_manifest_version: pricing, baseline_state: allRow.baseline_state,

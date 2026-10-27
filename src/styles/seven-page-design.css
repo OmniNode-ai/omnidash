@@ -1384,7 +1384,12 @@ html .app svg.field-icon.field-icon:is([data-field-icon^="tier-"], [data-semanti
 @media (max-width: 600px) {
   .utc-plot > li:nth-child(even) .utc-day { visibility: hidden; }
 }
-/* AC191: a card's token directions read on one line in its caption ("<in> in · <out> out"), as they did in the old tooltip. */
+/* AC191: a card's token directions read on one line in its caption ("<in> in · <out> out"), as they did in the old tooltip;
+   on a phone too narrow for both (320px), the two halves wrap whole instead of pushing the row sideways. */
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-caption .local-token-directions {
-  display: inline-flex; flex-direction: row; flex-wrap: nowrap; align-items: baseline; gap: 6px; margin: 0; white-space: nowrap;
+  display: inline-flex; flex-direction: row; flex-wrap: nowrap; align-items: baseline; gap: 0 6px; margin: 0;
 }
+@media (max-width: 479px) {
+  :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-caption .local-token-directions { flex-wrap: wrap; max-width: 100%; }
+}
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-caption .local-token-direction { white-space: nowrap; }
