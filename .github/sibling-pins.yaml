@@ -1,0 +1,7 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+# OMN-21166 (AC212): the omnibase_core commit omnidash builds against, read by
+# the shared receipt gate's sibling resolver. It must equal the core checkout
+# ref in check-handshake.yml; the core pin-bump bot rewrites both together.
+pins:
+  omnibase_core: 9b083ad32228f078aecfc47f9c71155656b47fae
