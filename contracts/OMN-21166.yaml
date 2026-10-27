@@ -188,6 +188,20 @@
           "statement": "AC213: (approved plan amendment part 31c, 2026-10-28, Lakshman) a ranked bar chart asked for upright bars draws them sideways when it has more than 10 items: one row per item with the full name on the left, the value on the right and the bar between, every name and value readable at 1440x900 and on a phone, the same order, colours, links and hatching as before; with 10 items or fewer it stays upright as today; a chart that already scrolls sideways to keep every name whole (Overview's Runs by model, pinned by the E2 and E3 edge tests) keeps scrolling -- falsifier: the bound check dod-omn21166-ac213-many-bars-sideways fails at the merge base"
         }
       ]
+    },
+    {
+      "id": "req-amendment-31-declared-sibling-pin",
+      "statement": "Amendment part 31, approved by Lakshman in chat on 2026-10-27 after Jonah chose option B on 2026-10-25, and copied into the live ticket body: omnidash declares its omnibase_core commit for the shared receipt gate's sibling resolver, so AC43 is proven by omnibase_core's own test in omnidash's evidence run. The ticket remains the source.",
+      "acceptance": [
+        {
+          "id": "AC43",
+          "statement": "AC43: (approved plan amendment, 2026-10-22, Jonah's comment on this ticket) omnibase_core's receipt gate takes a check-timeout-seconds input: an empty value keeps the verifier's 30 s per-check default, a whole number from 1 to 900 reaches both the head check and the merge-base control, and any other value is refused before the verifier is installed -- falsifier: uv run pytest tests/ci/test_receipt_gate_check_timeout_omn21166.py -q in omnibase_core fails at the merge base"
+        },
+        {
+          "id": "AC212",
+          "statement": "AC212: (approved plan amendment part 31, 2026-10-27, Lakshman; Jonah chose option B on 2026-10-25) omnidash declares its omnibase_core commit in .github/sibling-pins.yaml, pins its repo-evidence caller to a receipt gate carrying AC209, and binds AC43 to the omnibase_core timeout test, so its evidence run checks omnibase_core out -- falsifier: the bound check dod-omn21166-ac212-ac43-from-omnidash fails at the merge base"
+        }
+      ]
     }
   ],
   "evidence_requirements": [
@@ -893,6 +907,46 @@
           "check_type": "test_passes",
           "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-ranked-many.spec.ts -g \"AC213 control\" --project=chromium --workers=1 --retries=0",
           "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
+    },
+    {
+      "id": "dod-omn21166-ac43-core-check-timeout",
+      "description": "AC43: omnibase_core's own receipt-gate timeout test, run by omnidash's tests/ci/test_ac43_core_timeout_omn21166.py in the omnibase_core checkout the receipt gate makes beside omnidash, after asserting that checkout is the commit omnidash declares in .github/sibling-pins.yaml. The check runs from the omnibase_core checkout so the gate provisions it. The merge-base control reuses the head's omnibase_core checkout, so it fails because omnidash's merge base c540e77a declares no commit, not because the timeout behaviour fails there; that behaviour's own must-fail control is omnibase_core#2085's.",
+      "source": "manual",
+      "binds_ac": [
+        "AC43"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest ../omnidash/tests/ci/test_ac43_core_timeout_omn21166.py -q --noconftest -p no:cacheprovider -c /dev/null",
+          "cwd": "${OMNI_HOME}/omnibase_core"
+        }
+      ]
+    },
+    {
+      "id": "dod-omn21166-ac212-ac43-from-omnidash",
+      "description": "AC212, three checks. (1) .github/sibling-pins.yaml names one omnibase_core commit on one active key line, equal to check-handshake.yml's core checkout and to every other literal core checkout ref. (2) The repo-evidence caller pins omnibase_core#2102's receipt gate abc2cb3e, the first that carries AC209 (landed in #468). (3) In the evidence run the omnibase_core checkout beside omnidash is the declared commit: a gate without AC209 reads the step-output checkout refs as conflicting pins and leaves omnibase_core absent, so this check fails, as it does when the checkout is another commit. Checks (1) and (3) fail at merge base 63593651, where the pin file does not exist.",
+      "source": "manual",
+      "binds_ac": [
+        "AC212"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/ci/test_sibling_pins_omn21166.py -q --noconftest -p no:cacheprovider -c /dev/null",
+          "cwd": "${OMNI_HOME}/omnidash"
+        },
+        {
+          "check_type": "test_passes",
+          "check_value": "uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/ci/test_repo_evidence_caller_omn20073.py -q --noconftest -p no:cacheprovider -c /dev/null -k pins_the_current_receipt_gate",
+          "cwd": "${OMNI_HOME}/omnidash"
+        },
+        {
+          "check_type": "test_passes",
+          "check_value": "uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest ../omnidash/tests/ci/test_ac43_core_timeout_omn21166.py -q --noconftest -p no:cacheprovider -c /dev/null -k core_checkout_is_the_declared_commit",
+          "cwd": "${OMNI_HOME}/omnibase_core"
         }
       ]
     }
