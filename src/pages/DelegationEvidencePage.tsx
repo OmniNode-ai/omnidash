@@ -785,10 +785,16 @@ function exactUsd(value: unknown): string {
   return `${sign ?? ''}$${whole!.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}${fraction ? `.${fraction}` : ''}`;
 }
 
-/** A decimal in exponent form (3e-7, as a small number prints) written out by moving the point, with no arithmetic. */
+/** The largest exponent written out; a served dollar figure beyond it is not a real amount (Codex MSG 9f72d7f9). */
+const MAX_EXPONENT = 40;
+
+/**
+ * A decimal in exponent form (3e-7, as a small number prints) written out by moving the point, with no arithmetic. An
+ * exponent past MAX_EXPONENT is left as it is, so the caller reads it as Not measured instead of building a huge string.
+ */
 function expandExponent(text: string): string {
   const match = /^(-)?(\d+)(?:\.(\d+))?e([+-]?\d+)$/i.exec(text);
-  if (!match) return text;
+  if (!match || Math.abs(Number(match[4])) > MAX_EXPONENT) return text;
   const [, sign = '', whole, fraction = '', power] = match;
   const digits = `${whole}${fraction}`;
   const point = whole!.length + Number(power);

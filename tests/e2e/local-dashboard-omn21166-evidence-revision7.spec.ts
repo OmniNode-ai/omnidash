@@ -122,3 +122,16 @@ test('Savings bridge expands small numeric values exactly and fits a phone', asy
   }
   await page.screenshot({ path: info.outputPath('savings-bridge-phone-exponent.png') });
 });
+
+// AC207a, Codex MSG 9f72d7f9: a malformed served figure with an absurd exponent reads Not measured; it must not take the
+// Evidence page down (an unbounded exponent made the expansion throw RangeError: Invalid string length).
+test('Savings bridge reads an absurd exponent as Not measured and the page stays up', async ({ page }) => {
+  const canonical = { ...evidenceMetering, counterfactual_usd: '1e100000000000000000000', spend_usd: '0.232022', savings_usd: '4.743332' };
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await serveEvidence(page, { [evidenceTopic('metering-summary.v1')]: [canonical] });
+  await page.goto('/delegation-evidence');
+  const bridge = page.getByRole('region', { name: 'Savings bridge' });
+  await expect(bridge.locator('.ev-savings-equation strong')).toHaveText(['Not measured', '$0.232022', '$4.743332']);
+  expect(errors).toEqual([]);
+});
