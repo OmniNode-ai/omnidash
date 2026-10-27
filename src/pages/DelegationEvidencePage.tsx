@@ -13,6 +13,7 @@ import { formatUsd } from '@/components/dashboard/usage/UsageByModelDayWidget';
 import { isUnavailableField } from '@/components/dashboard/field-identity';
 import { EvPageShell } from '@/components/dashboard/event-dash/EvPageShell';
 import { KpiStrip } from '@/components/dashboard/KpiStrip';
+import { DashboardTabs } from '@/components/dashboard/DashboardTabs';
 import { RankedBars } from '@/components/dashboard/RankedBars';
 import {
   Badge,
@@ -410,6 +411,95 @@ function AcceptanceChecks({ q }: { q: QualityGateRow }) {
   );
 }
 
+// The same served outcome precedence as Runs: an explicitly failed terminal is failed even when its gate did not run.
+function isFailedDecision(row: DelegationDecisionRow): boolean {
+  const fields = row as unknown as Record<string, unknown>;
+  return fields.terminal_ok === false || fields.terminal_ok === 0
+    || fields.quality_gate_passed === false || fields.quality_gate_passed === 0;
+}
+
+function triageName(value: unknown, kind: 'model' | 'task'): string {
+  if (value === null || value === undefined || value === '' || (kind === 'model' && value === 'delegate-skill')) {
+    return kind === 'model' ? 'unknown' : 'Not recorded';
+  }
+  return String(value);
+}
+
+function TriageRows({ rows, denominator, kind }: {
+  rows: ReadonlyArray<{ name: string; count: number | null; href: string }>;
+  denominator: number | null;
+  kind: 'category' | 'check' | 'model' | 'task';
+}) {
+  if (rows.length === 0) return <p className="note">No failures in this population.</p>;
+  return <ol className="ev-triage-rows" aria-label={`Failures by ${kind}`}>
+    {rows.map(row => <li data-triage-row key={`${kind}-${row.name}`}>
+      <a href={row.href} aria-label={`View failed runs for ${row.name}`}>{row.name}</a>
+      <span className="mono">{row.count === null ? 'Not served' : formatDashboardCount(row.count)} · {row.count === null || denominator === null || denominator === 0
+        ? 'Share not served' : sharePercent(row.count / denominator)}</span>
+    </li>)}
+  </ol>;
+}
+
+/** AC205/AC205a: quality categories describe all-time checks; model and task groups describe only the served sample. */
+function FailureTriage({ decisions, available }: { decisions: readonly DelegationDecisionRow[]; available: boolean }) {
+  const qualityQ = useDelegationQualityGate();
+  const quality = qualityQ.data?.rows[0];
+  const failed = decisions.filter(isFailedDecision);
+  const sampleLine = available
+    ? `${formatDashboardCount(failed.length)} failed of ${formatDashboardCount(decisions.length)} latest served runs`
+    : 'Latest served runs: Not measured';
+  const grouped = (kind: 'model' | 'task') => {
+    const groups = new Map<string, number>();
+    for (const row of failed) {
+      const name = triageName(kind === 'model' ? row.model_name : row.task_type, kind);
+      groups.set(name, (groups.get(name) ?? 0) + 1);
+    }
+    return [...groups.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([name, count]) => ({
+      name: kind === 'task' && name !== 'Not recorded' ? taskLabel(name) : name,
+      count,
+      href: `/runs?status=failed&${kind}=${encodeURIComponent(name)}`,
+    }));
+  };
+  const categories = Array.isArray(quality?.failure_categories) ? quality.failure_categories.map(item => ({
+    name: (() => { const text = escalationReason(item.category).text; return text.charAt(0).toUpperCase() + text.slice(1); })(),
+    count: servedNumber(item.count), href: '/runs?status=failed',
+  })).sort((a, b) => (b.count ?? -1) - (a.count ?? -1) || a.name.localeCompare(b.name)) : null;
+  const checks = Array.isArray(quality?.by_check_type) ? quality.by_check_type.map(item => ({
+    name: checkName(item.check_type), count: servedNumber(item.failed), total: servedNumber(item.total),
+  })).sort((a, b) => (b.count ?? -1) - (a.count ?? -1) || a.name.localeCompare(b.name)) : null;
+  const failedChecks = servedNumber(quality?.total_failed);
+  return <Panel title="FAILURE TRIAGE" sub="Where quality failed">
+    <DashboardTabs label="Failure triage" param="triage" tabs={[
+      { id: 'category', label: 'By category', panel: () => <div className="ev-triage-panel">
+        {qualityQ.isLoading ? <EvEmpty title="Loading quality checks…" /> : !quality
+          ? <EvEmpty title="No quality-gate rows" reason={plainUnservedReason(qualityQ.data?.degradedReason ?? (qualityQ.error ? 'The runtime could not answer' : null))} />
+          : <>
+            <p className="note">All-time quality checks · {failedChecks === null ? 'Failed checks not served' : `${formatDashboardCount(failedChecks)} failed checks`}</p>
+            <p className="note">Served runs do not record their failure category; a category opens every failed run.</p>
+            <div className="section-label">Failure categories</div>
+            {categories === null ? <p className="note">Categories not served</p> : <TriageRows rows={categories} denominator={failedChecks} kind="category" />}
+            <div className="section-label">Checks by type</div>
+            {checks === null ? <p className="note">Check types not served</p> : checks.length === 0 ? <p className="note">No failed checks by type.</p> :
+              <ol className="ev-triage-rows" aria-label="Failures by check type">{checks.map(item => <li data-triage-row key={item.name}>
+                <span>{item.name}</span><span className="mono">{item.count === null ? 'Not served' : formatDashboardCount(item.count)} · {item.count === null || item.total === null || item.total === 0
+                  ? 'Share not served' : sharePercent(item.count / item.total)} of this check type</span>
+              </li>)}</ol>}
+          </>}
+      </div> },
+      { id: 'model', label: 'By model', panel: () => <div className="ev-triage-panel">
+        <p className="note">{sampleLine}</p>
+        {available ? <TriageRows rows={grouped('model')} denominator={failed.length} kind="model" />
+          : <EvEmpty title="Failed runs not measured" note="The latest decisions could not be read." />}
+      </div> },
+      { id: 'task', label: 'By task', panel: () => <div className="ev-triage-panel">
+        <p className="note">{sampleLine}</p>
+        {available ? <TriageRows rows={grouped('task')} denominator={failed.length} kind="task" />
+          : <EvEmpty title="Failed runs not measured" note="The latest decisions could not be read." />}
+      </div> },
+    ]} />
+  </Panel>;
+}
+
 // ── savings (aggregate) ──────────────────────────────────────────────────────
 
 /**
@@ -682,6 +772,29 @@ function EvidenceClaim({ money, unavailable }: { money: HeadlineMoney | null; un
   );
 }
 
+/** AC207: the equation reads one all-time metering row, never the latest decision sample. */
+function SavingsBridge({ rows, loading }: { rows: readonly unknown[] | undefined; loading: boolean }) {
+  const canonical = meteringHeadline(rows, loading);
+  const money = canonical.money;
+  const fourDecimals = (value: unknown) => isUnavailableField(value) || !Number.isFinite(Number(value))
+    ? 'Not measured' : Number(value).toLocaleString('en-US', {
+      style: 'currency', currency: 'USD', minimumFractionDigits: 4, maximumFractionDigits: 4,
+    });
+  return <Panel title="SAVINGS BRIDGE" sub="All-time metering">
+    <section className="ev-savings-bridge" aria-label="Savings bridge">
+      <p className="note">{moneyBasis(money)}</p>
+      <div className="ev-savings-equation">
+        <div><span className="section-label">Baseline cost (modelled)</span><strong>{money ? fourDecimals(money.cloud) : canonical.unavailable}</strong></div>
+        <span className="ev-savings-operator" aria-label="minus">−</span>
+        <div><span className="section-label">Actual spend</span><strong>{money ? fourDecimals(money.local) : canonical.unavailable}</strong></div>
+        <span className="ev-savings-operator" aria-label="equals">=</span>
+        <div><span className="section-label">Saving (modelled)</span><strong>{money ? fourDecimals(money.saved) : canonical.unavailable}</strong></div>
+      </div>
+      <p className="note">Headline cards round to cents; modelled saving is computed from unrounded served values.</p>
+    </section>
+  </Panel>;
+}
+
 const sampleOrder = (a: DelegationDecisionRow, b: DelegationDecisionRow) =>
   (Date.parse(b.created_at) || 0) - (Date.parse(a.created_at) || 0);
 
@@ -752,7 +865,8 @@ export function DelegationEvidencePage() {
   // aggregate is not in the local store; Evidence asks the catalogue the same question and reads the same row.
   const censusQ = useExposureCensus();
   const source = censusQ.data ? overviewHeadlineSource(censusQ.data) : null;
-  const meteringQ = useMeteringSummary(source === 'metering');
+  // The bridge always reads the canonical metering row, including when legacy Overview totals own the headline.
+  const meteringQ = useMeteringSummary(true);
   const headline = source === 'metering'
     ? meteringHeadline(meteringQ.data?.rows, meteringQ.isLoading || censusQ.isLoading)
     : aggregateHeadline(overviewQ.data?.rows, overviewQ.isLoading);
@@ -802,8 +916,11 @@ export function DelegationEvidencePage() {
       <div className="maple-grid ev-maple-grid">
         <div className="maple-cell maple-cell--wide"><SelectedRun correlationId={latestCid} decision={decisions[0]} /></div>
         <div className="maple-cell"><QualityGate /></div>
+        <div className="maple-cell maple-cell--full"><FailureTriage decisions={decisions}
+          available={!decisionsQ.isLoading && !!decisionsQ.data && !decisionsQ.data.degradedReason} /></div>
         <div className="maple-cell maple-cell--full"><ModelRouting /></div>
         <div className="maple-cell maple-cell--full"><SavingsPanel money={headline.money} unavailable={headline.unavailable} /></div>
+        <div className="maple-cell maple-cell--full"><SavingsBridge rows={meteringQ.data?.rows} loading={meteringQ.isLoading} /></div>
         <div className="maple-cell maple-cell--full"><TokenUsage /></div>
       </div>
 

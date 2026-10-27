@@ -1453,3 +1453,25 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ui-accent); outline-o
 /* AC206: Runs' routing groups; a reroute is named beside the routed model. */
 [data-routing-table] .local-route-changed { margin-left: 6px; font-size: 11px; padding: 0 6px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink-2); }
 [data-routing-table] td { white-space: nowrap; }
+
+/* OMN-21166 AC205/AC207: Evidence keeps the two populations and the canonical money equation readable on phones. */
+.ev-triage-panel { min-width: 0; display: grid; gap: 10px; }
+.ev-triage-panel .note { margin: 0; }
+.ev-triage-rows { list-style: none; display: grid; gap: 0; padding: 0; margin: 0; min-width: 0; }
+.ev-triage-rows li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px;
+  align-items: baseline; min-width: 0; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.ev-triage-rows li:last-child { border-bottom: 0; }
+.ev-triage-rows a, .ev-triage-rows li > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.ev-triage-rows .mono { color: var(--ink-2); text-align: right; white-space: normal; }
+.ev-savings-bridge { display: grid; gap: 14px; min-width: 0; }
+.ev-savings-bridge .note { margin: 0; }
+.ev-savings-equation { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.ev-savings-equation > div { display: grid; gap: 6px; min-width: 0; flex: 1 1 0; }
+.ev-savings-equation strong { font: 600 clamp(18px, 2vw, 26px)/1.2 var(--font-mono); color: var(--ink); overflow-wrap: anywhere; }
+.ev-savings-operator { flex: 0 0 auto; font: 500 22px/1 var(--font-mono); color: var(--ink-2); }
+@media (max-width: 600px) {
+  .ev-triage-rows li { grid-template-columns: minmax(0, 1fr); }
+  .ev-triage-rows .mono { text-align: left; }
+  .ev-savings-equation { display: grid; gap: 8px; }
+  .ev-savings-equation > div { padding: 4px 0; }
+}
