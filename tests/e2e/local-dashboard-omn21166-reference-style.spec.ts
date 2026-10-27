@@ -9,7 +9,7 @@ import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
 //   R2  a headline card keeps a coloured edge, or a metric loses its identity colour on its icon when the edge goes (AC167);
 //   R3  the page title, figure, radius or active navigation item keeps its old size or blue (AC168);
 //   R4  mono figures widen the cards so a page scrolls sideways at 390 or 320 (AC168);
-//   R5  the Appearance choice and the header toggle disagree, or the choice is lost on reload (AC169);
+//   R5  Settings still shows an Appearance choice, or the header toggle stops switching or keeping the theme (AC169a);
 //   R6  text under 4.5 contrast on its real background on the new surfaces, and a check that would not see it (AC170).
 // Found by Codex's review of the revision-4 build against both references (codex-01a17a8b, 2026-10-27):
 //   R7  a long full count (Usage tokens) wraps onto two lines inside its card at 1440;
@@ -104,30 +104,24 @@ for (const theme of ['light', 'dark'] as const) {
   });
 }
 
-test('AC169 Settings Appearance chooses the theme, agrees with the header toggle and survives a reload', async ({ page }, info) => {
+// Amendment 30c AC169a (Lakshman 2026-10-27, "remove Appearance from settings as we already have toggle theme"): Settings has
+// no Appearance section or theme choice; the header toggle is the one theme control and still switches and keeps it.
+test('AC169a Settings has no Appearance section; the header toggle switches the theme and keeps it on reload', async ({ page }, info) => {
   await openTheme(page, 'light');
   await page.goto('/settings');
-  const section = page.locator('main section.local-settings-section').filter({ has: page.getByRole('heading', { name: 'Appearance', level: 2 }) });
-  await expect(section).toBeVisible();
-  // It sits after Model providers and before Access.
-  expect(await page.locator('main section.local-settings-section > h2').allTextContents()).toEqual(['Model providers', 'Appearance', 'Access', 'System status']);
-  const group = section.getByRole('radiogroup', { name: 'Theme' });
-  await expect(group.getByRole('radio', { name: 'Light' })).toBeChecked();
-  await group.getByRole('radio', { name: 'Dark' }).check();
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  await expect(page.locator('main').first()).toHaveCSS('background-color', 'rgb(14, 14, 14)');
-  // The header toggle and the choice are one setting, both ways.
+  await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
+  expect(await page.locator('main section.local-settings-section > h2').allTextContents()).toEqual(['Model providers', 'Access', 'System status']);
+  await expect(page.getByRole('heading', { name: 'Appearance' })).toHaveCount(0);
+  await expect(page.getByRole('radiogroup', { name: 'Theme' })).toHaveCount(0);
+  // Positive control: the header toggle still switches the theme, both ways, and the choice survives a reload.
   await page.getByRole('button', { name: 'Toggle theme' }).click();
-  // Light is the implicit theme: the provider removes data-theme rather than writing "light".
-  await expect(page.locator('html')).not.toHaveAttribute('data-theme', 'dark');
-  await expect(page.locator('body')).toHaveClass(/theme-light/);
-  await expect(group.getByRole('radio', { name: 'Light' })).toBeChecked();
-  await group.getByRole('radio', { name: 'Dark' }).check();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  await expect(page.locator('main section.local-settings-section').filter({ has: page.getByRole('heading', { name: 'Appearance', level: 2 }) })
-    .getByRole('radio', { name: 'Dark' })).toBeChecked();
-  await page.screenshot({ path: info.outputPath('settings-appearance-dark-1440.png'), fullPage: true });
+  await page.getByRole('button', { name: 'Toggle theme' }).click();
+  await expect(page.locator('html')).not.toHaveAttribute('data-theme', 'dark');
+  await expect(page.locator('body')).toHaveClass(/theme-light/);
+  await page.screenshot({ path: info.outputPath('settings-no-appearance-1440.png'), fullPage: true });
 });
 
 /** Every visible text element whose colour, composited over its first opaque ancestor background, is under 4.5:1. */
@@ -273,7 +267,8 @@ test('R11 Settings is a readable column and its section titles weigh 500', async
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/settings');
   const sections = page.locator('main section.local-settings-section');
-  await expect(sections).toHaveCount(4);
+  // Amendment 30c: Appearance is gone, so Model providers, Access and System status.
+  await expect(sections).toHaveCount(3);
   for (const width of await sections.evaluateAll(els => els.map(el => el.getBoundingClientRect().width))) expect(width).toBeLessThanOrEqual(960);
   await expect(sections.first().locator(':scope > h2')).toHaveCSS('font-weight', '500');
 });

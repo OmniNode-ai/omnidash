@@ -140,7 +140,7 @@ describe.each([[true, 'every bound exposure served'], [false, 'nothing served']]
 
   it('K4: Settings, which holds credentials and api-keys, has a header with an icon', async () => {
     harness.served = new Map(served ? SERVED.map(([name, rows]) => [P + name, rows]) : []);
-    // Settings reads the theme for its Appearance section (part 27 AC169), as inside the app's providers.
+    // Rendered inside the app's providers, as in the app (its Appearance section was removed by amendment 30c).
     const { container } = render(<ThemeProvider><SettingsPage navigationCache={{ context: null, snapshots: new Map() }} /></ThemeProvider>);
     await act(async () => { await vi.advanceTimersByTimeAsync(0); });
     expect(container.querySelector('header.local-dashboard-header .local-dashboard-page-icon svg')).not.toBeNull();
