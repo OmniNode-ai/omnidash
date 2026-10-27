@@ -13,7 +13,7 @@
       "acceptance": [
         {
           "id": "AC1",
-          "statement": "AC1: Primary navigation retains Overview, Runs, Workflow, Usage, Credentials and API Keys in that order, with working routes and an identifiable active page. Falsifier: a browser navigation walk cannot reach any core page or finds a reordered/missing entry."
+          "statement": "AC1: (amended 2026-10-27: Jonah agreed in the team meeting, relayed by Lakshman) Primary navigation retains Overview, Runs, Workflow, Usage and Settings in that order, with working routes and an identifiable active page; Settings holds Model providers, Access and System status. Falsifier: a browser navigation walk cannot reach any core page or finds a reordered/missing entry."
         },
         {
           "id": "AC2",
@@ -166,6 +166,16 @@
         {
           "id": "AC207",
           "statement": "AC207: (approved plan amendment, revision 7 part 30, 2026-10-27, Lakshman) the savings bridge on Delegation Evidence shows baseline cost minus actual spend equals modelled saving from the canonical metering row, each figure exactly as served with no rounding so it adds up, an absurd value reading Not measured, naming its baseline and pricing basis and never summing decision savings -- falsifier: the bound check dod-omn21166-ac207-savings-bridge fails at the merge base"
+        }
+      ]
+    },
+    {
+      "id": "req-amendment-30c-settings",
+      "statement": "Amendment 30c, approved by Lakshman in chat on 2026-10-27 and copied into the live ticket body: Settings drops its Appearance section because the header toggle sets the theme. The ticket remains the source.",
+      "acceptance": [
+        {
+          "id": "AC208",
+          "statement": "AC208: (approved plan amendment 30c, 2026-10-27, Lakshman) Settings has no Appearance section or theme choice, and the header's theme toggle still switches the theme and keeps it on reload -- falsifier: the bound check dod-omn21166-ac208-no-appearance fails at the merge base"
         }
       ]
     }
@@ -832,6 +842,21 @@
         {
           "check_type": "test_passes",
           "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-evidence-revision7.spec.ts -g \"Savings bridge\" --project=chromium --workers=1 --retries=0",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
+    },
+    {
+      "id": "dod-omn21166-ac208-no-appearance",
+      "description": "AC208 (amendment 30c; spec label AC169a): Settings lists Model providers, Access and System status with no Appearance heading or theme radio group, and the header toggle switches the theme both ways and keeps it on reload. Fails at merge base 03a5f605, where Settings still lists Appearance.",
+      "source": "manual",
+      "binds_ac": [
+        "AC208"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-reference-style.spec.ts -g \"AC208\" --project=chromium --workers=1 --retries=0",
           "cwd": "${OMNI_HOME}/omnidash"
         }
       ]

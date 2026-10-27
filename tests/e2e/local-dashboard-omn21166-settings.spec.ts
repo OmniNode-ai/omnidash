@@ -74,8 +74,8 @@ test('AC158 Environment is the System status section of Settings, and not on Ove
   await expect(page.locator('article[data-component$="-environment"]')).toHaveCount(0);
   await page.goto('/settings');
   const sectionHeadings = await page.locator('main section > h2').allTextContents();
-  // Part 27 AC169 put Appearance after Model providers.
-  expect(sectionHeadings).toEqual(['Model providers', 'Appearance', 'Access', 'System status']);
+  // Part 27 AC169 put Appearance after Model providers; amendment 30c (AC169a) took it out again.
+  expect(sectionHeadings).toEqual(['Model providers', 'Access', 'System status']);
   const statusSection = page.locator('section').filter({ has: page.getByRole('heading', { name: 'System status', exact: true }) });
   const envArticle = statusSection.locator('article[data-component="status-environment"]');
   await expect(envArticle.locator('.local-environment-line')).toBeVisible();
@@ -106,7 +106,7 @@ test('AC160 each section is one card: its panels are flat and a one-panel sectio
     { provider: 'ollama', set_up: false, last_test: null, models: [] }] }) }));
   await page.goto('/settings');
   await expect(sectionNamed(page, 'Model providers').getByRole('table', { name: 'Model providers' })).toBeVisible();
-  for (const name of ['Model providers', 'Appearance', 'Access', 'System status']) {
+  for (const name of ['Model providers', 'Access', 'System status']) {
     const section = sectionNamed(page, name);
     await expect(section).toHaveCount(1);
     expect(await section.evaluate(el => getComputedStyle(el).borderTopStyle), name).toBe('solid');
