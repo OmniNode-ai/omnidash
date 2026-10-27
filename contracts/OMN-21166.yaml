@@ -417,7 +417,7 @@
     },
     {
       "id": "dod-omn21166-ac48-evidence-check-timeout",
-      "description": "AC48 (approved plan part 7): the repo-evidence caller pins omnibase_core#2085's merge, the first receipt gate that takes check-timeout-seconds, and passes \"300\". At the merge base the caller still pins 4e4f5e04 and passes no timeout, so both cases fail there; mutants giving an unquoted 300, 1000, no input or the old pin each fail one case.",
+      "description": "AC48 (approved plan part 7): the repo-evidence caller pins omnibase_core#2102's merge abc2cb3e, which keeps the check-timeout-seconds input omnibase_core#2085 added, and passes \"300\". At merge base c540e77a the caller pins ba76a6f0, so the pin case fails there; mutants giving an unquoted 300, 1000, no input or the old pin each fail one case.",
       "source": "manual",
       "binds_ac": [
         "AC48"

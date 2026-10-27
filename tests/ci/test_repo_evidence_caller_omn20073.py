@@ -22,9 +22,11 @@ CALLER = REPO_ROOT / ".github" / "workflows" / "call-repo-evidence-gate.yml"
 CI = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 MANIFEST = REPO_ROOT / ".github" / "required-checks.yaml"
 
-# Squash commit of omnibase_core#2085 on dev (OMN-21166), the first receipt-gate
-# that takes check-timeout-seconds; omnibase_core#1932's 4e4f5e04 did not.
-RECEIPT_GATE_PIN = "ba76a6f0797ef2c9b7696b90cc8a03e5b799ec61"
+# Squash commit of omnibase_core#2102 on dev (OMN-21166), the first receipt-gate
+# whose sibling resolver reads .github/sibling-pins.yaml (AC209). It keeps the
+# check-timeout-seconds input of omnibase_core#2085 (ba76a6f0), which #1932's
+# 4e4f5e04 did not take.
+RECEIPT_GATE_PIN = "abc2cb3e85b962bb8dc5a12a308d8a723b3f42a4"
 # Seconds each dod_verify check may run; at the verifier's 30 s default the
 # browser checks were killed before reaching a verdict.
 CHECK_TIMEOUT_SECONDS = "300"
