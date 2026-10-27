@@ -36,6 +36,11 @@ describe('headlineHoverLines', () => {
       .toContain('Includes 4 days with no runs');
   });
 
+  it('a range window names its first and last UTC day', () => {
+    expect(headlineHoverLines('overview-spend', ROW, null, 'range:2026-10-11..2026-10-25')[0])
+      .toBe('What you paid 2026-10-11 to 2026-10-25 (UTC)');
+  });
+
   it('H4: tokens give both directions', () => {
     expect(headlineHoverLines('overview-tokens', ROW, null)).toEqual(['591,383 in · 289,572 out']);
   });

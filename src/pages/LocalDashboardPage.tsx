@@ -771,7 +771,7 @@ export function headlineHoverLines(componentId: string, row: Row, pctLine: strin
       : [named];
   }
   const when = window === 'all' ? 'all time' : window === 'today' ? 'today (UTC)'
-    : window.startsWith('range:') ? `${window.slice(6).replace('..', ' to ')} (UTC)` : `on ${window.slice(4)} (UTC)`;
+    : window.startsWith('range:') ? `${window.slice(6).replaceAll('..', ' to ')} (UTC)` : `on ${window.slice(4)} (UTC)`;
   const lines: Array<string | null> = componentId === 'overview-spend' ? [window === 'all' ? 'What you paid, all time' : `What you paid ${when}`, excluded, basis]
     : componentId === 'overview-savings' ? [`Modelled at ${isMissing(row.baseline_model) ? 'the cloud baseline' : String(row.baseline_model)} prices. The baseline never ran.`, pctLine, excluded, basis]
       : componentId === 'overview-measured' ? [`${count(row.runs_measured)} of ${count(row.runs_total)} runs measured`, excluded]

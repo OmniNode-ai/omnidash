@@ -491,6 +491,21 @@
           "cwd": "${OMNI_HOME}/omnidash"
         }
       ]
+    },
+    {
+      "id": "dod-omn21166-ac26-overview-window-cards",
+      "description": "AC26 (time range applied to every panel): the Overview KPI cards read one window. A 3, 7, 15 or 30 day window sums the served UTC day rows, counts a day with no runs as zero and says so, never adds an older baseline's rows, and the card hover names the window it covers (a range reads its first and last UTC day). The test files sit under tests/ so the merge-base control can lay them over the merge base, where meteringRangeFor and headlineHoverLines are not exported.",
+      "source": "manual",
+      "binds_ac": [
+        "AC26"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/pages/local/overview-range-window.omn21166.test.tsx tests/pages/local/headline-hover.omn21166.test.tsx",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
     }
   ],
   "context": {
