@@ -52,7 +52,9 @@ async function serveMetering(page: Page, metering: unknown[] = [allRow, ...dayRo
       : { topic, status: 'ok', backing: 'bus', bus_backed: true, tenant_scoped: false }) }) }));
 }
 const windows = (page: Page) => page.getByRole('radiogroup', { name: 'Figures for', exact: true });
-const change = (page: Page, id: string) => page.locator(`[data-component="${id}"] .local-card-change`);
+// Part 29 AC192: the wording sits in its own span beside a decorative arrow.
+const change = (page: Page, id: string) => page.locator(`[data-component="${id}"] .local-card-change-text`);
+const arrow = (page: Page, id: string) => page.locator(`[data-component="${id}"] .local-card-change-arrow`);
 
 test('AC133 a 7-day window shows each card against the previous 7 days; All shows no line', async ({ page }) => {
   await serveMetering(page);
@@ -64,6 +66,12 @@ test('AC133 a 7-day window shows each card against the previous 7 days; All show
   await expect(change(page, 'overview-tokens')).toHaveText('−50% vs previous 7 days');
   await expect(change(page, 'overview-measured')).toHaveText(/^\+43% vs previous 7 days$/);
   await expect(change(page, 'overview-quality')).toHaveText('Last 7 days: +20.0 pts vs previous 7 days');
+  // AC192: an up arrow on a rise, a down arrow on a fall, none on 'New this period'; the arrow is hidden from readers.
+  await expect(arrow(page, 'overview-spend')).toHaveText('\u2191');
+  await expect(arrow(page, 'overview-tokens')).toHaveText('\u2193');
+  await expect(arrow(page, 'overview-savings')).toHaveCount(0);
+  await expect(arrow(page, 'overview-spend')).toHaveAttribute('aria-hidden', 'true');
+  await expect(page.locator('[data-component="overview-spend"] .local-card-change')).toHaveCSS('color', await page.locator('[data-component="overview-spend"] .local-card-caption > :first-child').evaluate(el => getComputedStyle(el).color));
   await windows(page).getByRole('radio', { name: 'Today (UTC)', exact: true }).click();
   await expect(page.locator('.local-card-change')).toHaveCount(0);
 });
@@ -90,11 +98,11 @@ test('AC134 each card opens its page, and its info button shows details without 
     await link.click();
     await expect(page).toHaveURL(new RegExp(`${path}$`));
   }
+  // Part 29 AC191: the basis is read in place, as the caption under the figure, with no control to open it.
   await page.goto('/overview');
-  const info = page.locator('[data-component="overview-spend"] .local-card-info');
-  await info.click();
+  await expect(page.locator('[data-component="overview-spend"] .local-card-caption > :first-child')).toBeVisible();
+  await expect(page.locator('[data-component="overview-spend"] .local-card-info')).toHaveCount(0);
   await expect(page).toHaveURL(/\/overview$/);
-  await expect(page.locator('[data-component="overview-spend"] [role="tooltip"]')).toBeVisible();
 });
 
 test('AC135 a model or tier bar opens Runs filtered to it; an unnamed model opens nothing', async ({ page }) => {

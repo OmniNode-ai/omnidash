@@ -82,12 +82,12 @@ test('AC10 sentence case headings and semantic panel icon badges', async ({ page
   expect(transforms.filter(item => item.kpi)).toHaveLength(5);
   expect(transforms.filter(item => !item.kpi).length).toBeGreaterThan(0);
   for (const item of transforms.filter(item => !item.kpi)) expect(item.transform).toBe('none');
-  // The five KPI icons are unbadged glyphs, each in its own field colour (and each naming its own field).
+  // The five KPI icons are unbadged glyphs, each naming its own field; since part 28 AC177 they are all grey.
   const icons = await page.locator('.local-dashboard-panel h2 svg').evaluateAll(els => els.slice(0, 5).map(el => ({
     color: getComputedStyle(el).color, background: getComputedStyle(el).backgroundColor, field: el.getAttribute('data-field-icon'),
   })));
   expect(icons).toHaveLength(5);
-  expect(new Set(icons.map(icon => icon.color)).size).toBe(5);
+  expect(new Set(icons.map(icon => icon.color)).size).toBe(1);
   expect(new Set(icons.map(icon => icon.field)).size).toBe(5);
   for (const icon of icons) expect(icon.background).toBe('rgba(0, 0, 0, 0)');
 });
@@ -149,7 +149,8 @@ test('AC10 unserved topic names stay readable inside narrow cards', async ({ pag
 test('AC10 repeatable visual review across pages, themes and narrow viewports', async ({ page }, info) => {
   test.setTimeout(180000);
   const captures: Record<string, unknown>[] = [];
-  const routes = ['overview', 'runs', 'workflow', 'usage', 'credentials', 'api-keys', 'delegation-evidence',
+  // OMN-21166 part 26: credentials and api-keys are sections of Settings, and their old addresses are Page not found.
+  const routes = ['overview', 'runs', 'workflow', 'usage', 'settings', 'delegation-evidence',
     'experiments', 'sea-control', 'event-bus', 'lab'];
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: width === 1440 ? 900 : 844 });

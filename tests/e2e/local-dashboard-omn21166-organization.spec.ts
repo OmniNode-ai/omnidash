@@ -47,7 +47,7 @@ test('Evidence paging preserves every row and details support keyboard drilldown
   await page.screenshot({ path: info.outputPath('evidence-section-navigation.png') });
 });
 
-for (const route of ['overview', 'runs', 'workflow', 'usage', 'credentials', 'api-keys', 'delegation-evidence']) {
+for (const route of ['overview', 'runs', 'workflow', 'usage', 'settings', 'delegation-evidence']) {
   test(`${route} retains its actual panels, usable headings and phone layout`, async ({ page }, info) => {
     await page.goto('/' + route);
     await expect(page.locator('h1')).toBeVisible();
@@ -60,7 +60,7 @@ for (const route of ['overview', 'runs', 'workflow', 'usage', 'credentials', 'ap
       const collapse = page.getByRole('button', { name: 'Collapse sidebar', exact: true });
       if (width < 768 && await collapse.isVisible()) await collapse.click();
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
-      const scroller = page.locator(route.startsWith('overview') || ['runs','workflow','usage','credentials','api-keys'].includes(route) ? 'main.local-dashboard-page' : '.ev-scroll');
+      const scroller = page.locator(route.startsWith('overview') || ['runs','workflow','usage','settings'].includes(route) ? 'main.local-dashboard-page' : '.ev-scroll');
       await scroller.evaluate(el => { el.scrollTop = 0; });
       await page.screenshot({ path: info.outputPath(`${route}-${width}.png`) });
     }
@@ -69,21 +69,22 @@ for (const route of ['overview', 'runs', 'workflow', 'usage', 'credentials', 'ap
 
 test('the seven primary routes have clear navigation without Partial badges', async ({ page }) => {
   await page.goto('/overview');
-  await expect(page.getByRole('navigation', { name: 'Local', exact: true }).getByRole('link')).toHaveCount(6);
+  await expect(page.getByRole('navigation', { name: 'Local', exact: true }).getByRole('link')).toHaveCount(5);
   await expect(page.getByRole('navigation', { name: 'Evidence', exact: true }).getByRole('link', { name: 'Delegation Evidence' })).toBeVisible();
   await expect(page.getByRole('complementary').getByText('partial', { exact: true })).toHaveCount(0);
 });
 
 test('destination icons and colors match between sidebar and page headers', async ({ page }) => {
-  for (const route of ['overview', 'runs', 'workflow', 'usage', 'credentials', 'api-keys', 'delegation-evidence']) {
+  for (const route of ['overview', 'runs', 'workflow', 'usage', 'settings', 'delegation-evidence']) {
     await page.goto('/' + route);
-    const nav = page.getByRole('link', { name: route === 'api-keys' ? 'API Keys' : route === 'delegation-evidence' ? 'Delegation Evidence' : route[0].toUpperCase() + route.slice(1), exact: true }).locator('.dash-marker svg');
+    const nav = page.getByRole('link', { name: route === 'delegation-evidence' ? 'Delegation Evidence' : route[0].toUpperCase() + route.slice(1), exact: true }).locator('.dash-marker svg');
     const header = page.locator('.local-dashboard-page-icon svg, .ev-title-icon svg').first();
     await expect(header).toBeVisible();
     const identity = (el: SVGElement) => [...el.classList].find(name => name.startsWith('lucide-') && name !== 'lucide-icon');
     expect(await header.evaluate(identity)).toBe(await nav.evaluate(identity));
     for (const theme of ['light', 'dark']) {
       if ((await page.locator('html').getAttribute('data-theme') === 'dark' ? 'dark' : 'light') !== theme) await page.getByRole('button', { name: 'Toggle theme' }).click();
+      // Part 28a: both are the one interface grey (the current page is marked by its lifted item, AC186).
       expect(await header.evaluate(el => getComputedStyle(el).color)).toBe(await nav.evaluate(el => getComputedStyle(el).color));
     }
   }
@@ -113,6 +114,7 @@ test('Workflow fact cards have distinct semantic Lucide icons and colors', async
     border: getComputedStyle(element).borderTopColor,
   })));
   expect(new Set(identities.map(identity => identity.icon)).size).toBe(4);
-  expect(new Set(identities.map(identity => identity.color)).size).toBe(4);
+  // Part 28 AC177: the four subject titles and their icons are grey; the subjects stay distinct by icon and title.
+  expect(new Set(identities.map(identity => identity.color)).size).toBe(1);
   expect(new Set(identities.map(identity => identity.border)).size).toBe(1);
 });

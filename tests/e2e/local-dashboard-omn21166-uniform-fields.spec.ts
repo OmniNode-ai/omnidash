@@ -20,11 +20,18 @@ test('matching fields retain one distinct color across Overview, Workflow and Ev
   // carried by its icon, so the cross-page match is checked on the icon colour and the values must agree in ink.
   await page.goto('/workflow?correlation_id=chart-run-a');
   const icon = (label: string) => color(page.locator(`[data-summary-field="${label}"] dt svg`));
+  // Part 28a: the Model icon is the run's model identity (data, in its colour); a field's label icon is the one interface
+  // grey on every page, and its colour stays on the data (the Tokens per day legend keeps tokens in and out distinct).
   const modelColor = await icon('Model');
+  const grey = await icon('Tokens in');
+  expect(await icon('Tokens out')).toBe(grey);
   await page.goto('/overview');
   const daily = page.getByRole('figure', { name: 'Tokens per day', exact: true });
-  const original = [modelColor, ...await Promise.all([color(daily.locator('.ins-token-legend [data-field-tone="tokens-in"]')), color(daily.locator('.ins-token-legend [data-field-tone="tokens-out"]'))])];
-  expect(new Set(original).size).toBe(3);
+  const legend = await Promise.all([color(daily.locator('.ins-token-legend [data-field-tone="tokens-in"]')), color(daily.locator('.ins-token-legend [data-field-tone="tokens-out"]'))]);
+  expect(new Set(legend).size).toBe(2);
+  expect(legend).not.toContain(grey);
+  expect(modelColor).not.toBe(grey);
+  const original = [modelColor, grey, grey];
   await page.goto('/workflow?correlation_id=chart-run-a');
   const inkValues: string[] = [];
   for (const [index, label] of ['Model', 'Tokens in', 'Tokens out'].entries()) {

@@ -13,6 +13,7 @@ import { formatUsd } from '@/components/dashboard/usage/UsageByModelDayWidget';
 import { isUnavailableField } from '@/components/dashboard/field-identity';
 import { EvPageShell } from '@/components/dashboard/event-dash/EvPageShell';
 import { KpiStrip } from '@/components/dashboard/KpiStrip';
+import { DashboardTabs } from '@/components/dashboard/DashboardTabs';
 import { RankedBars } from '@/components/dashboard/RankedBars';
 import {
   Badge,
@@ -69,6 +70,13 @@ const passRate = (value: number | null | undefined): string =>
 
 const recordedMoney = (value: unknown) => isUnavailableField(value) || !Number.isFinite(Number(value))
   ? 'Not recorded' : formatUsd(value);
+
+function decisionModelledSaving(decision: DelegationDecisionRow | undefined): string {
+  if (!decision) return 'Not measured';
+  const figure = runModelledCell(decision as unknown as Record<string, unknown>);
+  if (figure.startsWith('Not measured')) return figure;
+  return `${figure} · modelled · ${pricingLabel(decision.savings_pricing_manifest_version) ?? 'pricing Not measured'}`;
+}
 
 /**
  * OMN-21166 AC37: the one cost.savings-overview.v1 row both pages read: the newest all-time row. Two all-time rows
@@ -243,7 +251,7 @@ function SelectedRun({ correlationId, decision }: { correlationId: string | null
           { k: 'Cost', v: recordedMoney(row.cost_usd) },
           // OMN-21166 AC37: the run's one modelled saving, the figure Runs shows (delegation.decisions.v1), not the
           // event's legacy cost_savings_usd, which is 0 for a run the savings writer never priced.
-          { k: 'Savings (modelled)', v: decision ? runModelledCell(decision as unknown as Record<string, unknown>) : 'Not recorded' },
+          { k: 'Savings (modelled)', v: decisionModelledSaving(decision) },
           { k: 'Routing rule', v: row.routing_rule ?? '—' },
           { k: 'Quality detail', v: row.quality_gate_detail ? escalationReason(row.quality_gate_detail).text : (row.quality_gate_passed ? 'Passed' : '—') },
         ]}
@@ -301,18 +309,23 @@ function QualityGate() {
       </Panel>
     );
   }
-  const total = q.total_passed + q.total_failed;
+  const passed = servedNumber(q.total_passed);
+  const failed = servedNumber(q.total_failed);
+  const total = passed !== null && failed !== null ? passed + failed : null;
+  const categories = Array.isArray(q.failure_categories)
+    ? [...q.failure_categories].sort((a, b) => (servedNumber(b.count) ?? 0) - (servedNumber(a.count) ?? 0)) : null;
+  const largestCategory = categories?.reduce((max, category) => Math.max(max, servedNumber(category.count) ?? 0), 0) ?? 0;
   return (
-    <Panel title="QUALITY GATE" sub="deterministic checks">
+    <Panel title="QUALITY GATE" sub="All quality checks served · deterministic checks">
       <div className="ev-qg-stats">
-        <span className="stat-inline"><span className="big c-amber" style={{ color: 'var(--field-pass)' }}>{passRate(q.overall_pass_rate)}</span><span className="note">pass rate</span></span>
-        <span className="stat-inline" data-field-tone="pass"><span className="big c-green" style={{ color: 'var(--field-pass)' }}>{formatDashboardCount(q.total_passed)}</span><span className="note">pass</span></span>
-        <span className="stat-inline" data-field-tone="fail"><span className="big c-red" style={{ color: 'var(--field-fail)' }}>{formatDashboardCount(q.total_failed)}</span><span className="note">fail</span></span>
-        <span className="stat-inline"><span className="big">{passRate(q.escalation_rate)}</span><span className="note">escalation</span></span>
+        <span className="stat-inline"><span className="big c-amber" style={{ color: 'var(--field-pass)' }}>{servedNumber(q.overall_pass_rate) === null ? 'Not served' : passRate(q.overall_pass_rate)}</span><span className="note">pass rate</span></span>
+        <span className="stat-inline" data-field-tone="pass"><span className="big c-green" style={{ color: 'var(--field-pass)' }}>{passed === null ? 'Not served' : formatDashboardCount(passed)}</span><span className="note">pass</span></span>
+        <span className="stat-inline" data-field-tone="fail"><span className="big c-red" style={{ color: 'var(--field-fail)' }}>{failed === null ? 'Not served' : formatDashboardCount(failed)}</span><span className="note">fail</span></span>
+        <span className="stat-inline"><span className="big">{servedNumber(q.escalation_rate) === null ? 'Not served' : passRate(q.escalation_rate)}</span><span className="note">escalation rate</span></span>
       </div>
       <div className="bar-track ev-qg-bar">
-        <div className="bar-fill m-green" data-field-tone="pass" data-semantic-concept="field:pass" data-semantic-label="Passed checks" style={{ background: 'var(--field-pass)', width: total > 0 ? `${(q.total_passed / total) * 100}%` : '0%' }} />
-        <div className="bar-fill m-red" data-field-tone="fail" data-semantic-concept="field:fail" data-semantic-label="Failed checks" style={{ background: 'var(--field-fail)', width: total > 0 ? `${(q.total_failed / total) * 100}%` : '0%' }} />
+        <div className="bar-fill m-green" data-field-tone="pass" data-semantic-concept="field:pass" data-semantic-label="Passed checks" style={{ background: 'var(--field-pass)', width: total && passed !== null ? `${(passed / total) * 100}%` : '0%' }} />
+        <div className="bar-fill m-red" data-field-tone="fail" data-semantic-concept="field:fail" data-semantic-label="Failed checks" style={{ background: 'var(--field-fail)', width: total && failed !== null ? `${(failed / total) * 100}%` : '0%' }} />
       </div>
       {/* OMN-21166 Maple grid: the headline in view; the checks by type, cost to comply and escalation reasons are one
           click away, so the panel sits beside the selected run without running the length of the page. */}
@@ -320,32 +333,36 @@ function QualityGate() {
       <summary>More quality detail</summary>
       <AcceptanceChecks q={q} />
       <div className="divider" />
-      <div className="section-label">Escalation reasons</div>
-      {q.failure_categories.slice(0, 6).map((f, i) => {
-        const reason = escalationReason(f.category);
-        return (
-          <div className="ev-qg-cat" key={i}>
-            <span className="mono c-amber">{formatDashboardCount(f.count)}</span>
-            <span className="mono dim" title={reason.title}>{reason.text}</span>
-          </div>
-        );
-      })}
+      <div className="section-label">Failure categories</div>
+      {categories === null ? <p className="note">Not served</p> : categories.length === 0 ? <p className="note">0 failure categories</p> : (
+        <ol className="ev-quality-categories" aria-label="Failure categories ranked">
+          {categories.map((category, index) => {
+            const reason = escalationReason(category.category);
+            const count = servedNumber(category.count);
+            return <li data-quality-category key={`${String(category.category)}-${index}`}>
+              <span className="mono" title={reason.title}>{reason.text}</span>
+              <span className="ev-quality-track"><span style={{ width: count !== null && largestCategory > 0 ? `${count / largestCategory * 100}%` : '0%' }} /></span>
+              <span className="mono">{count === null ? 'Not served' : formatDashboardCount(count)}</span>
+            </li>;
+          })}
+        </ol>
+      )}
       </details>
     </Panel>
   );
 }
 
 /** A served check name in words ("score vs required bar"); the served key stays in the data attribute. */
-const checkName = (value: unknown) => (isUnavailableField(value) ? 'Not recorded' : String(value).replace(/_+/g, ' '));
+const checkName = (value: unknown) => (isUnavailableField(value) ? 'Not served' : String(value).replace(/_+/g, ' '));
 const servedNumber = (value: unknown): number | null =>
   isUnavailableField(value) || !Number.isFinite(Number(value)) ? null : Number(value);
 const wholeTokens = (value: unknown) => {
   const n = servedNumber(value);
-  return n === null ? 'Not recorded' : formatFullCount(Math.round(n));
+  return n === null ? 'Not served' : formatFullCount(Math.round(n));
 };
 const attempts = (value: unknown) => {
   const n = servedNumber(value);
-  return n === null ? 'Not recorded' : n.toFixed(1);
+  return n === null ? 'Not served' : n.toFixed(1);
 };
 
 /**
@@ -361,14 +378,14 @@ function AcceptanceChecks({ q }: { q: QualityGateRow }) {
     <section className="ev-acceptance" aria-label="Acceptance checks">
       <div className="divider" />
       <div className="section-label">Acceptance checks</div>
-      {checks.length > 0 && (
+      {q.by_check_type == null ? <p className="note">Checks by type: Not served</p> : checks.length === 0 ? <p className="note">0 check types</p> : (
         <ul className="ev-acceptance-checks" aria-label="Checks by type">
           {checks.map((check, index) => (
             <li key={`${String(check.check_type)}-${index}`} data-check-type={String(check.check_type ?? '')}>
               <span>{checkName(check.check_type)}</span>
-              <span data-field-tone="pass">{servedNumber(check.passed) === null ? 'Not recorded' : formatDashboardCount(check.passed)} passed</span>
-              <span data-field-tone="fail">{servedNumber(check.failed) === null ? 'Not recorded' : formatDashboardCount(check.failed)} failed</span>
-              <span>{servedNumber(check.pass_rate) === null ? 'Not recorded' : passRate(check.pass_rate)}</span>
+              <span data-field-tone="pass">{servedNumber(check.passed) === null ? 'Not served' : formatDashboardCount(check.passed)} passed</span>
+              <span data-field-tone="fail">{servedNumber(check.failed) === null ? 'Not served' : formatDashboardCount(check.failed)} failed</span>
+              <span>{servedNumber(check.pass_rate) === null ? 'Not served' : passRate(check.pass_rate)}</span>
             </li>
           ))}
         </ul>
@@ -378,20 +395,109 @@ function AcceptanceChecks({ q }: { q: QualityGateRow }) {
         { k: 'Average tokens to comply', v: wholeTokens(q.avg_tokens_to_compliance) },
         { k: 'Average attempts', v: attempts(q.avg_compliance_attempts) },
       ]} />
-      {byModel.length > 0 && (
+      {q.tokens_to_compliance_by_model == null ? <p className="note">Tokens to comply by model: Not served</p> : byModel.length === 0 ? <p className="note">0 models</p> : (
         <ul className="ev-acceptance-models" aria-label="Tokens to comply by model">
           {byModel.map((model, index) => (
             <li key={`${String(model.model_name)}-${index}`}>
               <span className="mono local-model-identity" style={modelIdentityStyle(String(model.model_name ?? ''))}>{isUnavailableField(model.model_name) ? 'Unknown model' : String(model.model_name)}</span>
               <span>{wholeTokens(model.avg_tokens)} tokens</span>
               <span>{attempts(model.avg_attempts)} attempts</span>
-              <span>{servedNumber(model.sample_count) === null ? 'Not recorded' : `${formatDashboardCount(model.sample_count)} runs`}</span>
+              <span>{servedNumber(model.sample_count) === null ? 'Not served' : `${formatDashboardCount(model.sample_count)} runs`}</span>
             </li>
           ))}
         </ul>
       )}
     </section>
   );
+}
+
+// The same served outcome precedence as Runs: an explicitly failed terminal is failed even when its gate did not run.
+function isFailedDecision(row: DelegationDecisionRow): boolean {
+  const fields = row as unknown as Record<string, unknown>;
+  return fields.terminal_ok === false || fields.terminal_ok === 0
+    || fields.quality_gate_passed === false || fields.quality_gate_passed === 0;
+}
+
+function triageName(value: unknown, kind: 'model' | 'task'): string {
+  if (value === null || value === undefined || value === '' || (kind === 'model' && value === 'delegate-skill')) {
+    return kind === 'model' ? 'unknown' : 'Not recorded';
+  }
+  return String(value);
+}
+
+function TriageRows({ rows, denominator, kind }: {
+  rows: ReadonlyArray<{ name: string; count: number | null; href: string }>;
+  denominator: number | null;
+  kind: 'category' | 'check' | 'model' | 'task';
+}) {
+  if (rows.length === 0) return <p className="note">No failures in this population.</p>;
+  return <ol className="ev-triage-rows" aria-label={`Failures by ${kind}`}>
+    {rows.map(row => <li data-triage-row key={`${kind}-${row.name}`}>
+      <a href={row.href} aria-label={`View failed runs for ${row.name}`}>{row.name}</a>
+      <span className="mono">{row.count === null ? 'Not served' : formatDashboardCount(row.count)} · {row.count === null || denominator === null || denominator === 0
+        ? 'Share not served' : sharePercent(row.count / denominator)}</span>
+    </li>)}
+  </ol>;
+}
+
+/** AC205/AC205a: quality categories describe all-time checks; model and task groups describe only the served sample. */
+function FailureTriage({ decisions, available }: { decisions: readonly DelegationDecisionRow[]; available: boolean }) {
+  const qualityQ = useDelegationQualityGate();
+  const quality = qualityQ.data?.rows[0];
+  const failed = decisions.filter(isFailedDecision);
+  const sampleLine = available
+    ? `${formatDashboardCount(failed.length)} failed of ${formatDashboardCount(decisions.length)} latest served runs`
+    : 'Latest served runs: Not measured';
+  const grouped = (kind: 'model' | 'task') => {
+    const groups = new Map<string, number>();
+    for (const row of failed) {
+      const name = triageName(kind === 'model' ? row.model_name : row.task_type, kind);
+      groups.set(name, (groups.get(name) ?? 0) + 1);
+    }
+    return [...groups.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([name, count]) => ({
+      name: kind === 'task' && name !== 'Not recorded' ? taskLabel(name) : name,
+      count,
+      href: `/runs?status=failed&${kind}=${encodeURIComponent(name)}`,
+    }));
+  };
+  const categories = Array.isArray(quality?.failure_categories) ? quality.failure_categories.map(item => ({
+    name: (() => { const text = escalationReason(item.category).text; return text.charAt(0).toUpperCase() + text.slice(1); })(),
+    count: servedNumber(item.count), href: '/runs?status=failed',
+  })).sort((a, b) => (b.count ?? -1) - (a.count ?? -1) || a.name.localeCompare(b.name)) : null;
+  const checks = Array.isArray(quality?.by_check_type) ? quality.by_check_type.map(item => ({
+    name: checkName(item.check_type), count: servedNumber(item.failed), total: servedNumber(item.total),
+  })).sort((a, b) => (b.count ?? -1) - (a.count ?? -1) || a.name.localeCompare(b.name)) : null;
+  const failedChecks = servedNumber(quality?.total_failed);
+  return <Panel title="FAILURE TRIAGE" sub="Where quality failed">
+    <DashboardTabs label="Failure triage" param="triage" tabs={[
+      { id: 'category', label: 'By category', panel: () => <div className="ev-triage-panel">
+        {qualityQ.isLoading ? <EvEmpty title="Loading quality checks…" /> : !quality
+          ? <EvEmpty title="No quality-gate rows" reason={plainUnservedReason(qualityQ.data?.degradedReason ?? (qualityQ.error ? 'The runtime could not answer' : null))} />
+          : <>
+            <p className="note">All-time quality checks · {failedChecks === null ? 'Failed checks not served' : `${formatDashboardCount(failedChecks)} failed checks`}</p>
+            <p className="note">Served runs do not record their failure category; a category opens every failed run.</p>
+            <div className="section-label">Failure categories</div>
+            {categories === null ? <p className="note">Categories not served</p> : <TriageRows rows={categories} denominator={failedChecks} kind="category" />}
+            <div className="section-label">Checks by type</div>
+            {checks === null ? <p className="note">Check types not served</p> : checks.length === 0 ? <p className="note">No failed checks by type.</p> :
+              <ol className="ev-triage-rows" aria-label="Failures by check type">{checks.map(item => <li data-triage-row key={item.name}>
+                <span>{item.name}</span><span className="mono">{item.count === null ? 'Not served' : formatDashboardCount(item.count)} · {item.count === null || item.total === null || item.total === 0
+                  ? 'Share not served' : sharePercent(item.count / item.total)} of this check type</span>
+              </li>)}</ol>}
+          </>}
+      </div> },
+      { id: 'model', label: 'By model', panel: () => <div className="ev-triage-panel">
+        <p className="note">{sampleLine}</p>
+        {available ? <TriageRows rows={grouped('model')} denominator={failed.length} kind="model" />
+          : <EvEmpty title="Failed runs not measured" note="The latest decisions could not be read." />}
+      </div> },
+      { id: 'task', label: 'By task', panel: () => <div className="ev-triage-panel">
+        <p className="note">{sampleLine}</p>
+        {available ? <TriageRows rows={grouped('task')} denominator={failed.length} kind="task" />
+          : <EvEmpty title="Failed runs not measured" note="The latest decisions could not be read." />}
+      </div> },
+    ]} />
+  </Panel>;
 }
 
 // ── savings (aggregate) ──────────────────────────────────────────────────────
@@ -404,6 +510,7 @@ function AcceptanceChecks({ q }: { q: QualityGateRow }) {
 interface HeadlineMoney {
   cloud: unknown; local: unknown; saved: unknown;
   baselineModel: unknown; pricing: unknown; measuredRuns: unknown;
+  unknownTokens?: unknown; unknownSpend?: unknown; mixedPricing?: boolean;
   /** The runs the total leaves out, as Overview's basis line names them; null when the source serves no such count. */
   basis: string | null;
 }
@@ -423,11 +530,12 @@ function SavingsPanel({ money, unavailable }: { money: HeadlineMoney | null; una
     key, name, basis, color, value: finite(value) ? Number(value) : null, display: finite(value) ? formatUsd(value) : 'Not measured',
   });
   const baselineModel = !isUnavailableField(money?.baselineModel) ? money?.baselineModel : s?.baseline_model;
-  const pricing = pricingLabel(!isUnavailableField(money?.pricing) ? money?.pricing : s?.pricing_manifest_version);
+  const pricing = money?.mixedPricing ? 'mixed basis'
+    : pricingLabel(!isUnavailableField(money?.pricing) ? money?.pricing : s?.pricing_manifest_version);
   return (
     <Panel
       title="SAVINGS vs CLOUD BASELINE"
-      sub={baselineModel ? String(baselineModel) : 'Baseline model not recorded'}
+      sub={baselineModel ? `Modelled vs ${String(baselineModel)}` : 'Baseline model not recorded'}
       right={pricing ? <span className="src-tag">{pricing}</span> : undefined}
     >
       <span className="stat-inline ev-savings-hero" data-field-tone="savings">
@@ -610,6 +718,16 @@ function meteringHeadline(rows: readonly unknown[] | undefined, loading: boolean
   if ('message' in picked) return unavailableHeadline(picked.message);
   const row = picked.row;
   const unresolved = row.baseline_state === 'unresolved';
+  // The all-time row can carry one current manifest version even when its cumulative totals span earlier daily
+  // versions. Daily rows of this same baseline are the served evidence for a mixed basis; never infer one from runs.
+  const versions = new Set(rows.filter((candidate): candidate is Record<string, unknown> =>
+    candidate !== null && typeof candidate === 'object' && !Array.isArray(candidate))
+    .filter(candidate => candidate.window_kind === 'day' && candidate.baseline_model === row.baseline_model)
+    .map(candidate => candidate.pricing_manifest_version)
+    .filter(version => !isUnavailableField(version)).map(String));
+  if (!isUnavailableField(row.pricing_manifest_version)) versions.add(String(row.pricing_manifest_version));
+  const mixedPricing = versions.size > 1 || /^mixed(?:\s|$)/i.test(String(row.pricing_manifest_version ?? ''));
+  const basis = meteringMoneyBasis(row);
   return {
     runs: servedCount(row.runs_measured),
     runsSub: captionText({ runs_total: row.runs_total, runs_unknown_tokens: row.runs_unknown_tokens, runs_unknown_spend: row.runs_unknown_spend }),
@@ -617,9 +735,127 @@ function meteringHeadline(rows: readonly unknown[] | undefined, loading: boolean
     tokens: servedCount(meteringTokens(row).total),
     money: { cloud: unresolved ? null : row.counterfactual_usd, local: row.spend_usd, saved: unresolved ? null : row.savings_usd,
       baselineModel: row.baseline_model, pricing: row.pricing_manifest_version, measuredRuns: row.runs_measured,
-      basis: captionText(meteringMoneyBasis(row)) },
+      unknownTokens: row.runs_unknown_tokens, unknownSpend: row.runs_unknown_spend,
+      mixedPricing,
+      basis: captionText(mixedPricing
+        ? { baseline_model: row.baseline_model, excluded_runs: basis.excluded_runs } : basis) },
     unavailable: 'Not measured',
   };
+}
+
+/** The claim and the money panel both receive the selected canonical metering row through EvidenceHeadline. */
+function moneyBasis(money: HeadlineMoney | null): string {
+  if (!money) return 'baseline Not measured · pricing Not measured';
+  const baseline = isUnavailableField(money.baselineModel) ? 'baseline Not measured' : `vs ${String(money.baselineModel)}`;
+  const pricing = money.mixedPricing ? 'mixed basis' : pricingLabel(money.pricing) ?? 'pricing Not measured';
+  return `${baseline} · ${pricing}`;
+}
+
+function EvidenceClaim({ money, unavailable }: { money: HeadlineMoney | null; unavailable: string }) {
+  const saved = money ? servedUsd(money.saved) : unavailable;
+  const count = (value: unknown) => servedCount(value);
+  return (
+    <section className="ev-evidence-claim" aria-label="Evidence claim">
+      <p className="ev-evidence-claim-sentence">
+        {saved === 'Not measured' || saved.startsWith('Not measured:')
+          ? <>Modelled savings: {saved}.</>
+          : <>Savings were {saved}, modelled {moneyBasis(money)}.</>}
+      </p>
+      <dl className="ev-evidence-derivation" aria-label="Claim derivation">
+        <div><dt>Measured runs</dt><dd>{count(money?.measuredRuns)} measured runs</dd></div>
+        <div><dt>No token counts</dt><dd>{count(money?.unknownTokens)} with no token counts</dd></div>
+        <div><dt>No spend recorded</dt><dd>{count(money?.unknownSpend)} with no spend recorded</dd></div>
+        <div><dt>Actual spend</dt><dd>{money ? servedUsd(money.local) : unavailable}</dd></div>
+        <div><dt>Baseline cost (modelled)</dt><dd>{money ? servedUsd(money.cloud) : unavailable}</dd></div>
+      </dl>
+    </section>
+  );
+}
+
+/**
+ * A served dollar figure exactly as served (amendment 30b, AC207a): thousands separated, every served decimal kept, none
+ * added or rounded away. A number is written in its shortest exact form, so a parsed 4.743332 never prints float noise.
+ */
+function exactUsd(value: unknown): string {
+  if (isUnavailableField(value)) return 'Not measured';
+  const text = expandExponent(typeof value === 'number' ? (Number.isFinite(value) ? String(value) : '') : typeof value === 'string' ? value.trim() : '');
+  const match = /^(-)?(\d+)(?:\.(\d+))?$/.exec(text);
+  if (!match) return 'Not measured';
+  const [, sign, whole, fraction] = match;
+  return `${sign ?? ''}$${whole!.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}${fraction ? `.${fraction}` : ''}`;
+}
+
+/** The largest exponent written out; a served dollar figure beyond it is not a real amount (Codex MSG 9f72d7f9). */
+const MAX_EXPONENT = 40;
+
+/**
+ * A decimal in exponent form (3e-7, as a small number prints) written out by moving the point, with no arithmetic. An
+ * exponent past MAX_EXPONENT is left as it is, so the caller reads it as Not measured instead of building a huge string.
+ */
+function expandExponent(text: string): string {
+  const match = /^(-)?(\d+)(?:\.(\d+))?e([+-]?\d+)$/i.exec(text);
+  if (!match || Math.abs(Number(match[4])) > MAX_EXPONENT) return text;
+  const [, sign = '', whole, fraction = '', power] = match;
+  const digits = `${whole}${fraction}`;
+  const point = whole!.length + Number(power);
+  const body = point <= 0 ? `0.${'0'.repeat(-point)}${digits}` : point >= digits.length ? `${digits}${'0'.repeat(point - digits.length)}`
+    : `${digits.slice(0, point)}.${digits.slice(point)}`;
+  return `${sign}${body.replace(/^0+(?=\d)/, '')}`;
+}
+
+/** AC207: the equation reads one all-time metering row, never the latest decision sample. */
+function SavingsBridge({ rows, loading }: { rows: readonly unknown[] | undefined; loading: boolean }) {
+  const canonical = meteringHeadline(rows, loading);
+  const money = canonical.money;
+  return <Panel title="SAVINGS BRIDGE" sub="All-time metering">
+    <section className="ev-savings-bridge" aria-label="Savings bridge">
+      <p className="note">{moneyBasis(money)}</p>
+      <div className="ev-savings-equation">
+        <div><span className="section-label">Baseline cost (modelled)</span><strong>{money ? exactUsd(money.cloud) : canonical.unavailable}</strong></div>
+        <span className="ev-savings-operator" aria-label="minus">−</span>
+        <div><span className="section-label">Actual spend</span><strong>{money ? exactUsd(money.local) : canonical.unavailable}</strong></div>
+        <span className="ev-savings-operator" aria-label="equals">=</span>
+        <div><span className="section-label">Saving (modelled)</span><strong>{money ? exactUsd(money.saved) : canonical.unavailable}</strong></div>
+      </div>
+      <p className="note">Each figure is shown exactly as served, so baseline cost minus actual spend equals the saving; headline cards round to cents.</p>
+    </section>
+  </Panel>;
+}
+
+const sampleOrder = (a: DelegationDecisionRow, b: DelegationDecisionRow) =>
+  (Date.parse(b.created_at) || 0) - (Date.parse(a.created_at) || 0);
+
+function downloadDecisionSample(rows: readonly DelegationDecisionRow[], format: 'csv' | 'json') {
+  const keys = [...new Set(rows.flatMap(row => Object.keys(row as unknown as Record<string, unknown>)))];
+  const csvCell = (value: unknown) => {
+    const text = value == null ? '' : typeof value === 'object' ? JSON.stringify(value) : String(value);
+    const safe = /^[=+@-]/.test(text) ? `'${text}` : text;
+    return `"${safe.replace(/"/g, '""')}"`;
+  };
+  const body = format === 'json' ? JSON.stringify(rows, null, 2)
+    : [keys.map(csvCell).join(','), ...rows.map(row => keys.map(key => csvCell((row as unknown as Record<string, unknown>)[key])).join(','))].join('\r\n');
+  const url = URL.createObjectURL(new Blob([body], { type: format === 'json' ? 'application/json' : 'text/csv;charset=utf-8' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `delegation-decisions-latest-${rows.length}-sample.${format}`;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+function DecisionSampleExport({ decisions, available }: { decisions: readonly DelegationDecisionRow[]; available: boolean }) {
+  const latest = [...decisions].sort(sampleOrder);
+  return (
+    <section className="ev-decision-export" aria-label="Decision sample export">
+      <span>{available ? <>Latest {formatDashboardCount(latest.length)} served decisions · sample, not the runs behind headline totals</>
+        : 'Decision sample: Not measured'}</span>
+      <div className="ev-decision-export-actions">
+        <button type="button" disabled={!available || latest.length === 0} onClick={() => downloadDecisionSample(latest, 'csv')}>Export CSV</button>
+        <button type="button" disabled={!available || latest.length === 0} onClick={() => downloadDecisionSample(latest, 'json')}>Export JSON</button>
+      </div>
+    </section>
+  );
 }
 
 // ── page ─────────────────────────────────────────────────────────────────────
@@ -656,7 +892,8 @@ export function DelegationEvidencePage() {
   // aggregate is not in the local store; Evidence asks the catalogue the same question and reads the same row.
   const censusQ = useExposureCensus();
   const source = censusQ.data ? overviewHeadlineSource(censusQ.data) : null;
-  const meteringQ = useMeteringSummary(source === 'metering');
+  // The bridge always reads the canonical metering row, including when legacy Overview totals own the headline.
+  const meteringQ = useMeteringSummary(true);
   const headline = source === 'metering'
     ? meteringHeadline(meteringQ.data?.rows, meteringQ.isLoading || censusQ.isLoading)
     : aggregateHeadline(overviewQ.data?.rows, overviewQ.isLoading);
@@ -686,13 +923,16 @@ export function DelegationEvidencePage() {
       scope={evidenceScopeLine(headline.runs, source === 'metering' ? 'measured' : 'served')}
       headRight={headRight}
     >
+      <EvidenceClaim money={headline.money} unavailable={headline.unavailable} />
       {/* OMN-21166 AC63: the four headline figures read as one segmented strip, as on the local pages. */}
       {/* OMN-21166 part 15 AC91: the four headline figures are Overview's cards; their captions are in the tooltips. */}
       <KpiStrip label="Delegation summary" items={[
-        { label: 'Delegations', value: headline.runs, accent: 'var(--field-calls)', concept: 'calls', lines: [headline.runsSub] },
+        // Part 29 AC191: one fact per line, so the drawn caption is the short first one ('Of N runs') and the exclusions
+        // stay in the page instead of being cut off.
+        { label: 'Delegations', value: headline.runs, accent: 'var(--field-calls)', concept: 'calls', lines: headline.runsSub ? String(headline.runsSub).split(' \u00b7 ') : [] },
         { label: 'Quality pass', value: summary ? passRate(summary.qualityGatePassRate) : 'Not measured', unavailable: !summary,
           accent: 'var(--field-pass)', concept: 'pass', lines: [withFixtureNotice('deterministic gate', fixtureNotice)] },
-        { label: 'Savings (modelled)', value: headline.savings, accent: 'var(--field-savings)', concept: 'savings', lines: ['vs cloud baseline'] },
+        { label: 'Savings (modelled)', value: headline.savings, accent: 'var(--field-savings)', concept: 'savings', lines: [moneyBasis(headline.money)] },
         { label: 'Tokens', value: headline.tokens, accent: 'var(--field-tokens)', concept: 'tokens',
           lines: [summary ? withFixtureNotice(`avg ${formatDuration(summary.avgLatencyMs)} latency`, fixtureNotice) : null] },
       ]} />
@@ -703,11 +943,15 @@ export function DelegationEvidencePage() {
       <div className="maple-grid ev-maple-grid">
         <div className="maple-cell maple-cell--wide"><SelectedRun correlationId={latestCid} decision={decisions[0]} /></div>
         <div className="maple-cell"><QualityGate /></div>
+        <div className="maple-cell maple-cell--full"><FailureTriage decisions={decisions}
+          available={!decisionsQ.isLoading && !!decisionsQ.data && !decisionsQ.data.degradedReason} /></div>
         <div className="maple-cell maple-cell--full"><ModelRouting /></div>
         <div className="maple-cell maple-cell--full"><SavingsPanel money={headline.money} unavailable={headline.unavailable} /></div>
+        <div className="maple-cell maple-cell--full"><SavingsBridge rows={meteringQ.data?.rows} loading={meteringQ.isLoading} /></div>
         <div className="maple-cell maple-cell--full"><TokenUsage /></div>
       </div>
 
+      <DecisionSampleExport decisions={decisions} available={!decisionsQ.isLoading && !!decisionsQ.data && !decisionsQ.data.degradedReason} />
       {decisionsQ.isLoading ? (
         <Panel title="RECENT DELEGATIONS"><EvEmpty title="Loading…" /></Panel>
       ) : decisions.length === 0 ? (

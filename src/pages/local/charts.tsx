@@ -25,21 +25,25 @@ function useChartMotion() {
     media.addEventListener('change', update);
     return () => media.removeEventListener('change', update);
   }, []);
-  // The aria module draws the bars' hatching (hatchedBar); its generated chart description is off, the figure names the chart.
+  // The aria module stays on for keyboard users; its generated description is off (the figure names the chart) and it draws
+  // no decal, since bars are solid (part 28 AC180).
   return { reduced, option: { animation: !reduced, animationDuration: reduced ? 0 : 250, animationDurationUpdate: reduced ? 0 : 180,
-    aria: { enabled: true, label: { enabled: false }, decal: { show: true } } } };
+    aria: { enabled: true, label: { enabled: false }, decal: { show: false } } } };
 }
 
 /**
- * Live review 2026-10-26 ("all bar graph follow this style"): every bar is one hatch in its series' colour, edged in that
- * colour, as the Overview bars are drawn. The colour is still the series' own (borderColor and the hatch); only the fill
- * is a pattern instead of a solid.
+ * OMN-21166 part 28 AC180 (Paradev and Entire): every bar is a solid flat fill in its series' colour, as the Overview bars
+ * are drawn; no hatch.
  */
-export function hatchedBar(colour: string, borderRadius: readonly number[]) {
-  return {
-    color: 'rgba(0,0,0,0)', borderColor: colour, borderWidth: 1, borderRadius: [...borderRadius],
-    decal: { symbol: 'rect', symbolSize: 1, color: colour, dashArrayX: [1, 0], dashArrayY: [1.5, 4.5], rotation: -Math.PI / 4 },
-  };
+export function flatBar(colour: string, borderRadius: readonly number[]) {
+  return { color: colour, borderColor: colour, borderWidth: 0, borderRadius: [...borderRadius] };
+}
+
+/** A served UTC day (YYYY-MM-DD) as every day axis names it, e.g. Oct 13 (part 28 AC185); any other text is kept. */
+export function dayAxisLabel(day: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(day)
+    ? new Date(`${day}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+    : day;
 }
 
 /**
@@ -222,7 +226,7 @@ function optionFor(group: SpendByDayGroup, shown: ReadonlyArray<{ series: Served
       data: group.days,
       axisLine: { lineStyle: { color: line } },
       axisTick: { show: false },
-      axisLabel: { color: text },
+      axisLabel: { color: text, formatter: dayAxisLabel },
     },
     // (The value axis starts at the library's own zero for bars; no minimum is set here.)
     yAxis: {
@@ -238,7 +242,7 @@ function optionFor(group: SpendByDayGroup, shown: ReadonlyArray<{ series: Served
       type: 'bar',
       data: series.values,
       barMaxWidth: 36,
-      itemStyle: hatchedBar(colour, [3, 3, 0, 0]),
+      itemStyle: flatBar(colour, [3, 3, 0, 0]),
       emphasis: { focus: 'series' },
     })),
   };
@@ -395,7 +399,7 @@ function timingOption(bars: readonly RunTimingBar[], colours: readonly string[],
     series: [{
       type: 'bar',
       barMaxWidth: 18,
-      data: bars.map((bar, index) => ({ value: bar.value, itemStyle: hatchedBar(colours[index]!, [0, 3, 3, 0]) })),
+      data: bars.map((bar, index) => ({ value: bar.value, itemStyle: flatBar(colours[index]!, [0, 3, 3, 0]) })),
       label: { show: true, position: 'right', color: text, ...(compact ? { width: 50, overflow: 'break', distance: 4 } : {}), formatter: (param: { dataIndex: number }) => labelText(param.dataIndex) },
     }],
   };
@@ -544,7 +548,7 @@ export function RunDurationChart({ runs, onOpen, title = 'Duration per run' }: {
       barMaxWidth: 28,
       data: runs.map((run, index) => ({
         value: hidden.has(run.status) ? null : points[index]!.value,
-        itemStyle: hatchedBar(statusColour(run.status), [3, 3, 0, 0]),
+        itemStyle: flatBar(statusColour(run.status), [3, 3, 0, 0]),
       })),
     }],
   };
@@ -611,7 +615,7 @@ export function RunTokensChart({ runs, onOpen, title = 'Tokens per run' }: { run
       type: 'bar',
       barMaxWidth: 18,
       data: series.points.map(({ value }) => value),
-      itemStyle: hatchedBar(series.colour, [3, 3, 0, 0]),
+      itemStyle: flatBar(series.colour, [3, 3, 0, 0]),
       emphasis: { focus: 'series' },
     })),
   };
@@ -664,7 +668,7 @@ export function RunMetricChart({ runs, onOpen, metric }: {
       },
     },
     series: [{ name: label, type: 'bar', barMaxWidth: 28,
-      data: points.map(p => p.value), itemStyle: hatchedBar(color, [4, 4, 0, 0]),
+      data: points.map(p => p.value), itemStyle: flatBar(color, [4, 4, 0, 0]),
       emphasis: { focus: 'self', itemStyle: { opacity: 1 } },
     }],
   };

@@ -60,7 +60,7 @@ const ORDER: readonly ModelProviderId[] = ['gemini', 'openrouter', 'openai', 'ol
 const OLLAMA_HOW = 'Set up by onboarding (run it again with --provider ollama)';
 
 /** A provider's name in one case everywhere: its label, else the served id with a capital first letter. */
-function providerName(provider: unknown): string {
+export function providerName(provider: unknown): string {
   const id = String(provider ?? '').toLowerCase();
   if (id === '') return 'Not recorded';
   return (LABELS as Record<string, string>)[id] ?? `${id.charAt(0).toUpperCase()}${id.slice(1)}`;

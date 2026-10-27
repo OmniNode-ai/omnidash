@@ -24,8 +24,7 @@ for (const theme of ['light', 'dark'] as const) {
     await expect(tokens.locator('.local-dashboard-metric')).toHaveText('309.27M');
     // OMN-21166 part 12 AC73 (live review 2026-10-25, "in out token also - show it when hover it"): the directions are
     // in the card's tooltip, opened as a keyboard reader opens it, by focusing the card's info button.
-    const about = tokens.getByRole('button', { name: 'About Tokens processed', exact: true });
-    await about.focus();
+    // Part 29 AC191: the basis is the card's caption, always in the page; no About button to focus.
     await expect(tokens.locator('[data-field-tone="tokens-in"]')).toBeVisible();
     await expect(tokens.locator('[data-field-tone="tokens-in"]')).toContainText('300,000,001');
     await expect(tokens.locator('[data-field-tone="tokens-out"]')).toContainText('9,271,490');
@@ -33,9 +32,15 @@ for (const theme of ['light', 'dark'] as const) {
     await expect(tokens.getByLabel('Output tokens: 9,271,490', { exact: true })).toHaveAttribute('title', 'Output tokens: 9,271,490');
     await expect(tokens.locator('.local-token-directions')).not.toContainText('Input');
     await expect(tokens.locator('.local-token-directions')).not.toContainText('Output');
+    // Part 29 AC191 (lab 2026-10-27): in the caption the two directions wrap whole when a four-across card is too narrow
+    // for both; neither may be clipped or run past the card's edge (the old one-line tooltip rule cannot hold at 1440).
     const pair = await tokens.locator('.local-token-direction').all();
-    const inputBox = await pair[0]!.boundingBox(), outputBox = await pair[1]!.boundingBox();
-    expect(Math.abs(inputBox!.y - outputBox!.y)).toBeLessThan(2);
+    const caption = (await tokens.locator('.local-card-caption').boundingBox())!;
+    for (const half of pair) {
+      const box = (await half.boundingBox())!;
+      expect(box.x + box.width).toBeLessThanOrEqual(caption.x + caption.width + 0.5);
+      expect(await half.evaluate(el => el.scrollWidth <= el.clientWidth + 0.5)).toBe(true);
+    }
     expect(await tokens.locator('[data-field-tone="tokens-in"]').evaluate(el => getComputedStyle(el).color))
       .not.toBe(await tokens.locator('[data-field-tone="tokens-out"]').evaluate(el => getComputedStyle(el).color));
     await page.screenshot({ path: info.outputPath(`overview-counts-${theme}.png`), fullPage: true });
@@ -43,8 +48,9 @@ for (const theme of ['light', 'dark'] as const) {
     const collapse = page.getByRole('button', { name: 'Collapse sidebar', exact: true });
     if (await collapse.isVisible()) await collapse.click();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
-    await about.focus();
+    // Part 29 AC191: the directions are in the card's caption; nothing to focus.
     await expect(tokens.locator('[data-field-tone="tokens-in"]')).toBeVisible();
+    // On a phone the card is one column wide, so both directions fit and stay on one line (wrapping only when needed).
     const smallPair = await tokens.locator('.local-token-direction').all();
     expect(Math.abs((await smallPair[0]!.boundingBox())!.y - (await smallPair[1]!.boundingBox())!.y)).toBeLessThan(2);
     await page.goto('/usage');
@@ -70,8 +76,8 @@ test('metering-backed Overview uses the same compact total and arrow-only full d
   await expect(tokens.locator('.local-dashboard-metric')).toHaveText('6.13K');
   // OMN-21166 live review 2026-10-25: on the metering path the Tokens card is its compact total, and the full
   // directions (whole integers, never compacted) are its hover line, a tooltip that is the info button's description.
-  await expect(tokens.locator('[role="tooltip"]')).toHaveText('5,756 in · 378 out');
-  await expect(tokens.getByRole('button', { name: 'About Tokens processed' })).toHaveAttribute('aria-describedby', await tokens.locator('[role="tooltip"]').getAttribute('id') ?? '');
+  await expect(tokens.locator('.local-card-caption')).toHaveText('5,756 in · 378 out');
+  await expect(tokens.getByRole('button', { name: 'About Tokens processed' })).toHaveCount(0);
   await expect(tokens).not.toContainText('Input');
   await expect(tokens).not.toContainText('Output');
 });

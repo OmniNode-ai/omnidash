@@ -172,13 +172,13 @@ test('stored basis, excluded counts and modelled baseline survive native Overvie
   // says so, and names the runs the total leaves out; the metering row's baseline is held on Usage, below.
   const savingsCard = page.locator('[data-component="overview-savings"]');
   await expect(savingsCard.locator('.local-dashboard-metric')).toBeVisible();
-  await savingsCard.getByRole('button', { name: 'About Savings', exact: true }).focus();
+  // Part 29 AC191: the basis is the card's caption, always in the page; no About button to focus.
   await expect(savingsCard.getByText(/Baseline model not recorded/)).toBeVisible();
   await expect(savingsCard.getByText(/3 unknown-provenance runs/)).toBeVisible();
   await expect(page.getByText('Baseline served-baseline-model · pricing manifest v1')).toHaveCount(0);
   // OMN-21166 AC37: Agent calls is every call; the served classes are its caption.
   // OMN-21166 (card basis in a tooltip): the served classes sit in the card's info tooltip, shown on focus.
-  await page.getByRole('button', { name: 'About Agent calls', exact: true }).focus();
+  // Part 29 AC191: the basis is the card's caption, always in the page; no About button to focus.
   await expect(page.getByText('46 measured · 3 unknown', { exact: true })).toBeVisible();
   // OMN-21166 AC86 (Lakshman 2026-10-25): Last run and Recent runs deleted from Overview; the stored basis column is
   // held on Runs below, and Overview keeps the no-cut-off check.
@@ -244,7 +244,7 @@ test('Overview is the default page and fits 1440x900 with no unmeasured 0 (AC4)'
   await expect(savings.getByText('$1.22', { exact: true })).toBeVisible();
   await expect(savings.getByText('$1.21', { exact: true })).toHaveCount(0);
   // OMN-21166 (card basis in a tooltip): the basis line is in the card's tooltip, shown on keyboard focus of the card.
-  await savings.getByRole('button', { name: 'About Savings', exact: true }).focus();
+  // Part 29 AC191: the basis is the card's caption, always in the page; no About button to focus.
   await expect(savings.getByText('Modelled · vs cloud baseline', { exact: true })).toBeVisible();
   await expect(savings.getByText('$0.40', { exact: true })).toHaveCount(0);
   // D1: all four headline tiles follow the same legacy all row.
@@ -252,7 +252,7 @@ test('Overview is the default page and fits 1440x900 with no unmeasured 0 (AC4)'
   await expect(headline('Actual spend').getByText('$0.01', { exact: true })).toBeVisible();
   await expect(headline('Agent calls').getByText('49', { exact: true })).toBeVisible();
   await expect(headline('Agent calls').getByText('46', { exact: true })).toHaveCount(0);
-  await headline('Agent calls').getByRole('button', { name: 'About Agent calls', exact: true }).focus();
+  // Part 29 AC191: the basis is the card's caption, always in the page; no About button to focus.
   await expect(headline('Agent calls').getByText('46 measured · 3 unknown', { exact: true })).toBeVisible();
   await expect(headline('Tokens processed').getByText('9.84K', { exact: true })).toBeVisible();
   await expect(headline('Tokens processed').getByText(/Not available yet/)).toHaveCount(0);
@@ -331,11 +331,13 @@ test('Usage shows measured cost beside unmeasured runs, never 0 for unmeasured, 
   // by day as a table".
   await page.getByText('More usage', { exact: true }).press('Enter');
   await page.getByText('Savings by day as a table', { exact: true }).press('Enter');
-  const mixed = page.getByRole('row').filter({ hasText: 'Qwen3.8-27B' });
+  // Part 29 AC194: Usage analysis also lists models; these rows are the usage-by-model-day records.
+  const records = page.getByRole('table', { name: 'Usage by model and day' });
+  const mixed = records.getByRole('row').filter({ hasText: 'Qwen3.8-27B' });
   for (const value of ['2026-10-02', '162', '52', '$0.25', '1 unmeasured', '2']) {
     await expect(mixed.getByText(value, { exact: true })).toBeVisible();
   }
-  const unmeasured = page.getByRole('row').filter({ hasText: 'glm-4.6' });
+  const unmeasured = records.getByRole('row').filter({ hasText: 'glm-4.6' });
   await expect(unmeasured.getByText('Not measured', { exact: true })).toBeVisible();
   await expect(page.getByText(/9\.25/)).toHaveCount(0);
   await expect(page.getByText('$0', { exact: true })).toHaveCount(0);
@@ -395,7 +397,7 @@ test('Overview quality and tier-mix panels show served fields only (OMN-20225 AC
   await expect(quality.getByRole('heading', { name: 'Delegation Quality', exact: true })).toBeVisible();
   await expect(quality.locator('.local-dashboard-metric')).toHaveText('87.5%');
   await expect(page.getByRole('meter')).toHaveCount(0);
-  await quality.getByRole('button', { name: 'About Delegation Quality', exact: true }).focus();
+  // Part 29 AC191: the basis is the card's caption, always in the page; no About button to focus.
   await expect(quality.getByText('7 of 8 runs passed the quality gate', { exact: true })).toBeVisible();
   await expect(quality.getByText('1 failed · deterministic checks', { exact: true })).toBeVisible();
   // OMN-21166 Maple grid/AC64: Overview's Tier mix is ranked bars that print each served share and count, with the
@@ -639,7 +641,8 @@ test('sidebar surfaces and controls follow the theme in expanded and collapsed l
 
     for (const width of [1440, 390]) {
       await page.setViewportSize({ width, height: 900 });
-      await page.getByRole('button', { name: 'Collapse sidebar', exact: true }).click();
+      // OMN-21166 part 27 AC173: crossing into phone width folds the sidebar by itself; at desktop width fold it by hand.
+      if (width > 1024) await page.getByRole('button', { name: 'Collapse sidebar', exact: true }).click();
       await expect(sidebar).toHaveClass('sidebar collapsed');
       await expectColor(sidebar, 'background-color', background);
       await page.getByRole('button', { name: 'Expand sidebar', exact: true }).click();
@@ -824,8 +827,8 @@ test('Runs filters, pagination and table hover use readable themed controls', as
     // sixth select, Task; part 23 AC145 added a seventh, Tier.
     await expect(selects).toHaveCount(7);
     for (const select of await selects.all()) {
-      // OMN-21166 Maple grid: the one-row Runs toolbar's selects have a 7px radius and keep the 40px touch target.
-      await expect(select).toHaveCSS('border-radius', '7px');
+      // OMN-21166 part 28 AC181: the one-row Runs toolbar's selects have the 6px control radius and keep the 40px touch target.
+      await expect(select).toHaveCSS('border-radius', '6px');
       await expect(select).toHaveCSS('min-height', '40px');
       await expect(select).toHaveCSS('border-top-style', 'solid');
     }

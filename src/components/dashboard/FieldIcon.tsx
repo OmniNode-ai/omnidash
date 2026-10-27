@@ -1,51 +1,62 @@
 import {
-  Activity, ArrowDown, ArrowDownUp, ArrowUp, Award, BadgeInfo, Blocks, Bot, BrainCircuit, Building2, CalendarDays,
-  CircleCheck, CircleDot, CircleDollarSign, CircleX, Clock3, Coins, Cpu, DatabaseZap,
-  ChartColumn, ChartColumnStacked, ChartLine, ChartSpline, CircleHelp, Cloud, CloudOff, CodeXml, FileClock, FileText, Filter, Fingerprint, FingerprintPattern, Flag, FlaskConical, Gauge, GitPullRequest, Globe, History, Hourglass, IdCard, Inbox, KeyRound, Layers, ListChecks, MessageSquareText, MessagesSquare,
-  Monitor, Network, PiggyBank, PlugZap, Radio, Route, RouteOff, Scale, ScanSearch, ShieldCheck, Shrink,
-  Rows3, ScrollText, Sparkles, Star, TableProperties, Timer, TrendingDown, Server, Waypoints, Zap, type LucideIcon,
+  Antenna, ArrowDown, ArrowLeftRight, ArrowUp, Award, BadgeInfo, Banknote, Bot, Boxes, Brain, BrainCircuit,
+  Building2, CalendarClock, CalendarDays, CalendarRange, ChartArea, ChartBar, ChartBarStacked, ChartColumnStacked,
+  ChartGantt, ChartLine, ChartPie, ChartSpline, CheckCheck, CircleCheck, CircleDollarSign, CircleDot, CircleEllipsis,
+  CircleHelp, CircleX, ClipboardCheck, Clock3, Cloud, Cloudy, CodeXml, Coins, Cpu, DatabaseZap, Divide, Feather,
+  FileClock, FileText, Files, Fingerprint, Flag, FlagTriangleRight, Footprints, GitBranch, GitFork,
+  GitPullRequest, Globe, HardDrive, Hash, History, Hourglass, House, IdCard, Inbox, Key, KeyRound, Layers, Layers2,
+  ListChecks, LockKeyhole, Logs, Medal, MessageSquareText, MessagesSquare, Milestone, Monitor, MousePointerClick,
+  Network, OctagonAlert, PanelsTopLeft, Percent, PiggyBank, PlugZap, Receipt, Rocket, Route, RouteOff, Rows3, Ruler, Scale,
+  ScrollText, Server, Sheet, ShieldCheck, Shrink, Shuffle, Signpost, Snail, Sparkles, Split, Star, TableProperties,
+  Target, TestTube, Timer, TimerReset, TrendingUp, TriangleAlert, Trophy, UserLock, Waypoints, Zap, type LucideIcon
 } from 'lucide-react';
 import { fieldTone, isUnavailableField } from './field-identity';
 import { modelIdentityStyle } from './model-identity';
 import { tierColor } from '@/lib/dashboard-colors';
 import type { CSSProperties } from 'react';
 
-/** Canonical field identities, reused wherever the same fact is displayed. */
+/**
+ * Canonical field identities, reused wherever the same fact is displayed. OMN-21166 part 28a (Lakshman 2026-10-27, grey
+ * icons with unique glyphs): every concept has its own glyph, so a concept stays unique by shape alone now that interface
+ * icons are grey (OMN-21308 AC1); colour stays on the data.
+ */
 export const FIELD_ICONS: Readonly<Record<string, LucideIcon>> = {
-  pass: CircleCheck, fail: CircleX, count: ListChecks, score: Star, threshold: Gauge,
+  pass: CircleCheck, fail: CircleX, count: ListChecks, score: Star, threshold: Ruler,
   model: BrainCircuit, age: Clock3, identity: Fingerprint, duration: Timer,
   cost: CircleDollarSign, savings: PiggyBank, backend: Server, host: Monitor,
   'tokens-in': ArrowDown, 'tokens-out': ArrowUp, tokens: Coins, basis: BadgeInfo,
   task: FileText, tier: Layers, queue: Hourglass, execution: Zap, completion: Flag,
   calls: Bot, tenant: Building2, session: MessagesSquare, baseline: Scale,
-  'saving-average': TrendingDown, compression: Shrink, cache: DatabaseZap,
-  quality: Award, events: Activity, generation: Blocks, transport: Radio,
+  'saving-average': Divide, compression: Shrink, cache: DatabaseZap,
+  quality: Award, events: Logs, generation: Boxes, transport: Antenna,
   delegations: Network, routing: Route, unrouted: RouteOff, contract: ShieldCheck,
   unavailable: CircleDot, 'tier-harness': Cpu, 'step-provider-call': PlugZap,
   recent: Rows3, last: History, analysis: ChartSpline,
-  'spend-daily': ChartLine, 'tokens-daily': ArrowDownUp, 'savings-daily': CalendarDays,
-  'usage-day': TableProperties, credentials: KeyRound, 'local-identity': IdCard, 'local-access': FingerprintPattern,
-  'cloud-keys': CloudOff, path: Route, 'local-run': Server,
-  'run-outcome': Award, 'routing-model': Waypoints, 'tokens-completion': Coins,
-  timing: Timer, 'run-details': FileClock, 'stage-timing': Timer,
-  answer: MessageSquareText, 'routing-flow': Waypoints, 'token-flow': Coins,
-  'quality-comparison': Award,
-  'tier-local': Server, 'tier-cheap-frontier': Zap, 'tier-cheap-cloud': Cloud,
-  'tier-cloud': Cloud, 'tier-claude': Sparkles, 'tier-frontier': Sparkles,
-  'tier-customer-keys': KeyRound, 'tier-other': Route,
-  'step-request': Inbox, 'step-routing': Route, 'step-quality': ShieldCheck,
-  'step-terminal': Flag, 'step-other': CircleDot,
-  'runs-daily': CalendarDays, 'pass-rate-daily': ChartLine, 'activity-hourly': Clock3,
-  'quality-model': Award, failures: CircleX, 'runs-model': BrainCircuit, 'runs-tier': Layers,
-  'spend-model': CircleDollarSign, 'cost-per-run': Scale, 'tokens-model': ArrowDownUp,
-  'cost-route': Route, activity: Activity, 'routing-workload': Waypoints,
-  'quality-outcomes': ShieldCheck, 'performance-model': ChartColumn,
-  'task-document': FileText, 'task-code-generation': CodeXml, 'task-research': Globe,
+  'spend-daily': ChartLine, 'tokens-daily': ChartArea, 'savings-daily': CalendarDays,
+  'usage-day': TableProperties, credentials: KeyRound, 'local-identity': IdCard, 'local-access': UserLock,
+  'cloud-keys': LockKeyhole, path: Footprints, 'local-run': HardDrive,
+  'run-outcome': Trophy, 'routing-model': Waypoints, 'tokens-completion': Hash,
+  timing: TimerReset, 'run-details': FileClock, 'stage-timing': ChartGantt,
+  answer: MessageSquareText, 'routing-flow': GitBranch, 'token-flow': ArrowLeftRight,
+  'quality-comparison': Target,
+  'tier-local': House, 'tier-cheap-frontier': Feather, 'tier-cheap-cloud': Cloudy,
+  'tier-cloud': Cloud, 'tier-claude': Sparkles, 'tier-frontier': Rocket,
+  'tier-customer-keys': Key, 'tier-other': Signpost,
+  'step-request': Inbox, 'step-routing': Split, 'step-quality': ClipboardCheck,
+  'step-terminal': FlagTriangleRight, 'step-other': CircleEllipsis,
+  'runs-daily': CalendarRange, 'pass-rate-daily': Percent, 'activity-hourly': CalendarClock,
+  'quality-model': Medal, failures: OctagonAlert, 'runs-model': Brain, 'runs-tier': Layers2,
+  'spend-model': Banknote, 'cost-per-run': Receipt, 'tokens-model': ChartBarStacked,
+  'cost-route': Milestone, activity: TrendingUp, 'routing-workload': Shuffle,
+  'quality-outcomes': CheckCheck, 'performance-model': ChartBar,
+  'task-document': Files, 'task-code-generation': CodeXml, 'task-research': Globe,
   'task-summarization': ScrollText, 'task-code-review': GitPullRequest,
-  'task-test': FlaskConical, 'task-other': CircleHelp,
-  'tier-mix': Waypoints, 'usage-analysis': ChartColumnStacked,
-  'load-slow': Hourglass, 'load-error': CloudOff,
-  selected: ScanSearch, 'recorded-rows': Filter,
+  'task-test': TestTube, 'task-other': CircleHelp,
+  'tier-mix': ChartPie, 'usage-analysis': ChartColumnStacked,
+  'load-slow': Snail, 'load-error': TriangleAlert,
+  selected: MousePointerClick, 'recorded-rows': Sheet,
+  // OMN-21166 part 30 (revision 7): Runs' analysis views and its routing groups.
+  'runs-analysis': PanelsTopLeft, 'run-routes': GitFork,
 };
 
 /** Canonical readable names for consumers whose label is not a field alias. */
@@ -83,6 +94,7 @@ export const CONCEPT_LABELS: Readonly<Record<string, string>> = {
   'tier-mix': 'Tier mix', 'usage-analysis': 'Usage analysis',
   'load-slow': 'Data read delayed', 'load-error': 'Data read failed',
   selected: 'Selected run', 'recorded-rows': 'Recorded rows',
+  'runs-analysis': 'Analysis views', 'run-routes': 'Routing',
 };
 
 export function ConceptIcon({ concept, label, value, size = 12 }: { concept: string; label?: string; value?: unknown; size?: number }) {

@@ -30,28 +30,19 @@ for (const [width, height] of [[1440, 900], [390, 844]] as const) {
     await expect(cards).toHaveCount(5);
     for (let index = 0; index < 5; index++) {
       const card = cards.nth(index);
-      const icon = card.locator('.local-card-info svg');
-      await expect(icon, `card ${index + 1} has no visible i`).not.toBeVisible();
-      await card.locator('.local-card-info').focus();
-      const tip = card.getByRole('tooltip');
-      await expect(tip).toBeVisible();
-      const bounds = await tip.evaluate(el => {
-        const rect = el.getBoundingClientRect();
-        return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, width: innerWidth, height: innerHeight };
-      });
-      expect(bounds.left, `card ${index + 1} tooltip left`).toBeGreaterThanOrEqual(0);
-      expect(bounds.right, `card ${index + 1} tooltip right`).toBeLessThanOrEqual(bounds.width);
-      expect(bounds.top, `card ${index + 1} tooltip top`).toBeGreaterThanOrEqual(0);
-      expect(bounds.bottom, `card ${index + 1} tooltip bottom`).toBeLessThanOrEqual(bounds.height);
-      const overlapsControl = await tip.evaluate(el => {
-        const tipBox = el.getBoundingClientRect();
-        return [...document.querySelectorAll('.local-chart-expand')].some(control => {
-          const controlBox = control.getBoundingClientRect();
-          return tipBox.left < controlBox.right && tipBox.right > controlBox.left
-            && tipBox.top < controlBox.bottom && tipBox.bottom > controlBox.top;
+      // Part 29 AC191 (supersedes the AC147 tooltip checks): no info control and no popover; the basis is the card's
+      // caption, inside the card and inside the viewport at this width.
+      await expect(card.locator('.local-card-info'), `card ${index + 1} has no info control`).toHaveCount(0);
+      await expect(card.getByRole('tooltip'), `card ${index + 1} opens no popover`).toHaveCount(0);
+      const caption = card.locator('.local-card-caption > :first-child');
+      if (await caption.count()) {
+        const bounds = await caption.evaluate(el => {
+          const rect = el.getBoundingClientRect(); const cardRect = el.closest('.local-dashboard-panel')!.getBoundingClientRect();
+          return { inCard: rect.left >= cardRect.left - 1 && rect.right <= cardRect.right + 1 && rect.bottom <= cardRect.bottom + 1, right: rect.right, width: innerWidth };
         });
-      });
-      expect(overlapsControl, `card ${index + 1} tooltip avoids chart controls`).toBe(false);
+        expect(bounds.inCard, `card ${index + 1} caption inside its card`).toBe(true);
+        expect(bounds.right, `card ${index + 1} caption inside the viewport`).toBeLessThanOrEqual(bounds.width);
+      }
     }
     const model = page.locator('.maple-cell--half > [data-component="overview-model-usage"]');
     await expect(model.locator('.rb-chart--vertical [data-ranked-item]')).toHaveCount(7);

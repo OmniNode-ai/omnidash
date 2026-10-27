@@ -1,5 +1,7 @@
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { RankedBars } from '@/components/dashboard/RankedBars';
+import { UsageAnalysis } from './usage-analysis';
+import { DEFAULT_RUNS_VIEW, writeRunsSearch } from '@/navigation/runs-url-state';
 import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
 import { modelColor, tierColor } from '@/lib/dashboard-colors';
 import { formatDashboardUsd } from '@/lib/dashboard-currency';
@@ -87,6 +89,8 @@ function SpendByModel({ data }: { data: UsageAggregates }) {
         items={data.models.map(model => ({
           key: model.model, name: model.model, value: model.measuredCost, basis: 'measured',
           display: model.measuredCost === null ? 'Not measured' : money(model.measuredCostUsd), color: modelColor(model.model),
+          // Part 29 AC193: each model opens Runs filtered to it.
+          href: `/runs?${writeRunsSearch('', { ...DEFAULT_RUNS_VIEW, model: model.model })}`, opensLabel: `Opens Runs filtered to ${model.model}`,
         }))}
         footnote={gaps.length > 0 ? gaps.map(model => `${model.model}: ${model.unmeasuredCalls === null ? 'unmeasured runs not recorded' : `${count(model.unmeasuredCalls)} unmeasured`}`).join(' · ') : undefined} />
       <p className="local-dashboard-caption">Measured spend only, summed from the latest {USAGE_WINDOW_DAYS} UTC days of served usage rows.</p>
@@ -140,11 +144,13 @@ function TokensByModel({ data, titled }: { data: UsageAggregates; titled: boolea
 export function UsageInsights({ usageRows, decisionRows, routingRows, now = Date.now(), part = 'all' }: {
   usageRows: readonly unknown[]; decisionRows: readonly unknown[]; routingRows: readonly unknown[]; now?: number;
   /** 'spend' is Spend by model; part 17: each "More usage" chart is its own panel, so each is its own part. */
-  part?: 'all' | 'spend' | 'cost-per-run' | 'tokens-by-model' | 'cost-by-route';
+  part?: 'all' | 'spend' | 'cost-per-run' | 'tokens-by-model' | 'cost-by-route' | 'analysis';
 }) {
   const data = aggregateUsageRows(usageRows, decisionRows, now, USAGE_WINDOW_DAYS);
   const routing = routeSpendByTier(records(routingRows)[0] ?? {});
   // A part sits in a panel whose title names it, so it draws no heading of its own.
+  // Part 29 AC194, AC195: the analysis of the served decisions, its own full-row panel (AC89).
+  if (part === 'analysis') return <section className="usage-insights" aria-label="Usage insights"><UsageAnalysis decisionRows={decisionRows} /></section>;
   if (part === 'spend') return <section className="usage-insights" aria-label="Usage insights"><SpendByModel data={data} /></section>;
   if (part === 'cost-per-run') return <section className="usage-insights" aria-label="Usage insights"><CostPerRun data={data} titled={false} /></section>;
   if (part === 'tokens-by-model') return <section className="usage-insights" aria-label="Usage insights"><TokensByModel data={data} titled={false} /></section>;

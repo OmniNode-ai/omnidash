@@ -20,7 +20,8 @@ test('Evidence savings labels retain exact decimal strings across the headline a
   await page.screenshot({ path: info.outputPath('evidence-exact-currency.png') });
 });
 // Part 15 AC91 (Lakshman 2026-10-25 "make sure all pages follow overview page style"; "each card a different colour"):
-// Evidence's four cards are Overview's cards, so each wears its own identity edge as well as its own icon.
+// Evidence's four cards are Overview's cards, so each wears its own identity icon; since part 27 AC167 the edge is the
+// one neutral line on every card.
 test('Evidence summary cards each have a logical icon and their own identity colour', async ({ page }, info) => {
   await serveCharts(page);
   await page.goto('/delegation-evidence');
@@ -34,8 +35,9 @@ test('Evidence summary cards each have a logical icon and their own identity col
       const style = getComputedStyle(element);
       return { border: style.borderTopColor, bottom: style.borderBottomColor, color: getComputedStyle(element.querySelector('svg')!).color, icon: element.querySelector('svg')?.getAttribute('class') };
     }));
-    expect(new Set(identities.map(item => item.border)).size).toBe(4);
-    expect(new Set(identities.map(item => item.color)).size).toBe(4);
+    expect(new Set(identities.map(item => item.border)).size).toBe(1);
+    // Part 28 AC177: the card icons are grey (one colour); each card is still told apart by its own icon shape.
+    expect(new Set(identities.map(item => item.color)).size).toBe(1);
     expect(new Set(identities.map(item => item.icon)).size).toBe(4);
     await cards.first().hover();
     await expect.poll(() => cards.first().evaluate(element => getComputedStyle(element).boxShadow)).toBe('none');

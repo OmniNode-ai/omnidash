@@ -94,6 +94,80 @@
           "statement": "AC47: Under Tokens processed, input and output show only from fields the Overview aggregate itself serves for the same tenant, window and population as its tokens_total; a missing direction reads Not measured and nothing is borrowed from delegation.token-usage."
         }
       ]
+    },
+    {
+      "id": "req-revision-6-7-acceptance-criteria",
+      "statement": "Revision 6 and 7 acceptance criteria (spec parts 29, 29a, 30, 30a and 30b), approved by Lakshman in chat on 2026-10-27 and copied into the live ticket body as plan amendments. The ticket remains the source.",
+      "acceptance": [
+        {
+          "id": "AC191",
+          "statement": "AC191: (approved plan amendment, revision 6 part 29, 2026-10-27, Lakshman) headline cards on Overview, Runs, Usage and Delegation Evidence show a short visible caption under the figure naming its basis, whole on its first line, with the full basis kept in the page as the card's accessible description and no hover popover over the next chart -- falsifier: the bound check dod-omn21166-ac191-headline-captions fails at the merge base"
+        },
+        {
+          "id": "AC192",
+          "statement": "AC192: (approved plan amendment, revision 6 part 29, 2026-10-27, Lakshman) a card's change line keeps its 7, 15 and 30 day windows and its no-earlier-data wording, in neutral secondary text with an up or down arrow -- falsifier: the bound check dod-omn21166-ac192-change-arrow fails at the merge base"
+        },
+        {
+          "id": "AC193",
+          "statement": "AC193: (approved plan amendment, revision 6 part 29, 2026-10-27, Lakshman) a model in Usage's model charts opens Runs filtered to that model with the filter in the address so it survives a reload, and a UTC day with no runs opens a valid zero-result filter -- falsifier: the bound check dod-omn21166-ac193-model-links fails at the merge base"
+        },
+        {
+          "id": "AC194",
+          "statement": "AC194: (approved plan amendment, revision 6 part 29, 2026-10-27, Lakshman) Usage analysis groups the latest served runs by model, tier, task type or backend with runs, spend over measured runs, pass rate over runs with a verdict, p50 and p95 latency over recorded latencies, last run and a 14-day sparkline in which days before the sample read not covered, rows with no recorded group fall in Not recorded, the caption states the sample and its UTC coverage, and no savings column is drawn from the decisions -- falsifier: the bound check dod-omn21166-ac194-usage-groups fails at the merge base"
+        },
+        {
+          "id": "AC195",
+          "statement": "AC195: (approved plan amendment, revision 6 part 29, 2026-10-27, Lakshman) Usage analysis shows cost per measured run against pass rate per model, a measured 0 cost as a real point, a model with no measured cost or no verdict listed instead of drawn, and each point's values on hover or keyboard focus -- falsifier: the bound check dod-omn21166-ac195-cost-quality fails at the merge base"
+        },
+        {
+          "id": "AC196",
+          "statement": "AC196: (approved plan amendment, revision 6 part 29, 2026-10-27, Lakshman) Runs shows a line for the current filter with runs, spend, pass rate and p95 latency, labelled as the latest served runs and updating with the filter, with no savings figure -- falsifier: the bound check dod-omn21166-ac196-runs-totals fails at the merge base"
+        },
+        {
+          "id": "AC197",
+          "statement": "AC197: (approved plan amendment, revision 6 part 29, 2026-10-27, Lakshman) Workflow draws the run timeline as a waterfall on one time axis: a step with a start and a duration is a bar at its offset and width, a step missing either reads not recorded, a 0 ms step is an instant marker, and attempts are their own rows -- falsifier: the bound check dod-omn21166-ac197-waterfall fails at the merge base"
+        },
+        {
+          "id": "AC198",
+          "statement": "AC198: (approved plan amendment, revision 6 part 29, 2026-10-27, Lakshman) Delegation Evidence shows the quality-gate aggregate's failure categories as ranked bars and results by check type, labelled as all quality checks served, with an absent aggregate as a typed empty state, an absent subfield as not served and a measured zero as 0 -- falsifier: the bound check dod-omn21166-ac198-quality-breakdown fails at the merge base"
+        },
+        {
+          "id": "AC199",
+          "statement": "AC199: (approved plan amendment, revision 6 part 29, 2026-10-27, Lakshman) Delegation Evidence opens with one claim and its derivation from the canonical metering row, and exports only the latest served decisions labelled as a sample -- falsifier: the bound check dod-omn21166-ac199-claim-export fails at the merge base"
+        },
+        {
+          "id": "AC200",
+          "statement": "AC200: (approved plan amendment, revision 6 part 29, 2026-10-27, Lakshman) a total summed over days names a pricing version only when every summed day carries it, reads mixed basis for several versions or a version beside an unversioned day, reads not recorded when no summed day carries one, and keeps the all-time version when the window has no day rows -- falsifier: the bound check dod-omn21166-ac200-pricing-basis fails at the merge base"
+        },
+        {
+          "id": "AC201",
+          "statement": "AC201: (approved plan amendment, revision 7 part 30, 2026-10-27, Lakshman) the dashboard has one shared tab component, an ARIA tablist moved by arrow keys, Home and End with one panel drawn, whose selected tab is kept in the address and survives a reload, an unknown value falling back to the first tab -- falsifier: the bound check dod-omn21166-ac201-tabs fails at the merge base"
+        },
+        {
+          "id": "AC202",
+          "statement": "AC202: (approved plan amendment, revision 7 part 30, 2026-10-27, Lakshman) Usage analysis is a tabbed panel with Groups, Model by task, Quality over time and Cost versus quality, every tab keeping the sample label with its UTC coverage -- falsifier: the bound check dod-omn21166-ac202-usage-tabs fails at the merge base"
+        },
+        {
+          "id": "AC203",
+          "statement": "AC203: (approved plan amendment, revision 7 part 30, 2026-10-27, Lakshman) Model by task crosses models with task types, or tiers by a toggle, with a metric toggle for pass rate, p95 latency, cost per measured run and runs; a cell under 5 verdicts is marked small sample, a pair with no runs reads no runs, each cell opens Runs filtered to its model and task or tier, and on a phone each value is named by its column -- falsifier: the bound check dod-omn21166-ac203-model-by-task fails at the merge base"
+        },
+        {
+          "id": "AC204",
+          "statement": "AC204: (approved plan amendment, revision 7 part 30, 2026-10-27, Lakshman) Quality over time draws one bar per UTC day per series (all runs, by model, by task; the five with most runs and Other), days before the sample not covered, days with runs but no verdict saying so, and every day with runs opening Runs for that day by click or Enter -- falsifier: the bound check dod-omn21166-ac204-quality-trend fails at the merge base"
+        },
+        {
+          "id": "AC205",
+          "statement": "AC205: (approved plan amendment, revision 7 part 30, 2026-10-27, Lakshman) failure triage on Delegation Evidence shows the all-time failure categories and check types with count and share, a category opening Runs filtered to failed runs with a visible note that runs do not record their category, and the latest served failed runs by model and by task each opening its failed runs -- falsifier: the bound check dod-omn21166-ac205-failure-triage fails at the merge base"
+        },
+        {
+          "id": "AC206",
+          "statement": "AC206: (approved plan amendment, revision 7 part 30, 2026-10-27, Lakshman) Runs has a Routing tab grouping requested and routed model, tier, backend, finish reason and escalations with runs and pass rate, stating Not recorded as not a dispatch failure, and a Routing columns toggle adding requested model, finish reason and escalations to the run table -- falsifier: the bound check dod-omn21166-ac206-routing fails at the merge base"
+        },
+        {
+          "id": "AC207",
+          "statement": "AC207: (approved plan amendment, revision 7 part 30, 2026-10-27, Lakshman) the savings bridge on Delegation Evidence shows baseline cost minus actual spend equals modelled saving from the canonical metering row, each figure exactly as served with no rounding so it adds up, an absurd value reading Not measured, naming its baseline and pricing basis and never summing decision savings -- falsifier: the bound check dod-omn21166-ac207-savings-bridge fails at the merge base"
+        }
+      ]
     }
   ],
   "evidence_requirements": [
@@ -503,6 +577,261 @@
         {
           "check_type": "test_passes",
           "check_value": "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/pages/local/overview-range-window.omn21166.test.tsx tests/pages/local/headline-hover.omn21166.test.tsx",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
+    },
+    {
+      "id": "dod-omn21166-ac191-headline-captions",
+      "description": "AC191 (revision 6): headline cards on Overview, Runs, Usage and Delegation Evidence show a short visible caption under the figure naming its basis, whole on its first line, with the full basis kept in the page as the card's accessible description and no hover popover over the next chart. Bound to the journey test(s) matching 'AC191' in tests/e2e/local-dashboard-omn21166-redesign-journeys.spec.ts; fails at merge base 14d2dba1 with the branch's tests laid over it.",
+      "source": "manual",
+      "binds_ac": [
+        "AC191"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-redesign-journeys.spec.ts -g \"AC191\" --project=chromium --workers=1 --retries=0",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
+    },
+    {
+      "id": "dod-omn21166-ac192-change-arrow",
+      "description": "AC192 (revision 6): a card's change line keeps its 7, 15 and 30 day windows and its no-earlier-data wording, in neutral secondary text with an up or down arrow. Bound to the journey test(s) matching 'AC133 a 7-day window' in tests/e2e/local-dashboard-omn21166-overview-links.spec.ts; fails at merge base 14d2dba1 with the branch's tests laid over it.",
+      "source": "manual",
+      "binds_ac": [
+        "AC192"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-overview-links.spec.ts -g \"AC133 a 7-day window\" --project=chromium --workers=1 --retries=0",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
+    },
+    {
+      "id": "dod-omn21166-ac193-model-links",
+      "description": "AC193 (revision 6): a model in Usage's model charts opens Runs filtered to that model with the filter in the address so it survives a reload, and a UTC day with no runs opens a valid zero-result filter. Bound to the journey test(s) matching 'AC193' in tests/e2e/local-dashboard-omn21166-redesign-journeys.spec.ts; fails at merge base 14d2dba1 with the branch's tests laid over it.",
+      "source": "manual",
+      "binds_ac": [
+        "AC193"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-redesign-journeys.spec.ts -g \"AC193\" --project=chromium --workers=1 --retries=0",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
+    },
+    {
+      "id": "dod-omn21166-ac194-usage-groups",
+      "description": "AC194 (revision 6): Usage analysis groups the latest served runs by model, tier, task type or backend with runs, spend over measured runs, pass rate over runs with a verdict, p50 and p95 latency over recorded latencies, last run and a 14-day sparkline in which days before the sample read not covered, rows with no recorded group fall in Not recorded, the caption states the sample and its UTC coverage, and no savings column is drawn from the decisions. Bound to the journey test(s) matching 'AC194 AC195' in tests/e2e/local-dashboard-omn21166-redesign-journeys.spec.ts; fails at merge base 14d2dba1 with the branch's tests laid over it.",
+      "source": "manual",
+      "binds_ac": [
+        "AC194"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-redesign-journeys.spec.ts -g \"AC194 AC195\" --project=chromium --workers=1 --retries=0",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
+    },
+    {
+      "id": "dod-omn21166-ac195-cost-quality",
+      "description": "AC195 (revision 6): Usage analysis shows cost per measured run against pass rate per model, a measured 0 cost as a real point, a model with no measured cost or no verdict listed instead of drawn, and each point's values on hover or keyboard focus. Bound to the journey test(s) matching 'AC194 AC195' in tests/e2e/local-dashboard-omn21166-redesign-journeys.spec.ts; fails at merge base 14d2dba1 with the branch's tests laid over it.",
+      "source": "manual",
+      "binds_ac": [
+        "AC195"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-redesign-journeys.spec.ts -g \"AC194 AC195\" --project=chromium --workers=1 --retries=0",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
+    },
+    {
+      "id": "dod-omn21166-ac196-runs-totals",
+      "description": "AC196 (revision 6): Runs shows a line for the current filter with runs, spend, pass rate and p95 latency, labelled as the latest served runs and updating with the filter, with no savings figure. Bound to the journey test(s) matching 'AC196' in tests/e2e/local-dashboard-omn21166-redesign-journeys.spec.ts; fails at merge base 14d2dba1 with the branch's tests laid over it.",
+      "source": "manual",
+      "binds_ac": [
+        "AC196"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-redesign-journeys.spec.ts -g \"AC196\" --project=chromium --workers=1 --retries=0",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
+    },
+    {
+      "id": "dod-omn21166-ac197-waterfall",
+      "description": "AC197 (revision 6): Workflow draws the run timeline as a waterfall on one time axis: a step with a start and a duration is a bar at its offset and width, a step missing either reads not recorded, a 0 ms step is an instant marker, and attempts are their own rows. Bound to the journey test(s) matching 'AC197' in tests/e2e/local-dashboard-omn21166-redesign-journeys.spec.ts; fails at merge base 14d2dba1 with the branch's tests laid over it.",
+      "source": "manual",
+      "binds_ac": [
+        "AC197"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-redesign-journeys.spec.ts -g \"AC197\" --project=chromium --workers=1 --retries=0",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
+    },
+    {
+      "id": "dod-omn21166-ac198-quality-breakdown",
+      "description": "AC198 (revision 6): Delegation Evidence shows the quality-gate aggregate's failure categories as ranked bars and results by check type, labelled as all quality checks served, with an absent aggregate as a typed empty state, an absent subfield as not served and a measured zero as 0. Bound to the journey test(s) matching 'Quality breakdown ranks' in tests/e2e/local-dashboard-omn21166-evidence-revision6.spec.ts; fails at merge base 14d2dba1 with the branch's tests laid over it.",
+      "source": "manual",
+      "binds_ac": [
+        "AC198"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-evidence-revision6.spec.ts -g \"Quality breakdown ranks\" --project=chromium --workers=1 --retries=0",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
+    },
+    {
+      "id": "dod-omn21166-ac199-claim-export",
+      "description": "AC199 (revision 6): Delegation Evidence opens with one claim and its derivation from the canonical metering row, and exports only the latest served decisions labelled as a sample. Bound to the journey test(s) matching 'Evidence explains the canonical total' in tests/e2e/local-dashboard-omn21166-evidence-revision6.spec.ts; fails at merge base 14d2dba1 with the branch's tests laid over it.",
+      "source": "manual",
+      "binds_ac": [
+        "AC199"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-evidence-revision6.spec.ts -g \"Evidence explains the canonical total\" --project=chromium --workers=1 --retries=0",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
+    },
+    {
+      "id": "dod-omn21166-ac200-pricing-basis",
+      "description": "AC200 (revision 6): a total summed over days names a pricing version only when every summed day carries it, reads mixed basis for several versions or a version beside an unversioned day, reads not recorded when no summed day carries one, and keeps the all-time version when the window has no day rows. Bound to the journey test(s) matching 'AC200' in tests/e2e/local-dashboard-omn21166-redesign-journeys.spec.ts; fails at merge base 14d2dba1 with the branch's tests laid over it.",
+      "source": "manual",
+      "binds_ac": [
+        "AC200"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-redesign-journeys.spec.ts -g \"AC200\" --project=chromium --workers=1 --retries=0",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
+    },
+    {
+      "id": "dod-omn21166-ac201-tabs",
+      "description": "AC201 (revision 7): the dashboard has one shared tab component, an ARIA tablist moved by arrow keys, Home and End with one panel drawn, whose selected tab is kept in the address and survives a reload, an unknown value falling back to the first tab. Bound to the journey test(s) matching 'AC201 AC202' in tests/e2e/local-dashboard-omn21166-decision-views.spec.ts; fails at merge base 14d2dba1 with the branch's tests laid over it.",
+      "source": "manual",
+      "binds_ac": [
+        "AC201"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-decision-views.spec.ts -g \"AC201 AC202\" --project=chromium --workers=1 --retries=0",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
+    },
+    {
+      "id": "dod-omn21166-ac202-usage-tabs",
+      "description": "AC202 (revision 7): Usage analysis is a tabbed panel with Groups, Model by task, Quality over time and Cost versus quality, every tab keeping the sample label with its UTC coverage. Bound to the journey test(s) matching 'AC201 AC202' in tests/e2e/local-dashboard-omn21166-decision-views.spec.ts; fails at merge base 14d2dba1 with the branch's tests laid over it.",
+      "source": "manual",
+      "binds_ac": [
+        "AC202"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-decision-views.spec.ts -g \"AC201 AC202\" --project=chromium --workers=1 --retries=0",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
+    },
+    {
+      "id": "dod-omn21166-ac203-model-by-task",
+      "description": "AC203 (revision 7): Model by task crosses models with task types, or tiers by a toggle, with a metric toggle for pass rate, p95 latency, cost per measured run and runs; a cell under 5 verdicts is marked small sample, a pair with no runs reads no runs, each cell opens Runs filtered to its model and task or tier, and on a phone each value is named by its column. Bound to the journey test(s) matching 'AC203' in tests/e2e/local-dashboard-omn21166-decision-views.spec.ts; fails at merge base 14d2dba1 with the branch's tests laid over it.",
+      "source": "manual",
+      "binds_ac": [
+        "AC203"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-decision-views.spec.ts -g \"AC203\" --project=chromium --workers=1 --retries=0",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
+    },
+    {
+      "id": "dod-omn21166-ac204-quality-trend",
+      "description": "AC204 (revision 7): Quality over time draws one bar per UTC day per series (all runs, by model, by task; the five with most runs and Other), days before the sample not covered, days with runs but no verdict saying so, and every day with runs opening Runs for that day by click or Enter. Bound to the journey test(s) matching 'AC204' in tests/e2e/local-dashboard-omn21166-decision-views.spec.ts; fails at merge base 14d2dba1 with the branch's tests laid over it.",
+      "source": "manual",
+      "binds_ac": [
+        "AC204"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-decision-views.spec.ts -g \"AC204\" --project=chromium --workers=1 --retries=0",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
+    },
+    {
+      "id": "dod-omn21166-ac205-failure-triage",
+      "description": "AC205 (revision 7): failure triage on Delegation Evidence shows the all-time failure categories and check types with count and share, a category opening Runs filtered to failed runs with a visible note that runs do not record their category, and the latest served failed runs by model and by task each opening its failed runs. Bound to the journey test(s) matching 'failure triage|absent quality aggregate' in tests/e2e/local-dashboard-omn21166-evidence-revision7.spec.ts; fails at merge base 14d2dba1 with the branch's tests laid over it.",
+      "source": "manual",
+      "binds_ac": [
+        "AC205"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-evidence-revision7.spec.ts -g \"failure triage|absent quality aggregate\" --project=chromium --workers=1 --retries=0",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
+    },
+    {
+      "id": "dod-omn21166-ac206-routing",
+      "description": "AC206 (revision 7): Runs has a Routing tab grouping requested and routed model, tier, backend, finish reason and escalations with runs and pass rate, stating Not recorded as not a dispatch failure, and a Routing columns toggle adding requested model, finish reason and escalations to the run table. Bound to the journey test(s) matching 'AC206 Runs routing' in tests/e2e/local-dashboard-omn21166-decision-views.spec.ts; fails at merge base 14d2dba1 with the branch's tests laid over it.",
+      "source": "manual",
+      "binds_ac": [
+        "AC206"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-decision-views.spec.ts -g \"AC206 Runs routing\" --project=chromium --workers=1 --retries=0",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
+    },
+    {
+      "id": "dod-omn21166-ac207-savings-bridge",
+      "description": "AC207 (revision 7): the savings bridge on Delegation Evidence shows baseline cost minus actual spend equals modelled saving from the canonical metering row, each figure exactly as served with no rounding so it adds up, an absurd value reading Not measured, naming its baseline and pricing basis and never summing decision savings. Bound to the journey test(s) matching 'Savings bridge' in tests/e2e/local-dashboard-omn21166-evidence-revision7.spec.ts; fails at merge base 14d2dba1 with the branch's tests laid over it.",
+      "source": "manual",
+      "binds_ac": [
+        "AC207"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-evidence-revision7.spec.ts -g \"Savings bridge\" --project=chromium --workers=1 --retries=0",
           "cwd": "${OMNI_HOME}/omnidash"
         }
       ]

@@ -71,6 +71,8 @@ const allRow = (fields: Record<string, unknown> = {}): Record<string, unknown> =
 // lines say the same facts shorter: modelled, the runs not counted (here not recorded), the baseline and pricing.
 const BEFORE = [
   '$0.01',
+  // OMN-21166 part 29 AC191: the short drawn caption first (the model name kept whole), then the full sentence.
+  'Modelled vs claude\u2011sonnet\u20115\u20115',
   'Modelled at claude-sonnet-5-5 prices. The baseline never ran.',
   'Runs not counted: Not recorded',
   'Baseline claude-sonnet-5-5 · pricing v1.0.0',

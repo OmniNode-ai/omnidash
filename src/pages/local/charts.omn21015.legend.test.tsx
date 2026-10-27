@@ -108,14 +108,15 @@ describe('OMN-21015 U4: the spend chart legend', () => {
     expect(after[1]!.data).toEqual([0.3, 0.4]);
   });
 
-  // Live review 2026-10-26: a bar is a hatch edged in its series' colour, so the colour is the edge and the hatch.
-  it('J3: each series is hatched and edged in its own colour, with no solid fill', () => {
+  // Part 28 AC180 (Paradev and Entire): a bar is a solid flat fill in its series' colour, with no hatch.
+  it('J3: each series is a solid fill in its own colour, with no hatch', () => {
     render(<SpendByDayChart rows={ROWS} columns={COLUMNS} />);
     for (const series of shown().series as Option[]) {
-      expect(series.itemStyle.decal.color).toBe(series.itemStyle.borderColor);
-      expect(series.itemStyle.color).toBe('rgba(0,0,0,0)');
+      expect(series.itemStyle.color).toBe(series.itemStyle.borderColor);
+      expect(series.itemStyle.color).not.toBe('rgba(0,0,0,0)');
+      expect(series.itemStyle.decal).toBeUndefined();
     }
-    expect(shown().aria.decal.show).toBe(true);
+    expect(shown().aria.decal.show).toBe(false);
   });
 
   it('J3: a toggle carries the colour of its series', async () => {

@@ -29,8 +29,10 @@ import { RunDurationChart, RunMetricChart, RunTimingChart, RunTokensChart, Spend
 import { PassRateMeter, TIER_TONES } from '@/pages/local/shares';
 import { InsightsSection, InsightsWindowContext, MeteringActivityInsights, OverviewRunsContext, PassRateSparkline, TaskIcon, type ActivityWindow } from '@/pages/local/insight-charts';
 import { UsageInsights } from '@/pages/local/usage-insights';
+import { RoutingAnalysis, RunsTotals } from '@/pages/local/usage-analysis';
+import { DashboardTabs } from '@/components/dashboard/DashboardTabs';
 import { SinceLastVisit } from '@/pages/local/since-last-visit';
-import { ModelKeys } from '@/pages/local/model-keys';
+import { ModelKeys, providerName } from '@/pages/local/model-keys';
 import { EnvironmentPanel, ServiceHealthUnread } from '@/pages/local/environment';
 import { SettingsEmptyState } from '@/components/dashboard/SettingsEmptyState';
 import { failureCauseLabel, failureDetailText, notAvailableYet, plainFailureMessage, taskLabel, tierLabel } from '@/pages/local/plain-text';
@@ -40,7 +42,7 @@ import { RankedBars } from '@/components/dashboard/RankedBars';
 import { NO_RUNS_USD, sumDashboardUsd } from '@/lib/dashboard-money-total';
 import { KpiStrip, type KpiItem } from '@/components/dashboard/KpiStrip';
 import { CardBasis } from '@/components/dashboard/CardBasis';
-import { DashboardAccess, dashboardAccessRow } from '@/pages/local/access';
+import { AccessNotServed, DashboardAccess, dashboardAccessRow } from '@/pages/local/access';
 import { shortId } from '@/components/dashboard/event-dash/primitives';
 import { ConceptIcon, FIELD_ICONS, FieldIcon } from '@/components/dashboard/FieldIcon';
 import { modelIdentityStyle } from '@/components/dashboard/model-identity';
@@ -163,7 +165,7 @@ export function captionText(caption: Record<string, unknown> | null | undefined)
   if ('basis_not_served' in fields) parts.push('Baseline model not recorded', 'Pricing manifest not recorded');
   if ('pricing_manifest_version' in fields) {
     parts.push(isMissing(fields.pricing_manifest_version)
-      ? 'Pricing manifest not recorded' : `pricing manifest v${String(fields.pricing_manifest_version)}`);
+      ? 'Pricing manifest not recorded' : `pricing manifest ${pricingLabel(fields.pricing_manifest_version)}`);
   }
   // OMN-21304 AC4: an exposure that serves no count of unpriced runs says so, rather than standing another count in.
   if ('unpriced_not_served' in fields) parts.push('Unpriced runs not recorded');
@@ -230,10 +232,10 @@ export function MetricCard({ component, config, row, caption, figureLine, figure
   const hasDetails = Boolean((figure && figureLine) || line || modelled || basisExtra);
   return (
     <>
-      <p className="local-dashboard-metric" data-measured={figure} title={figure && config.format === 'number' ? String(row[config.metric_key]) : undefined}>{text}</p>
-      {/* OMN-21166 part 12 AC73 (Lakshman, 2026-10-25, "Figure only, details on hover"): an Overview headline card shows
-          its figure; its basis lines live in the card's tooltip, still in the page as the info button's description.
-          Every other card keeps its lines in view. */}
+      <p className="local-dashboard-metric" data-measured={figure} title={figure && config.format === 'number' ? String(row[config.metric_key]) : undefined}
+        style={{ '--figure-chars': String(text).length } as CSSProperties}>{text}</p>
+      {/* OMN-21166 part 12 AC73, as superseded by part 29 AC191: an Overview headline card shows its figure with its basis
+          as a caption under it (first line drawn, every line kept in the page). Every other card keeps its lines in view. */}
       {OVERVIEW_HEADLINE_CARDS.has(component.component_id)
         ? hasDetails && <CardBasis label={component.title}>{details}</CardBasis>
         : details}
@@ -251,7 +253,7 @@ const MAPLE_WIDTHS: Readonly<Record<string, number>> = {
   'overview:overview-quality:card': 3, 'overview:overview-recent-runs': 8, 'overview:overview-last-run': 12,
   'usage:usage-savings-series': 12, 'usage:usage-savings-series:by-model': 12,
   'usage:usage-insights:spend': 12, 'usage:usage-tokens-by-day': 12,
-  'usage:usage-insights:cost-per-run': 12, 'usage:usage-insights:tokens-by-model': 12, 'usage:usage-insights:cost-by-route': 12,
+  'usage:usage-insights:analysis': 12, 'usage:usage-insights:cost-per-run': 12, 'usage:usage-insights:tokens-by-model': 12, 'usage:usage-insights:cost-by-route': 12,
   'usage:usage-by-model-day': 12,
 };
 
@@ -260,6 +262,8 @@ const MAPLE_WIDTHS: Readonly<Record<string, number>> = {
  * click-to-open), so the list draws them into this slot inside the page's "More analysis" instead of a second disclosure.
  */
 const RunChartsSlot = createContext<HTMLElement | null | undefined>(undefined);
+/** Part 30 AC206: the Routing tab of Runs' "More analysis"; the run list draws its routing groups into it. */
+const RunRoutingSlot = createContext<HTMLElement | null | undefined>(undefined);
 
 /** Runs' secondary panels, shown under its "More analysis" (part 13 AC74). */
 const RUNS_SECONDARY: ReadonlySet<string> = new Set(['runs-tier-mix', 'runs-insights']);
@@ -307,13 +311,31 @@ export function QualityCard({ row, change = null }: { row: Row | null; change?: 
   const count = (value: unknown) => (isMissing(value) || !Number.isFinite(Number(value)) ? 'Not recorded' : formatFullCount(String(value)));
   return <>
     <p className="local-dashboard-metric" data-measured="true">{`${(Number(row.overall_pass_rate) * 100).toFixed(1)}%`}</p>
-    {change && <p className="local-card-change">{change}</p>}
+    {change && <ChangeLine text={change} />}
     <HeadlineHover label="Delegation Quality" lines={[`${count(row.total_passed)} of ${count(row.total_checks)} runs passed the quality gate`,
       `${count(row.total_failed)} failed · deterministic checks`, 'All time: the window above does not change this figure']} />
   </>;
 }
 
-/** The hover of an Overview headline card: its short lines, opened by hovering the card or focusing it (no icon). */
+/**
+ * OMN-21166 part 29 AC192: AC133's change line in neutral secondary text, with an up or down arrow when the figure rose
+ * or fell. The arrow is decoration (the words already say +/−); 'New this period', 'No change' and 'No earlier data'
+ * carry none.
+ */
+/** A model name in a drawn caption, kept on one line: its hyphens become non-breaking (the full lines keep plain text). */
+export function unbroken(name: string): string {
+  return name.replace(/-/g, '\u2011');
+}
+
+export function ChangeLine({ text }: { text: string }) {
+  const sign = /(?:^|\s)([+\u2212])\d/.exec(text)?.[1];
+  return <p className="local-card-change">
+    {sign && <span className="local-card-change-arrow" aria-hidden="true">{sign === '+' ? '\u2191' : '\u2193'}</span>}
+    <span className="local-card-change-text">{text}</span>
+  </p>;
+}
+
+/** An Overview headline card's basis lines, drawn as its caption under the figure (part 29 AC191; was a hover). */
 function HeadlineHover({ label, lines }: { label: string; lines: readonly string[] }) {
   if (lines.length === 0) return null;
   return <CardBasis label={label}>{lines.map((line, index) => <p key={index} className="local-dashboard-caption">{line}</p>)}</CardBasis>;
@@ -444,6 +466,13 @@ const RANGE_COUNTS = ['runs_total', 'runs_measured', 'runs_unknown_tokens', 'run
  * value is unknown, not zero), and with no metering rows at all nothing was read, so the window is Not measured. Money
  * adds as exact decimals; the baseline and pricing come from the all-time row; no single-day percentage is carried.
  */
+/** A window whose summed days carry more than one pricing manifest version (AC200): its basis is mixed, never one version. */
+export const MIXED_PRICING = 'mixed basis';
+/** A served pricing manifest version as words: 'v1.0.0', or 'mixed basis (several versions)' for a mixed window. */
+export function pricingLabel(version: unknown): string {
+  return version === MIXED_PRICING ? 'mixed basis (several versions)' : `v${String(version)}`;
+}
+
 function meteringRangeRow(rows: readonly unknown[], start: string, end: string): { row: Record<string, unknown> } | { message: string } {
   const records = asRecords(rows);
   const allRows = records.filter(r => r.window_kind === 'all');
@@ -461,9 +490,18 @@ function meteringRangeRow(rows: readonly unknown[], start: string, end: string):
     if (!held || timeOf(r.as_of) > timeOf(held.as_of)) byDay.set(date, r);
   }
   const days = dates.flatMap(date => (byDay.has(date) ? [byDay.get(date)!] : []));
+  // Part 29 AC200 (Codex MSGs a9bd908d, b53ca31a): the window's price basis is the versions of the days actually summed.
+  // One version on every day is named; several, or a version beside an unversioned day, read as a mixed basis; summed
+  // days that record no version at all are not recorded (Codex MSG 7b7cfb30: the all-time row cannot vouch for them); a
+  // window with no day rows keeps the all-time row's basis.
+  const versions = new Set(days.map(d => d.pricing_manifest_version).filter(v => !isMissing(v)).map(String));
+  const unversioned = days.some(d => isMissing(d.pricing_manifest_version));
+  const pricing = days.length === 0 ? allRow.pricing_manifest_version
+    : versions.size > 1 || (versions.size === 1 && unversioned) ? MIXED_PRICING
+      : versions.size === 1 ? [...versions][0] : null;
   const row: Record<string, unknown> = {
     window_kind: start === end ? 'day' : 'range', window_start: start, window_end: end, as_of: allRow.as_of,
-    baseline_model: allRow.baseline_model, pricing_manifest_version: allRow.pricing_manifest_version, baseline_state: allRow.baseline_state,
+    baseline_model: allRow.baseline_model, pricing_manifest_version: pricing, baseline_state: allRow.baseline_state,
     days_without_runs: dates.length - days.length,
   };
   for (const field of RANGE_MONEY) row[field] = days.some(d => isMissing(d[field])) ? null : days.length === 0 ? NO_RUNS_USD : sumDashboardUsd(days.map(d => d[field]));
@@ -762,18 +800,19 @@ export function headlineHoverLines(componentId: string, row: Row, pctLine: strin
     ].filter((part): part is string => part !== null);
     return parts.length === 0 ? null : `Not counted: ${parts.join(', ')}`;
   })();
-  const basis = `Baseline ${isMissing(row.baseline_model) ? 'Not recorded' : String(row.baseline_model)} · pricing ${isMissing(row.pricing_manifest_version) ? 'Not recorded' : `v${String(row.pricing_manifest_version)}`}`;
+  const basis = `Baseline ${isMissing(row.baseline_model) ? 'Not recorded' : String(row.baseline_model)} · pricing ${isMissing(row.pricing_manifest_version) ? 'Not recorded' : pricingLabel(row.pricing_manifest_version)}`;
   const noRuns = Number(row.days_without_runs);
   if (Number.isFinite(noRuns) && noRuns > 0 && row.window_kind === 'day') {
     const named = window === 'today' ? 'No runs today (UTC)' : `No runs on ${window.slice(4)} (UTC)`;
     return componentId === 'overview-spend' || componentId === 'overview-savings'
-      ? [named, `Baseline ${isMissing(row.baseline_model) ? 'Not recorded' : String(row.baseline_model)} · pricing ${isMissing(row.pricing_manifest_version) ? 'Not recorded' : `v${String(row.pricing_manifest_version)}`}`]
+      ? [named, `Baseline ${isMissing(row.baseline_model) ? 'Not recorded' : String(row.baseline_model)} · pricing ${isMissing(row.pricing_manifest_version) ? 'Not recorded' : pricingLabel(row.pricing_manifest_version)}`]
       : [named];
   }
   const when = window === 'all' ? 'all time' : window === 'today' ? 'today (UTC)'
     : window.startsWith('range:') ? `${window.slice(6).replaceAll('..', ' to ')} (UTC)` : `on ${window.slice(4)} (UTC)`;
   const lines: Array<string | null> = componentId === 'overview-spend' ? [window === 'all' ? 'What you paid, all time' : `What you paid ${when}`, excluded, basis]
-    : componentId === 'overview-savings' ? [`Modelled at ${isMissing(row.baseline_model) ? 'the cloud baseline' : String(row.baseline_model)} prices. The baseline never ran.`, pctLine, excluded, basis]
+    // Part 29 AC191: the first line is the short drawn caption; the full sentence stays in the page for screen readers.
+    : componentId === 'overview-savings' ? [`Modelled vs ${isMissing(row.baseline_model) ? 'the cloud baseline' : unbroken(String(row.baseline_model))}`, `Modelled at ${isMissing(row.baseline_model) ? 'the cloud baseline' : String(row.baseline_model)} prices. The baseline never ran.`, pctLine, excluded, basis]
       : componentId === 'overview-measured' ? [`${count(row.runs_measured)} of ${count(row.runs_total)} runs measured`, excluded]
         : componentId === 'overview-tokens' ? [`${count(row.tokens_in)} in · ${count(row.tokens_out)} out`]
           : [];
@@ -802,7 +841,7 @@ export function MeteringTotalCard({ component, config, rows, window = 'all', now
     // Live review 2026-10-25: the card shows its figure; its hover says tokens in and out in one line.
     const tokenChange = OVERVIEW_HEADLINE_CARDS.has(component.component_id) ? periodChangeLine(rows, window, TOKENS_IN_AND_OUT, row) : null;
     return <><p className="local-dashboard-metric" data-measured={total !== null}>{formatDashboardCount(total)}</p>
-      {tokenChange && <p className="local-card-change">{tokenChange}</p>}
+      {tokenChange && <ChangeLine text={tokenChange} />}
       <HeadlineHover label={component.title} lines={headlineHoverLines(component.component_id, row, null, window)} /></>;
   }
   const required = component.data_bindings?.[0]?.required_fields ?? [];
@@ -830,7 +869,7 @@ export function MeteringTotalCard({ component, config, rows, window = 'all', now
     return <>
       <MetricCard component={figureComponent} config={config} row={row} caption={null} />
       {/* Part 19 AC133: the change against the previous window of the same length, only on a 7, 15 or 30 day window. */}
-      {(() => { const change = periodChangeLine(rows, window, config.metric_key, row); return change && <p className="local-card-change">{change}</p>; })()}
+      {(() => { const change = periodChangeLine(rows, window, config.metric_key, row); return change && <ChangeLine text={change} />; })()}
       {/* OMN-20008 L6: no figure, no line: the percentage shows only beside a measured saving with a named, resolved baseline. */}
       <HeadlineHover label={component.title} lines={headlineHoverLines(component.component_id, row,
         row.baseline_state === 'unresolved' || isMissing(row[config.metric_key]) || isMissing(row.baseline_model) ? null : pct, window)} />
@@ -913,7 +952,7 @@ export function UsageKpis({ rows }: { rows: readonly unknown[] }) {
     { label: 'You paid', value: money(row.spend_usd), unavailable: isMissing(row.spend_usd), accent: 'var(--field-cost)', concept: 'cost',
       lines: ['Measured spend, all time'], trend: { days: dayKeys, values: series('spend_usd'), format: usd, scope } },
     { label: 'Baseline cost', value: unresolved ? 'Baseline unresolved' : money(row.counterfactual_usd), unavailable: unresolved || isMissing(row.counterfactual_usd),
-      accent: 'var(--field-baseline)', concept: 'baseline', lines: [`Same tokens at ${baseline} list price (modelled)`],
+      accent: 'var(--field-baseline)', concept: 'baseline', lines: [`At ${unbroken(baseline)} list price, modelled`, `Same tokens at ${baseline} list price (modelled)`],
       trend: unresolved ? null : { days: dayKeys, values: series('counterfactual_usd'), format: usd, scope } },
     { label: 'Saved', value: unresolved ? 'Baseline unresolved' : money(row.savings_usd), unavailable: unresolved || isMissing(row.savings_usd),
       accent: 'var(--field-savings)', concept: 'savings', lines: ['Modelled · vs cloud baseline'],
@@ -947,7 +986,10 @@ export function SavingsByModel({ row }: { row: Row }) {
         order="desc" items={models.map((model, index) => {
           const name = isMissing(model.model) ? 'Unknown model' : String(model.model);
           const n = saving(model);
-          return { key: `${name}-${index}`, name, value: n, basis: 'estimated' as const, color: modelColor(name),
+          // Part 29 AC193: a named model opens Runs filtered to it, as Overview's model bars do (AC135).
+          const href = isMissing(model.model) ? undefined : `/runs?${writeRunsSearch('', { ...DEFAULT_RUNS_VIEW, model: name })}`;
+          return { key: `${name}-${index}`, name, value: n, basis: 'estimated' as const, color: modelColor(name), href,
+            opensLabel: href ? `Opens Runs filtered to ${name}` : undefined,
             display: n === null ? 'Not measured' : formatUsd(model.savings_usd), title: `${recordedCount(model.runs_measured)} of ${recordedCount(model.runs)} runs measured` };
         })} />
       <details className="local-more">
@@ -1481,9 +1523,12 @@ function RunCause({ run }: { run: Row }) {
  */
 export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25, syncUrl = false, truncated = false }: RunsTableProps) {
   const chartsSlot = useContext(RunChartsSlot);
+  const routingSlot = useContext(RunRoutingSlot);
   const id = useId();
   // OMN-21166 AC27: the table opens on its primary fields; every one of the 18 stays in the page, one switch away.
   const [showAllFields, setShowAllFields] = useState(false);
+  // Part 30 AC206: the routing fields as columns beside model, backend and tier.
+  const [showRouting, setShowRouting] = useState(false);
   const search = useSearch();
   const [, navigate] = useLocation();
   const [localView, setLocalView] = useState<RunsViewState>(DEFAULT_RUNS_VIEW);
@@ -1679,6 +1724,8 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
       <p id={`${id}-scope`} className="local-dashboard-caption local-runs-scope">{truncated
         ? `${formatDashboardCount(runs.length)} recent runs returned; earlier history is not included. Search, filters and charts use these records.`
         : `${formatDashboardCount(runs.length)} returned runs. Search, filters and charts use these records.`}</p>
+      <RunsTotals rows={matching} sample={runs.length} />
+      {routingSlot && createPortal(<RoutingAnalysis rows={runs} />, routingSlot)}
       {shown.length === 0 ? <p className="local-dashboard-empty" role="status">No runs match these filters</p> : (
         <>
           <div className={`local-runs-list-detail${selectedRun ? ' local-runs-list-detail--selected' : ''}`}>
@@ -1688,6 +1735,10 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
             <input type="checkbox" checked={showAllFields} onChange={event => setShowAllFields(event.target.checked)} aria-controls={`${id}-table`} />
             Show all run fields
           </label>
+          <label>
+            <input type="checkbox" checked={showRouting} onChange={event => setShowRouting(event.target.checked)} aria-controls={`${id}-table`} />
+            Routing columns
+          </label>
           <span className="local-runs-export" role="group" aria-label="Export the matching runs">
             <button type="button" onClick={() => exportRuns('csv')}>Export CSV</button>
             <button type="button" onClick={() => exportRuns('json')}>Export JSON</button>
@@ -1696,7 +1747,8 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
             <table id={`${id}-table`}>
               <thead>
                 <tr>
-                  <th>Run</th>{sortHeader('created', 'Created')}<th>Status</th><th>Cause</th><th>Model</th><th>Backend</th><th>Host</th>
+                  <th>Run</th>{sortHeader('created', 'Created')}<th>Status</th><th>Cause</th><th>Model</th><th>Backend</th>
+                  {showRouting && <><th>Requested model</th><th>Finish reason</th><th>Escalations</th></>}<th>Host</th>
                   <th>Tokens in</th><th>Tokens out</th>{sortHeader('cost', 'Local cost')}<th>Modelled saving</th><th>Baseline model</th>
                   <th>Basis</th><th>Task type</th>{sortHeader('duration', 'Duration')}<th>Tokens to compliance</th><th>Route tier</th><th>Quality score</th>
                 </tr>
@@ -1725,6 +1777,11 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                       {recorded(run.backend_id)}
                     </button>
                   </td>
+                  {showRouting && <>
+                    <td className="local-dashboard-cell-token" data-cell="requested-model">{recorded(run.requested_model)}</td>
+                    <td data-cell="finish-reason">{recorded(run.finish_reason)}</td>
+                    <td data-cell="escalations">{recordedCount(run.escalation_count)}</td>
+                  </>}
                   <td className="local-dashboard-cell-token">{recorded(run.host)}</td>
                   <td>{recordedTokens(run.tokens_input)}</td>
                   <td>{recordedTokens(run.tokens_output)}</td>
@@ -1976,7 +2033,8 @@ export function CredentialsTable({ rows }: { rows: readonly unknown[] }) {
         <thead><tr><th>Provider</th><th>Key ref</th><th>Fingerprint</th><th>Set</th><th>Revoked</th><th>Expires</th><th>Bound host</th></tr></thead>
         <tbody>{list.map((key, index) => (
           <tr key={`${String(key.provider)}-${String(key.name)}-${index}`}>
-            <td data-label="Provider">{recorded(key.provider)}</td>
+            {/* Part 27 round 7: the provider's name in the one case the Model providers table uses (Gemini, not gemini). */}
+            <td data-label="Provider">{isMissing(key.provider) ? recorded(key.provider) : providerName(key.provider)}</td>
             <td data-label="Key ref">{recorded(key.name)}</td>
             {/* OMN-19985: the served fingerprint prefix (8 hex of sha256) and the time the key was set; a row its
                 producer sent without them says so. created_at is when the projection first saw the row, not this. */}
@@ -2123,14 +2181,30 @@ const RUN_STEP_LABELS: Record<string, string> = {
 export function RunTimeline({ steps, run }: {
   steps: readonly unknown[];
   /** The run's backend and model, shown in the run summary above; a step repeats them only where it differs (part 18 AC126). */
-  run?: { backend_id?: unknown; model_name?: unknown };
+  run?: { backend_id?: unknown; model_name?: unknown; escalation_count?: unknown };
 }) {
   const rows = asRecords(steps);
   if (rows.length === 0) {
     return <p className="local-dashboard-empty" role="status">No steps recorded for this run</p>;
   }
   const named = rows.find((row) => !isMissing(row.failing_step_sequence))?.failing_step_sequence;
+  // Part 29 AC197: the steps on one time axis, from the earliest recorded start to the latest recorded end. A step is a
+  // bar only when it carries both started_at and duration_ms; otherwise it is an unpositioned row reading not recorded,
+  // so no duration or offset is ever invented.
+  const timed = rows.map((row) => {
+    const start = typeof row.started_at === 'string' ? Date.parse(row.started_at) : Number.NaN;
+    const length = isMissing(row.duration_ms) ? Number.NaN : Number(row.duration_ms);
+    return Number.isFinite(start) && Number.isFinite(length) && length >= 0 ? { start, end: start + length } : null;
+  });
+  const known = timed.filter((entry): entry is { start: number; end: number } => entry !== null);
+  const origin = known.length > 0 ? Math.min(...known.map(entry => entry.start)) : 0;
+  const span = known.length > 0 ? Math.max(1, Math.max(...known.map(entry => entry.end)) - origin) : 1;
+  const escalations = run && !isMissing(run.escalation_count) ? Number(run.escalation_count) : 0;
+  const attemptSteps = rows.some(row => !isMissing(row.attempt_number));
   return (
+    <>
+    {escalations > 0 && !attemptSteps && <p className="local-dashboard-caption" data-escalation-text>
+      {`${escalations} ${escalations === 1 ? 'escalation' : 'escalations'} recorded; their attempts are not in this trace`}</p>}
     <ol className="local-dashboard-steps">
       {rows.map((row, index) => {
         const kind = String(row.step_kind ?? '');
@@ -2172,6 +2246,15 @@ export function RunTimeline({ steps, run }: {
               </span>
             </div>
             <ServedTime value={row.started_at} />
+            {(() => {
+              const at = timed[index];
+              return <div className="local-run-waterfall" data-waterfall data-positioned={at ? 'true' : 'false'}>
+                {/* A measured 0 ms step is an instant marker at its start, never a widened bar (Codex MSG a9bd908d). */}
+                {at ? <span data-waterfall-bar data-instant={at.end === at.start ? 'true' : undefined} title={`${duration(row.duration_ms)} from ${duration(at.start - origin)}`}
+                  style={{ '--wf-left': `${((at.start - origin) / span) * 100}%`, '--wf-width': `${((at.end - at.start) / span) * 100}%` } as CSSProperties} />
+                  : <span className="local-run-waterfall-missing">start or duration not recorded</span>}
+              </div>;
+            })()}
             {details.length > 0 && (
               <div className="local-run-chips">
                 {details.map(([name, value]) => (
@@ -2184,6 +2267,7 @@ export function RunTimeline({ steps, run }: {
         );
       })}
     </ol>
+    </>
   );
 }
 
@@ -2508,7 +2592,7 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns, acti
   if (component.component_id === 'credentials-keys') return <CredentialsTable rows={rows} />;
   // Usage analysis and the raw row table are separate declared components so the analysis does not duplicate rows.
   if (component.component_id === 'usage-insights') return <UsageInsights usageRows={rows}
-    part={slice && ['spend', 'cost-per-run', 'tokens-by-model', 'cost-by-route'].includes(slice.key) ? slice.key as 'spend' | 'cost-per-run' | 'tokens-by-model' | 'cost-by-route' : 'all'}
+    part={slice && ['spend', 'cost-per-run', 'tokens-by-model', 'cost-by-route', 'analysis'].includes(slice.key) ? slice.key as 'spend' | 'cost-per-run' | 'tokens-by-model' | 'cost-by-route' | 'analysis' : 'all'}
     decisionRows={rawRowsFor(component, snapshots, 1)} routingRows={rawRowsFor(component, snapshots, 2)} />;
   // US-1, US-2, US-4: served rows as served. The exposure is tenant-scoped, so the server filters, not the browser.
   if (component.component_id === 'usage-by-model-day') return <UsageByModelDayTable rows={rows} interactive />;
@@ -2755,6 +2839,9 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
     if (next !== new URLSearchParams(windowSearch).toString()) navigateWindow(`/overview${next ? `?${next}` : ''}`, { replace: true });
   }, [pageName, activityWindow, windowSearch, navigateWindow]);
   const [runChartsSlot, setRunChartsSlot] = useState<HTMLElement | null>(null);
+  const [runRoutingSlot, setRunRoutingSlot] = useState<HTMLElement | null>(null);
+  // Part 30 AC201: a link to one of Runs' analysis tabs opens "More analysis" on it.
+  const [runsAnalysisOpen] = useState(() => typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('analysis'));
   const [expandedChart, setExpandedChart] = useState<{ componentId: string; title: string; slice?: PanelSlice } | null>(null);
   const chartDialog = useRef<HTMLDialogElement>(null);
   const chartOpener = useRef<HTMLButtonElement>(null);
@@ -3124,7 +3211,10 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
       {refreshError && <ReadFailureNotice title="Dashboard connection" now={now}
         snapshot={{ topic: 'catalogue', failure: { kind: refreshError.includes('no answer') ? 'timeout' : 'error', message: refreshError } }}
         savedMessage="Showing saved data. Each panel shows when it was updated." />}
-      {!loading && !error && page && (
+      {/* Part 27: Access whose exposure is not served at all says so once for the section (AccessNotServed). */}
+      {embedded && pageName === 'api-keys' && !loading && !error && page && page.components.length > 0
+        && page.components.every(component => notServedTopic(component, snapshots) !== null) ? <AccessNotServed />
+        : !loading && !error && page && (
         <section className="local-dashboard-grid" aria-label="Dashboard components">
           {pageName === 'overview' ? <>
             <OverviewRunsContext.Provider value={(() => {
@@ -3183,6 +3273,8 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
                 {savings && <div className="maple-cell maple-cell--full">{renderComponent(savings, 'all', { key: 'by-model', title: 'Savings by model', concept: 'savings' })}</div>}
                 {insights && <div className="maple-cell maple-cell--full">{renderComponent(insights, 'all', { key: 'spend', title: 'Spend by model', concept: 'spend-model' })}</div>}
                 {tokens && <div className="maple-cell maple-cell--full">{renderComponent(tokens)}</div>}
+                {/* Part 29 AC194, AC195: one Usage analysis panel (group-by table and cost versus quality), full row (AC89). */}
+                {insights && <div className="maple-cell maple-cell--full">{renderComponent(insights, 'all', { key: 'analysis', title: 'Usage analysis', concept: 'usage-analysis' })}</div>}
               </div>
               <details className="local-overview-secondary local-more local-more--page">
                 <summary>More usage</summary>
@@ -3198,15 +3290,26 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
           })() : pageName === 'runs' ? (
             <InsightsWindowContext.Provider value={{ window: activityWindow, setWindow: setActivityWindow }}>
             <RunChartsSlot.Provider value={runChartsSlot}>
+            <RunRoutingSlot.Provider value={runRoutingSlot}>
               {/* OMN-21166 part 13: the run list in view; run charts, routing and analysis in one "More analysis" (part 18
                   AC118); Run locally is Overview's, so Runs does not repeat it. */}
               {page.components.filter(component => !RUNS_SECONDARY.has(component.component_id) && component.component_id !== 'overview-run-locally')
                 .map(component => renderComponent(component))}
-              <details className="local-overview-secondary local-more local-more--page">
+              <details className="local-overview-secondary local-more local-more--page" open={runsAnalysisOpen || undefined}>
                 <summary>More analysis</summary>
-                <div className="local-run-charts-slot" ref={setRunChartsSlot} />
-                {page.components.filter(component => RUNS_SECONDARY.has(component.component_id)).map(component => renderComponent(component))}
+                {/* Part 30 AC206: the run charts and analysis in one tab, the routing groups in another, in one panel (OMN-21015 K1). */}
+                <article className="local-dashboard-panel local-runs-analysis" aria-label="Analysis views" aria-busy="false">
+                <h2 className="local-dashboard-panel-title"><ConceptIcon concept="runs-analysis" label="Analysis views" size={16} />Analysis views</h2>
+                <DashboardTabs label="Runs analysis views" param="analysis" tabs={[
+                  { id: 'charts', label: 'Charts and causes', panel: () => <>
+                    <div className="local-run-charts-slot" ref={setRunChartsSlot} />
+                    {page.components.filter(component => RUNS_SECONDARY.has(component.component_id)).map(component => renderComponent(component))}
+                  </> },
+                  { id: 'routing', label: 'Routing', panel: () => <div className="local-run-routing-slot" ref={setRunRoutingSlot} /> },
+                ]} />
+                </article>
               </details>
+            </RunRoutingSlot.Provider>
             </RunChartsSlot.Provider>
             </InsightsWindowContext.Provider>
           ) : page.components.map(component => renderComponent(component))}

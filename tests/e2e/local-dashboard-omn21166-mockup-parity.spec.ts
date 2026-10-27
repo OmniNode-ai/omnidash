@@ -69,7 +69,7 @@ test('AC26 Overview applies the selected window to cards and charts and never in
     await expect(page.locator(`[data-component="${id}"] .local-dashboard-metric`)).toHaveText('Not measured: daily totals unavailable (UTC)');
   }
   await expect(page.locator('[data-component="overview-quality"] .local-dashboard-metric')).toHaveText('75.0%');
-  await expect(page.locator('[data-component="overview-quality"] [role="tooltip"]')).toContainText('All time: the window above does not change this figure');
+  await expect(page.locator('[data-component="overview-quality"] .local-card-caption')).toContainText('All time: the window above does not change this figure');
   // OMN-21166 part 21 AC142: the window is no longer repeated under the chart; the chart draws the window's seven days.
   await expect(page.locator('[data-component="overview-insights"][data-slice="runs"] button.gdb-day')).toHaveCount(7);
   await expect(page.getByRole('figure', { name: 'Cumulative savings', exact: true })).toHaveCount(0);
@@ -204,9 +204,10 @@ test('AC29 Usage exposes measured model spend, per-call cost, tokens, and honest
   // model and measured value, a model with no measured spend is "Not measured" (never $0.00), and the count of
   // unmeasured runs is the figure's footnote.
   const bars = spend.getByRole('figure', { name: 'Measured spend per model', exact: true });
-  const alpha = bars.getByRole('listitem', { name: /^model-a: \$0\.50, measured$/ });
+  // Part 29 AC193: a named model's bar is a link to Runs filtered to it, so its accessible name is the link's.
+  const alpha = bars.getByRole('link', { name: /^model-a: \$0\.50, measured\. Opens Runs filtered to model-a$/ });
   await expect(alpha).toBeVisible();
-  await expect(bars.getByRole('listitem', { name: /^model-b: Not measured, not measured$/ })).toBeVisible();
+  await expect(bars.getByRole('link', { name: /^model-b: Not measured, not measured\. Opens Runs filtered to model-b$/ })).toBeVisible();
   await expect(spend).toContainText('model-a: 1 unmeasured');
   await expect(spend).toContainText('model-b: 1 unmeasured');
   // OMN-21166 part 13: cost per run, tokens by model, cost by route and the per-day table are under "More usage"; part 17

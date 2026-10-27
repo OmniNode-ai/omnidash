@@ -64,8 +64,8 @@ test('a UTC day with no served metering row is a day with no runs, never yesterd
   await serve(page, 'not_in_local_store', [all, { ...day, window_start: '2000-01-01' }]);
   await page.getByRole('radio', { name: 'Today (UTC)', exact: true }).click();
   await totals(page, ['$0.00', '$0.00', '0', '0']);
-  await card(page, 'overview-spend').getByRole('button', { name: 'About Actual spend', exact: true }).focus();
-  await expect(card(page, 'overview-spend').locator('[role="tooltip"]')).toContainText("No runs today (UTC)"); // the Today preset names the day as "today"
+  // Part 29 AC191: the basis is the card's caption, always in the page; no About button to focus.
+  await expect(card(page, 'overview-spend').locator('.local-card-caption')).toContainText("No runs today (UTC)"); // the Today preset names the day as "today"
   await expect(page.locator('.local-overview-summary')).not.toContainText('12.30');
   await expect(page.locator('.local-overview-summary')).not.toContainText('$99');
 });

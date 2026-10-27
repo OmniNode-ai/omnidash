@@ -64,8 +64,9 @@ const RENDERED_ORDER: Record<PageName, Array<[title: string, width: number]>> = 
     ['Runs per day', 12], ['Tokens per day', 12], ['Model usage', 12], ['Tier mix', 12],
   ],
   // Each chart takes the full row; under "More usage" each chart is its own panel, then the model-by-day table (part 17).
+  // OMN-21166 part 29 AC194: Usage analysis follows the four charts, full row (AC89).
   usage: [
-    ['Savings per day', 12], ['Savings by model', 12], ['Spend by model', 12], ['Tokens per day', 12],
+    ['Savings per day', 12], ['Savings by model', 12], ['Spend by model', 12], ['Tokens per day', 12], ['Usage analysis', 12],
     ['Cost per run', 12], ['Tokens by model', 12], ['Cost by route', 12], ['Usage by model and day', 12],
   ],
 };
@@ -79,7 +80,7 @@ const BEFORE: Record<PageName, string[]> = {
   overview: ['Actual spend', 'Savings', 'Agent calls', 'Tokens processed', 'Delegation Quality', 'Runs per day', 'Tokens per day', 'Model usage', 'Tier mix'].sort(),
   // OMN-21166 Maple grid: Usage insights is drawn as Spend by model and, under "More usage", one panel per chart (part 17:
   // Cost per run, Tokens by model, Cost by route); the day-by-day token list is gone (the table holds its rows).
-  usage: ['Savings per day', 'Savings by model', 'Tokens per day', 'Spend by model', 'Cost per run', 'Tokens by model', 'Cost by route',
+  usage: ['Savings per day', 'Savings by model', 'Tokens per day', 'Spend by model', 'Usage analysis', 'Cost per run', 'Tokens by model', 'Cost by route',
     'Usage by model and day'].sort(),
 };
 

@@ -216,6 +216,7 @@ export interface DelegationDecisionRow {
   modelled_savings_usd?: string | null;
   savings_measurement?: string | null;
   savings_baseline_model?: string | null;
+  savings_pricing_manifest_version?: string | null;
 }
 
 export interface DelegationSummaryRow {

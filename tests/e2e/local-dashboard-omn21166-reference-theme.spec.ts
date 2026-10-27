@@ -36,7 +36,8 @@ test('reference theme separates warm cards and inset plots without losing readab
 });
 
 test('shared reference theme keeps all seven routes usable in light and dark', async ({ page }, info) => {
-  for (const route of ['overview','runs','workflow','usage','credentials','api-keys','delegation-evidence']) {
+  // OMN-21166 part 26: credentials and api-keys are sections of Settings.
+  for (const route of ['overview','runs','workflow','usage','settings','delegation-evidence']) {
     await page.goto('/'+route);
     await expect(page.locator('h1')).toBeVisible();
     for (const theme of ['light','dark']) {
@@ -49,12 +50,13 @@ test('shared reference theme keeps all seven routes usable in light and dark', a
 });
 
 // Closer image match: filled ochre navigation and a shared muted plot/legend palette.
-test('navigation stays blue and outcome plots match their semantic legend', async ({ page }, info) => {
+test('the active navigation item is neutral and outcome plots match their semantic legend', async ({ page }, info) => {
   await page.goto('/overview');
   if (await page.locator('html').getAttribute('data-theme') === 'dark') await page.getByRole('button', { name:'Toggle theme' }).click();
   const nav=page.getByRole('link', { name:'Overview', exact:true });
-  await expect(nav).toHaveCSS('background-color','rgb(238, 243, 255)');
-  await expect(nav.locator('.dash-name')).toHaveCSS('color','rgb(29, 78, 216)');
+  // OMN-21166 part 28a AC186 (after part 27 AC168 replaced AC69's blue): a lifted neutral item with primary ink (light here).
+  await expect(nav).toHaveCSS('background-color','rgb(253, 253, 252)');
+  await expect(nav.locator('.dash-name')).toHaveCSS('color','rgb(17, 17, 17)');
   const chart=page.getByRole('figure', { name:'Runs per day', exact:true });
   const passed=chart.getByRole('button', { name:'Passed', exact:true });
   await expect(passed).toHaveAttribute('aria-pressed','true');

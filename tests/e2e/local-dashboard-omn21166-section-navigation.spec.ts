@@ -6,7 +6,7 @@ import { chartRows, serveCharts } from './omn21166-chart-fixtures';
 test.use({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce', trace: 'on' });
 test.beforeEach(async ({ page }) => { await serveCharts(page, chartRows); });
 
-for (const route of ['overview', 'runs', 'workflow', 'usage', 'credentials', 'api-keys', 'delegation-evidence']) {
+for (const route of ['overview', 'runs', 'workflow', 'usage', 'settings', 'delegation-evidence']) {
   test(`${route} keeps content without On this page navigation`, async ({ page }, info) => {
     await page.goto('/' + route);
     await expect(page.locator('h1')).toBeVisible();

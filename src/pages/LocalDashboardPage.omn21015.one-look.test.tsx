@@ -36,6 +36,7 @@ vi.mock('@/data-source/exposure-census', () => ({
 
 import { LocalDashboardPage } from './LocalDashboardPage';
 import { SettingsPage } from './SettingsPage';
+import { ThemeProvider } from '@/theme';
 
 type PageName = 'overview' | 'runs' | 'workflow' | 'usage' | 'credentials' | 'api-keys';
 const PAGES: PageName[] = ['overview', 'runs', 'workflow', 'usage', 'credentials', 'api-keys'];
@@ -139,7 +140,8 @@ describe.each([[true, 'every bound exposure served'], [false, 'nothing served']]
 
   it('K4: Settings, which holds credentials and api-keys, has a header with an icon', async () => {
     harness.served = new Map(served ? SERVED.map(([name, rows]) => [P + name, rows]) : []);
-    const { container } = render(<SettingsPage navigationCache={{ context: null, snapshots: new Map() }} />);
+    // Settings reads the theme for its Appearance section (part 27 AC169), as inside the app's providers.
+    const { container } = render(<ThemeProvider><SettingsPage navigationCache={{ context: null, snapshots: new Map() }} /></ThemeProvider>);
     await act(async () => { await vi.advanceTimersByTimeAsync(0); });
     expect(container.querySelector('header.local-dashboard-header .local-dashboard-page-icon svg')).not.toBeNull();
     expect(container.querySelectorAll('header.local-dashboard-header')).toHaveLength(1);

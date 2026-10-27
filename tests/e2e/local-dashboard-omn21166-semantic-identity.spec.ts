@@ -84,7 +84,8 @@ test('KPI colors follow their semantic identity instead of inherited gray', asyn
     const channels = hex.replace('#', '').match(/../g)!.map(x => parseInt(x, 16));
     const expected = `rgb(${channels.join(', ')})`;
     await expect(card.locator('.k-l')).toHaveCSS('color', expected);
-    await expect(card.locator('.k-l svg')).toHaveCSS('color', expected);
+    // Part 28a AC177a: interface icons are one grey on every page, Event Bus included; the label and value keep the tone.
+    expect(await card.locator('.k-l svg').evaluate(el => getComputedStyle(el).color)).not.toBe(expected);
     await expect(card.locator('.k-v')).toHaveCSS('color', expected);
     colors.push(expected);
   }
@@ -113,7 +114,8 @@ test('headline card icons retain semantic colors beside readable identity-tinted
       expect(ratio, `${theme} heading contrast`).toBeGreaterThanOrEqual(4.5);
       colors.push(color);
     }
-    expect(new Set(colors).size).toBe(5);
+    // Part 28 AC177: the headline icons are grey (one colour); each card keeps its own icon and readable heading.
+    expect(new Set(colors).size).toBe(1);
   }
 });
 

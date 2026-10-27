@@ -55,7 +55,7 @@ async function evidenceKpi(page: Page, label: string) {
   // its tooltip, which stays in the page (it is the info button's accessible description).
   const card = page.locator(`.ev-root article[data-kpi-card="${label}"]`);
   await expect(card).toHaveCount(1);
-  return { value: (await card.locator('.local-dashboard-metric').textContent()) ?? '', sub: (await card.locator('[role="tooltip"]').textContent()) ?? '' };
+  return { value: (await card.locator('.local-dashboard-metric').textContent()) ?? '', sub: (await card.locator('.local-card-caption').textContent()) ?? '' };
 }
 
 test.use({ viewport: { width: 1440, height: 900 }, trace: 'on' });

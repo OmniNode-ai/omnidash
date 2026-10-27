@@ -21,24 +21,19 @@ test('AC44 AC45 headline cards show their basis in view, with no Details fold an
     await expect(card(page, id)).not.toContainText('All calls');
     await expect(card(page, id)).not.toContainText('All-time aggregate');
   }
-  // OMN-21166 part 12 AC73: the basis facts sit in a tooltip behind a keyboard-focusable info button on each card; focus
-  // opens it, and its text is the button's accessible description, so the facts stay in the page for every reader.
+  // OMN-21166 part 12 AC73, as superseded by part 29 AC191: the basis facts are the card's caption, in the page for every
+  // reader with no control to open.
   for (const [id, label] of [['overview-spend', 'Actual spend'], ['overview-savings', 'Savings']] as const) {
-    const info = card(page, id).getByRole('button', { name: `About ${label}`, exact: true });
-    await info.focus();
-    const tip = card(page, id).getByRole('tooltip');
-    await expect(tip).toBeVisible();
+    // Part 29 AC191: the basis is the card's caption (first line drawn, every line kept in the page), not a popover.
+    const tip = card(page, id).locator('.local-card-caption');
+    await expect(tip).toHaveCount(1);
+    expect(label.length).toBeGreaterThan(0);
     for (const fact of ['Baseline model not recorded', 'Pricing manifest not recorded', 'Unpriced runs not recorded', '3 unknown-provenance runs']) {
-      await expect(tip.getByText(fact, { exact: false })).toBeVisible();
-      await expect(info).toHaveAccessibleDescription(new RegExp(fact));
+      await expect(tip).toContainText(fact);
     }
-    // The modelled label stays with Savings: in its tooltip since part 12, never dropped.
-    if (id === 'overview-savings') {
-      await expect(tip.getByText('Modelled · vs cloud baseline')).toBeVisible();
-      await expect(info).toHaveAccessibleDescription(/Modelled · vs cloud baseline/);
-    }
-    await info.press('Escape');
-    await expect(tip).toBeHidden();
+    // The modelled label stays with Savings: in its caption since part 29 (its tooltip since part 12), never dropped.
+    if (id === 'overview-savings') await expect(tip).toContainText('Modelled · vs cloud baseline');
+    await expect(tip.locator(':scope > :first-child')).toBeVisible();
   }
   await expect(page.getByRole('radiogroup', { name: 'Figures for', exact: true })).toBeVisible();
 });
