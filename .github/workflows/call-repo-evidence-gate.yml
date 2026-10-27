@@ -30,8 +30,11 @@
 # required-checks.yaml. CI Summary (ci.yml) judges only its own needs, test and
 # tenant-rls, so it does not judge this external context.
 #
-# The reusable is pinned by full SHA to omnibase_core#2085's squash commit on
-# dev (OMN-21166), the first receipt-gate that takes check-timeout-seconds.
+# The reusable is pinned by full SHA to omnibase_core#2102's squash commit on
+# dev (OMN-21166), the first receipt-gate whose sibling resolver reads
+# .github/sibling-pins.yaml, so this run checks omnibase_core out at the commit
+# omnidash declares there (AC209, AC212). It keeps check-timeout-seconds, which
+# omnibase_core#2085 added.
 # check-timeout-seconds gives each dod_verify check 300 s instead of the
 # verifier's 30 s default, at which browser checks were killed before reaching a
 # verdict (check_budget_exceeded on omnidash#439, #444 and #446).
@@ -53,7 +56,7 @@ permissions:
 
 jobs:
   repo-evidence:
-    uses: OmniNode-ai/omnibase_core/.github/workflows/receipt-gate.yml@ba76a6f0797ef2c9b7696b90cc8a03e5b799ec61 # OMN-21166: immutable full-SHA pin, omnibase_core#2085 squash on dev
+    uses: OmniNode-ai/omnibase_core/.github/workflows/receipt-gate.yml@abc2cb3e85b962bb8dc5a12a308d8a723b3f42a4 # OMN-21166: immutable full-SHA pin, omnibase_core#2102 squash on dev
     with:
       evidence-source: caller
       verifier-version: 0.4.310
