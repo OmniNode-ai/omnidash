@@ -196,3 +196,23 @@ test('AC206 Runs routing view groups requested to routed model with Not recorded
     rows: await routing.locator('tbody tr').evaluateAll(rows => rows.map(row => row.textContent)),
   }, null, 2));
 });
+
+// D11 (Chrome on Lakshman's data, 2026-10-27): on a phone a wide matrix or trend stretched its tab panel past the card, so
+// the tab list and the table's right side were cut off. Every view must stay inside its card and scroll there instead.
+test('AC201 AC203 AC204 AC206 the decision views stay inside their card on a phone and scroll within it', async ({ page }, info) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await serveCharts(page, withRev7);
+  for (const path of ['/usage?analysis=groups', '/usage?analysis=matrix', '/usage?analysis=trend', '/usage?analysis=quality', '/runs?analysis=routing']) {
+    await settle(page, path);
+    const tablist = page.locator('[role="tablist"]').last();
+    await expect(tablist).toBeVisible();
+    const card = tablist.locator('xpath=ancestor::article[contains(@class,"local-dashboard-panel")][1]');
+    const edge = (await card.boundingBox())!;
+    for (const part of [tablist, page.locator('[role="tabpanel"]').last()]) {
+      const box = (await part.boundingBox())!;
+      expect(box.x + box.width, `${path}: ${await part.getAttribute('class')}`).toBeLessThanOrEqual(edge.x + edge.width + 0.5);
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+    await page.screenshot({ path: info.outputPath(`phone-${path.replace(/\W+/g, '-')}.png`) });
+  }
+});

@@ -1393,7 +1393,9 @@ html .app svg.field-icon.field-icon:is([data-field-icon^="tier-"], [data-semanti
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-caption .local-token-direction { white-space: nowrap; }
 /* OMN-21166 part 30 (revision 7) AC201: the shared tabs and toggle use the neutral segmented control (AC178). The tab list
    is a flat row with the selected tab raised; the toggle is the same control at a smaller size. Both wrap on a phone. */
-.local-dashboard-tabs { display: grid; gap: 12px; min-width: 0; }
+/* One column that never grows past its card: a wide table or chart scrolls inside its panel (Chrome on local data at
+   500px: the tab panel took the matrix's 465px width inside a 362px card). */
+.local-dashboard-tabs { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; min-width: 0; }
 .local-dashboard-page .local-dashboard-filters.local-dashboard-tablist,
 .local-dashboard-page .local-dashboard-filters.local-dashboard-toggle,
 .ev-root .local-dashboard-filters.local-dashboard-tablist,
@@ -1407,7 +1409,8 @@ html .app svg.field-icon.field-icon:is([data-field-icon^="tier-"], [data-semanti
 .local-dashboard-tablist.local-dashboard-filters [role="tab"][aria-selected="true"] { background: var(--panel-2); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
 .local-dashboard-tablist.local-dashboard-filters [role="tab"]:hover { color: var(--ink); }
 .local-dashboard-tablist.local-dashboard-filters [role="tab"]:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 1px; }
-.local-dashboard-tabpanel { min-width: 0; display: grid; gap: 12px; }
+.local-dashboard-tabpanel { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.usage-analysis .local-dashboard-tabpanel > .local-dashboard-table-wrap { overflow-x: auto; max-width: 100%; }
 .local-dashboard-tabpanel:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 4px; border-radius: 4px; }
 .local-dashboard-toggle.local-dashboard-filters label { display: inline-flex; align-items: center; min-height: 28px; padding: 0 10px; border-radius: 6px;
   font-size: 12px; color: var(--ink-2); cursor: pointer; }
@@ -1417,7 +1420,7 @@ html .app svg.field-icon.field-icon:is([data-field-icon^="tier-"], [data-semanti
 .local-dashboard-toggles { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
 /* AC203: Model by task. Each cell is its figure over its denominator line; a small sample is set in the secondary ink with
    the words "small sample", a pair with no runs reads no runs. The whole cell is the link to its runs. */
-.usage-matrix-wrap { overflow-x: auto; }
+.usage-analysis .local-dashboard-tabpanel > .local-dashboard-table-wrap.usage-matrix-wrap { overflow-x: auto; }
 .usage-analysis table[data-decision-matrix] { width: 100%; }
 [data-decision-matrix] td { vertical-align: top; min-width: 120px; }
 [data-decision-matrix] td a { display: grid; gap: 2px; color: inherit; text-decoration: none; padding: 4px 6px; margin: -4px -6px; border-radius: 4px; }
