@@ -32,9 +32,11 @@
 #
 # The reusable is pinned by full SHA to omnibase_core#2102's squash commit on
 # dev (OMN-21166), the first receipt-gate whose sibling resolver reads
-# .github/sibling-pins.yaml, so this run checks omnibase_core out at the commit
-# omnidash declares there (AC209, AC212). It keeps check-timeout-seconds, which
-# omnibase_core#2085 added.
+# .github/sibling-pins.yaml (AC209). Once omnidash declares its omnibase_core
+# commit in that file (AC212, a later change), the evidence run checks
+# omnibase_core out at that commit; with no such file the resolver keeps its
+# earlier selection. It keeps check-timeout-seconds, which omnibase_core#2085
+# added.
 # check-timeout-seconds gives each dod_verify check 300 s instead of the
 # verifier's 30 s default, at which browser checks were killed before reaching a
 # verdict (check_budget_exceeded on omnidash#439, #444 and #446).
