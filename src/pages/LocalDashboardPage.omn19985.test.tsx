@@ -59,7 +59,8 @@ describe('OMN-19985 Credentials keys', () => {
     const history = screen.getByRole('table', { name: 'Revoked key references' });
     const cells = within(history).getAllByRole('cell').map((cell) => cell.textContent ?? '');
     // OMN-21166 AC60: the time reads for a person; the served value stays whole in the cell's title.
-    expect(cells[4]).toBe('Oct 7, 07:40:00 UTC');
+    // OMN-19996: Revoked is the sixth column, after Last used.
+    expect(cells[5]).toBe('Oct 7, 07:40:00 UTC');
   });
 
   it('part 18 AC128: the keys in use are not drawn as a second table', () => {

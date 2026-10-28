@@ -37,7 +37,7 @@ describe('Credentials as one table', () => {
     render(<ModelKeys client={client()} keys={[key('gemini'), key('openrouter', { set_at: '2026-10-12T15:52:29+00:00' })]} />);
     await screen.findByRole('table', { name: 'Model providers' });
     expect(screen.getAllByRole('table')).toHaveLength(1);
-    expect(screen.getAllByRole('columnheader').map(h => h.textContent)).toEqual(['Provider', 'State', 'Models', 'Key ref', 'Fingerprint', 'Set', 'Set up with']);
+    expect(screen.getAllByRole('columnheader').map(h => h.textContent)).toEqual(['Provider', 'State', 'Models', 'Key ref', 'Fingerprint', 'Set', 'Last used', 'Set up with']);
     expect(within(row('Gemini')).getByText('llm.gemini.api_key')).toBeTruthy();
     expect(within(row('Gemini')).getByText('gemiabcd')).toBeTruthy();
     expect(within(row('OpenRouter')).getByText('Oct 12, 15:52:29 UTC')).toBeTruthy();
