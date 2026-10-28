@@ -85,13 +85,13 @@ test('OMN-19985: Credentials lists each key ref with its fingerprint and set tim
   // served value kept in the <time> element (datetime and title).
   await expect(page.getByRole('table', { name: 'Provider key references', exact: true })).toHaveCount(0);
   const table = page.getByRole('table', { name: 'Model providers', exact: true });
-  await expect(table.getByRole('columnheader')).toHaveText(['Provider', 'State', 'Models', 'Key ref', 'Fingerprint', 'Set', 'Set up with']);
+  await expect(table.getByRole('columnheader')).toHaveText(['Provider', 'State', 'Models', 'Key ref', 'Fingerprint', 'Set', 'Last used', 'Set up with']);
   await expect(table.getByRole('columnheader', { name: 'Revoked', exact: true })).toHaveCount(0);
   await expect(page.getByText('No key records an expiry or a bound host.', { exact: true })).toBeVisible();
   const live = table.getByRole('row').filter({ hasText: '89abcdef' });
   await expect(live.getByRole('rowheader')).toHaveText('OpenRouter');
   await expect(live.getByRole('cell')).toHaveText([
-    'Last test passed', 'openrouter/model-a', 'llm.openrouter.api_key', '89abcdef', 'Oct 7, 07:35:00 UTC', 'onex models add openrouter',
+    'Last test passed', 'openrouter/model-a', 'llm.openrouter.api_key', '89abcdef', 'Oct 7, 07:35:00 UTC', 'Never', 'onex models add openrouter',
   ]);
   await expect(live.locator('td[data-label="Set"] time')).toHaveAttribute('datetime', '2026-10-07T07:35:00+00:00');
   await expect(live.locator('td[data-label="Set"] time')).toHaveAttribute('title', '2026-10-07T07:35:00+00:00');

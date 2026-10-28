@@ -22,8 +22,10 @@ test('Credentials keeps reference metadata readable on phones without exposing v
   if (await collapse.isVisible()) await collapse.click();
   const row = page.locator('[data-component="credentials-keys"] tbody tr').filter({ hasText: 'fixture-provider' });
   // Part 18 AC128: Expires and Bound host show only when a key records one (this fixture serves neither, so one caption
-  // says so), and there is no Revoked column: an active key is not revoked. Six labelled cells remain.
-  await expect(row.locator('td[data-label]')).toHaveCount(6);
+  // says so), and there is no Revoked column: an active key is not revoked. Seven labelled cells remain (OMN-19996 added
+  // Last used, which reads Never for this fixture's key).
+  await expect(row.locator('td[data-label]')).toHaveCount(7);
+  await expect(row.locator('td[data-label="Last used"]')).toHaveText('Never');
   await expect(row.locator('td[data-label="Expires"]')).toHaveCount(0);
   await expect(row.locator('td[data-label="Bound host"]')).toHaveCount(0);
   await expect(row.locator('td[data-label="Revoked"]')).toHaveCount(0);
