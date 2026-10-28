@@ -28,7 +28,7 @@ function KeyTime({ value }: { value: unknown }) {
   return readable === null ? <>{text}</> : <time className="local-cell-time" dateTime={text} title={text}>{readable}</time>;
 }
 
-/** OMN-19996 AC3: the served last time a key was used in a run, read like Set; a key never used, or a row from a server
+/** OMN-19996 AC2: the served last time a key was used in a run, read like Set; a key never used, or a row from a server
  * older than the column, reads Never. */
 function LastUsed({ value }: { value: unknown }) {
   return missing(value) ? <>Never</> : <KeyTime value={value} />;

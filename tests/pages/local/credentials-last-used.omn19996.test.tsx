@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// OMN-19996 AC3: the key tables on the Credentials page show when each key was last used in a run, from the served
+// OMN-19996 AC2: the key tables on the Credentials page show when each key was last used in a run, from the served
 // last_used_at on tenant-credentials.v1. Failure modes declared before code:
 //   L1  no "Last used" column, or it is not right after Set;
 //   L2  a served last_used_at is not shown, or not in the format the Set column uses;

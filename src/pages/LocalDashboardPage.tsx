@@ -2042,7 +2042,7 @@ export function CredentialsTable({ rows }: { rows: readonly unknown[] }) {
             {/* OMN-21166 AC60/AC66: times read as "Oct 14, 08:24:11 UTC" with the served value in the title; the served
                 expiry and bound host are shown, and say so when the producer recorded none. Never a secret. */}
             <td data-label="Set"><CellTime value={key.set_at} /></td>
-            {/* OMN-19996 AC3: the served last time the key was used in a run, read like Set; a key never used, or a row
+            {/* OMN-19996 AC2: the served last time the key was used in a run, read like Set; a key never used, or a row
                 from a server older than the column, reads Never. */}
             <td data-label="Last used">{isMissing(key.last_used_at) ? 'Never' : <CellTime value={key.last_used_at} />}</td>
             <td data-label="Revoked">{isMissing(key.revoked_at) ? 'Not revoked' : <CellTime value={key.revoked_at} />}</td>
