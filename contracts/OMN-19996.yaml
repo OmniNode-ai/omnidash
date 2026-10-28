@@ -1,0 +1,33 @@
+---
+schema_version: "1.0.0"
+ticket_id: OMN-19996
+title: The Credentials page shows when each provider key was last used in a run
+summary: The in-use key tables and the key history on the Credentials page show a Last used column read from the
+  tenant-credentials exposure's last_used_at, in the same time format as Set, and Never when the value is null or the
+  server predates the column. The writer and migration are omnimarket#4526 and omnibase_infra#5419.
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: req-omn19996-credentials-last-used
+    statement: The Credentials page shows when each provider key was last used in a run.
+    acceptance:
+      - id: AC2
+        statement: "AC2: The Credentials page shows a Last used column for each provider key, read from the
+          tenant-credentials exposure's last_used_at with the Set time format, and Never when it is null or absent --
+          falsifier: npx vitest run tests/pages/local/credentials-last-used.omn19996.test.tsx in omnidash fails"
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
+dod_evidence:
+  - id: dod-omn19996-omnidash-ac2
+    description: Render both in-use key tables and the key history with last_used_at set, null, empty and absent, and
+      check the Last used header, its cell values and equal header and cell counts with the optional columns shown.
+    source: manual
+    checks:
+      - check_type: test_passes
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/pages/local/credentials-last-used.omn19996.test.tsx"
+        cwd: ${OMNI_HOME}/omnidash
+    binds_ac:
+      - AC2
