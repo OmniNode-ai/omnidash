@@ -2030,7 +2030,7 @@ export function CredentialsTable({ rows }: { rows: readonly unknown[] }) {
   const table = (list: Row[], label: string) => (
     <div className="local-dashboard-table-wrap local-credentials-records">
       <table aria-label={label}>
-        <thead><tr><th>Provider</th><th>Key ref</th><th>Fingerprint</th><th>Set</th><th>Revoked</th><th>Expires</th><th>Bound host</th></tr></thead>
+        <thead><tr><th>Provider</th><th>Key ref</th><th>Fingerprint</th><th>Set</th><th>Last used</th><th>Revoked</th><th>Expires</th><th>Bound host</th></tr></thead>
         <tbody>{list.map((key, index) => (
           <tr key={`${String(key.provider)}-${String(key.name)}-${index}`}>
             {/* Part 27 round 7: the provider's name in the one case the Model providers table uses (Gemini, not gemini). */}
@@ -2042,6 +2042,9 @@ export function CredentialsTable({ rows }: { rows: readonly unknown[] }) {
             {/* OMN-21166 AC60/AC66: times read as "Oct 14, 08:24:11 UTC" with the served value in the title; the served
                 expiry and bound host are shown, and say so when the producer recorded none. Never a secret. */}
             <td data-label="Set"><CellTime value={key.set_at} /></td>
+            {/* OMN-19996 AC3: the served last time the key was used in a run, read like Set; a key never used, or a row
+                from a server older than the column, reads Never. */}
+            <td data-label="Last used">{isMissing(key.last_used_at) ? 'Never' : <CellTime value={key.last_used_at} />}</td>
             <td data-label="Revoked">{isMissing(key.revoked_at) ? 'Not revoked' : <CellTime value={key.revoked_at} />}</td>
             <td data-label="Expires">{isMissing(key.expires_at) ? 'No expiry recorded' : <CellTime value={key.expires_at} />}</td>
             <td data-label="Bound host">{recorded(key.bound_host)}</td>

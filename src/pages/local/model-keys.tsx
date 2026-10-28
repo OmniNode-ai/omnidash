@@ -28,6 +28,12 @@ function KeyTime({ value }: { value: unknown }) {
   return readable === null ? <>{text}</> : <time className="local-cell-time" dateTime={text} title={text}>{readable}</time>;
 }
 
+/** OMN-19996 AC3: the served last time a key was used in a run, read like Set; a key never used, or a row from a server
+ * older than the column, reads Never. */
+function LastUsed({ value }: { value: unknown }) {
+  return missing(value) ? <>Never</> : <KeyTime value={value} />;
+}
+
 /** One cell per key a provider has (most have one); a provider with no key reads "No key" in the first, "—" after. */
 function KeyCells({ list, field, first, render }: { list: readonly CredentialKeyRow[]; field: string; first?: boolean; render?: (value: unknown) => ReactNode }) {
   if (list.length === 0) return <>{first ? 'No key' : '—'}</>;
@@ -110,13 +116,14 @@ export function ModelKeys({ client = LIVE_CLIENT, keys = [], empty }: { client?:
   const keysAlone = keys.length === 0 ? null : (
     <div className="local-dashboard-table-wrap">
       <table aria-label="Provider key references">
-        <thead><tr><th>Provider</th><th>Key ref</th><th>Fingerprint</th><th>Set</th></tr></thead>
+        <thead><tr><th>Provider</th><th>Key ref</th><th>Fingerprint</th><th>Set</th><th>Last used</th></tr></thead>
         <tbody>{keys.map((key, index) => (
           <tr key={`${String(key.provider)}-${String(key.name)}-${index}`}>
             <td data-label="Provider">{missing(key.provider) ? 'Not recorded' : providerName(key.provider)}</td>
             <td data-label="Key ref">{served(key.name)}</td>
             <td data-label="Fingerprint">{served(key.fingerprint)}</td>
             <td data-label="Set"><KeyTime value={key.set_at} /></td>
+            <td data-label="Last used"><LastUsed value={key.last_used_at} /></td>
           </tr>
         ))}</tbody>
       </table>
@@ -143,6 +150,7 @@ export function ModelKeys({ client = LIVE_CLIENT, keys = [], empty }: { client?:
     <td data-label="Key ref"><KeyCells list={list} field="name" first /></td>
     <td data-label="Fingerprint"><KeyCells list={list} field="fingerprint" /></td>
     <td data-label="Set"><KeyCells list={list} field="set_at" render={value => <KeyTime value={value} />} /></td>
+    <td data-label="Last used"><KeyCells list={list} field="last_used_at" render={value => <LastUsed value={value} />} /></td>
     {showExpires && <td data-label="Expires"><KeyCells list={list} field="expires_at" render={value => (missing(value) ? 'No expiry recorded' : <KeyTime value={value} />)} /></td>}
     {showHost && <td data-label="Bound host"><KeyCells list={list} field="bound_host" /></td>}
   </>;
@@ -150,7 +158,7 @@ export function ModelKeys({ client = LIVE_CLIENT, keys = [], empty }: { client?:
     <section className="local-model-keys" aria-label="Model providers">
       <div className="local-dashboard-table-wrap">
         <table aria-label="Model providers">
-          <thead><tr><th>Provider</th><th>State</th><th>Models</th><th>Key ref</th><th>Fingerprint</th><th>Set</th>
+          <thead><tr><th>Provider</th><th>State</th><th>Models</th><th>Key ref</th><th>Fingerprint</th><th>Set</th><th>Last used</th>
             {showExpires && <th>Expires</th>}{showHost && <th>Bound host</th>}<th>Set up with</th></tr></thead>
           <tbody>{rows.map((row) => (
             <tr key={row.provider}>
