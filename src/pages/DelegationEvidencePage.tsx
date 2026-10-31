@@ -15,6 +15,7 @@ import { EvPageShell } from '@/components/dashboard/event-dash/EvPageShell';
 import { KpiStrip } from '@/components/dashboard/KpiStrip';
 import { DashboardTabs } from '@/components/dashboard/DashboardTabs';
 import { RankedBars } from '@/components/dashboard/RankedBars';
+import { AcceptanceEvalPanel } from '@/components/dashboard/acceptance-eval/AcceptanceEvalPanel';
 import {
   Badge,
   CodeBlock,
@@ -943,6 +944,8 @@ export function DelegationEvidencePage() {
       <div className="maple-grid ev-maple-grid">
         <div className="maple-cell maple-cell--wide"><SelectedRun correlationId={latestCid} decision={decisions[0]} /></div>
         <div className="maple-cell"><QualityGate /></div>
+        {/* OMN-19787 AC-3: every class of the latest acceptance-eval run, false passes and their bound first. */}
+        <div className="maple-cell maple-cell--full"><AcceptanceEvalPanel /></div>
         <div className="maple-cell maple-cell--full"><FailureTriage decisions={decisions}
           available={!decisionsQ.isLoading && !!decisionsQ.data && !decisionsQ.data.degradedReason} /></div>
         <div className="maple-cell maple-cell--full"><ModelRouting /></div>

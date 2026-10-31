@@ -648,6 +648,31 @@ export class PostgresProjectionReader {
           return res.rows as Row[];
         }
 
+        // OMN-19787 AC-3: every class of the latest acceptance-eval run (omnimarket node_projection_delegation_eval).
+        // Tenant-scoped twice: the app.tenant_id setting checkoutClient places drives the table's row-level security,
+        // and the SQL filters on the same setting, so an unscoped connection (the table owner) reads no rows.
+        case 'onex.snapshot.projection.delegation.acceptance-eval.v1': {
+          const res = await client.query(`
+            WITH scoped AS (
+              SELECT * FROM delegation_eval_results
+              WHERE tenant_id::text = current_setting('app.tenant_id', true)
+            ), latest AS (
+              SELECT eval_run_id FROM scoped ORDER BY observed_at DESC, projection_cursor DESC LIMIT 1
+            )
+            SELECT
+              s.tenant_id::text AS tenant_id, s.eval_run_id::text AS eval_run_id, s.task_class, s.stratum, s.arm,
+              s.manifest_id, s.gate_version, s.rater_role, s.rubric_version,
+              s.total_n, s.accepted_n, s.false_pass_count, s.false_pass_rate, s.false_pass_upper_bound,
+              s.false_pass_wilson_low, s.false_pass_wilson_high, s.false_pass_line_verdict, s.false_pass_required_n,
+              s.refused_n, s.false_refusal_count, s.false_refusal_rate, s.false_refusal_upper_bound,
+              s.false_refusal_line_verdict, s.undetermined_n, s.undetermined_share, s.flip_rate,
+              s.observed_at::text AS observed_at
+            FROM scoped s JOIN latest USING (eval_run_id)
+            ORDER BY s.task_class, s.stratum, s.arm
+          `);
+          return res.rows as Row[];
+        }
+
         default:
           return [];
       }

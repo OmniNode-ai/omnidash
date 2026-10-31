@@ -469,6 +469,35 @@ export const fetchDelegationQualityGate = (): Promise<
   ProjectionResult<QualityGateRow>
 > => readProjection<QualityGateRow>(TOPICS.delegationQualityGate);
 
+/**
+ * OMN-19787 AC-3: one delegation_eval_results row (one task class, stratum and arm of one eval run). Numbers can be
+ * null where the run measured nothing; a null bound is shown as not measured, never as zero.
+ */
+export interface AcceptanceEvalRow {
+  eval_run_id: string;
+  task_class: string;
+  stratum: string;
+  arm: string;
+  gate_version: string | null;
+  accepted_n: number | null;
+  false_pass_count: number | null;
+  false_pass_rate: number | null;
+  false_pass_upper_bound: number | null;
+  false_pass_line_verdict: string | null;
+  false_pass_required_n: number | null;
+  refused_n: number | null;
+  false_refusal_count: number | null;
+  false_refusal_upper_bound: number | null;
+  false_refusal_line_verdict: string | null;
+  undetermined_share: number | null;
+  flip_rate: number | null;
+  observed_at: string;
+}
+
+export const fetchDelegationAcceptanceEval = (): Promise<
+  ProjectionResult<AcceptanceEvalRow>
+> => readProjection<AcceptanceEvalRow>(TOPICS.delegationAcceptanceEval);
+
 export const fetchCostSavingsOverview = (): Promise<
   ProjectionResult<CostSavingsOverviewRow>
 > => readProjection<CostSavingsOverviewRow>(TOPICS.costSavingsOverview);

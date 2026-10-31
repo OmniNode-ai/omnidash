@@ -1,0 +1,51 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+# AC1, AC2 and AC4, and the omnimarket half of AC3 (the exposure's first page), are bound in omnimarket's
+# contracts/OMN-19787.yaml. This file binds the omnidash half of AC3: the reader case and the panel.
+schema_version: "1.0.0"
+ticket_id: "OMN-19787"
+title: "Delegation evals: measure the acceptance gate's false-pass rate per task class, standing, as nodes and a projection"
+summary: >-
+  The omnidash half of AC-3. The Postgres projection reader gains a tenant-scoped case for the acceptance-eval
+  topic that reads every class of the latest run from delegation_eval_results, and Delegation Evidence gains an
+  Acceptance eval panel that shows each class of the latest served run with its false passes and false-pass bound
+  first, then the line verdict (REFUSED reads as under-powered, never passing), then false refusals.
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-omn19787-dashboard-panel-omnidash"
+    statement: |-
+      The dashboard panel shows every class of the latest eval run with its false-pass bound.
+    acceptance:
+      - id: "AC3"
+        statement: |-
+          AC-3: the dashboard panel shows every class of the latest eval run with its false-pass bound -- falsifier: npx vitest run server/__tests__/postgres-projection-reader.test.ts in omnidash, and the dev dashboard row count against select count(distinct task_class) for the latest run
+evidence_requirements:
+  - kind: "tests"
+    description: "AC3: the reader reads the latest eval run from delegation_eval_results, tenant-scoped. Fails at the merge base, where the topic answers no rows."
+    command: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run server/__tests__/postgres-projection-reader.test.ts -t acceptance-eval"
+  - kind: "tests"
+    description: "AC3: the panel shows every class of the latest run with its bound, false passes before false refusals, REFUSED as under-powered. Fails at the merge base, where the panel module does not exist."
+    command: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/components/dashboard/acceptance-eval/AcceptanceEvalPanel.test.tsx"
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
+dod_evidence:
+  - id: "dod-omn19787-ac3-reader-tenant-scoped"
+    description: "AC3: the Postgres projection reader answers the acceptance-eval topic with the rows of the latest eval run from delegation_eval_results, sets app.tenant_id on the connection and filters on it in the SQL. At the merge base the topic answers no rows and the test fails."
+    source: "manual"
+    binds_ac: ["AC3"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run server/__tests__/postgres-projection-reader.test.ts -t acceptance-eval"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn19787-ac3-panel-every-class"
+    description: "AC3: the Acceptance eval panel keeps only the latest run, shows one row per class (row count equals the run's distinct task classes) with its false-pass bound, puts false passes and the bound before false refusals, and reads a REFUSED line as under-powered. At the merge base the module does not exist and the test file fails."
+    source: "manual"
+    binds_ac: ["AC3"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/components/dashboard/acceptance-eval/AcceptanceEvalPanel.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
