@@ -429,15 +429,17 @@ function triageName(value: unknown, kind: 'model' | 'task'): string {
   return String(value);
 }
 
-function TriageRows({ rows, denominator, kind }: {
-  rows: ReadonlyArray<{ name: string; count: number | null; href: string }>;
+export function TriageRows({ rows, denominator, kind }: {
+  /** `id` is the served value the row stands for (unique); `name` is how it reads, which two rows can share once
+   * shortened, so the key is the id. `title` is the full value, shown on hover. */
+  rows: ReadonlyArray<{ id?: string; name: string; title?: string; count: number | null; href: string }>;
   denominator: number | null;
   kind: 'category' | 'check' | 'model' | 'task';
 }) {
   if (rows.length === 0) return <p className="note">No failures in this population.</p>;
   return <ol className="ev-triage-rows" aria-label={`Failures by ${kind}`}>
-    {rows.map(row => <li data-triage-row key={`${kind}-${row.name}`}>
-      <a href={row.href} aria-label={`View failed runs for ${row.name}`}>{row.name}</a>
+    {rows.map(row => <li data-triage-row key={`${kind}-${row.id ?? row.name}`}>
+      <a href={row.href} title={row.title} aria-label={`View failed runs for ${row.name}`}>{row.name}</a>
       <span className="mono">{row.count === null ? 'Not served' : formatDashboardCount(row.count)} · {row.count === null || denominator === null || denominator === 0
         ? 'Share not served' : sharePercent(row.count / denominator)}</span>
     </li>)}
@@ -465,10 +467,17 @@ export function FailureTriage({ decisions, available, complete = false }: { deci
       href: `/runs?status=failed&${kind}=${encodeURIComponent(name)}`,
     }));
   };
-  const categories = Array.isArray(quality?.failure_categories) ? quality.failure_categories.map(item => ({
-    name: (() => { const text = escalationReason(item.category).text; return text.charAt(0).toUpperCase() + text.slice(1); })(),
-    count: servedNumber(item.count), href: '/runs?status=failed',
-  })).sort((a, b) => (b.count ?? -1) - (a.count ?? -1) || a.name.localeCompare(b.name)) : null;
+  // Found 2026-11-02: different served categories can shorten to the same sentence, so each row is keyed by its served
+  // category and carries the full (masked) text on hover.
+  const categories = Array.isArray(quality?.failure_categories) ? quality.failure_categories.map(item => {
+    const reason = escalationReason(item.category);
+    return {
+      id: String(item.category),
+      name: reason.text.charAt(0).toUpperCase() + reason.text.slice(1),
+      title: reason.title,
+      count: servedNumber(item.count), href: '/runs?status=failed',
+    };
+  }).sort((a, b) => (b.count ?? -1) - (a.count ?? -1) || a.name.localeCompare(b.name)) : null;
   const checks = Array.isArray(quality?.by_check_type) ? quality.by_check_type.map(item => ({
     name: checkName(item.check_type), count: servedNumber(item.failed), total: servedNumber(item.total),
   })).sort((a, b) => (b.count ?? -1) - (a.count ?? -1) || a.name.localeCompare(b.name)) : null;

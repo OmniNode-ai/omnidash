@@ -146,8 +146,10 @@ function TokensByModel({ data, titled }: { data: UsageAggregates; titled: boolea
   </figure>;
 }
 
-export function UsageInsights({ usageRows, decisionRows, routingRows, now = Date.now(), part = 'all' }: {
+export function UsageInsights({ usageRows, decisionRows, routingRows, now = Date.now(), part = 'all', complete = false }: {
   usageRows: readonly unknown[]; decisionRows: readonly unknown[]; routingRows: readonly unknown[]; now?: number;
+  /** OMN-21970: true when the decisions read walked every page. */
+  complete?: boolean;
   /** 'spend' is Spend by model; part 17: each "More usage" chart is its own panel, so each is its own part. */
   part?: 'all' | 'spend' | 'cost-per-run' | 'tokens-by-model' | 'cost-by-route' | 'analysis';
 }) {
@@ -155,7 +157,7 @@ export function UsageInsights({ usageRows, decisionRows, routingRows, now = Date
   const routing = routeSpendByTier(records(routingRows)[0] ?? {});
   // A part sits in a panel whose title names it, so it draws no heading of its own.
   // Part 29 AC194, AC195: the analysis of the served decisions, its own full-row panel (AC89).
-  if (part === 'analysis') return <section className="usage-insights" aria-label="Usage insights"><UsageAnalysis decisionRows={decisionRows} /></section>;
+  if (part === 'analysis') return <section className="usage-insights" aria-label="Usage insights"><UsageAnalysis decisionRows={decisionRows} complete={complete} /></section>;
   if (part === 'spend') return <section className="usage-insights" aria-label="Usage insights"><SpendByModel data={data} /></section>;
   if (part === 'cost-per-run') return <section className="usage-insights" aria-label="Usage insights"><CostPerRun data={data} titled={false} /></section>;
   if (part === 'tokens-by-model') return <section className="usage-insights" aria-label="Usage insights"><TokensByModel data={data} titled={false} /></section>;

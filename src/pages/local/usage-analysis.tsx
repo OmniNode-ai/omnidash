@@ -274,7 +274,7 @@ function QualityTrend({ decisionRows }: { decisionRows: readonly unknown[] }) {
   </figure>;
 }
 
-export function UsageAnalysis({ decisionRows }: { decisionRows: readonly unknown[] }) {
+export function UsageAnalysis({ decisionRows, complete = false }: { decisionRows: readonly unknown[]; complete?: boolean }) {
   const models = useMemo(() => groupDecisions(decisionRows, 'model'), [decisionRows]);
   const coverage = coverageOf(decisionRows);
   const sample = totalsOf(decisionRows).runs;
@@ -282,7 +282,8 @@ export function UsageAnalysis({ decisionRows }: { decisionRows: readonly unknown
   // Part 30 AC202: four views of one sample, behind tabs; the sample label stays above them so every view keeps it.
   return <section className="usage-analysis" data-usage-analysis aria-label="Usage analysis">
     <p className="local-dashboard-caption">
-      {`From the latest ${sample} served runs${coverage ? `, covering ${dayLabel(coverage.first)} to ${dayLabel(coverage.last)}` : ''}. `}
+      {/* OMN-21970 AC3: a read that walked every page holds every served run, so it is not called the latest. */}
+      {`From ${complete ? 'all' : 'the latest'} ${sample} served runs${coverage ? `, covering ${dayLabel(coverage.first)} to ${dayLabel(coverage.last)}` : ''}. `}
       Spend counts measured runs, pass rate counts runs with a verdict, latency counts recorded latencies (nearest rank). Savings are on the charts above (metering).
     </p>
     <DashboardTabs label="Usage analysis views" param="analysis" tabs={[
@@ -298,14 +299,15 @@ export function UsageAnalysis({ decisionRows }: { decisionRows: readonly unknown
  * Part 29 AC196: Runs' compact totals for the current filter, over the rows the filter matches (before paging), labelled
  * as the served sample so they are never read as the canonical totals of Overview and Evidence.
  */
-export function RunsTotals({ rows, sample }: { rows: readonly unknown[]; sample: number }) {
+export function RunsTotals({ rows, sample, complete = false }: { rows: readonly unknown[]; sample: number; complete?: boolean }) {
   const totals = totalsOf(rows);
   return <p className="local-dashboard-caption local-runs-totals" data-runs-totals aria-live="polite">
     <span data-total="runs">{`${totals.runs} ${totals.runs === 1 ? 'run' : 'runs'}`}</span>{' · '}
-    <span data-total="spend">{totals.spend === null ? 'spend not measured' : `${formatUsd(totals.spend)} spend (${totals.spendMeasured} measured)`}</span>{' · '}
+    <span data-total="spend">{totals.spend === null ? 'spend not measured' : `${formatUsd(totals.spend)} spend (${totals.spendMeasured} with a recorded cost)`}</span>{' · '}
     <span data-total="pass">{totals.verdicts === 0 ? 'no verdicts' : `${((totals.passed / totals.verdicts) * 100).toFixed(1)}% passed (${totals.passed} of ${totals.verdicts})`}</span>{' · '}
     <span data-total="p95">{totals.p95 === null ? 'p95 not recorded' : `p95 ${latency(totals.p95)}`}</span>{' · '}
-    <span className="local-runs-totals-scope">{`current filter · latest ${sample} served runs`}</span>
+    {/* "Measured" is Overview's word for runs with token counts and a cost; this counts runs with a recorded cost. */}
+    <span className="local-runs-totals-scope">{`current filter · ${complete ? 'all' : 'latest'} ${sample} served runs`}</span>
   </p>;
 }
 
@@ -314,13 +316,13 @@ export function RunsTotals({ rows, sample }: { rows: readonly unknown[]; sample:
  * backend, how it stopped and how often it escalated, with runs and pass rate per group. A field a run did not record is
  * Not recorded, which says nothing about whether the run was dispatched.
  */
-export function RoutingAnalysis({ rows }: { rows: readonly unknown[] }) {
+export function RoutingAnalysis({ rows, complete = false }: { rows: readonly unknown[]; complete?: boolean }) {
   const routes = useMemo(() => routesOf(rows), [rows]);
   if (routes.length === 0) return <p className="local-dashboard-empty" role="status">No returned runs to group by route</p>;
   return <article className="local-dashboard-panel local-run-routing" aria-label="Routing" aria-busy="false">
     <h2 className="local-dashboard-panel-title"><ConceptIcon concept="run-routes" label="Routing" size={16} />Routing</h2>
     <p className="local-dashboard-caption" data-routing-note>
-      {`From the latest ${totalsOf(rows).runs} served runs, grouped by requested and routed model, tier, backend, finish reason and escalations. `}
+      {`From ${complete ? 'all' : 'the latest'} ${totalsOf(rows).runs} served runs, grouped by requested and routed model, tier, backend, finish reason and escalations. `}
       Not recorded means the run did not record that field; it is not a dispatch failure.
     </p>
     <div className="local-dashboard-table-wrap">

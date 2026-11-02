@@ -293,8 +293,10 @@ export function qualityChangeLine(decisions: readonly unknown[], window: Activit
     .filter(entry => /^\d{4}-\d{2}-\d{2}$/.test(entry.day));
   if (!dated.some(entry => entry.day <= previousStart)) return 'No earlier data';
   const rate = (from: string, to: string) => {
-    const verdicts = dated.filter(entry => entry.day >= from && entry.day <= to && typeof entry.row.quality_gate_passed === 'boolean');
-    return verdicts.length === 0 ? null : verdicts.filter(entry => entry.row.quality_gate_passed === true).length / verdicts.length;
+    // Found 2026-11-02: the local store serves the verdict as 1 or 0, the Postgres path as true or false; both count,
+    // and a run with no verdict (null) is left out.
+    const verdicts = dated.filter(entry => entry.day >= from && entry.day <= to && servedBoolean(entry.row.quality_gate_passed) !== null);
+    return verdicts.length === 0 ? null : verdicts.filter(entry => servedBoolean(entry.row.quality_gate_passed) === true).length / verdicts.length;
   };
   const current = rate(currentStart, utcDay(now));
   if (current === null) return null;
@@ -1648,7 +1650,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
         <h3 className="local-dashboard-caption local-section-heading">This week</h3>
       <div className="local-runs-week-days" role="group" aria-label="This week">
         <p role={day ? 'status' : undefined}>{day ? selectedDay ? `${formatDashboardCount(selectedDay.runs)} runs · ${formatDashboardCount(selectedDay.passed)} passed · ${formatDashboardCount(selectedDay.failed)} failed${selectedDay.unrecorded ? ` · ${formatDashboardCount(selectedDay.unrecorded)} not recorded` : ''} for ${day}` : `No runs for ${day}`
-          : `${formatDashboardCount(week.reduce((sum, item) => sum + item.runs, 0))} runs in the latest returned rows · by created day (UTC)`}</p>
+          : `${formatDashboardCount(week.reduce((sum, item) => sum + item.runs, 0))} ${truncated ? 'runs in the latest returned rows' : 'runs served this week'} · by created day (UTC)`}</p>
         {week.map(item => <div key={item.day} role="group" data-selected={day === item.day ? 'true' : undefined}
           aria-label={`${weekLabel(item.day)} · ${formatDashboardCount(item.runs)} runs · ${formatDashboardCount(item.passed)} passed · ${formatDashboardCount(item.failed)} failed${item.unrecorded ? ` · ${formatDashboardCount(item.unrecorded)} not recorded` : ''}`}>
           <span>{weekLabel(item.day)}</span><span className="local-runs-week-bar" aria-hidden="true"><i data-outcome="passed" style={{ flex: item.passed }} /><i data-outcome="failed" style={{ flex: item.failed }} /><i data-outcome="unknown" style={{ flex: item.unrecorded }} /></span>
@@ -1731,8 +1733,8 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
       <p id={`${id}-scope`} className="local-dashboard-caption local-runs-scope">{truncated
         ? `${formatDashboardCount(runs.length)} recent runs returned; earlier history is not included. Search, filters and charts use these records.`
         : `${formatDashboardCount(runs.length)} returned runs. Search, filters and charts use these records.`}</p>
-      <RunsTotals rows={matching} sample={runs.length} />
-      {routingSlot && createPortal(<RoutingAnalysis rows={runs} />, routingSlot)}
+      <RunsTotals rows={matching} sample={runs.length} complete={!truncated} />
+      {routingSlot && createPortal(<RoutingAnalysis rows={runs} complete={!truncated} />, routingSlot)}
       {shown.length === 0 ? <p className="local-dashboard-empty" role="status">No runs match these filters</p> : (
         <>
           <div className={`local-runs-list-detail${selectedRun ? ' local-runs-list-detail--selected' : ''}`}>
@@ -2613,7 +2615,7 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns, acti
   // Usage analysis and the raw row table are separate declared components so the analysis does not duplicate rows.
   if (component.component_id === 'usage-insights') return <UsageInsights usageRows={rows}
     part={slice && ['spend', 'cost-per-run', 'tokens-by-model', 'cost-by-route', 'analysis'].includes(slice.key) ? slice.key as 'spend' | 'cost-per-run' | 'tokens-by-model' | 'cost-by-route' | 'analysis' : 'all'}
-    decisionRows={rawRowsFor(component, snapshots, 1)} routingRows={rawRowsFor(component, snapshots, 2)} />;
+    decisionRows={rawRowsFor(component, snapshots, 1)} routingRows={rawRowsFor(component, snapshots, 2)} complete={decisionsComplete} />;
   // US-1, US-2, US-4: served rows as served. The exposure is tenant-scoped, so the server filters, not the browser.
   if (component.component_id === 'usage-by-model-day') return <UsageByModelDayTable rows={rows} interactive />;
   // US-1 (OMN-21015 AC4): the same served rows as a stacked series, tokens in and out apart, split by model.

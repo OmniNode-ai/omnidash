@@ -26,6 +26,15 @@ describe('buildProxyMap', () => {
     expect(proxy['/projection']?.target).toBe('http://projection-api:3002');
   });
 
+  // Found in the 2026-11-02 dashboard tour (Lakshman: "Fix all issues if we have"): Settings lists model providers from
+  // `/models` on the same backend as `/projection`. Without this proxy, plain `vite` answered `/models` with index.html and
+  // Settings said "The dashboard did not list model providers."
+  it('routes /models (and its sub-paths) to the projection API when it is configured', () => {
+    const proxy = buildProxyMap({ VITE_PROJECTION_API_URL: 'http://projection-api:3002' });
+    expect(proxy['/models']?.target).toBe('http://projection-api:3002');
+    expect(buildProxyMap({})['/models']).toBeUndefined();
+  });
+
   // OMN-12995: route server-side settings endpoints to the Express dev server.
   it('routes /api/settings and /api/runtime-config to the omnidash Express server when configured', () => {
     const proxy = buildProxyMap({
