@@ -68,7 +68,7 @@
 .local-dashboard-page .local-dashboard-panel > h2 { font-size: 14px; font-weight: 600; letter-spacing: -0.005em; }
 .local-dashboard-page .local-dashboard-header h1 { font-size: 24px; font-weight: 600; letter-spacing: -0.02em; }
 
-/* Figures and table numbers use Inter's tabular digits; JetBrains Mono is kept for ids, code and logs. */
+/* Figures and table numbers use IBM Plex Sans's tabular digits; IBM Plex Mono is kept for ids, code and logs. */
 .local-dashboard-page :is(td, .local-dashboard-metric, .local-recent-value, code),
 main.ev-root[data-destination="delegation-evidence"] :is(.kpi .k-v, .big, td) {
   font-variant-numeric: tabular-nums;
@@ -93,7 +93,7 @@ main.ev-root[data-destination="delegation-evidence"] .dt-head {
 .local-dashboard-page .local-meter-value { font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
 
 /* AC62 (corrected 2026-10-25): figures, shares, statuses, tier names and times read in Inter with tabular digits;
- * JetBrains Mono stays only on run ids, model and backend ids, hashes, code, answers and logs. */
+ * IBM Plex Mono stays only on run ids, model and backend ids, hashes, code, answers and logs. */
 .local-dashboard-page :is(.local-donut-focus-value, .local-share-value, .local-meter-value, .local-readable,
   .local-routing-name:not(.local-model-identity), .local-run-step-time, .workflow-comparison-row strong),
 .local-dashboard-page [data-environment] :is(span, strong, dd) {
@@ -223,7 +223,7 @@ main.ev-root[data-destination="delegation-evidence"] :is(.kv .k, .kpi .k-l, .not
 .local-dashboard-page [data-field-unavailable="true"] :is(dd, strong), .local-dashboard-page :is(dd, strong)[data-field-unavailable="true"] { color: var(--ink-3) !important; font-weight: 500; }
 /* dt icons keep their field identity colour (OMN-21308). */
 
-/* Run and model identifiers in JetBrains Mono, in ink; links in the link colour */
+/* Run and model identifiers in IBM Plex Mono, in ink; links in the link colour */
 .local-dashboard-page :is(.local-model-identity, .local-routing-name.local-model-identity) { font-family: var(--font-mono); font-size: 12px; color: var(--ink) !important; }
 .local-dashboard-page a { color: var(--link-ink); }
 
@@ -1489,3 +1489,121 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ui-accent); outline-o
 .rb-chart.rb-chart--rows .rb-plot > li .rb-bar { width: var(--rb-size, 0); max-width: none; height: auto; margin: 0; }
 .rb-chart.rb-chart--rows .rb-plot > li .rb-bar[data-pattern="outline"] { width: 14px; height: auto; border: 1px dashed var(--ink-3); border-left: 0; }
 .rb-chart.rb-chart--rows .rb-plot > li .rb-value { grid-area: value; margin: 0; text-align: right; visibility: visible; overflow: visible; text-overflow: clip; white-space: nowrap; }
+
+/* OMN-21970 AC5: the tier legend beside every chart and table that shows models, so colour is never the only label. */
+.tier-legend { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--ink-2); }
+.tier-legend li { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.tier-legend i { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+
+/* OMN-21970 (Lakshman 2026-11-02, "make savings, usage cards colorful"): every summary card on Overview and Usage
+   carries its own field colour -- a top accent, a light tint and the figure itself -- so spend, savings, calls, tokens
+   and quality read apart at a glance. The colour is the card's existing field tone (Overview) or accent (Usage); a
+   figure that is not measured keeps the unavailable colour. The panel class is repeated so these rules outrank the
+   redesign's own card rules, which set a neutral border and figure. */
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel {
+  --card-accent: var(--panel-accent, var(--field-ink, var(--line)));
+  border-top: 3px solid var(--card-accent);
+  background-image: linear-gradient(180deg, color-mix(in srgb, var(--card-accent) 14%, transparent), transparent 75%);
+}
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel > .local-dashboard-metric[data-measured="true"],
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel > h2 svg {
+  /* The redesign pins every figure to ink with !important; only these summary-card figures take their card colour. */
+  color: var(--card-accent) !important;
+}
+
+/* ============================================================================
+   OMN-21970 AC9 (Lakshman 2026-11-02, "UI/UX improved ... professional, modern and attractive ... animated"; he chose
+   all four motion families and card, chart, layout and type styling on every page). Motion runs only when the reader has
+   not asked for reduced motion, and no motion changes a value: the count-up is CountUpText; the three CSS families are
+   below. Tested by src/styles/motion.omn21970.test.tsx.
+   ============================================================================ */
+@keyframes omn-rise-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes omn-grow-y { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes omn-draw { to { stroke-dashoffset: 0; } }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Rise-in: cards and panels enter once, the summary cards one after another. */
+  :is(.local-dashboard-page, .ev-root) .local-dashboard-panel,
+  .ev-root .panel {
+    animation: omn-rise-in 460ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+  }
+  :is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel:nth-child(2) { animation-delay: 60ms; }
+  :is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel:nth-child(3) { animation-delay: 120ms; }
+  :is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel:nth-child(4) { animation-delay: 180ms; }
+  :is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel:nth-child(5) { animation-delay: 240ms; }
+  :is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel:nth-child(6) { animation-delay: 300ms; }
+
+  /* Grow-in: bars rise from their axis; the pass-rate line draws from left to right. */
+  .gdb-bar.ins-seg {
+    transform-origin: 50% 100%;
+    animation: omn-grow-y 560ms cubic-bezier(0.2, 0.75, 0.25, 1) 140ms both;
+  }
+  .od-draw {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: omn-draw 800ms ease-out 160ms forwards;
+  }
+
+  /* Hover: a summary card lifts and glows in its own colour. */
+  :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel {
+    transition: transform 180ms ease, box-shadow 180ms ease;
+  }
+  :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 14px 30px -16px color-mix(in srgb, var(--card-accent) 70%, transparent),
+      0 0 0 1px color-mix(in srgb, var(--card-accent) 40%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.local-dashboard-page, .ev-root) .local-dashboard-panel,
+  .ev-root .panel,
+  .gdb-bar.ins-seg,
+  .od-draw { animation: none !important; }
+  .od-draw { stroke-dasharray: none; stroke-dashoffset: 0; }
+  :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel,
+  :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel:hover {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+/* Card styling: a soft resting shadow, the icon in a tinted badge of the card's colour, the figure in IBM Plex Sans
+   semibold with tabular digits, and quieter labels. */
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel {
+  border-radius: 12px;
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--ink, #000) 8%, transparent);
+}
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel > h2 {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel > h2 svg {
+  box-sizing: content-box;
+  padding: 4px;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--card-accent) 16%, transparent);
+}
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel > .local-dashboard-metric {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* Chart styling: bars get rounded tops. */
+.gdb-bar.ins-seg { border-radius: 3px 3px 0 0; }
+
+/* OMN-21970 AC9, layout and type on every page: panels share one radius and a soft resting shadow, and panel titles
+   use IBM Plex Sans semibold. Settings keeps its borderless sections (its own rule sets border 0 and no shadow). */
+.local-dashboard-page .local-dashboard-panel:not(.local-settings-section .local-dashboard-panel),
+.ev-root .panel {
+  border-radius: 12px;
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--ink, #000) 6%, transparent), 0 8px 24px -18px color-mix(in srgb, var(--ink, #000) 18%, transparent);
+}
+.local-dashboard-page .local-dashboard-panel > h2,
+.ev-root .panel > :is(h2, h3, .panel-title) {
+  font-family: var(--font-sans);
+  font-weight: 600;
+}

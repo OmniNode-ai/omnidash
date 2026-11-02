@@ -19,8 +19,8 @@ import { ChevronRight } from 'lucide-react';
 import { isTenantNotConfiguredReason } from '@/data-source/projection-tenant';
 import { TenantNotConfiguredState } from '../TenantNotConfiguredState';
 import { ConceptIcon, FieldIcon } from '../FieldIcon';
-import { modelIdentityStyle } from '../model-identity';
 import { fieldTone, isUnavailableField } from '../field-identity';
+import { useModelIdentityStyle } from '@/components/dashboard/model-tiers';
 
 // ── formatting helpers ───────────────────────────────────────────────────────
 
@@ -237,6 +237,7 @@ export interface KVItem {
 }
 
 export function KV({ items }: { items: (KVItem | null | false)[] }) {
+  const modelIdentityStyle = useModelIdentityStyle();
   const real = items.filter((it): it is KVItem => Boolean(it));
   return (
     <div className="kv">

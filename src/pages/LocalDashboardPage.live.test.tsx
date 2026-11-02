@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const DECISIONS = 'onex.snapshot.projection.delegation.decisions.v1';
 const SAVINGS = 'onex.snapshot.projection.delegation.savings.v1';
+const DAILY = 'onex.snapshot.projection.delegation.daily.v1';
 // OMN-19980 Amendment 2: Overview's Spend, Savings, Measured runs and Tokens read this exposure's all-time row.
 const METERING = 'onex.snapshot.projection.metering-summary.v1';
 const OVERVIEW = 'onex.snapshot.projection.cost.savings-overview.v1';
@@ -118,7 +119,9 @@ describe('LocalDashboardPage widget states (F26, F27)', () => {
   afterEach(() => { vi.useRealTimers(); });
 
   it('an unserved exposure blanks only its own widgets, naming the exposure', async () => {
-    harness.reachable = new Set([DECISIONS, SAVINGS]);
+    // OMN-21970: Runs per day also binds the per-day totals (daily.v1); they are served here so this case still tests
+    // only the unserved savings summary. The case below covers daily.v1 itself not being served.
+    harness.reachable = new Set([DECISIONS, SAVINGS, DAILY]);
     render(<LocalDashboardPage pageName="overview" />);
     await settle();
     const spend = screen.getByRole('heading', { name: 'Actual spend' }).closest('article')!;
@@ -127,6 +130,16 @@ describe('LocalDashboardPage widget states (F26, F27)', () => {
     const runsPerDay = screen.getByRole('heading', { name: 'Runs per day' }).closest('article')!;
     expect(within(runsPerDay).queryByText(/Not available yet/)).toBeNull();
     expect(screen.queryByRole('alert', { name: /page/i })).not.toBeInTheDocument();
+  });
+
+  it('OMN-21970: with the per-day totals not served, Runs per day still draws the run records and names what is missing', async () => {
+    harness.reachable = new Set([DECISIONS, SAVINGS]);
+    render(<LocalDashboardPage pageName="overview" />);
+    await settle();
+    const runsPerDay = screen.getByRole('heading', { name: 'Runs per day' }).closest('article')!;
+    expect(within(runsPerDay).getByText(/Not available yet: daily run totals/)).toBeInTheDocument();
+    expect(within(runsPerDay).getByRole('group', { name: 'Runs per day' })).toBeInTheDocument();
+    expect(within(runsPerDay).getAllByRole('button', { name: /: 1 run,/ }).length).toBe(1);
   });
 
   // OMN-19994 AC1 changed this case: a table's second binding is a lookup (a run's cost and basis), and RU-1's

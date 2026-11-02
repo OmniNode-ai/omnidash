@@ -1,21 +1,28 @@
-/* One meaning per field across local cards, Workflow and the event views. */
+/* OMN-21970 AC8 (Lakshman 2026-11-02): the twelve summary-card concepts (cost, baseline, savings, calls, tokens,
+   tokens in, tokens out, pass, fail, median and p95 duration, escalated) are twelve colours, each in its logical family,
+   searched in OKLCH so every pair on a page is at least 0.10 apart and every pair anywhere at least 0.07 (OKLab), with
+   at least 4.5:1 on the real card backgrounds #fdfdfc and #161616 under the 14% tint. Tested by
+   src/styles/card-palette.omn21970.test.tsx. */
+/* One meaning per field across local cards, Workflow and the event views. The tier colours (OMN-21970) are the
+   product owner's palette, checked for colour-blind contrast in both themes; cheap_frontier and cheap_cloud share
+   their family's colour, and a tier no row names is none. */
 :root {
-  --field-pass: #166534; --field-fail: #b91c1c; --field-count: #1d4ed8;
+  --field-pass: #007607; --field-fail: #960026; --field-count: #1d4ed8;
   --field-score: #a21caf; --field-threshold: #854d0e; --field-model: #6d28d9;
-  --field-age: #0369a1; --field-identity: #0f6c7a; --field-duration: #7c4808;
-  --field-cost: #92400e; --field-savings: #0f766e; --field-backend: #9a3412;
-  --field-host: #475569; --field-tokens-in: #075985; --field-tokens-out: #7e22ce;
-  --field-tokens: #7425bd; --field-basis: #3f6212; --field-task: #6b21a8;
+  --field-age: #0369a1; --field-identity: #0f6c7a; --field-duration: #5b3c18;
+  --field-cost: #7e652d; --field-savings: #014e44; --field-backend: #9a3412;
+  --field-host: #475569; --field-tokens-in: #356f87; --field-tokens-out: #c10174;
+  --field-tokens: #844caf; --field-basis: #3f6212; --field-task: #6b21a8;
   --field-tier: #9f1239; --field-queue: #7c5700; --field-execution: #713f12;
   --field-completion: #6b537d; --field-unavailable: #555b61;
 }
 [data-theme="dark"] {
-  --field-pass: #86efac; --field-fail: #fca5a5; --field-count: #93c5fd;
+  --field-pass: #98f158; --field-fail: #fe9298; --field-count: #93c5fd;
   --field-score: #f0abfc; --field-threshold: #fde68a; --field-model: #c4b5fd;
-  --field-age: #7dd3fc; --field-identity: #67d8cf; --field-duration: #edc978;
-  --field-cost: #fcd34d; --field-savings: #5eead4; --field-backend: #fdba74;
-  --field-host: #cbd5e1; --field-tokens-in: #38bdf8; --field-tokens-out: #a78bfa;
-  --field-tokens: #d2a8ff; --field-basis: #bef264; --field-task: #d8b4fe;
+  --field-age: #7dd3fc; --field-identity: #67d8cf; --field-duration: #e39c48;
+  --field-cost: #eecc64; --field-savings: #21c8ac; --field-backend: #fdba74;
+  --field-host: #cbd5e1; --field-tokens-in: #46cefe; --field-tokens-out: #fa6cb5;
+  --field-tokens: #c782f6; --field-basis: #bef264; --field-task: #d8b4fe;
   --field-tier: #fda4af; --field-queue: #e3bc72; --field-execution: #fef08a;
   --field-completion: #d2b8dd; --field-unavailable: #b5b9c0;
 }
@@ -75,10 +82,13 @@
 
 /* Distinct concepts keep their own identity in both themes. */
 :root {
-  --field-calls: #2452b8;
+  /* OMN-21970 AC8: p95 duration and escalated runs have their own concepts. */
+  --field-duration-p95: #6c25e4;
+  --field-escalated: #870184;
+  --field-calls: #1356b2;
   --field-tenant: #6d4c41;
   --field-session: #4e6282;
-  --field-baseline: #62621b;
+  --field-baseline: #bd330b;
   --field-saving-average: #196147;
   --field-compression: #3e637b;
   --field-cache: #874a34;
@@ -105,10 +115,12 @@
   --field-path: #567349;
 }
 [data-theme="dark"] {
-  --field-calls: #a0c7ff;
+  --field-duration-p95: #b7a7fe;
+  --field-escalated: #ff86f0;
+  --field-calls: #51abff;
   --field-tenant: #d6b7a8;
   --field-session: #a8bddf;
-  --field-baseline: #d1ce83;
+  --field-baseline: #ff7748;
   --field-saving-average: #9bd8bb;
   --field-compression: #9dc8df;
   --field-cache: #dfad9c;
@@ -135,6 +147,8 @@
   --field-path: #aac793;
 }
 [data-field-tone="calls"] { --field-ink: var(--field-calls); }
+[data-field-tone="duration-p95"] { --field-ink: var(--field-duration-p95); }
+[data-field-tone="escalated"] { --field-ink: var(--field-escalated); }
 [data-field-tone="tenant"] { --field-ink: var(--field-tenant); }
 [data-field-tone="session"] { --field-ink: var(--field-session); }
 [data-field-tone="baseline"] { --field-ink: var(--field-baseline); }
@@ -191,15 +205,16 @@
   --field-routing-flow: oklch(46% 0.11 233.71179);
   --field-token-flow: oklch(46% 0.11 184.04561);
   --field-quality-comparison: oklch(46% 0.11 142.82768);
-  --field-tier-local: oklch(46% 0.11 319.27073);
-  --field-tier-harness: oklch(46% 0.11 245.13082);
-  --field-tier-cheap-frontier: oklch(46% 0.11 32.92579);
-  --field-tier-cheap-cloud: oklch(46% 0.11 342.60582);
-  --field-tier-cloud: oklch(46% 0.11 85.57109);
-  --field-tier-claude: oklch(46% 0.11 342.88881);
-  --field-tier-frontier: oklch(46% 0.11 214.21902);
-  --field-tier-customer-keys: oklch(46% 0.11 273.45957);
-  --field-tier-other: oklch(46% 0.11 68.76212);
+  --field-tier-local: #2a78d6;
+  --field-tier-harness: #eb6834;
+  --field-tier-cheap-frontier: var(--field-tier-frontier);
+  --field-tier-cheap-cloud: var(--field-tier-cloud);
+  --field-tier-cloud: #6250d6;
+  --field-tier-claude: #008300;
+  --field-tier-frontier: #1baf7a;
+  --field-tier-customer-keys: #e87ba4;
+  --field-tier-other: #a3a7ad;
+  --field-tier-none: #a3a7ad;
   --field-step-request: oklch(46% 0.11 341.29383);
   --field-step-routing: oklch(46% 0.11 93.67875);
   --field-step-provider-call: oklch(46% 0.11 164.34756);
@@ -218,15 +233,16 @@
   --field-routing-flow: oklch(79% 0.11 233.71179);
   --field-token-flow: oklch(79% 0.11 184.04561);
   --field-quality-comparison: oklch(79% 0.11 142.82768);
-  --field-tier-local: oklch(79% 0.11 319.27073);
-  --field-tier-harness: oklch(79% 0.11 245.13082);
-  --field-tier-cheap-frontier: oklch(79% 0.11 32.92579);
-  --field-tier-cheap-cloud: oklch(79% 0.11 342.60582);
-  --field-tier-cloud: oklch(79% 0.11 85.57109);
-  --field-tier-claude: oklch(79% 0.11 342.88881);
-  --field-tier-frontier: oklch(79% 0.11 214.21902);
-  --field-tier-customer-keys: oklch(79% 0.11 273.45957);
-  --field-tier-other: oklch(79% 0.11 68.76212);
+  --field-tier-local: #3987e5;
+  --field-tier-harness: #d95926;
+  --field-tier-cheap-frontier: var(--field-tier-frontier);
+  --field-tier-cheap-cloud: var(--field-tier-cloud);
+  --field-tier-cloud: #9085e9;
+  --field-tier-claude: #008300;
+  --field-tier-frontier: #199e70;
+  --field-tier-customer-keys: #d55181;
+  --field-tier-other: #6b6e73;
+  --field-tier-none: #6b6e73;
   --field-step-request: oklch(79% 0.11 341.29383);
   --field-step-routing: oklch(79% 0.11 93.67875);
   --field-step-provider-call: oklch(79% 0.11 164.34756);

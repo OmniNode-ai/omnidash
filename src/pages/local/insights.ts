@@ -163,8 +163,11 @@ export function summary(runs: readonly InsightRun[]): InsightSummary {
   const passed = runs.filter(run => run.status === 'passed').length;
   const failed = runs.filter(run => run.status === 'failed').length;
   const spend = measuredSum(runs.map(run => run.cost));
-  const tokensIn = measuredSum(runs.map(run => run.tokensIn));
-  const tokensOut = measuredSum(runs.map(run => run.tokensOut));
+  // OMN-21970 AC4: a set with no runs used no tokens, so its sums are 0, not "not recorded"; a set whose runs carry no
+  // count stays null with each such run counted as unmeasured.
+  const none = { sum: 0, missing: 0 };
+  const tokensIn = runs.length === 0 ? none : measuredSum(runs.map(run => run.tokensIn));
+  const tokensOut = runs.length === 0 ? none : measuredSum(runs.map(run => run.tokensOut));
   const latencies = runs.map(run => run.latencyMs).filter((value): value is number => value !== null).sort((a, b) => a - b);
   const middle = Math.floor(latencies.length / 2);
   const medianLatency = latencies.length === 0 ? null
@@ -273,4 +276,57 @@ export function cumulative(values: ReadonlyArray<number | null>): (number | null
     if (value !== null) total = (total ?? 0) + value;
     return total;
   });
+}
+
+/** OMN-21970 AC2: one UTC day's totals as delegation.daily.v1 serves them, over every run of that day. */
+export interface ServedDay {
+  day: string;
+  runs: number;
+  passed: number;
+  failed: number;
+  unrecorded: number;
+  /** Null when no run of the day carries a count: not recorded, never zero (AC4). */
+  tokensIn: number | null;
+  tokensOut: number | null;
+  tokensInUnmeasured: number;
+  tokensOutUnmeasured: number;
+}
+
+const servedCount = (value: unknown): number | null => {
+  const number = typeof value === 'string' && value.trim() !== '' ? Number(value) : value;
+  return typeof number === 'number' && Number.isFinite(number) && number >= 0 ? number : null;
+};
+
+/**
+ * OMN-21970 AC2: the served per-day totals from delegation.daily.v1's row (its `days` list, served parsed or as JSON
+ * text). Null when no row or no readable list is served, so a caller falls back to counting its own rows and says so;
+ * a day entry missing its date or run count is left out rather than guessed.
+ */
+export function servedDailyDays(rows: readonly unknown[]): ServedDay[] | null {
+  const row = rows.find((candidate): candidate is Record<string, unknown> => candidate !== null && typeof candidate === 'object');
+  if (!row) return null;
+  let days: unknown = row.days;
+  if (typeof days === 'string') {
+    try { days = JSON.parse(days); } catch { return null; }
+  }
+  if (!Array.isArray(days)) return null;
+  const served: ServedDay[] = [];
+  for (const entry of days) {
+    if (entry === null || typeof entry !== 'object') continue;
+    const item = entry as Record<string, unknown>;
+    const day = typeof item.day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(item.day) ? item.day : null;
+    const runs = servedCount(item.runs);
+    if (day === null || runs === null) continue;
+    served.push({
+      day, runs,
+      passed: servedCount(item.passed) ?? 0,
+      failed: servedCount(item.failed) ?? 0,
+      unrecorded: servedCount(item.unrecorded) ?? 0,
+      tokensIn: servedCount(item.tokensIn),
+      tokensOut: servedCount(item.tokensOut),
+      tokensInUnmeasured: servedCount(item.tokensInUnmeasured) ?? 0,
+      tokensOutUnmeasured: servedCount(item.tokensOutUnmeasured) ?? 0,
+    });
+  }
+  return served;
 }

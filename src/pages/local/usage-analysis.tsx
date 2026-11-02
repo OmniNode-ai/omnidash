@@ -1,6 +1,6 @@
 import { useMemo, useState, type CSSProperties } from 'react';
 import { Link } from 'wouter';
-import { modelColor } from '@/lib/dashboard-colors';
+
 import { formatUsd } from '@/lib/currency';
 import { DashboardTabs, DashboardToggle } from '@/components/dashboard/DashboardTabs';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
@@ -9,6 +9,7 @@ import {
   coverageOf, groupDecisions, matrixOf, NOT_RECORDED, OTHER, qualityTrend, routesOf, SMALL_SAMPLE, SPARK_DAYS, totalsOf,
   type Group, type GroupBy, type Totals, type TrendDay, type TrendSeriesBy,
 } from './decision-analysis';
+import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
 
 /**
  * OMN-21166 part 29 (revision 6) AC194 and AC195: Usage analysis, read from the latest N served decisions (Langfuse's
@@ -51,6 +52,7 @@ function Sparkline({ group }: { group: Group }) {
 }
 
 function QualityChart({ groups }: { groups: Group[] }) {
+  const modelColor = useModelColor();
   const [active, setActive] = useState<string | null>(null);
   const plotted = groups.filter(group => group.name !== NOT_RECORDED && group.spend !== null && group.spendMeasured > 0 && group.verdicts > 0);
   const unplotted = groups.filter(group => !plotted.includes(group));
@@ -90,10 +92,12 @@ function QualityChart({ groups }: { groups: Group[] }) {
     <p className="local-dashboard-caption usage-analysis-readout" data-quality-readout aria-hidden="true">{active ?? ''}</p>
     {unplotted.length > 0 && <p className="local-dashboard-caption" data-quality-unplotted>
       Not drawn (no measured cost or no verdicts): {unplotted.map(group => group.name).join(', ')}</p>}
+    <TierLegend label="Cost versus quality tier colours" models={plotted.map(group => group.name)} />
   </figure>;
 }
 
 function GroupsView({ decisionRows }: { decisionRows: readonly unknown[] }) {
+  const modelColor = useModelColor();
   const [by, setBy] = useState<GroupBy>('model');
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'runs', dir: 'desc' });
   const groups = useMemo(() => groupDecisions(decisionRows, by), [decisionRows, by]);
@@ -128,6 +132,7 @@ function GroupsView({ decisionRows }: { decisionRows: readonly unknown[] }) {
         </tr>)}</tbody>
       </table>
     </div>
+    {by === 'model' && <TierLegend label="Usage by model tier colours" models={groups.map(group => group.name)} />}
   </>;
 }
 
@@ -162,6 +167,7 @@ function matrixFigure(totals: Totals, metric: MatrixMetric): [string, string] {
  * A cell under five verdicts is marked a small sample, a pair with no runs reads no runs, and each cell opens its runs.
  */
 function DecisionMatrix({ decisionRows }: { decisionRows: readonly unknown[] }) {
+  const modelColor = useModelColor();
   const [metric, setMetric] = useState<MatrixMetric>('pass');
   const [columnsBy, setColumnsBy] = useState<'task' | 'tier'>('task');
   const matrix = useMemo(() => matrixOf(decisionRows, 'model', columnsBy), [decisionRows, columnsBy]);
@@ -196,6 +202,7 @@ function DecisionMatrix({ decisionRows }: { decisionRows: readonly unknown[] }) 
         </tr>)}</tbody>
       </table>
     </div>
+    <TierLegend label="Model matrix tier colours" models={matrix.rows} />
   </>;
 }
 
@@ -217,6 +224,7 @@ function trendLabel(day: TrendDay, metric: TrendMetric): string {
  * says so; neither is drawn as 0. Each day with runs opens Runs for that day (and that series).
  */
 function QualityTrend({ decisionRows }: { decisionRows: readonly unknown[] }) {
+  const modelColor = useModelColor();
   const [metric, setMetric] = useState<TrendMetric>('pass');
   const [by, setBy] = useState<TrendSeriesBy>('all');
   const series = useMemo(() => qualityTrend(decisionRows, by), [decisionRows, by]);
@@ -262,6 +270,7 @@ function QualityTrend({ decisionRows }: { decisionRows: readonly unknown[] }) {
           <span className="usage-trend-date">{index % 2 === days.length % 2 ? '' : dayLabel(day.day)}</span></li>)}</ol>
       </div>
     </div>
+    {by === 'model' && <TierLegend label="Quality over time tier colours" models={series.map(line => line.name)} />}
   </figure>;
 }
 

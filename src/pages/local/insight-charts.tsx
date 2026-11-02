@@ -1,5 +1,5 @@
 import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
-import { modelColor } from '@/lib/dashboard-colors';
+
 import { formatDashboardUsd } from '@/lib/dashboard-currency';
 import { formatDuration } from '@/components/format/duration';
 import { createContext, useContext, useId, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
@@ -11,12 +11,13 @@ import { Link, useLocation, useSearch } from 'wouter';
 import { DEFAULT_RUNS_VIEW, readRunsSearch, writeRunsSearch } from '@/navigation/runs-url-state';
 import {
   NOT_RECORDED, causes, countBy, durationBuckets, summary, toInsightRuns, windowDays, windowRuns,
-  type InsightDay, type InsightRun,
+  type InsightDay, type InsightRun, type ServedDay,
 } from './insights';
 import {
   aggregateMeteringRange, aggregateMeteringWindow, compareWindow, durationBucketLabel, durationEdges, meteringAllTimeTotals,
   type MeteringWindow,
 } from './insight-aggregates';
+import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
 
 /**
  * OMN-21166 AC26 (mockup build; rule change R-B, Lakshman 2026-10-18): the Overview's trends and breakdowns, counted
@@ -241,7 +242,7 @@ function PassRateTrend({ days }: { days: InsightDay[] }) {
       <Readout active={active !== null} text={active ? <>{dayLabel(active.day)} · <span data-field-tone="pass" data-field-unavailable={active.passRate === null}>{active.passRate === null ? 'no verdicts' : `${active.passRate.toFixed(1)}% passed`}</span> · <span data-field-tone="basis">{verdictCoverage(active.passed + active.failed, active.runs)}</span></> : `Scale from ${min}% to 100%`} />
       <div className="ins-plot">
         <svg viewBox="0 0 600 120" preserveAspectRatio="none" role="img" aria-label="Pass rate per day">
-          <path className="od-draw" d={path} fill="none" stroke={PASS} strokeWidth={3} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+          <path className="od-draw" d={path} pathLength={1} fill="none" stroke={PASS} strokeWidth={3} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
         </svg>
         {/* A dot on every day that has a verdict, so a single day of runs still shows (a line needs two). */}
         {rates.map((rate, index) => rate === null ? null : (
@@ -364,6 +365,7 @@ function DurationHistogram({ runs }: { runs: InsightRun[] }) {
 }
 
 function ModelScoreboard({ runs }: { runs: InsightRun[] }) {
+  const modelColor = useModelColor();
   // OMN-21166 AC64: the pass rate per model as ranked bars; a model with no verdicts is drawn as not measured.
   const groups = countBy(runs, 'model');
   return (
@@ -377,6 +379,7 @@ function ModelScoreboard({ runs }: { runs: InsightRun[] }) {
         })}
         // Each model's verdict coverage in plain text under the bars, so keyboard and touch readers have it too.
         footnote={groups.map(group => `${group.key}: ${verdictCoverage(group.passed + group.failed, group.runs)}`).join(' · ')} />
+      <TierLegend label="Model scoreboard tier colours" models={groups.map(group => group.key)} />
     </ChartCard>
   );
 }
@@ -536,10 +539,42 @@ function selectedRuns(runs: readonly InsightRun[], now: number, window: Activity
   return runs.filter(run => run.day >= window.start && run.day <= window.end);
 }
 
-function plottedDays(runs: readonly InsightRun[], now: number, window: ActivityWindow): string[] {
+function plottedDays(runs: readonly InsightRun[], now: number, window: ActivityWindow, servedDays: readonly ServedDay[] | null = null): string[] {
   if (window.kind === 'days') return windowDays(now, window.days);
   if (window.kind === 'custom') return customRangeDays(window.start, window.end);
+  // OMN-21970 AC2: with served per-day totals, All is every day from the oldest served day with runs to today, with no
+  // 30-day cap, so the drawn runs add up to every served run (the measured store spans 35 days). Without them the
+  // existing presentation cap stays, since the rows alone cannot show the whole history.
+  const oldestServed = (servedDays ?? []).filter(day => day.runs > 0).map(day => day.day).sort()[0];
+  if (oldestServed !== undefined) {
+    const today = Date.parse(`${new Date(now).toISOString().slice(0, 10)}T00:00:00Z`);
+    const span = Math.round((today - Date.parse(`${oldestServed}T00:00:00Z`)) / 86_400_000) + 1;
+    return windowDays(now, Math.max(span, allTimeDays(runs, now)));
+  }
   return windowDays(now, allTimeDays(runs, now));
+}
+
+/**
+ * OMN-21970 AC2, AC4: each plotted day's runs, verdicts and tokens from the served per-day totals, which count every
+ * run of the day; a day the totals do not list had no runs. Spend and duration stay counted from the page's rows.
+ */
+function withServedTotals(days: readonly InsightDay[], servedDays: readonly ServedDay[] | null): InsightDay[] {
+  if (servedDays === null) return [...days];
+  const byDay = new Map(servedDays.map(day => [day.day, day]));
+  return days.map(day => {
+    const served = byDay.get(day.day);
+    if (!served) {
+      return { ...day, runs: 0, passed: 0, failed: 0, unrecorded: 0, passRate: null,
+        tokensIn: 0, tokensOut: 0, tokensInUnmeasured: 0, tokensOutUnmeasured: 0 };
+    }
+    return {
+      ...day,
+      runs: served.runs, passed: served.passed, failed: served.failed, unrecorded: served.unrecorded,
+      passRate: served.passed + served.failed > 0 ? (served.passed / (served.passed + served.failed)) * 100 : null,
+      tokensIn: served.tokensIn, tokensOut: served.tokensOut,
+      tokensInUnmeasured: served.tokensInUnmeasured, tokensOutUnmeasured: served.tokensOutUnmeasured,
+    };
+  });
 }
 
 function seriesForDays(runs: readonly InsightRun[], days: readonly string[]) {
@@ -720,16 +755,24 @@ function allTimeDays(runs: readonly InsightRun[], now: number): number {
  * node_projection_delegation contract; a read that returns this many rows may have left older runs out. */
 export const DECISIONS_READ_LIMIT = 500;
 
-/** OMN-21166 part 21 AC142: the line under an Overview chart, only when the chart does not draw every run. */
-export function chartLimitLine(servedCount: number, undatedCount: number): string | null {
+/**
+ * OMN-21166 part 21 AC142: the line under an Overview chart, only when the chart does not draw every run. OMN-21970
+ * AC3: the latest-500 notice is gone. A read that walked every page draws every run and carries no notice; a walk that
+ * could not finish (a failed page, a server that does not page) says how many runs it read and that the rest were not.
+ */
+export function chartLimitLine(servedCount: number, undatedCount: number, complete = false): string | null {
   const parts: string[] = [];
-  if (servedCount >= DECISIONS_READ_LIMIT) parts.push(`Showing the latest ${count(DECISIONS_READ_LIMIT)} runs`);
+  if (!complete && servedCount >= DECISIONS_READ_LIMIT) parts.push(`Showing ${count(servedCount)} runs read; the rest could not be read`);
   if (undatedCount > 0) parts.push(undatedCount === 1 ? '1 run has no date and is not drawn' : `${count(undatedCount)} runs have no date and are not drawn`);
   return parts.length > 0 ? parts.join(' · ') : null;
 }
 
-export function InsightsSection({ decisions, now, view = 'all', onInspectFailure, more }: {
+export function InsightsSection({ decisions, now, view = 'all', onInspectFailure, more, servedDays = null, complete = false }: {
   decisions: readonly unknown[]; now: number; view?: 'all' | 'summary' | 'analysis' | 'runs' | 'tokens' | 'failures'; onInspectFailure?: (cause: string) => void;
+  /** OMN-21970 AC2: delegation.daily.v1's per-day totals; when served, the daily charts draw them instead of the rows. */
+  servedDays?: readonly ServedDay[] | null;
+  /** OMN-21970 AC3: true when the decisions read walked every page, so the rows are every served run. */
+  complete?: boolean;
   /** OMN-21166 part 13: on the summary view, further detail shown inside the section's closed "More activity". */
   more?: ReactNode;
 }) {
@@ -739,9 +782,9 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
   const setWindow = pageWindow !== null && typeof pageWindow === 'object' ? pageWindow.setWindow : setOwnWindow;
   const all = toInsightRuns(decisions);
   const runs = selectedRuns(all, now, window);
-  const chartDaysList = plottedDays(all, now, window);
+  const chartDaysList = plottedDays(all, now, window, servedDays);
   const chartRuns = all.filter(run => chartDaysList.includes(run.day));
-  const chartDays = seriesForDays(chartRuns, chartDaysList);
+  const chartDays = withServedTotals(seriesForDays(chartRuns, chartDaysList), servedDays);
   // The exposure returns only its latest rows. A calendar axis is not proof
   // that earlier days contain no runs; disclose the actual received span.
   const times = all.map(run => run.at);
@@ -751,13 +794,17 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
   const undatedCount = servedCount - all.length;
   const customIncomplete = window.kind === 'custom' && (window.start === '' || window.end === '');
   const customReversed = window.kind === 'custom' && window.start !== '' && window.end !== '' && window.end < window.start;
+  // OMN-21970 AC3: a complete read is every served run, so the caption no longer calls them the latest ones.
+  const served = complete ? 'served runs' : 'latest';
   const population = window.kind === 'all'
-    ? undatedCount === 0 ? `Latest ${count(servedCount)} served runs · ${windowCaption(window)}` : `${count(runs.length)} of the latest ${count(servedCount)} served runs · ${windowCaption(window)}`
+    ? undatedCount === 0 ? `${complete ? '' : 'Latest '}${count(servedCount)} served runs · ${windowCaption(window)}`
+      : `${count(runs.length)} of the ${served === 'latest' ? `latest ${count(servedCount)} served runs` : `${count(servedCount)} served runs`} · ${windowCaption(window)}`
     : window.kind === 'custom' && (customIncomplete || customReversed || runs.length === 0)
-      ? `Latest ${count(servedCount)} served runs · ${windowCaption(window)}`
-      : `${count(runs.length)} of the latest ${count(servedCount)} served runs · ${windowCaption(window)}`;
+      ? `${complete ? '' : 'Latest '}${count(servedCount)} served runs · ${windowCaption(window)}`
+      : `${count(runs.length)} of the ${served === 'latest' ? `latest ${count(servedCount)} served runs` : `${count(servedCount)} served runs`} · ${windowCaption(window)}`;
   const undated = undatedCount > 0 ? ` · ${count(undatedCount)} undated ${undatedCount === 1 ? 'row' : 'rows'} excluded` : '';
-  const limitLine = chartLimitLine(servedCount, undatedCount);
+  const limitLine = chartLimitLine(servedCount, undatedCount, complete);
+  const earlier = complete ? '' : ' · Earlier activity is not included';
   const emptyMessage = customIncomplete ? 'Choose both UTC dates for this range'
     : customReversed ? 'End date must be on or after the start date'
       : runs.length === 0 ? window.kind === 'custom' ? 'No runs in this date range'
@@ -797,7 +844,7 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
           </div>
         </div>
       )}
-      <p className="local-dashboard-caption ins-sub" data-testid="insights-total">{population}{undated}{view === 'summary' ? null : <> · Row timestamps: {servedSpan} · Earlier activity is not included{window.kind === 'days' ? '' : ' · Comparisons with the previous window appear for 1, 7, 15 and 30 days'}{window.kind === 'all' || window.kind === 'custom' ? ` · Charts show at most ${MAX_ALL_TIME_DAYS} UTC days; ${count(chartRuns.length)} of ${count(runs.length)} selected runs plotted` : ''}</>}</p>
+      <p className="local-dashboard-caption ins-sub" data-testid="insights-total">{population}{undated}{view === 'summary' ? null : <> · Row timestamps: {servedSpan}{earlier}{window.kind === 'days' ? '' : ' · Comparisons with the previous window appear for 1, 7, 15 and 30 days'}{window.kind === 'all' || window.kind === 'custom' ? ` · Charts show at most ${MAX_ALL_TIME_DAYS} UTC days; ${count(chartRuns.length)} of ${count(runs.length)} selected runs plotted` : ''}</>}</p>
       {emptyMessage !== null ? <p className="local-dashboard-empty ins-empty" role="status" aria-label="Insights">{emptyMessage}</p> : (
         <div className="overview-chart-sections">
           {view === 'all' && <RunWindowKpis runs={runs} decisions={decisions} now={now} days={window.kind === 'days' ? window.days : MAX_ALL_TIME_DAYS} label={windowCaption(window)} comparisonEnabled={window.kind === 'days'} />}
@@ -816,7 +863,7 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
       {view === 'summary' && emptyMessage === null && (
         <details className="local-more">
           <summary>More activity</summary>
-          <p className="local-dashboard-caption ins-sub">{population}{undated} · Row timestamps: {servedSpan} · Earlier activity is not included{window.kind === 'days' ? '' : ' · Comparisons with the previous window appear for 1, 7, 15 and 30 days'}{window.kind === 'all' || window.kind === 'custom' ? ` · Charts show at most ${MAX_ALL_TIME_DAYS} UTC days; ${count(chartRuns.length)} of ${count(runs.length)} selected runs plotted` : ''}</p>
+          <p className="local-dashboard-caption ins-sub">{population}{undated} · Row timestamps: {servedSpan}{earlier}{window.kind === 'days' ? '' : ' · Comparisons with the previous window appear for 1, 7, 15 and 30 days'}{window.kind === 'all' || window.kind === 'custom' ? ` · Charts show at most ${MAX_ALL_TIME_DAYS} UTC days; ${count(chartRuns.length)} of ${count(runs.length)} selected runs plotted` : ''}</p>
           <RunWindowKpis runs={runs} decisions={decisions} now={now} days={window.kind === 'days' ? window.days : MAX_ALL_TIME_DAYS} label={windowCaption(window)} comparisonEnabled={window.kind === 'days'} />
           {more}
         </details>

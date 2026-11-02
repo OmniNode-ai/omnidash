@@ -3,12 +3,13 @@ import { RankedBars } from '@/components/dashboard/RankedBars';
 import { UsageAnalysis } from './usage-analysis';
 import { DEFAULT_RUNS_VIEW, writeRunsSearch } from '@/navigation/runs-url-state';
 import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
-import { modelColor, tierColor } from '@/lib/dashboard-colors';
+import { tierColor } from '@/lib/dashboard-colors';
 import { formatDashboardUsd } from '@/lib/dashboard-currency';
 import { sumDashboardUsd } from '@/lib/dashboard-money-total';
 import { GroupedBars } from '@/components/dashboard/GroupedBars';
 import { aggregateUsageRows, type UsageAggregates } from './insight-aggregates';
 import { tierLabel } from './plain-text';
+import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
 
 const USAGE_WINDOW_DAYS = 30;
 
@@ -77,6 +78,7 @@ function routeSpendByTier(row: Row): RouteRow[] {
 }
 
 function SpendByModel({ data }: { data: UsageAggregates }) {
+  const modelColor = useModelColor();
   // OMN-21166 AC64: ranked bars, one per model; a model whose spend is not measured is drawn as not measured, never $0.00.
   const priced = data.models.filter(model => model.measuredCost !== null);
   const totalUsd = sumDashboardUsd(priced.map(model => model.measuredCostUsd));
@@ -93,6 +95,7 @@ function SpendByModel({ data }: { data: UsageAggregates }) {
           href: `/runs?${writeRunsSearch('', { ...DEFAULT_RUNS_VIEW, model: model.model })}`, opensLabel: `Opens Runs filtered to ${model.model}`,
         }))}
         footnote={gaps.length > 0 ? gaps.map(model => `${model.model}: ${model.unmeasuredCalls === null ? 'unmeasured runs not recorded' : `${count(model.unmeasuredCalls)} unmeasured`}`).join(' · ') : undefined} />
+      <TierLegend label="Spend by model tier colours" models={data.models.map(model => model.model)} />
       <p className="local-dashboard-caption">Measured spend only, summed from the latest {USAGE_WINDOW_DAYS} UTC days of served usage rows.</p>
     </figure>
   );
@@ -123,6 +126,7 @@ function CostPerRun({ data, titled }: { data: UsageAggregates; titled: boolean }
 
 /** Part 17 AC114: tokens in and out per model as hatched grouped bars; a count not recorded draws no bar. */
 function TokensByModel({ data, titled }: { data: UsageAggregates; titled: boolean }) {
+  const modelColor = useModelColor();
   const words = (value: number | null) => (value === null ? 'Not recorded' : formatFullCount(value));
   return <figure className="local-chart usage-insight" aria-label="Tokens in vs out by model">
     {titled && <h3><ConceptIcon concept="tokens-model" size={16} />Tokens in vs out by model</h3>}
@@ -138,6 +142,7 @@ function TokensByModel({ data, titled }: { data: UsageAggregates; titled: boolea
           ],
         }))} />
     )}
+    {data.models.length > 0 && <TierLegend label="Tokens by model tier colours" models={data.models.map(model => model.model)} />}
   </figure>;
 }
 

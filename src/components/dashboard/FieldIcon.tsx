@@ -1,8 +1,8 @@
 import {
-  Antenna, ArrowDown, ArrowLeftRight, ArrowUp, Award, BadgeInfo, Banknote, Bot, Boxes, Brain, BrainCircuit,
+  Antenna, ArrowDown, ChevronsUp, Gauge, WholeWord, ArrowLeftRight, ArrowUp, Award, BadgeInfo, Banknote, Bot, Boxes, Brain, BrainCircuit,
   Building2, CalendarClock, CalendarDays, CalendarRange, ChartArea, ChartBar, ChartBarStacked, ChartColumnStacked,
   ChartGantt, ChartLine, ChartPie, ChartSpline, CheckCheck, CircleCheck, CircleDollarSign, CircleDot, CircleEllipsis,
-  CircleHelp, CircleX, ClipboardCheck, Clock3, Cloud, Cloudy, CodeXml, Coins, Cpu, DatabaseZap, Divide, Feather,
+  CircleHelp, CircleX, ClipboardCheck, Clock3, Cloud, Cloudy, CodeXml, Cpu, DatabaseZap, Divide, Feather,
   FileClock, FileText, Files, Fingerprint, Flag, FlagTriangleRight, Footprints, GitBranch, GitFork,
   GitPullRequest, Globe, HardDrive, Hash, History, Hourglass, House, IdCard, Inbox, Key, KeyRound, Layers, Layers2,
   ListChecks, LockKeyhole, Logs, Medal, MessageSquareText, MessagesSquare, Milestone, Monitor, MousePointerClick,
@@ -11,9 +11,9 @@ import {
   Target, TestTube, Timer, TimerReset, TrendingUp, TriangleAlert, Trophy, UserLock, Waypoints, Zap, type LucideIcon
 } from 'lucide-react';
 import { fieldTone, isUnavailableField } from './field-identity';
-import { modelIdentityStyle } from './model-identity';
 import { tierColor } from '@/lib/dashboard-colors';
 import type { CSSProperties } from 'react';
+import { useModelIdentityStyle } from '@/components/dashboard/model-tiers';
 
 /**
  * Canonical field identities, reused wherever the same fact is displayed. OMN-21166 part 28a (Lakshman 2026-10-27, grey
@@ -24,7 +24,8 @@ export const FIELD_ICONS: Readonly<Record<string, LucideIcon>> = {
   pass: CircleCheck, fail: CircleX, count: ListChecks, score: Star, threshold: Ruler,
   model: BrainCircuit, age: Clock3, identity: Fingerprint, duration: Timer,
   cost: CircleDollarSign, savings: PiggyBank, backend: Server, host: Monitor,
-  'tokens-in': ArrowDown, 'tokens-out': ArrowUp, tokens: Coins, basis: BadgeInfo,
+  // OMN-21970 AC8: tokens are words, not money, so they no longer share a coin glyph with spend.
+  'tokens-in': ArrowDown, 'tokens-out': ArrowUp, tokens: WholeWord, basis: BadgeInfo,
   task: FileText, tier: Layers, queue: Hourglass, execution: Zap, completion: Flag,
   calls: Bot, tenant: Building2, session: MessagesSquare, baseline: Scale,
   'saving-average': Divide, compression: Shrink, cache: DatabaseZap,
@@ -57,6 +58,8 @@ export const FIELD_ICONS: Readonly<Record<string, LucideIcon>> = {
   selected: MousePointerClick, 'recorded-rows': Sheet,
   // OMN-21166 part 30 (revision 7): Runs' analysis views and its routing groups.
   'runs-analysis': PanelsTopLeft, 'run-routes': GitFork,
+  // OMN-21970 AC8: the Runs cards' p95 duration and escalated runs have their own concepts, colours and glyphs.
+  'duration-p95': Gauge, escalated: ChevronsUp,
 };
 
 /** Canonical readable names for consumers whose label is not a field alias. */
@@ -95,9 +98,11 @@ export const CONCEPT_LABELS: Readonly<Record<string, string>> = {
   'load-slow': 'Data read delayed', 'load-error': 'Data read failed',
   selected: 'Selected run', 'recorded-rows': 'Recorded rows',
   'runs-analysis': 'Analysis views', 'run-routes': 'Routing',
+  'duration-p95': 'p95 duration', escalated: 'Escalated runs',
 };
 
 export function ConceptIcon({ concept, label, value, size = 12 }: { concept: string; label?: string; value?: unknown; size?: number }) {
+  const modelIdentityStyle = useModelIdentityStyle();
   const Icon = FIELD_ICONS[concept];
   const model = concept === 'model' && typeof value === 'string' && !isUnavailableField(value) ? value : null;
   const tier = concept.startsWith('tier-') && typeof value === 'string' ? value : null;

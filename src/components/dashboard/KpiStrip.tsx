@@ -7,6 +7,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { CardBasis } from '@/components/dashboard/CardBasis';
+import { CountUpText } from '@/components/dashboard/CountUpText';
 
 /** A figure's served value per UTC day (oldest first), and how to write one value. */
 export interface KpiTrend {
@@ -70,7 +71,7 @@ export function KpiStrip({ label, items }: { label: string; items: readonly KpiI
               data-field-unavailable={item.unavailable ? 'true' : undefined} style={{ '--panel-accent': item.accent } as CSSProperties}>
               <h2>{item.concept && <ConceptIcon concept={item.concept} label={item.label} size={14} />}{item.label}</h2>
               <p className="local-dashboard-metric" data-measured={item.unavailable ? 'false' : 'true'} title={item.title}
-                style={{ '--figure-chars': String(item.value).length } as CSSProperties}>{item.value}</p>
+                style={{ '--figure-chars': String(item.value).length } as CSSProperties}>{!item.unavailable && typeof item.value === 'string' ? <CountUpText text={item.value} /> : item.value}</p>
               {lines.length > 0 && <CardBasis label={item.label}>{lines.map(line => <p key={line} className="local-dashboard-caption">{line}</p>)}</CardBasis>}
             </article>
           );

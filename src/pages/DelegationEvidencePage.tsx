@@ -54,12 +54,13 @@ import {
   captionText, meteringMoneyBasis, meteringTokens, overviewHeadlineSource, pickMeteringRow, runBreakdownText, runModelledCell,
 } from '@/pages/LocalDashboardPage';
 import { overviewRunCount } from '@/lib/dashboard-overview-count';
-import { modelColor } from '@/lib/dashboard-colors';
+
 import { formatDuration } from '@/components/format/duration';
 import { percent as sharePercent } from '@/pages/local/shares';
 import { taskLabel } from '@/pages/local/plain-text';
 import { readableTime } from '@/components/format/readable-time';
-import { modelIdentityStyle } from '@/components/dashboard/model-identity';
+import { ModelTiersContext, TierLegend, useModelColor, useModelIdentityStyle } from '@/components/dashboard/model-tiers';
+import { modelTiersFrom } from '@/lib/dashboard-colors';
 
 /**
  * OMN-21166 AC72 pass 1: a rate on Evidence reads to one decimal, as Overview writes the same served rate (91.6%, not
@@ -266,6 +267,7 @@ function SelectedRun({ correlationId, decision }: { correlationId: string | null
 // ── model routing (aggregate — no correlation_id) ────────────────────────────
 
 function ModelRouting() {
+  const modelColor = useModelColor();
   const { data, isLoading } = useDelegationModelRouting();
   if (isLoading || !data) {
     return <Panel title="MODEL ROUTING"><EvEmpty title="Loading…" /></Panel>;
@@ -290,6 +292,7 @@ function ModelRouting() {
           key: model, name: model, value: count, basis: 'measured' as const, color: modelColor(model),
           display: `${formatDashboardCount(count)} · ${sharePercent(count / agg.total_delegations)}`,
         }))} />
+      <TierLegend label="Delegations by model tier colours" models={[...byModel.keys()]} />
     </Panel>
   );
 }
@@ -372,6 +375,7 @@ const attempts = (value: unknown) => {
  * is left out.
  */
 function AcceptanceChecks({ q }: { q: QualityGateRow }) {
+  const modelIdentityStyle = useModelIdentityStyle();
   const checks = Array.isArray(q.by_check_type) ? q.by_check_type : [];
   const byModel = Array.isArray(q.tokens_to_compliance_by_model) ? q.tokens_to_compliance_by_model : [];
   return (
@@ -441,12 +445,13 @@ function TriageRows({ rows, denominator, kind }: {
 }
 
 /** AC205/AC205a: quality categories describe all-time checks; model and task groups describe only the served sample. */
-function FailureTriage({ decisions, available }: { decisions: readonly DelegationDecisionRow[]; available: boolean }) {
+export function FailureTriage({ decisions, available, complete = false }: { decisions: readonly DelegationDecisionRow[]; available: boolean; complete?: boolean }) {
   const qualityQ = useDelegationQualityGate();
   const quality = qualityQ.data?.rows[0];
   const failed = decisions.filter(isFailedDecision);
   const sampleLine = available
-    ? `${formatDashboardCount(failed.length)} failed of ${formatDashboardCount(decisions.length)} latest served runs`
+    // OMN-21970: a read that walked every page holds every served run, so the caption does not call them the latest.
+    ? `${formatDashboardCount(failed.length)} failed of ${formatDashboardCount(decisions.length)} ${complete ? 'served runs' : 'latest served runs'}`
     : 'Latest served runs: Not measured';
   const grouped = (kind: 'model' | 'task') => {
     const groups = new Map<string, number>();
@@ -557,6 +562,7 @@ function SavingsPanel({ money, unavailable }: { money: HeadlineMoney | null; una
 // ── token usage (by model) ───────────────────────────────────────────────────
 
 function TokenUsage() {
+  const modelColor = useModelColor();
   const { data, isLoading } = useDelegationTokenUsage();
   if (isLoading || !data) {
     return <Panel title="TOKEN USAGE"><EvEmpty title="Loading…" /></Panel>;
@@ -586,6 +592,7 @@ function TokenUsage() {
           basis: m.token_provenance === 'measured' ? 'measured' as const : 'estimated' as const,
           display: `${formatFullCount(m.total_tokens)} tokens`,
         }))} />
+      <TierLegend label="Token usage tier colours" models={models.map(m => m.model_id)} />
     </Panel>
   );
 }
@@ -629,6 +636,7 @@ function DecisionDetail({ row }: { row: DelegationDecisionRow }) {
 }
 
 function RecentDelegations({ decisions }: { decisions: DelegationDecisionRow[] }) {
+  const modelIdentityStyle = useModelIdentityStyle();
   const cols: DataColumn<DelegationDecisionRow>[] = [
     { key: 'correlation_id', label: 'Correlation', render: (r) => <span className="mono c-blue">{shortId(r.correlation_id)}</span> },
     { key: 'task_type', label: 'Task', grow: true, render: (r) => taskLabel(r.task_type) },
@@ -652,6 +660,7 @@ function RecentDelegations({ decisions }: { decisions: DelegationDecisionRow[] }
         rowKey={(r) => r.correlation_id}
         renderDetail={(r) => <DecisionDetail row={r} />}
       />
+      <TierLegend label="Recent delegations tier colours" models={decisions.map(r => r.model_name)} />
     </Panel>
   );
 }
@@ -916,6 +925,8 @@ export function DelegationEvidencePage() {
   ) : null;
 
   return (
+    // OMN-21970 AC5: a model is its tier's colour here too, from the served runs and token rows that name both.
+    <ModelTiersContext.Provider value={modelTiersFrom([...decisions, ...(tokensQ.data?.rows ?? [])])}>
     <EvPageShell
       crumb="OmniDash · Delegation Evidence"
       title="Delegation Evidence"
@@ -944,7 +955,8 @@ export function DelegationEvidencePage() {
         <div className="maple-cell maple-cell--wide"><SelectedRun correlationId={latestCid} decision={decisions[0]} /></div>
         <div className="maple-cell"><QualityGate /></div>
         <div className="maple-cell maple-cell--full"><FailureTriage decisions={decisions}
-          available={!decisionsQ.isLoading && !!decisionsQ.data && !decisionsQ.data.degradedReason} /></div>
+          available={!decisionsQ.isLoading && !!decisionsQ.data && !decisionsQ.data.degradedReason}
+          complete={decisionsQ.data?.complete === true} /></div>
         <div className="maple-cell maple-cell--full"><ModelRouting /></div>
         <div className="maple-cell maple-cell--full"><SavingsPanel money={headline.money} unavailable={headline.unavailable} /></div>
         <div className="maple-cell maple-cell--full"><SavingsBridge rows={meteringQ.data?.rows} loading={meteringQ.isLoading} /></div>
@@ -962,5 +974,6 @@ export function DelegationEvidencePage() {
         <RecentDelegations decisions={decisions} />
       )}
     </EvPageShell>
+    </ModelTiersContext.Provider>
   );
 }

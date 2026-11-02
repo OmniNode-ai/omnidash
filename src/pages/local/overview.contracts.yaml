@@ -167,6 +167,17 @@
             "task_type",
             "model_name"
           ]
+        },
+        {
+          "binding_id": "overview-insights-daily",
+          "projection_topic": "onex.snapshot.projection.delegation.daily.v1",
+          "ordering_authority_field": "latest_projection_updated_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "tenant_id",
+            "days",
+            "total_runs"
+          ]
         }
       ],
       "supported_empty_state_reasons": [
