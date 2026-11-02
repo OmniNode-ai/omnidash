@@ -1,5 +1,7 @@
 import { expect, test } from 'playwright/test';
 import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+// OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the window radios sit in one dropdown; chooseWindow opens it and proves it closed.
+import { chooseWindow, openWindows } from './overview-window-menu';
 
 // RED-first AC26/27/29 regressions. The served fixtures deliberately include nulls,
 // measured zero, a complete previous window, a truncated comparison, and all-unmeasured calls.
@@ -57,10 +59,11 @@ test('AC26 Overview applies the selected window to cards and charts and never in
   await page.goto('/overview');
   // Live review 2026-10-25 ("unified"): the window presets are the header's one control (radiogroup "Figures for"),
   // driving the cards and the charts; the custom dates are its calendar.
-  const window = page.getByRole('radiogroup', { name: 'Figures for', exact: true });
+  // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): those radios now sit in the list the "Figures for" button opens.
+  const window = await openWindows(page);
   await expect(window.getByRole('radio', { name: 'Last 7 days (UTC)', exact: true })).toBeVisible();
   await expect(window.getByRole('radio', { name: 'Last 15 days (UTC)', exact: true })).toBeVisible();
-  await window.getByRole('radio', { name: 'Last 7 days (UTC)', exact: true }).click();
+  await chooseWindow(page, 'Last 7 days (UTC)');
   // OMN-21166 AC86 (Lakshman 2026-10-25): the Quality panel's pass-rate trend, "More activity" (its window run and spend
   // cards and Median duration), Cumulative savings and Spend vs all-cloud are deleted from Overview, so the complete-
   // period comparison checks on them are retired. What stays: the window drives the cards and the Runs per day chart,
@@ -89,7 +92,7 @@ test('AC26 Overview applies the selected window to cards and charts and never in
     { tenant_id: 'mock-tenant', window_kind: 'all', window_start: null, spend_usd: '9.99', savings_usd: '8.88', counterfactual_usd: '18.87', runs_total: 5 },
   ] }));
   await page.goto('/overview');
-  await page.getByRole('radiogroup', { name: 'Figures for', exact: true }).getByRole('radio', { name: 'Last 7 days (UTC)', exact: true }).click();
+  await chooseWindow(page, 'Last 7 days (UTC)');
   // An all-time row serves no day, so the 7-day cards stay unmeasured and none of its figures leaks in.
   await expect(page.locator('[data-component="overview-savings"] .local-dashboard-metric')).toHaveText('Not measured: daily totals unavailable (UTC)');
   await expect(page.locator('.local-overview-summary')).not.toContainText('8.88');

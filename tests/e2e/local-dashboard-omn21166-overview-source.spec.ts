@@ -1,5 +1,7 @@
 import { test, expect, type Page } from 'playwright/test';
 import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+// OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the window radios sit in one dropdown; chooseWindow opens it and proves it closed.
+import { chooseWindow } from './overview-window-menu';
 
 // Failure modes: client HTTP hides SQLite backing; reading then falling back masks errors;
 // day rows replace all-time, stale/tied baselines win, missing becomes zero, or the source is unnamed.
@@ -38,9 +40,9 @@ test('declared local-store absence selects metering before a savings read and re
   await totals(page, ['$12.30', '$2.99', '23', '6.13K']);
   for (const id of ids) await expect(card(page, id)).not.toContainText('Source:');
   await expect(card(page, 'overview-savings')).toContainText('42% below the baseline-current baseline (modelled)');
-  await page.getByRole('radio', { name: 'Today (UTC)', exact: true }).click();
+  await chooseWindow(page, 'Today (UTC)');
   await totals(page, ['$0.70', '$1.20', '3', '834']);
-  await page.getByRole('radio', { name: 'All time', exact: true }).click();
+  await chooseWindow(page, 'All time');
   await totals(page, ['$12.30', '$2.99', '23', '6.13K']);
   expect(requests).toContain(metering); expect(requests).not.toContain(overview);
   await page.screenshot({ path: info.outputPath('declared-sqlite-overview.png'), fullPage: true });
@@ -48,13 +50,13 @@ test('declared local-store absence selects metering before a savings read and re
 test('served savings catalogue retains D1 despite conflicting metering and names the selected source', async ({ page }) => {
   await serve(page, 'bus'); await totals(page, ['$99.00', '$98.00', '97', '96']);
   for (const id of ids) await expect(card(page, id)).not.toContainText('Source:');
-  await page.getByRole('radio', { name: 'Today (UTC)', exact: true }).click();
+  await chooseWindow(page, 'Today (UTC)');
   await totals(page, ids.map(() => 'Not measured: daily totals unavailable (UTC)'));
 });
 test('metering chooses newest all-time and day baseline and refuses ties on all four cards', async ({ page }) => {
   await serve(page, 'not_in_local_store', [{ ...all, baseline_model: 'old', as_of: today + 'T09:00:00Z', spend_usd: 77 }, all, day, { ...day, baseline_model: 'twin' }]);
   await totals(page, ['$12.30', '$2.99', '23', '6.13K']);
-  await page.getByRole('radio', { name: 'Today (UTC)', exact: true }).click();
+  await chooseWindow(page, 'Today (UTC)');
   await totals(page, ids.map(() => 'Not measured: 2 baseline models'));
 });
 test('a UTC day with no served metering row is a day with no runs, never yesterday, all-time or legacy figures', async ({ page }) => {
@@ -62,7 +64,7 @@ test('a UTC day with no served metering row is a day with no runs, never yesterd
   // no runs, so Today reads $0.00 / 0 with a hover "No runs today (UTC)"; it still never borrows yesterday, the all-time row or
   // the legacy savings (99 / 98 / 97 / 96).
   await serve(page, 'not_in_local_store', [all, { ...day, window_start: '2000-01-01' }]);
-  await page.getByRole('radio', { name: 'Today (UTC)', exact: true }).click();
+  await chooseWindow(page, 'Today (UTC)');
   await totals(page, ['$0.00', '$0.00', '0', '0']);
   // Part 29 AC191: the basis is the card's caption, always in the page; no About button to focus.
   await expect(card(page, 'overview-spend').locator('.local-card-caption')).toContainText("No runs today (UTC)"); // the Today preset names the day as "today"
@@ -72,7 +74,7 @@ test('a UTC day with no served metering row is a day with no runs, never yesterd
 test('with no metering row read at all, Today stays Not measured rather than zero', async ({ page }) => {
   // OMN-21166 AC85: the zero rule needs metering rows to have been read; with none, the figure is unmeasured.
   await serve(page, 'not_in_local_store', []);
-  await page.getByRole('radio', { name: 'Today (UTC)', exact: true }).click();
+  await chooseWindow(page, 'Today (UTC)');
   for (const id of ids) await expect(figure(page, id)).toContainText('Not measured');
   for (const id of ids) await expect(figure(page, id)).not.toHaveText('$0.00');
 });

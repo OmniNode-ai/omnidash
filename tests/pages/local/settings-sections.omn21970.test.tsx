@@ -5,11 +5,11 @@
 //   S2  a pricing field the row leaves empty renders anyway, or no row at all shows a blank section;
 //   S3  System status leaves out the served store location or state time, or shows a label when they are not served;
 //   S4  the menu misses a section, or links to an id no section has.
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { PricingFacts } from '@/pages/local/pricing';
 import { EnvironmentPanel } from '@/pages/local/environment';
-import { SettingsPage } from '@/pages/SettingsPage';
+import { SettingsPage, sectionFromHash } from '@/pages/SettingsPage';
 
 // The embedded pages are their own tested documents; here only which page each section embeds matters.
 vi.mock('@/pages/LocalDashboardPage', () => ({ LocalDashboardPage: ({ pageName }: { pageName: string }) => <div data-testid="embedded-page">{pageName}</div> }));
@@ -54,16 +54,35 @@ describe('OMN-21970 AC10: System status store location and state time', () => {
   });
 });
 
-describe('OMN-21970 AC10: the Settings menu', () => {
-  it('S4: links each of the four sections, in order, by an id a rendered section has', () => {
+// S4  the menu misses a section or links to none; a section other than the chosen one shows; an unknown hash shows nothing.
+describe('OMN-21970 AC10: the Settings menu down the left', () => {
+  // A link reads its number (aria-hidden) then its title; the title is what names the section.
+  const title = (link: HTMLElement) => (link.textContent ?? '').replace(/^\d{2}/, '');
+  const visible = () => [...document.querySelectorAll('main section.local-settings-section')]
+    .filter(section => !(section as HTMLElement).hidden).map(section => section.querySelector('h2')?.textContent);
+
+  it('S4: lists the four sections in order and shows Model providers when no section is chosen', () => {
+    window.location.hash = '';
     render(<SettingsPage navigationCache={{} as never} />);
     const links = within(screen.getByRole('navigation', { name: 'Settings sections' })).getAllByRole('link');
-    expect(links.map(link => link.textContent)).toEqual(['Model providers', 'Access', 'Pricing and routing', 'System status']);
-    for (const link of links) {
-      const target = document.getElementById((link.getAttribute('href') ?? '').replace(/^#/, ''));
-      expect(target?.tagName).toBe('SECTION');
-      expect(within(target as HTMLElement).getByRole('heading', { level: 2 }).textContent).toBe(link.textContent);
-    }
+    expect(links.map(title)).toEqual(['Model providers', 'Access', 'Pricing and routing', 'System status']);
+    expect(links.map(link => link.querySelector('.local-settings-index')?.textContent)).toEqual(['01', '02', '03', '04']);
+    expect(links.map(link => link.getAttribute('href'))).toEqual(['#providers', '#access', '#pricing', '#system']);
+    expect(visible()).toEqual(['Model providers']);
+    expect(links[0].getAttribute('aria-current')).toBe('page');
     expect(screen.getAllByTestId('embedded-page').map(el => el.textContent)).toEqual(['credentials', 'api-keys', 'pricing', 'status']);
+  });
+
+  it('S4: each hash shows only its own section and marks its link, and an unknown hash falls back to Model providers', async () => {
+    window.location.hash = '#pricing';
+    render(<SettingsPage navigationCache={{} as never} />);
+    expect(visible()).toEqual(['Pricing and routing']);
+    for (const [hash, heading] of [['#access', 'Access'], ['#system', 'System status'], ['#nonsense', 'Model providers']] as const) {
+      await act(async () => { window.location.hash = hash; window.dispatchEvent(new HashChangeEvent('hashchange')); });
+      expect(visible()).toEqual([heading]);
+      const current = within(screen.getByRole('navigation', { name: 'Settings sections' })).getAllByRole('link').filter(link => link.getAttribute('aria-current') === 'page');
+      expect(current.map(link => title(link))).toEqual([heading]);
+    }
+    expect(sectionFromHash('')).toBe('providers');
   });
 });

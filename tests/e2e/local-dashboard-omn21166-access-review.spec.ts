@@ -1,5 +1,6 @@
 import { expect, test } from 'playwright/test';
 import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { gotoSettings } from './settings-sections';
 
 // Before implementation: provider references overflow phone records, a served
 // identity cannot be copied, and absent identity renders an unusable copy action.
@@ -20,19 +21,25 @@ test('Credentials keeps reference metadata readable on phones without exposing v
   await page.goto('/settings');
   const collapse = page.getByRole('button', { name: 'Collapse sidebar', exact: true });
   if (await collapse.isVisible()) await collapse.click();
-  const row = page.locator('[data-component="credentials-keys"] tbody tr').filter({ hasText: 'fixture-provider' });
+  // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): a key whose provider GET /models does not list keeps its own provider row (an
+  // article that opens to its details) instead of a table row; its key is listed there with the same fields.
+  const row = page.getByRole('article', { name: 'Fixture-provider', exact: true });
+  await expect(row.locator('.local-provider-status')).toHaveText('Not listed by onex models');
+  await row.locator('summary.local-provider-line').click();
+  const keys = row.getByRole('list', { name: 'Fixture-provider keys', exact: true });
   // Part 18 AC128: Expires and Bound host show only when a key records one (this fixture serves neither, so one caption
-  // says so), and there is no Revoked column: an active key is not revoked. Seven labelled cells remain (OMN-19996 added
-  // Last used, which reads Never for this fixture's key).
-  await expect(row.locator('td[data-label]')).toHaveCount(7);
-  await expect(row.locator('td[data-label="Last used"]')).toHaveText('Never');
-  await expect(row.locator('td[data-label="Expires"]')).toHaveCount(0);
-  await expect(row.locator('td[data-label="Bound host"]')).toHaveCount(0);
-  await expect(row.locator('td[data-label="Revoked"]')).toHaveCount(0);
+  // says so), and there is no Revoked field: an active key is not revoked. OMN-19996 added Last used, which reads Never.
+  await expect(keys.locator('dt')).toHaveText(['Fingerprint', 'Set', 'Last used']);
+  await expect(keys.locator('dt', { hasText: /Expires|Bound host|Revoked/ })).toHaveCount(0);
+  await expect(keys.locator('div').filter({ has: page.locator('dt', { hasText: 'Last used' }) }).locator('dd')).toHaveText('Never');
   await expect(page.getByText('No key records an expiry or a bound host.', { exact: true })).toBeVisible();
-  expect(await row.locator('td').first().evaluate(element => element.getBoundingClientRect().width)).toBeGreaterThan(200);
-  await expect(row).toContainText('fixture.provider.long.reference.name');
-  await expect(row).toContainText('0123abcd');
+  // The key's entry has the width to be read on a phone, its long reference name is not clipped, and nothing in the row
+  // runs past its edge.
+  expect(await keys.getByRole('listitem').first().evaluate(element => element.getBoundingClientRect().width)).toBeGreaterThan(200);
+  expect(await keys.locator('.local-provider-key-name').evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(0);
+  expect(await row.evaluate(element => [element, ...element.querySelectorAll('*')].filter(el => el.getBoundingClientRect().right > element.getBoundingClientRect().right + 1).length)).toBe(0);
+  await expect(keys).toContainText('fixture.provider.long.reference.name');
+  await expect(keys).toContainText('0123abcd');
   await expect(row).not.toContainText('Not revoked');
   await expect(page.getByText('must-never-render-test-value', { exact: true })).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
@@ -43,7 +50,8 @@ test('API Keys offers copy only for an actual served tenant identity', async ({ 
   // OMN-21166 part 11: the tenant is read from the native local-runtime row of local-environment.v1, not from savings sessions.
   await serveCharts(page, { ...chartRows, [prefix + 'local-environment.v1']: [
     { mode: 'native', service: 'local-runtime', tenant_id: 'served-fixture-tenant', updated_at: '2026-10-18T10:00:00Z' }] });
-  await page.goto('/settings');
+  // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the identity is in the Access section, opened by its address (kept on reload).
+  await gotoSettings(page, 'Access');
   await expect(page.getByRole('button', { name: 'Copy the tenant identity', exact: true })).toBeVisible();
   await expect(page.getByText('served-fixture-tenant', { exact: true })).toBeVisible();
   await expect(page.getByText('Not recorded', { exact: true }).first()).toBeVisible();

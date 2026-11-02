@@ -84,18 +84,31 @@ test('OMN-19985: Credentials lists each key ref with its fingerprint and set tim
   // column, and Expires and Bound host only when a key records one), and times read as "Oct 7, 07:35:00 UTC" with the
   // served value kept in the <time> element (datetime and title).
   await expect(page.getByRole('table', { name: 'Provider key references', exact: true })).toHaveCount(0);
-  const table = page.getByRole('table', { name: 'Model providers', exact: true });
-  await expect(table.getByRole('columnheader')).toHaveText(['Provider', 'State', 'Models', 'Key ref', 'Fingerprint', 'Set', 'Last used', 'Set up with']);
-  await expect(table.getByRole('columnheader', { name: 'Revoked', exact: true })).toHaveCount(0);
+  // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): each provider is one row (an article) that opens to its details, not a table
+  // row; the keys in use are listed inside it with the same fields (no Revoked, and Expires and Bound host only when served).
+  await expect(page.getByRole('table', { name: 'Model providers', exact: true })).toHaveCount(0);
+  const providers = page.locator('section.local-model-keys .local-provider-list > article');
+  expect(await providers.evaluateAll(rows => rows.map(row => row.getAttribute('aria-label')))).toEqual(['Gemini', 'OpenRouter', 'OpenAI', 'Ollama']);
   await expect(page.getByText('No key records an expiry or a bound host.', { exact: true })).toBeVisible();
-  const live = table.getByRole('row').filter({ hasText: '89abcdef' });
-  await expect(live.getByRole('rowheader')).toHaveText('OpenRouter');
-  await expect(live.getByRole('cell')).toHaveText([
-    'Last test passed', 'openrouter/model-a', 'llm.openrouter.api_key', '89abcdef', 'Oct 7, 07:35:00 UTC', 'Never', 'onex models add openrouter',
-  ]);
-  await expect(live.locator('td[data-label="Set"] time')).toHaveAttribute('datetime', '2026-10-07T07:35:00+00:00');
-  await expect(live.locator('td[data-label="Set"] time')).toHaveAttribute('title', '2026-10-07T07:35:00+00:00');
-  await expect(table.getByRole('row').filter({ hasText: '0123abcd' })).toHaveCount(0);
+  const live = page.getByRole('article', { name: 'OpenRouter', exact: true });
+  const line = live.locator('summary.local-provider-line');
+  await expect(line.getByRole('heading', { level: 3, name: 'OpenRouter', exact: true })).toBeVisible();
+  await expect(line.locator('.local-provider-status')).toHaveText('Last test passed');
+  await expect(line.locator('[data-label="Models"]')).toHaveText(/^1\s*model$/);
+  await expect(line.locator('[data-label="Key"]')).toHaveText('89abcdef');
+  await line.click();
+  await expect(live.locator('details.local-provider-disclosure')).toHaveAttribute('open', '');
+  await expect(live.getByRole('list', { name: 'OpenRouter models', exact: true }).getByRole('listitem')).toHaveText(['openrouter/model-a']);
+  const keyList = live.getByRole('list', { name: 'OpenRouter keys', exact: true });
+  await expect(keyList.getByRole('listitem')).toHaveCount(1);
+  await expect(keyList.locator('.local-provider-key-name')).toHaveText('llm.openrouter.api_key');
+  await expect(keyList.locator('dt')).toHaveText(['Fingerprint', 'Set', 'Last used']);
+  await expect(keyList.locator('dd')).toHaveText(['89abcdef', 'Oct 7, 07:35:00 UTC', 'Never']);
+  await expect(keyList.locator('dd time')).toHaveAttribute('datetime', '2026-10-07T07:35:00+00:00');
+  await expect(keyList.locator('dd time')).toHaveAttribute('title', '2026-10-07T07:35:00+00:00');
+  await expect(live.locator('.local-provider-setup')).toHaveText('Set up with onex models add openrouter');
+  // The revoked key is never among the keys in use.
+  await expect(page.locator('.local-provider-list')).not.toContainText('0123abcd');
   const history = page.getByText('Show key history (1 revoked)', { exact: true });
   await history.press('Enter');
   const revokedTable = page.getByRole('table', { name: 'Revoked key references', exact: true });
@@ -125,6 +138,14 @@ test('OMN-19985: with no key set, each provider row shows its onex models add co
   // key cells read "No key", and neither key-reference table (keys in use, key history) is drawn.
   await expect(page.getByRole('table', { name: 'Provider key references', exact: true })).toHaveCount(0);
   await expect(page.getByRole('table', { name: 'Revoked key references', exact: true })).toHaveCount(0);
-  await expect(page.getByRole('table', { name: 'Model providers', exact: true }).locator('td[data-label="Key ref"]')).toHaveText(['No key', 'No key', 'No key', 'No key']);
+  // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): each provider's row opens to a key list that reads "No key", with no key entries.
+  const providers = page.locator('section.local-model-keys .local-provider-list > article');
+  await expect(providers).toHaveCount(4);
+  for (const name of ['Gemini', 'OpenRouter', 'OpenAI', 'Ollama']) {
+    const provider = page.getByRole('article', { name, exact: true });
+    await provider.locator('summary.local-provider-line').click();
+    await expect(provider.getByRole('region', { name: `${name} key list`, exact: true }).locator('.local-provider-empty'), name).toHaveText('No key');
+    await expect(provider.getByRole('list', { name: `${name} keys`, exact: true }), name).toHaveCount(0);
+  }
   await page.screenshot({ path: screenshotPath('local-dashboard-omn19985-credentials-empty-1440x900.png'), fullPage: false });
 });

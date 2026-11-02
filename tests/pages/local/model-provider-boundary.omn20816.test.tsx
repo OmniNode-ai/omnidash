@@ -38,11 +38,11 @@ beforeEach(() => {
 it.each(['healthy', 'pending', 'missing', 'failed'])('AC1: %s credentials do not suppress or duplicate the independent provider read', async (state) => {
   h.state = state;
   render(<LocalDashboardPage pageName="credentials" />);
-  // OMN-21970 AC10: one card per provider, in one provider grid.
+  // OMN-21970 AC10: one row per provider, in one provider list.
   const first = await screen.findByRole('article', { name: 'Gemini' });
   const table = first.parentElement as HTMLElement;
   expect(table).toBeVisible();
-  expect(document.querySelectorAll('.local-provider-grid')).toHaveLength(1);
+  expect(document.querySelectorAll('.local-provider-list')).toHaveLength(1);
   expect(h.list).toHaveBeenCalledTimes(1);
   expect(within(table).getAllByRole('article').map(el => el.getAttribute('aria-label'))).toEqual(['Gemini', 'OpenRouter', 'OpenAI', 'Ollama']);
   expect(table.closest('[aria-busy="true"]')).toBeNull();

@@ -42,6 +42,12 @@ vi.mock('@/data-source/exposure-census', () => ({
 
 import { LocalDashboardPage } from './LocalDashboardPage';
 
+// OMN-21970 AC9: the window is one button ("Figures for …") that opens the list of windows.
+function openWindows() {
+  const trigger = screen.queryByRole('button', { name: /^Figures for/ });
+  if (trigger && trigger.getAttribute('aria-expanded') !== 'true') fireEvent.click(trigger);
+}
+
 const BASE = {
   baseline_model: 'claude-sonnet-5-5', pricing_manifest_version: '1.0.0', baseline_state: 'resolved',
   runs_unknown_tokens: 0, runs_unknown_spend: 0,
@@ -82,9 +88,11 @@ function caption(title: string): string {
   return article?.querySelector('.local-dashboard-caption')?.textContent ?? '';
 }
 
-// OMN-21166: the window is a two-button switch.
-const chooseWindow = (value: 'all' | 'today') =>
+// OMN-21166: the window was a button switch; OMN-21970 AC9 put the same radios inside one dropdown.
+const chooseWindow = (value: 'all' | 'today') => {
+  openWindows();
   fireEvent.click(screen.getByRole('radio', { name: value === 'today' ? 'Today (UTC)' : 'All time' }));
+};
 
 describe('OMN-21015 AC7: the Overview tiles switch between today (UTC) and all time', () => {
   beforeEach(() => {
@@ -95,6 +103,8 @@ describe('OMN-21015 AC7: the Overview tiles switch between today (UTC) and all t
 
   it('opens on all time, as it always has', async () => {
     await open('overview', [ALL_ROW, YESTERDAY_ROW, TODAY_ROW]);
+    expect(screen.getByRole('button', { name: 'Figures for All time' })).toBeTruthy();
+    openWindows();
     expect(screen.getByRole('radio', { name: 'All time' })).toHaveAttribute('aria-checked', 'true');
     expect(figure('Actual spend')).toBe('$12.30');
     expect(figure('Agent calls')).toBe('23');
@@ -168,5 +178,6 @@ describe('OMN-21015 AC7: the Overview tiles switch between today (UTC) and all t
   it('W8: the Usage page offers no such switch', async () => {
     await open('usage', [ALL_ROW, YESTERDAY_ROW, TODAY_ROW]);
     expect(screen.queryByRole('radiogroup', { name: 'Figures for' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Figures for/ })).toBeNull();
   });
 });

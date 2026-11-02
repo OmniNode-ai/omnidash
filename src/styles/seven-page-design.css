@@ -1217,8 +1217,8 @@ html .app svg.field-icon.field-icon:is([data-field-icon^="tier-"], [data-semanti
    figures); interface words are grey: the Workflow subject titles, control titles and every link. */
 .local-dashboard-page .usage-record-controls-title { color: var(--ink-2) !important; }
 .local-dashboard-page .local-run-summary-group > h3, .local-dashboard-page .local-run-summary-group > h3 * { color: var(--ink-3) !important; }
-:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) a:not(.dash-item):not(.local-card-link):not(.rb-link) { color: var(--ink); text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
-:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) a:not(.dash-item):not(.local-card-link):not(.rb-link):hover { text-decoration-color: currentColor; }
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) a:not(.dash-item):not(.local-card-link):not(.rb-link):not(.local-settings-link) { color: var(--ink); text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) a:not(.dash-item):not(.local-card-link):not(.rb-link):not(.local-settings-link):hover { text-decoration-color: currentColor; }
 .local-dashboard-page details.local-run-failure > summary { color: var(--ink-2); }
 .local-overview-summary .local-card-change { color: var(--ink-2); }
 
@@ -1288,11 +1288,12 @@ html .app svg.field-icon.field-icon:is([data-field-icon^="tier-"], [data-semanti
 /* The surface is the shell's own --shell-active-surface (dashboard-cards.css reads it), so every rule and check that
    reads the variable agrees with what is drawn. */
 .app:has(.local-dashboard-page, .ev-root[data-destination="delegation-evidence"]) { --shell-active-surface: var(--panel); --shell-active-line: var(--line); }
-[data-theme="dark"] .app:has(.local-dashboard-page, .ev-root[data-destination="delegation-evidence"]) { --shell-active-surface: #262626; --shell-active-line: #343434; }
+.app:has(.local-dashboard-page, .ev-root[data-destination="delegation-evidence"]) { --shell-active-surface: var(--ed-chosen); --shell-active-line: transparent; }
 .app:has(.local-dashboard-page, .ev-root[data-destination="delegation-evidence"]) .sidebar .mvp-nav-item.active,
 .app:has(.local-dashboard-page, .ev-root[data-destination="delegation-evidence"]) .sidebar .mvp-nav-item.active:hover {
   background: var(--shell-active-surface) !important; color: var(--ink) !important;
-  box-shadow: inset 2px 0 0 var(--ink), inset 0 0 0 1px var(--shell-active-line) !important;
+  /* Lakshman 2026-11-02 (01 + 20 look): the chosen page is a soft fill only, no edge bar or outline. */
+  box-shadow: none !important;
 }
 .app:has(.local-dashboard-page, .ev-root[data-destination="delegation-evidence"]) .sidebar .mvp-nav-item.active .dash-name { color: var(--ink) !important; font-weight: 500; }
 /* Codex review 2026-10-27 04:17Z (MSG 01e39e9a): on a phone the stacked header lines its children up at the start

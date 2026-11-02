@@ -1,5 +1,6 @@
 import { expect, test, type Locator } from 'playwright/test';
 import { serveCharts } from './omn21166-chart-fixtures';
+import { gotoSettings } from './settings-sections';
 
 test.use({ reducedMotion: 'reduce' });
 
@@ -24,7 +25,8 @@ async function colours(panel: Locator, canonical: string) {
 for (const dark of [false, true]) {
   test(`Environment and the legacy Cloud keys style use distinct canonical colours (dark: ${dark})`, async ({ page }, info) => {
     await serveCharts(page);
-    await page.goto('/settings');
+    // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): Environment is in System status, opened by its address.
+    await gotoSettings(page, 'System status');
     await page.evaluate(darkTheme => document.documentElement.setAttribute('data-theme', darkTheme ? 'dark' : 'light'), dark);
     const environment = page.locator('article[data-component="status-environment"]');
     await expect(environment).toBeVisible();
@@ -55,7 +57,8 @@ for (const dark of [false, true]) {
 
   test(`computed-colour instrument catches a planted equal-colour collision (dark: ${dark})`, async ({ page }, info) => {
     await serveCharts(page);
-    await page.goto('/settings');
+    // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): Environment is in System status, opened by its address.
+    await gotoSettings(page, 'System status');
     await page.evaluate(darkTheme => document.documentElement.setAttribute('data-theme', darkTheme ? 'dark' : 'light'), dark);
     const environment = page.locator('article[data-component="status-environment"]');
     await expect(environment).toBeVisible();

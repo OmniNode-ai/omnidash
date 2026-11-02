@@ -1,12 +1,14 @@
 import { writeFileSync } from 'node:fs';
 import { expect, test } from 'playwright/test';
 import { serveCharts } from './omn21166-chart-fixtures';
+import { openWindows, windowLabel, windowTrigger, WINDOW_NAMES } from './overview-window-menu';
 
 // Before the control redesign: all presets share one colour; native date inputs
 // run into their labels/presets; narrow layouts clip; keyboard selection or
 // date validation can regress when presentation markup changes.
 // Live review 2026-10-25 ("unified"): one radiogroup, named by each option's full accessible name.
-const names = ['All time', 'Today (UTC)', 'Last 7 days (UTC)', 'Last 15 days (UTC)', 'Last 30 days (UTC)'];
+// OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the same radios, plus Last 90 days, sit in the list the "Figures for" button opens.
+const names = WINDOW_NAMES;
 test.use({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce', trace: 'on' });
 
 test('Activity window presets have distinct identities and a selected outline in both themes', async ({ page }, info) => {
@@ -15,6 +17,7 @@ test('Activity window presets have distinct identities and a selected outline in
   // Live review 2026-10-25 ("unified"): the presets are the header's one window control, a radiogroup named
   // "Figures for" that drives the cards and the charts together.
   const group = page.getByRole('radiogroup', { name: 'Figures for', exact: true });
+  await openWindows(page);
   await expect(group).toBeVisible();
   const results = [];
   for (const theme of ['light', 'dark']) {
@@ -25,6 +28,7 @@ test('Activity window presets have distinct identities and a selected outline in
     // selected one is the filled segment; the check is that exactly one is pressed, it reads differently from the
     // others, and every state keeps 4.5:1 text contrast. (Per-preset colour identity and the 2px outline were the old
     // chip treatment and no longer exist.)
+    await openWindows(page);
     const colours = [];
     for (const name of names) colours.push(await group.getByRole('radio', { name, exact: true }).evaluate(el => getComputedStyle(el).color));
     const measure = (el: Element) => {
@@ -61,10 +65,18 @@ test('Activity window presets have distinct identities and a selected outline in
     };
     const selected = [];
     for (const name of names) {
+      // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): choosing by keyboard closes the list and the button names the choice;
+      // the reopened list ticks it. The chosen option is told apart by its tick (window-menu.tsx), not by its fill.
+      await openWindows(page);
       const button = group.getByRole('radio', { name, exact: true });
       await button.press('Enter');
+      await expect(group).toHaveCount(0);
+      await expect(windowTrigger(page)).toHaveAccessibleName(`Figures for ${windowLabel(name)}`);
+      await openWindows(page);
       await expect(button).toHaveAttribute('aria-checked', 'true');
       await expect(group.locator('[role="radio"][aria-checked="true"]')).toHaveCount(1);
+      await expect(button.locator('svg')).toHaveCount(1);
+      await expect(group.locator('[role="radio"][aria-checked="false"] svg')).toHaveCount(0);
       // OMN-21166 live review 2026-10-25: the segments fade their fill on selection; measure after the fade has finished
       // (a mid-fade sample read a light fill under grey text on the dark theme, a false 3.9:1).
       await group.evaluate(el => Promise.all(el.getAnimations({ subtree: true }).map(animation => animation.finished)));
@@ -73,10 +85,10 @@ test('Activity window presets have distinct identities and a selected outline in
       for (const other of names.filter(candidate => candidate !== name)) {
         const unselected = await group.getByRole('radio', { name: other, exact: true }).evaluate(measure);
         expect(unselected.contrast, `${theme} ${other} text contrast`).toBeGreaterThanOrEqual(4.5);
-        expect(`${unselected.background}|${unselected.color}`, `${theme} ${name} selected reads differently from ${other}`).not.toBe(`${style.background}|${style.color}`);
       }
       selected.push({ name, ...style });
     }
+    await page.keyboard.press('Escape');
     results.push({ theme, colours, selected });
     await page.screenshot({ path: info.outputPath(`window-presets-${theme}.png`) });
   }

@@ -1,5 +1,7 @@
 import { expect, test } from 'playwright/test';
 import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+// OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the window radios sit in one dropdown; chooseWindow opens it and proves it closed.
+import { chooseWindow } from './overview-window-menu';
 
 const topic = prefix + 'cost.savings-overview.v1';
 const legacy = { window: 'all', captured_at: '2026-10-19T16:00:00Z', total_cost_usd: 3.392282,
@@ -56,10 +58,10 @@ test('never presents all-time legacy totals as today', async ({ page }) => {
   await serveCharts(page, { ...chartRows, [topic]: [legacy] });
   await page.goto('/overview');
   await expect(figure(page, 'overview-measured')).toHaveText('49.14K');
-  await page.getByRole('radio', { name: 'Today (UTC)', exact: true }).click();
+  await chooseWindow(page, 'Today (UTC)');
   for (const id of ['overview-spend', 'overview-savings', 'overview-measured', 'overview-tokens'])
     await expect(figure(page, id)).toHaveText('Not measured: daily totals unavailable (UTC)');
-  await page.getByRole('radio', { name: 'All time', exact: true }).click();
+  await chooseWindow(page, 'All time');
   await expect(figure(page, 'overview-measured')).toHaveText('49.14K');
 });
 

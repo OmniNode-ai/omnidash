@@ -40,7 +40,8 @@ describe('Credentials as one table', () => {
     expect(screen.queryAllByRole('table')).toHaveLength(0);
     expect(within(row('Gemini')).getAllByRole('term').map(t => t.textContent)).toEqual(['Last test', 'Fingerprint', 'Set', 'Last used']);
     expect(within(row('Gemini')).getByText('llm.gemini.api_key')).toBeTruthy();
-    expect(within(row('Gemini')).getByText('gemiabcd')).toBeTruthy();
+    // OMN-21970 AC10: the fingerprint also heads the row's Key column, so the key's own entry is read from its list.
+    expect(within(within(row('Gemini')).getByRole('list', { name: 'Gemini keys' })).getByText('gemiabcd')).toBeTruthy();
     expect(within(row('OpenRouter')).getByText('Oct 12, 15:52:29 UTC')).toBeTruthy();
     expect(screen.getAllByRole('article').map(card => card.getAttribute('aria-label'))).toEqual(['Gemini', 'OpenRouter', 'OpenAI', 'Ollama']);
     expect(within(row('OpenRouter')).queryByText('llm.gemini.api_key')).toBeNull();

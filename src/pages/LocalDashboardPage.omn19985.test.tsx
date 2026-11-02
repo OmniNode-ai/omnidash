@@ -41,7 +41,8 @@ async function keyCells(keys: Record<string, unknown>[]): Promise<string[]> {
 describe('OMN-19985 Credentials keys', () => {
   it('K1: shows the served fingerprint prefix and set time in their own columns', async () => {
     const cells = await keyCells([live]);
-    expect(screen.getAllByRole('term').map((term) => term.textContent).slice(0, 2)).toEqual(['Fingerprint', 'Set']);
+    const keyList = screen.getByRole('list', { name: 'OpenRouter keys' });
+    expect(within(keyList).getAllByRole('term').map((term) => term.textContent).slice(0, 2)).toEqual(['Fingerprint', 'Set']);
     expect(cells.slice(0, 3)).toEqual(['llm.openrouter.api_key', '0123abcd', 'Oct 7, 07:30:00 UTC']);
   });
 

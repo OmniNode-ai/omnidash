@@ -20,6 +20,6 @@ export function PricingFacts({ rows }: { rows: readonly Record<string, unknown>[
     <dl className="local-provider-facts local-pricing-facts">{facts.map(([label, value, mono]) => (
       <div key={label}><dt>{label}</dt><dd className={mono ? 'mono' : undefined}>{value}</dd></div>
     ))}</dl>
-    <p className="local-dashboard-caption">Savings compare what each run cost with what its tokens would cost on the baseline model. The baseline never ran. Routing order is set per provider; see Tried first on each provider card.</p>
+    <p className="local-dashboard-caption">Savings compare what each run cost with what its tokens would cost on the baseline model. The baseline never ran. Routing order is set per provider; see Tried first on each provider in Model providers.</p>
   </div>;
 }

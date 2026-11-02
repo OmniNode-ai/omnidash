@@ -9,6 +9,7 @@
  * that changes it.
  */
 import { useEffect, useState, type ReactNode } from 'react';
+import { ChevronRight } from 'lucide-react';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { SettingsEmptyState } from '@/components/dashboard/SettingsEmptyState';
 import { readableTime } from '@/components/format/readable-time';
@@ -119,7 +120,21 @@ function KeyList({ provider, list }: { provider: string; list: readonly Credenti
   ))}</ul>;
 }
 
-/** One card per provider: every field below is served by GET /models or tenant-credentials.v1, and a null one is left out. */
+/** The served time's date alone ("Oct 29"), for a provider's one-line summary; the full time is in its details. */
+function shortDate(value: unknown): string | null {
+  if (missing(value)) return null;
+  const readable = readableTime(String(value));
+  return readable === null ? null : readable.split(',')[0];
+}
+
+/**
+ * OMN-21970 AC10 (Lakshman 2026-11-02, "yes best way", after reading how leading AI products list providers): one slim
+ * row per provider that opens to its details, as OpenRouter's and Vercel's provider lists do. The row says, at a glance,
+ * the provider's status, model count, key fingerprint and last test date; the details hold every served test field, the
+ * full error behind its own disclosure, the models, the keys with Last used (OMN-19996) and the set-up command. Every
+ * value is served by GET /models or tenant-credentials.v1, and a null one is left out. The row opens with a native
+ * disclosure, so the page still has no button, form or input (OMN-20816).
+ */
 function ProviderCard({ row, keys, listed = true }: { row: ModelProviderRow; keys: readonly CredentialKeyRow[]; listed?: boolean }) {
   const name = providerName(row.provider);
   const status = listed ? statusOf(row) : { text: 'Not listed by onex models', tone: 'off' as StatusTone };
@@ -132,31 +147,55 @@ function ProviderCard({ row, keys, listed = true }: { row: ModelProviderRow; key
   if (tested && !missing(last.endpoint)) facts.push(['Endpoint', String(last.endpoint), true]);
   const reason = last?.status === 'failed' && !missing(last.reason) ? String(last.reason) : null;
   const command = row.provider === 'ollama' ? null : `onex models add ${row.provider}`;
-  return <article className="local-provider-card" aria-label={name} data-tone={status.tone}>
-    <header className="local-provider-head">
-      <h3>{name}</h3>
-      <span className="local-provider-status" data-tone={status.tone}>{status.text}</span>
-      {row.tried_first === true && <span className="local-provider-badge">
-        {missing(row.first_model) ? 'Tried first' : `Tried first · ${String(row.first_model)}`}</span>}
-    </header>
-    {facts.length > 0 && <dl className="local-provider-facts">{facts.map(([label, value, mono]) => (
-      <div key={label}><dt>{label}</dt><dd className={mono ? 'mono' : undefined}>{value}</dd></div>
-    ))}</dl>}
-    {reason !== null && <details className="local-provider-error">
-      <summary>Show the full error</summary>
-      <pre>{reason}</pre>
-    </details>}
-    {listed && <section className="local-provider-block" aria-label={`${name} model list`}>
-      <h4>{`Models${row.models.length > 0 ? ` (${row.models.length})` : ''}`}</h4>
-      <ModelList provider={name} models={row.models} />
-    </section>}
-    <section className="local-provider-block" aria-label={`${name} key list`}>
-      <h4>Keys</h4>
-      <KeyList provider={name} list={keys} />
-    </section>
-    {listed && <p className="local-provider-setup">
-      {command === null ? OLLAMA_HOW : <>Set up with <code className="mono">{command}</code></>}
-    </p>}
+  const setup = command === null ? <>{OLLAMA_HOW}</> : <>Set up with <code className="mono">{command}</code></>;
+  const testedOn = tested ? shortDate(last.tested_at) : null;
+  const firstKey = keys.find(key => !missing(key.fingerprint));
+  return <article className="local-provider-row" aria-label={name} data-tone={status.tone}>
+    <details className="local-provider-disclosure">
+      <summary className="local-provider-line">
+        <span className="local-provider-cell local-provider-cell--name">
+          <h3 className="local-provider-name">{name}</h3>
+          <span className="local-provider-id mono">{String(row.provider)}</span>
+        </span>
+        <span className="local-provider-cell local-provider-cell--status">
+          <span className="local-provider-status" data-tone={status.tone}><span className="local-provider-dot" aria-hidden="true" />{status.text}</span>
+          {row.tried_first === true && <span className="local-provider-badge">
+            {missing(row.first_model) ? 'Tried first' : `Tried first · ${String(row.first_model)}`}</span>}
+        </span>
+        {listed && !row.set_up
+          ? <span className="local-provider-cell local-provider-cell--setup">{setup}</span>
+          : <>
+            <span className="local-provider-cell local-provider-cell--figure" data-label="Models">
+              {listed && row.models.length > 0 ? <><strong>{row.models.length}</strong><small>{row.models.length === 1 ? 'model' : 'models'}</small></> : <small>None listed</small>}
+            </span>
+            <span className="local-provider-cell local-provider-cell--key mono" data-label="Key">
+              {firstKey ? `${String(firstKey.fingerprint)}${keys.length > 1 ? ` +${keys.length - 1}` : ''}` : '—'}
+            </span>
+            <span className="local-provider-cell local-provider-cell--tested" data-label="Last test">{testedOn ? `Tested ${testedOn}` : 'Not tested'}</span>
+          </>}
+        <ChevronRight className="local-provider-chevron" size={18} aria-hidden="true" />
+      </summary>
+      <div className="local-provider-detail">
+        {facts.length > 0 && <dl className="local-provider-facts">{facts.map(([label, value, mono]) => (
+          <div key={label}><dt>{label}</dt><dd className={mono ? 'mono' : undefined}>{value}</dd></div>
+        ))}</dl>}
+        {reason !== null && <details className="local-provider-error">
+          <summary>Show the full error</summary>
+          <pre>{reason}</pre>
+        </details>}
+        <div className="local-provider-columns">
+          {listed && <section className="local-provider-block" aria-label={`${name} model list`}>
+            <h4>{`Models${row.models.length > 0 ? ` (${row.models.length})` : ''}`}</h4>
+            <ModelList provider={name} models={row.models} />
+          </section>}
+          <section className="local-provider-block" aria-label={`${name} key list`}>
+            <h4>Keys</h4>
+            <KeyList provider={name} list={keys} />
+          </section>
+        </div>
+        {listed && row.set_up && <p className="local-provider-setup">{setup}</p>}
+      </div>
+    </details>
   </article>;
 }
 
@@ -230,7 +269,16 @@ export function ModelKeys({ client = LIVE_CLIENT, keys = [], empty }: { client?:
   const showHost = keys.some(key => !missing(key.bound_host));
   return (
     <section className="local-model-keys" aria-label="Model providers">
-      <div className="local-provider-grid">
+      <dl className="local-provider-figures">
+        <div><dt>Passed their last test</dt><dd><strong>{rows.filter(row => row.last_test?.status === 'passed').length}</strong><small>{`of ${rows.length} providers`}</small></dd></div>
+        <div><dt>Set up</dt><dd><strong>{rows.filter(row => row.set_up).length}</strong><small>{`of ${rows.length} providers`}</small></dd></div>
+        <div><dt>Keys in use</dt><dd><strong>{keys.length}</strong><small>{keys.length === 1 ? 'key' : 'keys'}</small></dd></div>
+        <div><dt>Models listed</dt><dd><strong>{rows.reduce((sum, row) => sum + row.models.length, 0)}</strong><small>across providers</small></dd></div>
+      </dl>
+      <div className="local-provider-list">
+        <div className="local-provider-head-band" aria-hidden="true">
+          <span>Provider</span><span>Status</span><span>Models</span><span>Key</span><span>Last test</span><span />
+        </div>
         {rows.map((row) => <ProviderCard key={String(row.provider)} row={row} keys={keysOf(String(row.provider))} />)}
         {unlisted.map(provider => <ProviderCard key={`unlisted-${provider}`} listed={false} keys={keysOf(provider)}
           row={{ provider, set_up: false, last_test: null, models: [] }} />)}

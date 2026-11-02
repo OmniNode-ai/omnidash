@@ -1,5 +1,6 @@
 import { formatDashboardCount, formatFullCount, wholeCount } from '@/lib/dashboard-count';
 import { PricingFacts } from './local/pricing';
+import { WindowMenu } from './local/window-menu';
 import { readableTime } from '@/components/format/readable-time';
 import { exactMs, formatDuration } from '@/components/format/duration';
 import { dailyMeteringTokens } from '@/lib/daily-metering-tokens';
@@ -51,6 +52,7 @@ import { fieldTone, isUnavailableField } from '@/components/dashboard/field-iden
 import '@/styles/local-dashboard.css';
 import '@/styles/dashboard-cards.css';
 import '@/styles/seven-page-design.css';
+import '@/styles/editorial.css';
 import { overviewRunCount } from '@/lib/dashboard-overview-count';
 import { DestinationIcon } from '@/navigation/destination-icons';
 import type { AppPage } from '@/store/types';
@@ -285,7 +287,7 @@ export { CardBasis };
  * onex delegate run a450aca8 failed).
  */
 export function qualityChangeLine(decisions: readonly unknown[], window: ActivityWindow, now: number = Date.now()): string | null {
-  if (window.kind !== 'days' || ![7, 15, 30].includes(window.days)) return null;
+  if (window.kind !== 'days' || ![7, 15, 30, 90].includes(window.days)) return null;
   const DAY = 86_400_000;
   const today = Date.parse(`${utcDay(now)}T00:00:00Z`);
   const currentStart = utcDay(today - (window.days - 1) * DAY);
@@ -426,10 +428,11 @@ const CARD_LINKS: Readonly<Record<string, { href: string; page: string }>> = {
   'overview-quality': { href: '/delegation-evidence', page: 'Delegation Evidence' },
 };
 
-const WINDOW_DAYS: Readonly<Record<string, number>> = { today: 1, '7d': 7, '15d': 15, '30d': 30 };
+// OMN-21970 (Lakshman 2026-11-02, "add 90 days also"): 90 joins the windows.
+const WINDOW_DAYS: Readonly<Record<string, number>> = { today: 1, '7d': 7, '15d': 15, '30d': 30, '90d': 90 };
 
 /** OMN-21166 part 19 AC136 (onex delegate run abfb8d86, UTC-safe): the Overview window from its address. `?window=today`,
- * `7d`, `15d` or `30d`, or `?day=YYYY-MM-DD`; anything else is all time and marked malformed so the address is corrected. */
+ * `7d`, `15d`, `30d` or `90d`, or `?day=YYYY-MM-DD`; anything else is all time and marked malformed so the address is corrected. */
 export function readOverviewWindow(search: string, now: number = Date.now()): { overview: OverviewWindow; activity: ActivityWindow; malformed: boolean } {
   const params = new URLSearchParams(search);
   const window = params.get('window');
@@ -3190,7 +3193,8 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
         </div>
         {/* One toolbar row: the page's own control when it has one, and the runtime mode at the right. */}
         {pageName === 'overview' && !loading && !error && page && (
-          // OMN-21166 mockup build: the window is a two-button switch (radio semantics), not a dropdown.
+          // OMN-21166 mockup build used a button switch (radio semantics); OMN-21970 AC9 (Lakshman 2026-11-02) made it one
+          // button that opens the list, each option keeping its radio semantics.
           // Live review 2026-10-25: one compact control; the name stays "Figures for" and each option keeps its full name
           // ("Today (UTC)") for screen readers, while the visible label is short with UTC as a muted suffix.
           <div className="local-dashboard-filters local-window-switch">
@@ -3201,20 +3205,21 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
               <OverviewDayPicker value={overviewWindow} now={now}
                 onChange={value => { setOverviewWindow(value); if (value.startsWith('day:')) setActivityWindow({ kind: 'custom', start: value.slice(4), end: value.slice(4) }); }}
                 days={servedMeteringDays(snapshots.find(snapshot => snapshot.topic === METERING_SUMMARY_TOPIC)?.rows ?? [])} />
-              <div role="radiogroup" aria-labelledby={windowId} className="local-window-radios">
-              {([['all', 'All', 'All time', 0], ['today', 'Today', 'Today (UTC)', 1], ['last-7', '7 days', 'Last 7 days (UTC)', 7],
-                ['last-15', '15 days', 'Last 15 days (UTC)', 15], ['last-30', '30 days', 'Last 30 days (UTC)', 30]] as const).map(([value, label, name, days]) => {
-                const target: OverviewWindow = days === 0 ? 'all' : days === 1 ? 'today' : meteringRangeFor(days, now);
-                const checked = days === 0 ? overviewWindow === 'all' : days === 1 ? overviewWindow === 'today'
-                  : overviewWindow.startsWith('range:') && activityWindow.kind === 'days' && activityWindow.days === days;
-                return (
-                  <button key={value} type="button" role="radio" data-window={value} aria-checked={checked} aria-label={name}
-                    onClick={() => { setOverviewWindow(target); setActivityWindow(days === 0 ? { kind: 'all' } : { kind: 'days', days }); }}>
-                    {label}
-                  </button>
-                );
-              })}
-              </div>
+              {(() => {
+                // OMN-21970 AC9 (Lakshman 2026-11-02): one button opens the list of windows, the chosen one ticked.
+                const options = ([['all', 'All time', 'All time', 0], ['today', 'Today', 'Today (UTC)', 1], ['last-7', 'Last 7 days', 'Last 7 days (UTC)', 7],
+                  ['last-15', 'Last 15 days', 'Last 15 days (UTC)', 15], ['last-30', 'Last 30 days', 'Last 30 days (UTC)', 30],
+                  ['last-90', 'Last 90 days', 'Last 90 days (UTC)', 90]] as const).map(([value, label, name, days]) => {
+                  const target: OverviewWindow = days === 0 ? 'all' : days === 1 ? 'today' : meteringRangeFor(days, now);
+                  const checked = days === 0 ? overviewWindow === 'all' : days === 1 ? overviewWindow === 'today'
+                    : overviewWindow.startsWith('range:') && activityWindow.kind === 'days' && activityWindow.days === days;
+                  return { value, label, name, checked,
+                    onSelect: () => { setOverviewWindow(target); setActivityWindow(days === 0 ? { kind: 'all' } : { kind: 'days', days }); } };
+                });
+                const chosen = options.find(option => option.checked);
+                const current = chosen ? chosen.label : overviewWindow.startsWith('day:') ? `Day ${overviewWindow.slice(4)} (UTC)` : 'All time';
+                return <WindowMenu labelledBy={windowId} options={options} current={current} />;
+              })()}
             </div>
           </div>
         )}

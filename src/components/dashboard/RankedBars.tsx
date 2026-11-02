@@ -73,7 +73,8 @@ export function RankedBars({ label, unit, items, order = 'asc', note, footnote, 
               {/* The size is one variable: the bar's height when the chart is wide, its width when narrow. */}
               <span className="rb-bar" data-pattern={item.basis === 'unknown' ? 'outline' : 'hatched'} style={scaled === undefined ? undefined : { '--rb-size': scaled } as CSSProperties} />
             </span>
-            <span className="rb-name" title={item.name}>{item.name}</span>
+            {/* OMN-21970 (Lakshman 2026-11-03, option a): the name is ink for contrast; a swatch beside it carries the bar's colour. */}
+            <span className="rb-name" title={item.name}><span className="rb-swatch" aria-hidden="true" />{item.name}</span>
           </>;
           return (
             // Focusable, so a keyboard reader reveals the value as a pointer does on hover (live review 2026-10-25). A bar

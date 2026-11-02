@@ -1,5 +1,6 @@
 import { expect, test, type Locator } from 'playwright/test';
 import { serveCharts } from './omn21166-chart-fixtures';
+import { windowTrigger } from './overview-window-menu';
 
 // Lakshman 2026-10-23: on Overview the "Figures for" label sat about 14px below its All time / Today switch and the
 // Explore runs link (measured at 1440x900: label centre 111.9px, switch and link 98px), because the shared filters
@@ -15,7 +16,8 @@ const centre = async (locator: Locator) => { const box = (await locator.bounding
 // on one centre line, beside the page title, in both themes.
 test('Overview window calendar and options share one centre line with the title in both themes', async ({ page }) => {
   await page.goto('/overview');
-  const options = page.getByRole('radiogroup', { name: 'Figures for', exact: true });
+  // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the options are one "Figures for" button now; it keeps the centre line.
+  const options = windowTrigger(page);
   await expect(options).toBeVisible();
   const calendar = page.getByRole('button', { name: /Pick a UTC day/ });
   const title = page.locator('.local-dashboard-header h1');

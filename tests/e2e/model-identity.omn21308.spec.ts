@@ -1,6 +1,7 @@
 import { expect, test, type Page } from 'playwright/test';
 import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
 
+// OMN-21970 (Lakshman 2026-11-03, option a): names read in ink for contrast; the swatch beside each name carries its colour.
 // AC3 failure modes, before product changes: the unpriced first model shifts
 // priced-slice identity; refresh/reordering recolours a model; exact model IDs
 // are merged by lowercasing; routing names and chart marks use different maps.
@@ -58,7 +59,7 @@ async function usageColors(page: Page, names: string[]) {
   for (const name of names) {
     const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const item = spend.locator(`li[data-ranked-item="${name}"]`);
-    const color = await item.locator('.rb-name').evaluate(el => getComputedStyle(el).color);
+    const color = await item.locator('.rb-name .rb-swatch').evaluate(el => getComputedStyle(el).backgroundColor);
     expect(color, `${name}: real ranked-bar colour`).not.toBe('rgba(0, 0, 0, 0)');
     const bar = item.locator('.rb-bar');
     if (name === 'unpriced-model') {
@@ -81,7 +82,7 @@ async function usageColors(page: Page, names: string[]) {
     // Part 17 AC114: the model's name under its pair of bars is in the model's colour.
     const pairName = tokens.locator('li.gdb-day').filter({ has: page.locator('.gdb-day-label', { hasText: new RegExp(`^${escaped}$`) }) }).locator('.gdb-day-label');
     await expect(pairName).toHaveCount(1);
-    expect(await pairName.evaluate(el => getComputedStyle(el).color), `${name}: Tokens by model name`).toBe(color);
+    expect(await pairName.locator('.gdb-swatch').evaluate(el => getComputedStyle(el).backgroundColor), `${name}: Tokens by model name swatch`).toBe(color);
     result[name] = color;
   }
   return result;
@@ -133,7 +134,7 @@ for (const selectedTheme of ['light', 'dark']) {
       const mark = page.getByRole('figure', { name: 'Pass rate by model', exact: true }).locator(`li[data-ranked-item="${name}"]`);
       await expect(mark).toHaveCount(1);
       const ringColor = await mark.locator('.rb-bar').evaluate(el => getComputedStyle(el).color);
-      const nameColor = await mark.locator('.rb-name').evaluate(el => getComputedStyle(el).color);
+      const nameColor = await mark.locator('.rb-name .rb-swatch').evaluate(el => getComputedStyle(el).backgroundColor);
       const routing = page.locator('.local-routing-model-row').filter({ hasText: name }).locator('.local-model-identity svg.field-icon[data-field-tone="model"]');
       await expect(routing).toHaveCount(1);
       // OMN-21166 new look: model names in tables are set in ink (seven-page-design.css); the model's identity colour is its icon.

@@ -22,9 +22,24 @@ import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
 test.use({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce', trace: 'on' });
 
 const PAGES = ['/overview', '/runs', '/workflow?correlation_id=chart-run-a', '/usage', '/settings', '/delegation-evidence'];
-const MONO = /JetBrains Mono/;
 const INK = { light: 'rgb(17, 17, 17)', dark: 'rgb(250, 250, 250)' } as const;
-const LINE = { light: 'rgb(212, 212, 207)', dark: 'rgb(43, 43, 43)' } as const;
+// OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the editorial look replaced JetBrains Mono, Inter, the grey card line and 8px
+// corners with Geist Mono labels, a Fraunces display face for titles and figures, ink hairlines and square corners.
+// The checks read those from the page's own tokens (--font-mono, --font-sans, --ed-display, --ed-rule), not from
+// hard-coded families or colours, so a label that leaves the mono face, or a card that takes a coloured edge, still fails.
+const firstFamily = (family: string) => family.split(',')[0]!.trim().replace(/^["']|["']$/g, '');
+async function tokens(page: Page) {
+  return page.evaluate(() => {
+    const root = getComputedStyle(document.documentElement);
+    const probe = document.createElement('span');
+    document.body.append(probe);
+    const colour = (value: string) => { probe.style.color = value; return getComputedStyle(probe).color; };
+    try {
+      return { mono: root.getPropertyValue('--font-mono').trim(), sans: root.getPropertyValue('--font-sans').trim(),
+        display: root.getPropertyValue('--ed-display').trim(), rule: colour('var(--ed-rule)') };
+    } finally { probe.remove(); }
+  });
+}
 
 async function openTheme(page: Page, theme: 'light' | 'dark') {
   await page.emulateMedia({ colorScheme: theme });
@@ -55,31 +70,45 @@ for (const theme of ['light', 'dark'] as const) {
     }));
     expect(read.length).toBeGreaterThanOrEqual(5);
     expect(read.filter(card => card.figureFont !== null).length, 'the fixture serves measured figures').toBeGreaterThanOrEqual(1);
+    // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): labels in the --font-mono face (Geist Mono), figures in the display face,
+    // a 1px ink hairline (--ed-rule) on every card, square corners.
+    const face = await tokens(page);
+    expect(firstFamily(face.mono), 'control: the mono and text faces differ').not.toBe(firstFamily(face.sans));
     for (const card of read) {
-      expect(card.labelFont, 'AC166 label in JetBrains Mono').toMatch(MONO);
+      expect(firstFamily(card.labelFont), 'AC166 label in the --font-mono face').toBe(firstFamily(face.mono));
       expect([card.labelSize, card.labelCase], 'AC166 label 12px uppercase').toEqual(['12px', 'uppercase']);
       if (card.figureFont !== null) {
-        expect(card.figureFont, 'AC166 figure in JetBrains Mono').toMatch(MONO);
+        expect(firstFamily(card.figureFont), 'AC166 figure in the display face').toBe(firstFamily(face.display));
         expect(card.figureSize, 'AC168 figure 32px').toBe('32px');
       }
-      expect([card.edge, card.edgeColor], 'AC167 neutral 1px edge').toEqual(['1px', LINE[theme]]);
-      expect(card.radius, 'part 28 AC181 8px radius (was AC168 12px)').toBe('8px');
+      expect([card.edge, card.edgeColor], 'AC167 neutral 1px ink hairline').toEqual(['1px', face.rule]);
+      expect(card.radius, 'OMN-21970 AC9 square corners (was part 28 AC181 8px)').toBe('0px');
     }
-    // Part 28 AC177 supersedes AC167's icon colour: every headline icon is the same grey, still not the label's colour.
-    expect(new Set(read.map(card => card.iconColor)).size, 'every headline icon is one grey').toBe(1);
+    // OMN-21970 AC8 (committed 801bf845) supersedes part 28 AC177's one grey: each headline concept has its own icon
+    // colour, and an icon is never its label's colour.
+    expect(new Set(read.map(card => card.iconColor)).size, 'each headline icon has its own concept colour (AC8)').toBe(read.length);
     expect(read.every(card => card.iconColor !== card.labelColor), 'the icon is not the label colour').toBe(true);
-    // AC166: every other panel title and body text stays Inter.
+    // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): every other panel title is a small mono label too (was Inter), weight 500.
     const title = page.locator('.local-dashboard-panel:not(.local-overview-summary > .local-dashboard-panel) > h2').first();
-    await expect(title).toHaveCSS('font-family', /^Inter/);
+    expect(firstFamily(await title.evaluate(el => getComputedStyle(el).fontFamily))).toBe(firstFamily(face.mono));
     await expect(title).toHaveCSS('font-weight', '500');
-    await expect(page.locator('.sidebar .sidebar-bottom-title > *').first()).toHaveCSS('font-family', MONO);
-    // AC168: page title and the active navigation item.
-    await expect(page.locator('.local-dashboard-header h1')).toHaveCSS('font-size', '28px');
-    await expect(page.locator('.local-dashboard-header h1')).toHaveCSS('font-weight', '500');
-    // Part 28 AC186: the current page is a lifted, bordered item (card surface in light, #262626 in dark), not the raised
-    // surface that nearly matched the sidebar.
+    expect(firstFamily(await page.locator('.sidebar .sidebar-bottom-title > *').first().evaluate(el => getComputedStyle(el).fontFamily))).toBe(firstFamily(face.mono));
+    // AC168 as restyled by OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the page title in the display face, 800, at the top
+    // of clamp(36px, 4.2vw, 56px) on a 1440px window.
+    const h1 = page.locator('.local-dashboard-header h1');
+    expect(firstFamily(await h1.evaluate(el => getComputedStyle(el).fontFamily))).toBe(firstFamily(face.display));
+    await expect(h1).toHaveCSS('font-size', '56px');
+    await expect(h1).toHaveCSS('font-weight', '800');
+    // Part 28 AC186: the current page is a lifted, bordered item on the shell's active surface, not the sidebar's own
+    // surface. OMN-21970: the surface is read from --shell-active-surface rather than a hard-coded colour.
     const active = page.locator('.sidebar .mvp-nav-item.active');
-    await expect(active).toHaveCSS('background-color', theme === 'dark' ? 'rgb(38, 38, 38)' : 'rgb(253, 253, 252)');
+    const surfaces = await active.evaluate(el => {
+      const probe = document.createElement('span'); el.append(probe);
+      try { probe.style.color = 'var(--shell-active-surface)'; return { surface: getComputedStyle(probe).color, own: getComputedStyle(el).backgroundColor,
+        sidebar: getComputedStyle(el.closest('.sidebar')!).backgroundColor }; } finally { probe.remove(); }
+    });
+    expect(surfaces.own, 'the active item is drawn on --shell-active-surface').toBe(surfaces.surface);
+    expect(surfaces.own, 'the active item is not the sidebar surface').not.toBe(surfaces.sidebar);
     await expect(active.locator('.dash-name')).toHaveCSS('color', INK[theme]);
     // Lakshman 2026-10-27: "an omninode product - keep this in one line", at the 12px floor and not cut off.
     const tagline = await page.locator('.brand-name .parent').evaluate(el => ({ lines: Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight || '13')),
@@ -90,7 +119,8 @@ for (const theme of ['light', 'dark'] as const) {
     // AC168 phone sizes and R4: nothing scrolls sideways at 390 or 320.
     for (const width of [390, 320]) {
       await page.setViewportSize({ width, height: 844 });
-      await expect(page.locator('.local-dashboard-header h1')).toHaveCSS('font-size', '24px');
+      // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the display title's floor is 36px (was 24px).
+      await expect(page.locator('.local-dashboard-header h1')).toHaveCSS('font-size', '36px');
       await expect(page.locator('.local-overview-summary .local-dashboard-metric:not([data-measured="false"])').first()).toHaveCSS('font-size', '24px');
       for (const path of PAGES) {
         await page.goto(path);
@@ -110,7 +140,8 @@ test('AC208 Settings has no Appearance section; the header toggle switches the t
   await openTheme(page, 'light');
   await page.goto('/settings');
   await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
-  expect(await page.locator('main section.local-settings-section > h2').allTextContents()).toEqual(['Model providers', 'Access', 'System status']);
+  // OMN-21970 AC10 added Pricing and routing; still no Appearance section.
+  expect(await page.locator('main section.local-settings-section > h2').allTextContents()).toEqual(['Model providers', 'Access', 'Pricing and routing', 'System status']);
   await expect(page.getByRole('heading', { name: 'Appearance' })).toHaveCount(0);
   await expect(page.getByRole('radiogroup', { name: 'Theme' })).toHaveCount(0);
   // Positive control: the header toggle still switches the theme, both ways, and the choice survives a reload.
@@ -215,6 +246,9 @@ test('R7 a long full count stays on one line inside its headline card, and short
   await page.goto('/usage');
   const figures = page.locator('.local-overview-summary .local-dashboard-metric:not([data-measured="false"])');
   await expect(figures.first()).toBeVisible();
+  // OMN-21970 AC9 (Lakshman 2026-11-02): card figures count up to the served figure; the measurement is of the final
+  // text, so wait for the long count's last frame (every card's count starts together and runs the same 800 ms).
+  await expect(figures.filter({ hasText: /^409,870,123$/ }), 'the long count is drawn in full').toHaveCount(1);
   const read = await figures.evaluateAll(els => els.map(el => {
     const css = getComputedStyle(el);
     return { text: el.textContent, size: parseFloat(css.fontSize), lines: Math.round(el.getBoundingClientRect().height / parseFloat(css.lineHeight)),
@@ -236,15 +270,19 @@ for (const theme of ['light', 'dark'] as const) {
     await page.goto('/workflow?correlation_id=chart-run-a');
     const groups = page.locator('.local-run-summary-groups > .local-run-summary-group');
     await expect(groups).toHaveCount(4);
-    const panel = await page.locator('main .local-dashboard-panel').first().evaluate(el => getComputedStyle(el).backgroundColor);
+    // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): a neutral card is now drawn like every other panel, a 1px ink hairline
+    // (--ed-rule) on the panel's paper, so the subject cards are compared with the page's own panel and the rule token.
+    const panel = await page.locator('main .local-dashboard-panel').first().evaluate(el => [getComputedStyle(el).backgroundColor, getComputedStyle(el).borderTopColor]);
+    const face = await tokens(page);
+    expect(panel[1], 'panels carry the ink hairline').toBe(face.rule);
     const read = await groups.evaluateAll(els => els.map(el => ({ top: getComputedStyle(el).borderTopWidth, edge: getComputedStyle(el).borderTopColor,
       fill: getComputedStyle(el).backgroundColor, title: getComputedStyle(el.querySelector('h3')!).color })));
-    for (const group of read) expect([group.top, group.edge, group.fill], 'neutral card').toEqual(['1px', LINE[theme], panel]);
+    for (const group of read) expect([group.top, group.edge, group.fill], 'neutral card').toEqual(['1px', face.rule, panel[0]]);
     // Part 28 AC177 supersedes AC150/AC172's subject colours: the four titles are one grey.
     expect(new Set(read.map(group => group.title)).size, 'the four subject titles are one grey (AC177)').toBe(1);
     await page.goto('/runs');
     const week = page.locator('.local-runs-week .local-section-heading');
-    if (await week.count()) await expect(week.first()).toHaveCSS('font-family', MONO);
+    if (await week.count()) expect(firstFamily(await week.first().evaluate(el => getComputedStyle(el).fontFamily))).toBe(firstFamily(face.mono));
     for (const heading of await page.locator('.local-chart-heading h3').all()) await expect(heading).toHaveCSS('font-weight', '500');
   });
 }
@@ -262,32 +300,44 @@ test('R9 narrowing to phone width without a reload folds the sidebar so the page
   await expect.poll(() => page.locator('.sidebar').evaluate(el => el.getBoundingClientRect().width)).toBeGreaterThan(200);
 });
 
-// OMN-21970 AC10 (Lakshman 2026-11-02, "it should be full page"): Settings sections span the page's content width,
-// replacing part 27's 960px column, and nothing inside a section scrolls sideways (the provider table did: 912/1312).
-test('R11 Settings sections span the full page width, nothing inside them scrolls sideways, and their titles weigh 500', async ({ page }) => {
+// OMN-21970 AC10 (Lakshman 2026-11-02, "it should be full page", then "yes best way" for a section menu down the left):
+// each Settings section fills the content column beside the menu, and nothing visible inside it scrolls sideways
+// (the old provider table did: 912/1312). A planted over-wide element must be caught, or the check proves nothing.
+// OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the section title is now the serif display face at 700 (was 500).
+test('R11 each Settings section fills its column, nothing inside it scrolls sideways, and its title is the display face at 700', async ({ page }) => {
   await openTheme(page, 'dark');
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/settings');
-  const sections = page.locator('main section.local-settings-section');
-  await expect(sections.first()).toBeVisible({ timeout: 15000 });
-  const layout = await page.locator('main.local-dashboard-page--settings').evaluate(main => {
-    const style = getComputedStyle(main);
-    const content = main.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
-    const found = [...main.querySelectorAll('section.local-settings-section')].map(section => ({
-      width: section.getBoundingClientRect().width,
-      overflowing: [section, ...section.querySelectorAll('*')]
-        // A 1px clipped box is screen-reader-only text, not a visible overflow.
-        .filter(el => el.clientWidth > 1 && el.scrollWidth > el.clientWidth + 1 && getComputedStyle(el).overflowX !== 'visible')
+  await expect(page.locator('main section.local-settings-section')).toHaveCount(4, { timeout: 15000 });
+  const measure = () => page.locator('main.local-dashboard-page--settings').evaluate(main => {
+    const column = main.querySelector('.local-settings-content') as HTMLElement;
+    const shown = [...main.querySelectorAll('section.local-settings-section')].filter(section => !(section as HTMLElement).hidden) as HTMLElement[];
+    return {
+      column: column.clientWidth, shown: shown.length, width: shown[0]?.getBoundingClientRect().width ?? 0,
+      overflowing: shown.flatMap(section => [section, ...section.querySelectorAll('*')] as HTMLElement[])
+        // A 1px clipped box is screen-reader-only text; an inline box has no width of its own to overflow.
+        .filter(el => el.clientWidth > 1 && getComputedStyle(el).display !== 'inline' && el.scrollWidth > el.clientWidth + 1)
         .map(el => `${el.tagName.toLowerCase()}.${[...el.classList].join('.')} ${el.clientWidth}/${el.scrollWidth}`),
-    }));
-    return { content, found };
+    };
   });
-  expect(layout.found.length).toBeGreaterThanOrEqual(3);
-  for (const section of layout.found) {
-    expect(Math.abs(section.width - layout.content)).toBeLessThanOrEqual(1);
-    expect(section.overflowing).toEqual([]);
+  for (const name of ['Model providers', 'Access', 'Pricing and routing', 'System status']) {
+    await page.getByRole('navigation', { name: 'Settings sections' }).getByRole('link', { name }).click();
+    await expect(page.locator('main section.local-settings-section:not([hidden]) > h2')).toHaveText(name);
+    const layout = await measure();
+    expect(layout.shown).toBe(1);
+    expect(Math.abs(layout.width - layout.column)).toBeLessThanOrEqual(1);
+    expect(layout.overflowing).toEqual([]);
   }
-  await expect(sections.first().locator(':scope > h2')).toHaveCSS('font-weight', '500');
+  // Control: an element wider than its section is reported.
+  await page.locator('main section.local-settings-section:not([hidden]) > h2').evaluate(heading => {
+    const wide = document.createElement('div'); wide.id = 'r11-control'; wide.style.overflowX = 'auto';
+    wide.innerHTML = '<div style="width:3000px;height:1px"></div>'; heading.after(wide);
+  });
+  expect((await measure()).overflowing.some(entry => entry.startsWith('div. '))).toBe(true);
+  await page.locator('#r11-control').evaluate(el => el.remove());
+  const heading = page.locator('main section.local-settings-section:not([hidden]) > h2');
+  await expect(heading).toHaveCSS('font-weight', '700');
+  expect(firstFamily(await heading.evaluate(el => getComputedStyle(el).fontFamily))).toBe(firstFamily((await tokens(page)).display));
 });
 
 test('R12 bringing a low element into view scrolls the page region, never the document under the app frame', async ({ page }) => {

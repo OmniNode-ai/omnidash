@@ -1,5 +1,7 @@
 import { expect, test } from 'playwright/test';
 import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+// OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the window radios sit in one dropdown; chooseWindow opens it and proves it closed.
+import { chooseWindow } from './overview-window-menu';
 
 // Before implementation: an empty spend panel shares a tall row with routing,
 // leaving blank space under the notice. Missing daily metering also falsely
@@ -33,7 +35,7 @@ test('missing daily metering never claims no runs; measured zero still renders e
   }));
   await serveCharts(page, { ...chartRows, [prefix + 'delegation.decisions.v1']: decisions, [prefix + 'metering-summary.v1']: [] });
   await page.goto('/overview');
-  await page.getByRole('radio', { name: 'Today (UTC)', exact: true }).click();
+  await chooseWindow(page, 'Today (UTC)');
   const summary = page.locator('.local-overview-summary');
   for (const id of ['overview-spend', 'overview-savings', 'overview-measured', 'overview-tokens']) {
     await expect(summary.locator(`[data-component="${id}"]`)).toContainText('Not measured: daily totals unavailable (UTC)');
@@ -52,7 +54,7 @@ test('missing daily metering never claims no runs; measured zero still renders e
   }] });
   await page.getByRole('button', { name: 'Refresh', exact: true }).click();
   await expect(summary.locator('[data-component="overview-spend"] .local-dashboard-metric')).toHaveText('Not measured: daily totals unavailable (UTC)');
-  await page.getByRole('radio', { name: 'All time', exact: true }).click();
+  await chooseWindow(page, 'All time');
   await expect(summary.locator('[data-component="overview-spend"] .local-dashboard-metric')).toHaveText('$0.00');
   await expect(summary.locator('[data-component="overview-savings"] .local-dashboard-metric')).toHaveText('$0.00');
   await expect(summary.locator('[data-component="overview-measured"] .local-dashboard-metric')).toHaveText('1');

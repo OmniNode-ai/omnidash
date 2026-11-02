@@ -1,5 +1,6 @@
 import { expect, test, type Page } from 'playwright/test';
 import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chooseWindow, expectWindow } from './overview-window-menu';
 
 // OMN-21166 part 19 (AC133-AC136) and part 23 (AC145). Failure modes declared before code:
 //   P1  a change line computed against a previous window the served rows do not cover, or a zero previous value shown
@@ -51,7 +52,7 @@ async function serveMetering(page: Page, metering: unknown[] = [allRow, ...dayRo
       ? { topic, status: 'degraded', backing: 'not_in_local_store', bus_backed: false, degraded_reason: 'projection_table_missing' }
       : { topic, status: 'ok', backing: 'bus', bus_backed: true, tenant_scoped: false }) }) }));
 }
-const windows = (page: Page) => page.getByRole('radiogroup', { name: 'Figures for', exact: true });
+// OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the windows sit in one dropdown; chooseWindow/expectWindow open it.
 // Part 29 AC192: the wording sits in its own span beside a decorative arrow.
 const change = (page: Page, id: string) => page.locator(`[data-component="${id}"] .local-card-change-text`);
 const arrow = (page: Page, id: string) => page.locator(`[data-component="${id}"] .local-card-change-arrow`);
@@ -60,7 +61,7 @@ test('AC133 a 7-day window shows each card against the previous 7 days; All show
   await serveMetering(page);
   await page.goto('/overview');
   await expect(page.locator('.local-card-change')).toHaveCount(0);
-  await windows(page).getByRole('radio', { name: 'Last 7 days (UTC)', exact: true }).click();
+  await chooseWindow(page, 'Last 7 days (UTC)');
   await expect(change(page, 'overview-spend')).toHaveText('+100% vs previous 7 days');
   await expect(change(page, 'overview-savings')).toHaveText('New this period');
   await expect(change(page, 'overview-tokens')).toHaveText('−50% vs previous 7 days');
@@ -72,7 +73,7 @@ test('AC133 a 7-day window shows each card against the previous 7 days; All show
   await expect(arrow(page, 'overview-savings')).toHaveCount(0);
   await expect(arrow(page, 'overview-spend')).toHaveAttribute('aria-hidden', 'true');
   await expect(page.locator('[data-component="overview-spend"] .local-card-change')).toHaveCSS('color', await page.locator('[data-component="overview-spend"] .local-card-caption > :first-child').evaluate(el => getComputedStyle(el).color));
-  await windows(page).getByRole('radio', { name: 'Today (UTC)', exact: true }).click();
+  await chooseWindow(page, 'Today (UTC)');
   await expect(page.locator('.local-card-change')).toHaveCount(0);
 });
 
@@ -80,7 +81,7 @@ test('AC133 rows that do not reach back over the previous window read "No earlie
   await serveMetering(page);
   await page.goto('/overview');
   // 15 days needs rows back 30 days; only 14 are served.
-  await windows(page).getByRole('radio', { name: 'Last 15 days (UTC)', exact: true }).click();
+  await chooseWindow(page, 'Last 15 days (UTC)');
   for (const id of ['overview-spend', 'overview-savings', 'overview-tokens', 'overview-measured', 'overview-quality']) {
     await expect(change(page, id), id).toHaveText('No earlier data');
   }
@@ -142,18 +143,21 @@ test('AC145 the Runs tier filter keeps only that tier, lives in the address and 
 test('AC136 the window lives in the address, survives reload and a shared link, and a malformed one corrects to All', async ({ page }) => {
   await serveMetering(page);
   await page.goto('/overview');
-  await windows(page).getByRole('radio', { name: 'Last 30 days (UTC)', exact: true }).click();
+  await chooseWindow(page, 'Last 30 days (UTC)');
   await expect(page).toHaveURL(/\/overview\?window=30d$/);
   await page.reload();
-  await expect(windows(page).getByRole('radio', { name: 'Last 30 days (UTC)', exact: true })).toHaveAttribute('aria-checked', 'true');
+  await expectWindow(page, 'Last 30 days (UTC)');
   await page.goto('/overview?window=7d');
-  await expect(windows(page).getByRole('radio', { name: 'Last 7 days (UTC)', exact: true })).toHaveAttribute('aria-checked', 'true');
+  await expectWindow(page, 'Last 7 days (UTC)');
   await expect(page.locator('[data-slice="runs"] button.gdb-day')).toHaveCount(7);
+  // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the new 90-day window is an address too.
+  await page.goto('/overview?window=90d');
+  await expectWindow(page, 'Last 90 days (UTC)');
   await page.goto(`/overview?day=${day(3)}`);
   await expect(page.locator('[data-slice="runs"] button.gdb-day')).toHaveCount(1);
   for (const bad of ['window=bogus', 'day=2026-02-30', `window=7d&day=${day(1)}`]) {
     await page.goto(`/overview?${bad}`);
     await expect(page, bad).toHaveURL(/\/overview$/);
-    await expect(windows(page).getByRole('radio', { name: 'All time', exact: true }), bad).toHaveAttribute('aria-checked', 'true');
+    await expectWindow(page, 'All time', bad);
   }
 });
