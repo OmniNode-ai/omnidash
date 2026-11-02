@@ -11,7 +11,7 @@
 //   - Uses `PositionedMenu` (prototype pattern) rather than a third-party dropdown
 //     primitive, so the markup and behavior match the prototype 1:1.
 import { useRef, type ReactNode, type DragEvent, type MouseEvent } from 'react';
-import { GripVertical, MoreVertical, Settings, Copy, Trash2 } from 'lucide-react';
+import { GripVertical, MoreVertical, Settings, Copy, Trash2 } from '@/design-system/icons';
 import {
   PositionedMenu,
   MenuItem,

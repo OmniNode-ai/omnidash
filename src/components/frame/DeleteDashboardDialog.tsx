@@ -10,7 +10,7 @@
 //   - Confirm button is `btn danger` so the destructive action reads
 //     visually distinct from the Cancel button.
 import { useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X } from '@/design-system/icons';
 import { Text } from '@/components/ui/typography';
 
 export interface DeleteDashboardDialogProps {

@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import * as Fields from '@/components/dashboard/FieldIcon';
+import * as Icons from '@/design-system/icons';
 import { fieldTone } from '@/components/dashboard/field-identity';
 import { WorkflowRoutingFlow } from '@/pages/local/workflow-analysis';
 import * as Destinations from '@/navigation/destination-icons';
@@ -41,9 +42,10 @@ function sourceRegistryKeys(file: string, exportedName: string): string[] {
     return literal[1] ?? literal[2] ?? literal[3]!;
   });
 }
-const parsedFieldKeys = sourceRegistryKeys('src/components/dashboard/FieldIcon.tsx', 'FIELD_ICONS');
+// OMN-22168 AC2: the concept registry moved from FieldIcon.tsx to src/design-system/icons.ts as CONCEPT_ICONS.
+const parsedFieldKeys = sourceRegistryKeys('src/design-system/icons.ts', 'CONCEPT_ICONS');
 const parsedDestinationKeys = sourceRegistryKeys('src/navigation/destination-icons.tsx', 'DESTINATION_ICONS');
-const fieldKeys = Fields.FIELD_ICONS ? Object.keys(Fields.FIELD_ICONS) : parsedFieldKeys;
+const fieldKeys = Object.keys(Icons.CONCEPT_ICONS);
 const destinationKeys = Destinations.DESTINATION_ICONS ? Object.keys(Destinations.DESTINATION_ICONS) : parsedDestinationKeys;
 const cssRules = (css: string) => [...css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)]
   .flatMap(([, selectors, body]) => selectors!.split(',').map(selector => ({
@@ -116,7 +118,7 @@ describe('OMN-21308 AC1 canonical field identities', () => {
     expect(parsedDestinationKeys.length).toBeGreaterThan(0);
     expect(new Set(parsedFieldKeys).size).toBe(parsedFieldKeys.length);
     expect(new Set(parsedDestinationKeys).size).toBe(parsedDestinationKeys.length);
-    if (Fields.FIELD_ICONS) expect([...fieldKeys].sort()).toEqual([...parsedFieldKeys].sort());
+    expect([...fieldKeys].sort()).toEqual([...parsedFieldKeys].sort());
     if (Destinations.DESTINATION_ICONS) expect([...destinationKeys].sort()).toEqual([...parsedDestinationKeys].sort());
     // The fallback population must actually render through the public components.
     for (const id of parsedFieldKeys) svgOf(renderToStaticMarkup(<Fields.FieldIcon tone={id} />));

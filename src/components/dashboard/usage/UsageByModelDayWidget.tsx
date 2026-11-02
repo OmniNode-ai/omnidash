@@ -19,7 +19,7 @@ import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
 //     share of calls is the served `call_share`, the row's calls over its tenant's calls that UTC day, formatted as a
 //     percentage. A row with no served share says so; no share is worked out here from the call counts.
 import { useId, useState, type CSSProperties } from 'react';
-import { ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RotateCcw } from '@/design-system/icons';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionSnapshotQuery } from '@/hooks/useProjectionSnapshotQuery';
 import { TOPICS } from '@shared/types/topics';

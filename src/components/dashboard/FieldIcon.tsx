@@ -1,66 +1,9 @@
-import {
-  Antenna, ArrowDown, ChevronsUp, Gauge, WholeWord, ArrowLeftRight, ArrowUp, Award, BadgeInfo, Banknote, Bot, Boxes, Brain, BrainCircuit,
-  Building2, CalendarClock, CalendarDays, CalendarRange, ChartArea, ChartBar, ChartBarStacked, ChartColumnStacked,
-  ChartGantt, ChartLine, ChartPie, ChartSpline, CheckCheck, CircleCheck, CircleDollarSign, CircleDot, CircleEllipsis,
-  CircleHelp, CircleX, ClipboardCheck, Clock3, Cloud, Cloudy, CodeXml, Cpu, DatabaseZap, Divide, Feather,
-  FileClock, FileText, Files, Fingerprint, Flag, FlagTriangleRight, Footprints, GitBranch, GitFork,
-  GitPullRequest, Globe, HardDrive, Hash, History, Hourglass, House, IdCard, Inbox, Key, KeyRound, Layers, Layers2,
-  ListChecks, LockKeyhole, Logs, Medal, MessageSquareText, MessagesSquare, Milestone, Monitor, MousePointerClick,
-  Network, OctagonAlert, PanelsTopLeft, Percent, PiggyBank, PlugZap, Receipt, Rocket, Route, RouteOff, Rows3, Ruler, Scale,
-  ScrollText, Server, Sheet, ShieldCheck, Shrink, Shuffle, Signpost, Snail, Sparkles, Split, Star, TableProperties,
-  Target, TestTube, Timer, TimerReset, TrendingUp, TriangleAlert, Trophy, UserLock, Waypoints, Zap, type LucideIcon
-} from 'lucide-react';
+import { CONCEPT_ICONS } from '@/design-system/icons';
 import { fieldTone, isUnavailableField } from './field-identity';
 import { tierColor } from '@/lib/dashboard-colors';
 import type { CSSProperties } from 'react';
 import { useModelIdentityStyle } from '@/components/dashboard/model-tiers';
 
-/**
- * Canonical field identities, reused wherever the same fact is displayed. OMN-21166 part 28a (Lakshman 2026-10-27, grey
- * icons with unique glyphs): every concept has its own glyph, so a concept stays unique by shape alone now that interface
- * icons are grey (OMN-21308 AC1); colour stays on the data.
- */
-export const FIELD_ICONS: Readonly<Record<string, LucideIcon>> = {
-  pass: CircleCheck, fail: CircleX, count: ListChecks, score: Star, threshold: Ruler,
-  model: BrainCircuit, age: Clock3, identity: Fingerprint, duration: Timer,
-  cost: CircleDollarSign, savings: PiggyBank, backend: Server, host: Monitor,
-  // OMN-21970 AC8: tokens are words, not money, so they no longer share a coin glyph with spend.
-  'tokens-in': ArrowDown, 'tokens-out': ArrowUp, tokens: WholeWord, basis: BadgeInfo,
-  task: FileText, tier: Layers, queue: Hourglass, execution: Zap, completion: Flag,
-  calls: Bot, tenant: Building2, session: MessagesSquare, baseline: Scale,
-  'saving-average': Divide, compression: Shrink, cache: DatabaseZap,
-  quality: Award, events: Logs, generation: Boxes, transport: Antenna,
-  delegations: Network, routing: Route, unrouted: RouteOff, contract: ShieldCheck,
-  unavailable: CircleDot, 'tier-harness': Cpu, 'step-provider-call': PlugZap,
-  recent: Rows3, last: History, analysis: ChartSpline,
-  'spend-daily': ChartLine, 'tokens-daily': ChartArea, 'savings-daily': CalendarDays,
-  'usage-day': TableProperties, credentials: KeyRound, 'local-identity': IdCard, 'local-access': UserLock,
-  'cloud-keys': LockKeyhole, path: Footprints, 'local-run': HardDrive,
-  'run-outcome': Trophy, 'routing-model': Waypoints, 'tokens-completion': Hash,
-  timing: TimerReset, 'run-details': FileClock, 'stage-timing': ChartGantt,
-  answer: MessageSquareText, 'routing-flow': GitBranch, 'token-flow': ArrowLeftRight,
-  'quality-comparison': Target,
-  'tier-local': House, 'tier-cheap-frontier': Feather, 'tier-cheap-cloud': Cloudy,
-  'tier-cloud': Cloud, 'tier-claude': Sparkles, 'tier-frontier': Rocket,
-  'tier-customer-keys': Key, 'tier-other': Signpost,
-  'step-request': Inbox, 'step-routing': Split, 'step-quality': ClipboardCheck,
-  'step-terminal': FlagTriangleRight, 'step-other': CircleEllipsis,
-  'runs-daily': CalendarRange, 'pass-rate-daily': Percent, 'activity-hourly': CalendarClock,
-  'quality-model': Medal, failures: OctagonAlert, 'runs-model': Brain, 'runs-tier': Layers2,
-  'spend-model': Banknote, 'cost-per-run': Receipt, 'tokens-model': ChartBarStacked,
-  'cost-route': Milestone, activity: TrendingUp, 'routing-workload': Shuffle,
-  'quality-outcomes': CheckCheck, 'performance-model': ChartBar,
-  'task-document': Files, 'task-code-generation': CodeXml, 'task-research': Globe,
-  'task-summarization': ScrollText, 'task-code-review': GitPullRequest,
-  'task-test': TestTube, 'task-other': CircleHelp,
-  'tier-mix': ChartPie, 'usage-analysis': ChartColumnStacked,
-  'load-slow': Snail, 'load-error': TriangleAlert,
-  selected: MousePointerClick, 'recorded-rows': Sheet,
-  // OMN-21166 part 30 (revision 7): Runs' analysis views and its routing groups.
-  'runs-analysis': PanelsTopLeft, 'run-routes': GitFork,
-  // OMN-21970 AC8: the Runs cards' p95 duration and escalated runs have their own concepts, colours and glyphs.
-  'duration-p95': Gauge, escalated: ChevronsUp,
-};
 
 /** Canonical readable names for consumers whose label is not a field alias. */
 export const CONCEPT_LABELS: Readonly<Record<string, string>> = {
@@ -103,7 +46,7 @@ export const CONCEPT_LABELS: Readonly<Record<string, string>> = {
 
 export function ConceptIcon({ concept, label, value, size = 12 }: { concept: string; label?: string; value?: unknown; size?: number }) {
   const modelIdentityStyle = useModelIdentityStyle();
-  const Icon = FIELD_ICONS[concept];
+  const Icon = CONCEPT_ICONS[concept];
   const model = concept === 'model' && typeof value === 'string' && !isUnavailableField(value) ? value : null;
   const tier = concept.startsWith('tier-') && typeof value === 'string' ? value : null;
   const customTier = concept === 'tier-other' && tier && !isUnavailableField(tier) && !/^none$/i.test(tier) ? tier : null;

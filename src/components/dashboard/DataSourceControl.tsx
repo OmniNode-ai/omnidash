@@ -17,7 +17,7 @@
 // Visual language reuses the honesty palette (compute = live, warn = fixtures)
 // established by HonestyStateBadge (OMN-12981 lineage).
 import { useState } from 'react';
-import { Database, HardDrive, ChevronDown, Check } from 'lucide-react';
+import { Database, HardDrive, ChevronDown, Check } from '@/design-system/icons';
 import {
   PositionedMenu,
   usePositionedMenu,

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { RotateCw, Square, Check, AlertCircle, Loader } from 'lucide-react';
+import { RotateCw, Square, Check, AlertCircle, Loader } from '@/design-system/icons';
 import type { DispatchRequest } from './useDispatch';
 import { useDispatch } from './useDispatch';
 

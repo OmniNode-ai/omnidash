@@ -9,7 +9,7 @@
  * that changes it.
  */
 import { useEffect, useState, type ReactNode } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight } from '@/design-system/icons';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { SettingsEmptyState } from '@/components/dashboard/SettingsEmptyState';
 import { readableTime } from '@/components/format/readable-time';

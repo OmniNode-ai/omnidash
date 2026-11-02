@@ -14,7 +14,7 @@ import {
   CalendarDays, Maximize2, X,
   ArrowUpRight, Check, ChevronRight, Copy,
   type LucideIcon,
-} from 'lucide-react';
+} from '@/design-system/icons';
 import { createSnapshotSource } from '@/data-source';
 import { fetchExposureCensus, type ExposureCensus } from '@/data-source/exposure-census';
 import { resolveEffectiveDataSource } from '@/data-source/data-source-override';
@@ -46,7 +46,8 @@ import { KpiStrip, type KpiItem } from '@/components/dashboard/KpiStrip';
 import { CardBasis } from '@/components/dashboard/CardBasis';
 import { AccessNotServed, DashboardAccess, dashboardAccessRow } from '@/pages/local/access';
 import { shortId } from '@/components/dashboard/event-dash/primitives';
-import { ConceptIcon, FIELD_ICONS, FieldIcon } from '@/components/dashboard/FieldIcon';
+import { ConceptIcon, FieldIcon } from '@/components/dashboard/FieldIcon';
+import { CONCEPT_ICONS } from '@/design-system/icons';
 import { CountUpText } from '@/components/dashboard/CountUpText';
 import { fieldTone, isUnavailableField } from '@/components/dashboard/field-identity';
 import '@/styles/local-dashboard.css';
@@ -2822,7 +2823,7 @@ export const PANEL_CONCEPTS: Readonly<Record<string, string>> = {
 };
 /** Compatibility inventory, derived from the shared canonical identity rather than a second icon map. */
 export const PANEL_ICONS: Record<string, LucideIcon> = Object.fromEntries(
-  Object.entries(PANEL_CONCEPTS).map(([panel, concept]) => [panel, FIELD_ICONS[concept]!]),
+  Object.entries(PANEL_CONCEPTS).map(([panel, concept]) => [panel, CONCEPT_ICONS[concept]!]),
 );
 
 const PAGE_TITLES: Record<LocalPageName, string> = {

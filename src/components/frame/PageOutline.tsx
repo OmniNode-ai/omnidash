@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
-import { ArrowDownRight } from 'lucide-react';
+import { ArrowDownRight } from '@/design-system/icons';
 import '@/styles/page-outline.css';
 
 /** Navigation over rendered sections only. It reads headings, never data or

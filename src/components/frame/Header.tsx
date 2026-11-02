@@ -17,7 +17,7 @@ import { useLocation } from 'wouter';
 import { PAGE_LABELS, pageForPath } from '@/navigation/page-routes';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '@/theme';
-import { Moon, RefreshCw, Sun } from 'lucide-react';
+import { Moon, RefreshCw, Sun } from '@/design-system/icons';
 import { currentLocalPageRead, requestLocalPageRefresh, subscribeLocalPageRead, updatedLabel } from '@/services/local-page-refresh';
 
 // Length of the visual spin after a manual refresh. Long enough to

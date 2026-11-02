@@ -1,6 +1,6 @@
 import { formatDashboardCount } from '@/lib/dashboard-count';
 import { useEffect, useState } from 'react';
-import { BellRing } from 'lucide-react';
+import { BellRing } from '@/design-system/icons';
 import { toInsightRuns } from './insights';
 import { useSharedRunFilter } from './run-filter';
 

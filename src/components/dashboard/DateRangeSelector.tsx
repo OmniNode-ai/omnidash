@@ -16,7 +16,7 @@
 //     default preset (Last 24h). Makes fresh dashboards land on a
 //     sensible window rather than "show me 48h of synthetic fixtures".
 import { useEffect, useState } from 'react';
-import { Calendar, ChevronDown } from 'lucide-react';
+import { Calendar, ChevronDown } from '@/design-system/icons';
 import {
   PositionedMenu,
   MenuItem,

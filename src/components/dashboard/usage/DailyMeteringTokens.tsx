@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from '@/design-system/icons';
 import { formatFullCount } from '@/lib/dashboard-count';
 import type { DailyMeteringTokenData } from '@/lib/daily-metering-tokens';
 import { TokenDirections } from './TokenDirections';

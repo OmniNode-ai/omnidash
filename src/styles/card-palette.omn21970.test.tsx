@@ -17,7 +17,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { FIELD_ICONS } from '@/components/dashboard/FieldIcon';
+import { CONCEPT_ICONS } from '@/design-system/icons';
 import { PANEL_CONCEPTS, RunsKpis, UsageKpis } from '@/pages/LocalDashboardPage';
 
 const css = readFileSync(resolve(__dirname, '../design-system/tokens.css'), 'utf8');
@@ -131,12 +131,12 @@ describe('OMN-21970 AC8: card colours and icons', () => {
     // colour); the KpiStrip pages draw the icon of each card's own concept.
     const iconConcepts = { ...pages(), overview: ['overview-spend', 'overview-savings', 'overview-measured', 'overview-tokens', 'overview-quality'].map(id => PANEL_CONCEPTS[id]!) };
     for (const [name, concepts] of Object.entries(iconConcepts)) {
-      const icons = concepts.map(concept => FIELD_ICONS[concept]);
+      const icons = concepts.map(concept => CONCEPT_ICONS[concept]);
       expect(icons.every(Boolean), `${name}: every card concept has an icon`).toBe(true);
       expect(new Set(icons).size, `${name}: ${concepts.join(', ')}`).toBe(concepts.length);
     }
-    expect(FIELD_ICONS.tokens).not.toBe(FIELD_ICONS.cost);
-    expect(FIELD_ICONS.tokens?.displayName ?? '').not.toMatch(/Coin|Dollar|Banknote/);
+    expect(CONCEPT_ICONS.tokens).not.toBe(CONCEPT_ICONS.cost);
+    expect(CONCEPT_ICONS.tokens?.displayName ?? '').not.toMatch(/Coin|Dollar|Banknote/);
   });
 
   it('P6: the tier colours are not touched by the card palette', () => {

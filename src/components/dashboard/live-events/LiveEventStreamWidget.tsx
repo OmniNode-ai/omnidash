@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Search } from 'lucide-react';
+import { Search } from '@/design-system/icons';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
