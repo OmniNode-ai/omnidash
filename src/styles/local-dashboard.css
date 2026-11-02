@@ -2285,9 +2285,58 @@ figure.local-chart.usage-insight { min-width: 0; margin: 0; padding: 14px; }
    a one-panel section shows only its own title, and an empty section shows one SettingsEmptyState. */
 .local-settings-section { margin-bottom: 16px; padding: 20px 22px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
 .local-settings-section > h2 { margin: 0 0 2px; font-size: 15px; font-weight: 500; }
-/* Part 27 (Codex's review against Entire's settings): one readable column, as settings pages keep, not the full width;
-   960px keeps Access's two columns wide enough for a tenant id. */
-.local-dashboard-page--settings > .local-settings-section { max-width: 960px; }
+/* OMN-21970 AC10 (Lakshman 2026-11-02, "it should be full page"): Settings sections span the page's content width,
+   replacing part 27's 960px readable column. */
+.local-dashboard-page--settings > .local-settings-section { max-width: none; }
+
+/* OMN-21970 AC10: one card per provider in a responsive grid, so no table runs past its section. The status tone
+   colours the chip and the card's top edge; every value on a card is a served field or the command that changes it. */
+.local-provider-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 14px; margin-top: 12px; }
+.local-provider-card { --tone: var(--ink-4); position: relative; display: flex; flex-direction: column; gap: 12px; min-width: 0;
+  padding: 16px 18px; border: 1px solid var(--line); border-top: 3px solid var(--tone); border-radius: 12px; background: var(--bg-elevated);
+  transition: transform 160ms ease, box-shadow 160ms ease; }
+.local-provider-card[data-tone="pass"] { --tone: var(--field-pass); }
+.local-provider-card[data-tone="fail"] { --tone: var(--field-fail); }
+.local-provider-card[data-tone="idle"] { --tone: var(--accent); }
+.local-provider-card[data-tone="off"] { --tone: var(--field-unavailable); }
+.local-provider-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.local-provider-head h3 { margin: 0 auto 0 0; font-size: 15px; font-weight: 600; color: var(--ink); }
+.local-provider-status, .local-provider-badge { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px;
+  font-size: 12px; font-weight: 500; line-height: 1.6; white-space: nowrap; }
+.local-provider-status { color: var(--tone); background: color-mix(in srgb, var(--tone) 12%, transparent); border: 1px solid color-mix(in srgb, var(--tone) 35%, transparent); }
+.local-provider-status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.local-provider-badge { color: var(--accent-ink); background: var(--accent-soft); border: 1px solid var(--accent-glow); white-space: normal; }
+.local-provider-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px 16px; margin: 0; }
+.local-provider-facts > div { min-width: 0; }
+.local-provider-facts dt { font-size: 12px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-3); }
+.local-provider-facts dd { margin: 2px 0 0; font-size: 13px; color: var(--ink); overflow-wrap: anywhere; }
+.local-provider-facts--inline { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); margin-top: 6px; }
+.local-provider-block h4 { margin: 0 0 6px; font-size: 12px; font-weight: 500; color: var(--ink-3); }
+.local-provider-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.local-provider-chips li { max-width: 100%; padding: 2px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg-sunken);
+  font-size: 12px; color: var(--ink-2); overflow-wrap: anywhere; }
+.local-provider-more { margin-top: 6px; }
+.local-provider-more > summary, .local-provider-error > summary { cursor: pointer; width: fit-content; font-size: 12px; font-weight: 500; color: var(--accent-ink); }
+.local-provider-more[open] > summary { margin-bottom: 6px; }
+.local-provider-error > summary { color: var(--field-fail); }
+.local-provider-error pre { margin: 6px 0 0; padding: 10px 12px; max-height: 220px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--bg-sunken); font-size: 12px; color: var(--ink-2); }
+.local-provider-keys { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.local-provider-keys > li { padding: 10px 12px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--bg-sunken); }
+.local-provider-key-name { font-size: 13px; color: var(--ink); overflow-wrap: anywhere; }
+.local-provider-empty { margin: 0; font-size: 13px; color: var(--ink-3); }
+.local-provider-setup { margin: auto 0 0; padding-top: 10px; border-top: 1px dashed var(--line); font-size: 12px; color: var(--ink-3); }
+.local-provider-setup code { padding: 1px 6px; border-radius: 4px; background: var(--bg-sunken); color: var(--ink-2); }
+.local-settings-menu { position: sticky; top: 0; z-index: 2; margin: 0 0 16px; padding: 8px 0; background: var(--bg); }
+.local-settings-menu ol { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.local-settings-menu a { display: inline-block; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel);
+  font-size: 13px; font-weight: 500; color: var(--ink-2); text-decoration: none; }
+.local-settings-menu a:hover, .local-settings-menu a:focus-visible { color: var(--accent-ink); border-color: var(--accent); background: var(--accent-soft); outline: none; }
+.local-dashboard-page--settings > .local-settings-section { scroll-margin-top: 56px; }
+.local-pricing-facts { max-width: 760px; }
+@media (prefers-reduced-motion: no-preference) {
+  .local-provider-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px -8px color-mix(in srgb, var(--tone) 55%, transparent); }
+}
 .local-access-unserved-titles { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 12px; }
 .local-access-unserved-titles > h2 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 13px; font-weight: 500; color: var(--ink); }
 @media (max-width: 600px) { .local-access-unserved-titles { grid-template-columns: 1fr; gap: 8px; } }

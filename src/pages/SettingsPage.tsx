@@ -13,6 +13,9 @@ const SECTIONS = [
     description: 'The AI provider accounts OmniNode can use for your delegations.' },
   { id: 'settings-access', page: 'api-keys', title: 'Access', single: false,
     description: 'Your local identity and how this dashboard is protected.' },
+  // OMN-21970 AC10: the baseline model and pricing version the savings figures use, served by metering-summary.v1.
+  { id: 'settings-pricing', page: 'pricing', title: 'Pricing and routing', single: true,
+    description: 'The baseline model your savings are measured against, and its pricing version.' },
   // Revision 2 (AC158): service health is watched, not set, so it comes last, as admin areas place monitoring.
   { id: 'settings-system-status', page: 'status', title: 'System status', single: true,
     description: 'Whether the OmniNode services on this machine are running.' },
@@ -26,6 +29,10 @@ export function SettingsPage({ navigationCache }: { navigationCache: LocalDashbo
         <div><h1>Settings</h1></div>
       </div>
     </header>
+    {/* OMN-21970 AC10: one menu linking each section, so a long page is one jump from any part of it. */}
+    <nav className="local-settings-menu" aria-label="Settings sections">
+      <ol>{SECTIONS.map(section => <li key={section.id}><a href={`#${section.id}`}>{section.title}</a></li>)}</ol>
+    </nav>
     {SECTIONS.map(section => <section key={section.id} id={section.id}
       className={`local-settings-section${section.single ? ' local-settings-section--single' : ''}`}>
       <h2 id={`${section.id}-heading`}>{section.title}</h2>

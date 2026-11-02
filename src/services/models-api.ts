@@ -22,10 +22,14 @@ export interface ModelTest {
 }
 
 export interface ModelProviderRow {
-  provider: ModelProviderId;
+  /** One of the four the server lists (OMN-20816 decision b); the page also renders a name it does not know. */
+  provider: ModelProviderId | (string & {});
   set_up: boolean;
   last_test: ModelTest | null;
   models: string[];
+  /** Whether routing tries this provider first, and the model it starts with, when the server serves them. */
+  tried_first?: boolean | null;
+  first_model?: string | null;
 }
 
 /** A refusal or failure, carrying the server's own text. */

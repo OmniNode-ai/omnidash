@@ -34,12 +34,6 @@ function LastUsed({ value }: { value: unknown }) {
   return missing(value) ? <>Never</> : <KeyTime value={value} />;
 }
 
-/** One cell per key a provider has (most have one); a provider with no key reads "No key" in the first, "—" after. */
-function KeyCells({ list, field, first, render }: { list: readonly CredentialKeyRow[]; field: string; first?: boolean; render?: (value: unknown) => ReactNode }) {
-  if (list.length === 0) return <>{first ? 'No key' : '—'}</>;
-  return <>{list.map((key, index) => <div key={index}>{render ? render(key[field]) : served(key[field])}</div>)}</>;
-}
-
 export interface ModelKeysClient {
   list: () => Promise<ModelProviderRow[]>;
 }
@@ -72,12 +66,98 @@ export function providerName(provider: unknown): string {
   return (LABELS as Record<string, string>)[id] ?? `${id.charAt(0).toUpperCase()}${id.slice(1)}`;
 }
 
-function stateOf(row: ModelProviderRow): string {
-  if (!row.set_up) return 'Not set up';
+type StatusTone = 'pass' | 'fail' | 'idle' | 'off';
+
+/** OMN-21970 AC10: the failure class is the served reason's text before its first colon ("timeout: ..." is timeout). */
+function failureClass(reason: string | null | undefined): string | null {
+  if (missing(reason)) return null;
+  const head = String(reason).split(':')[0].trim();
+  return head === '' || head.length > 40 ? null : head;
+}
+
+function statusOf(row: ModelProviderRow): { text: string; tone: StatusTone } {
+  if (!row.set_up) return { text: 'Not set up', tone: 'off' };
   const last = row.last_test;
-  if (last === null || last.status === 'not_set_up') return 'Set up, not tested yet';
-  if (last.status === 'passed') return 'Last test passed';
-  return `Last test failed: ${last.reason ?? 'no reason recorded'}`;
+  if (last === null || last.status === 'not_set_up') return { text: 'Set up, not tested yet', tone: 'idle' };
+  if (last.status === 'passed') return { text: 'Last test passed', tone: 'pass' };
+  const cause = failureClass(last.reason);
+  return { text: cause === null ? 'Last test failed' : `Last test failed · ${cause}`, tone: 'fail' };
+}
+
+const MODELS_SHOWN = 3;
+
+/** The first three models, and the rest behind one closed disclosure, so an 18-model list never runs on. */
+function ModelList({ provider, models }: { provider: string; models: readonly string[] }) {
+  if (models.length === 0) return <p className="local-provider-empty">No models listed</p>;
+  const rest = models.slice(MODELS_SHOWN);
+  return <div className="local-provider-models">
+    <ul aria-label={`${provider} models`} className="local-provider-chips">
+      {models.slice(0, MODELS_SHOWN).map(model => <li key={model} className="mono">{model}</li>)}
+    </ul>
+    {rest.length > 0 && <details className="local-provider-more">
+      <summary>{`+${rest.length} more`}</summary>
+      <ul className="local-provider-chips">{rest.map(model => <li key={model} className="mono">{model}</li>)}</ul>
+    </details>}
+  </div>;
+}
+
+/** A provider's keys as a short list of facts: name, fingerprint prefix, set time, Last used (OMN-19996), and Expires
+ * and Bound host only when a key records one. Never a value or the full key reference id. */
+function KeyList({ provider, list }: { provider: string; list: readonly CredentialKeyRow[] }) {
+  if (list.length === 0) return <p className="local-provider-empty">No key</p>;
+  return <ul aria-label={`${provider} keys`} className="local-provider-keys">{list.map((key, index) => (
+    <li key={`${String(key.name)}-${index}`}>
+      <span className="local-provider-key-name mono">{served(key.name)}</span>
+      <dl className="local-provider-facts local-provider-facts--inline">
+        <div><dt>Fingerprint</dt><dd className="mono">{served(key.fingerprint)}</dd></div>
+        <div><dt>Set</dt><dd><KeyTime value={key.set_at} /></dd></div>
+        <div><dt>Last used</dt><dd><LastUsed value={key.last_used_at} /></dd></div>
+        {!missing(key.expires_at) && <div><dt>Expires</dt><dd><KeyTime value={key.expires_at} /></dd></div>}
+        {!missing(key.bound_host) && <div><dt>Bound host</dt><dd className="mono">{String(key.bound_host)}</dd></div>}
+      </dl>
+    </li>
+  ))}</ul>;
+}
+
+/** One card per provider: every field below is served by GET /models or tenant-credentials.v1, and a null one is left out. */
+function ProviderCard({ row, keys, listed = true }: { row: ModelProviderRow; keys: readonly CredentialKeyRow[]; listed?: boolean }) {
+  const name = providerName(row.provider);
+  const status = listed ? statusOf(row) : { text: 'Not listed by onex models', tone: 'off' as StatusTone };
+  const last = row.last_test;
+  const tested = last !== null && last.status !== 'not_set_up';
+  const facts: Array<[string, ReactNode, boolean?]> = [];
+  if (tested && !missing(last.tested_at)) facts.push(['Last test', <KeyTime key="t" value={last.tested_at} />]);
+  if (tested && !missing(last.model)) facts.push(['Tested model', String(last.model), true]);
+  if (tested && !missing(last.backend_id)) facts.push(['Backend', String(last.backend_id), true]);
+  if (tested && !missing(last.endpoint)) facts.push(['Endpoint', String(last.endpoint), true]);
+  const reason = last?.status === 'failed' && !missing(last.reason) ? String(last.reason) : null;
+  const command = row.provider === 'ollama' ? null : `onex models add ${row.provider}`;
+  return <article className="local-provider-card" aria-label={name} data-tone={status.tone}>
+    <header className="local-provider-head">
+      <h3>{name}</h3>
+      <span className="local-provider-status" data-tone={status.tone}>{status.text}</span>
+      {row.tried_first === true && <span className="local-provider-badge">
+        {missing(row.first_model) ? 'Tried first' : `Tried first · ${String(row.first_model)}`}</span>}
+    </header>
+    {facts.length > 0 && <dl className="local-provider-facts">{facts.map(([label, value, mono]) => (
+      <div key={label}><dt>{label}</dt><dd className={mono ? 'mono' : undefined}>{value}</dd></div>
+    ))}</dl>}
+    {reason !== null && <details className="local-provider-error">
+      <summary>Show the full error</summary>
+      <pre>{reason}</pre>
+    </details>}
+    {listed && <section className="local-provider-block" aria-label={`${name} model list`}>
+      <h4>{`Models${row.models.length > 0 ? ` (${row.models.length})` : ''}`}</h4>
+      <ModelList provider={name} models={row.models} />
+    </section>}
+    <section className="local-provider-block" aria-label={`${name} key list`}>
+      <h4>Keys</h4>
+      <KeyList provider={name} list={keys} />
+    </section>
+    {listed && <p className="local-provider-setup">
+      {command === null ? OLLAMA_HOW : <>Set up with <code className="mono">{command}</code></>}
+    </p>}
+  </article>;
 }
 
 function message(error: unknown): string {
@@ -99,7 +179,9 @@ export function ModelKeys({ client = LIVE_CLIENT, keys = [], empty }: { client?:
     listOnce(client).then(
       (served) => {
         if (!live) return;
-        setRows(ORDER.flatMap((provider) => served.filter((row) => row.provider === provider)));
+        // The four in their fixed order, then any name the page does not know in the served order (OMN-21970 AC10).
+        const known = ORDER.flatMap((provider) => served.filter((row) => row.provider === provider));
+        setRows([...known, ...served.filter((row) => !(ORDER as readonly string[]).includes(String(row.provider)))]);
         setListError(null);
       },
       (error: unknown) => {
@@ -146,43 +228,14 @@ export function ModelKeys({ client = LIVE_CLIENT, keys = [], empty }: { client?:
   const unlisted = [...new Set(keys.map(key => String(key.provider ?? '').toLowerCase()).filter(provider => !listed.has(provider)))];
   const showExpires = keys.some(key => !missing(key.expires_at));
   const showHost = keys.some(key => !missing(key.bound_host));
-  const keyCells = (list: readonly CredentialKeyRow[]) => <>
-    <td data-label="Key ref"><KeyCells list={list} field="name" first /></td>
-    <td data-label="Fingerprint"><KeyCells list={list} field="fingerprint" /></td>
-    <td data-label="Set"><KeyCells list={list} field="set_at" render={value => <KeyTime value={value} />} /></td>
-    <td data-label="Last used"><KeyCells list={list} field="last_used_at" render={value => <LastUsed value={value} />} /></td>
-    {showExpires && <td data-label="Expires"><KeyCells list={list} field="expires_at" render={value => (missing(value) ? 'No expiry recorded' : <KeyTime value={value} />)} /></td>}
-    {showHost && <td data-label="Bound host"><KeyCells list={list} field="bound_host" /></td>}
-  </>;
   return (
     <section className="local-model-keys" aria-label="Model providers">
-      <div className="local-dashboard-table-wrap">
-        <table aria-label="Model providers">
-          <thead><tr><th>Provider</th><th>State</th><th>Models</th><th>Key ref</th><th>Fingerprint</th><th>Set</th><th>Last used</th>
-            {showExpires && <th>Expires</th>}{showHost && <th>Bound host</th>}<th>Set up with</th></tr></thead>
-          <tbody>{rows.map((row) => (
-            <tr key={row.provider}>
-              <th scope="row">{LABELS[row.provider]}</th>
-              <td data-label="State">{stateOf(row)}</td>
-              <td data-label="Models">{row.models.length > 0 ? row.models.map((model) => <span key={model} className="mono">{model} </span>) : '—'}</td>
-              {keyCells(keysOf(row.provider))}
-              <td data-label="Set up with">
-                {row.provider === 'ollama' ? OLLAMA_HOW : <span className="mono">{`onex models add ${row.provider}`}</span>}
-              </td>
-            </tr>
-          ))}
-          {unlisted.map(provider => (
-            <tr key={`unlisted-${provider}`}>
-              <th scope="row">{providerName(provider)}</th>
-              <td data-label="State">Not listed by onex models</td>
-              <td data-label="Models">—</td>
-              {keyCells(keysOf(provider))}
-              <td data-label="Set up with">—</td>
-            </tr>
-          ))}</tbody>
-        </table>
+      <div className="local-provider-grid">
+        {rows.map((row) => <ProviderCard key={String(row.provider)} row={row} keys={keysOf(String(row.provider))} />)}
+        {unlisted.map(provider => <ProviderCard key={`unlisted-${provider}`} listed={false} keys={keysOf(provider)}
+          row={{ provider, set_up: false, last_test: null, models: [] }} />)}
       </div>
-      <p className="local-dashboard-caption">Keys are added, replaced and removed in the terminal with onex models add and onex models remove; this list only shows them.</p>
+      <p className="local-dashboard-caption">Keys are added, replaced and removed in the terminal with onex models add and onex models remove; this page only shows them.</p>
       {keys.length > 0 && !showExpires && !showHost && <p className="local-dashboard-caption">No key records an expiry or a bound host.</p>}
       {keys.length > 0 && showExpires && !showHost && <p className="local-dashboard-caption">No key records a bound host.</p>}
       {keys.length > 0 && !showExpires && showHost && <p className="local-dashboard-caption">No key records an expiry.</p>}

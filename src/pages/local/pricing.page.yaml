@@ -1,0 +1,31 @@
+{
+  "dashboard_id": "2255cf0a-e652-57b1-8fe1-bf546aa2f09f",
+  "name": "Pricing and routing",
+  "description": "The baseline model the savings figures are priced against, and its pricing version.",
+  "layout": {
+    "columns": 12,
+    "row_height": 100,
+    "gap": 16,
+    "responsive": true
+  },
+  "refresh_interval_seconds": 30,
+  "theme": "system",
+  "widgets": [
+    {
+      "widget_id": "b70e8a4d-ec0a-5ed0-9785-2083ed88b79f",
+      "title": "Baseline",
+      "row": 0,
+      "col": 0,
+      "width": 12,
+      "height": 2,
+      "data_source": "pricing-baseline",
+      "config": {
+        "config_kind": "status_grid",
+        "widget_type": "status_grid",
+        "columns": 2,
+        "show_labels": true,
+        "compact": true
+      }
+    }
+  ]
+}

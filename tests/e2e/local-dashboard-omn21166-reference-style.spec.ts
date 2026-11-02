@@ -262,14 +262,31 @@ test('R9 narrowing to phone width without a reload folds the sidebar so the page
   await expect.poll(() => page.locator('.sidebar').evaluate(el => el.getBoundingClientRect().width)).toBeGreaterThan(200);
 });
 
-test('R11 Settings is a readable column and its section titles weigh 500', async ({ page }) => {
+// OMN-21970 AC10 (Lakshman 2026-11-02, "it should be full page"): Settings sections span the page's content width,
+// replacing part 27's 960px column, and nothing inside a section scrolls sideways (the provider table did: 912/1312).
+test('R11 Settings sections span the full page width, nothing inside them scrolls sideways, and their titles weigh 500', async ({ page }) => {
   await openTheme(page, 'dark');
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/settings');
   const sections = page.locator('main section.local-settings-section');
-  // Amendment 30c: Appearance is gone, so Model providers, Access and System status.
-  await expect(sections).toHaveCount(3);
-  for (const width of await sections.evaluateAll(els => els.map(el => el.getBoundingClientRect().width))) expect(width).toBeLessThanOrEqual(960);
+  await expect(sections.first()).toBeVisible({ timeout: 15000 });
+  const layout = await page.locator('main.local-dashboard-page--settings').evaluate(main => {
+    const style = getComputedStyle(main);
+    const content = main.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+    const found = [...main.querySelectorAll('section.local-settings-section')].map(section => ({
+      width: section.getBoundingClientRect().width,
+      overflowing: [section, ...section.querySelectorAll('*')]
+        // A 1px clipped box is screen-reader-only text, not a visible overflow.
+        .filter(el => el.clientWidth > 1 && el.scrollWidth > el.clientWidth + 1 && getComputedStyle(el).overflowX !== 'visible')
+        .map(el => `${el.tagName.toLowerCase()}.${[...el.classList].join('.')} ${el.clientWidth}/${el.scrollWidth}`),
+    }));
+    return { content, found };
+  });
+  expect(layout.found.length).toBeGreaterThanOrEqual(3);
+  for (const section of layout.found) {
+    expect(Math.abs(section.width - layout.content)).toBeLessThanOrEqual(1);
+    expect(section.overflowing).toEqual([]);
+  }
   await expect(sections.first().locator(':scope > h2')).toHaveCSS('font-weight', '500');
 });
 

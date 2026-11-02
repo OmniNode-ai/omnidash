@@ -1,4 +1,5 @@
 import { formatDashboardCount, formatFullCount, wholeCount } from '@/lib/dashboard-count';
+import { PricingFacts } from './local/pricing';
 import { readableTime } from '@/components/format/readable-time';
 import { exactMs, formatDuration } from '@/components/format/duration';
 import { dailyMeteringTokens } from '@/lib/daily-metering-tokens';
@@ -2829,6 +2830,7 @@ const PAGE_TITLES: Record<LocalPageName, string> = {
   credentials: 'Credentials',
   'api-keys': 'API Keys',
   status: 'System status',
+  pricing: 'Pricing and routing',
 };
 
 export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache, embedded = false }: LocalDashboardPageProps) {
@@ -3081,6 +3083,8 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
     // must only gate the key-reference region, including its aria-busy state.
     const credentialProviders = component.component_id === 'credentials-keys';
     const environment = component.component_id === 'status-environment';
+    // OMN-21970 AC10: Settings' Pricing and routing section, from the served all-time metering row.
+    const pricing = component.component_id === 'pricing-baseline';
     const readContent = <>
         {pending ? <p className="local-dashboard-caption" role="status">Loading data…</p>
           : unbound && component.component_kind !== 'metric_card' ? <PendingState componentId={component.component_id} />
@@ -3093,6 +3097,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
                 complete={!bindings.some(binding => snapshots.some(snapshot => snapshot.topic === binding.projection_topic && snapshot.failure))} />)
           : notServed ? <p className="local-dashboard-empty" role="status">{notServed}</p>
           : bindingFailedEmpty(component, snapshots) ? null
+          : pricing ? <PricingFacts rows={rows as Record<string, unknown>[]} />
           : emptyState === 'NO_RUNS_YET' ? <NoRunsYet />
           : emptyState ? <p className="local-dashboard-empty" role="status">Baseline unresolved</p>
           : component.component_kind === 'table' ? (

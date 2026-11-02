@@ -30,53 +30,55 @@ const key = (provider: string, over: Record<string, unknown> = {}) => ({
   provider, name: `llm.${provider}.api_key`, api_key_ref: `cred_localinstall_${provider}_0123456789abcdef`, fingerprint: `${provider.slice(0, 4)}abcd`,
   set_at: '2026-10-14T08:24:11+00:00', revoked_at: null, secret_value: 'sk-should-never-show', ...over,
 });
-const row = (name: string) => screen.getByRole('row', { name: new RegExp(`^${name}\\b`) });
+// OMN-21970 AC10: each provider is its own card, its keys inside it.
+const row = (name: string) => screen.getByRole('article', { name });
 
 describe('Credentials as one table', () => {
   it('C1, C5: each provider row carries its own key, under one set of title-case names', async () => {
     render(<ModelKeys client={client()} keys={[key('gemini'), key('openrouter', { set_at: '2026-10-12T15:52:29+00:00' })]} />);
-    await screen.findByRole('table', { name: 'Model providers' });
-    expect(screen.getAllByRole('table')).toHaveLength(1);
-    expect(screen.getAllByRole('columnheader').map(h => h.textContent)).toEqual(['Provider', 'State', 'Models', 'Key ref', 'Fingerprint', 'Set', 'Last used', 'Set up with']);
+    await screen.findByRole('article', { name: 'Gemini' });
+    expect(screen.queryAllByRole('table')).toHaveLength(0);
+    expect(within(row('Gemini')).getAllByRole('term').map(t => t.textContent)).toEqual(['Last test', 'Fingerprint', 'Set', 'Last used']);
     expect(within(row('Gemini')).getByText('llm.gemini.api_key')).toBeTruthy();
     expect(within(row('Gemini')).getByText('gemiabcd')).toBeTruthy();
     expect(within(row('OpenRouter')).getByText('Oct 12, 15:52:29 UTC')).toBeTruthy();
-    expect(screen.getAllByRole('rowheader').map(h => h.textContent)).toEqual(['Gemini', 'OpenRouter', 'OpenAI', 'Ollama']);
+    expect(screen.getAllByRole('article').map(card => card.getAttribute('aria-label'))).toEqual(['Gemini', 'OpenRouter', 'OpenAI', 'Ollama']);
+    expect(within(row('OpenRouter')).queryByText('llm.gemini.api_key')).toBeNull();
   });
 
   it('C6: a provider with no key says so, never a blank', async () => {
     render(<ModelKeys client={client()} keys={[key('gemini')]} />);
-    await screen.findByRole('table', { name: 'Model providers' });
-    const cells = within(row('OpenAI')).getAllByRole('cell').map(c => c.textContent);
-    expect(cells.slice(2, 5)).toEqual(['No key', '—', '—']);
+    await screen.findByRole('article', { name: 'Gemini' });
+    expect(within(row('OpenAI')).getByText('No key')).toBeTruthy();
+    expect(within(row('OpenAI')).queryByText('Fingerprint')).toBeNull();
   });
 
   it('C2: a key whose provider GET /models does not list keeps its own row', async () => {
     render(<ModelKeys client={client()} keys={[key('anthropic')]} />);
-    await screen.findByRole('table', { name: 'Model providers' });
+    await screen.findByRole('article', { name: 'Gemini' });
     // In one case with the listed providers (review fix): the served id with a capital first letter.
     expect(within(row('Anthropic')).getByText('llm.anthropic.api_key')).toBeTruthy();
   });
 
   it('C3: no secret and no full key reference id reaches the page', async () => {
     const { container } = render(<ModelKeys client={client()} keys={[key('gemini')]} />);
-    await screen.findByRole('table', { name: 'Model providers' });
+    await screen.findByRole('article', { name: 'Gemini' });
     expect(container.textContent).not.toContain('sk-should-never-show');
     expect(container.textContent).not.toContain('cred_localinstall_gemini');
   });
 
   it('C4: Expires and Bound host appear only when a key records one; Revoked never in the keys in use', async () => {
     const { unmount } = render(<ModelKeys client={client()} keys={[key('gemini')]} />);
-    await screen.findByRole('table', { name: 'Model providers' });
-    expect(screen.queryByRole('columnheader', { name: 'Expires' })).toBeNull();
-    expect(screen.queryByRole('columnheader', { name: 'Revoked' })).toBeNull();
+    await screen.findByRole('article', { name: 'Gemini' });
+    expect(screen.queryByText('Expires')).toBeNull();
+    expect(screen.queryByText('Revoked')).toBeNull();
     expect(screen.getByText('No key records an expiry or a bound host.')).toBeTruthy();
     unmount();
     render(<ModelKeys client={client()} keys={[key('gemini', { expires_at: '2026-12-01T00:00:00+00:00' })]} />);
-    await screen.findByRole('table', { name: 'Model providers' });
-    expect(screen.getByRole('columnheader', { name: 'Expires' })).toBeTruthy();
+    await screen.findByRole('article', { name: 'Gemini' });
+    expect(within(row('Gemini')).getByText('Expires')).toBeTruthy();
     expect(within(row('Gemini')).getByText('Dec 1, 00:00:00 UTC')).toBeTruthy();
-    expect(screen.queryByRole('columnheader', { name: 'Bound host' })).toBeNull();
+    expect(screen.queryByText('Bound host')).toBeNull();
     // The column that stays hidden is named as such.
     expect(screen.getByText('No key records a bound host.')).toBeTruthy();
   });
@@ -93,7 +95,7 @@ describe('Credentials as one table', () => {
   it('C8: a double mount (StrictMode) reads GET /models once', async () => {
     const counted = client();
     render(<StrictMode><ModelKeys client={counted} keys={[key('gemini')]} /></StrictMode>);
-    await screen.findByRole('table', { name: 'Model providers' });
+    await screen.findByRole('article', { name: 'Gemini' });
     expect(counted.list).toHaveBeenCalledTimes(1);
   });
 });

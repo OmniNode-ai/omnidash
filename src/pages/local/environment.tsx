@@ -164,6 +164,9 @@ export function EnvironmentPanel({ rows, complete = true }: { rows: readonly Env
           {versions.length > 0 ? versions.map(([name, version]) => <div key={name}><dt>{labels[name] ?? name}</dt><dd>{text(version) || 'Not recorded'}</dd></div>)
             : <div><dt>Versions</dt><dd>Not recorded</dd></div>}
           <div><dt>Store</dt><dd>{text(first.store_kind) || 'Not recorded'}</dd></div>
+          {/* OMN-21970 AC10: where the store is and when the state last changed, each only when served. */}
+          {text(first.store_location) && <div><dt>Store location</dt><dd className="mono" title={text(first.store_location)}>{text(first.store_location)}</dd></div>}
+          {text(first.last_change) && <div><dt>State since</dt><dd title={text(first.last_change)}>{readableTime(text(first.last_change)) ?? text(first.last_change)}</dd></div>}
           <div><dt>Last start</dt><dd title={text(first.token_minted_at) || undefined}>{text(first.token_minted_at) ? readableTime(text(first.token_minted_at)) ?? text(first.token_minted_at) : 'Not recorded'}</dd></div>
         </>}
       </dl>
