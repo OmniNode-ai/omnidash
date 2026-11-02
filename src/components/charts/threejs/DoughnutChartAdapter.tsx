@@ -13,7 +13,7 @@ import { useMemo } from 'react';
 import type { ReactElement } from 'react';
 import { ComponentWrapper } from '@/components/dashboard/ComponentWrapper';
 import { Text } from '@/components/ui/typography';
-import { useThemeColors, useThemeName } from '@/theme';
+import { useThemeName } from '@/theme';
 import {
   ThreePieChart,
   type ModelSlice,
@@ -22,6 +22,7 @@ import type {
   IDoughnutChartAdapter,
   DoughnutChartAdapterProps,
 } from '@shared/types/chart-adapter-doughnut';
+import { useTokenColors } from '@/design-system/useTokenColors';
 
 function toFiniteNumber(v: unknown): number | null {
   if (typeof v === 'number') return Number.isFinite(v) ? v : null;
@@ -65,7 +66,7 @@ export function DoughnutChartAdapter<T extends Record<string, unknown> = Record<
   const { label: labelField, value: valueField } = fieldMappings;
 
   const rows = projectionData as Record<string, unknown>[];
-  const colors = useThemeColors();
+  const colors = useTokenColors();
   const themeName = useThemeName();
 
   const slices = useMemo(
@@ -173,7 +174,7 @@ export function DoughnutChartAdapter<T extends Record<string, unknown> = Record<
               style={{
                 marginTop: 8,
                 paddingTop: 6,
-                borderTop: '1px solid var(--line-2)',
+                borderTop: '1px solid var(--ds-line-soft)',
                 display: 'flex',
                 justifyContent: 'space-between',
               }}

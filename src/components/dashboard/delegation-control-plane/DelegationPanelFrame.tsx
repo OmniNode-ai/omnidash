@@ -11,27 +11,27 @@ export type PanelAuthority = 'projection-backed' | 'runtime-observed' | 'degrade
 const AUTHORITY_STYLE: Record<PanelAuthority, { label: string; color: string; bg: string; border: string }> = {
   'projection-backed': {
     label: 'projection-backed',
-    color: 'var(--color-ok, #22c55e)',
-    bg: 'color-mix(in srgb, var(--color-ok, #22c55e) 10%, transparent)',
-    border: 'color-mix(in srgb, var(--color-ok, #22c55e) 25%, transparent)',
+    color: 'var(--ds-ok, var(--ds-hue-green))',
+    bg: 'color-mix(in srgb, var(--ds-ok, var(--ds-ok)) 10%, transparent)',
+    border: 'color-mix(in srgb, var(--ds-ok, var(--ds-ok)) 25%, transparent)',
   },
   'runtime-observed': {
     label: 'runtime-observed',
-    color: 'var(--color-brand, #6366f1)',
-    bg: 'color-mix(in srgb, var(--color-brand, #6366f1) 10%, transparent)',
-    border: 'color-mix(in srgb, var(--color-brand, #6366f1) 25%, transparent)',
+    color: 'var(--ds-brand, var(--ds-hue-purple))',
+    bg: 'color-mix(in srgb, var(--ds-brand, var(--ds-hue-purple)) 10%, transparent)',
+    border: 'color-mix(in srgb, var(--ds-brand, var(--ds-hue-purple)) 25%, transparent)',
   },
   degraded: {
     label: 'degraded',
-    color: 'var(--color-warn, #f59e0b)',
-    bg: 'color-mix(in srgb, var(--color-warn, #f59e0b) 10%, transparent)',
-    border: 'color-mix(in srgb, var(--color-warn, #f59e0b) 25%, transparent)',
+    color: 'var(--ds-warn, var(--ds-hue-amber))',
+    bg: 'color-mix(in srgb, var(--ds-warn, var(--ds-warn)) 10%, transparent)',
+    border: 'color-mix(in srgb, var(--ds-warn, var(--ds-warn)) 25%, transparent)',
   },
   hidden: {
     label: 'hidden',
-    color: 'var(--text-tertiary, #888)',
-    bg: 'var(--panel-2)',
-    border: 'var(--line-2)',
+    color: 'var(--ds-ink-3, var(--ds-ink-3))',
+    bg: 'var(--ds-surface-2)',
+    border: 'var(--ds-line-soft)',
   },
 };
 
@@ -51,7 +51,7 @@ export function DelegationPanelFrame({
   return (
     <section
       style={{
-        border: '1px solid var(--line)',
+        border: '1px solid var(--ds-line)',
         borderRadius: 8,
         padding: 12,
         minWidth: 0,

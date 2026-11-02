@@ -48,9 +48,9 @@ export function applyFreshnessDowngrade(
 }
 
 const STATUS_COLORS: Record<DimensionStatus, string> = {
-  PASS: 'var(--status-ok)',
-  WARN: 'var(--status-warn)',
-  FAIL: 'var(--status-bad)',
+  PASS: 'var(--ds-ok)',
+  WARN: 'var(--ds-warn)',
+  FAIL: 'var(--ds-bad)',
 };
 
 const STATUS_TEXT_COLOR: Record<DimensionStatus, 'ok' | 'warn' | 'bad'> = {
@@ -120,7 +120,7 @@ export default function ReadinessGate({ config: _config }: { config: Record<stri
             )}
           </div>
 
-          <div style={{ border: '1px solid var(--line-2)', borderRadius: 6, overflow: 'hidden' }}>
+          <div style={{ border: '1px solid var(--ds-line-soft)', borderRadius: 6, overflow: 'hidden' }}>
             <table
               style={{
                 width: '100%',
@@ -148,7 +148,7 @@ export default function ReadinessGate({ config: _config }: { config: Record<stri
               </thead>
               <tbody>
                 {data.dimensions.map((dim) => (
-                  <tr key={dim.name} style={{ borderTop: '1px solid var(--line-2)' }}>
+                  <tr key={dim.name} style={{ borderTop: '1px solid var(--ds-line-soft)' }}>
                     <td style={tdStyle}>
                       <StatusPill status={dim.status} />
                     </td>
@@ -172,8 +172,8 @@ export default function ReadinessGate({ config: _config }: { config: Record<stri
 const thStyle: CSSProperties = {
   textAlign: 'left',
   padding: '0.375rem 0.625rem',
-  background: 'var(--panel-2)',
-  borderBottom: '1px solid var(--line)',
+  background: 'var(--ds-surface-2)',
+  borderBottom: '1px solid var(--ds-line)',
 };
 
 const tdStyle: CSSProperties = {

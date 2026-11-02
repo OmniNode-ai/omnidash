@@ -18,10 +18,11 @@ import { TOPICS } from '@shared/types/topics';
 import { applyTimeRange, resolveTimeRange } from '@/hooks/useTimeRange';
 import { useTimezone } from '@/hooks/useTimezone';
 import { useFrameStore } from '@/store/store';
-import { useThemeName, useThemeColors } from '@/theme';
-import { cssColorToHex } from '@/theme/cssColorToHex';
+import { useThemeName } from '@/theme';
 import { Text } from '@/components/ui/typography';
 import { zonedComponents } from '@/lib/zonedComponents';
+import { useSceneColours, type SceneColours } from '@/design-system/charts/scene-skin';
+import { tokenNumber } from '@/design-system/color';
 
 interface CostDataPoint {
   bucket_time: string;
@@ -102,114 +103,21 @@ function reshapeToGrid(data: CostDataPoint[]): GridDataset {
 
 // ---------- Themes ----------
 
-interface ThemeConfig {
-  // THREE.js scene colors (hex numbers for THREE.Color).
-  sceneBg: number;
-  fog: number;
-  floor: number;
-  grid: number;
+type ThemeConfig = SceneColours & {
   gridOpacity: number;
-  isolatedDimColor: number;
-  modelPalette: string[]; // hex strings
   barCoreOpacity: number;
   barEdgeOpacity: number;
   barTopOpacity: number;
   dimCoreOpacity: number;
   dimEdgeOpacity: number;
   dimTopOpacity: number;
-  // HTML overlay colors (CSS strings).
-  labelPrimary: string;
-  labelSecondary: string;
-  labelShadow: string;
-  scrollbarAccent: string;
-  panelBg: string;
-  panelBorder: string;
-  panelHeader: string;
-  panelText: string;
-  panelSubtle: string;
-  chipBorder: string;
-  tooltipBg: string;
-  tooltipText: string;
-  tooltipSubtle: string;
-  tooltipValue: string;
-}
-
-const DARK_THEME: ThemeConfig = {
-  sceneBg: 0x02040a,
-  fog: 0x02040a,
-  floor: 0x020812,
-  grid: 0x00e5ff,
-  gridOpacity: 0.9,
-  isolatedDimColor: 0x6a7280,
-  modelPalette: [
-    '#00e5ff', '#ff4fb0', '#ffb547', '#7dff5f',
-    '#a385ff', '#ff7046', '#5eb0ff',
-  ],
-  barCoreOpacity: 0.18,
-  barEdgeOpacity: 0.95,
-  barTopOpacity: 0.8,
-  dimCoreOpacity: 0.05,
-  dimEdgeOpacity: 0.22,
-  dimTopOpacity: 0.08,
-  labelPrimary: '#9ad6ff',
-  labelSecondary: '#5ea9cf',
-  labelShadow: '0 0 4px rgba(0, 229, 255, 0.35)',
-  scrollbarAccent: '#00e5ff',
-  panelBg: 'rgba(2, 8, 18, 0.6)',
-  panelBorder: 'rgba(0, 229, 255, 0.25)',
-  panelHeader: '#00e5ff',
-  panelText: '#9ad6ff',
-  panelSubtle: '#5ea9cf',
-  chipBorder: 'rgba(0, 229, 255, 0.2)',
-  tooltipBg: 'rgba(2, 8, 18, 0.92)',
-  tooltipText: '#cfe8ff',
-  tooltipSubtle: '#9ad6ff',
-  tooltipValue: '#ffffff',
 };
 
-// Light theme: greys for lines, washed-out pastels for blocks. Intentionally
-// quiet — the widget should read like an engineering sketch rather than the
-// neon glow of the dark version. Background is pure white so the pastel
-// fills read as soft color rather than bleeding into a grey scene.
-const LIGHT_THEME: ThemeConfig = {
-  sceneBg: 0xffffff,
-  fog: 0xffffff,
-  floor: 0xf7f8fa,
-  grid: 0x6b7280,
-  gridOpacity: 0.6,
-  isolatedDimColor: 0xa0a5b0,
-  modelPalette: [
-    '#8fd1d9', // dusty cyan
-    '#d9a5c4', // rose pink
-    '#e8c899', // soft amber
-    '#b5d5ad', // sage
-    '#bfb1e0', // muted lavender
-    '#e0aa98', // coral dust
-    '#a7c2dd', // slate blue
-  ],
-  // Bar opacities raised significantly vs. the dark theme — pastels on white
-  // need solid fills to be visible; if they stay translucent they just look
-  // like faint tinted glass that disappears against the background.
-  barCoreOpacity: 0.75,
-  barEdgeOpacity: 0.9,
-  barTopOpacity: 0.9,
-  dimCoreOpacity: 0.2,
-  dimEdgeOpacity: 0.35,
-  dimTopOpacity: 0.25,
-  labelPrimary: '#4a5260',
-  labelSecondary: '#7c8594',
-  labelShadow: 'none',
-  scrollbarAccent: '#6b7580',
-  panelBg: 'rgba(248, 248, 250, 0.85)',
-  panelBorder: 'rgba(120, 128, 140, 0.3)',
-  panelHeader: '#5b6572',
-  panelText: '#4a5260',
-  panelSubtle: '#8089a0',
-  chipBorder: 'rgba(120, 128, 140, 0.3)',
-  tooltipBg: 'rgba(255, 255, 255, 0.96)',
-  tooltipText: '#2a3038',
-  tooltipSubtle: '#6b7580',
-  tooltipValue: '#000000',
+// Per-theme opacities (not colours; the colours come from the design tokens through useSceneColours).
+type SceneOpacity = Pick<ThemeConfig, 'gridOpacity' | 'barCoreOpacity' | 'barEdgeOpacity' | 'barTopOpacity' | 'dimCoreOpacity' | 'dimEdgeOpacity' | 'dimTopOpacity'>;
+const OPACITY: Record<'dark' | 'light', SceneOpacity> = {
+  dark: { gridOpacity: 0.9, barCoreOpacity: 0.18, barEdgeOpacity: 0.95, barTopOpacity: 0.8, dimCoreOpacity: 0.05, dimEdgeOpacity: 0.22, dimTopOpacity: 0.08 },
+  light: { gridOpacity: 0.6, barCoreOpacity: 0.75, barEdgeOpacity: 0.9, barTopOpacity: 0.9, dimCoreOpacity: 0.2, dimEdgeOpacity: 0.35, dimTopOpacity: 0.25 },
 };
 
 function colorForModel(palette: string[], index: number): THREE.Color {
@@ -523,7 +431,7 @@ function ThreeCanvas({
     floor.position.y = -0.002;
     scene.add(floor);
 
-    scene.add(new THREE.AmbientLight(0xffffff, 0.3));
+    scene.add(new THREE.AmbientLight(tokenNumber('--ds-mix-light'), 0.3));
 
     const applySize = (w: number, h: number) => {
       if (w < 2 || h < 2) return;
@@ -1067,24 +975,8 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const themeName = useThemeName();
-  const themeColors = useThemeColors();
-  // Override the per-theme `modelPalette` with the shared chart palette from
-  // CSS tokens (`--chart-1`..`--chart-7`). This is the same source the 2D
-  // widgets read, so the same model lands in the same color across 2D and 3D
-  // (Brett review §4 H4 / OMN-149).
-  //
-  // The chart tokens are declared as `oklch(...)` in globals.css. THREE.Color
-  // can't parse oklch (and `${color}22` hex-alpha concatenation in the legend
-  // chips below also requires `#rrggbb`), so normalize the whole palette to
-  // hex strings here via cssColorToHex. Without this conversion, every bar
-  // falls back to THREE's default grey.
-  const theme = useMemo<ThemeConfig>(() => {
-    const base = themeName === 'dark' ? DARK_THEME : LIGHT_THEME;
-    const palette = themeColors.chart.length > 0
-      ? themeColors.chart.map((c) => '#' + cssColorToHex(c).toString(16).padStart(6, '0'))
-      : base.modelPalette;
-    return { ...base, modelPalette: palette };
-  }, [themeName, themeColors]);
+  const sceneColours = useSceneColours();
+  const theme = useMemo<ThemeConfig>(() => ({ ...sceneColours, ...OPACITY[themeName === 'dark' ? 'dark' : 'light'] }), [themeName, sceneColours]);
   const tz = useTimezone();
 
   // Escape clears focus.
@@ -1215,9 +1107,7 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
                 background: theme.tooltipBg,
                 border: `1px solid ${theme.panelBorder}`,
                 borderRadius: 8,
-                boxShadow: themeName === 'dark'
-                  ? '0 0 24px rgba(0, 229, 255, 0.15), 0 4px 16px rgba(0,0,0,0.4)'
-                  : '0 6px 20px rgba(0,0,0,0.12)',
+                boxShadow: 'var(--ds-shadow-md)',
                 transform: focusedCell ? 'translateX(0)' : 'translateX(calc(100% + 20px))',
                 opacity: focusedCell ? 1 : 0,
                 transition: `transform ${STATS_SLIDE_MS}ms cubic-bezier(.2,.8,.2,1), opacity ${STATS_SLIDE_MS}ms ease-out`,

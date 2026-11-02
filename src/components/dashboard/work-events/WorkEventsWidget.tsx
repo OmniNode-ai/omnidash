@@ -122,7 +122,7 @@ function HeaderRow() {
     <div
       style={{
         padding: '4px 0',
-        borderBottom: '1px solid var(--line)',
+        borderBottom: '1px solid var(--ds-line)',
         display: 'grid',
         gridTemplateColumns: GRID,
         gap: 8,
@@ -147,7 +147,7 @@ function EventRow({ row }: { row: WorkEventRow }) {
       data-actor-kind={row.actor_kind ?? ''}
       style={{
         padding: '6px 0',
-        borderBottom: '1px solid var(--line-2)',
+        borderBottom: '1px solid var(--ds-line-soft)',
         display: 'grid',
         gridTemplateColumns: GRID,
         gap: 8,
@@ -259,7 +259,7 @@ export function HookCaptureView({
               : `work.events is unreadable: ${error?.message || 'unknown read failure'}`}
         </Text>
         {grouped.map(([type, value]) => (
-          <div key={type} data-testid="hook-capture-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 1fr) 80px 120px', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--line-2)' }}>
+          <div key={type} data-testid="hook-capture-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 1fr) 80px 120px', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--ds-line-soft)' }}>
             <Text as="span" size="xs" family="mono" color="primary">{type}</Text>
             <Text as="span" size="xs" family="mono" color="secondary">{value.count} read</Text>
             <Text as="span" size="xs" family="mono" color="tertiary">newest {formatAge(value.newest, new Date(snapshot.readAt).getTime())} old</Text>

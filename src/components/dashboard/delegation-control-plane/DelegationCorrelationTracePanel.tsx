@@ -50,9 +50,9 @@ function ExpandableText({ label, text }: { label: string; text: string }) {
           style={{
             marginTop: 4,
             padding: '8px 10px',
-            background: 'var(--panel-2)',
+            background: 'var(--ds-surface-2)',
             borderRadius: 4,
-            border: '1px solid var(--line-2)',
+            border: '1px solid var(--ds-line-soft)',
             overflow: 'auto',
           }}
         >
@@ -84,7 +84,7 @@ function EventRow({ event, prev, index }: { event: CorrelationTraceEvent; prev: 
         gridTemplateColumns: '22px 1fr',
         gap: 8,
         paddingBottom: 12,
-        borderBottom: '1px solid var(--line-2)',
+        borderBottom: '1px solid var(--ds-line-soft)',
       }}
     >
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
@@ -94,10 +94,10 @@ function EventRow({ event, prev, index }: { event: CorrelationTraceEvent; prev: 
             height: 8,
             borderRadius: '50%',
             background: event.quality_gate_passed === true
-              ? 'var(--color-ok, #22c55e)'
+              ? 'var(--ds-ok, var(--ds-ok))'
               : event.quality_gate_passed === false
-              ? 'var(--color-bad, #ef4444)'
-              : 'var(--text-tertiary, #888)',
+              ? 'var(--ds-bad, var(--ds-hue-red))'
+              : 'var(--ds-ink-3, var(--ds-ink-4))',
             flexShrink: 0,
             marginTop: 4,
           }}
@@ -128,16 +128,16 @@ function EventRow({ event, prev, index }: { event: CorrelationTraceEvent; prev: 
             padding: '3px 8px',
             borderRadius: 4,
             background: event.quality_gate_passed === true
-              ? 'color-mix(in srgb, var(--color-ok, #22c55e) 12%, transparent)'
+              ? 'color-mix(in srgb, var(--ds-ok, var(--ds-ok)) 12%, transparent)'
               : event.quality_gate_passed === false
-              ? 'color-mix(in srgb, var(--color-bad, #ef4444) 12%, transparent)'
-              : 'var(--panel-2)',
+              ? 'color-mix(in srgb, var(--ds-bad, var(--ds-hue-red)) 12%, transparent)'
+              : 'var(--ds-surface-2)',
             border: '1px solid',
             borderColor: event.quality_gate_passed === true
-              ? 'color-mix(in srgb, var(--color-ok, #22c55e) 30%, transparent)'
+              ? 'color-mix(in srgb, var(--ds-ok, var(--ds-ok)) 30%, transparent)'
               : event.quality_gate_passed === false
-              ? 'color-mix(in srgb, var(--color-bad, #ef4444) 30%, transparent)'
-              : 'var(--line-2)',
+              ? 'color-mix(in srgb, var(--ds-bad, var(--ds-hue-red)) 30%, transparent)'
+              : 'var(--ds-line-soft)',
           }}
         >
           <Text as="span" size="xs" weight="semibold" color={gate.color}>

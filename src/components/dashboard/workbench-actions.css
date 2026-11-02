@@ -3,7 +3,7 @@
   justify-content: center;
   min-width: 96px;
   height: 42px;
-  font-family: var(--font-sans);
+  font-family: var(--ds-font-sans);
 }
 
 .workbench-action-button:disabled {

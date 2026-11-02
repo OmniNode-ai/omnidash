@@ -166,7 +166,7 @@ function LaneActivityPane({
   }, [correlationId, rows, sessionIds]);
 
   return (
-    <section style={{ border: '1px solid var(--line)', borderRadius: 6, padding: 10, minWidth: 0 }}>
+    <section style={{ border: '1px solid var(--ds-line)', borderRadius: 6, padding: 10, minWidth: 0 }}>
       <Text as="div" size="sm" weight="semibold" color="primary">Lane activity</Text>
       <Text as="div" size="xs" color="tertiary" style={{ marginTop: 3 }}>
         work.events has no top-level correlation_id; rows join through the delegation session id and work actor_id.
@@ -189,7 +189,7 @@ function LaneActivityPane({
         </Text>
       )}
       {visible.map((row) => (
-        <div key={row.event_id} style={{ padding: '7px 0', borderBottom: '1px solid var(--line-2)' }}>
+        <div key={row.event_id} style={{ padding: '7px 0', borderBottom: '1px solid var(--ds-line-soft)' }}>
           <Text as="div" size="xs" family="mono" color="primary">{row.event_kind}</Text>
           <Text as="div" size="xs" color="secondary" truncate title={row.summary ?? undefined}>
             {row.summary === null || row.summary === undefined || row.summary === ''
@@ -353,21 +353,21 @@ export function TraceExplorerView({
         )}
 
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(260px, 1fr)', gap: 10, alignItems: 'start' }}>
-          <section style={{ border: '1px solid var(--line)', borderRadius: 6, overflow: 'hidden', minWidth: 0 }}>
+          <section style={{ border: '1px solid var(--ds-line)', borderRadius: 6, overflow: 'hidden', minWidth: 0 }}>
             {page.length === 0 && (
               <Text as="div" size="sm" color="tertiary" align="center" style={{ padding: 16 }}>No matching events</Text>
             )}
             {page.map((event) => {
               const decision = event.correlation_id ? decisionsByCorrelation.get(event.correlation_id) : undefined;
               return (
-                <details key={event.event_id || event.id} data-testid="trace-event-row" style={{ borderBottom: '1px solid var(--line-2)' }}>
+                <details key={event.event_id || event.id} data-testid="trace-event-row" style={{ borderBottom: '1px solid var(--ds-line-soft)' }}>
                   <summary style={{ display: 'grid', gridTemplateColumns: '90px 150px minmax(150px, 1fr) minmax(160px, 1.4fr)', gap: 8, alignItems: 'center', padding: '8px 10px', cursor: 'pointer' }}>
                     <Text size="xs" family="mono" color="tertiary">{formatTimestamp(event.timestamp)}</Text>
                     <Text size="xs" family="mono" color={event.type === 'ERROR' ? 'bad' : 'primary'} truncate title={event.type}>{event.type}</Text>
                     <Text size="xs" family="mono" color="secondary" truncate title={event.topic}>{event.topic}</Text>
                     <Text size="xs" color="secondary" truncate title={event.summary}>{event.summary}</Text>
                   </summary>
-                  <div style={{ padding: '8px 10px 12px', background: 'var(--bg-sunken)' }}>
+                  <div style={{ padding: '8px 10px 12px', background: 'var(--ds-inset)' }}>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 7 }}>
                       <Text as="span" size="xs" family="mono" color="tertiary">source: {event.source}</Text>
                       {event.correlation_id && (

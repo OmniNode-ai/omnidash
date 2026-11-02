@@ -35,7 +35,7 @@ export function DelegationRunTable({
   }
 
   return (
-    <section style={{ borderTop: '1px solid var(--line)', paddingTop: 12 }}>
+    <section style={{ borderTop: '1px solid var(--ds-line)', paddingTop: 12 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
         <Text as="div" size="sm" weight="semibold" color="primary">
           Recent Runs
@@ -44,7 +44,7 @@ export function DelegationRunTable({
           {visible.length} of {runs.length}
         </Text>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: GRID, gap: 8, paddingBottom: 5, borderBottom: '1px solid var(--line)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: GRID, gap: 8, paddingBottom: 5, borderBottom: '1px solid var(--ds-line)' }}>
         {['Correlation', 'Task', 'Model', 'State', 'Tokens', 'Savings', 'Created', ''].map((heading) => (
           <Text key={heading || '_trace'} as="span" size="xs" color="tertiary">
             {heading}
@@ -66,8 +66,8 @@ export function DelegationRunTable({
               gap: 8,
               alignItems: 'center',
               padding: '7px 0',
-              borderBottom: '1px solid var(--line-2)',
-              background: selectedRunId === run.id ? 'var(--panel-2)' : 'transparent',
+              borderBottom: '1px solid var(--ds-line-soft)',
+              background: selectedRunId === run.id ? 'var(--ds-surface-2)' : 'transparent',
             }}
           >
             <button
@@ -117,10 +117,10 @@ export function DelegationRunTable({
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                border: '1px solid var(--line)',
+                border: '1px solid var(--ds-line)',
                 borderRadius: 4,
                 background: 'transparent',
-                color: 'var(--text-tertiary)',
+                color: 'var(--ds-ink-3)',
                 cursor: 'pointer',
                 padding: '2px 3px',
                 width: 20,

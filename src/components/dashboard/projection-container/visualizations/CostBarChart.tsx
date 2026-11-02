@@ -11,9 +11,9 @@ function costTier(cost: number): CostTier {
 }
 
 const TIER_COLOR: Record<CostTier, string> = {
-  free: 'var(--color-good, #22c55e)',
-  cheap: 'var(--color-warn, #f59e0b)',
-  expensive: 'var(--color-bad, #ef4444)',
+  free: 'var(--ds-ok, var(--ds-hue-green))',
+  cheap: 'var(--ds-warn, var(--ds-hue-amber))',
+  expensive: 'var(--ds-bad, var(--ds-hue-red))',
 };
 
 interface BarRow {
@@ -93,10 +93,10 @@ export function CostBarChart({ data, contract }: CostBarChartProps) {
           <div
             style={{
               height: 12,
-              background: 'var(--panel-2)',
+              background: 'var(--ds-surface-2)',
               borderRadius: 3,
               overflow: 'hidden',
-              border: '1px solid var(--line-2)',
+              border: '1px solid var(--ds-line-soft)',
             }}
           >
             <div

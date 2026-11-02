@@ -22,9 +22,9 @@ export function SuggestedPrompts({ onSelect }: SuggestedPromptsProps) {
             textAlign: 'left',
             padding: '0.5rem 0.75rem',
             borderRadius: '8px',
-            border: '1px solid hsl(var(--border))',
+            border: '1px solid var(--ds-line)',
             backgroundColor: 'transparent',
-            color: 'hsl(var(--foreground))',
+            color: 'var(--ds-ink)',
             cursor: 'pointer',
           }}
         >

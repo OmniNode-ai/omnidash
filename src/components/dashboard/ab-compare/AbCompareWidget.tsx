@@ -141,7 +141,7 @@ function Caret({ open }: { open: boolean }) {
     >
       <path
         d="M3,1 L7,5 L3,9"
-        stroke="var(--ink-3)"
+        stroke="var(--ds-ink-3)"
         strokeWidth="1.5"
         fill="none"
         strokeLinecap="round"
@@ -171,8 +171,8 @@ function PromptBlock({ prompt }: { prompt: string }) {
   return (
     <div
       style={{
-        background: 'var(--bg-elevated)',
-        border: '1px solid var(--line)',
+        background: 'var(--ds-surface)',
+        border: '1px solid var(--ds-line)',
         borderRadius: 6,
         overflow: 'hidden',
       }}
@@ -197,7 +197,7 @@ function PromptBlock({ prompt }: { prompt: string }) {
           style={{
             "fontSize": 9,
             "fontWeight": 700,
-            "color": 'var(--ink-3)',
+            "color": 'var(--ds-ink-3)',
             "letterSpacing": '0.16em',
             "textTransform": 'uppercase',
           }}
@@ -208,7 +208,7 @@ function PromptBlock({ prompt }: { prompt: string }) {
           <span
             style={{
               "fontSize": 11,
-              "color": 'var(--ink-3)',
+              "color": 'var(--ds-ink-3)',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
@@ -227,8 +227,8 @@ function PromptBlock({ prompt }: { prompt: string }) {
           style={{
             padding: '2px 8px',
             borderRadius: 4,
-            background: copied ? 'var(--good-soft)' : 'var(--bg-sunken)',
-            color: copied ? 'var(--good)' : 'var(--ink-3)',
+            background: copied ? 'var(--ds-ok-soft)' : 'var(--ds-inset)',
+            color: copied ? 'var(--ds-ok)' : 'var(--ds-ink-3)',
             "fontSize": 9,
             "fontWeight": 700,
             "letterSpacing": '0.1em',
@@ -244,13 +244,13 @@ function PromptBlock({ prompt }: { prompt: string }) {
           style={{
             margin: 0,
             padding: '10px 12px 12px 32px',
-            background: 'var(--bg-sunken)',
+            background: 'var(--ds-inset)',
             "fontSize": 11,
             "lineHeight": 1.55,
-            "color": 'var(--ink-2)',
+            "color": 'var(--ds-ink-2)',
             whiteSpace: 'pre-wrap',
             wordBreak: 'break-word',
-            borderTop: '1px solid var(--line-2)',
+            borderTop: '1px solid var(--ds-line-soft)',
             maxHeight: 220,
             overflowY: 'auto',
           }}
@@ -276,8 +276,8 @@ function LedgerDetail({
   return (
     <div
       style={{
-        background: 'var(--bg-elevated)',
-        border: '1px solid var(--line)',
+        background: 'var(--ds-surface)',
+        border: '1px solid var(--ds-line)',
         borderRadius: 6,
         padding: 10,
       }}
@@ -289,16 +289,16 @@ function LedgerDetail({
           gridTemplateColumns: '1fr 90px 90px',
           gap: 10,
           paddingBottom: 6,
-          borderBottom: '1px solid var(--ink)',
+          borderBottom: '1px solid var(--ds-ink)',
         }}
       >
-        <div className="mono" style={{ "fontSize": 9, "fontWeight": 700, "color": 'var(--ink-2)', "letterSpacing": '0.16em' }}>
+        <div className="mono" style={{ "fontSize": 9, "fontWeight": 700, "color": 'var(--ds-ink-2)', "letterSpacing": '0.16em' }}>
           MODEL
         </div>
-        <div className="mono" style={{ "fontSize": 9, "fontWeight": 700, color: 'var(--good)', "letterSpacing": '0.16em', textAlign: 'right' }}>
+        <div className="mono" style={{ "fontSize": 9, "fontWeight": 700, color: 'var(--ds-ok)', "letterSpacing": '0.16em', textAlign: 'right' }}>
           CREDIT
         </div>
-        <div className="mono" style={{ "fontSize": 9, "fontWeight": 700, color: 'var(--bad)', "letterSpacing": '0.16em', textAlign: 'right' }}>
+        <div className="mono" style={{ "fontSize": 9, "fontWeight": 700, color: 'var(--ds-bad)', "letterSpacing": '0.16em', textAlign: 'right' }}>
           DEBIT
         </div>
       </div>
@@ -315,21 +315,21 @@ function LedgerDetail({
               gridTemplateColumns: '1fr 90px 90px',
               gap: 10,
               padding: '5px 0',
-              borderBottom: i < models.length - 1 ? '1px dashed var(--line-2)' : 'none',
+              borderBottom: i < models.length - 1 ? '1px dashed var(--ds-line-soft)' : 'none',
               alignItems: 'center',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-              {isWinner && <span style={{ color: 'var(--accent)', "fontSize": 10 }}>{'★'}</span>}
+              {isWinner && <span style={{ color: 'var(--ds-brand)', "fontSize": 10 }}>{'★'}</span>}
               <span className="mono" style={{ "fontSize": 11, "fontWeight": isWinner ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {m.name}
               </span>
-              <span className="mono" style={{ "fontSize": 9, "color": 'var(--ink-3)' }}>{'·'} {m.host}</span>
+              <span className="mono" style={{ "fontSize": 9, "color": 'var(--ds-ink-3)' }}>{'·'} {m.host}</span>
             </div>
-            <div className="mono tnum" style={{ "fontSize": 11, color: free ? 'var(--good)' : 'var(--ink-4)', textAlign: 'right' }}>
+            <div className="mono tnum" style={{ "fontSize": 11, color: free ? 'var(--ds-ok)' : 'var(--ds-ink-4)', textAlign: 'right' }}>
               {free ? '+ $0.118' : '—'}
             </div>
-            <div className="mono tnum" style={{ "fontSize": 11, color: free ? 'var(--ink-4)' : 'var(--bad)', textAlign: 'right' }}>
+            <div className="mono tnum" style={{ "fontSize": 11, color: free ? 'var(--ds-ink-4)' : 'var(--ds-bad)', textAlign: 'right' }}>
               {free ? '—' : `– $${m.cost.toFixed(3)}`}
             </div>
           </div>
@@ -343,7 +343,7 @@ function LedgerDetail({
           gridTemplateColumns: '1fr 90px 90px',
           gap: 10,
           padding: '8px 0 2px',
-          borderTop: '1.5px solid var(--ink)',
+          borderTop: '1.5px solid var(--ds-ink)',
           marginTop: 4,
         }}
       >
@@ -351,7 +351,7 @@ function LedgerDetail({
           Net
         </div>
         <div />
-        <div className="mono tnum" style={{ "fontSize": 13, "fontWeight": 700, color: 'var(--good)', textAlign: 'right' }}>
+        <div className="mono tnum" style={{ "fontSize": 13, "fontWeight": 700, color: 'var(--ds-ok)', textAlign: 'right' }}>
           + ${dollars.toFixed(3)}
         </div>
       </div>
@@ -387,9 +387,9 @@ function TaskListItem({
   return (
     <div
       style={{
-        borderBottom: '1px solid var(--line-2)',
+        borderBottom: '1px solid var(--ds-line-soft)',
         transition: 'background .15s',
-        background: expanded ? 'var(--bg-sunken)' : 'transparent',
+        background: expanded ? 'var(--ds-inset)' : 'transparent',
       }}
     >
       {/* Summary row */}
@@ -410,20 +410,20 @@ function TaskListItem({
       >
         <Caret open={expanded} />
         <div style={{ minWidth: 0 }}>
-          <div style={{ "fontSize": 13, "fontWeight": 500, "color": 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <div style={{ "fontSize": 13, "fontWeight": 500, "color": 'var(--ds-ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {task.label}
           </div>
-          <div className="mono" style={{ "fontSize": 10, "color": 'var(--ink-3)', marginTop: 2 }}>
+          <div className="mono" style={{ "fontSize": 10, "color": 'var(--ds-ink-3)', marginTop: 2 }}>
             {chosen.name} {'·'} {chosen.tier}
           </div>
         </div>
-        <div className="mono tnum" style={{ "fontSize": 11, "color": 'var(--ink-2)', textAlign: 'center' }}>
+        <div className="mono tnum" style={{ "fontSize": 11, "color": 'var(--ds-ink-2)', textAlign: 'center' }}>
           {modelCount} models
         </div>
-        <div className="mono tnum" style={{ "fontSize": 11, color: winnerLatencyMs < 5000 ? 'var(--good)' : winnerLatencyMs < 30000 ? 'var(--ink-2)' : 'var(--warn)', textAlign: 'right' }}>
+        <div className="mono tnum" style={{ "fontSize": 11, color: winnerLatencyMs < 5000 ? 'var(--ds-ok)' : winnerLatencyMs < 30000 ? 'var(--ds-ink-2)' : 'var(--ds-warn)', textAlign: 'right' }}>
           {formatLatency(winnerLatencyMs)}
         </div>
-        <div className="mono tnum" style={{ "fontSize": 11, "fontWeight": 600, textAlign: 'right', color: maxCost === 0 ? 'var(--good)' : 'var(--ink-2)' }}>
+        <div className="mono tnum" style={{ "fontSize": 11, "fontWeight": 600, textAlign: 'right', color: maxCost === 0 ? 'var(--ds-ok)' : 'var(--ds-ink-2)' }}>
           {costRange}
         </div>
       </button>
@@ -433,7 +433,7 @@ function TaskListItem({
         <div style={{ padding: '8px 14px 18px 48px', display: 'flex', flexDirection: 'column', gap: 10 }}>
           <PromptBlock prompt={task.prompt} />
           <LedgerDetail models={task.models} chosenId={chosen.id} dollars={task.savedDollars} />
-          <div style={{ "fontSize": 10, "color": 'var(--ink-3)', fontStyle: 'italic' }}>
+          <div style={{ "fontSize": 10, "color": 'var(--ds-ink-3)', fontStyle: 'italic' }}>
             <span className="mono">correlation_id: {shortCorrelationId(task.id)}</span>
           </div>
         </div>
@@ -477,7 +477,7 @@ function HeaderCell({
         cursor: 'pointer',
         "fontSize": 9,
         "fontWeight": 700,
-        color: active ? 'var(--accent-ink)' : 'var(--ink-3)',
+        color: active ? 'var(--ds-link)' : 'var(--ds-ink-3)',
         "letterSpacing": '0.16em',
         textAlign: align,
         width: '100%',
@@ -489,7 +489,7 @@ function HeaderCell({
         style={{
           display: 'inline-block',
           marginLeft: 4,
-          color: active ? 'var(--accent)' : 'currentColor',
+          color: active ? 'var(--ds-brand)' : 'currentColor',
           opacity: active ? 1 : 0.35,
         }}
       >
@@ -588,18 +588,18 @@ export default function AbCompareWidget({
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 14 }}>
           <div>
             <div className="eyebrow">A/B model cost compare {'·'} last {totals.count} tasks</div>
-            <div style={{ "fontSize": 14, "fontWeight": 600, marginTop: 6, "color": 'var(--ink-2)' }}>
+            <div style={{ "fontSize": 14, "fontWeight": 600, marginTop: 6, "color": 'var(--ds-ink-2)' }}>
               Tap any task to see the prompt and correlation.
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <div style={{ textAlign: 'right' }}>
-              <div className="mono tnum" style={{ "fontSize": 24, "fontWeight": 800, color: 'var(--good)', "lineHeight": 1 }}>
+              <div className="mono tnum" style={{ "fontSize": 24, "fontWeight": 800, color: 'var(--ds-ok)', "lineHeight": 1 }}>
                 <CountUp value={totals.savedPct} suffix="%" />
               </div>
-              <div className="eyebrow" style={{ color: 'var(--good)', marginTop: 3 }}>saved</div>
+              <div className="eyebrow" style={{ color: 'var(--ds-ok)', marginTop: 3 }}>saved</div>
             </div>
-            <div style={{ width: 1, height: 28, background: 'var(--line)' }} />
+            <div style={{ width: 1, height: 28, background: 'var(--ds-line)' }} />
             <div style={{ textAlign: 'right' }}>
               <div className="mono tnum" style={{ "fontSize": 16, "fontWeight": 700, "lineHeight": 1 }}>
                 <CountUp value={totals.savedDollars} prefix="$" decimals={3} />
@@ -616,8 +616,8 @@ export default function AbCompareWidget({
             gridTemplateColumns: '20px 1fr 70px 90px 110px',
             gap: 14,
             padding: '8px 14px',
-            borderTop: '1px solid var(--line)',
-            borderBottom: '1px solid var(--line)',
+            borderTop: '1px solid var(--ds-line)',
+            borderBottom: '1px solid var(--ds-line)',
           }}
         >
           <div />

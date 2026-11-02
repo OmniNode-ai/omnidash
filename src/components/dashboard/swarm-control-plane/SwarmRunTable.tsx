@@ -7,12 +7,12 @@ const HEADERS = ['Status', 'Run ID', 'Subtasks', 'Speedup', 'Wall time', 'Cost',
 
 function StatusDot({ status }: { status: string }) {
   const color = status === 'succeeded'
-    ? 'var(--color-ok, #22c55e)'
+    ? 'var(--ds-ok, var(--ds-ok))'
     : status === 'failed'
-    ? 'var(--color-bad, #ef4444)'
+    ? 'var(--ds-bad, var(--ds-bad))'
     : status === 'running'
-    ? 'var(--color-warn, #f59e0b)'
-    : 'var(--text-tertiary, #888)';
+    ? 'var(--ds-warn, var(--ds-hue-amber))'
+    : 'var(--ds-ink-3, var(--ds-ink-4))';
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
       <div style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0 }} />
@@ -47,7 +47,7 @@ export function SwarmRunTable({
                 style={{
                   textAlign: 'left',
                   padding: '5px 8px',
-                  borderBottom: '1px solid var(--line)',
+                  borderBottom: '1px solid var(--ds-line)',
                   whiteSpace: 'nowrap',
                 }}
               >
@@ -66,8 +66,8 @@ export function SwarmRunTable({
                 onClick={() => onSelectRun(run.run_id)}
                 style={{
                   cursor: 'pointer',
-                  background: isSelected ? 'var(--panel-2)' : 'transparent',
-                  borderBottom: '1px solid var(--line-2)',
+                  background: isSelected ? 'var(--ds-surface-2)' : 'transparent',
+                  borderBottom: '1px solid var(--ds-line-soft)',
                 }}
               >
                 <td style={{ padding: '6px 8px' }}>

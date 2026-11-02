@@ -23,10 +23,11 @@ import { TOPICS } from '@shared/types/topics';
 import { applyTimeRange, resolveTimeRange } from '@/hooks/useTimeRange';
 import { useTimezone } from '@/hooks/useTimezone';
 import { useFrameStore } from '@/store/store';
-import { useThemeName, useThemeColors } from '@/theme';
-import { cssColorToHex } from '@/theme/cssColorToHex';
+import { useThemeName } from '@/theme';
 import { Text } from '@/components/ui/typography';
 import { zonedComponents } from '@/lib/zonedComponents';
+import { useSceneColours, type SceneColours } from '@/design-system/charts/scene-skin';
+import { tokenNumber } from '@/design-system/color';
 
 interface CostDataPoint {
   bucket_time: string;
@@ -107,100 +108,19 @@ function reshapeToGrid(data: CostDataPoint[]): GridDataset {
 
 // ---------- Themes ----------
 
-interface ThemeConfig {
-  // THREE.js scene colors (hex numbers for THREE.Color).
-  sceneBg: number;
-  fog: number;
-  floor: number;
-  grid: number;
+type ThemeConfig = SceneColours & {
   gridOpacity: number;
-  isolatedDimColor: number;
-  modelPalette: string[]; // hex strings
   ribbonOpacity: number;
   edgeOpacity: number;
   dimRibbonOpacity: number;
   dimEdgeOpacity: number;
-  // HTML overlay colors (CSS strings).
-  labelPrimary: string;
-  labelSecondary: string;
-  labelShadow: string;
-  scrollbarAccent: string;
-  panelBg: string;
-  panelBorder: string;
-  panelHeader: string;
-  panelText: string;
-  panelSubtle: string;
-  chipBorder: string;
-  tooltipBg: string;
-  tooltipText: string;
-  tooltipSubtle: string;
-  tooltipValue: string;
-}
-
-const DARK_THEME: ThemeConfig = {
-  sceneBg: 0x02040a,
-  fog: 0x02040a,
-  floor: 0x020812,
-  grid: 0x00e5ff,
-  gridOpacity: 0.9,
-  isolatedDimColor: 0x6a7280,
-  modelPalette: [
-    '#00e5ff', '#ff4fb0', '#ffb547', '#7dff5f',
-    '#a385ff', '#ff7046', '#5eb0ff',
-  ],
-  // Stacked layout: each ribbon is its own fully opaque band. The Z
-  // stagger gives each model its own card-like layer, so we don't need
-  // translucency to "see through" — we just need each band to be a
-  // distinct, solid color.
-  ribbonOpacity: 1.0,
-  edgeOpacity: 0.95,
-  dimRibbonOpacity: 0.08,
-  dimEdgeOpacity: 0.22,
-  labelPrimary: '#9ad6ff',
-  labelSecondary: '#5ea9cf',
-  labelShadow: '0 0 4px rgba(0, 229, 255, 0.35)',
-  scrollbarAccent: '#00e5ff',
-  panelBg: 'rgba(2, 8, 18, 0.6)',
-  panelBorder: 'rgba(0, 229, 255, 0.25)',
-  panelHeader: '#00e5ff',
-  panelText: '#9ad6ff',
-  panelSubtle: '#5ea9cf',
-  chipBorder: 'rgba(0, 229, 255, 0.2)',
-  tooltipBg: 'rgba(2, 8, 18, 0.92)',
-  tooltipText: '#cfe8ff',
-  tooltipSubtle: '#9ad6ff',
-  tooltipValue: '#ffffff',
 };
 
-const LIGHT_THEME: ThemeConfig = {
-  sceneBg: 0xffffff,
-  fog: 0xffffff,
-  floor: 0xf7f8fa,
-  grid: 0x6b7280,
-  gridOpacity: 0.6,
-  isolatedDimColor: 0xa0a5b0,
-  modelPalette: [
-    '#8fd1d9', '#d9a5c4', '#e8c899', '#b5d5ad',
-    '#bfb1e0', '#e0aa98', '#a7c2dd',
-  ],
-  ribbonOpacity: 1.0,
-  edgeOpacity: 0.85,
-  dimRibbonOpacity: 0.18,
-  dimEdgeOpacity: 0.32,
-  labelPrimary: '#4a5260',
-  labelSecondary: '#7c8594',
-  labelShadow: 'none',
-  scrollbarAccent: '#6b7580',
-  panelBg: 'rgba(248, 248, 250, 0.85)',
-  panelBorder: 'rgba(120, 128, 140, 0.3)',
-  panelHeader: '#5b6572',
-  panelText: '#4a5260',
-  panelSubtle: '#8089a0',
-  chipBorder: 'rgba(120, 128, 140, 0.3)',
-  tooltipBg: 'rgba(255, 255, 255, 0.96)',
-  tooltipText: '#2a3038',
-  tooltipSubtle: '#6b7580',
-  tooltipValue: '#000000',
+// Per-theme opacities (not colours; the colours come from the design tokens through useSceneColours).
+type SceneOpacity = Pick<ThemeConfig, 'gridOpacity' | 'ribbonOpacity' | 'edgeOpacity' | 'dimRibbonOpacity' | 'dimEdgeOpacity'>;
+const OPACITY: Record<'dark' | 'light', SceneOpacity> = {
+  dark: { gridOpacity: 0.9, ribbonOpacity: 1.0, edgeOpacity: 0.95, dimRibbonOpacity: 0.08, dimEdgeOpacity: 0.22 },
+  light: { gridOpacity: 0.6, ribbonOpacity: 1.0, edgeOpacity: 0.85, dimRibbonOpacity: 0.18, dimEdgeOpacity: 0.32 },
 };
 
 function colorForModel(palette: string[], index: number): THREE.Color {
@@ -696,7 +616,7 @@ function ThreeCanvas({
     floor.position.y = -0.002;
     scene.add(floor);
 
-    scene.add(new THREE.AmbientLight(0xffffff, 0.3));
+    scene.add(new THREE.AmbientLight(tokenNumber('--ds-mix-light'), 0.3));
 
     const tmpSize = new THREE.Vector2();
     const applyViewOffset = () => {
@@ -1030,17 +950,8 @@ export default function CostTrend3DArea({ config: _config }: { config: Record<st
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const themeName = useThemeName();
-  const themeColors = useThemeColors();
-  // Override the per-theme `modelPalette` with the shared chart palette
-  // from CSS tokens. Same wiring as CostTrend3DBars (both 3D variants
-  // need oklch → hex conversion for THREE.Color).
-  const theme = useMemo<ThemeConfig>(() => {
-    const base = themeName === 'dark' ? DARK_THEME : LIGHT_THEME;
-    const palette = themeColors.chart.length > 0
-      ? themeColors.chart.map((c) => '#' + cssColorToHex(c).toString(16).padStart(6, '0'))
-      : base.modelPalette;
-    return { ...base, modelPalette: palette };
-  }, [themeName, themeColors]);
+  const sceneColours = useSceneColours();
+  const theme = useMemo<ThemeConfig>(() => ({ ...sceneColours, ...OPACITY[themeName === 'dark' ? 'dark' : 'light'] }), [themeName, sceneColours]);
   const tz = useTimezone();
 
   // Escape clears focus.
@@ -1190,9 +1101,7 @@ export default function CostTrend3DArea({ config: _config }: { config: Record<st
                 background: theme.tooltipBg,
                 border: `1px solid ${theme.panelBorder}`,
                 borderRadius: 8,
-                boxShadow: themeName === 'dark'
-                  ? '0 0 24px rgba(0, 229, 255, 0.15), 0 4px 16px rgba(0,0,0,0.4)'
-                  : '0 6px 20px rgba(0,0,0,0.12)',
+                boxShadow: 'var(--ds-shadow-md)',
                 transform: focusedModel ? 'translateX(0)' : 'translateX(calc(100% + 20px))',
                 opacity: focusedModel ? 1 : 0,
                 transition: `transform ${STATS_SLIDE_MS}ms cubic-bezier(.2,.8,.2,1), opacity ${STATS_SLIDE_MS}ms ease-out`,

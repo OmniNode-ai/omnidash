@@ -7,71 +7,58 @@
  * tokens, so a chart means the same thing it did. Loaded after the page styles so it is the last word on look, never on
  * content. Every page rule names the local pages or Delegation Evidence (main.ev-root[data-destination=
  * "delegation-evidence"]) only, so the other advanced pages that share the event-dash shell keep their own look.
- * The --ed-* names are kept from the earlier look so the page tests read the same tokens; OMN-22168 moves them to --ds-*.
+ * OMN-22168: every value here is a --ds-* token from src/design-system/tokens.css; this file holds no colour of its own.
  */
-/* Light is the default (the app marks dark with html[data-theme="dark"]; light only with a body class). */
-:root {
-  --ed-paper: #ffffff; --ed-paper-2: #f0f0f0; --ed-paper-3: #fafafa; --ed-inset: #ffffff;
-  --ed-ink: #0a0a0a; --ed-ink-2: #262626; --ed-ink-3: #525252;
-  --ed-rule: #e5e5e5; --ed-rule-strong: #d4d4d4; --ed-rule-soft: #ededed; --ed-accent: #0a0a0a;
-  --ed-chosen: #f0f0f0; --ed-chosen-ink: #0a0a0a;
-}
-[data-theme="dark"] {
-  --ed-paper: #0a0a0a; --ed-paper-2: #1f1f1f; --ed-paper-3: #141414; --ed-inset: #0f0f0f;
-  --ed-ink: #f5f5f5; --ed-ink-2: #d4d4d4; --ed-ink-3: #a3a3a3;
-  --ed-rule: #262626; --ed-rule-strong: #333333; --ed-rule-soft: #1f1f1f; --ed-accent: #f5f5f5;
-  --ed-chosen: #1f1f1f; --ed-chosen-ink: #f5f5f5;
-}
-:root { --ed-display: var(--font-sans, "Geist Variable", system-ui, sans-serif); --ed-mono: var(--font-mono, "Geist Mono Variable", ui-monospace, monospace);
-  --ed-display-axes: normal; --ed-radius: 12px; --ed-radius-control: 8px; --ed-radius-tag: 4px; }
+
+
 
 /* The shell: the page colour behind everything, one hairline between the sidebar and the page. */
-body, .app, .main, :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) { background: var(--ed-paper) !important; color: var(--ed-ink); }
-.sidebar { background: var(--ed-paper) !important; border-right: 1px solid var(--ed-rule) !important; box-shadow: none !important; }
-.sidebar :is(a, button) { border-radius: var(--ed-radius-control) !important; }
-.sidebar .mvp-nav-item.active, .sidebar [aria-current="page"] { background: var(--ed-chosen) !important; color: var(--ed-chosen-ink) !important; box-shadow: none !important; font-weight: 600; }
-.sidebar .mvp-nav-item.active svg, .sidebar [aria-current="page"] svg { color: var(--ed-chosen-ink) !important; }
-.topbar, header.topbar { background: var(--ed-paper) !important; border-bottom: 1px solid var(--ed-rule) !important; box-shadow: none !important; }
-.topbar :is(button, a) { border-radius: var(--ed-radius-control) !important; }
+body, .app, .main, :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) { background: var(--ds-page) !important; color: var(--ds-ink); }
+.sidebar { background: var(--ds-page) !important; border-right: 1px solid var(--ds-line) !important; box-shadow: none !important; }
+.sidebar :is(a, button) { border-radius: var(--ds-radius-control) !important; }
+.sidebar .mvp-nav-item.active, .sidebar [aria-current="page"] { background: var(--ds-surface-2) !important; color: var(--ds-ink) !important; box-shadow: none !important; font-weight: 600; }
+.sidebar .mvp-nav-item.active svg, .sidebar [aria-current="page"] svg { color: var(--ds-ink) !important; }
+.topbar, header.topbar { background: var(--ds-page) !important; border-bottom: 1px solid var(--ds-line) !important; box-shadow: none !important; }
+.topbar :is(button, a) { border-radius: var(--ds-radius-control) !important; }
 
 /* Page titles: Geist, semibold, tight. */
-:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) h1 { font-family: var(--ed-display) !important; font-weight: 600 !important;
-  font-variation-settings: normal; font-size: clamp(32px, 3.4vw, 46px) !important; letter-spacing: -0.03em; line-height: 1.08; color: var(--ed-ink); }
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) h1 { font-family: var(--ds-font-sans) !important; font-weight: 600 !important;
+  font-variation-settings: normal; font-size: clamp(32px, 3.4vw, 46px) !important; letter-spacing: -0.03em; line-height: 1.08; color: var(--ds-ink); }
 
 /* Panels and cards: a soft grey card, one hairline, 12px corners, flat. */
 html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) :is(article.local-dashboard-panel, .local-dashboard-panel, .local-overview-surface, .panel, .widget, .local-run-summary-group, .workflow-analysis-card, .local-dashboard-filters) {
-  border-radius: var(--ed-radius) !important; box-shadow: none !important; background: var(--ed-paper-3) !important; border: 1px solid var(--ed-rule) !important; }
+  border-radius: var(--ds-radius) !important; box-shadow: none !important; background: var(--ds-surface) !important; border: 1px solid var(--ds-line) !important; }
 :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) :is(.local-dashboard-panel, .panel, .widget):hover { box-shadow: none !important; }
 /* Panel titles are small uppercase mono tags in a hairline box. */
 :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-dashboard-panel > h2 { display: inline-flex; align-items: center; gap: 6px;
-  width: fit-content; padding: 3px 8px; border: 1px solid var(--ed-rule-strong); border-radius: var(--ed-radius-tag);
-  font-family: var(--ed-mono) !important; font-size: 12px !important; font-weight: 500 !important; letter-spacing: .12em; text-transform: uppercase; color: var(--ed-ink-2) !important; }
+  width: fit-content; padding: 3px 8px; border: 1px solid var(--ds-line-strong); border-radius: var(--ds-radius-tag);
+  font-family: var(--ds-font-mono) !important; font-size: 12px !important; font-weight: 500 !important; letter-spacing: .12em; text-transform: uppercase; color: var(--ds-ink-2) !important; }
 /* Headline figures: Geist, semibold, tight. */
 :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) :is(.local-dashboard-metric, .local-meter-value, .local-recent-value, .local-share-value, .local-donut-focus-value) {
-  font-family: var(--ed-display) !important; font-weight: 600 !important; font-variation-settings: normal; letter-spacing: -0.02em; }
+  font-family: var(--ds-font-sans) !important; font-weight: 600 !important; font-variation-settings: normal; letter-spacing: -0.02em; }
 
 /* Tables: a quiet header row on the inset colour, hairlines between rows. */
-:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) table thead th { background: var(--ed-inset) !important; color: var(--ed-ink-3) !important;
-  font-family: var(--ed-mono) !important; font-size: 12px !important; font-weight: 500 !important; letter-spacing: .1em; text-transform: uppercase;
-  border-color: var(--ed-rule) !important; border-bottom: 1px solid var(--ed-rule-strong) !important; }
-:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) table tbody td, :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) table tbody th { border-color: var(--ed-rule) !important; }
-:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-dashboard-table-wrap { border-radius: var(--ed-radius) !important; border: 1px solid var(--ed-rule) !important; box-shadow: none !important; overflow: hidden; }
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) table thead th { background: var(--ds-inset) !important; color: var(--ds-ink-3) !important;
+  font-family: var(--ds-font-mono) !important; font-size: 12px !important; font-weight: 500 !important; letter-spacing: .1em; text-transform: uppercase;
+  border-color: var(--ds-line) !important; border-bottom: 1px solid var(--ds-line-strong) !important; }
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) table tbody td, :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) table tbody th { border-color: var(--ds-line) !important; }
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-dashboard-table-wrap { border-radius: var(--ds-radius) !important; border: 1px solid var(--ds-line) !important; box-shadow: none !important; overflow: hidden; }
 
 /* Controls: 8px corners; the chosen one is ink with page-coloured text. */
-:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) :is(button, select, input, .seg-btn, .local-window-option, [role="radio"]) { border-radius: var(--ed-radius-control) !important; box-shadow: none !important; }
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) :is(button, select, input, .seg-btn, .local-window-option, [role="radio"]) { border-radius: var(--ds-radius-control) !important; box-shadow: none !important; }
 :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) :is(.seg-btn.active, .seg-btn[aria-pressed="true"], [role="radiogroup"] [aria-checked="true"], .local-window-option[aria-pressed="true"], .local-overview-window [aria-pressed="true"]) {
-  background: var(--ed-ink) !important; color: var(--ed-paper) !important; border-color: var(--ed-ink) !important; }
+  background: var(--ds-ink) !important; color: var(--ds-page) !important; border-color: var(--ds-ink) !important; }
 /* Chips and badges keep their pill shape. */
 :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) :is(.chip, .badge, .pill, [class*="-chip"], [class*="-badge"], [class*="-pill"]) { border-radius: 999px !important; }
 
 /* Delegation Evidence: its title band and headline summary sit on the page colour; summaries are cards. */
-html body main.ev-root[data-destination="delegation-evidence"] :is(header, .ev-header, .ev-hero, .ev-page-header, .ev-page-head) { background: var(--ed-paper) !important; box-shadow: none !important; }
+html body main.ev-root[data-destination="delegation-evidence"] :is(header, .ev-header, .ev-hero, .ev-page-header, .ev-page-head) { background: var(--ds-page) !important; box-shadow: none !important; }
 html body main.ev-root[data-destination="delegation-evidence"] :is(section, .ev-headline, .ev-summary, [class*="headline"]) { box-shadow: none !important; }
-html body main.ev-root[data-destination="delegation-evidence"] :is(.ev-headline, .ev-summary, [class*="headline"]):not(.local-dashboard-panel) { background: var(--ed-paper-3) !important; border-color: var(--ed-rule) !important; border-radius: var(--ed-radius) !important; }
+html body main.ev-root[data-destination="delegation-evidence"] :is(.ev-headline, .ev-summary, [class*="headline"]):not(.local-dashboard-panel) { background: var(--ds-surface) !important; border-color: var(--ds-line) !important; border-radius: var(--ds-radius) !important; }
 /* The fitted run tables (eighteen columns at 1440) take their header words in the text face: the mono label face is
    too wide for those columns and pushed the table past its frame (1140px in 1124px). */
 :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-dashboard-table-wrap--fit table thead th {
-  font-family: var(--font-sans) !important; letter-spacing: 0; text-transform: none; }
+  font-family: var(--ds-font-sans) !important; letter-spacing: 0; text-transform: none; }
 /* A notice inside an Overview chart panel (a source not served yet) is one compact line, so the panel keeps its
    340px row (it was 351px with the full 12px-padded box). */
 .local-dashboard-page .maple-cell--half > .local-dashboard-panel > .local-dashboard-empty { padding-block: 4px; }
@@ -80,27 +67,27 @@ html body main.ev-root[data-destination="delegation-evidence"] :is(.ev-headline,
 html body .local-dashboard-page.local-dashboard-page--settings .local-settings-section article.local-dashboard-panel { border: 0 !important; }
 /* In light, a passed run's pill takes a light fill so its green text keeps 4.5:1; the text colour (--field-pass) is unchanged. */
 :root:not([data-theme="dark"]) .local-dashboard-page .local-run-pill:is([data-outcome="passed"], [data-outcome="succeeded"]) {
-  background: color-mix(in oklch, var(--status-ok) 8%, transparent); }
+  background: color-mix(in oklch, var(--ds-ok) 8%, transparent); }
 /* Overview's window: one button that opens a ticked list (OMN-21970 AC9). */
 .local-window-menu { position: relative; }
 html body .local-dashboard-page .local-window-trigger { display: inline-flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 180px;
-  height: 40px; padding: 0 14px; border: 1px solid var(--ed-rule-strong) !important; background: var(--ed-paper-3) !important; color: var(--ed-ink) !important;
+  height: 40px; padding: 0 14px; border: 1px solid var(--ds-line-strong) !important; background: var(--ds-surface) !important; color: var(--ds-ink) !important;
   font-size: 15px; font-weight: 500; cursor: pointer; }
 html body .local-dashboard-page .local-window-trigger[aria-expanded="true"] svg { transform: rotate(180deg); }
-html body .local-dashboard-page .local-window-trigger:focus-visible { outline: 2px solid var(--ed-ink); outline-offset: 2px; }
+html body .local-dashboard-page .local-window-trigger:focus-visible { outline: 2px solid var(--ds-ink); outline-offset: 2px; }
 html body .local-dashboard-page .local-window-list.local-window-radios { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; display: grid !important;
   grid-auto-flow: row; flex-direction: column; width: 260px; min-width: 240px; height: auto; gap: 0;
-  padding: 6px; border: 1px solid var(--ed-rule-strong); border-radius: var(--ed-radius); background: var(--ed-paper-3); box-shadow: none; }
+  padding: 6px; border: 1px solid var(--ds-line-strong); border-radius: var(--ds-radius); background: var(--ds-surface); box-shadow: none; }
 html body .local-dashboard-page .local-window-list [role="radio"] { display: flex !important; height: auto !important; min-height: 44px; white-space: nowrap; align-items: center; justify-content: space-between; gap: 16px; width: 100%;
-  padding: 12px 14px; border: 0 !important; background: transparent !important; color: var(--ed-ink) !important; font-size: 15px; text-align: left; cursor: pointer; }
+  padding: 12px 14px; border: 0 !important; background: transparent !important; color: var(--ds-ink) !important; font-size: 15px; text-align: left; cursor: pointer; }
 html body .local-dashboard-page .local-window-list [role="radio"]:hover, html body .local-dashboard-page .local-window-list [role="radio"]:focus-visible {
-  background: var(--ed-paper-2) !important; outline: none; }
-html body .local-dashboard-page .local-window-list [role="radio"] svg { color: var(--ed-ink-3); }
+  background: var(--ds-surface-2) !important; outline: none; }
+html body .local-dashboard-page .local-window-list [role="radio"] svg { color: var(--ds-ink-3); }
 /* OMN-21970 (Lakshman 2026-11-03, option a): model and tier names read in ink, so they keep 4.5:1 contrast, and a small
    square beside each carries the bar's exact colour, so colour still identifies the tier but is never the only label. */
-.rb-chart .rb-name, .gdb-day-label { color: var(--ed-ink) !important; }
+.rb-chart .rb-name, .gdb-day-label { color: var(--ds-ink) !important; }
 /* The same on Workflow's routing flow: the Model node's label and name in ink, its identity colour on a swatch. */
-.workflow-flow-node[data-field-tone="model"] > span, .workflow-flow-node[data-field-tone="model"] > strong { color: var(--ed-ink) !important; }
+.workflow-flow-node[data-field-tone="model"] > span, .workflow-flow-node[data-field-tone="model"] > strong { color: var(--ds-ink) !important; }
 .workflow-flow-node[data-field-tone="model"] > strong::before { content: ""; display: inline-block; width: 0.7em; height: 0.7em; border-radius: 2px;
   margin-right: 0.35em; vertical-align: -0.05em; background: var(--model-identity-color, currentColor); }
 .rb-swatch, .gdb-swatch { display: inline-block; width: 0.7em; height: 0.7em; margin-right: 0.35em; vertical-align: -0.05em;
@@ -114,65 +101,62 @@ html body .local-dashboard-page .local-dashboard-filters.local-window-switch, ht
 /* Settings in the 01 + 20 look (Lakshman 2026-11-02): tabs as a segmented control, every group a rounded card, status
    shown by a tinted pill and a round dot instead of a filled name cell, small things on 8px corners. */
 html body .local-dashboard-page--settings .local-settings-layout { border-bottom: 0; }
-html body .local-dashboard-page--settings .local-settings-menu { padding: 4px; margin-bottom: 8px; border: 1px solid var(--ed-rule) !important;
-  border-radius: var(--ed-radius); background: var(--ed-paper-3); }
+html body .local-dashboard-page--settings .local-settings-menu { padding: 4px; margin-bottom: 8px; border: 1px solid var(--ds-line) !important;
+  border-radius: var(--ds-radius); background: var(--ds-surface); }
 html body .local-dashboard-page--settings .local-settings-menu ol { gap: 4px; }
 html body .local-dashboard-page--settings .local-settings-menu li + li { border: 0 !important; }
-html body .local-dashboard-page--settings .local-settings-menu a { border-radius: var(--ed-radius-control); padding: 10px 14px; }
-html body .local-dashboard-page--settings .local-settings-menu a[aria-current="page"] { background: var(--ed-paper) !important; color: var(--ed-ink) !important;
-  box-shadow: inset 0 0 0 1px var(--ed-rule-strong); font-weight: 600; }
-html body .local-dashboard-page--settings .local-settings-menu a[aria-current="page"] :is(svg, .local-settings-index) { color: var(--ed-ink) !important; }
+html body .local-dashboard-page--settings .local-settings-menu a { border-radius: var(--ds-radius-control); padding: 10px 14px; }
+html body .local-dashboard-page--settings .local-settings-menu a[aria-current="page"] { background: var(--ds-page) !important; color: var(--ds-ink) !important;
+  box-shadow: inset 0 0 0 1px var(--ds-line-strong); font-weight: 600; }
+html body .local-dashboard-page--settings .local-settings-menu a[aria-current="page"] :is(svg, .local-settings-index) { color: var(--ds-ink) !important; }
 html body .local-dashboard-page--settings :is(.local-provider-figures, .local-provider-list, .local-settings-section .local-dashboard-grid, .local-pricing-facts, .local-environment-line, #settings-system-status .widget) {
-  border: 1px solid var(--ed-rule) !important; border-radius: var(--ed-radius) !important; background: var(--ed-paper-3) !important; overflow: hidden; }
-html body .local-dashboard-page--settings :is(.local-provider-figures > div + div, .local-pricing-facts > div) { border-color: var(--ed-rule) !important; }
+  border: 1px solid var(--ds-line) !important; border-radius: var(--ds-radius) !important; background: var(--ds-surface) !important; overflow: hidden; }
+html body .local-dashboard-page--settings :is(.local-provider-figures > div + div, .local-pricing-facts > div) { border-color: var(--ds-line) !important; }
 html body .local-dashboard-page--settings .local-settings-section .local-dashboard-panel { background: transparent !important; }
-html body .local-dashboard-page--settings .local-settings-section .local-dashboard-panel + .local-dashboard-panel { border-color: var(--ed-rule) !important; }
-html body .local-dashboard-page--settings .local-provider-head-band { background: var(--ed-inset); color: var(--ed-ink-3); border-bottom: 1px solid var(--ed-rule-strong); }
-html body .local-dashboard-page--settings .local-provider-row + .local-provider-row { border-top-color: var(--ed-rule); }
-html body .local-dashboard-page--settings .local-provider-cell + .local-provider-cell { border-left-color: var(--ed-rule); }
-html body .local-dashboard-page--settings .local-provider-cell--name { background: transparent; color: var(--ed-ink); border-right-color: var(--ed-rule); }
-html body .local-dashboard-page--settings .local-provider-row { --pill-fg: var(--ed-ink-2); --pill-bg: var(--ed-paper-2); --dot: var(--ed-ink-3); }
-html body .local-dashboard-page--settings .local-provider-row[data-tone="pass"] { --pill-fg: #166534; --pill-bg: #dcfce7; --dot: #16a34a; }
-html body .local-dashboard-page--settings .local-provider-row[data-tone="fail"] { --pill-fg: #991b1b; --pill-bg: #fee2e2; --dot: #dc2626; }
-html body .local-dashboard-page--settings .local-provider-row[data-tone="idle"] { --pill-fg: #1e40af; --pill-bg: #dbeafe; --dot: #2563eb; }
-[data-theme="dark"] .local-dashboard-page--settings .local-provider-row[data-tone="pass"] { --pill-fg: #86efac; --pill-bg: rgba(74, 222, 128, 0.12); --dot: #4ade80; }
-[data-theme="dark"] .local-dashboard-page--settings .local-provider-row[data-tone="fail"] { --pill-fg: #fca5a5; --pill-bg: rgba(248, 113, 113, 0.12); --dot: #f87171; }
-[data-theme="dark"] .local-dashboard-page--settings .local-provider-row[data-tone="idle"] { --pill-fg: #93c5fd; --pill-bg: rgba(96, 165, 250, 0.12); --dot: #60a5fa; }
+html body .local-dashboard-page--settings .local-settings-section .local-dashboard-panel + .local-dashboard-panel { border-color: var(--ds-line) !important; }
+html body .local-dashboard-page--settings .local-provider-head-band { background: var(--ds-inset); color: var(--ds-ink-3); border-bottom: 1px solid var(--ds-line-strong); }
+html body .local-dashboard-page--settings .local-provider-row + .local-provider-row { border-top-color: var(--ds-line); }
+html body .local-dashboard-page--settings .local-provider-cell + .local-provider-cell { border-left-color: var(--ds-line); }
+html body .local-dashboard-page--settings .local-provider-cell--name { background: transparent; color: var(--ds-ink); border-right-color: var(--ds-line); }
+html body .local-dashboard-page--settings .local-provider-row { --pill-fg: var(--ds-ink-2); --pill-bg: var(--ds-surface-2); --dot: var(--ds-ink-3); }
+html body .local-dashboard-page--settings .local-provider-row[data-tone="pass"] { --pill-fg: var(--ds-ok); --pill-bg: var(--ds-ok-soft); --dot: var(--ds-ok); }
+html body .local-dashboard-page--settings .local-provider-row[data-tone="fail"] { --pill-fg: var(--ds-bad); --pill-bg: var(--ds-bad-soft); --dot: var(--ds-bad); }
+html body .local-dashboard-page--settings .local-provider-row[data-tone="idle"] { --pill-fg: var(--ds-info); --pill-bg: var(--ds-info-soft); --dot: var(--ds-info); }
 html body .local-dashboard-page--settings .local-provider-status { border: 0; border-radius: 999px; padding: 3px 10px; background: var(--pill-bg); color: var(--pill-fg); }
 html body .local-dashboard-page--settings .local-provider-dot { border-radius: 999px; outline: 0; background: var(--dot); }
-html body .local-dashboard-page--settings .local-provider-badge { border-radius: 999px; background: var(--ed-ink); border-color: var(--ed-ink); color: var(--ed-paper); }
-html body .local-dashboard-page--settings .local-provider-line:hover, html body .local-dashboard-page--settings .local-provider-disclosure[open] > .local-provider-line { background: var(--ed-paper-2); }
-html body .local-dashboard-page--settings .local-provider-detail { background: var(--ed-inset); border-top-color: var(--ed-rule); }
+html body .local-dashboard-page--settings .local-provider-badge { border-radius: 999px; background: var(--ds-ink); border-color: var(--ds-ink); color: var(--ds-page); }
+html body .local-dashboard-page--settings .local-provider-line:hover, html body .local-dashboard-page--settings .local-provider-disclosure[open] > .local-provider-line { background: var(--ds-surface-2); }
+html body .local-dashboard-page--settings .local-provider-detail { background: var(--ds-inset); border-top-color: var(--ds-line); }
 html body .local-dashboard-page--settings :is(.local-provider-facts, .local-provider-chips li, .local-provider-error pre, .local-provider-keys > li, .local-provider-cell--setup code, .local-provider-setup code, .local-copy, #settings-system-status .widget-body > div > div, #settings-system-status details.local-more > div > div, #settings-system-status .local-dashboard-fields) {
-  border-radius: var(--ed-radius-control) !important; border-color: var(--ed-rule) !important; }
-html body .local-dashboard-page--settings .local-provider-facts > div { border-color: var(--ed-rule); }
-html body .local-dashboard-page--settings .local-copy:hover { background: var(--ed-paper-2); color: var(--ed-ink); }
+  border-radius: var(--ds-radius-control) !important; border-color: var(--ds-line) !important; }
+html body .local-dashboard-page--settings .local-provider-facts > div { border-color: var(--ds-line); }
+html body .local-dashboard-page--settings .local-copy:hover { background: var(--ds-surface-2); color: var(--ds-ink); }
 html body .local-dashboard-page--settings .local-environment-dot { border-radius: 999px; outline: 0; }
-html body .local-dashboard-page--settings .local-environment-line[data-environment-state="clear"] { background: color-mix(in srgb, #16a34a 10%, var(--ed-paper-3)) !important; }
-html body .local-dashboard-page--settings .local-environment-line[data-environment-state="alert"] { background: color-mix(in srgb, #dc2626 10%, var(--ed-paper-3)) !important; }
+html body .local-dashboard-page--settings .local-environment-line[data-environment-state="clear"] { background: color-mix(in srgb, var(--ds-ok) 10%, var(--ds-surface)) !important; }
+html body .local-dashboard-page--settings .local-environment-line[data-environment-state="alert"] { background: color-mix(in srgb, var(--ds-bad) 10%, var(--ds-surface)) !important; }
 html body .local-dashboard-page--settings .local-settings-section > h2 { font-size: 28px; letter-spacing: -0.02em; }
 
 /* Option (a) everywhere a model name is text (Usage tables, the decision matrix, the usage trend names): ink text and a
    square in the model's colour, so a long list of names stays readable at 4.5:1 and still carries its colour. */
-html body :is(.usage-analysis table th[data-model-name], [data-decision-matrix] tbody th[data-model-name], .usage-trend-name[data-model-name]) { color: var(--ed-ink) !important; }
+html body :is(.usage-analysis table th[data-model-name], [data-decision-matrix] tbody th[data-model-name], .usage-trend-name[data-model-name]) { color: var(--ds-ink) !important; }
 html body :is(.usage-analysis table th[data-model-name], [data-decision-matrix] tbody th[data-model-name], .usage-trend-name[data-model-name])::before {
   content: ""; display: inline-block; width: 0.7em; height: 0.7em; margin-right: 0.45em; vertical-align: -0.05em; border-radius: 2px; background: var(--model-color, currentColor); }
 
 /* The sidebar in the 01 + 20 look (Lakshman 2026-11-02, "needs improvements?"): the chosen page is a soft fill only, no
    edge bar or outline; quieter section labels and product line; tighter rows with a hover fill. */
-html body .sidebar .mvp-nav-item, html body .sidebar nav a { min-height: 36px; padding-block: 8px !important; font-size: 14px !important; font-weight: 500; color: var(--ed-ink-3) !important;
+html body .sidebar .mvp-nav-item, html body .sidebar nav a { min-height: 36px; padding-block: 8px !important; font-size: 14px !important; font-weight: 500; color: var(--ds-ink-3) !important;
   border: 0 !important; outline: 0; transition: background 120ms ease, color 120ms ease; }
-html body .sidebar .mvp-nav-item svg, html body .sidebar nav a svg { color: var(--ed-ink-3) !important; }
-html body .sidebar .mvp-nav-item:hover, html body .sidebar nav a:hover { background: var(--ed-paper-2) !important; color: var(--ed-ink) !important; }
+html body .sidebar .mvp-nav-item svg, html body .sidebar nav a svg { color: var(--ds-ink-3) !important; }
+html body .sidebar .mvp-nav-item:hover, html body .sidebar nav a:hover { background: var(--ds-surface-2) !important; color: var(--ds-ink) !important; }
 html body .sidebar .mvp-nav-item:is(.active, [aria-current="page"]), html body .sidebar nav a[aria-current="page"] {
-  background: var(--ed-chosen) !important; color: var(--ed-ink) !important; border: 0 !important; box-shadow: none !important; font-weight: 600; }
+  background: var(--ds-surface-2) !important; color: var(--ds-ink) !important; border: 0 !important; box-shadow: none !important; font-weight: 600; }
 html body .sidebar .mvp-nav-item:is(.active, [aria-current="page"])::before, html body .sidebar .mvp-nav-item:is(.active, [aria-current="page"])::after,
 html body .sidebar nav a[aria-current="page"]::before, html body .sidebar nav a[aria-current="page"]::after { display: none !important; content: none !important; }
-html body .sidebar .mvp-nav-item:is(.active, [aria-current="page"]) svg, html body .sidebar nav a[aria-current="page"] svg { color: var(--ed-ink) !important; }
-html body .sidebar .mvp-nav-item:focus-visible, html body .sidebar nav a:focus-visible { outline: 2px solid var(--ed-ink) !important; outline-offset: -2px; }
-html body .sidebar .mvp-nav-title, html body .sidebar .mvp-nav-title * { font-family: var(--font-sans) !important; font-size: 12px !important; font-weight: 500 !important;
-  letter-spacing: .04em !important; text-transform: uppercase; color: var(--ed-ink-3) !important; }
-html body .sidebar .brand .parent, html body .sidebar .parent { font-family: var(--font-sans) !important; font-size: 12px !important; letter-spacing: 0 !important;
-  text-transform: none !important; color: var(--ed-ink-3) !important; }
-html body aside.sidebar .sidebar-bottom-title, html body aside.sidebar .sidebar-bottom-title * { font-family: var(--font-sans) !important; font-size: 12px !important;
-  font-weight: 500 !important; letter-spacing: .04em !important; text-transform: uppercase; color: var(--ed-ink-3) !important; }
+html body .sidebar .mvp-nav-item:is(.active, [aria-current="page"]) svg, html body .sidebar nav a[aria-current="page"] svg { color: var(--ds-ink) !important; }
+html body .sidebar .mvp-nav-item:focus-visible, html body .sidebar nav a:focus-visible { outline: 2px solid var(--ds-ink) !important; outline-offset: -2px; }
+html body .sidebar .mvp-nav-title, html body .sidebar .mvp-nav-title * { font-family: var(--ds-font-sans) !important; font-size: 12px !important; font-weight: 500 !important;
+  letter-spacing: .04em !important; text-transform: uppercase; color: var(--ds-ink-3) !important; }
+html body .sidebar .brand .parent, html body .sidebar .parent { font-family: var(--ds-font-sans) !important; font-size: 12px !important; letter-spacing: 0 !important;
+  text-transform: none !important; color: var(--ds-ink-3) !important; }
+html body aside.sidebar .sidebar-bottom-title, html body aside.sidebar .sidebar-bottom-title * { font-family: var(--ds-font-sans) !important; font-size: 12px !important;
+  font-weight: 500 !important; letter-spacing: .04em !important; text-transform: uppercase; color: var(--ds-ink-3) !important; }

@@ -1,0 +1,618 @@
+/*
+ * OMN-22168: OmniDash's design tokens, the one source of every colour, typeface, size, corner, space and shadow the app
+ * draws (AC1). Light is design 20 "Daylight Minimal" and dark is design 01 "Obsidian" (Lakshman 2026-11-02, "01 + 20").
+ * Pages read only these --ds-* names (AC5), so the source can later switch to OmniUI's exported tokens (OMN-21848).
+ *
+ *   1. Semantic tokens: surfaces, ink, lines, brand and accent, status, chart series, hues.
+ *   2. Type, shape, space, shadow and motion scales.
+ *   3. Meaning-bearing palettes, values unchanged: card and field concepts (OMN-21970 AC8), model tiers (AC5),
+ *      destinations and node kinds. Moved here from field-identity.css, dashboard-cards.css, destination-identity.css
+ *      and design-tokens.css.
+ *
+ * This is the only file under src allowed a raw colour (tests/design-system/no-raw-colours.test.ts).
+ */
+
+/* 1. Semantic tokens, light (design 20). Light is the default: the app marks dark with html[data-theme="dark"]. */
+:root {
+  color-scheme: light;
+  --ds-page: #ffffff;
+  --ds-surface: #fafafa;
+  --ds-surface-2: #f0f0f0;
+  --ds-inset: #ffffff;
+  --ds-overlay: #ffffff;
+  --ds-inverse: #0a0a0a;
+  --ds-on-inverse: #ffffff;
+  --ds-scrim: rgba(10, 10, 10, 0.4);
+  --ds-shadow-ink: #0a0a0a;
+  --ds-mix-dark: #000000;
+  --ds-mix-light: #ffffff;
+
+  --ds-ink: #0a0a0a;
+  --ds-ink-2: #262626;
+  --ds-ink-3: #525252;
+  --ds-ink-4: #a3a3a3;
+
+  --ds-line: #e5e5e5;
+  --ds-line-soft: #ededed;
+  --ds-line-strong: #d4d4d4;
+  --ds-focus: #0a0a0a;
+
+  --ds-link: #1d4ed8;
+  --ds-brand: #2563eb;
+  --ds-brand-soft: #dbeafe;
+  --ds-brand-ink: #1e3a8a;
+  --ds-accent: #0a0a0a;
+  --ds-on-accent: #ffffff;
+
+  --ds-ok: #15803d;
+  --ds-ok-soft: #dcfce7;
+  --ds-warn: #b45309;
+  --ds-warn-soft: #fef3c7;
+  --ds-bad: #b91c1c;
+  --ds-bad-soft: #fee2e2;
+  --ds-info: #1d4ed8;
+  --ds-info-soft: #dbeafe;
+
+  --ds-chart-1: #4169b2;
+  --ds-chart-2: #25816a;
+  --ds-chart-3: #99701f;
+  --ds-chart-4: #c2533d;
+  --ds-chart-5: #a54e7f;
+  --ds-chart-6: #7756b5;
+  --ds-chart-7: #237f94;
+  --ds-chart-8: #5f6b7a;
+  --ds-chart-unknown: #85847b;
+  --ds-chart-grid: rgba(10, 10, 10, 0.06);
+  --ds-model-lightness: 46%;
+
+  --ds-hue-blue: #2563eb;
+  --ds-hue-green: #15803d;
+  --ds-hue-teal: #0f766e;
+  --ds-hue-amber: #b45309;
+  --ds-hue-orange: #c2410c;
+  --ds-hue-red: #b91c1c;
+  --ds-hue-pink: #be185d;
+  --ds-hue-purple: #7e22ce;
+  --ds-hue-grey: #6b7280;
+}
+
+/* 1. Semantic tokens, dark (design 01). color-scheme draws native scrollbars and controls dark too. */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --ds-page: #0a0a0a;
+  --ds-surface: #141414;
+  --ds-surface-2: #1f1f1f;
+  --ds-inset: #0f0f0f;
+  --ds-overlay: #1a1a1a;
+  --ds-inverse: #f5f5f5;
+  --ds-on-inverse: #0a0a0a;
+  --ds-scrim: rgba(0, 0, 0, 0.6);
+  --ds-shadow-ink: #000000;
+
+  --ds-ink: #f5f5f5;
+  --ds-ink-2: #d4d4d4;
+  --ds-ink-3: #a3a3a3;
+  --ds-ink-4: #525252;
+
+  --ds-line: #262626;
+  --ds-line-soft: #1f1f1f;
+  --ds-line-strong: #333333;
+  --ds-focus: #f5f5f5;
+
+  --ds-link: #8ab4f8;
+  --ds-brand: #60a5fa;
+  --ds-brand-soft: rgba(96, 165, 250, 0.14);
+  --ds-brand-ink: #bfdbfe;
+  --ds-accent: #f5f5f5;
+  --ds-on-accent: #0a0a0a;
+
+  --ds-ok: #4ade80;
+  --ds-ok-soft: rgba(74, 222, 128, 0.12);
+  --ds-warn: #fbbf24;
+  --ds-warn-soft: rgba(251, 191, 36, 0.12);
+  --ds-bad: #f87171;
+  --ds-bad-soft: rgba(248, 113, 113, 0.12);
+  --ds-info: #60a5fa;
+  --ds-info-soft: rgba(96, 165, 250, 0.12);
+
+  --ds-chart-1: oklch(75% 0.17 250);
+  --ds-chart-2: oklch(78% 0.16 160);
+  --ds-chart-3: oklch(83% 0.15 85);
+  --ds-chart-4: oklch(74% 0.19 30);
+  --ds-chart-5: oklch(72% 0.21 350);
+  --ds-chart-6: oklch(72% 0.17 290);
+  --ds-chart-7: oklch(77% 0.14 200);
+  --ds-chart-8: #a6b4c2;
+  --ds-chart-unknown: #a5a397;
+  --ds-chart-grid: rgba(255, 255, 255, 0.06);
+  --ds-model-lightness: 79%;
+
+  --ds-hue-blue: #60a5fa;
+  --ds-hue-green: #4ade80;
+  --ds-hue-teal: #5eead4;
+  --ds-hue-amber: #fbbf24;
+  --ds-hue-orange: #fdba74;
+  --ds-hue-red: #f87171;
+  --ds-hue-pink: #f9a8d4;
+  --ds-hue-purple: #d8b4fe;
+  --ds-hue-grey: #9ca3af;
+}
+
+/* 2. Type, shape, space, shadow and motion. */
+:root {
+  --ds-font-sans: "Geist Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --ds-font-mono: "Geist Mono Variable", ui-monospace, "SF Mono", Menlo, monospace;
+  --ds-font-brand: "Poppins", var(--ds-font-sans);
+  --ds-text-xs: 0.75rem;
+  --ds-text-sm: 0.75rem;
+  --ds-text-md: 0.75rem;
+  --ds-text-lg: 0.8125rem;
+  --ds-text-xl: 0.875rem;
+  --ds-text-2xl: 1rem;
+  --ds-text-3xl: 1.125rem;
+  --ds-text-4xl: 1.375rem;
+  --ds-leading-tight: 1.2;
+  --ds-leading-normal: 1.45;
+  --ds-leading-loose: 1.65;
+  --ds-weight-regular: 400;
+  --ds-weight-medium: 500;
+  --ds-weight-semibold: 600;
+  --ds-weight-bold: 700;
+  --ds-tracking-label: 0.12em;
+
+  --ds-radius: 12px;
+  --ds-radius-control: 8px;
+  --ds-radius-tag: 4px;
+  --ds-radius-pill: 999px;
+
+  --ds-pad-y: 14px;
+  --ds-pad-x: 16px;
+  --ds-row-gap: 16px;
+  --ds-gap: 14px;
+  --ds-pad-card: 18px;
+  --ds-pad-row: 10px 14px;
+  --ds-row-h: 32px;
+  --ds-kpi-num: 32px;
+  --ds-kpi-label: 10px;
+
+  --ds-shadow-sm: none;
+  --ds-shadow-md: 0 2px 8px rgba(10, 10, 10, 0.06);
+  --ds-shadow-lg: 0 16px 40px rgba(10, 10, 10, 0.14);
+
+  --ds-motion-fast: 120ms;
+  --ds-motion: 200ms;
+  --ds-ease: cubic-bezier(0.2, 0, 0, 1);
+}
+[data-theme="dark"] {
+  --ds-shadow-md: 0 2px 10px rgba(0, 0, 0, 0.45);
+  --ds-shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.6);
+}
+[data-density="compact"] {
+  --ds-pad-y: 10px;
+  --ds-pad-x: 12px;
+  --ds-row-gap: 12px;
+  --ds-gap: 10px;
+  --ds-pad-card: 14px;
+  --ds-pad-row: 8px 12px;
+  --ds-row-h: 28px;
+}
+
+/* 3. Meaning-bearing palettes, moved with their values unchanged. */
+:root {
+  --ds-card-calls: #b45309;
+  --ds-card-insights: #0369a1;
+}
+[data-theme="dark"] {
+  --ds-card-calls: #fbbf24;
+  --ds-card-insights: #7dd3fc;
+}
+/* One meaning per field across local cards, Workflow and the event views. The tier colours (OMN-21970) are the
+   product owner's palette, checked for colour-blind contrast in both themes; cheap_frontier and cheap_cloud share
+   their family's colour, and a tier no row names is none. */
+:root {
+  --ds-card-spend: #047857;
+  --ds-card-savings: #0f766e;
+  --ds-card-tokens: #2563eb;
+  --ds-card-quality: #7e22ce;
+  --ds-card-activity: #4338ca;
+  --ds-card-routing: #c2410c;
+  --ds-card-identity: #be185d;
+  --ds-field-pass: #007607;
+  --ds-field-fail: #960026;
+  --ds-field-count: #1d4ed8;
+  --ds-field-score: #a21caf;
+  --ds-field-threshold: #854d0e;
+  --ds-field-model: #6d28d9;
+  --ds-field-age: #0369a1;
+  --ds-field-identity: #0f6c7a;
+  --ds-field-duration: #5b3c18;
+  --ds-field-cost: #7e652d;
+  --ds-field-savings: #014e44;
+  --ds-field-backend: #9a3412;
+  --ds-field-host: #475569;
+  --ds-field-tokens-in: #356f87;
+  --ds-field-tokens-out: #c10174;
+  --ds-field-tokens: #844caf;
+  --ds-field-basis: #3f6212;
+  --ds-field-task: #6b21a8;
+  --ds-field-tier: #9f1239;
+  --ds-field-queue: #7c5700;
+  --ds-field-execution: #713f12;
+  --ds-field-completion: #6b537d;
+  --ds-field-unavailable: #555b61;
+  --ds-field-run-measured: #3730a3;
+  --ds-field-run-estimated: #9d174d;
+  --ds-field-duration-p95: #6c25e4;
+  --ds-field-escalated: #870184;
+  --ds-field-calls: #1356b2;
+  --ds-field-tenant: #6d4c41;
+  --ds-field-session: #4e6282;
+  --ds-field-baseline: #bd330b;
+  --ds-field-saving-average: #196147;
+  --ds-field-compression: #3e637b;
+  --ds-field-cache: #874a34;
+  --ds-field-quality: #2f7068;
+  --ds-field-events: #466b8a;
+  --ds-field-generation: #75518a;
+  --ds-field-transport: #806000;
+  --ds-field-delegations: #1e40af;
+  --ds-field-routing: #3a6171;
+  --ds-field-unrouted: #815932;
+  --ds-field-contract: #466b20;
+  --ds-field-recent: #9f3155;
+  --ds-field-last: #8d3964;
+  --ds-field-analysis: #555b92;
+  --ds-field-spend-daily: #0d6b4f;
+  --ds-field-tokens-daily: #6b6b26;
+  --ds-field-savings-daily: #276856;
+  --ds-field-usage-day: #776b21;
+  --ds-field-credentials: #9d4b34;
+  --ds-field-local-identity: #586780;
+  --ds-field-local-access: #6a4f8a;
+  --ds-field-local-run: #386a44;
+  --ds-field-selected: #536d9d;
+  --ds-field-path: #567349;
+  --ds-field-today: #0c6f6a;
+  --ds-field-run-outcome: oklch(46% 0.11 186.88835);
+  --ds-field-routing-model: oklch(46% 0.11 137.28867);
+  --ds-field-tokens-completion: oklch(46% 0.11 213.13815);
+  --ds-field-timing: oklch(46% 0.11 254.78945);
+  --ds-field-run-details: oklch(46% 0.11 341.04062);
+  --ds-field-stage-timing: oklch(46% 0.11 8.44187);
+  --ds-field-answer: oklch(46% 0.11 186.32868);
+  --ds-field-routing-flow: oklch(46% 0.11 233.71179);
+  --ds-field-token-flow: oklch(46% 0.11 184.04561);
+  --ds-field-quality-comparison: oklch(46% 0.11 142.82768);
+  --ds-field-tier-local: #2a78d6;
+  --ds-field-tier-harness: #eb6834;
+  --ds-field-tier-cheap-frontier: var(--ds-field-tier-frontier);
+  --ds-field-tier-cheap-cloud: var(--ds-field-tier-cloud);
+  --ds-field-tier-cloud: #6250d6;
+  --ds-field-tier-claude: #008300;
+  --ds-field-tier-frontier: #1baf7a;
+  --ds-field-tier-customer-keys: #e87ba4;
+  --ds-field-tier-other: #a3a7ad;
+  --ds-field-tier-none: #a3a7ad;
+  --ds-field-step-request: oklch(46% 0.11 341.29383);
+  --ds-field-step-routing: oklch(46% 0.11 93.67875);
+  --ds-field-step-provider-call: oklch(46% 0.11 164.34756);
+  --ds-field-step-quality: oklch(46% 0.11 23.92721);
+  --ds-field-step-terminal: oklch(46% 0.11 323.60437);
+  --ds-field-step-other: oklch(46% 0.11 26.53757);
+  --ds-field-cloud-keys: #6b5c75;
+  --ds-field-recorded-rows: #2f6084;
+  --ds-field-runs-daily: oklch(46% 0.11 330.96068);
+  --ds-field-pass-rate-daily: oklch(46% 0.11 52.2194);
+  --ds-field-activity-hourly: oklch(46% 0.11 63.33065);
+  --ds-field-quality-model: oklch(46% 0.11 108.83459);
+  --ds-field-failures: oklch(46% 0.11 258.69749);
+  --ds-field-runs-model: oklch(46% 0.11 358.16801);
+  --ds-field-runs-tier: oklch(46% 0.11 64.96998);
+  --ds-field-spend-model: oklch(46% 0.11 182.38678);
+  --ds-field-cost-per-run: oklch(46% 0.11 133.12544);
+  --ds-field-tokens-model: oklch(46% 0.11 290.94511);
+  --ds-field-cost-route: oklch(46% 0.11 313.46716);
+  --ds-field-activity: oklch(46% 0.11 228.04225);
+  --ds-field-routing-workload: oklch(46% 0.11 101.12764);
+  --ds-field-quality-outcomes: oklch(46% 0.11 2.39929);
+  --ds-field-performance-model: oklch(46% 0.11 315.56473);
+  --ds-field-task-document: oklch(46% 0.11 165.02155);
+  --ds-field-task-code-generation: oklch(46% 0.11 255.98927);
+  --ds-field-task-research: oklch(46% 0.11 116.13087);
+  --ds-field-task-summarization: oklch(46% 0.11 161.84054);
+  --ds-field-task-code-review: oklch(46% 0.11 132.93971);
+  --ds-field-task-test: oklch(46% 0.11 281.15629);
+  --ds-field-task-other: oklch(46% 0.11 310.2113);
+  --ds-field-tier-mix: oklch(46% 0.11 351.38394);
+  --ds-field-usage-analysis: oklch(46% 0.11 169.12599);
+  --ds-field-runs-analysis: oklch(46% 0.11 214.40213);
+  --ds-field-run-routes: oklch(46% 0.11 31.80466);
+  --ds-field-load-slow: var(--ds-field-threshold);
+  --ds-field-load-error: var(--ds-field-fail);
+}
+[data-theme="dark"] {
+  --ds-card-spend: #6ee7b7;
+  --ds-card-savings: #5eead4;
+  --ds-card-tokens: #93c5fd;
+  --ds-card-quality: #d8b4fe;
+  --ds-card-activity: #a5b4fc;
+  --ds-card-routing: #fdba74;
+  --ds-card-identity: #f9a8d4;
+  --ds-kind-orchestrator: #A98DFF;
+  --ds-kind-orchestrator-soft: #1F1A33;
+  --ds-kind-orchestrator-ink: #D7CAFF;
+  --ds-kind-compute: #4ADE80;
+  --ds-kind-compute-soft: #0F2A19;
+  --ds-kind-compute-ink: #BBF7D0;
+  --ds-kind-effect: #FF8A5C;
+  --ds-kind-effect-soft: #2A1810;
+  --ds-kind-effect-ink: #FFC9B0;
+  --ds-kind-reducer: #60A5FA;
+  --ds-kind-reducer-soft: #0F1B33;
+  --ds-kind-reducer-ink: #BFDBFE;
+  --ds-field-pass: #98f158;
+  --ds-field-fail: #fe9298;
+  --ds-field-count: #93c5fd;
+  --ds-field-score: #f0abfc;
+  --ds-field-threshold: #fde68a;
+  --ds-field-model: #c4b5fd;
+  --ds-field-age: #7dd3fc;
+  --ds-field-identity: #67d8cf;
+  --ds-field-duration: #e39c48;
+  --ds-field-cost: #eecc64;
+  --ds-field-savings: #21c8ac;
+  --ds-field-backend: #fdba74;
+  --ds-field-host: #cbd5e1;
+  --ds-field-tokens-in: #46cefe;
+  --ds-field-tokens-out: #fa6cb5;
+  --ds-field-tokens: #c782f6;
+  --ds-field-basis: #bef264;
+  --ds-field-task: #d8b4fe;
+  --ds-field-tier: #fda4af;
+  --ds-field-queue: #e3bc72;
+  --ds-field-execution: #fef08a;
+  --ds-field-completion: #d2b8dd;
+  --ds-field-unavailable: #b5b9c0;
+  --ds-field-run-measured: #c7d2fe;
+  --ds-field-run-estimated: #fbcfe8;
+  --ds-field-duration-p95: #b7a7fe;
+  --ds-field-escalated: #ff86f0;
+  --ds-field-calls: #51abff;
+  --ds-field-tenant: #d6b7a8;
+  --ds-field-session: #a8bddf;
+  --ds-field-baseline: #ff7748;
+  --ds-field-saving-average: #9bd8bb;
+  --ds-field-compression: #9dc8df;
+  --ds-field-cache: #dfad9c;
+  --ds-field-quality: #93c7bb;
+  --ds-field-events: #9dc5e6;
+  --ds-field-generation: #c8ace1;
+  --ds-field-transport: #e2c477;
+  --ds-field-delegations: #a2bcfa;
+  --ds-field-routing: #9ac6d0;
+  --ds-field-unrouted: #d8bd93;
+  --ds-field-contract: #c9e78d;
+  --ds-field-recent: #f2a7c5;
+  --ds-field-last: #dea1c0;
+  --ds-field-analysis: #aeb1e6;
+  --ds-field-spend-daily: #87d4b5;
+  --ds-field-tokens-daily: #c7cf90;
+  --ds-field-savings-daily: #8dcdb7;
+  --ds-field-usage-day: #e0d08d;
+  --ds-field-credentials: #e0aa91;
+  --ds-field-local-identity: #b2c2dc;
+  --ds-field-local-access: #c9b6e6;
+  --ds-field-local-run: #99caa0;
+  --ds-field-selected: #a9c0e8;
+  --ds-field-path: #aac793;
+  --ds-field-today: #8ad4c8;
+  --ds-field-run-outcome: oklch(79% 0.11 186.88835);
+  --ds-field-routing-model: oklch(79% 0.11 137.28867);
+  --ds-field-tokens-completion: oklch(79% 0.11 213.13815);
+  --ds-field-timing: oklch(79% 0.11 254.78945);
+  --ds-field-run-details: oklch(79% 0.11 341.04062);
+  --ds-field-stage-timing: oklch(79% 0.11 8.44187);
+  --ds-field-answer: oklch(79% 0.11 186.32868);
+  --ds-field-routing-flow: oklch(79% 0.11 233.71179);
+  --ds-field-token-flow: oklch(79% 0.11 184.04561);
+  --ds-field-quality-comparison: oklch(79% 0.11 142.82768);
+  --ds-field-tier-local: #3987e5;
+  --ds-field-tier-harness: #d95926;
+  --ds-field-tier-cheap-frontier: var(--ds-field-tier-frontier);
+  --ds-field-tier-cheap-cloud: var(--ds-field-tier-cloud);
+  --ds-field-tier-cloud: #9085e9;
+  --ds-field-tier-claude: #008300;
+  --ds-field-tier-frontier: #199e70;
+  --ds-field-tier-customer-keys: #d55181;
+  --ds-field-tier-other: #6b6e73;
+  --ds-field-tier-none: #6b6e73;
+  --ds-field-step-request: oklch(79% 0.11 341.29383);
+  --ds-field-step-routing: oklch(79% 0.11 93.67875);
+  --ds-field-step-provider-call: oklch(79% 0.11 164.34756);
+  --ds-field-step-quality: oklch(79% 0.11 23.92721);
+  --ds-field-step-terminal: oklch(79% 0.11 323.60437);
+  --ds-field-step-other: oklch(79% 0.11 26.53757);
+  --ds-field-cloud-keys: #c5aecf;
+  --ds-field-recorded-rows: #9fc9de;
+  --ds-field-runs-daily: oklch(79% 0.11 330.96068);
+  --ds-field-pass-rate-daily: oklch(79% 0.11 52.2194);
+  --ds-field-activity-hourly: oklch(79% 0.11 63.33065);
+  --ds-field-quality-model: oklch(79% 0.11 108.83459);
+  --ds-field-failures: oklch(79% 0.11 258.69749);
+  --ds-field-runs-model: oklch(79% 0.11 358.16801);
+  --ds-field-runs-tier: oklch(79% 0.11 64.96998);
+  --ds-field-spend-model: oklch(79% 0.11 182.38678);
+  --ds-field-cost-per-run: oklch(79% 0.11 133.12544);
+  --ds-field-tokens-model: oklch(79% 0.11 290.94511);
+  --ds-field-cost-route: oklch(79% 0.11 313.46716);
+  --ds-field-activity: oklch(79% 0.11 228.04225);
+  --ds-field-routing-workload: oklch(79% 0.11 101.12764);
+  --ds-field-quality-outcomes: oklch(79% 0.11 2.39929);
+  --ds-field-performance-model: oklch(79% 0.11 315.56473);
+  --ds-field-task-document: oklch(79% 0.11 165.02155);
+  --ds-field-task-code-generation: oklch(79% 0.11 255.98927);
+  --ds-field-task-research: oklch(79% 0.11 116.13087);
+  --ds-field-task-summarization: oklch(79% 0.11 161.84054);
+  --ds-field-task-code-review: oklch(79% 0.11 132.93971);
+  --ds-field-task-test: oklch(79% 0.11 281.15629);
+  --ds-field-task-other: oklch(79% 0.11 310.2113);
+  --ds-field-tier-mix: oklch(79% 0.11 351.38394);
+  --ds-field-usage-analysis: oklch(79% 0.11 169.12599);
+  --ds-field-runs-analysis: oklch(79% 0.11 214.40213);
+  --ds-field-run-routes: oklch(79% 0.11 31.80466);
+}
+.app:has(.local-dashboard-page), .app:has(.ev-root[data-destination="delegation-evidence"]) {
+  --ds-destination-accent: var(--ds-ink);
+}
+:root, [data-theme="light"] {
+  --ds-kind-orchestrator: #6A4FBE;
+  --ds-kind-orchestrator-soft: #EEE9FF;
+  --ds-kind-orchestrator-ink: #3D2785;
+  --ds-kind-compute: #15803D;
+  --ds-kind-compute-soft: #DCFCE7;
+  --ds-kind-compute-ink: #14532D;
+  --ds-kind-effect: #C44520;
+  --ds-kind-effect-soft: #FFE4D6;
+  --ds-kind-effect-ink: #7C2D12;
+  --ds-kind-reducer: #1D4ED8;
+  --ds-kind-reducer-soft: #DBEAFE;
+  --ds-kind-reducer-ink: #1E3A8A;
+}
+[data-destination] {
+  --ds-destination-accent: #8C641F;
+}
+[data-destination="local-runs"] {
+  --ds-destination-accent: #4D7686;
+}
+[data-destination="local-workflow"] {
+  --ds-destination-accent: #58724C;
+}
+[data-destination="local-usage"] {
+  --ds-destination-accent: #70742F;
+}
+[data-destination="local-settings"] {
+  --ds-destination-accent: #876A45;
+}
+[data-destination="delegation-evidence"] {
+  --ds-destination-accent: #477B73;
+}
+[data-destination="experiments"] {
+  --ds-destination-accent: #885B87;
+}
+[data-destination="sea-control"] {
+  --ds-destination-accent: #65753F;
+}
+[data-destination="event-bus"] {
+  --ds-destination-accent: #586A99;
+}
+[data-destination="lab"] {
+  --ds-destination-accent: #926342;
+}
+[data-theme="dark"] [data-destination] {
+  --ds-destination-accent: #D2AE6D;
+}
+[data-theme="dark"] [data-destination="local-runs"] {
+  --ds-destination-accent: #91B8C3;
+}
+[data-theme="dark"] [data-destination="local-workflow"] {
+  --ds-destination-accent: #A3BB8D;
+}
+[data-theme="dark"] [data-destination="local-usage"] {
+  --ds-destination-accent: #C5C382;
+}
+[data-theme="dark"] [data-destination="local-settings"] {
+  --ds-destination-accent: #D6BA92;
+}
+[data-theme="dark"] [data-destination="delegation-evidence"] {
+  --ds-destination-accent: #94BFB3;
+}
+[data-theme="dark"] [data-destination="experiments"] {
+  --ds-destination-accent: #BE9EC3;
+}
+[data-theme="dark"] [data-destination="sea-control"] {
+  --ds-destination-accent: #B0BD8C;
+}
+[data-theme="dark"] [data-destination="event-bus"] {
+  --ds-destination-accent: #9AAED4;
+}
+[data-theme="dark"] [data-destination="lab"] {
+  --ds-destination-accent: #CFAD8D;
+}
+
+/* Component concept accents (OMN-21166 part 11, OMN-21970 AC8): each panel, control and page concept keeps its own
+   colour, so different things differ. Values moved unchanged from local-dashboard.css. */
+:root {
+  --ds-accent-panel-dashboard-panel: #3769bd;
+  --ds-accent-ins-ins-card: #93B4FF;
+  --ds-accent-panel-overview-model-usage: #6D28D9;
+  --ds-accent-panel-overview-quality: #0F766E;
+  --ds-accent-panel-overview-last-run: #BE185D;
+  --ds-accent-panel-overview-insights: #4338CA;
+  --ds-accent-panel-runs-insights: #4338CA;
+  --ds-accent-panel-overview-spend-by-day: #0369A1;
+  --ds-accent-panel-overview-tier-mix: #0E7490;
+  --ds-accent-panel-runs-tier-mix: #0E7490;
+  --ds-accent-panel-overview-recent-runs: #C2410C;
+  --ds-accent-panel-recent-runs: #C2410C;
+  --ds-accent-panel-overview-run-locally: #4D7C0F;
+  --ds-accent-panel-overview-avg-saving-per-call: #15803D;
+  --ds-accent-panel-overview-baseline-spend: #B91C1C;
+  --ds-accent-panel-overview-compression: #7E22CE;
+  --ds-accent-panel-overview-cache-hit-rate: #A16207;
+  --ds-accent-panel-workflow-run-path: #A21CAF;
+  --ds-accent-panel-usage-savings-series: #166534;
+  --ds-accent-panel-usage-tokens-by-day: #854D0E;
+  --ds-accent-panel-usage-by-model-day: #1E40AF;
+  --ds-accent-panel-usage-insights: #6B21A8;
+  --ds-accent-panel-credentials-keys: #9F1239;
+  --ds-accent-panel-api-keys-local-identity: #9A3412;
+  --ds-accent-page-overview: #8B5CF6;
+  --ds-accent-page-runs: #0284C7;
+  --ds-accent-page-workflow: #059669;
+  --ds-accent-page-usage: #B45309;
+  --ds-accent-page-credentials: #E11D48;
+  --ds-accent-page-api-keys: #EA580C;
+  --ds-accent-fact-run-summary-group: #92400E;
+  --ds-accent-analysis-workflow-analysis-card: #B45309;
+  --ds-accent-workflow-timing-base: #fb923c;
+  --ds-accent-workflow-stages-base: #f472b6;
+  --ds-accent-analysis-workflow-analysis-card--tokens: #0e7490;
+  --ds-accent-analysis-workflow-analysis-card--quality: #be123c;
+  --ds-accent-analysis-workflow-analysis-card--record: #4338ca;
+  --ds-accent-analysis-workflow-analysis-card--answer: #4d7c0f;
+  --ds-accent-control-workflow: #B45309;
+  --ds-accent-flow-workflow-flow-node: #047857;
+  --ds-accent-panel-runs: #7952b3;
+}
+[data-theme="dark"] {
+  --ds-accent-panel-overview-model-usage: #A78BFA;
+  --ds-accent-panel-overview-quality: #2DD4BF;
+  --ds-accent-panel-overview-last-run: #F472B6;
+  --ds-accent-panel-overview-insights: #818CF8;
+  --ds-accent-panel-runs-insights: #818CF8;
+  --ds-accent-panel-overview-spend-by-day: #38BDF8;
+  --ds-accent-panel-overview-tier-mix: #22D3EE;
+  --ds-accent-panel-runs-tier-mix: #22D3EE;
+  --ds-accent-panel-overview-recent-runs: #FB923C;
+  --ds-accent-panel-recent-runs: #FB923C;
+  --ds-accent-panel-overview-run-locally: #A3E635;
+  --ds-accent-panel-overview-avg-saving-per-call: #4ADE80;
+  --ds-accent-panel-overview-baseline-spend: #F87171;
+  --ds-accent-panel-overview-compression: #C084FC;
+  --ds-accent-panel-overview-cache-hit-rate: #FACC15;
+  --ds-accent-panel-workflow-run-path: #E879F9;
+  --ds-accent-panel-usage-savings-series: #86EFAC;
+  --ds-accent-panel-usage-tokens-by-day: #FDE047;
+  --ds-accent-panel-usage-by-model-day: #93C5FD;
+  --ds-accent-panel-usage-insights: #D8B4FE;
+  --ds-accent-panel-credentials-keys: #FDA4AF;
+  --ds-accent-panel-api-keys-local-identity: #FDBA74;
+  --ds-accent-fact-run-summary-group: #FBBF24;
+  --ds-accent-analysis-workflow-analysis-card--tokens: #22d3ee;
+  --ds-accent-analysis-workflow-analysis-card--quality: #fb7185;
+  --ds-accent-analysis-workflow-analysis-card--record: #a5b4fc;
+  --ds-accent-analysis-workflow-analysis-card--answer: #a3e635;
+  --ds-accent-control-workflow: #FBBF24;
+  --ds-accent-flow-workflow-flow-node: #34D399;
+  --ds-accent-panel-runs: #b69ce8;
+}

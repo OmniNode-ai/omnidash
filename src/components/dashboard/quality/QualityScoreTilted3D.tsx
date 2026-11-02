@@ -19,8 +19,9 @@ import * as THREE from 'three';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
-import { cssVarToHex, useThemeName } from '@/theme';
+import { useThemeName } from '@/theme';
 import { Text, Heading } from '@/components/ui/typography';
+import { tokenNumber } from '@/design-system/color';
 
 export interface QualityDistributionBucket {
   bucket: string;
@@ -97,7 +98,7 @@ interface EffectiveColors {
   /**
    * Explicit sRGB hex for the ground plane. We use a concrete number
    * rather than a CSS variable lookup here because Canvas 2D's
-   * fillStyle setter (which cssColorToHex uses under the hood)
+   * fillStyle setter (which colorToNumber uses under the hood)
    * rejects `var()` syntax and previously fell through to a near-
    * black fallback — which looked correct on the dark theme but
    * produced a black floor in light mode. Values mirror the
@@ -108,33 +109,33 @@ interface EffectiveColors {
 }
 
 const DARK_EFFECTIVE: EffectiveColors = {
-  gridColor: 0x00e5ff,          // cyan, Tron signature
+  get gridColor() { return tokenNumber('--ds-line-strong'); },
   gridOpacity: 0.35,
-  thresholdPlaneColor: 0xffffff,
+  get thresholdPlaneColor() { return tokenNumber('--ds-ink-2'); },
   thresholdPlaneOpacity: 0.08,
-  thresholdOutlineColor: 0xffffff,
+  get thresholdOutlineColor() { return tokenNumber('--ds-ink-2'); },
   thresholdOutlineOpacity: 0.75,
   barCoreOpacity: 0.55,
   barEdgeOpacity: 0.95,
   barSaturation: 0.85,
   barLightness: 0.62,
-  canvasBg: 'var(--panel-2)',
-  groundHex: 0x020812,          // matches cost-trend-3d DARK_THEME.floor
+  canvasBg: 'var(--ds-surface-2)',
+  get groundHex() { return tokenNumber('--ds-surface'); },
 };
 
 const LIGHT_EFFECTIVE: EffectiveColors = {
-  gridColor: 0x6b7280,          // medium slate, visible on near-white
+  get gridColor() { return tokenNumber('--ds-line-strong'); },
   gridOpacity: 0.45,
-  thresholdPlaneColor: 0x334155, // dark slate — white-on-white was invisible
+  get thresholdPlaneColor() { return tokenNumber('--ds-ink-2'); },
   thresholdPlaneOpacity: 0.1,
-  thresholdOutlineColor: 0x334155,
+  get thresholdOutlineColor() { return tokenNumber('--ds-ink-2'); },
   thresholdOutlineOpacity: 0.7,
   barCoreOpacity: 0.72,         // more opaque so bars read against white bg
   barEdgeOpacity: 0.8,          // slightly less than dark — neon edges feel
   barSaturation: 0.6,           //   garish on white; soften the palette to
   barLightness: 0.5,            //   match the pastel aesthetic used elsewhere
-  canvasBg: 'var(--panel-2)',
-  groundHex: 0xf7f8fa,          // matches cost-trend-3d LIGHT_THEME.floor
+  canvasBg: 'var(--ds-surface-2)',
+  get groundHex() { return tokenNumber('--ds-surface'); },
 };
 
 // ---------- 3D chart ----------
@@ -183,7 +184,7 @@ function ThreeBarChart({
       preserveDrawingBuffer: true,
     });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-    renderer.setClearColor(0x000000, 0);
+    renderer.setClearColor(tokenNumber('--ds-mix-dark'), 0);
     renderer.domElement.style.display = 'block';
     renderer.domElement.style.width = '100%';
     renderer.domElement.style.height = '100%';
@@ -258,8 +259,8 @@ function ThreeBarChart({
     const group = new THREE.Group();
     group.name = 'dynamic';
 
-    // Subtle ground plane sized to the bar strip. Uses `var(--panel)`
-    // so it sits a step away from the canvas background (`--panel-2`)
+    // Subtle ground plane sized to the bar strip. Uses `var(--ds-surface)`
+    // so it sits a step away from the canvas background (`--ds-surface-2`)
     // in both themes — gives the floor a visible boundary without
     // needing a shadow or gradient.
     const groundW = STRIP_HALF_WIDTH * 2 + BAR_WIDTH + 1.2;
@@ -375,7 +376,7 @@ function ThreeBarChart({
     // tied to the cone's projected position communicates the cone's
     // meaning more directly.
     const meanX = scoreToX(meanScore);
-    const markerColor = cssVarToHex('--brand', 0x00e5ff);
+    const markerColor = tokenNumber('--ds-brand');
     const markerGeom = new THREE.ConeGeometry(0.2, 0.42, 16);
     markerGeom.rotateX(Math.PI);
     const marker = new THREE.Mesh(
@@ -444,7 +445,7 @@ function ThreeBarChart({
         width: '100%',
         height: CANVAS_HEIGHT,
         background: effective.canvasBg,
-        border: '1px solid var(--line-2)',
+        border: '1px solid var(--ds-line-soft)',
         borderRadius: 6,
       }}
       onPointerMove={handlePointerMove}
@@ -482,8 +483,8 @@ function ThreeBarChart({
             top: meanLabelPos.y - 6,
             transform: 'translate(-50%, -100%)',
             padding: '2px 6px',
-            background: 'var(--panel)',
-            border: '1px solid var(--brand)',
+            background: 'var(--ds-surface)',
+            border: '1px solid var(--ds-brand)',
             borderRadius: 3,
             pointerEvents: 'none',
             whiteSpace: 'nowrap',
@@ -493,7 +494,7 @@ function ThreeBarChart({
             size="xs"
             family="mono"
             transform="uppercase"
-            style={{ color: 'var(--brand-ink, var(--ink))' }}
+            style={{ color: 'var(--ds-brand-ink, var(--ds-ink))' }}
           >
             Mean {meanScore.toFixed(2)}
           </Text>
@@ -507,10 +508,10 @@ function ThreeBarChart({
             left: hover.clientX + 14,
             top: hover.clientY + 14,
             padding: '6px 10px',
-            background: 'var(--panel)',
-            border: '1px solid var(--line)',
+            background: 'var(--ds-surface)',
+            border: '1px solid var(--ds-line)',
             borderRadius: 6,
-            boxShadow: 'var(--shadow-md)',
+            boxShadow: 'var(--ds-shadow-md)',
             minWidth: 140,
             pointerEvents: 'none',
             zIndex: 1000,
@@ -633,7 +634,7 @@ export default function QualityScorePanel({ config }: { config: QualityScoreConf
             <div
               style={{
                 height: 1,
-                background: 'var(--line-2)',
+                background: 'var(--ds-line-soft)',
                 margin: '12px 0',
               }}
             />

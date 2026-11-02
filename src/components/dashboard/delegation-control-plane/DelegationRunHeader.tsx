@@ -80,7 +80,7 @@ export function DelegationRunHeader() {
       </div>
 
       {selectedRun && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8, borderTop: '1px solid var(--line)', paddingTop: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8, borderTop: '1px solid var(--ds-line)', paddingTop: 10 }}>
           <MiniFact label="Model" value={selectedRun.modelName} />
           <MiniFact label="Terminal state" value={terminalState} tone={terminalState === 'failed' ? 'bad' : terminalState === 'passed' ? 'ok' : 'secondary'} />
           <MiniFact label="Cost" value={fmtUsd(selectedRun.estimatedCostUsd)} />
@@ -90,7 +90,7 @@ export function DelegationRunHeader() {
       )}
 
       {!selectedRun && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8, borderTop: '1px solid var(--line)', paddingTop: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8, borderTop: '1px solid var(--ds-line)', paddingTop: 10 }}>
           <MiniFact label="Terminal state" value={terminalState} />
           <MiniFact label="Pricing manifest" value={pricingManifestVersion} />
           <MiniFact label="Live probes" value={`${provisioned} / ${snapshot.probes.length}`} tone={stale > 0 ? 'bad' : 'secondary'} />

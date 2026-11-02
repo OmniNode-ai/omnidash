@@ -11,9 +11,9 @@ function costTier(cost: number): CostTier {
 }
 
 const TIER_COLOR: Record<CostTier, string> = {
-  free: '#22c55e',
-  cheap: '#f59e0b',
-  expensive: '#ef4444',
+  free: 'var(--ds-ok)',
+  cheap: 'var(--ds-warn)',
+  expensive: 'var(--ds-bad)',
 };
 
 const SVG_W = 480;
@@ -131,7 +131,7 @@ export function CostScatter({ data, contract }: CostScatterProps) {
               y1={t.y}
               x2={PLOT_W}
               y2={t.y}
-              stroke="var(--line-2)"
+              stroke="var(--ds-line-soft)"
               strokeWidth={1}
             />
           ))}
@@ -142,7 +142,7 @@ export function CostScatter({ data, contract }: CostScatterProps) {
               y1={0}
               x2={t.x}
               y2={PLOT_H}
-              stroke="var(--line-2)"
+              stroke="var(--ds-line-soft)"
               strokeWidth={1}
             />
           ))}
@@ -156,8 +156,8 @@ export function CostScatter({ data, contract }: CostScatterProps) {
               textAnchor="end"
               dominantBaseline="middle"
               fontSize={10}
-              fill="var(--text-3)"
-              fontFamily="var(--font-mono)"
+              fill="var(--ds-ink-3)"
+              fontFamily="var(--ds-font-mono)"
             >
               {t.label}
             </text>
@@ -171,8 +171,8 @@ export function CostScatter({ data, contract }: CostScatterProps) {
               y={PLOT_H + 16}
               textAnchor="middle"
               fontSize={10}
-              fill="var(--text-3)"
-              fontFamily="var(--font-mono)"
+              fill="var(--ds-ink-3)"
+              fontFamily="var(--ds-font-mono)"
             >
               {t.label}
             </text>
@@ -184,8 +184,8 @@ export function CostScatter({ data, contract }: CostScatterProps) {
             y={PLOT_H + 38}
             textAnchor="middle"
             fontSize={11}
-            fill="var(--text-2)"
-            fontFamily="var(--font-mono)"
+            fill="var(--ds-ink-2)"
+            fontFamily="var(--ds-font-mono)"
           >
             Latency
           </text>
@@ -194,8 +194,8 @@ export function CostScatter({ data, contract }: CostScatterProps) {
             y={-44}
             textAnchor="middle"
             fontSize={11}
-            fill="var(--text-2)"
-            fontFamily="var(--font-mono)"
+            fill="var(--ds-ink-2)"
+            fontFamily="var(--ds-font-mono)"
             transform="rotate(-90)"
           >
             Cost
@@ -210,7 +210,7 @@ export function CostScatter({ data, contract }: CostScatterProps) {
                 r={p.r}
                 fill={TIER_COLOR[p.tier]}
                 fillOpacity={0.8}
-                stroke="var(--panel)"
+                stroke="var(--ds-surface)"
                 strokeWidth={1.5}
               />
               <text
@@ -218,8 +218,8 @@ export function CostScatter({ data, contract }: CostScatterProps) {
                 y={p.cy}
                 dominantBaseline="middle"
                 fontSize={10}
-                fill="var(--text-2)"
-                fontFamily="var(--font-mono)"
+                fill="var(--ds-ink-2)"
+                fontFamily="var(--ds-font-mono)"
               >
                 {p.name}
               </text>
@@ -227,8 +227,8 @@ export function CostScatter({ data, contract }: CostScatterProps) {
           ))}
 
           {/* Axes */}
-          <line x1={0} y1={0} x2={0} y2={PLOT_H} stroke="var(--line)" strokeWidth={1} />
-          <line x1={0} y1={PLOT_H} x2={PLOT_W} y2={PLOT_H} stroke="var(--line)" strokeWidth={1} />
+          <line x1={0} y1={0} x2={0} y2={PLOT_H} stroke="var(--ds-line)" strokeWidth={1} />
+          <line x1={0} y1={PLOT_H} x2={PLOT_W} y2={PLOT_H} stroke="var(--ds-line)" strokeWidth={1} />
         </g>
       </svg>
     </div>

@@ -77,12 +77,12 @@ export function DataTable<T extends Record<string, unknown>>({
           alignItems: 'center',
           gap: '0.5rem',
           padding: '0.375rem 0.625rem',
-          border: '1px solid var(--line)',
+          border: '1px solid var(--ds-line)',
           borderRadius: 6,
-          background: 'var(--panel-2)',
+          background: 'var(--ds-surface-2)',
         }}
       >
-        <Search size={14} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
+        <Search size={14} style={{ color: 'var(--ds-ink-3)', flexShrink: 0 }} />
         <input
           type="text"
           value={query}
@@ -98,7 +98,7 @@ export function DataTable<T extends Record<string, unknown>>({
         style={{
           height: 360,
           overflow: 'auto',
-          border: '1px solid var(--line-2)',
+          border: '1px solid var(--ds-line-soft)',
           borderRadius: 6,
         }}
       >
@@ -131,8 +131,8 @@ export function DataTable<T extends Record<string, unknown>>({
                       top: 0,
                       textAlign: 'left',
                       padding: '0.375rem 0.5rem',
-                      background: 'var(--panel-2)',
-                      borderBottom: '1px solid var(--line)',
+                      background: 'var(--ds-surface-2)',
+                      borderBottom: '1px solid var(--ds-line)',
                       cursor: col.sortable !== false ? 'pointer' : 'default',
                       userSelect: 'none',
                     }}
@@ -205,7 +205,7 @@ export function DataTable<T extends Record<string, unknown>>({
               <tr
                 key={idx}
                 data-testid={`datatable-row-${idx}`}
-                style={{ borderBottom: '1px solid var(--line-2)' }}
+                style={{ borderBottom: '1px solid var(--ds-line-soft)' }}
               >
                 {columns.map((col) => {
                   const raw = row[col.field];

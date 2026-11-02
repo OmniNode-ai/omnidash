@@ -1,15 +1,15 @@
 /* SOURCE: OmniDash.html:95-217 — prototype port.
    OMN-19981 deviation: sidebar interaction colors use theme tokens in both light and dark modes. */
-/* NOTE: var(--accent) in prototype = var(--brand) in v2 (globals.css renamed --accent* → --brand* to free
+/* NOTE: var(--ds-brand) in prototype = var(--ds-brand) in v2 (globals.css renamed --accent* → --brand* to free
    the --accent namespace for shadcn. Substitutions applied here to preserve visual fidelity.) */
 
 /* Sidebar */
 .sidebar {
-  background: var(--sidebar);
-  color: var(--sidebar-ink);
+  background: var(--ds-page);
+  color: var(--ds-ink);
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--sidebar-line);
+  border-right: 1px solid var(--ds-line);
   overflow-x: hidden;
   overflow-y: auto;
 }
@@ -18,9 +18,9 @@
   position: sticky;
   top: 0;
   z-index: 1;
-  background: var(--sidebar);
+  background: var(--ds-page);
   padding: 18px 14px 14px;
-  border-bottom: 1px solid var(--sidebar-line);
+  border-bottom: 1px solid var(--ds-line);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -29,10 +29,10 @@
   margin-left: auto;
   width: 22px; height: 22px; border-radius: 4px;
   display: grid; place-items: center;
-  color: var(--sidebar-ink-2);
+  color: var(--ds-ink-3);
   transition: background 0.15s, color 0.15s;
 }
-.sidebar-toggle:hover { background: var(--sidebar-hover); color: var(--sidebar-ink); }
+.sidebar-toggle:hover { background: var(--ds-surface-2); color: var(--ds-ink); }
 
 /* ---------- Collapsed state ---------- */
 .sidebar.collapsed .brand {
@@ -55,7 +55,7 @@
   padding: 8px 0;
 }
 .dash-item.active:hover {
-  background: color-mix(in oklch, var(--brand-soft), var(--brand-ink) 12%);
+  background: color-mix(in oklch, var(--ds-brand-soft), var(--ds-brand-ink) 12%);
 }
 .dash-item.active::before {
   content: '';
@@ -65,10 +65,10 @@
   bottom: 9px;
   width: 3px;
   border-radius: 3px;
-  background: var(--brand-ink);
+  background: var(--ds-brand-ink);
 }
 .sidebar :is(a, button, [role="button"], input):focus-visible {
-  outline: 2px solid var(--brand-ink);
+  outline: 2px solid var(--ds-brand-ink);
   outline-offset: 2px;
 }
 .sidebar.collapsed .dash-item .dash-marker {
@@ -81,19 +81,19 @@
   display: flex; flex-direction: column; line-height: 1.1;
 }
 .brand-name .primary {
-  color: var(--sidebar-ink);
+  color: var(--ds-ink);
   /* Per the OmniNode branding guideline (2026-02-04), the product
      wordmark uses Poppins Semibold. Scoped to this surface only —
      body/chrome/widget typography is unchanged. */
-  font-family: var(--font-brand);
+  font-family: var(--ds-font-brand);
 }
-.brand-name .primary em { font-style: normal; color: var(--link-ink); }
+.brand-name .primary em { font-style: normal; color: var(--ds-link); }
 .brand-name .parent {
-  font-family: var(--font-mono);
+  font-family: var(--ds-font-mono);
   font-size: 12px; font-weight: 500;
   /* OMN-21166 part 27 (Lakshman 2026-10-27: "an omninode product - keep this in one line"): one line at the 12px floor. */
   letter-spacing: 0.01em; text-transform: uppercase; white-space: nowrap;
-  color: var(--sidebar-ink-2); opacity: 1;
+  color: var(--ds-ink-3); opacity: 1;
   margin-top: 2px;
 }
 
@@ -103,16 +103,16 @@
 }
 .nav-section-title {
   font-size: 12px; text-transform: uppercase; letter-spacing: 0.09em;
-  color: var(--sidebar-ink-2); font-weight: 600; padding: 0 6px;
+  color: var(--ds-ink-3); font-weight: 600; padding: 0 6px;
 }
 .nav-new {
   width: 22px; height: 22px; border-radius: 50%;
   display: grid; place-items: center;
-  background: var(--sidebar-ink);
-  color: var(--sidebar);
+  background: var(--ds-ink);
+  color: var(--ds-page);
   transition: background 0.15s, transform 0.1s;
 }
-.nav-new:hover { background: var(--brand); color: oklch(15% 0.05 var(--accent-h)); transform: scale(1.08); }
+.nav-new:hover { background: var(--ds-brand); color: var(--ds-on-inverse); transform: scale(1.08); }
 .nav-new:active { transform: scale(0.96); }
 
 .dash-list {
@@ -127,7 +127,7 @@
   align-items: center;
   gap: 8px;
   padding: 7px 10px;
-  color: var(--sidebar-ink-2);
+  color: var(--ds-ink-3);
   font-size: 13px;
   cursor: pointer;
   text-decoration: none;
@@ -136,22 +136,22 @@
   min-height: 36px;
   transition: color 0.15s, background 0.15s;
 }
-.dash-item:hover { color: var(--sidebar-ink); background: var(--sidebar-hover); }
+.dash-item:hover { color: var(--ds-ink); background: var(--ds-surface-2); }
 .dash-item.active {
-  color: var(--brand-ink);
-  background: var(--brand-soft);
+  color: var(--ds-brand-ink);
+  background: var(--ds-brand-soft);
   font-weight: 600;
 }
 .dash-item .dash-marker {
-  font-family: var(--font-mono);
+  font-family: var(--ds-font-mono);
   font-size: 12px;
-  color: var(--sidebar-ink-2);
+  color: var(--ds-ink-3);
   opacity: 0.45;
   text-align: center;
   line-height: 1;
 }
 .dash-item.active .dash-marker {
-  color: var(--brand-ink);
+  color: var(--ds-brand-ink);
   opacity: 1;
 }
 .dash-item .dash-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -161,7 +161,7 @@
   transition: opacity 0.15s, background 0.15s;
 }
 .dash-item:hover .dash-kebab, .dash-item.active .dash-kebab { opacity: 1; }
-.dash-item .dash-kebab:hover { background: var(--sidebar-hover-strong); }
+.dash-item .dash-kebab:hover { background: var(--ds-line); }
 
 /* ── Mobile sidebar overlay (≤1024px) ───────────────────────────────────────
    On mobile the grid column stays at 56px (icon rail by default). When the
@@ -178,7 +178,7 @@
     height: 100vh;
     width: 240px;
     z-index: 300;
-    box-shadow: 4px 0 32px oklch(0% 0 0 / 0.35);
+    box-shadow: 4px 0 32px color-mix(in srgb, var(--ds-shadow-ink) 35%, transparent);
     animation: sidebar-slide-in 0.22s cubic-bezier(.2, .8, .2, 1);
   }
 }
@@ -198,7 +198,7 @@
     display: block;
     position: fixed;
     inset: 0;
-    background: oklch(0% 0 0 / 0.4);
+    background: color-mix(in srgb, var(--ds-shadow-ink) 40%, transparent);
     z-index: 299;
     animation: backdrop-fade-in 0.22s ease;
   }
@@ -217,14 +217,14 @@
 /* OMN-19981 Amendment 6 (FR-3): a local page whose exposure is not served yet. */
 .local-nav-chip {
   flex: 0 0 auto;
-  border: 1px solid var(--sidebar-line);
+  border: 1px solid var(--ds-line);
   border-radius: 999px;
   padding: 0 6px;
   font-size: 12px;
   font-weight: 500;
   line-height: 1.5;
   text-transform: uppercase;
-  color: var(--sidebar-ink-2);
+  color: var(--ds-ink-3);
 }
 
 /* OMN-21166: fixed MVP navigation. Category accents identify destinations;
@@ -247,21 +247,21 @@
   height: 27px;
   border-radius: 7px;
   opacity: 1;
-  color: var(--nav-accent);
-  background: color-mix(in oklch, var(--nav-accent) 11%, transparent);
+  color: var(--ds-destination-accent);
+  background: color-mix(in oklch, var(--ds-destination-accent) 11%, transparent);
 }
-.mvp-nav-item .dash-name { font-family: var(--font-sans); font-size: var(--text-lg); }
-.mvp-nav-item.active { color: var(--nav-accent); background: color-mix(in oklch, var(--nav-accent) 12%, var(--sidebar)); }
-.mvp-nav-item.active:hover { background: color-mix(in oklch, var(--nav-accent) 18%, var(--sidebar)); }
-.mvp-nav-item:hover { background: color-mix(in oklch, var(--nav-accent) 7%, var(--sidebar)); }
-.mvp-nav-item.active::before { background: var(--nav-accent); top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; }
-.mvp-nav-item:focus-visible { outline-color: var(--nav-accent); }
+.mvp-nav-item .dash-name { font-family: var(--ds-font-sans); font-size: var(--ds-text-lg); }
+.mvp-nav-item.active { color: var(--ds-destination-accent); background: color-mix(in oklch, var(--ds-destination-accent) 12%, var(--ds-page)); }
+.mvp-nav-item.active:hover { background: color-mix(in oklch, var(--ds-destination-accent) 18%, var(--ds-page)); }
+.mvp-nav-item:hover { background: color-mix(in oklch, var(--ds-destination-accent) 7%, var(--ds-page)); }
+.mvp-nav-item.active::before { background: var(--ds-destination-accent); top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; }
+.mvp-nav-item:focus-visible { outline-color: var(--ds-destination-accent); }
 .mvp-nav-title { padding: 5px 10px 8px; }
 .evidence-nav,
-.developer-nav { border-top: 1px solid var(--sidebar-line); }
-.sidebar-settings { margin-top: auto; border-top: 1px solid var(--sidebar-line); padding: 12px 10px; }
+.developer-nav { border-top: 1px solid var(--ds-line); }
+.sidebar-settings { margin-top: auto; border-top: 1px solid var(--ds-line); padding: 12px 10px; }
 .developer-toggle {
-  --developer-accent: #2563eb;
+  --developer-accent: var(--ds-hue-blue);
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -270,60 +270,59 @@
   min-height: 44px;
   padding: 8px;
   border-radius: 7px;
-  color: var(--sidebar-ink-2);
-  font-family: var(--font-sans);
-  font-size: var(--text-md);
+  color: var(--ds-ink-3);
+  font-family: var(--ds-font-sans);
+  font-size: var(--ds-text-md);
   text-align: left;
   transition: background-color 160ms ease;
 }
-.developer-toggle:hover { background: var(--sidebar-hover); color: var(--sidebar-ink); }
+.developer-toggle:hover { background: var(--ds-surface-2); color: var(--ds-ink); }
 .developer-toggle > svg { flex-shrink: 0; }
-.developer-toggle[aria-checked="true"] { color: var(--sidebar-ink); }
-.developer-switch { margin-left: auto; width: 25px; height: 15px; background: var(--sidebar-line); border-radius: 20px; position: relative; flex-shrink: 0; transition: background-color 160ms ease; }
-.developer-switch::after { content: ''; position: absolute; left: 3px; top: 3px; width: 9px; height: 9px; border-radius: 50%; background: var(--sidebar-ink-2); transition: transform 160ms ease, background-color 160ms ease; }
-.developer-toggle[aria-checked="true"] .developer-switch { background: var(--developer-accent); }
-.developer-toggle[aria-checked="true"] .developer-switch::after { transform: translateX(10px); background: #fff; }
+.developer-toggle[aria-checked="true"] { color: var(--ds-ink); }
+.developer-switch { margin-left: auto; width: 25px; height: 15px; background: var(--ds-line); border-radius: 20px; position: relative; flex-shrink: 0; transition: background-color 160ms ease; }
+.developer-switch::after { content: ''; position: absolute; left: 3px; top: 3px; width: 9px; height: 9px; border-radius: 50%; background: var(--ds-ink-3); transition: transform 160ms ease, background-color 160ms ease; }
+.developer-toggle[aria-checked="true"] .developer-switch { background: var(--ds-brand); }
+.developer-toggle[aria-checked="true"] .developer-switch::after { transform: translateX(10px); background: var(--ds-page); }
 .sidebar.collapsed .local-nav .mvp-nav-item { grid-template-columns: 1fr; padding: 8px 0; }
 .sidebar.collapsed .sidebar-settings { padding-inline: 4px; }
 .sidebar.collapsed .developer-toggle { justify-content: center; padding-inline: 0; }
-.sidebar.collapsed .developer-toggle[aria-checked="true"] { background: color-mix(in oklch, var(--developer-accent) 15%, var(--sidebar)); box-shadow: inset 2px 0 var(--developer-accent); }
-.sidebar { box-shadow: 3px 0 18px #172c4d03; }
+.sidebar.collapsed .developer-toggle[aria-checked="true"] { background: color-mix(in oklch, var(--ds-brand) 15%, var(--ds-page)); box-shadow: inset 2px 0 var(--ds-brand); }
+.sidebar { box-shadow: 3px 0 18px color-mix(in srgb, var(--ds-shadow-ink) 1%, transparent); }
 .local-nav .mvp-nav-item { border-radius: 10px; padding-block: 10px; }
 .mvp-nav-item .dash-name { font-size: 12px; font-weight: 500; }
 .mvp-nav-item .dash-marker { transition: transform 180ms ease, background-color 180ms ease; }
 .mvp-nav-item:hover .dash-marker { transform: translateY(-1px); }
-.mvp-nav-item.active .dash-name { color: color-mix(in oklch, var(--nav-accent) 80%, #000); }
-[data-theme="dark"] .mvp-nav-item.active .dash-name { color: var(--nav-accent); }
-.mvp-nav-item.active .dash-marker { background: color-mix(in oklch, var(--nav-accent) 17%, var(--sidebar)); }
-.mvp-nav-title { font-size: 12px; letter-spacing: .075em; color: var(--sidebar-ink-2); }
-.sidebar-settings { background: var(--sidebar); }
+.mvp-nav-item.active .dash-name { color: color-mix(in oklch, var(--ds-destination-accent) 80%, var(--ds-shadow-ink)); }
+[data-theme="dark"] .mvp-nav-item.active .dash-name { color: var(--ds-destination-accent); }
+.mvp-nav-item.active .dash-marker { background: color-mix(in oklch, var(--ds-destination-accent) 17%, var(--ds-page)); }
+.mvp-nav-title { font-size: 12px; letter-spacing: .075em; color: var(--ds-ink-3); }
+.sidebar-settings { background: var(--ds-page); }
 .developer-toggle { font-size: 12px; border: 1px solid transparent; }
-.developer-toggle:focus-visible { outline: 2px solid var(--link-ink); outline-offset: 2px; }
+.developer-toggle:focus-visible { outline: 2px solid var(--ds-link); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) {
   .sidebar *, .sidebar *::before, .sidebar *::after, .sidebar-backdrop { transition: none !important; animation: none !important; }
 }
 
 /* The mockup's quieter rail, without decorative workspace/profile controls. */
 .sidebar { box-shadow: none; }
-:root:not([data-theme="dark"]) { --sidebar: #f4f5f6; }
+
 .local-nav .mvp-nav-item { padding-block: 8px; margin-block: 2px; border-radius: 7px; }
 .mvp-nav-item .dash-marker { background: transparent; width: 22px; height: 22px; }
 .mvp-nav-item.active .dash-marker { background: transparent; }
 .local-nav .mvp-nav-item { grid-template-columns: 22px minmax(0,1fr) auto; }
 
-/* Keep each destination's identity in a soft native-style icon tile. */
-:root:not([data-theme="dark"]) { --sidebar: #f3f0e9; }
+
 .local-nav .mvp-nav-item { grid-template-columns: 28px minmax(0, 1fr) auto; border-radius: 7px; }
 .mvp-nav-item .dash-marker,
-.mvp-nav-item.active .dash-marker { width: 28px; height: 28px; border-radius: 8px; background: color-mix(in oklab, var(--nav-accent) 13%, var(--sidebar)); }
+.mvp-nav-item.active .dash-marker { width: 28px; height: 28px; border-radius: 8px; background: color-mix(in oklab, var(--ds-destination-accent) 13%, var(--ds-page)); }
 .mvp-nav-item .dash-name { font-size: 13px; }
-.mvp-nav-item.active { background: color-mix(in oklab, var(--nav-accent) 18%, var(--sidebar)); }
+.mvp-nav-item.active { background: color-mix(in oklab, var(--ds-destination-accent) 18%, var(--ds-page)); }
 
 /* Filled active navigation follows the supplied nanomon reference. */
 :root:not([data-theme="dark"]) .mvp-nav-item.active,
-:root:not([data-theme="dark"]) .mvp-nav-item.active:hover { background: var(--nav-accent); }
-:root:not([data-theme="dark"]) .mvp-nav-item.active .dash-name { color: #fff; }
-:root:not([data-theme="dark"]) .mvp-nav-item.active .dash-marker { background: #f3f0e9; }
+:root:not([data-theme="dark"]) .mvp-nav-item.active:hover { background: var(--ds-destination-accent); }
+:root:not([data-theme="dark"]) .mvp-nav-item.active .dash-name { color: var(--ds-page); }
+:root:not([data-theme="dark"]) .mvp-nav-item.active .dash-marker { background: var(--ds-surface-2); }
 :root:not([data-theme="dark"]) .mvp-nav-item.active::before { display: none; }
 
-:root:not([data-theme="dark"]) .mvp-nav-item.active:hover { background: color-mix(in oklab, var(--nav-accent) 88%, #000); }
+:root:not([data-theme="dark"]) .mvp-nav-item.active:hover { background: color-mix(in oklab, var(--ds-destination-accent) 88%, var(--ds-shadow-ink)); }

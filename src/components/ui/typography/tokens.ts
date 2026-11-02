@@ -7,23 +7,23 @@ export type TextTransform = 'none' | 'uppercase' | 'lowercase' | 'capitalize';
 export type TextAlign = 'start' | 'center' | 'end';
 
 export const SIZE_VAR: Record<TextSize, string> = {
-  xs: 'var(--text-xs)', sm: 'var(--text-sm)', md: 'var(--text-md)',
-  lg: 'var(--text-lg)', xl: 'var(--text-xl)', '2xl': 'var(--text-2xl)',
-  '3xl': 'var(--text-3xl)', '4xl': 'var(--text-4xl)',
+  xs: 'var(--ds-text-xs)', sm: 'var(--ds-text-sm)', md: 'var(--ds-text-md)',
+  lg: 'var(--ds-text-lg)', xl: 'var(--ds-text-xl)', '2xl': 'var(--ds-text-2xl)',
+  '3xl': 'var(--ds-text-3xl)', '4xl': 'var(--ds-text-4xl)',
 };
 export const COLOR_VAR: Record<TextColor, string> = {
-  primary: 'var(--text-primary)', secondary: 'var(--text-secondary)',
-  tertiary: 'var(--text-tertiary)', brand: 'var(--text-brand)',
-  ok: 'var(--text-ok)', warn: 'var(--text-warn)', bad: 'var(--text-bad)',
+  primary: 'var(--ds-ink)', secondary: 'var(--ds-ink-2)',
+  tertiary: 'var(--ds-ink-3)', brand: 'var(--ds-brand)',
+  ok: 'var(--ds-ok)', warn: 'var(--ds-warn)', bad: 'var(--ds-bad)',
   inherit: 'inherit',
 };
 export const WEIGHT_VAR: Record<TextWeight, string> = {
-  regular: 'var(--weight-regular)', medium: 'var(--weight-medium)',
-  semibold: 'var(--weight-semibold)', bold: 'var(--weight-bold)',
+  regular: 'var(--ds-weight-regular)', medium: 'var(--ds-weight-medium)',
+  semibold: 'var(--ds-weight-semibold)', bold: 'var(--ds-weight-bold)',
 };
 export const LEADING_VAR: Record<TextLeading, string> = {
-  tight: 'var(--leading-tight)', normal: 'var(--leading-normal)', loose: 'var(--leading-loose)',
+  tight: 'var(--ds-leading-tight)', normal: 'var(--ds-leading-normal)', loose: 'var(--ds-leading-loose)',
 };
 export const FAMILY_VAR: Record<TextFamily, string> = {
-  sans: 'var(--font-sans)', mono: 'var(--font-mono)',
+  sans: 'var(--ds-font-sans)', mono: 'var(--ds-font-mono)',
 };

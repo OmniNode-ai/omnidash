@@ -14,6 +14,6 @@ describe('stable model colors across dashboard views', () => {
     expect(new Set(names.map(modelColor)).size).toBe(names.length);
   });
   it('uses the theme lightness token for readable marks in either theme', () => {
-    expect(modelColor('model-a')).toMatch(/^oklch\(var\(--model-identity-lightness, 46%\) 0\.13 [\d.]+\)$/);
+    expect(modelColor('model-a')).toMatch(/^oklch\(var\(--ds-model-lightness\) 0\.13 [\d.]+\)$/);
   });
 });

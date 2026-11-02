@@ -118,7 +118,7 @@ function CostPerRun({ data, titled }: { data: UsageAggregates; titled: boolean }
     {titled && <h3><ConceptIcon concept="cost-per-run" size={16} />Cost per run</h3>}
     <GroupedBars label="Cost per run by UTC day" groups={shown.map(day => ({
       key: day.day, name: date(day.day), label: text(day),
-      values: [{ key: 'cost', value: value(day), display: value(day) === null ? 'Not measured' : money(day.measuredCostPerCallUsd), color: 'var(--field-cost)', tone: 'cost' }],
+      values: [{ key: 'cost', value: value(day), display: value(day) === null ? 'Not measured' : money(day.measuredCostPerCallUsd), color: 'var(--ds-field-cost)', tone: 'cost' }],
     }))} />
     <figcaption className="local-dashboard-caption">Measured spend divided by calls with measured cost; unmeasured calls are left out.</figcaption>
   </figure>;
@@ -132,13 +132,13 @@ function TokensByModel({ data, titled }: { data: UsageAggregates; titled: boolea
     {titled && <h3><ConceptIcon concept="tokens-model" size={16} />Tokens in vs out by model</h3>}
     {data.models.length === 0 ? <p role="status" className="local-dashboard-empty">No token data available</p> : (
       <GroupedBars label="Token counts by model" wrapNames
-        legend={[{ label: 'Tokens in', color: 'var(--field-tokens-in)' }, { label: 'Tokens out', color: 'var(--field-tokens-out)' }]}
+        legend={[{ label: 'Tokens in', color: 'var(--ds-field-tokens-in)' }, { label: 'Tokens out', color: 'var(--ds-field-tokens-out)' }]}
         groups={data.models.map(model => ({
           key: model.model, name: model.model, nameColor: modelColor(model.model),
           label: `${model.model}: ${words(model.inputTokens)} tokens in, ${words(model.outputTokens)} tokens out`,
           values: [
-            { key: 'in', value: model.inputTokens, display: words(model.inputTokens), color: 'var(--field-tokens-in)', tone: 'tokens-in' },
-            { key: 'out', value: model.outputTokens, display: words(model.outputTokens), color: 'var(--field-tokens-out)', tone: 'tokens-out' },
+            { key: 'in', value: model.inputTokens, display: words(model.inputTokens), color: 'var(--ds-field-tokens-in)', tone: 'tokens-in' },
+            { key: 'out', value: model.outputTokens, display: words(model.outputTokens), color: 'var(--ds-field-tokens-out)', tone: 'tokens-out' },
           ],
         }))} />
     )}

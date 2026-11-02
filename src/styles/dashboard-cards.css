@@ -1,49 +1,30 @@
 /* Shared visual hierarchy for the seven MVP pages. Colors describe content, never invented status. */
 :root {
-  --card-spend: #047857; --card-savings: #0f766e; --card-calls: #b45309;
-  --card-tokens: #2563eb; --card-quality: #7e22ce; --card-activity: #4338ca;
-  --card-surface: var(--panel); --card-canvas: var(--bg);
-  --card-routing: #c2410c; --card-identity: #be185d; --card-insights: #0369a1;
 }
 [data-theme="dark"] {
-  --card-spend: #6ee7b7; --card-savings: #5eead4; --card-calls: #fbbf24;
-  --card-tokens: #93c5fd; --card-quality: #d8b4fe; --card-activity: #a5b4fc;
-  --card-surface: var(--panel); --card-canvas: var(--bg);
-  --card-routing: #fdba74; --card-identity: #f9a8d4; --card-insights: #7dd3fc;
 }
 /* The app frame and page content share one neutral surface palette: the part-11 tokens in globals.css (OMN-21166
  * AC61/AC62). Only the active destination and the chart series are set here. */
 .app:has(.local-dashboard-page),
 .app:has(.ev-root[data-destination="delegation-evidence"]) {
-  --text-primary: var(--ink); --text-secondary: var(--ink-2); --text-tertiary: var(--ink-3);
+    
   /* Part 27 AC168 (revision 4) replaces AC69's blue: the active item is the neutral raised surface with primary ink. */
-  --sidebar: #ffffff; --sidebar-ink: var(--ink); --sidebar-ink-2: var(--ink-2);
-  --sidebar-line: var(--line); --sidebar-hover: var(--panel-2);
-  --shell-active: var(--ink); --shell-active-surface: var(--panel-2);
-  --nav-accent: var(--shell-active);
   --entity-color-lightness: 42%;
-  --ins-series-1: #2563eb; --ins-series-2: #059669; --ins-series-3: #ea580c;
-  --ins-series-4: #7c3aed; --ins-series-5: #ca8a04; --ins-series-6: #db2777;
-  --ins-series-7: #0891b2; --ins-series-8: #475569;
-  --ins-pass: var(--field-pass); --ins-fail: var(--field-fail);
 }
 [data-theme="dark"] .app:has(.local-dashboard-page),
 [data-theme="dark"] .app:has(.ev-root[data-destination="delegation-evidence"]) {
-  --sidebar: #14181f; --shell-active: var(--ink); --shell-active-surface: var(--panel-2);
+    
   --entity-color-lightness: 68%;
-  --ins-series-1: #60a5fa; --ins-series-2: #4ade80; --ins-series-3: #fb923c;
-  --ins-series-4: #c4b5fd; --ins-series-5: #fde047; --ins-series-6: #e879f9;
-  --ins-series-7: #2dd4bf; --ins-series-8: #94a3b8;
 }
 .app:has(.local-dashboard-page) .sidebar .mvp-nav-item.active,
 .app:has(.local-dashboard-page) .sidebar .mvp-nav-item.active:hover,
 .app:has(.ev-root[data-destination="delegation-evidence"]) .sidebar .mvp-nav-item.active,
 .app:has(.ev-root[data-destination="delegation-evidence"]) .sidebar .mvp-nav-item.active:hover {
-  background: var(--shell-active-surface); color: var(--shell-active);
+  background: var(--ds-surface-2); color: var(--ds-ink);
 }
 .app:has(.local-dashboard-page) .sidebar .mvp-nav-item.active .dash-name,
 .app:has(.ev-root[data-destination="delegation-evidence"]) .sidebar .mvp-nav-item.active .dash-name {
-  color: var(--shell-active);
+  color: var(--ds-ink);
 }
 .app:has(.local-dashboard-page) .sidebar .mvp-nav-item .dash-marker,
 .app:has(.local-dashboard-page) .sidebar .mvp-nav-item.active .dash-marker,
@@ -51,22 +32,22 @@
 .app:has(.ev-root[data-destination="delegation-evidence"]) .sidebar .mvp-nav-item.active .dash-marker {
   background: transparent;
 }
-.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"] { background: var(--card-canvas); }
+.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"] { background: var(--ds-page); }
 .local-dashboard-page .local-dashboard-panel,
 .local-dashboard-page .local-dashboard-panel:hover,
 .local-dashboard-page :is(.local-overview-summary,.local-overview-focus,.local-overview-lower) > .local-dashboard-panel,
 :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel {
-  border: 1px solid var(--line);
+  border: 1px solid var(--ds-line);
   border-radius: 10px;
   padding: 20px;
-  background: var(--card-surface);
+  background: var(--ds-surface);
   box-shadow: none;
 }
 .local-dashboard-page .local-dashboard-panel::before { display: none; }
 .local-dashboard-page .local-dashboard-panel > h2,
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > h2 {
   margin-bottom: 16px; gap: 8px; min-height: 22px; line-height: 1.4;
-  color: var(--text-primary); font-size: 14px; font-weight: 600;
+  color: var(--ds-ink); font-size: 14px; font-weight: 600;
 }
 .local-dashboard-page .local-dashboard-panel > h2 svg {
   color: var(--panel-accent); background: transparent;
@@ -109,55 +90,55 @@
 .local-dashboard-page .local-dashboard-header .local-dashboard-page-icon {
   width: 28px; height: 28px; background: transparent; border: 0; border-radius: 0;
 }
-.local-dashboard-page .local-dashboard-fields [data-field-tone] > dt { color: var(--text-secondary); }
+.local-dashboard-page .local-dashboard-fields [data-field-tone] > dt { color: var(--ds-ink-2); }
 .local-dashboard-page .local-dashboard-fields dt > svg { color: var(--field-ink); }
 .local-dashboard-page .local-token-directions { gap: 8px; }
 .daily-metering-tokens { margin: 0; min-width: 0; }
-.daily-metering-tokens figcaption { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--text-secondary); }
+.daily-metering-tokens figcaption { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--ds-ink-2); }
 .daily-metering-bars { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 12px; margin-top: 20px; }
-.daily-metering-bars button { min-width: 0; padding: 4px; border: 0; background: transparent; color: var(--text-secondary); font: inherit; font-size: 12px; cursor: pointer; border-radius: 4px; }
-.daily-metering-bars button:focus-visible { outline: 2px solid var(--link-ink); outline-offset: 2px; }
-.daily-metering-stack { display: flex; flex-direction: column; justify-content: flex-end; height: 170px; margin-bottom: 8px; border-bottom: 1px solid var(--line); }
+.daily-metering-bars button { min-width: 0; padding: 4px; border: 0; background: transparent; color: var(--ds-ink-2); font: inherit; font-size: 12px; cursor: pointer; border-radius: 4px; }
+.daily-metering-bars button:focus-visible { outline: 2px solid var(--ds-link); outline-offset: 2px; }
+.daily-metering-stack { display: flex; flex-direction: column; justify-content: flex-end; height: 170px; margin-bottom: 8px; border-bottom: 1px solid var(--ds-line); }
 .daily-metering-stack > span { display: block; background: var(--field-ink); min-height: 2px; }
-.daily-metering-readout { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; min-height: 64px; margin-top: 16px; font-size: 12px; color: var(--text-secondary); }
+.daily-metering-readout { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; min-height: 64px; margin-top: 16px; font-size: 12px; color: var(--ds-ink-2); }
 .daily-metering-readout .local-token-directions { flex-wrap: wrap; }
 .daily-metering-pager { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 12px; font-size: 12px; }
-.daily-metering-pager button { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: inherit; cursor: pointer; }
+.daily-metering-pager button { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid var(--ds-line); border-radius: 6px; background: transparent; color: inherit; cursor: pointer; }
 .daily-metering-pager button:disabled { opacity: .4; cursor: default; }
 @media (max-width: 480px) { .daily-metering-bars { gap: 3px; } .daily-metering-bars button { padding: 1px; } }
 .local-dashboard-page .local-token-direction[data-field-unavailable="true"] { font-size: 12px; gap: 4px; }
 .local-dashboard-page .local-token-direction[data-field-unavailable="true"] strong { font-weight: 500; }
 .local-dashboard-page .local-token-direction[data-field-unavailable="true"] svg { width: 12px; height: 12px; }
 .local-dashboard-page .local-chart { border-radius: 12px; }
-.local-dashboard-page .workflow-analysis-card { border: 1px solid var(--line); background: var(--card-surface); box-shadow: none; }
+.local-dashboard-page .workflow-analysis-card { border: 1px solid var(--ds-line); background: var(--ds-surface); box-shadow: none; }
 .local-dashboard-page .usage-insight h3 { display: flex; align-items: center; gap: 8px; }
 .local-dashboard-page .usage-insight h3 svg { color: var(--panel-accent); flex: none; }
 main.ev-root[data-destination="delegation-evidence"] :is(.panel,.kpi,.kpi[data-tone]:hover) {
-  border: 1px solid var(--line);
+  border: 1px solid var(--ds-line);
   border-radius: 10px;
-  background: var(--card-surface);
+  background: var(--ds-surface);
   box-shadow: none;
 }
 main.ev-root[data-destination="delegation-evidence"] .kpi[data-tone] .k-l svg {
   background: transparent; padding: 0; border-radius: 0;
 }
 .app main.ev-root[data-destination="delegation-evidence"] [data-panel-title]:hover {
-  border-color: var(--line); box-shadow: none;
+  border-color: var(--ds-line); box-shadow: none;
 }
 .app main.ev-root[data-destination="delegation-evidence"] [data-panel-title] .panel-h .pt {
-  color: var(--text-primary);
+  color: var(--ds-ink);
 }
 .app main.ev-root[data-destination="delegation-evidence"] [data-panel-title] .panel-h .ev-panel-icon,
 .app main.ev-root[data-destination="delegation-evidence"] .ev-title-icon {
   background: transparent; padding: 0; border-radius: 0;
 }
 .app main.ev-root[data-destination="delegation-evidence"] .ev-title-icon { width: 28px; height: 28px; }
-main.ev-root[data-destination="delegation-evidence"] [data-panel-title="SELECTED RUN"] { --card-accent: var(--card-identity); }
-main.ev-root[data-destination="delegation-evidence"] [data-panel-title="MODEL ROUTING"] { --card-accent: var(--card-routing); }
-main.ev-root[data-destination="delegation-evidence"] [data-panel-title="QUALITY GATE"] { --card-accent: var(--card-quality); }
-main.ev-root[data-destination="delegation-evidence"] [data-panel-title="SAVINGS vs CLOUD BASELINE"] { --card-accent: var(--card-savings); }
-main.ev-root[data-destination="delegation-evidence"] [data-panel-title="TOKEN USAGE"] { --card-accent: var(--card-tokens); }
-main.ev-root[data-destination="delegation-evidence"] [data-panel-title="RECENT DELEGATIONS"] { --card-accent: var(--card-activity); }
+main.ev-root[data-destination="delegation-evidence"] [data-panel-title="SELECTED RUN"] { --card-accent: var(--ds-card-identity); }
+main.ev-root[data-destination="delegation-evidence"] [data-panel-title="MODEL ROUTING"] { --card-accent: var(--ds-card-routing); }
+main.ev-root[data-destination="delegation-evidence"] [data-panel-title="QUALITY GATE"] { --card-accent: var(--ds-card-quality); }
+main.ev-root[data-destination="delegation-evidence"] [data-panel-title="SAVINGS vs CLOUD BASELINE"] { --card-accent: var(--ds-card-savings); }
+main.ev-root[data-destination="delegation-evidence"] [data-panel-title="TOKEN USAGE"] { --card-accent: var(--ds-card-tokens); }
+main.ev-root[data-destination="delegation-evidence"] [data-panel-title="RECENT DELEGATIONS"] { --card-accent: var(--ds-card-activity); }
 main.ev-root[data-destination="delegation-evidence"] .panel-h { padding: 16px 18px 0; }
 main.ev-root[data-destination="delegation-evidence"] .panel-b { padding: 16px 18px 18px; }
 main.ev-root[data-destination="delegation-evidence"] :is(.ev-selected-run-layout,.ev-align-start) {

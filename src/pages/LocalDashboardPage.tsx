@@ -912,23 +912,23 @@ export function RunsKpis({ rows, now, complete = false }: { rows: readonly unkno
   const dayKeys = days.map(day => day.day);
   const items: KpiItem[] = [
     // One concept, one colour: a count of runs is Overview's Agent calls concept and colour.
-    { label: 'Runs', value: formatDashboardCount(totals.runs), accent: 'var(--field-calls)', concept: 'calls',
+    { label: 'Runs', value: formatDashboardCount(totals.runs), accent: 'var(--ds-field-calls)', concept: 'calls',
       // OMN-21970 AC3: a read that walked every page holds every served run, so the caption does not call them the latest.
       lines: [complete ? `All ${formatDashboardCount(totals.runs)} served runs` : `Latest ${formatDashboardCount(totals.runs)} returned runs`],
       trend: { days: dayKeys, values: days.map(day => (day.runs > 0 ? day.runs : null)), format: value => formatDashboardCount(value) } },
     { label: 'Pass rate', value: totals.passRate === null ? 'Not recorded' : `${totals.passRate.toFixed(1)}%`, unavailable: totals.passRate === null,
-      accent: 'var(--field-pass)', concept: 'pass',
+      accent: 'var(--ds-field-pass)', concept: 'pass',
       lines: [`${formatDashboardCount(totals.passed + totals.failed)} of ${formatDashboardCount(totals.runs)} runs have a verdict`],
       trend: { days: dayKeys, values: days.map(day => day.passRate), format: value => `${value.toFixed(1)}%` } },
     { label: 'Median duration', value: totals.medianLatency === null ? 'Not recorded' : formatDuration(totals.medianLatency), unavailable: totals.medianLatency === null,
-      title: totals.medianLatency === null ? undefined : exactMs(totals.medianLatency), accent: 'var(--field-duration)', concept: 'duration',
+      title: totals.medianLatency === null ? undefined : exactMs(totals.medianLatency), accent: 'var(--ds-field-duration)', concept: 'duration',
       lines: [totals.medianLatency === null ? null : `Exactly ${exactMs(totals.medianLatency)}`, `${formatDashboardCount(runs.length - latencies.length)} without a duration`] },
     { label: 'p95 duration', value: p95 === null ? 'Not recorded' : formatDuration(p95), unavailable: p95 === null, title: p95 === null ? undefined : exactMs(p95),
-      accent: 'var(--field-duration-p95)', concept: 'duration-p95', lines: [p95 === null ? null : `Exactly ${exactMs(p95)}`, `Over ${formatDashboardCount(latencies.length)} recorded durations`] },
-    { label: 'Failed', value: formatDashboardCount(totals.failed), accent: 'var(--field-fail)', concept: 'fail',
+      accent: 'var(--ds-field-duration-p95)', concept: 'duration-p95', lines: [p95 === null ? null : `Exactly ${exactMs(p95)}`, `Over ${formatDashboardCount(latencies.length)} recorded durations`] },
+    { label: 'Failed', value: formatDashboardCount(totals.failed), accent: 'var(--ds-field-fail)', concept: 'fail',
       lines: [totals.unrecorded > 0 ? `${formatDashboardCount(totals.unrecorded)} without a verdict` : 'Of the returned runs'] },
     { label: 'Escalated', value: escalationServed.length === 0 ? 'Not recorded' : formatDashboardCount(escalated), unavailable: escalationServed.length === 0,
-      accent: 'var(--field-escalated)', concept: 'escalated',
+      accent: 'var(--ds-field-escalated)', concept: 'escalated',
       lines: [escalationServed.length === 0 ? null : `Of ${formatDashboardCount(escalationServed.length)} runs recording escalations`] },
   ];
   return <KpiStrip label="Run summary" items={items} />;
@@ -958,18 +958,18 @@ export function UsageKpis({ rows }: { rows: readonly unknown[] }) {
   const usd = (value: number) => formatUsd(String(value));
   const count = (value: number) => formatFullCount(String(value));
   const items: KpiItem[] = [
-    { label: 'You paid', value: money(row.spend_usd), unavailable: isMissing(row.spend_usd), accent: 'var(--field-cost)', concept: 'cost',
+    { label: 'You paid', value: money(row.spend_usd), unavailable: isMissing(row.spend_usd), accent: 'var(--ds-field-cost)', concept: 'cost',
       lines: ['Measured spend, all time'], trend: { days: dayKeys, values: series('spend_usd'), format: usd, scope } },
     { label: 'Baseline cost', value: unresolved ? 'Baseline unresolved' : money(row.counterfactual_usd), unavailable: unresolved || isMissing(row.counterfactual_usd),
-      accent: 'var(--field-baseline)', concept: 'baseline', lines: [`At ${unbroken(baseline)} list price, modelled`, `Same tokens at ${baseline} list price (modelled)`],
+      accent: 'var(--ds-field-baseline)', concept: 'baseline', lines: [`At ${unbroken(baseline)} list price, modelled`, `Same tokens at ${baseline} list price (modelled)`],
       trend: unresolved ? null : { days: dayKeys, values: series('counterfactual_usd'), format: usd, scope } },
     { label: 'Saved', value: unresolved ? 'Baseline unresolved' : money(row.savings_usd), unavailable: unresolved || isMissing(row.savings_usd),
-      accent: 'var(--field-savings)', concept: 'savings', lines: ['Modelled · vs cloud baseline'],
+      accent: 'var(--ds-field-savings)', concept: 'savings', lines: ['Modelled · vs cloud baseline'],
       trend: unresolved ? null : { days: dayKeys, values: series('savings_usd'), format: usd, scope } },
     { label: 'Tokens in', value: tokens.input === null ? 'Not measured' : formatFullCount(tokens.input.toString()), unavailable: tokens.input === null,
-      accent: 'var(--field-tokens-in)', concept: 'tokens-in', trend: { days: dayKeys, values: series('tokens_in'), format: count, scope } },
+      accent: 'var(--ds-field-tokens-in)', concept: 'tokens-in', trend: { days: dayKeys, values: series('tokens_in'), format: count, scope } },
     { label: 'Tokens out', value: tokens.output === null ? 'Not measured' : formatFullCount(tokens.output.toString()), unavailable: tokens.output === null,
-      accent: 'var(--field-tokens-out)', concept: 'tokens-out', trend: { days: dayKeys, values: series('tokens_out'), format: count, scope } },
+      accent: 'var(--ds-field-tokens-out)', concept: 'tokens-out', trend: { days: dayKeys, values: series('tokens_out'), format: count, scope } },
   ];
   return <KpiStrip label="Usage summary" items={items} />;
 }

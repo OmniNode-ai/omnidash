@@ -14,9 +14,11 @@
 // rAF loop.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { useThemeColors, cssColorToHex } from '@/theme';
+
 import { useTimezone } from '@/hooks/useTimezone';
 import { Text } from '@/components/ui/typography';
+import { useTokenColors } from '@/design-system/useTokenColors';
+import { colorToNumber, tokenNumber } from '@/design-system/color';
 
 // ---------- Types ----------
 
@@ -315,7 +317,7 @@ export function StackedChart({
   const dataGroupRef = useRef<THREE.Group | null>(null);
   const [size, setSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
   const [hover, setHover] = useState<HoverInfo | null>(null);
-  const colors = useThemeColors();
+  const colors = useTokenColors();
   const tz = useTimezone();
 
   // Mount renderer + scene + camera once.
@@ -333,7 +335,7 @@ export function StackedChart({
       preserveDrawingBuffer: true,
     });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-    renderer.setClearColor(0x000000, 0);
+    renderer.setClearColor(tokenNumber('--ds-mix-dark'), 0);
     renderer.domElement.style.display = 'block';
     renderer.domElement.style.width = '100%';
     renderer.domElement.style.height = '100%';
@@ -376,14 +378,14 @@ export function StackedChart({
   // Resolve theme-derived colors via the CSS-color parser above.
   // THREE.Color.setStyle doesn't understand oklch() (and our chart
   // tokens in globals.css are declared as oklch), so passing the raw
-  // string from useThemeColors() silently falls through to neutral
-  // grey on every band. cssColorToHex lets the browser do the parse
+  // string from useTokenColors() silently falls through to neutral
+  // grey on every band. colorToNumber lets the browser do the parse
   // and gives us a clean sRGB hex.
   const themeColors = useMemo(
     () => ({
-      grid: new THREE.Color(cssColorToHex(colors.border, 0x808088)),
+      grid: new THREE.Color(colorToNumber(colors.border)),
       bandColors: allModels.map(
-        (_m, i) => new THREE.Color(cssColorToHex(colors.chart[i % colors.chart.length])),
+        (_m, i) => new THREE.Color(colorToNumber(colors.chart[i % colors.chart.length])),
       ),
     }),
     [colors, allModels],
@@ -515,8 +517,8 @@ export function StackedChart({
         position: 'relative',
         width: '100%',
         height,
-        background: 'var(--panel-2)',
-        border: '1px solid var(--line-2)',
+        background: 'var(--ds-surface-2)',
+        border: '1px solid var(--ds-line-soft)',
         borderRadius: 6,
         overflow: 'hidden',
       }}
@@ -591,7 +593,7 @@ export function StackedChart({
                 top: scales.plotTop,
                 width: 1,
                 height: scales.plotHeight,
-                background: 'var(--ink-2)',
+                background: 'var(--ds-ink-2)',
                 opacity: 0.35,
                 pointerEvents: 'none',
               }}
@@ -602,10 +604,10 @@ export function StackedChart({
                 left: hover.pointerClientX + 14,
                 top: hover.pointerClientY + 14,
                 padding: '8px 10px',
-                background: 'var(--panel)',
-                border: '1px solid var(--line)',
+                background: 'var(--ds-surface)',
+                border: '1px solid var(--ds-line)',
                 borderRadius: 6,
-                boxShadow: 'var(--shadow-md)',
+                boxShadow: 'var(--ds-shadow-md)',
                 minWidth: 200,
                 pointerEvents: 'none',
                 zIndex: 1000,
@@ -638,7 +640,7 @@ export function StackedChart({
               ))}
               <div
                 style={{
-                  marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--line-2)',
+                  marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--ds-line-soft)',
                   display: 'flex', justifyContent: 'space-between', gap: 8,
                 }}
               >

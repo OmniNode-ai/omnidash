@@ -57,209 +57,6 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    /* ===== TYPOGRAPHY TOKENS =====
-       Font stacks are authored here as the single source of truth. Widgets
-       and CSS files reference these vars (never the literal family strings)
-       so a theme override at :root or [data-theme="X"] scope rebrands the
-       whole app. `font-sans` and `font-mono` are already part of the
-       importable theme schema (see src/theme/types.ts) as optional tokens;
-       a custom theme can override them via the themeIO import path.
-
-       Fonts today happen to be identical in light and dark — only color
-       palette changes between modes. If a future theme wants a different
-       family (e.g. a "brutalist" theme swapping to Space Grotesk + Space
-       Mono), it overrides these two vars in its scope. */
-    --font-sans: "Geist Variable", system-ui, -apple-system, Helvetica, Arial, sans-serif;
-    --font-mono: "Geist Mono Variable", ui-monospace, Menlo, monospace;
-    /* Brand-surface font. Currently scoped to the sidebar product
-     * wordmark per the branding guideline; do not apply to body text
-     * or chrome unless the guideline expands. */
-    --font-brand: "Poppins", var(--font-sans);
-
-    /* ===== TYPE SCALE =====
-       Semantic sizes with a 12px readability floor (12px ... 22px). Authored in
-       rem so a future root-size override scales the whole app. */
-    --text-xs:   0.75rem;    /* 12px — column headers, pills, small chips */
-    --text-sm:   0.75rem;    /* 12px — status rows, pagination text */
-    --text-md:   0.75rem;    /* 12px — dense data rows (EventStream, RoutingDecisionTable) */
-    --text-lg:   0.8125rem;  /* 13px — form inputs, empty-state prose */
-    --text-xl:   0.875rem;   /* 14px — body default */
-    --text-2xl:  1rem;       /* 16px — emphasized inline values */
-    --text-3xl:  1.125rem;   /* 18px — widget titles */
-    --text-4xl:  1.375rem;   /* 22px — dashboard title */
-
-    /* ===== LEADING ===== */
-    --leading-tight:   1.2;
-    --leading-normal:  1.45;
-    --leading-loose:   1.65;
-
-    /* ===== WEIGHT ===== */
-    --weight-regular:   400;
-    --weight-medium:    500;
-    --weight-semibold:  600;
-    --weight-bold:      700;
-
-    /* ===== TEXT COLOR ROLES =====
-       Semantic aliases over --ink-*. Widgets express role
-       ("secondary data") rather than rung ("--ink-2"). */
-    --text-primary:   var(--ink);
-    --text-secondary: var(--ink-2);
-    --text-tertiary:  var(--ink-3);
-    --text-brand:     var(--brand);
-    --text-ok:        var(--status-ok);
-    --text-warn:      var(--status-warn);
-    --text-bad:       var(--status-bad);
-
-    /* ===== PROTOTYPE TOKENS (OmniDash.html:12-49, renamed) ===== */
-    --accent-h: 120;
-    --brand: oklch(72% 0.15 var(--accent-h));
-    --brand-soft: oklch(92% 0.08 var(--accent-h));
-    --brand-ink: oklch(35% 0.10 var(--accent-h));
-
-    --bg: #f5f7fb;
-    --panel: oklch(100% 0 0);
-    --panel-2: #f2f5fa;
-    --ink: #263244;
-    --ink-2: #505d6d;
-    --ink-3: #647080;
-    --line: #dfe5ef;
-    --line-2: #edf1f7;
-    --sidebar: var(--panel);
-    --sidebar-ink: var(--ink);
-    --sidebar-ink-2: var(--ink-2);
-    --sidebar-line: var(--line);
-    --sidebar-border: var(--sidebar-line);
-    --sidebar-hover: var(--line-2);
-    --sidebar-hover-strong: var(--line);
-    --sidebar-input: var(--panel);
-
-    --status-ok: #1c674f;
-    --status-warn: #8a6119;
-    --status-bad: #a6303d;
-    --link-ink: #365eaf;
-
-    --radius: 8px;
-    --radius-lg: 12px;
-
-    --pad-y: 14px;
-    --pad-x: 16px;
-    --row-gap: 16px;
-
-    --shadow-sm: 0 1px 2px oklch(20% 0.01 260 / 0.06), 0 1px 0 oklch(20% 0.01 260 / 0.02);
-    --shadow-md: 0 4px 14px oklch(20% 0.01 260 / 0.08), 0 1px 2px oklch(20% 0.01 260 / 0.05);
-    --shadow-lg: 0 24px 60px oklch(20% 0.01 260 / 0.18), 0 2px 8px oklch(20% 0.01 260 / 0.06);
-
-    /* ===== SHADCN SEMANTIC ALIAS LAYER (v2-specific) ===== */
-    --background: var(--bg);
-    --foreground: var(--ink);
-    --card: var(--panel);
-    --card-foreground: var(--ink);
-    --popover: var(--panel);
-    --popover-foreground: var(--ink);
-    --primary: var(--brand);
-    --primary-foreground: var(--brand-ink);
-    --secondary: var(--panel-2);
-    --secondary-foreground: var(--ink);
-    --muted: var(--panel-2);
-    --muted-foreground: var(--ink-2);
-    --accent: var(--brand-soft);
-    --accent-foreground: var(--brand-ink);
-    --destructive: var(--status-bad);
-    --destructive-foreground: oklch(98% 0 0);
-    --border: var(--line);
-    --input: var(--line);
-    --ring: var(--brand);
-    --ring-offset-background: var(--bg);
-
-    /* ===== STATUS TOKEN ALIASES (OMN-47) ===== */
-    --color-healthy: var(--status-ok);
-    --color-warning: var(--status-warn);
-    --color-destructive: var(--status-bad);
-
-    /* Aliases so useThemeColors() (which reads --status-healthy/--status-warning
-       /--status-error off documentElement) finds values. The prototype uses
-       --status-ok/--status-warn/--status-bad; this keeps both vocabularies in sync. */
-    --status-healthy: var(--status-ok);
-    --status-warning: var(--status-warn);
-    --status-error: var(--status-bad);
-
-    /* ===== CHART PALETTE =====
-       Seven distinct hues at similar lightness / chroma so no one line dominates
-       in multi-series charts. Tuned for panel backgrounds (white in light mode).
-       Hue spacing chosen to stay clear of the brand's green (--accent-h = 120)
-       and to keep adjacent slots visually separable. */
-    --chart-1: #4169b2;  /* blue */
-    --chart-2: #25816a;  /* teal */
-    --chart-3: #99701f;   /* yellow */
-    --chart-4: #c2533d;   /* orange-red */
-    --chart-5: #a54e7f;  /* magenta */
-    --chart-6: #7756b5;  /* purple */
-    --chart-7: #237f94;  /* cyan */
-
-    /* Resolve CSS colors at the root before widget theme scopes supply HSL triplets. */
-    --dashboard-chart-1: var(--chart-1);
-    --dashboard-chart-2: var(--chart-2);
-    --dashboard-chart-3: var(--chart-3);
-    --dashboard-chart-4: var(--chart-4);
-    --dashboard-chart-5: var(--chart-5);
-    --dashboard-chart-6: var(--chart-6);
-    --dashboard-chart-7: var(--chart-7);
-
-  }
-
-  [data-theme="dark"] {
-    /* Tells the browser to render native UI (scrollbars, form
-       controls, autofill, etc.) in their dark variant. Without this
-       Chrome's scrollbar stays the OS-default light grey even when
-       every other surface in the app has flipped to dark. */
-    color-scheme: dark;
-
-    --link-ink: #93b5f8;
-    --bg: oklch(16% 0.008 260);
-    --panel: oklch(20% 0.008 260);
-    --panel-2: oklch(23% 0.008 260);
-    --ink: oklch(94% 0.005 260);
-    --ink-2: oklch(72% 0.01 260);
-    --ink-3: #a0aab8;
-    --line: oklch(28% 0.01 260);
-    --line-2: oklch(24% 0.01 260);
-    --sidebar: oklch(12% 0.008 260);
-    --sidebar-ink: oklch(94% 0.005 260);
-    --sidebar-ink-2: oklch(62% 0.01 260);
-    --sidebar-line: oklch(22% 0.01 260);
-    --sidebar-hover: oklch(22% 0.01 260);
-    --sidebar-hover-strong: oklch(36% 0.01 260);
-    --sidebar-input: oklch(28% 0.01 260);
-
-    --brand-soft: oklch(32% 0.10 var(--accent-h));
-    --brand-ink: oklch(85% 0.14 var(--accent-h));
-    --status-ok: #8ed4ae;
-    --status-warn: #e3bd71;
-    --status-bad: #f18f8f;
-    --destructive-foreground: oklch(98% 0 0);
-
-    --shadow-sm: 0 1px 2px oklch(0% 0 0 / 0.3);
-    --shadow-md: 0 4px 14px oklch(0% 0 0 / 0.35), 0 1px 2px oklch(0% 0 0 / 0.3);
-    --shadow-lg: 0 24px 60px oklch(0% 0 0 / 0.5), 0 2px 8px oklch(0% 0 0 / 0.3);
-
-    /* Slightly brighter chart palette for dark panels — higher lightness, similar
-       chroma, same hues so series identity stays consistent across theme toggle. */
-    --chart-1: oklch(75% 0.17 250);
-    --chart-2: oklch(78% 0.16 160);
-    --chart-3: oklch(83% 0.15 85);
-    --chart-4: oklch(74% 0.19 30);
-    --chart-5: oklch(72% 0.21 350);
-    --chart-6: oklch(72% 0.17 290);
-    --chart-7: oklch(77% 0.14 200);
-  }
-
-  [data-density="compact"] {
-    --pad-y: 10px;
-    --pad-x: 12px;
-    --row-gap: 12px;
-  }
-
   /* Base resets and layout — OmniDash.html:73-93 verbatim */
   * { box-sizing: border-box; }
   html, body {
@@ -270,9 +67,9 @@
     height: 100%;
   }
   body {
-    font-family: var(--font-sans);
-    color: var(--ink);
-    background: var(--bg);
+    font-family: var(--ds-font-sans);
+    color: var(--ds-ink);
+    background: var(--ds-page);
     font-size: 14px;
     line-height: 1.45;
     -webkit-font-smoothing: antialiased;
@@ -282,7 +79,7 @@
   /* Utility class bundling the mono stack with tabular-figure + ss01
      stylistic-set OpenType features. Useful when applying mono to a
      span without inline styles. */
-  .mono { font-family: var(--font-mono); font-feature-settings: "tnum", "ss01"; }
+  .mono { font-family: var(--ds-font-mono); font-feature-settings: "tnum", "ss01"; }
 
   /* Typography utility classes — applied via `className` so widgets can
      opt into specific typographic features the <Text> component's prop
@@ -301,9 +98,9 @@
        date/time fields, and `.text-input-xl` (22px) for the
        dashboard-title rename input. */
   .text-tracked { letter-spacing: 0.08em; }
-  .text-input-md { font-size: var(--text-lg); }
-  .text-input-sm { font-size: var(--text-md); }
-  .text-input-xl { font-size: var(--text-4xl); }
+  .text-input-md { font-size: var(--ds-text-lg); }
+  .text-input-sm { font-size: var(--ds-text-md); }
+  .text-input-xl { font-size: var(--ds-text-4xl); }
 
   button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0; }
   input, select, textarea { font: inherit; color: inherit; }
@@ -348,88 +145,3 @@
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
 @media(min-width:1025px) { .app:not(.sidebar-collapsed) { --sidebar-w: 232px; } }
-
-/*
- * OMN-21166 part 11 AC61/AC62: the one design system for the seven pages. Light is the default; the near-black dark
- * theme follows the reference observability views. Every ink tone below clears 4.5:1 on every surface in its theme
- * (lowest: light accent on --panel-2, 4.60:1). Colour carries status and series only; figures use --ink.
- */
-:root:not([data-theme="dark"]) {
-  --bg: #fafaf9;
-  --panel: #ffffff;
-  --panel-2: #f5f5f4;
-  --ink: #1c1917;
-  --ink-2: #44403c;
-  --ink-3: #6b655e;
-  --line: #e7e5e4;
-  --line-2: #f1f0ee;
-  --sidebar: #fafaf9;
-  --sidebar-line: #e7e5e4;
-  --sidebar-hover: #f1f0ee;
-  --ui-accent: #b4530f;
-  --ui-accent-soft: #fbeee3;
-  --ui-pass: #15803d;
-  --ui-fail: #b91c1c;
-  --link-ink: #1d4ed8;
-  --run-cost-accent: #a35d09;
-  --run-score-accent: #14735c;
-  --shadow-sm: 0 1px 2px rgb(28 25 23 / 0.04);
-  --shadow-md: 0 2px 8px rgb(28 25 23 / 0.06);
-}
-:root[data-theme="dark"] {
-  --bg: #121110;
-  --panel: #191817;
-  --panel-2: #201f1d;
-  --ink: #eceae6;
-  --ink-2: #bdb8b0;
-  --ink-3: #948f86;
-  --line: #2b2927;
-  --line-2: #232120;
-  --sidebar: #141312;
-  --sidebar-line: #262422;
-  --sidebar-hover: #211f1d;
-  --sidebar-ink-2: #b5b0a8;
-  --ui-accent: #e9a050;
-  --ui-accent-soft: #2c2117;
-  --ui-pass: #4ade80;
-  --ui-fail: #f87171;
-  --link-ink: #8ab4f8;
-  --run-cost-accent: #f3bf6b;
-  --run-score-accent: #69d4b4;
-  --shadow-sm: none;
-  --shadow-md: 0 2px 10px rgb(0 0 0 / 0.35);
-}
-
-/* nanomon image palette: the same series token colors its mark and legend. */
-:root:not([data-theme="dark"]) {
-  --ins-pass: #64804c;
-  --ins-fail: #a45e4a;
-  --ins-unknown: #85847b;
-  --ins-series-1: #b18a43;
-  --ins-series-2: #64838a;
-  --ins-series-3: #a36548;
-  --ins-series-4: #86779e;
-  --ins-series-5: #858049;
-  --ins-series-6: #7c8a58;
-  --ins-series-7: #ad8f59;
-  --ins-series-8: #6e7c89;
-  --ins-ramp-2: #81925b;
-  --ins-ramp-3: #96955b;
-  --ins-fail-strong: #965347;
-}
-:root[data-theme="dark"] {
-  --ins-pass: #a3bb8d;
-  --ins-fail: #d6a08b;
-  --ins-unknown: #a5a397;
-  --ins-series-1: #d2ae6d;
-  --ins-series-2: #91b8c3;
-  --ins-series-3: #d2a18a;
-  --ins-series-4: #b9a5ce;
-  --ins-series-5: #c5c382;
-  --ins-series-6: #a9bb8b;
-  --ins-series-7: #d0b585;
-  --ins-series-8: #a6b4c2;
-  --ins-ramp-2: #b0c18e;
-  --ins-ramp-3: #c2c08f;
-  --ins-fail-strong: #d29487;
-}

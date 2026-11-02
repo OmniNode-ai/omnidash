@@ -144,7 +144,7 @@ export function TopicActivityView({
         )}
         <div style={{ overflowX: 'auto' }}>
           <div style={{ minWidth: 880 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: grid, gap: 8, padding: '4px 0', borderBottom: '1px solid var(--line)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: grid, gap: 8, padding: '4px 0', borderBottom: '1px solid var(--ds-line)' }}>
               {header('Topic', 'topic')}
               {header('Rate/s', 'rate_per_second')}
               {header('Last hour', 'messages_last_hour')}
@@ -154,7 +154,7 @@ export function TopicActivityView({
               <Text as="span" size="xs" weight="semibold" color="tertiary">State</Text>
             </div>
             {rows.map((row) => (
-              <div key={row.topic} data-testid="topic-activity-row" style={{ display: 'grid', gridTemplateColumns: grid, gap: 8, padding: '7px 0', borderBottom: '1px solid var(--line-2)', alignItems: 'center' }}>
+              <div key={row.topic} data-testid="topic-activity-row" style={{ display: 'grid', gridTemplateColumns: grid, gap: 8, padding: '7px 0', borderBottom: '1px solid var(--ds-line-soft)', alignItems: 'center' }}>
                 <Text as="span" size="xs" family="mono" color="primary" truncate title={row.topic}>{row.topic}</Text>
                 <Text as="span" size="xs" family="mono" color="secondary">{measuredNumber(row.rate_per_second, 2)}</Text>
                 <Text as="span" size="xs" family="mono" color="secondary">{measuredNumber(row.messages_last_hour)}</Text>

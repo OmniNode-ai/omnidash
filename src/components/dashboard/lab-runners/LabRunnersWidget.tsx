@@ -216,7 +216,7 @@ export function LabRunnersView({
 
         <div style={{ overflowX: 'auto' }}>
           <div style={{ minWidth: 700 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: grid, gap: 8, padding: '4px 0', borderBottom: '1px solid var(--line)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: grid, gap: 8, padding: '4px 0', borderBottom: '1px solid var(--ds-line)' }}>
               {header('Runner', 'runner_name')}
               {header('Class', 'label_class')}
               {header('Host', 'host')}
@@ -224,7 +224,7 @@ export function LabRunnersView({
               <Text as="span" size="xs" weight="semibold" color="tertiary">Job</Text>
             </div>
             {rows.map((row) => (
-              <div key={row.runner_name} data-testid="runner-fleet-row" data-status={row.status} style={{ display: 'grid', gridTemplateColumns: grid, gap: 8, padding: '7px 0', borderBottom: '1px solid var(--line-2)', alignItems: 'center' }}>
+              <div key={row.runner_name} data-testid="runner-fleet-row" data-status={row.status} style={{ display: 'grid', gridTemplateColumns: grid, gap: 8, padding: '7px 0', borderBottom: '1px solid var(--ds-line-soft)', alignItems: 'center' }}>
                 <Text as="span" size="xs" family="mono" color="primary" truncate title={row.runner_name}>{row.runner_name}</Text>
                 <Text as="span" size="xs" family="mono" color="secondary">{row.label_class}</Text>
                 <Text as="span" size="xs" family="mono" color="secondary">{row.host}</Text>

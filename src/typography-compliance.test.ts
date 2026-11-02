@@ -51,21 +51,28 @@ describe('Phase 0: ADR', () => {
 
 describe('Phase 1: Token declarations', () => {
   let css = '';
-  beforeAll(() => { css = readSrc('src/styles/globals.css'); });
+  // OMN-22168: the type scale lives in src/design-system/tokens.css under --ds-* names; the values are unchanged.
+  beforeAll(() => { css = readSrc('src/design-system/tokens.css'); });
 
   const tokens: Array<[string, string]> = [
     // The three 12 px floor assertions live in tests/styles/type-tokens.omn21306.test.ts so the hosted
     // merge-base control overlays their current assertions together with the contract.
-    ['--text-lg', '0.8125rem'], ['--text-xl', '0.875rem'], ['--text-2xl', '1rem'],
-    ['--text-3xl', '1.125rem'], ['--text-4xl', '1.375rem'],
-    ['--leading-tight', '1.2'], ['--leading-normal', '1.45'], ['--leading-loose', '1.65'],
-    ['--weight-regular', '400'], ['--weight-medium', '500'],
-    ['--weight-semibold', '600'], ['--weight-bold', '700'],
-    ['--text-primary', 'var(--ink)'], ['--text-secondary', 'var(--ink-2)'],
-    ['--text-tertiary', 'var(--ink-3)'], ['--text-brand', 'var(--brand)'],
-    ['--text-ok', 'var(--status-ok)'], ['--text-warn', 'var(--status-warn)'],
-    ['--text-bad', 'var(--status-bad)'],
+    ['--ds-text-lg', '0.8125rem'], ['--ds-text-xl', '0.875rem'], ['--ds-text-2xl', '1rem'],
+    ['--ds-text-3xl', '1.125rem'], ['--ds-text-4xl', '1.375rem'],
+    ['--ds-leading-tight', '1.2'], ['--ds-leading-normal', '1.45'], ['--ds-leading-loose', '1.65'],
+    ['--ds-weight-regular', '400'], ['--ds-weight-medium', '500'],
+    ['--ds-weight-semibold', '600'], ['--ds-weight-bold', '700'],
   ];
+
+  // The text colour roles were aliases (--text-primary: var(--ink) and so on); OMN-22168 collapsed each into the one
+  // semantic token it named, so the role map in the typography tokens is where a role meets its colour.
+  it('each text colour role reads its semantic token', () => {
+    const roles = readSrc('src/components/ui/typography/tokens.ts');
+    for (const [role, token] of [['primary', '--ds-ink'], ['secondary', '--ds-ink-2'], ['tertiary', '--ds-ink-3'],
+      ['brand', '--ds-brand'], ['ok', '--ds-ok'], ['warn', '--ds-warn'], ['bad', '--ds-bad']] as const) {
+      expect(roles, role).toMatch(new RegExp(`\\b${role}: 'var\\(${token}\\)'`));
+    }
+  });
 
   for (const [name, value] of tokens) {
     it(`declares ${name} = ${value}`, () => {
@@ -120,9 +127,9 @@ describe('Phase 2: Text + Heading components', () => {
   });
 
   const sizes: Array<[string, string]> = [
-    ['xs', 'var(--text-xs)'], ['sm', 'var(--text-sm)'], ['md', 'var(--text-md)'],
-    ['lg', 'var(--text-lg)'], ['xl', 'var(--text-xl)'], ['2xl', 'var(--text-2xl)'],
-    ['3xl', 'var(--text-3xl)'], ['4xl', 'var(--text-4xl)'],
+    ['xs', 'var(--ds-text-xs)'], ['sm', 'var(--ds-text-sm)'], ['md', 'var(--ds-text-md)'],
+    ['lg', 'var(--ds-text-lg)'], ['xl', 'var(--ds-text-xl)'], ['2xl', 'var(--ds-text-2xl)'],
+    ['3xl', 'var(--ds-text-3xl)'], ['4xl', 'var(--ds-text-4xl)'],
   ];
   for (const [size, cssVar] of sizes) {
     it(`Text size="${size}" → ${cssVar}`, () => {
@@ -132,9 +139,9 @@ describe('Phase 2: Text + Heading components', () => {
   }
 
   const colors: Array<[string, string]> = [
-    ['primary', 'var(--text-primary)'], ['secondary', 'var(--text-secondary)'],
-    ['tertiary', 'var(--text-tertiary)'], ['brand', 'var(--text-brand)'],
-    ['ok', 'var(--text-ok)'], ['warn', 'var(--text-warn)'], ['bad', 'var(--text-bad)'],
+    ['primary', 'var(--ds-ink)'], ['secondary', 'var(--ds-ink-2)'],
+    ['tertiary', 'var(--ds-ink-3)'], ['brand', 'var(--ds-brand)'],
+    ['ok', 'var(--ds-ok)'], ['warn', 'var(--ds-warn)'], ['bad', 'var(--ds-bad)'],
     ['inherit', 'inherit'],
   ];
   for (const [color, cssVar] of colors) {
@@ -144,17 +151,17 @@ describe('Phase 2: Text + Heading components', () => {
     });
   }
 
-  it('Text family="mono" → var(--font-mono)', () => {
+  it('Text family="mono" → var(--ds-font-mono)', () => {
     const { container } = render(React.createElement(Text, { family: 'mono' }, 'x'));
-    expect((container.firstChild as HTMLElement).style.fontFamily).toBe('var(--font-mono)');
+    expect((container.firstChild as HTMLElement).style.fontFamily).toBe('var(--ds-font-mono)');
   });
-  it('Text weight="semibold" → var(--weight-semibold)', () => {
+  it('Text weight="semibold" → var(--ds-weight-semibold)', () => {
     const { container } = render(React.createElement(Text, { weight: 'semibold' }, 'x'));
-    expect((container.firstChild as HTMLElement).style.fontWeight).toBe('var(--weight-semibold)');
+    expect((container.firstChild as HTMLElement).style.fontWeight).toBe('var(--ds-weight-semibold)');
   });
-  it('Text leading="tight" → var(--leading-tight)', () => {
+  it('Text leading="tight" → var(--ds-leading-tight)', () => {
     const { container } = render(React.createElement(Text, { leading: 'tight' }, 'x'));
-    expect((container.firstChild as HTMLElement).style.lineHeight).toBe('var(--leading-tight)');
+    expect((container.firstChild as HTMLElement).style.lineHeight).toBe('var(--ds-leading-tight)');
   });
   it('Text tabularNums → font-variant-numeric: tabular-nums', () => {
     const { container } = render(React.createElement(Text, { tabularNums: true }, '12'));
@@ -177,11 +184,11 @@ describe('Phase 2: Text + Heading components', () => {
     const { container } = render(React.createElement(Text, { 'aria-label': 'hi' }, 'x'));
     expect(container.firstChild).toHaveAttribute('aria-label', 'hi');
   });
-  it('Heading level=2 → h2 with var(--text-3xl) default', () => {
+  it('Heading level=2 → h2 with var(--ds-text-3xl) default', () => {
     const { container } = render(React.createElement(Heading, { level: 2 }, 't'));
     const el = container.firstChild as HTMLElement;
     expect(el.nodeName).toBe('H2');
-    expect(el.style.fontSize).toBe('var(--text-3xl)');
+    expect(el.style.fontSize).toBe('var(--ds-text-3xl)');
   });
 });
 
@@ -189,9 +196,10 @@ describe('Phase 3: Storybook', () => {
   it('.storybook/main.ts exists', () => {
     expect(srcExists('.storybook/main.ts')).toBe(true);
   });
-  it('.storybook/preview.tsx exists + imports globals.css + sets data-theme', () => {
+  it('.storybook/preview.tsx exists + imports tokens.css and globals.css + sets data-theme', () => {
     expect(srcExists('.storybook/preview.tsx')).toBe(true);
     const preview = readSrc('.storybook/preview.tsx');
+    expect(preview).toContain('../src/design-system/tokens.css');
     expect(preview).toContain('../src/styles/globals.css');
     expect(preview).toContain('data-theme');
   });

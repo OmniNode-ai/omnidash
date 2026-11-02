@@ -20,7 +20,7 @@ import { describe, expect, it } from 'vitest';
 import { FIELD_ICONS } from '@/components/dashboard/FieldIcon';
 import { PANEL_CONCEPTS, RunsKpis, UsageKpis } from '@/pages/LocalDashboardPage';
 
-const css = readFileSync(resolve(__dirname, 'field-identity.css'), 'utf8');
+const css = readFileSync(resolve(__dirname, '../design-system/tokens.css'), 'utf8');
 const blocks = (selector: string) => {
   const bodies: string[] = [];
   for (let start = css.indexOf(`${selector} {`); start >= 0; start = css.indexOf(`${selector} {`, start + 1)) {
@@ -32,7 +32,7 @@ const THEMES = { light: blocks(':root'), dark: blocks('[data-theme="dark"]') } a
 // The real card backgrounds, read from Chrome on the dev dashboard 2026-11-02 (computed background-color).
 const CARD = { light: '#fdfdfc', dark: '#161616' } as const;
 const token = (theme: keyof typeof THEMES, concept: string) => {
-  const matches = [...THEMES[theme].matchAll(new RegExp(`--field-${concept}:\\s*(#[0-9a-fA-F]{6})\\s*;`, 'g'))];
+  const matches = [...THEMES[theme].matchAll(new RegExp(`--ds-field-${concept}:\\s*(#[0-9a-fA-F]{6})\\s*;`, 'g'))];
   return matches.length ? matches[matches.length - 1]![1]!.toLowerCase() : null;
 };
 
@@ -56,7 +56,7 @@ const contrast = (fg: string, bg: number[]) => {
 const tinted = (accent: string, bg: string, alpha = 0.14) => rgb(accent).map((value, i) => Math.round(alpha * value + (1 - alpha) * rgb(bg)[i]!));
 
 const accentConcepts = (container: HTMLElement) => [...container.querySelectorAll('article[data-kpi-card]')]
-  .map(card => /var\(--field-([a-z0-9-]+)\)/.exec((card as HTMLElement).style.getPropertyValue('--panel-accent'))?.[1] ?? '(none)');
+  .map(card => /var\(--ds-field-([a-z0-9-]+)\)/.exec((card as HTMLElement).style.getPropertyValue('--panel-accent'))?.[1] ?? '(none)');
 
 const NOW = Date.parse('2026-11-02T12:00:00Z');
 const RUN_ROWS = Array.from({ length: 30 }, (_, index) => ({

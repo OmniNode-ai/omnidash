@@ -78,7 +78,7 @@ export function DelegationTriggerPanel({
           display: 'inline-flex',
           alignItems: 'center',
           gap: 6,
-          border: '1px solid var(--line)',
+          border: '1px solid var(--ds-line)',
           borderRadius: 6,
           padding: '5px 10px',
           background: 'transparent',
@@ -94,13 +94,13 @@ export function DelegationTriggerPanel({
   return (
     <div
       style={{
-        border: '1px solid var(--line)',
+        border: '1px solid var(--ds-line)',
         borderRadius: 8,
         padding: 12,
         display: 'flex',
         flexDirection: 'column',
         gap: 10,
-        background: 'var(--panel-1)',
+        background: 'var(--ds-surface)',
       }}
     >
       {collapsible && (
@@ -144,7 +144,7 @@ export function DelegationTriggerPanel({
             onClick={handleReset}
             style={{
               alignSelf: 'flex-start',
-              border: '1px solid var(--line)',
+              border: '1px solid var(--ds-line)',
               borderRadius: 6,
               padding: '4px 10px',
               background: 'transparent',
@@ -169,10 +169,10 @@ export function DelegationTriggerPanel({
                 disabled={state.phase === 'submitting'}
                 aria-describedby="delegate-task-type-description"
                 style={{
-                  border: '1px solid var(--line)',
+                  border: '1px solid var(--ds-line)',
                   borderRadius: 6,
                   padding: '5px 8px',
-                  background: 'var(--panel-2)',
+                  background: 'var(--ds-surface-2)',
                   color: 'inherit',
                   cursor: 'pointer',
                 }}
@@ -200,10 +200,10 @@ export function DelegationTriggerPanel({
                 disabled={state.phase === 'submitting'}
                 rows={3}
                 style={{
-                  border: '1px solid var(--line)',
+                  border: '1px solid var(--ds-line)',
                   borderRadius: 6,
                   padding: '6px 8px',
-                  background: 'var(--panel-2)',
+                  background: 'var(--ds-surface-2)',
                   color: 'inherit',
                   resize: 'vertical',
                   width: '100%',

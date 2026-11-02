@@ -13,7 +13,7 @@ export const componentHeader = style({
   alignItems: 'center',
   justifyContent: 'space-between',
   padding: '0.5rem 0.75rem',
-  borderBottom: `1px solid hsl(${vars.color.border})`,
+  borderBottom: `1px solid ${vars.color.border}`,
   minHeight: '32px',
 });
 
@@ -22,7 +22,7 @@ export const componentTitle = style({
   fontWeight: 600,
   textTransform: 'uppercase',
   letterSpacing: '0.03em',
-  color: `hsl(${vars.color.muted})`,
+  color: `${vars.color.muted}`,
 });
 
 export const componentBody = style({
@@ -38,7 +38,7 @@ export const emptyState = style({
   justifyContent: 'center',
   height: '100%',
   gap: '0.5rem',
-  color: `hsl(${vars.color.muted})`,
+  color: `${vars.color.muted}`,
   textAlign: 'center',
   padding: '1rem',
 });
@@ -58,7 +58,7 @@ export const errorState = style({
   alignItems: 'center',
   justifyContent: 'center',
   height: '100%',
-  color: `hsl(${vars.color.destructive})`,
+  color: `${vars.color.destructive}`,
   fontSize: '0.8125rem',
   padding: '1rem',
 });
@@ -68,6 +68,6 @@ export const loadingState = style({
   alignItems: 'center',
   justifyContent: 'center',
   height: '100%',
-  color: `hsl(${vars.color.muted})`,
+  color: `${vars.color.muted}`,
   fontSize: '0.8125rem',
 });

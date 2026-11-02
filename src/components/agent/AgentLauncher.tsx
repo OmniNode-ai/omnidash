@@ -30,11 +30,11 @@ export function AgentLauncher({ isOpen, onClick }: AgentLauncherProps) {
         width: '48px',
         height: '48px',
         borderRadius: '50%',
-        backgroundColor: 'hsl(var(--primary))',
-        color: 'hsl(var(--primary-foreground))',
+        backgroundColor: 'var(--ds-brand)',
+        color: 'var(--ds-brand-ink)',
         border: 'none',
         cursor: 'pointer',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+        boxShadow: '0 4px 12px color-mix(in srgb, var(--ds-shadow-ink) 20%, transparent)',
         zIndex: 99,
       }}
     >

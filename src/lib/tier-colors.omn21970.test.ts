@@ -26,7 +26,7 @@ const PALETTE: Record<string, [light: string, dark: string]> = {
 // AC6: the tiers the palette does not name take the colour of the tier they are a kind of.
 const SAME_AS: Record<string, string> = { cheap_frontier: 'frontier', cheap_cloud: 'cloud' };
 
-const css = readFileSync(resolve(__dirname, '../styles/field-identity.css'), 'utf8');
+const css = readFileSync(resolve(__dirname, '../design-system/tokens.css'), 'utf8');
 // Every block with this selector, in file order; a later declaration of a token wins, as in the browser.
 const block = (selector: string) => {
   const bodies: string[] = [];

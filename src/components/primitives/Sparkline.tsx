@@ -12,7 +12,7 @@ export function Sparkline({
   data,
   w = 80,
   h = 24,
-  color = 'var(--accent)',
+  color = 'var(--ds-brand)',
 }: SparklineProps) {
   if (!data || data.length === 0) return null;
   const max = Math.max(...data, 0.001);

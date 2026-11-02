@@ -134,8 +134,8 @@ export function ComponentWrapper({
               style={{
                 padding: '1px 6px',
                 borderRadius: 4,
-                background: 'color-mix(in srgb, var(--text-tertiary) 12%, transparent)',
-                border: '1px solid color-mix(in srgb, var(--text-tertiary) 25%, transparent)',
+                background: 'color-mix(in srgb, var(--ds-ink-3) 12%, transparent)',
+                border: '1px solid color-mix(in srgb, var(--ds-ink-3) 25%, transparent)',
               }}
             >
               File Mode

@@ -105,7 +105,7 @@ function HeaderRow() {
     <div
       style={{
         padding: '4px 0',
-        borderBottom: '1px solid var(--line)',
+        borderBottom: '1px solid var(--ds-line)',
         display: 'grid',
         gridTemplateColumns: GRID,
         gap: 8,
@@ -133,7 +133,7 @@ function FlowRow({ row }: { row: ConsumerFlowRow }) {
       data-consumer-group={row.consumer_group}
       style={{
         padding: '6px 0',
-        borderBottom: '1px solid var(--line-2)',
+        borderBottom: '1px solid var(--ds-line-soft)',
         display: 'grid',
         gridTemplateColumns: GRID,
         gap: 8,

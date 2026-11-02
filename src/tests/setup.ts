@@ -1,5 +1,16 @@
 import '@testing-library/jest-dom/vitest';
 import { vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+// OMN-22168: every test sees the real design tokens, light and dark, the way the app loads them first. A colour a
+// component resolves (a chart series, a scene colour) is then the token's value, never a test-only fallback.
+if (typeof document !== 'undefined' && !document.head.querySelector('style[data-ds-tokens]')) {
+  const tokens = document.createElement('style');
+  tokens.setAttribute('data-ds-tokens', '');
+  tokens.textContent = readFileSync(resolve(__dirname, '../design-system/tokens.css'), 'utf8');
+  document.head.appendChild(tokens);
+}
 
 // OMN-12969: the global WebSocket stub and VITE_WS_URL env stub were removed.
 // The dashboard no longer opens any browser WebSocket — the dead `/ws`

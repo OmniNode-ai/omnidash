@@ -24,13 +24,13 @@ function formatTimestamp(iso: string): string {
 
 function EventTypeTag({ type }: { type: string }) {
   const colors: Record<string, string> = {
-    tool_call: 'var(--status-ok)',
-    llm_response: 'var(--brand)',
-    user_input: 'var(--status-warn)',
-    checkpoint: 'var(--text-tertiary)',
-    error: 'var(--bad)',
+    tool_call: 'var(--ds-ok)',
+    llm_response: 'var(--ds-brand)',
+    user_input: 'var(--ds-warn)',
+    checkpoint: 'var(--ds-ink-3)',
+    error: 'var(--ds-bad)',
   };
-  const color = colors[type.toLowerCase()] ?? 'var(--text-secondary)';
+  const color = colors[type.toLowerCase()] ?? 'var(--ds-ink-2)';
   return (
     <Text
       as="span"
@@ -66,8 +66,8 @@ function StateDeltaViewer({ delta }: { delta: Record<string, unknown> }) {
         overflow: 'auto',
         padding: 8,
         borderRadius: 4,
-        border: '1px solid var(--border, oklch(20% 0.01 260))',
-        background: 'var(--surface-2, oklch(18% 0.01 260))',
+        border: '1px solid var(--ds-line, var(--ds-line-soft))',
+        background: 'var(--ds-surface-2, var(--ds-surface))',
         whiteSpace: 'pre-wrap',
         wordBreak: 'break-word',
         margin: 0,
@@ -90,13 +90,13 @@ function SessionList({
   return (
     <div
       style={{
-        background: 'var(--surface, oklch(14% 0.01 260))',
-        border: '1px solid var(--border, oklch(20% 0.01 260))',
+        background: 'var(--ds-surface, var(--ds-page))',
+        border: '1px solid var(--ds-line, var(--ds-line-soft))',
         borderRadius: 8,
         overflow: 'hidden',
       }}
     >
-      <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border, oklch(20% 0.01 260))' }}>
+      <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--ds-line, var(--ds-line-soft))' }}>
         <Text size="xs" weight="semibold" color="tertiary" transform="uppercase">Sessions</Text>
       </div>
       {sessions.length === 0 && (
@@ -114,9 +114,9 @@ function SessionList({
             width: '100%',
             padding: '8px 14px',
             cursor: 'pointer',
-            borderBottom: '1px solid var(--border, oklch(20% 0.01 260))',
-            borderLeft: `3px solid ${sid === selectedId ? 'var(--brand, oklch(55% 0.2 260))' : 'transparent'}`,
-            background: sid === selectedId ? 'color-mix(in oklch, var(--brand, oklch(55% 0.2 260)) 8%, transparent)' : 'transparent',
+            borderBottom: '1px solid var(--ds-line, var(--ds-line-soft))',
+            borderLeft: `3px solid ${sid === selectedId ? 'var(--ds-brand, var(--ds-hue-blue))' : 'transparent'}`,
+            background: sid === selectedId ? 'color-mix(in oklch, var(--ds-brand, var(--ds-hue-blue)) 8%, transparent)' : 'transparent',
           }}
         >
           <Text size="sm" family="mono" truncate>{sid}</Text>
@@ -200,8 +200,8 @@ export function SessionReplayPage() {
               {!selectedSession ? (
                 <div
                   style={{
-                    background: 'var(--surface, oklch(14% 0.01 260))',
-                    border: '1px solid var(--border, oklch(20% 0.01 260))',
+                    background: 'var(--ds-surface, var(--ds-page))',
+                    border: '1px solid var(--ds-line, var(--ds-line-soft))',
                     borderRadius: 8,
                     padding: 40,
                     textAlign: 'center',
@@ -214,8 +214,8 @@ export function SessionReplayPage() {
                   {/* Playback controls */}
                   <div
                     style={{
-                      background: 'var(--surface, oklch(14% 0.01 260))',
-                      border: '1px solid var(--border, oklch(20% 0.01 260))',
+                      background: 'var(--ds-surface, var(--ds-page))',
+                      border: '1px solid var(--ds-line, var(--ds-line-soft))',
                       borderRadius: 8,
                       padding: '12px 16px',
                       display: 'flex',
@@ -229,7 +229,7 @@ export function SessionReplayPage() {
                       aria-label="Reset to start"
                       style={{ all: 'unset', cursor: currentStep === 0 ? 'not-allowed' : 'pointer', opacity: currentStep === 0 ? 0.4 : 1 }}
                     >
-                      <RotateCcw size={16} style={{ color: 'var(--text-secondary)' }} />
+                      <RotateCcw size={16} style={{ color: 'var(--ds-ink-2)' }} />
                     </button>
                     <button
                       onClick={handlePrev}
@@ -237,7 +237,7 @@ export function SessionReplayPage() {
                       aria-label="Previous step"
                       style={{ all: 'unset', cursor: currentStep === 0 ? 'not-allowed' : 'pointer', opacity: currentStep === 0 ? 0.4 : 1 }}
                     >
-                      <SkipBack size={16} style={{ color: 'var(--text-secondary)' }} />
+                      <SkipBack size={16} style={{ color: 'var(--ds-ink-2)' }} />
                     </button>
                     <button
                       onClick={() => setIsPlaying((p) => !p)}
@@ -245,8 +245,8 @@ export function SessionReplayPage() {
                       style={{ all: 'unset', cursor: 'pointer' }}
                     >
                       {isPlaying
-                        ? <Pause size={18} style={{ color: 'var(--brand, oklch(55% 0.2 260))' }} />
-                        : <Play size={18} style={{ color: 'var(--brand, oklch(55% 0.2 260))' }} />
+                        ? <Pause size={18} style={{ color: 'var(--ds-brand, var(--ds-hue-blue))' }} />
+                        : <Play size={18} style={{ color: 'var(--ds-brand, var(--ds-hue-blue))' }} />
                       }
                     </button>
                     <button
@@ -255,18 +255,18 @@ export function SessionReplayPage() {
                       aria-label="Next step"
                       style={{ all: 'unset', cursor: currentStep >= totalSteps - 1 ? 'not-allowed' : 'pointer', opacity: currentStep >= totalSteps - 1 ? 0.4 : 1 }}
                     >
-                      <SkipForward size={16} style={{ color: 'var(--text-secondary)' }} />
+                      <SkipForward size={16} style={{ color: 'var(--ds-ink-2)' }} />
                     </button>
 
                     {/* Progress bar */}
                     <div
-                      style={{ flex: 1, height: 4, background: 'var(--border, oklch(20% 0.01 260))', borderRadius: 2, overflow: 'hidden' }}
+                      style={{ flex: 1, height: 4, background: 'var(--ds-line, var(--ds-surface))', borderRadius: 2, overflow: 'hidden' }}
                     >
                       <div
                         style={{
                           height: '100%',
                           width: `${totalSteps > 0 ? ((currentStep + 1) / totalSteps) * 100 : 0}%`,
-                          background: 'var(--brand, oklch(55% 0.2 260))',
+                          background: 'var(--ds-brand, var(--ds-hue-blue))',
                           transition: 'width 0.15s ease',
                         }}
                       />
@@ -276,13 +276,13 @@ export function SessionReplayPage() {
                   {/* Timeline list */}
                   <div
                     style={{
-                      background: 'var(--surface, oklch(14% 0.01 260))',
-                      border: '1px solid var(--border, oklch(20% 0.01 260))',
+                      background: 'var(--ds-surface, var(--ds-page))',
+                      border: '1px solid var(--ds-line, var(--ds-line-soft))',
                       borderRadius: 8,
                       overflow: 'hidden',
                     }}
                   >
-                    <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border, oklch(20% 0.01 260))' }}>
+                    <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--ds-line, var(--ds-line-soft))' }}>
                       <Heading level={3} size="sm">Event Timeline</Heading>
                     </div>
                     <div style={{ maxHeight: 320, overflowY: 'auto' }}>
@@ -299,9 +299,9 @@ export function SessionReplayPage() {
                             width: '100%',
                             padding: '8px 14px',
                             cursor: 'pointer',
-                            borderBottom: '1px solid var(--border, oklch(20% 0.01 260))',
-                            borderLeft: `3px solid ${idx === currentStep ? 'var(--brand, oklch(55% 0.2 260))' : snap.is_checkpoint ? 'var(--status-warn)' : 'transparent'}`,
-                            background: idx === currentStep ? 'color-mix(in oklch, var(--brand, oklch(55% 0.2 260)) 8%, transparent)' : 'transparent',
+                            borderBottom: '1px solid var(--ds-line, var(--ds-line-soft))',
+                            borderLeft: `3px solid ${idx === currentStep ? 'var(--ds-brand, var(--ds-hue-blue))' : snap.is_checkpoint ? 'var(--ds-warn)' : 'transparent'}`,
+                            background: idx === currentStep ? 'color-mix(in oklch, var(--ds-brand, var(--ds-hue-blue)) 8%, transparent)' : 'transparent',
                           }}
                         >
                           <Text size="xs" family="mono" color="tertiary">
@@ -318,13 +318,13 @@ export function SessionReplayPage() {
                   {currentSnapshot && (
                     <div
                       style={{
-                        background: 'var(--surface, oklch(14% 0.01 260))',
-                        border: '1px solid var(--border, oklch(20% 0.01 260))',
+                        background: 'var(--ds-surface, var(--ds-page))',
+                        border: '1px solid var(--ds-line, var(--ds-line-soft))',
                         borderRadius: 8,
                         overflow: 'hidden',
                       }}
                     >
-                      <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border, oklch(20% 0.01 260))', display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--ds-line, var(--ds-line-soft))', display: 'flex', alignItems: 'center', gap: 10 }}>
                         <Heading level={3} size="sm">State Delta</Heading>
                         <EventTypeTag type={currentSnapshot.event_type} />
                         <Text size="xs" color="tertiary" family="mono" style={{ marginLeft: 'auto' }}>

@@ -7,43 +7,43 @@ describe('Text', () => {
     const { container } = render(<Text>hello</Text>);
     const el = container.firstChild as HTMLElement;
     expect(el.nodeName).toBe('SPAN');
-    expect(el.style.fontSize).toBe('var(--text-xl)');
-    expect(el.style.color).toBe('var(--text-primary)');
+    expect(el.style.fontSize).toBe('var(--ds-text-xl)');
+    expect(el.style.color).toBe('var(--ds-ink)');
     expect(el.textContent).toBe('hello');
   });
 
   it.each([
-    ['xs', 'var(--text-xs)'], ['sm', 'var(--text-sm)'], ['md', 'var(--text-md)'],
-    ['lg', 'var(--text-lg)'], ['xl', 'var(--text-xl)'], ['2xl', 'var(--text-2xl)'],
-    ['3xl', 'var(--text-3xl)'], ['4xl', 'var(--text-4xl)'],
+    ['xs', 'var(--ds-text-xs)'], ['sm', 'var(--ds-text-sm)'], ['md', 'var(--ds-text-md)'],
+    ['lg', 'var(--ds-text-lg)'], ['xl', 'var(--ds-text-xl)'], ['2xl', 'var(--ds-text-2xl)'],
+    ['3xl', 'var(--ds-text-3xl)'], ['4xl', 'var(--ds-text-4xl)'],
   ] as const)('size=%s → font-size %s', (size, expected) => {
     const { container } = render(<Text size={size}>x</Text>);
     expect((container.firstChild as HTMLElement).style.fontSize).toBe(expected);
   });
 
   it.each([
-    ['primary', 'var(--text-primary)'], ['secondary', 'var(--text-secondary)'],
-    ['tertiary', 'var(--text-tertiary)'], ['brand', 'var(--text-brand)'],
-    ['ok', 'var(--text-ok)'], ['warn', 'var(--text-warn)'], ['bad', 'var(--text-bad)'],
+    ['primary', 'var(--ds-ink)'], ['secondary', 'var(--ds-ink-2)'],
+    ['tertiary', 'var(--ds-ink-3)'], ['brand', 'var(--ds-brand)'],
+    ['ok', 'var(--ds-ok)'], ['warn', 'var(--ds-warn)'], ['bad', 'var(--ds-bad)'],
     ['inherit', 'inherit'],
   ] as const)('color=%s → %s', (color, expected) => {
     const { container } = render(<Text color={color}>x</Text>);
     expect((container.firstChild as HTMLElement).style.color).toBe(expected);
   });
 
-  it('family=mono → font-family var(--font-mono)', () => {
+  it('family=mono → font-family var(--ds-font-mono)', () => {
     const { container } = render(<Text family="mono">x</Text>);
-    expect((container.firstChild as HTMLElement).style.fontFamily).toBe('var(--font-mono)');
+    expect((container.firstChild as HTMLElement).style.fontFamily).toBe('var(--ds-font-mono)');
   });
 
-  it('weight=semibold → font-weight var(--weight-semibold)', () => {
+  it('weight=semibold → font-weight var(--ds-weight-semibold)', () => {
     const { container } = render(<Text weight="semibold">x</Text>);
-    expect((container.firstChild as HTMLElement).style.fontWeight).toBe('var(--weight-semibold)');
+    expect((container.firstChild as HTMLElement).style.fontWeight).toBe('var(--ds-weight-semibold)');
   });
 
-  it('leading=tight → line-height var(--leading-tight)', () => {
+  it('leading=tight → line-height var(--ds-leading-tight)', () => {
     const { container } = render(<Text leading="tight">x</Text>);
-    expect((container.firstChild as HTMLElement).style.lineHeight).toBe('var(--leading-tight)');
+    expect((container.firstChild as HTMLElement).style.lineHeight).toBe('var(--ds-leading-tight)');
   });
 
   it('tabularNums → font-variant-numeric: tabular-nums', () => {

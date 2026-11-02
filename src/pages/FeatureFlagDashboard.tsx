@@ -32,25 +32,25 @@ const STATE_STYLE: Record<string, React.CSSProperties> = {
   on: {
     padding: '2px 8px',
     borderRadius: 4,
-    background: 'color-mix(in oklch, var(--status-ok) 20%, transparent)',
-    border: '1px solid var(--status-ok)',
-    color: 'var(--status-ok)',
+    background: 'color-mix(in oklch, var(--ds-ok) 20%, transparent)',
+    border: '1px solid var(--ds-ok)',
+    color: 'var(--ds-ok)',
     whiteSpace: 'nowrap' as const,
   },
   off: {
     padding: '2px 8px',
     borderRadius: 4,
-    background: 'color-mix(in oklch, var(--color-error, oklch(62% 0.18 25)) 20%, transparent)',
-    border: '1px solid var(--color-error, oklch(62% 0.18 25))',
-    color: 'var(--color-error, oklch(62% 0.18 25))',
+    background: 'color-mix(in oklch, var(--ds-bad, var(--ds-hue-red)) 20%, transparent)',
+    border: '1px solid var(--ds-bad, var(--ds-bad))',
+    color: 'var(--ds-bad, var(--ds-bad))',
     whiteSpace: 'nowrap' as const,
   },
   migration: {
     padding: '2px 8px',
     borderRadius: 4,
-    background: 'color-mix(in oklch, var(--status-warn) 20%, transparent)',
-    border: '1px solid var(--status-warn)',
-    color: 'var(--status-warn)',
+    background: 'color-mix(in oklch, var(--ds-warn) 20%, transparent)',
+    border: '1px solid var(--ds-warn)',
+    color: 'var(--ds-warn)',
     whiteSpace: 'nowrap' as const,
   },
 };
@@ -81,7 +81,7 @@ function ServiceTag({ service }: { service: 'omniclaude' | 'omnidash' }) {
       style={{
         padding: '2px 6px',
         borderRadius: 4,
-        background: 'var(--surface-2, oklch(18% 0.01 260))',
+        background: 'var(--ds-surface-2, var(--ds-surface))',
         whiteSpace: 'nowrap',
       }}
     >
@@ -145,7 +145,7 @@ function FlagTable({ flags, title }: { flags: FeatureFlag[]; title: string }) {
       <div className="flag-desktop-table">
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
-            <tr style={{ borderBottom: '1px solid var(--border, oklch(20% 0.01 260))' }}>
+            <tr style={{ borderBottom: '1px solid var(--ds-line, var(--ds-line-soft))' }}>
               {['Flag', 'State', 'Value', 'Service', 'Description'].map((h) => (
                 <th key={h} className="flag-th">
                   <Text size="xs" color="tertiary" weight="semibold" transform="uppercase">{h}</Text>
@@ -264,8 +264,8 @@ export function FeatureFlagDashboard() {
         {omniclaudeFlags.length === 0 && !loading && (
           <div
             style={{
-              background: 'var(--surface, oklch(14% 0.01 260))',
-              border: '1px solid var(--border, oklch(20% 0.01 260))',
+              background: 'var(--ds-surface, var(--ds-page))',
+              border: '1px solid var(--ds-line, var(--ds-line-soft))',
               borderRadius: 8,
               padding: '24px',
               textAlign: 'center',

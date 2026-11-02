@@ -34,9 +34,9 @@ const RANGES = [
   { days: 90, label: '90 days' },
 ] as const;
 
-const PASS = 'var(--ins-pass)';
-const FAIL = 'var(--ins-fail)';
-const UNKNOWN = 'var(--ins-unknown)';
+const PASS = 'var(--ds-ok)';
+const FAIL = 'var(--ds-bad)';
+const UNKNOWN = 'var(--ds-chart-unknown)';
 
 const TASK_CONCEPT: Readonly<Record<string, string>> = {
   document: 'task-document', code_generation: 'task-code-generation', research: 'task-research',
@@ -44,7 +44,7 @@ const TASK_CONCEPT: Readonly<Record<string, string>> = {
 };
 function taskLook(task: string) {
   const concept = TASK_CONCEPT[task] ?? 'task-other';
-  return { concept, color: `var(--field-${concept})`, icon: <ConceptIcon concept={concept} label={readable(task)} size={14} /> };
+  return { concept, color: `var(--ds-field-${concept})`, icon: <ConceptIcon concept={concept} label={readable(task)} size={14} /> };
 }
 
 /** A task type's canonical icon and colour, with its readable name beside it. */
@@ -99,7 +99,7 @@ function ChartCard({ title, concept, note, delay, children }: {
   const id = useId();
   const named = useContext(NamedByPanel);
   return (
-    <figure className="local-chart ins-card od-card" aria-labelledby={id} style={{ '--ins-accent': `var(--field-${concept})`, animationDelay: `${delay}ms` } as CSSProperties}>
+    <figure className="local-chart ins-card od-card" aria-labelledby={id} style={{ '--ins-accent': `var(--ds-field-${concept})`, animationDelay: `${delay}ms` } as CSSProperties}>
       <div className="ins-card-head">
         <h3 id={id} className="ins-title" hidden={named}><span className="ins-badge" aria-hidden="true"><ConceptIcon concept={concept} label={title} size={16} /></span>{title}</h3>
         {note && <span className="ins-note">{note}</span>}
@@ -309,7 +309,7 @@ function ActivityHeatmap({ runs, days, window }: { runs: InsightRun[]; days: rea
                 onMouseMove={() => setHover(current => current?.[0] === row && current[1] === hour ? current : [row, hour])}
                 onFocus={() => inspect(row, hour)} onClick={() => inspect(row, hour)}
                 onKeyDown={event => move(event, row, hour)}
-                style={{ background: runsInHour ? `color-mix(in oklch, var(--ins-series-2) ${Math.round(15 + 85 * (runsInHour / Math.max(1, grid.max)))}%, transparent)` : undefined }} />
+                style={{ background: runsInHour ? `color-mix(in oklch, var(--ds-chart-2) ${Math.round(15 + 85 * (runsInHour / Math.max(1, grid.max)))}%, transparent)` : undefined }} />
             ))}
           </div>
         ))}
@@ -356,7 +356,7 @@ function DurationHistogram({ runs }: { runs: InsightRun[] }) {
           <button key={index} type="button" className="ins-bar" aria-label={`${name(index)}: ${runsWord(runsInBucket)}`}
             data-dim={hover !== null && hover !== index} onMouseEnter={() => setHover(index)} onFocus={() => setHover(index)}>
             {/* Part 18 AC122: one hatched series in the duration colour, as every bar (part 16 AC97). */}
-            {runsInBucket > 0 && <span className="ins-seg gdb-bar od-grow" style={{ height: `${(runsInBucket / max) * 100}%`, color: 'var(--field-duration)', animationDelay: `${index * 50}ms` }} />}
+            {runsInBucket > 0 && <span className="ins-seg gdb-bar od-grow" style={{ height: `${(runsInBucket / max) * 100}%`, color: 'var(--ds-field-duration)', animationDelay: `${index * 50}ms` }} />}
           </button>
         ))}
       </div>
@@ -407,7 +407,7 @@ function FailureCauses({ runs, onInspectFailure, limit }: { runs: InsightRun[]; 
       {list.length === 0 ? <p className="ins-empty">No failed runs in this window</p> : (
         <ul className="ins-list" aria-label="Failure causes">
           {list.map((entry, index) => (
-            <li key={entry.cause} className="ins-list-row ins-list-row--plain" style={{ '--ins-swatch': [FAIL, 'var(--ins-series-7)', 'var(--ins-series-5)', 'var(--ins-series-4)', 'var(--ins-series-3)'][index % 5] } as CSSProperties}>
+            <li key={entry.cause} className="ins-list-row ins-list-row--plain" style={{ '--ins-swatch': [FAIL, 'var(--ds-chart-7)', 'var(--ds-chart-5)', 'var(--ds-chart-4)', 'var(--ds-chart-3)'][index % 5] } as CSSProperties}>
               {shared || onInspectFailure ? (
                 <button type="button" className="ins-list-name ins-cause-button" data-failure-cause={entry.cause} aria-label={`Show runs failed by ${failureCauseLabel(entry.cause)}`}
                   aria-pressed={!onInspectFailure && shared?.filter.cause === entry.cause}
@@ -453,16 +453,16 @@ function TokensPerDay({ days }: { days: InsightDay[] }) {
           <button key={day.day} type="button" className="ins-bar gdb-day" aria-label={label(day)}
             data-dim={hover !== null && hover !== index} onMouseEnter={() => setHover(index)} onFocus={() => setHover(index)}>
             <DayBars max={max} values={[
-              { key: 'in', value: day.tokensIn, color: 'var(--field-tokens-in)', label: shortCount(day.tokensIn) },
-              { key: 'out', value: day.tokensOut, color: 'var(--field-tokens-out)', label: shortCount(day.tokensOut) },
+              { key: 'in', value: day.tokensIn, color: 'var(--ds-field-tokens-in)', label: shortCount(day.tokensIn) },
+              { key: 'out', value: day.tokensOut, color: 'var(--ds-field-tokens-out)', label: shortCount(day.tokensOut) },
             ]} />
             <span className="gdb-day-label" aria-hidden="true">{ticks.has(index) ? dayLabel(day.day) : ''}</span>
           </button>
         ))}
       </div>
       <ul className="ins-token-legend gdb-legend" aria-label="Token series">
-        <li data-field-tone="tokens-in"><i aria-hidden="true" style={{ background: 'var(--field-tokens-in)' }} /><span>Tokens in</span></li>
-        <li data-field-tone="tokens-out"><i aria-hidden="true" style={{ background: 'var(--field-tokens-out)' }} /><span>Tokens out</span></li>
+        <li data-field-tone="tokens-in"><i aria-hidden="true" style={{ background: 'var(--ds-field-tokens-in)' }} /><span>Tokens in</span></li>
+        <li data-field-tone="tokens-out"><i aria-hidden="true" style={{ background: 'var(--ds-field-tokens-out)' }} /><span>Tokens out</span></li>
       </ul>
     </ChartCard>
   );
@@ -710,7 +710,7 @@ function MoneyWindowCharts({ rows, now, days, unavailable }: { rows: readonly un
         <p className="ins-readout" role="status">{activeCumulative === null ? `${data.windowComplete && data.saved !== null ? 'Window total' : 'Served rows only · cumulative incomplete'}: ${usd(data.cumulativeSaved[data.cumulativeSaved.length - 1] ?? null)}` : `${dateLabel(data.days[activeCumulative]!.day)} · cumulative ${usd(data.cumulativeSaved[activeCumulative] ?? null)}${!data.days[activeCumulative]!.served ? ' · no served day row; total carried forward' : data.days[activeCumulative]!.saved === null ? ' · savings value not recorded; cumulative unavailable' : ''}`}</p>
         <div className="ins-bars ins-bars--short" role="group" aria-label="Cumulative savings by UTC day" onMouseLeave={() => setActiveCumulative(null)}>
           {data.cumulativeSaved.map((value, index) => <button key={data.days[index]!.day} type="button" className="ins-bar" aria-label={`${dateLabel(data.days[index]!.day)}: cumulative ${usd(value)}${!data.days[index]!.served ? ', no served day row; prior total carried forward' : data.days[index]!.saved === null ? ', savings value not recorded' : ''}`} onMouseEnter={() => setActiveCumulative(index)} onFocus={() => setActiveCumulative(index)}>
-            <span className="ins-seg od-grow" style={{ height: `${value === null ? 0 : value / cumulativeMax * 100}%`, background: 'var(--ins-series-3)' }} />
+            <span className="ins-seg od-grow" style={{ height: `${value === null ? 0 : value / cumulativeMax * 100}%`, background: 'var(--ds-chart-3)' }} />
           </button>)}
         </div>
         <figcaption>Missing rows carry the prior total forward. A served row without a savings value makes the cumulative total unavailable from that day onward.</figcaption>

@@ -114,7 +114,7 @@ export default function DelegationMetrics({ config }: { config: Record<string, u
           >
             <DoughnutChart slices={slices} height={140} />
             {data.byModel.length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', justifyContent: 'center', paddingTop: 4, borderTop: '1px solid var(--line-2)' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', justifyContent: 'center', paddingTop: 4, borderTop: '1px solid var(--ds-line-soft)' }}>
                 {data.byModel.map((m) => (
                   <Text
                     key={m.model}

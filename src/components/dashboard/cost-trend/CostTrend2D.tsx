@@ -4,11 +4,12 @@ import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { applyTimeRange, resolveTimeRange } from '@/hooks/useTimeRange';
 import { useTimezone } from '@/hooks/useTimezone';
-import { useThemeColors } from '@/theme';
+
 import { useFrameStore } from '@/store/store';
 import { Text } from '@/components/ui/typography';
 import { zonedComponents } from '@/lib/zonedComponents';
 import { StackedChart, type StackedSlice, type ChartType } from './StackedChart';
+import { useTokenColors } from '@/design-system/useTokenColors';
 
 export interface CostDataPoint {
   bucket_time: string;
@@ -111,7 +112,7 @@ export default function CostTrendPanel({ config }: { config: CostTrendConfig }) 
     [data, timeRange],
   );
 
-  const colors = useThemeColors();
+  const colors = useTokenColors();
 
   // Model list derived from the full dataset (not the time-filtered one)
   // so the legend is stable as the user scrubs the range. A model whose
@@ -202,8 +203,8 @@ export default function CostTrendPanel({ config }: { config: CostTrendConfig }) 
                 style={{
                   height: 320,
                   borderRadius: 6,
-                  background: 'var(--panel-2)',
-                  border: '1px solid var(--line-2)',
+                  background: 'var(--ds-surface-2)',
+                  border: '1px solid var(--ds-line-soft)',
                 }}
               />
             )}
@@ -237,8 +238,8 @@ export default function CostTrendPanel({ config }: { config: CostTrendConfig }) 
               flexWrap: 'wrap',
               gap: 8,
               minHeight: 48,
-              background: 'var(--panel-2)',
-              border: '1px solid var(--line)',
+              background: 'var(--ds-surface-2)',
+              border: '1px solid var(--ds-line)',
               borderRadius: 6,
             }}
           >
@@ -283,7 +284,7 @@ export default function CostTrendPanel({ config }: { config: CostTrendConfig }) 
                     gap: 6,
                     padding: '3px 8px',
                     borderRadius: 12,
-                    border: `1px solid ${isolated ? color : 'var(--line)'}`,
+                    border: `1px solid ${isolated ? color : 'var(--ds-line)'}`,
                     cursor: 'pointer',
                     opacity: disabled ? 0.45 : 1,
                     userSelect: 'none',

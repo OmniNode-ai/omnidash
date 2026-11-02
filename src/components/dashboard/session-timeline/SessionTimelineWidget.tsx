@@ -19,15 +19,15 @@ interface TimelineEvent {
 type ViewMode = 'chart' | 'list';
 
 const CATEGORY_COLORS: Record<string, string> = {
-  debugging: 'var(--effect)',
-  code_generation: 'var(--reducer)',
-  refactoring: 'var(--orchestrator)',
-  testing: 'var(--good)',
-  documentation: 'var(--ink-3)',
-  analysis: 'var(--accent)',
-  code_review: 'var(--bad)',
-  deployment: 'var(--warn)',
-  unknown: 'var(--ink-4)',
+  debugging: 'var(--ds-kind-effect)',
+  code_generation: 'var(--ds-kind-reducer)',
+  refactoring: 'var(--ds-kind-orchestrator)',
+  testing: 'var(--ds-ok)',
+  documentation: 'var(--ds-ink-3)',
+  analysis: 'var(--ds-brand)',
+  code_review: 'var(--ds-bad)',
+  deployment: 'var(--ds-warn)',
+  unknown: 'var(--ds-ink-4)',
 };
 
 function colorForCategory(category: string): string {
@@ -35,10 +35,10 @@ function colorForCategory(category: string): string {
 }
 
 function confidenceColor(confidence: number): string {
-  if (confidence >= 0.9) return 'var(--good)';
-  if (confidence >= 0.7) return 'var(--accent)';
-  if (confidence >= 0.5) return 'var(--warn)';
-  return 'var(--bad)';
+  if (confidence >= 0.9) return 'var(--ds-ok)';
+  if (confidence >= 0.7) return 'var(--ds-brand)';
+  if (confidence >= 0.5) return 'var(--ds-warn)';
+  return 'var(--ds-bad)';
 }
 
 function formatCategory(category: string): string {
@@ -93,10 +93,10 @@ function ScatterChart({ events }: { events: TimelineEvent[] }) {
               x2={SVG_W - PAD.right}
               y1={y}
               y2={y}
-              stroke="var(--line-2)"
+              stroke="var(--ds-line-soft)"
               strokeDasharray="2,4"
             />
-            <text x={PAD.left - 8} y={y} textAnchor="end" dominantBaseline="middle" fill="var(--ink-2)" fontSize={11}>
+            <text x={PAD.left - 8} y={y} textAnchor="end" dominantBaseline="middle" fill="var(--ds-ink-2)" fontSize={11}>
               {formatCategory(cat)}
             </text>
           </g>
@@ -133,7 +133,7 @@ function ScatterChart({ events }: { events: TimelineEvent[] }) {
         const d = new Date(t);
         const label = Number.isNaN(d.getTime()) ? '' : formatTime(d.toISOString());
         return (
-          <text key={frac} x={x} y={SVG_H - 8} textAnchor="middle" fill="var(--ink-3)" fontSize={10}>
+          <text key={frac} x={x} y={SVG_H - 8} textAnchor="middle" fill="var(--ds-ink-3)" fontSize={10}>
             {label}
           </text>
         );
@@ -165,7 +165,7 @@ function TimelineList({ events }: { events: TimelineEvent[] }) {
               display: 'flex',
               gap: 12,
               padding: '8px 12px',
-              borderBottom: '1px solid var(--line-2)',
+              borderBottom: '1px solid var(--ds-line-soft)',
               alignItems: 'flex-start',
             }}
           >
@@ -195,7 +195,7 @@ function TimelineList({ events }: { events: TimelineEvent[] }) {
                 <span className="mono tnum" style={{ color: confColor, "fontWeight": 600 }}>
                   {(ev.confidence * 100).toFixed(0)}%
                 </span>
-                <span className="mono tnum" style={{ "color": 'var(--ink-3)' }}>
+                <span className="mono tnum" style={{ "color": 'var(--ds-ink-3)' }}>
                   {formatDate(ev.created_at)} {formatTime(ev.created_at)}
                 </span>
               </div>

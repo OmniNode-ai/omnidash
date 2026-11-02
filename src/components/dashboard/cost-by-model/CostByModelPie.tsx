@@ -19,8 +19,10 @@ import { Text } from '@/components/ui/typography';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { applyTimeRange, resolveTimeRange } from '@/hooks/useTimeRange';
-import { useThemeColors, useThemeName, cssColorToHex } from '@/theme';
+import { useThemeName } from '@/theme';
 import { useFrameStore } from '@/store/store';
+import { useTokenColors } from '@/design-system/useTokenColors';
+import { colorToNumber, tokenNumber } from '@/design-system/color';
 
 interface CostDataPoint {
   bucket_time: string;
@@ -119,8 +121,8 @@ const DARK_PIE_THEME: PieTheme = {
   sliceMetalness: 0.15,
   sliceRoughness: 0.45,
   emissiveIntensity: 0.12,
-  canvasBgCss: 'var(--panel-2)',
-  groundHex: 0x020812,
+  canvasBgCss: 'var(--ds-surface-2)',
+  get groundHex() { return tokenNumber('--ds-surface'); },
 };
 
 const LIGHT_PIE_THEME: PieTheme = {
@@ -130,8 +132,8 @@ const LIGHT_PIE_THEME: PieTheme = {
   sliceMetalness: 0,
   sliceRoughness: 0,
   emissiveIntensity: 0,
-  canvasBgCss: 'var(--panel-2)',
-  groundHex: 0xf7f8fa,
+  canvasBgCss: 'var(--ds-surface-2)',
+  get groundHex() { return tokenNumber('--ds-surface'); },
 };
 
 interface HoverInfo {
@@ -164,7 +166,7 @@ export function ThreePieChart({ slices, chartColors, themeName }: ThreePieChartP
   // Resolve palette to THREE-friendly hex via the canvas trick — our
   // tokens are oklch() and THREE.Color.setStyle can't parse them.
   const paletteHex = useMemo(
-    () => chartColors.map((c) => cssColorToHex(c)),
+    () => chartColors.map((c) => colorToNumber(c)),
     [chartColors],
   );
 
@@ -181,7 +183,7 @@ export function ThreePieChart({ slices, chartColors, themeName }: ThreePieChartP
       preserveDrawingBuffer: true,
     });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-    renderer.setClearColor(0x000000, 0);
+    renderer.setClearColor(tokenNumber('--ds-mix-dark'), 0);
     renderer.domElement.style.display = 'block';
     renderer.domElement.style.width = '100%';
     renderer.domElement.style.height = '100%';
@@ -198,10 +200,10 @@ export function ThreePieChart({ slices, chartColors, themeName }: ThreePieChartP
 
     // Lighting — both slice materials below are MeshStandardMaterial
     // so without lights the pie reads as flat wedges.
-    const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+    const ambient = new THREE.AmbientLight(tokenNumber('--ds-mix-light'), 0.6);
     ambient.name = 'ambient';
     scene.add(ambient);
-    const key = new THREE.DirectionalLight(0xffffff, 0.9);
+    const key = new THREE.DirectionalLight(tokenNumber('--ds-mix-light'), 0.9);
     key.name = 'key';
     key.position.set(3, 5, 2);
     scene.add(key);
@@ -416,7 +418,7 @@ export function ThreePieChart({ slices, chartColors, themeName }: ThreePieChartP
         width: '100%',
         height: CANVAS_HEIGHT,
         background: pieTheme.canvasBgCss,
-        border: '1px solid var(--line-2)',
+        border: '1px solid var(--ds-line-soft)',
         borderRadius: 6,
       }}
       onPointerMove={handlePointerMove}
@@ -429,10 +431,10 @@ export function ThreePieChart({ slices, chartColors, themeName }: ThreePieChartP
             left: hover.clientX + 14,
             top: hover.clientY + 14,
             padding: '6px 10px',
-            background: 'var(--panel)',
-            border: '1px solid var(--line)',
+            background: 'var(--ds-surface)',
+            border: '1px solid var(--ds-line)',
             borderRadius: 6,
-            boxShadow: 'var(--shadow-md)',
+            boxShadow: 'var(--ds-shadow-md)',
             minWidth: 160,
             pointerEvents: 'none',
             zIndex: 1000,
@@ -488,7 +490,7 @@ export default function CostByModelPie({ config: _config }: { config: Record<str
     [data, timeRange],
   );
 
-  const colors = useThemeColors();
+  const colors = useTokenColors();
   const themeName = useThemeName();
 
   // Stable model-to-palette-index mapping. Computed off the full
@@ -625,7 +627,7 @@ export default function CostByModelPie({ config: _config }: { config: Record<str
                 style={{
                   marginTop: 8,
                   paddingTop: 6,
-                  borderTop: '1px solid var(--line-2)',
+                  borderTop: '1px solid var(--ds-line-soft)',
                   display: 'flex',
                   justifyContent: 'space-between',
                 }}

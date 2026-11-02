@@ -194,7 +194,7 @@ export function ErrorsView({
             if (row.flow_state === 'STARVED') labels.push(`${severity.starved}: STARVED`);
             if (labels.length === 0) return null;
             return (
-              <div key={`${row.consumer_group}:${row.topic}`} data-testid="consumer-error-row" style={{ padding: '7px 0', borderBottom: '1px solid var(--line-2)' }}>
+              <div key={`${row.consumer_group}:${row.topic}`} data-testid="consumer-error-row" style={{ padding: '7px 0', borderBottom: '1px solid var(--ds-line-soft)' }}>
                 <Text as="div" size="xs" family="mono" color="primary">{row.consumer_group}</Text>
                 <Text as="div" size="xs" family="mono" color="secondary">{row.topic}</Text>
                 <Text as="div" size="xs" color="bad">{labels.join(' · ')}</Text>
@@ -211,7 +211,7 @@ export function ErrorsView({
           {liveErrors.length === 0 ? (
             <Text as="div" size="xs" color="tertiary">No live-events rows of type ERROR in the selected window.</Text>
           ) : liveErrors.map((row) => (
-            <div key={row.event_id || row.id} data-testid="live-error-row" style={{ padding: '7px 0', borderBottom: '1px solid var(--line-2)' }}>
+            <div key={row.event_id || row.id} data-testid="live-error-row" style={{ padding: '7px 0', borderBottom: '1px solid var(--ds-line-soft)' }}>
               <Text as="div" size="xs" color="bad">{severity.event}: {row.summary}</Text>
               <Text as="div" size="xs" family="mono" color="secondary">{row.source} · {row.topic}</Text>
               {row.correlation_id && <ErrorCorrelationButton correlationId={row.correlation_id} />}
@@ -232,7 +232,7 @@ export function ErrorsView({
               </Text>
             </div>
           ) : fingerprints.map((row) => (
-            <div key={row.fingerprint} data-testid="fingerprint-error-row" style={{ padding: '7px 0', borderBottom: '1px solid var(--line-2)' }}>
+            <div key={row.fingerprint} data-testid="fingerprint-error-row" style={{ padding: '7px 0', borderBottom: '1px solid var(--ds-line-soft)' }}>
               <Text as="div" size="xs" color="bad">{row.severity} · {row.message_template}</Text>
               <Text as="div" size="xs" family="mono" color="secondary">{row.service_name || 'service not recorded'} · {row.occurrence_count} occurrences</Text>
               {row.correlation_id && <ErrorCorrelationButton correlationId={row.correlation_id} />}

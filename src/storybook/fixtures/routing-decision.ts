@@ -20,11 +20,11 @@ const DEFAULT_MODELS: RoutingModel[] = [
 ];
 
 const DEFAULT_INTENTS: RoutingIntent[] = [
-  { id: 'code_generation', label: 'Code generation', color: 'var(--compute)' },
-  { id: 'debugging', label: 'Debugging', color: 'var(--reducer)' },
-  { id: 'classification', label: 'Classification', color: 'var(--orchestrator)' },
-  { id: 'complex_reasoning', label: 'Complex reasoning', color: 'var(--accent)' },
-  { id: 'large_context', label: 'Large context', color: 'var(--effect)' },
+  { id: 'code_generation', label: 'Code generation', color: 'var(--ds-kind-compute)' },
+  { id: 'debugging', label: 'Debugging', color: 'var(--ds-kind-reducer)' },
+  { id: 'classification', label: 'Classification', color: 'var(--ds-kind-orchestrator)' },
+  { id: 'complex_reasoning', label: 'Complex reasoning', color: 'var(--ds-brand)' },
+  { id: 'large_context', label: 'Large context', color: 'var(--ds-kind-effect)' },
 ];
 
 const DEFAULT_TASK_PRESETS: RoutingTaskPreset[] = [

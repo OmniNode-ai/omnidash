@@ -8,11 +8,11 @@ interface StatusIndicatorProps {
 }
 
 const STATUS_COLORS: Record<ServiceStatus, string> = {
-  up: 'var(--status-ok)',
-  down: 'var(--status-bad)',
-  demo: 'var(--status-warn)',
-  sqlite: 'var(--status-warn)',
-  unknown: 'var(--status-warn)',
+  up: 'var(--ds-ok)',
+  down: 'var(--ds-bad)',
+  demo: 'var(--ds-warn)',
+  sqlite: 'var(--ds-warn)',
+  unknown: 'var(--ds-warn)',
 };
 
 const STATUS_LABELS: Record<ServiceStatus, string> = {
@@ -70,8 +70,8 @@ export function PipelineStatusBar({
         display: 'flex',
         gap: 20,
         padding: '8px 12px',
-        background: 'var(--bg-elevated)',
-        border: '1px solid var(--line)',
+        background: 'var(--ds-surface)',
+        border: '1px solid var(--ds-line)',
         borderRadius: 6,
       }}
     >

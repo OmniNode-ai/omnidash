@@ -22,7 +22,7 @@ export interface KpiItem {
   label: string;
   /** The served figure, formatted by the caller (or its typed state). */
   value: ReactNode;
-  /** The identity colour of the card's 3px edge and tooltip, e.g. var(--field-cost). */
+  /** The identity colour of the card's 3px edge and tooltip, e.g. var(--ds-field-cost). */
   accent: string;
   /** The concept whose icon heads the card (ConceptIcon). */
   concept?: string;

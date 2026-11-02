@@ -45,7 +45,7 @@ function CheckMark({ pass }: { pass: boolean }) {
         width: 16,
         height: 16,
         borderRadius: 4,
-        background: pass ? 'var(--good)' : 'var(--bad)',
+        background: pass ? 'var(--ds-ok)' : 'var(--ds-bad)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -54,9 +54,9 @@ function CheckMark({ pass }: { pass: boolean }) {
     >
       <svg width="10" height="10" viewBox="0 0 10 10">
         {pass ? (
-          <path d="M2,5 L4.5,7.5 L8.5,3" stroke="#fff" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M2,5 L4.5,7.5 L8.5,3" stroke="var(--ds-on-accent)" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
         ) : (
-          <path d="M3,3 L7,7 M7,3 L3,7" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" />
+          <path d="M3,3 L7,7 M7,3 L3,7" stroke="var(--ds-on-accent)" strokeWidth="1.6" strokeLinecap="round" />
         )}
       </svg>
     </div>
@@ -70,8 +70,8 @@ function Stamp({ pass }: { pass: boolean }) {
         width: 8,
         height: 8,
         borderRadius: '50%',
-        background: pass ? 'var(--good)' : 'var(--ink-3)',
-        boxShadow: pass ? '0 0 0 3px var(--good-soft)' : 'none',
+        background: pass ? 'var(--ds-ok)' : 'var(--ds-ink-3)',
+        boxShadow: pass ? '0 0 0 3px var(--ds-ok-soft)' : 'none',
         display: 'inline-block',
       }}
     />
@@ -127,8 +127,8 @@ export default function ReceiptGateWidget() {
                 gap: 8,
                 padding: '6px 12px',
                 borderRadius: 6,
-                background: allPass ? 'var(--good-soft)' : 'var(--bg-sunken)',
-                color: allPass ? 'var(--good)' : 'var(--ink-3)',
+                background: allPass ? 'var(--ds-ok-soft)' : 'var(--ds-inset)',
+                color: allPass ? 'var(--ds-ok)' : 'var(--ds-ink-3)',
                 "fontSize": 11,
                 "fontWeight": 700,
                 "letterSpacing": '0.12em',
@@ -142,14 +142,14 @@ export default function ReceiptGateWidget() {
 
         {/* Progress meter */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-          <div className="mono tnum" style={{ "fontSize": 28, "fontWeight": 800, color: 'var(--good)' }}>
+          <div className="mono tnum" style={{ "fontSize": 28, "fontWeight": 800, color: 'var(--ds-ok)' }}>
             {passed}
-            <span style={{ "color": 'var(--ink-3)', "fontSize": 18, "fontWeight": 600 }}>/{total}</span>
+            <span style={{ "color": 'var(--ds-ink-3)', "fontSize": 18, "fontWeight": 600 }}>/{total}</span>
           </div>
           <div style={{ flex: 1 }}>
-            <div className="eyebrow" style={{ color: 'var(--good)' }}>gates passed</div>
-            <div style={{ height: 4, background: 'var(--line)', borderRadius: 2, marginTop: 6, overflow: 'hidden' }}>
-              <div style={{ width: total > 0 ? `${(passed / total) * 100}%` : '0%', height: '100%', background: 'var(--good)', transition: 'width .25s' }} />
+            <div className="eyebrow" style={{ color: 'var(--ds-ok)' }}>gates passed</div>
+            <div style={{ height: 4, background: 'var(--ds-line)', borderRadius: 2, marginTop: 6, overflow: 'hidden' }}>
+              <div style={{ width: total > 0 ? `${(passed / total) * 100}%` : '0%', height: '100%', background: 'var(--ds-ok)', transition: 'width .25s' }} />
             </div>
           </div>
         </div>
@@ -165,17 +165,17 @@ export default function ReceiptGateWidget() {
                 alignItems: 'center',
                 gap: 10,
                 padding: '8px 0',
-                borderBottom: i < gates.length - 1 ? '1px dashed var(--line-2)' : 'none',
+                borderBottom: i < gates.length - 1 ? '1px dashed var(--ds-line-soft)' : 'none',
               }}
             >
               <CheckMark pass={g.pass} />
               <div style={{ minWidth: 0 }}>
-                <div style={{ "fontSize": 13, "fontWeight": 600, "color": 'var(--ink)' }}>{g.name}</div>
+                <div style={{ "fontSize": 13, "fontWeight": 600, "color": 'var(--ds-ink)' }}>{g.name}</div>
                 <div
                   className="mono"
                   style={{
                     "fontSize": 10,
-                    "color": 'var(--ink-3)',
+                    "color": 'var(--ds-ink-3)',
                     marginTop: 2,
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
@@ -187,7 +187,7 @@ export default function ReceiptGateWidget() {
               </div>
               <div
                 className="mono"
-                style={{ "fontSize": 9, "color": 'var(--ink-4)', "letterSpacing": '0.16em', "fontWeight": 700 }}
+                style={{ "fontSize": 9, "color": 'var(--ds-ink-4)', "letterSpacing": '0.16em', "fontWeight": 700 }}
               >
                 g.{String(i + 1).padStart(2, '0')}
               </div>
@@ -201,31 +201,31 @@ export default function ReceiptGateWidget() {
             style={{
               marginTop: 16,
               padding: 12,
-              background: 'var(--bg-sunken)',
+              background: 'var(--ds-inset)',
               borderRadius: 6,
               "fontSize": 11,
-              "color": 'var(--ink-2)',
+              "color": 'var(--ds-ink-2)',
               "lineHeight": 1.6,
             }}
           >
             <div className="eyebrow" style={{ marginBottom: 6 }}>receipt manifest</div>
             <div className="mono">
               {manifest.worker && (
-                <>worker: <span style={{ color: 'var(--compute-ink)' }}>{manifest.worker}</span><br /></>
+                <>worker: <span style={{ color: 'var(--ds-kind-compute-ink)' }}>{manifest.worker}</span><br /></>
               )}
               {manifest.verifier && (
-                <>verifier: <span style={{ color: 'var(--reducer-ink)' }}>{manifest.verifier}</span><br /></>
+                <>verifier: <span style={{ color: 'var(--ds-kind-reducer-ink)' }}>{manifest.verifier}</span><br /></>
               )}
               {manifest.evidence_count !== undefined && (
                 <>
-                  evidence: <span style={{ "color": 'var(--ink)' }}>
+                  evidence: <span style={{ "color": 'var(--ds-ink)' }}>
                     {manifest.evidence_count} artifact{manifest.evidence_count !== 1 ? 's' : ''}
                     {manifest.evidence_hash ? ` · sha256:${manifest.evidence_hash}` : ''}
                   </span><br />
                 </>
               )}
               {manifest.signed_at && (
-                <>signed: <span style={{ "color": 'var(--ink)' }}>{manifest.signed_at}</span></>
+                <>signed: <span style={{ "color": 'var(--ds-ink)' }}>{manifest.signed_at}</span></>
               )}
             </div>
           </div>

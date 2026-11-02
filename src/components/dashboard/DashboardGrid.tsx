@@ -24,13 +24,13 @@ export function DashboardGrid({
   onPlacementClick,
 }: DashboardGridProps) {
   return (
-    <div className="grid grid-cols-2 gap-[var(--row-gap)]">
+    <div className="grid grid-cols-2 gap-[var(--ds-row-gap)]">
       {layout.map((item) => (
         <div
           key={item.i}
           className={`bg-panel rounded-lg border border-line shadow-sm overflow-hidden${
             editMode
-              ? ' cursor-pointer ring-2 ring-transparent hover:ring-[var(--accent)] transition-all'
+              ? ' cursor-pointer ring-2 ring-transparent hover:ring-[var(--ds-brand)] transition-all'
               : ''
           }`}
           onClick={

@@ -81,7 +81,7 @@ export const AllGreen: Story = {
   decorators: [
     makeDashboardDecorator({
       // Every dimension PASS → overall PASS pill renders in
-      // `--status-ok` colour; all rows render the green StatusPill.
+      // `--ds-ok` colour; all rows render the green StatusPill.
       prefetched: [{
         queryKey: QUERY_KEY,
         data: [buildReadinessRows(7, { preset: 'all-green', lastCheckedAt: ANCHOR })],
@@ -109,7 +109,7 @@ export const AllRed: Story = {
   args: { config: {} },
   decorators: [
     makeDashboardDecorator({
-      // Every dimension FAIL → overall FAIL pill in `--status-bad`
+      // Every dimension FAIL → overall FAIL pill in `--ds-bad`
       // colour; all rows render the red StatusPill. Worst-case
       // outage scenario.
       prefetched: [{

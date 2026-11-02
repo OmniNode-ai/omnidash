@@ -3,9 +3,10 @@ import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { Text } from '@/components/ui/typography';
-import { useThemeColors } from '@/theme';
+
 import { useDelegationRunContextOptional } from '@/components/dashboard/delegation-control-plane/DelegationRunContext';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
+import { useTokenColors } from '@/design-system/useTokenColors';
 
 // ── Projection types (from delegation_events SQLite table, OMN-10623) ─
 
@@ -79,7 +80,7 @@ function FrequencyBar({ pct, color }: { pct: number; color: string }) {
       style={{
         height: 6,
         borderRadius: 3,
-        background: 'var(--panel-2)',
+        background: 'var(--ds-surface-2)',
         overflow: 'hidden',
         flex: '0 0 80px',
       }}
@@ -108,8 +109,8 @@ function TaskBreakdown({ rows, modelName, colors }: { rows: ModelRoutingRow[]; m
       style={{
         marginTop: 4,
         padding: '8px 10px',
-        background: 'var(--panel-2)',
-        border: '1px solid var(--line-2)',
+        background: 'var(--ds-surface-2)',
+        border: '1px solid var(--ds-line-soft)',
         borderRadius: 6,
       }}
     >
@@ -146,18 +147,18 @@ function TaskBreakdown({ rows, modelName, colors }: { rows: ModelRoutingRow[]; m
 // ── Decision trace panel ──────────────────────────────────────────────
 
 const RULE_LABELS: Record<string, { label: string; color: string }> = {
-  'exploit:best-latency':    { label: 'exploit · best-latency',   color: 'var(--good)' },
-  'explore:random-sample':   { label: 'explore · random-sample',  color: 'var(--warn)' },
-  'explore:capability-match':{ label: 'explore · capability-match', color: 'var(--accent, var(--warn))' },
+  'exploit:best-latency':    { label: 'exploit · best-latency',   color: 'var(--ds-ok)' },
+  'explore:random-sample':   { label: 'explore · random-sample',  color: 'var(--ds-warn)' },
+  'explore:capability-match':{ label: 'explore · capability-match', color: 'var(--ds-brand, var(--ds-warn))' },
 };
 
 function ConfidencePip({ confidence }: { confidence: number | null }) {
   if (confidence == null) return <Text as="span" size="xs" color="tertiary">—</Text>;
   const pct = Math.round(confidence * 100);
-  const color = confidence >= 0.75 ? 'var(--good)' : confidence >= 0.5 ? 'var(--warn)' : 'var(--error, var(--warn))';
+  const color = confidence >= 0.75 ? 'var(--ds-ok)' : confidence >= 0.5 ? 'var(--ds-warn)' : 'var(--ds-bad, var(--ds-warn))';
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-      <div style={{ width: 32, height: 4, borderRadius: 2, background: 'var(--panel-2)', overflow: 'hidden' }}>
+      <div style={{ width: 32, height: 4, borderRadius: 2, background: 'var(--ds-surface-2)', overflow: 'hidden' }}>
         <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 2 }} />
       </div>
       <Text as="span" size="xs" family="mono" tabularNums style={{ color }}>{pct}%</Text>
@@ -170,7 +171,7 @@ function DecisionTracePanel({ traces }: { traces: RoutingDecisionTrace[] }) {
   const visible = expanded ? traces : traces.slice(0, 5);
 
   return (
-    <div style={{ marginTop: 12, borderTop: '1px solid var(--line)', paddingTop: 10 }}>
+    <div style={{ marginTop: 12, borderTop: '1px solid var(--ds-line)', paddingTop: 10 }}>
       <Text as="div" size="xs" color="secondary" weight="semibold" style={{ marginBottom: 8 }}>
         Decision Trace — per delegation
       </Text>
@@ -180,7 +181,7 @@ function DecisionTracePanel({ traces }: { traces: RoutingDecisionTrace[] }) {
           gridTemplateColumns: '80px 1fr 1fr 72px',
           gap: 8,
           paddingBottom: 4,
-          borderBottom: '1px solid var(--line-2)',
+          borderBottom: '1px solid var(--ds-line-soft)',
         }}
       >
         {(['Task', 'Rule fired', 'Confidence', 'Model'] as const).map((h) => (
@@ -190,7 +191,7 @@ function DecisionTracePanel({ traces }: { traces: RoutingDecisionTrace[] }) {
         ))}
       </div>
       {visible.map((t) => {
-        const ruleInfo = t.routing_rule ? (RULE_LABELS[t.routing_rule] ?? { label: t.routing_rule, color: 'var(--accent)' }) : null;
+        const ruleInfo = t.routing_rule ? (RULE_LABELS[t.routing_rule] ?? { label: t.routing_rule, color: 'var(--ds-brand)' }) : null;
         const shortModel = t.model_name.split('/').pop() ?? t.model_name;
         return (
           <div
@@ -200,7 +201,7 @@ function DecisionTracePanel({ traces }: { traces: RoutingDecisionTrace[] }) {
               gridTemplateColumns: '80px 1fr 1fr 72px',
               gap: 8,
               padding: '4px 0',
-              borderBottom: '1px solid var(--line-2)',
+              borderBottom: '1px solid var(--ds-line-soft)',
               alignItems: 'center',
             }}
           >
@@ -263,7 +264,7 @@ export default function DelegationModelRoutingWidget(props: { config: Delegation
     return data?.[0] ?? null;
   }, [runCtx, data]);
 
-  const colors = useThemeColors();
+  const colors = useTokenColors();
 
   const sorted = useMemo(() => {
     if (!projection) return [];
@@ -301,7 +302,7 @@ export default function DelegationModelRoutingWidget(props: { config: Delegation
               gridTemplateColumns: '1fr 44px 1fr 72px 60px 80px 36px',
               gap: 8,
               paddingBottom: 4,
-              borderBottom: '1px solid var(--line)',
+              borderBottom: '1px solid var(--ds-line)',
             }}
           >
             {(['Model', 'N', 'Task Types', 'Latency', 'Local Rate', 'Frequency', '%'] as const).map((h) => (
@@ -330,7 +331,7 @@ export default function DelegationModelRoutingWidget(props: { config: Delegation
                     gridTemplateColumns: '1fr 44px 1fr 72px 60px 80px 36px',
                     gap: 8,
                     padding: '6px 0',
-                    borderBottom: '1px solid var(--line-2)',
+                    borderBottom: '1px solid var(--ds-line-soft)',
                     alignItems: 'center',
                     opacity: hoveredModel === null || hoveredModel === s.model_name ? 1 : 0.65,
                     transition: 'opacity 120ms ease-out',
@@ -369,8 +370,8 @@ export default function DelegationModelRoutingWidget(props: { config: Delegation
                           display: 'inline-block',
                           padding: '1px 5px',
                           borderRadius: 3,
-                          background: 'var(--panel-2)',
-                          border: '1px solid var(--line-2)',
+                          background: 'var(--ds-surface-2)',
+                          border: '1px solid var(--ds-line-soft)',
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',

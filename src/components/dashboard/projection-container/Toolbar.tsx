@@ -36,8 +36,8 @@ function VizPicker({
         value={active}
         onChange={(e) => onVizChange(e.target.value as VisualizationType)}
         style={{
-          background: 'var(--panel-2)',
-          border: '1px solid var(--line-2)',
+          background: 'var(--ds-surface-2)',
+          border: '1px solid var(--ds-line-soft)',
           borderRadius: 4,
           padding: '3px 8px',
           cursor: 'pointer',
@@ -80,8 +80,8 @@ function RunSelector({
         defaultValue=""
         onChange={(e) => onRunChange(e.target.value || null)}
         style={{
-          background: 'var(--panel-2)',
-          border: '1px solid var(--line-2)',
+          background: 'var(--ds-surface-2)',
+          border: '1px solid var(--ds-line-soft)',
           borderRadius: 4,
           padding: '3px 8px',
           cursor: 'pointer',
@@ -110,7 +110,7 @@ export function Toolbar({ contract, data, activeVisualization, onVizChange, onRu
         alignItems: 'center',
         gap: 16,
         padding: '8px 0 10px',
-        borderBottom: '1px solid var(--line-2)',
+        borderBottom: '1px solid var(--ds-line-soft)',
         marginBottom: 12,
         flexWrap: 'wrap',
       }}

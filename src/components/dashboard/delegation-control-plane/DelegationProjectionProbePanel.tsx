@@ -60,13 +60,13 @@ export function DelegationProjectionProbePanel() {
         isTenantNotConfiguredError(primaryError)
           ? <div style={{ marginBottom: 10 }}><TenantNotConfiguredState /></div>
           : (
-            <Text as="div" size="xs" family="mono" color="bad" style={{ marginBottom: 10, padding: '6px 8px', border: '1px solid var(--line)', borderRadius: 4 }}>
+            <Text as="div" size="xs" family="mono" color="bad" style={{ marginBottom: 10, padding: '6px 8px', border: '1px solid var(--ds-line)', borderRadius: 4 }}>
               Primary error: {primaryError.message}
             </Text>
           )
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 72px 110px 90px', gap: 8, paddingBottom: 5, borderBottom: '1px solid var(--line)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 72px 110px 90px', gap: 8, paddingBottom: 5, borderBottom: '1px solid var(--ds-line)' }}>
         {['Projection', 'Rows', 'Freshness', 'Status'].map((heading) => (
           <Text key={heading} as="span" size="xs" color="tertiary">
             {heading}
@@ -79,7 +79,7 @@ export function DelegationProjectionProbePanel() {
         return (
           <div
             key={probe.key}
-            style={{ display: 'grid', gridTemplateColumns: '1fr 72px 110px 90px', gap: 8, padding: '7px 0', borderBottom: '1px solid var(--line-2)' }}
+            style={{ display: 'grid', gridTemplateColumns: '1fr 72px 110px 90px', gap: 8, padding: '7px 0', borderBottom: '1px solid var(--ds-line-soft)' }}
           >
             <div style={{ minWidth: 0 }}>
               <Text as="div" size="sm" color="primary">{probe.label}</Text>

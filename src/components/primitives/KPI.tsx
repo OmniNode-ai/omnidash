@@ -4,11 +4,11 @@ import { CountUp } from './CountUp';
 type KPITone = 'default' | 'good' | 'warn' | 'bad' | 'accent';
 
 const TONE_COLOR: Record<KPITone, string> = {
-  default: 'var(--ink)',
-  good: 'var(--good)',
-  warn: 'var(--warn)',
-  bad: 'var(--bad)',
-  accent: 'var(--accent)',
+  default: 'var(--ds-ink)',
+  good: 'var(--ds-ok)',
+  warn: 'var(--ds-warn)',
+  bad: 'var(--ds-bad)',
+  accent: 'var(--ds-brand)',
 };
 
 export interface KPIProps {
@@ -41,13 +41,13 @@ export function KPI({
     <div className="kpi">
       <div
         className="kpi-num tnum"
-        style={{ color: toneColor, fontSize: big ? 56 : 'var(--kpi-num)' }}
+        style={{ color: toneColor, fontSize: big ? 56 : 'var(--ds-kpi-num)' }}
       >
         <CountUp value={value} prefix={prefix} suffix={suffix} decimals={decimals} />
       </div>
       <div className="kpi-label">{label}</div>
       {caption && (
-        <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4, fontStyle: 'italic' }}>
+        <div style={{ fontSize: 11, color: 'var(--ds-ink-3)', marginTop: 4, fontStyle: 'italic' }}>
           {caption}
         </div>
       )}

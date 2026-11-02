@@ -49,8 +49,8 @@ export function DelegationEvidenceTabs() {
             gap: 10,
             padding: '6px 10px',
             marginBottom: 8,
-            background: 'color-mix(in srgb, var(--color-ok, #22c55e) 8%, transparent)',
-            border: '1px solid color-mix(in srgb, var(--color-ok, #22c55e) 25%, transparent)',
+            background: 'color-mix(in srgb, var(--ds-ok, var(--ds-hue-green)) 8%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--ds-ok, var(--ds-ok)) 25%, transparent)',
             borderRadius: 6,
           }}
         >
@@ -65,7 +65,7 @@ export function DelegationEvidenceTabs() {
       )}
       <div
         role="tablist"
-        style={{ display: 'flex', gap: 6, flexWrap: 'wrap', borderBottom: '1px solid var(--line)', paddingBottom: 8, marginBottom: 12 }}
+        style={{ display: 'flex', gap: 6, flexWrap: 'wrap', borderBottom: '1px solid var(--ds-line)', paddingBottom: 8, marginBottom: 12 }}
       >
         {TABS.map(({ id, label, Icon }) => {
           const isActive = activeTab === id;
@@ -80,13 +80,13 @@ export function DelegationEvidenceTabs() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
-                border: `1px solid ${isActive ? 'var(--brand)' : 'var(--line)'}`,
+                border: `1px solid ${isActive ? 'var(--ds-brand)' : 'var(--ds-line)'}`,
                 // Bottom-border accent gives the active tab a clear underline indicator
                 // that reads in both themes even where the brand border is subtle.
-                borderBottom: `2px solid ${isActive ? 'var(--brand)' : 'transparent'}`,
+                borderBottom: `2px solid ${isActive ? 'var(--ds-brand)' : 'transparent'}`,
                 borderRadius: 6,
                 padding: '6px 9px',
-                background: isActive ? 'var(--brand-soft)' : 'transparent',
+                background: isActive ? 'var(--ds-brand-soft)' : 'transparent',
                 color: 'inherit',
                 cursor: 'pointer',
               }}
@@ -140,7 +140,7 @@ function OverviewTab() {
         <OverviewFact label="Decision rows" value={String(snapshot.decisions.length)} />
       </div>
       {selectedRun && (
-        <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--line)' }}>
+        <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--ds-line)' }}>
           <Text as="div" size="xs" color="tertiary" style={{ marginBottom: 6 }}>
             Selected run
           </Text>
@@ -174,7 +174,7 @@ function CostTokensTab() {
         />
       </div>
       {selectedRun && (
-        <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--line)' }}>
+        <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--ds-line)' }}>
           <Text as="div" size="xs" color="tertiary" style={{ marginBottom: 6 }}>
             Selected run
           </Text>

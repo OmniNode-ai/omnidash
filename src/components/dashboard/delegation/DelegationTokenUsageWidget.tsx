@@ -5,10 +5,11 @@ import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { Text } from '@/components/ui/typography';
 import { KPI } from '@/components/primitives';
-import { useThemeColors } from '@/theme';
+
 import { useDelegationRunContextOptional } from '@/components/dashboard/delegation-control-plane/DelegationRunContext';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 import { formatUsd, usdFractionDigits } from '@/lib/currency';
+import { useTokenColors } from '@/design-system/useTokenColors';
 
 // ── Projection types (from llm_call_metrics SQLite table, OMN-10623) ─
 
@@ -50,9 +51,9 @@ export interface DelegationTokenUsageConfig {
 // ── Provenance badge ──────────────────────────────────────────────────
 
 const PROVENANCE_COLOR: Record<TokenProvenance, string> = {
-  measured: 'var(--good)',
-  estimated: 'var(--warn)',
-  unknown: 'var(--ink-4)',
+  measured: 'var(--ds-ok)',
+  estimated: 'var(--ds-warn)',
+  unknown: 'var(--ds-ink-4)',
 };
 
 const PROVENANCE_LABEL: Record<TokenProvenance, string> = {
@@ -113,7 +114,7 @@ function ModelTokenRow({
   const widthPct = maxTokens > 0 ? (row.total_tokens / maxTokens) * 100 : 0;
 
   return (
-    <div style={{ padding: '6px 0', borderBottom: '1px solid var(--line-2)' }}>
+    <div style={{ padding: '6px 0', borderBottom: '1px solid var(--ds-line-soft)' }}>
       <div
         style={{
           display: 'grid',
@@ -146,7 +147,7 @@ function ModelTokenRow({
           {fmtTokens(row.completion_tokens)}
         </Text>
         {showCost && (
-          <Text as="span" size="sm" family="mono" tabularNums style={{ textAlign: 'right', color: 'var(--warn)' }}>
+          <Text as="span" size="sm" family="mono" tabularNums style={{ textAlign: 'right', color: 'var(--ds-warn)' }}>
             {fmtUsd(row.estimated_cost_usd)}
           </Text>
         )}
@@ -158,7 +159,7 @@ function ModelTokenRow({
             flex: 1,
             height: 6,
             borderRadius: 3,
-            background: 'var(--panel-2)',
+            background: 'var(--ds-surface-2)',
             overflow: 'hidden',
           }}
         >
@@ -230,7 +231,7 @@ export default function DelegationTokenUsageWidget(props: { config: DelegationTo
     return data?.[0] ?? null;
   }, [runCtx, data]);
 
-  const colors = useThemeColors();
+  const colors = useTokenColors();
 
   const sorted = useMemo(() => {
     if (!projection) return [];
@@ -264,7 +265,7 @@ export default function DelegationTokenUsageWidget(props: { config: DelegationTo
               gridTemplateColumns: showCost ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)',
               gap: 12,
               paddingBottom: 12,
-              borderBottom: '1px solid var(--line)',
+              borderBottom: '1px solid var(--ds-line)',
             }}
           >
             <KPI
@@ -321,7 +322,7 @@ export default function DelegationTokenUsageWidget(props: { config: DelegationTo
               gridTemplateColumns: showCost ? '1fr 80px 80px 72px' : '1fr 80px 80px',
               gap: 8,
               paddingBottom: 4,
-              borderBottom: '1px solid var(--line)',
+              borderBottom: '1px solid var(--ds-line)',
             }}
           >
             {(['Model', 'Prompt', 'Compl.', ...(showCost ? ['Cost'] : [])] as const).map((h, i) => (

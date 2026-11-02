@@ -50,7 +50,7 @@ export const ColorRoles: StoryObj = {
             alignItems: 'center',
             gap: 12,
             padding: '6px 10px',
-            border: '1px solid var(--line)',
+            border: '1px solid var(--ds-line)',
             borderRadius: 6,
             width: 'fit-content',
           }}
@@ -162,7 +162,7 @@ export const Truncate: StoryObj = {
       <Text size="sm" family="mono" color="tertiary">
         width: 200px, truncate
       </Text>
-      <div style={{ width: 200, border: '1px solid var(--line)', padding: 8, borderRadius: 6 }}>
+      <div style={{ width: 200, border: '1px solid var(--ds-line)', padding: 8, borderRadius: 6 }}>
         <Text truncate>
           A very long string that will definitely overflow the container width and get ellipsized.
         </Text>
@@ -180,7 +180,7 @@ export const KitchenSink_DataRow: StoryObj = {
         alignItems: 'center',
         gap: 16,
         padding: '8px 12px',
-        border: '1px solid var(--line)',
+        border: '1px solid var(--ds-line)',
         borderRadius: 6,
         maxWidth: 640,
       }}
@@ -195,9 +195,9 @@ export const KitchenSink_DataRow: StoryObj = {
         style={{
           display: 'inline-flex',
           padding: '2px 8px',
-          border: '1px solid var(--line)',
+          border: '1px solid var(--ds-line)',
           borderRadius: 999,
-          background: 'var(--panel-2)',
+          background: 'var(--ds-surface-2)',
         }}
       >
         <Text size="xs" weight="semibold" transform="uppercase" color="secondary" className="text-tracked">
@@ -216,7 +216,7 @@ export const KitchenSink_ColumnHeader: StoryObj = {
         gridTemplateColumns: '200px 1fr auto',
         gap: 16,
         padding: '8px 12px',
-        borderBottom: '1px solid var(--line)',
+        borderBottom: '1px solid var(--ds-line)',
         maxWidth: 640,
       }}
     >
@@ -236,7 +236,7 @@ export const KitchenSink_ColumnHeader: StoryObj = {
 export const ThemeContrast: StoryObj = {
   render: () => (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-      <div data-theme="light" style={{ background: 'var(--panel)', padding: 12, borderRadius: 6, border: '1px solid var(--line)' }}>
+      <div data-theme="light" style={{ background: 'var(--ds-surface)', padding: 12, borderRadius: 6, border: '1px solid var(--ds-line)' }}>
         <Text size="sm" family="mono" color="tertiary" style={{ display: 'block', marginBottom: 8 }}>
           data-theme=&quot;light&quot;
         </Text>
@@ -248,7 +248,7 @@ export const ThemeContrast: StoryObj = {
           ))}
         </div>
       </div>
-      <div data-theme="dark" style={{ background: 'var(--panel)', padding: 12, borderRadius: 6, border: '1px solid var(--line)' }}>
+      <div data-theme="dark" style={{ background: 'var(--ds-surface)', padding: 12, borderRadius: 6, border: '1px solid var(--ds-line)' }}>
         <Text size="sm" family="mono" color="tertiary" style={{ display: 'block', marginBottom: 8 }}>
           data-theme=&quot;dark&quot;
         </Text>

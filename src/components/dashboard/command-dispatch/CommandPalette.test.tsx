@@ -1,7 +1,7 @@
 // OMN-12402: CommandPalette had two contrast issues — ORCHESTRATOR/COMPUTE
-// badges rendered as weak plain text (mixing var(--accent)/var(--text-tertiary)
+// badges rendered as weak plain text (mixing var(--ds-brand)/var(--ds-ink-3)
 // with hardcoded hex), and the Dispatch button hardcoded color:'white' over a
-// pale var(--accent) (= --brand-soft) fill, invisible in light mode.
+// pale var(--ds-brand) (= --brand-soft) fill, invisible in light mode.
 //
 // These tests assert the component now drives all four badges from the
 // design-system node-type role tokens and the Dispatch button from the
@@ -27,7 +27,7 @@ describe('CommandPalette — node-type badges (OMN-12402 issue 1)', () => {
     render(<CommandPalette onClose={() => {}} />, { wrapper: Wrapper });
 
     // One badge per KNOWN_NODES entry; each must use its node-type role tokens
-    // and never the weak var(--accent)/var(--text-tertiary) or hardcoded hex.
+    // and never the weak var(--ds-brand)/var(--ds-ink-3) or hardcoded hex.
     for (const kind of ['ORCHESTRATOR', 'EFFECT', 'REDUCER', 'COMPUTE']) {
       const labels = screen.getAllByText(kind);
       expect(labels.length).toBeGreaterThan(0);
@@ -48,10 +48,10 @@ describe('CommandPalette — node-type badges (OMN-12402 issue 1)', () => {
     for (const kind of ['ORCHESTRATOR', 'COMPUTE']) {
       const span = screen.getAllByText(kind)[0].closest('span');
       const style = span!.getAttribute('style') ?? '';
-      // ORCHESTRATOR no longer reads as plain var(--accent); COMPUTE no longer
-      // falls back to var(--text-tertiary).
-      expect(style).not.toContain('var(--accent)');
-      expect(style).not.toContain('var(--text-tertiary)');
+      // ORCHESTRATOR no longer reads as plain var(--ds-brand); COMPUTE no longer
+      // falls back to var(--ds-ink-3).
+      expect(style).not.toContain('var(--ds-brand)');
+      expect(style).not.toContain('var(--ds-ink-3)');
       expect(style).not.toContain('#d97706');
       expect(style).not.toContain('#7c3aed');
     }
@@ -70,10 +70,10 @@ describe('CommandPalette — Dispatch button (OMN-12402 issue 2)', () => {
     openPayloadStage();
     const button = screen.getByTestId('dispatch-submit');
     const style = button.getAttribute('style') ?? '';
-    expect(style).toContain('var(--brand)');
-    expect(style).toContain('var(--primary-foreground)');
+    expect(style).toContain('var(--ds-brand)');
+    expect(style).toContain('var(--ds-brand-ink)');
     // The literal 'white' that vanished against a light --accent is gone, and
-    // the background is no longer the pale var(--accent) (= --brand-soft) tint.
+    // the background is no longer the pale var(--ds-brand) (= --brand-soft) tint.
     expect(style).not.toContain('white');
     expect(style).not.toMatch(/background:\s*var\(--accent\)/);
   });

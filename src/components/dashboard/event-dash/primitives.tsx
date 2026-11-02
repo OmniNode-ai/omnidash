@@ -153,19 +153,20 @@ export function BarRow({
   label,
   value,
   pct,
-  color = 'blue',
+  tone = 'blue',
 }: {
   label: ReactNode;
   value: ReactNode;
   pct: number;
-  color?: string;
+  /** The bar's tone name (an Event Dash `m-*` fill), not a colour. */
+  tone?: 'blue' | 'green' | 'purple' | 'amber' | 'pink' | 'red' | 'teal';
 }) {
   return (
     <div className="barrow">
       <div className="lab">{label}</div>
       <div className="val">{value}</div>
       <div className="track2 bar-track">
-        <div className={`bar-fill m-${color}`} style={{ width: `${Math.max(2, pct)}%` }} />
+        <div className={`bar-fill m-${tone}`} style={{ width: `${Math.max(2, pct)}%` }} />
       </div>
     </div>
   );

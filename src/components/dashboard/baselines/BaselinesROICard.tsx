@@ -53,7 +53,7 @@ export default function BaselinesROICard({ config: _config }: { config: Record<s
             <DeltaMetric label="Time Delta" value={data.timeDeltaMs} unit="ms" />
             <DeltaMetric label="Retry Delta" value={data.retryDelta} />
           </div>
-          <div style={{ borderTop: '1px solid var(--line)', paddingTop: '0.75rem' }}>
+          <div style={{ borderTop: '1px solid var(--ds-line)', paddingTop: '0.75rem' }}>
             <div style={{ marginBottom: '0.5rem' }}>
               <Text as="div" size="md" color="secondary">Recommendations</Text>
             </div>

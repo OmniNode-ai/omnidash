@@ -19,19 +19,19 @@ import type {
 
 function signalBg(signal: EvalSignal): string {
   switch (signal) {
-    case 'helpful': return 'color-mix(in srgb, var(--color-ok, #22c55e) 22%, transparent)';
-    case 'harmful': return 'color-mix(in srgb, var(--color-bad, #ef4444) 22%, transparent)';
-    case 'neutral': return 'color-mix(in srgb, var(--color-warn, #f59e0b) 18%, transparent)';
-    case 'unknown': return 'var(--panel-2)';
+    case 'helpful': return 'color-mix(in srgb, var(--ds-ok, var(--ds-ok)) 22%, transparent)';
+    case 'harmful': return 'color-mix(in srgb, var(--ds-bad, var(--ds-bad)) 22%, transparent)';
+    case 'neutral': return 'color-mix(in srgb, var(--ds-warn, var(--ds-hue-amber)) 18%, transparent)';
+    case 'unknown': return 'var(--ds-surface-2)';
   }
 }
 
 function signalBorder(signal: EvalSignal): string {
   switch (signal) {
-    case 'helpful': return 'color-mix(in srgb, var(--color-ok, #22c55e) 42%, transparent)';
-    case 'harmful': return 'color-mix(in srgb, var(--color-bad, #ef4444) 42%, transparent)';
-    case 'neutral': return 'color-mix(in srgb, var(--color-warn, #f59e0b) 32%, transparent)';
-    case 'unknown': return 'var(--line-2)';
+    case 'helpful': return 'color-mix(in srgb, var(--ds-ok, var(--ds-ok)) 42%, transparent)';
+    case 'harmful': return 'color-mix(in srgb, var(--ds-bad, var(--ds-bad)) 42%, transparent)';
+    case 'neutral': return 'color-mix(in srgb, var(--ds-warn, var(--ds-hue-amber)) 32%, transparent)';
+    case 'unknown': return 'var(--ds-line-soft)';
   }
 }
 
@@ -79,7 +79,7 @@ function PassRateCell({ result }: { result: EvalResult | undefined }) {
   if (result == null) {
     return (
       <td style={cellTd}>
-        <div style={{ ...cellBox, border: '1px solid var(--line-2)', background: 'var(--panel-1)' }}>
+        <div style={{ ...cellBox, border: '1px solid var(--ds-line-soft)', background: 'var(--ds-surface)' }}>
           <Text as="span" size="xs" color="tertiary">—</Text>
         </div>
       </td>
@@ -89,7 +89,7 @@ function PassRateCell({ result }: { result: EvalResult | undefined }) {
   if (result.pass_rate == null) {
     return (
       <td style={cellTd}>
-        <div style={{ ...cellBox, border: '1px solid var(--line-2)', background: 'var(--panel-1)' }}>
+        <div style={{ ...cellBox, border: '1px solid var(--ds-line-soft)', background: 'var(--ds-surface)' }}>
           <Text as="span" size="xs" color="tertiary">—</Text>
         </div>
       </td>
@@ -126,7 +126,7 @@ function DilutionCell({ delta }: { delta: number | null }) {
   if (delta == null) {
     return (
       <td colSpan={3} style={cellTd}>
-        <div style={{ ...dilutionBox, border: '1px solid var(--line-2)', background: 'var(--panel-1)' }}>
+        <div style={{ ...dilutionBox, border: '1px solid var(--ds-line-soft)', background: 'var(--ds-surface)' }}>
           <Text as="span" size="xs" color="tertiary">—</Text>
         </div>
       </td>
@@ -134,8 +134,8 @@ function DilutionCell({ delta }: { delta: number | null }) {
   }
   const pts = Math.round(delta * 100);
   const color: 'bad' | 'ok' | 'tertiary' = pts < 0 ? 'bad' : pts > 0 ? 'ok' : 'tertiary';
-  const bg = pts < 0 ? signalBg('harmful') : pts > 0 ? signalBg('helpful') : 'var(--panel-1)';
-  const border = pts < 0 ? signalBorder('harmful') : pts > 0 ? signalBorder('helpful') : 'var(--line-2)';
+  const bg = pts < 0 ? signalBg('harmful') : pts > 0 ? signalBg('helpful') : 'var(--ds-surface)';
+  const border = pts < 0 ? signalBorder('harmful') : pts > 0 ? signalBorder('helpful') : 'var(--ds-line-soft)';
   return (
     <td colSpan={3} style={cellTd}>
       <div style={{ ...dilutionBox, border: `1px solid ${border}`, background: bg }}>
@@ -240,17 +240,17 @@ export default function InstructionEvalHeatmap({ config: _config = {} }: { confi
               <table style={{ borderCollapse: 'separate', borderSpacing: 3 }}>
                 <thead>
                   <tr>
-                    <th style={{ ...headTh, textAlign: 'left', minWidth: 88, position: 'sticky', left: 0, background: 'var(--panel-0, transparent)' }}>
+                    <th style={{ ...headTh, textAlign: 'left', minWidth: 88, position: 'sticky', left: 0, background: 'var(--ds-surface, transparent)' }}>
                       <Text as="span" size="xs" color="tertiary">Model</Text>
                     </th>
                     {tasks.map((task) => (
-                      <th key={task} colSpan={3} style={{ ...headTh, textAlign: 'center', borderBottom: '1px solid var(--line-2)' }}>
+                      <th key={task} colSpan={3} style={{ ...headTh, textAlign: 'center', borderBottom: '1px solid var(--ds-line-soft)' }}>
                         <Text as="span" size="xs" weight="semibold" color="primary">{fmtTask(task)}</Text>
                       </th>
                     ))}
                   </tr>
                   <tr>
-                    <th style={{ ...headTh, position: 'sticky', left: 0, background: 'var(--panel-0, transparent)' }} />
+                    <th style={{ ...headTh, position: 'sticky', left: 0, background: 'var(--ds-surface, transparent)' }} />
                     {tasks.flatMap((task) =>
                       CONTEXT_MODES.map((mode) => (
                         <th key={`${task}::${mode}`} style={{ ...headTh, textAlign: 'center', width: CELL_W }}>
@@ -265,7 +265,7 @@ export default function InstructionEvalHeatmap({ config: _config = {} }: { confi
                 <tbody>
                   {models.map((model) => (
                     <tr key={model}>
-                      <td style={{ ...headTh, verticalAlign: 'middle', position: 'sticky', left: 0, background: 'var(--panel-0, transparent)' }}>
+                      <td style={{ ...headTh, verticalAlign: 'middle', position: 'sticky', left: 0, background: 'var(--ds-surface, transparent)' }}>
                         <Text as="span" size="xs" weight="semibold" color="primary">{model}</Text>
                       </td>
                       {tasks.flatMap((task) =>
@@ -278,7 +278,7 @@ export default function InstructionEvalHeatmap({ config: _config = {} }: { confi
 
                   {/* Dilution row: one merged cell per task = mean(full − chunk) across all models */}
                   <tr>
-                    <td style={{ ...headTh, verticalAlign: 'middle', position: 'sticky', left: 0, background: 'var(--panel-0, transparent)' }}>
+                    <td style={{ ...headTh, verticalAlign: 'middle', position: 'sticky', left: 0, background: 'var(--ds-surface, transparent)' }}>
                       <Text as="span" size="xs" weight="semibold" color="tertiary">dilution</Text>
                       <Text as="div" size="xs" color="tertiary">full − chunk</Text>
                     </td>
