@@ -134,6 +134,27 @@ export function summarise(hits: Hit[], limit = 25): string {
 
 /** AC3: the one chart kit. Every chart a page draws comes from here. */
 export const CHART_KIT = 'src/design-system/charts/';
+
+/**
+ * AC4: the pages the component kit serves: the six local pages (their page component and page-local modules), the
+ * Usage widgets they mount, and Delegation Evidence. The widget dashboard is not one of them (see WIDGET_DASHBOARD_CHARTS).
+ */
+export function isKitPage(path: string): boolean {
+  return path === 'src/pages/LocalDashboardPage.tsx' || path === 'src/pages/DelegationEvidencePage.tsx'
+    || path.startsWith('src/pages/local/') || path.startsWith('src/components/dashboard/usage/');
+}
+/** The classes only a kit component writes; a page writing one itself holds a page-local copy. Grows as AC4 moves each. */
+const KIT_COMPONENT_CLASS = /(['"`\s])(local-dashboard-empty)(?=['"`\s])/g;
+
+/** AC4: a page-local copy of a kit component (its class written outside src/design-system). */
+export function pageLocalCopies(path: string, text: string): Hit[] {
+  if (!/\.tsx?$/.test(path) || path.startsWith('src/design-system/') || isExempt(path) || !isKitPage(path)) return [];
+  const hits: Hit[] = [];
+  stripComments(path, text).split('\n').forEach((line, i) => {
+    for (const m of line.matchAll(KIT_COMPONENT_CLASS)) hits.push({ path, line: i + 1, text: m[2]! });
+  });
+  return hits;
+}
 /**
  * The widget dashboard (/dashboard) is a builder of composable widgets, not one of the six product pages AC3 and AC4 name
  * (Overview, Runs, Workflow, Usage, Settings, Delegation Evidence). Its widgets keep their own ECharts and three.js

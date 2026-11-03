@@ -2,7 +2,7 @@ import { useMemo, useState, type CSSProperties } from 'react';
 import { Link } from 'wouter';
 
 import { formatUsd } from '@/lib/currency';
-import { DashboardTabs, DashboardToggle } from '@/components/dashboard/DashboardTabs';
+import { DashboardTabs, DashboardToggle, EmptyState } from '@/design-system/components';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { DEFAULT_RUNS_VIEW, writeRunsSearch, type RunsViewState } from '@/navigation/runs-url-state';
 import {
@@ -244,7 +244,7 @@ export function UsageAnalysis({ decisionRows, complete = false }: { decisionRows
   const models = useMemo(() => groupDecisions(decisionRows, 'model'), [decisionRows]);
   const coverage = coverageOf(decisionRows);
   const sample = totalsOf(decisionRows).runs;
-  if (sample === 0) return <p className="local-dashboard-empty" role="status" data-usage-analysis>No served runs to analyse yet</p>;
+  if (sample === 0) return <EmptyState data-usage-analysis>No served runs to analyse yet</EmptyState>;
   // Part 30 AC202: four views of one sample, behind tabs; the sample label stays above them so every view keeps it.
   return <section className="usage-analysis" data-usage-analysis aria-label="Usage analysis">
     <p className="local-dashboard-caption">
@@ -284,7 +284,7 @@ export function RunsTotals({ rows, sample, complete = false }: { rows: readonly 
  */
 export function RoutingAnalysis({ rows, complete = false }: { rows: readonly unknown[]; complete?: boolean }) {
   const routes = useMemo(() => routesOf(rows), [rows]);
-  if (routes.length === 0) return <p className="local-dashboard-empty" role="status">No returned runs to group by route</p>;
+  if (routes.length === 0) return <EmptyState>No returned runs to group by route</EmptyState>;
   return <article className="local-dashboard-panel local-run-routing" aria-label="Routing" aria-busy="false">
     <h2 className="local-dashboard-panel-title"><ConceptIcon concept="run-routes" label="Routing" size={16} />Routing</h2>
     <p className="local-dashboard-caption" data-routing-note>

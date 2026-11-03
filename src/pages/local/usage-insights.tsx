@@ -10,6 +10,7 @@ import { GroupedBars } from '@/design-system/charts';
 import { aggregateUsageRows, type UsageAggregates } from './insight-aggregates';
 import { tierLabel } from './plain-text';
 import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
+import { EmptyState } from '@/design-system/components';
 
 const USAGE_WINDOW_DAYS = 30;
 
@@ -130,7 +131,7 @@ function TokensByModel({ data, titled }: { data: UsageAggregates; titled: boolea
   const words = (value: number | null) => (value === null ? 'Not recorded' : formatFullCount(value));
   return <figure className="local-chart usage-insight" aria-label="Tokens in vs out by model">
     {titled && <h3><ConceptIcon concept="tokens-model" size={16} />Tokens in vs out by model</h3>}
-    {data.models.length === 0 ? <p role="status" className="local-dashboard-empty">No token data available</p> : (
+    {data.models.length === 0 ? <EmptyState>No token data available</EmptyState> : (
       <GroupedBars label="Token counts by model" wrapNames
         legend={[{ label: 'Tokens in', color: 'var(--ds-field-tokens-in)' }, { label: 'Tokens out', color: 'var(--ds-field-tokens-out)' }]}
         groups={data.models.map(model => ({

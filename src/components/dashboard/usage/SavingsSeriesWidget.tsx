@@ -12,6 +12,7 @@ import { useProjectionSnapshotQuery } from '@/hooks/useProjectionSnapshotQuery';
 import { TOPICS } from '@shared/types/topics';
 import { formatUsd } from './UsageByModelDayWidget';
 import { useState } from 'react';
+import { EmptyState } from '@/design-system/components';
 
 /** The subset of metering-summary.v1 columns the series renders. */
 export interface MeteringSummaryRow {
@@ -58,7 +59,7 @@ export function meteringDaysByBaseline(rows: readonly unknown[]): Array<[string,
 export function MeteringDaySeries({ rows }: { rows: readonly unknown[] }) {
   const series = meteringDaysByBaseline(rows);
   if (series.length === 0) {
-    return <p className="local-dashboard-empty" role="status">{NO_SAVINGS_ROWS}</p>;
+    return <EmptyState>{NO_SAVINGS_ROWS}</EmptyState>;
   }
   return (
     <>

@@ -12,6 +12,7 @@ import { SettingsEmptyState } from '@/components/dashboard/SettingsEmptyState';
 import { AlertBanner } from '@/components/dashboard/alert-banner/AlertBanner';
 import { StatusGrid } from '@/components/dashboard/status-grid/StatusGrid';
 import { validateStatusGridRow, type AlertBannerRow, type StatusGridRow, type StatusGridSeverity } from '@shared/types/component-manifest';
+import { EmptyState } from '@/design-system/components';
 
 export const ENVIRONMENT_TOPIC = 'onex.snapshot.projection.local-environment.v1';
 
@@ -95,7 +96,7 @@ export function EnvironmentAlerts({ rows, mode, plain = false, allowClear = true
   const missingCode = plain && inMode(rows, mode).some(row => !text(row.alert_code)
     && Boolean(text(row.alert_severity) || text(row.alert_since)));
   return <>
-    {missingCode && <p className="local-dashboard-empty" role="status">Alert details are not available.</p>}
+    {missingCode && <EmptyState>Alert details are not available.</EmptyState>}
     {(alerts.length > 0 || (allowClear && !missingCode)) && <AlertBanner alerts={alerts} waitsOn={[plain ? `${mode} service health` : ENVIRONMENT_TOPIC]}
       codeLabel={plain ? alertLabel : undefined} refusalMessage={plain ? 'Alert details are not available.' : undefined} />}
   </>;
@@ -128,7 +129,7 @@ export function EnvironmentPanel({ rows, complete = true }: { rows: readonly Env
   // Rows kept from an earlier empty read beside a failed one are not a read that found nothing (review of eddb28d6).
   if (rows.length === 0) return complete ? <NoServiceHealth /> : <ServiceHealthUnread />;
   return <>
-    {invalidMode && <p className="local-dashboard-empty" role="status">Some service health details are not available.</p>}
+    {invalidMode && <EmptyState>Some service health details are not available.</EmptyState>}
     {modes.map(mode => {
     const selected = inMode(rows, mode);
     const validHealth = selected.filter(row => validateStatusGridRow(environmentTileRows([row], mode)[0]!).valid);
@@ -170,7 +171,7 @@ export function EnvironmentPanel({ rows, complete = true }: { rows: readonly Env
           <div><dt>Last start</dt><dd title={text(first.token_minted_at) || undefined}>{text(first.token_minted_at) ? readableTime(text(first.token_minted_at)) ?? text(first.token_minted_at) : 'Not recorded'}</dd></div>
         </>}
       </dl>
-      {refusedHealth && <p className="local-dashboard-empty" role="status">Some service health details are not available.</p>}
+      {refusedHealth && <EmptyState>Some service health details are not available.</EmptyState>}
       {validHealth.length > 0 && <div role="status"><EnvironmentStatus rows={validHealth} mode={mode} plain /></div>}
       <div role="status"><EnvironmentAlerts rows={selected} mode={mode} plain allowClear={allowClear} /></div>
       </details>

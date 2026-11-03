@@ -7,6 +7,7 @@ import { formatUsd } from '@/components/dashboard/usage/UsageByModelDayWidget';
 import type { BoundProjectionSnapshot } from '@/layout/local-page-loader';
 import { plainFailureMessage } from './plain-text';
 import { useModelIdentityStyle } from '@/components/dashboard/model-tiers';
+import { EmptyState } from '@/design-system/components';
 
 type Run = Record<string, unknown>;
 const recorded = (value: unknown) => value === null || value === undefined || value === '' ? 'Not recorded' : String(value);
@@ -137,7 +138,7 @@ function AnswerText({ text }: { text: string }) {
  */
 export function RunAnswer({ read, runId }: { read: BoundProjectionSnapshot | undefined; runId: string }) {
   const id = useId();
-  const state = (text: string, error = false) => <p className={error ? 'local-dashboard-error' : 'local-dashboard-empty'}>{text}</p>;
+  const state = (text: string, error = false) => (error ? <p className="local-dashboard-error">{text}</p> : <EmptyState status={false}>{text}</EmptyState>);
   let body: ReactNode;
   if (!read || read.runId !== runId) {
     body = state('Reading the answer…');

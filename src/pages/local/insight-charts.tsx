@@ -18,6 +18,7 @@ import {
   type MeteringWindow,
 } from './insight-aggregates';
 import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
+import { EmptyState } from '@/design-system/components';
 
 /**
  * OMN-21166 AC26 (mockup build; rule change R-B, Lakshman 2026-10-18): the Overview's trends and breakdowns, counted
@@ -657,7 +658,7 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
         {view === 'runs' && limitLine !== null && <div className="ins-slice-tools">
           <p className="local-dashboard-caption ins-sub" data-testid="insights-total">{limitLine}</p>
         </div>}
-        {emptyMessage !== null ? <p className="local-dashboard-empty ins-empty" role="status">{emptyMessage}</p>
+        {emptyMessage !== null ? <EmptyState className="ins-empty">{emptyMessage}</EmptyState>
           : view === 'runs' ? <><RunsPerDay days={chartDays} />
             {/* Live review 2026-10-25: no "More activity" on Overview; part 15 AC96: no "Explore" links, the sidebar reaches Runs and Usage. */}
             </>
@@ -682,7 +683,7 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
         </div>
       )}
       <p className="local-dashboard-caption ins-sub" data-testid="insights-total">{population}{undated}{view === 'summary' ? null : <> · Row timestamps: {servedSpan}{earlier}{window.kind === 'days' ? '' : ' · Comparisons with the previous window appear for 1, 7, 15 and 30 days'}{window.kind === 'all' || window.kind === 'custom' ? ` · Charts show at most ${MAX_ALL_TIME_DAYS} UTC days; ${count(chartRuns.length)} of ${count(runs.length)} selected runs plotted` : ''}</>}</p>
-      {emptyMessage !== null ? <p className="local-dashboard-empty ins-empty" role="status" aria-label="Insights">{emptyMessage}</p> : (
+      {emptyMessage !== null ? <EmptyState className="ins-empty" aria-label="Insights">{emptyMessage}</EmptyState> : (
         <div className="overview-chart-sections">
           {view === 'all' && <RunWindowKpis runs={runs} decisions={decisions} now={now} days={window.kind === 'days' ? window.days : MAX_ALL_TIME_DAYS} label={windowCaption(window)} comparisonEnabled={window.kind === 'days'} />}
           {view !== 'analysis' && <ChartSection concept="activity" title="Activity over time"><RunsPerDay days={chartDays} /><TokensPerDay days={chartDays} /></ChartSection>}

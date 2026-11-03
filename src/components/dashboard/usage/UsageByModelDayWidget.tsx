@@ -42,6 +42,7 @@ export interface UsageByModelDayRow {
 
 import { formatDashboardUsd as formatUsd } from '@/lib/dashboard-currency';
 import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
+import { EmptyState } from '@/design-system/components';
 export { formatDashboardUsd as formatUsd } from '@/lib/dashboard-currency';
 
 export const NO_USAGE_ROWS = 'No usage rows yet';
@@ -102,7 +103,7 @@ export function UsageByModelDayTable({ rows, interactive = false }: { rows: read
   const currentPage = Math.min(page, Math.max(0, Math.ceil(filtered.length / 25) - 1));
   const shown = interactive ? filtered.slice(currentPage * 25, (currentPage + 1) * 25) : filtered;
   if (usage.length === 0) {
-    return <p className="local-dashboard-empty" role="status">{NO_USAGE_ROWS}</p>;
+    return <EmptyState>{NO_USAGE_ROWS}</EmptyState>;
   }
   return (
     <div className={interactive ? 'usage-records' : undefined}>
@@ -202,7 +203,7 @@ export function UsageTokensChart({ rows, days = 14 }: { rows: readonly unknown[]
   const names = [...new Set(shown.flatMap(day => [...byDay.get(day)!.keys()]))];
   const total = (day: string) => [...byDay.get(day)!.values()].reduce((sum, cell) => sum + cell.value, 0);
   const max = Math.max(0, ...shown.map(total));
-  if (shown.length === 0) return <p className="local-dashboard-empty" role="status">{NO_TOKEN_ROWS}</p>;
+  if (shown.length === 0) return <EmptyState>{NO_TOKEN_ROWS}</EmptyState>;
   const short = (day: string) => new Date(`${day}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
   return (
     <figure className="utc-chart" aria-label={`Tokens ${direction} per day by model`}>

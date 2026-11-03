@@ -13,7 +13,7 @@ import { formatUsd } from '@/components/dashboard/usage/UsageByModelDayWidget';
 import { isUnavailableField } from '@/components/dashboard/field-identity';
 import { EvPageShell } from '@/components/dashboard/event-dash/EvPageShell';
 import { KpiStrip } from '@/components/dashboard/KpiStrip';
-import { DashboardTabs } from '@/components/dashboard/DashboardTabs';
+import { DashboardTabs } from '@/design-system/components';
 import { RankedBars } from '@/design-system/charts';
 import {
   Badge,

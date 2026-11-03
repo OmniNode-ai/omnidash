@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight } from '@/design-system/icons';
 import { formatFullCount } from '@/lib/dashboard-count';
 import type { DailyMeteringTokenData } from '@/lib/daily-metering-tokens';
 import { TokenDirections } from './TokenDirections';
+import { EmptyState } from '@/design-system/components';
 
 const dayLabel = (day: string) => new Date(`${day}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 
@@ -10,7 +11,7 @@ const dayLabel = (day: string) => new Date(`${day}T00:00:00Z`).toLocaleDateStrin
 export function DailyMeteringTokens({ data }: { data: DailyMeteringTokenData }) {
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
-  if (data.days.length === 0) return <p className="local-dashboard-empty">{data.reason}</p>;
+  if (data.days.length === 0) return <EmptyState status={false}>{data.reason}</EmptyState>;
   const lastPage = Math.floor((data.days.length - 1) / 7);
   const currentPage = Math.min(page, lastPage);
   const end = data.days.length - currentPage * 7;

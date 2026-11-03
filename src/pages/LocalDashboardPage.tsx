@@ -33,7 +33,7 @@ import { TIER_TONES } from '@/design-system/charts';
 import { InsightsSection, InsightsWindowContext, MeteringActivityInsights, OverviewRunsContext, PassRateSparkline, TaskIcon, type ActivityWindow } from '@/pages/local/insight-charts';
 import { UsageInsights } from '@/pages/local/usage-insights';
 import { RoutingAnalysis, RunsTotals } from '@/pages/local/usage-analysis';
-import { DashboardTabs } from '@/components/dashboard/DashboardTabs';
+import { DashboardTabs, EmptyState } from '@/design-system/components';
 import { SinceLastVisit } from '@/pages/local/since-last-visit';
 import { ModelKeys, providerName } from '@/pages/local/model-keys';
 import { EnvironmentPanel, ServiceHealthUnread } from '@/pages/local/environment';
@@ -151,11 +151,11 @@ export const PENDING_SOURCES: Readonly<Record<string, { exposure: string; waitsO
 
 /** A component bound to no served exposure: what it waits on, never a blank panel (FR-3 partial pages, SV-3). */
 export function PendingState({ componentId }: { componentId: string }) {
-  if (componentId === 'api-keys-cloud') return <p className="local-dashboard-empty" role="status">{CLOUD_NOT_LINKED}</p>;
+  if (componentId === 'api-keys-cloud') return <EmptyState>{CLOUD_NOT_LINKED}</EmptyState>;
   return (
-    <p className="local-dashboard-empty" role="status">
+    <EmptyState>
       {notAvailableYet(PENDING_SOURCES[componentId]?.waitsOn)}
-    </p>
+    </EmptyState>
   );
 }
 
@@ -205,7 +205,7 @@ export function captionText(caption: Record<string, unknown> | null | undefined)
  */
 export function MetricCard({ component, config, row, caption, figureLine, figureLineFields = [], basisExtra }: MetricCardProps) {
   if ((component.data_bindings ?? []).length === 0) {
-    return <p className="local-dashboard-empty" role="status">{notAvailableYet(PENDING_SOURCES[component.component_id]?.waitsOn)}</p>;
+    return <EmptyState>{notAvailableYet(PENDING_SOURCES[component.component_id]?.waitsOn)}</EmptyState>;
   }
   const required = (component.data_bindings?.[0]?.required_fields ?? [config.metric_key])
     .filter((field) => !figureLineFields.includes(field));
@@ -366,7 +366,7 @@ export function RunLocallyCard({ row }: { row: Record<string, unknown> | null })
   if (row === null) return <NoRunsYet />;
   const byTier = asRecord(row.by_tier);
   if (byTier === null || !('local_call_share' in byTier)) {
-    return <p className="local-dashboard-empty" role="status">{ROUTING_SHARE_PENDING}</p>;
+    return <EmptyState>{ROUTING_SHARE_PENDING}</EmptyState>;
   }
   const share = byTier.local_call_share;
   if (typeof share !== 'number' || !Number.isFinite(share) || share < 0 || share > 1) return <p className="local-dashboard-metric" data-measured="false">Not measured</p>;
@@ -1442,7 +1442,7 @@ export function RecentRunsTable({ decisions, sessions, now = Date.now(), showCha
         <RunDurationChart runs={listed} onOpen={id => navigate(workflowHref(id))} />
         <RunTokensChart runs={listed} onOpen={id => navigate(workflowHref(id))} />
       </section>}
-      {recent.length === 0 && <p className="local-dashboard-empty" role="status">No runs match this filter</p>}
+      {recent.length === 0 && <EmptyState>No runs match this filter</EmptyState>}
       <div className={`local-dashboard-table-wrap local-dashboard-table-wrap--fit local-recent-runs-wrap${showAllFields ? ' local-recent-runs-wrap--all' : ''}`} role="region" aria-label="Recent run fields">
         <table id={tableId}>
           <thead><tr>
@@ -1481,10 +1481,10 @@ export function RecentRunsTable({ decisions, sessions, now = Date.now(), showCha
 /** RU-4: the typed empty state names the one command that makes the first run. */
 export function NoRunsYet() {
   return (
-    <div className="local-dashboard-empty" role="status">
+    <EmptyState as="div">
       <p>No runs yet</p>
       <p>Make the first run with <code>{FIRST_RUN_COMMAND}</code> <CopyButton text={FIRST_RUN_COMMAND} label="Copy the first-run command" /></p>
-    </div>
+    </EmptyState>
   );
 }
 
@@ -1739,7 +1739,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
         : `${formatDashboardCount(runs.length)} returned runs. Search, filters and charts use these records.`}</p>
       <RunsTotals rows={matching} sample={runs.length} complete={!truncated} />
       {routingSlot && createPortal(<RoutingAnalysis rows={runs} complete={!truncated} />, routingSlot)}
-      {shown.length === 0 ? <p className="local-dashboard-empty" role="status">No runs match these filters</p> : (
+      {shown.length === 0 ? <EmptyState>No runs match these filters</EmptyState> : (
         <>
           <div className={`local-runs-list-detail${selectedRun ? ' local-runs-list-detail--selected' : ''}`}>
             <div className="local-runs-table-column">
@@ -1881,7 +1881,7 @@ const QUALITY_FIELDS: ReadonlyArray<[string, string]> = [
  * browser divides, sums and rounds nothing, so a pass rate here is the view's and never recomputed from the counts.
  */
 export function QualityPanel({ row }: { row: Row | null }) {
-  if (!row) return <p className="local-dashboard-empty" role="status">No quality checks served yet</p>;
+  if (!row) return <EmptyState>No quality checks served yet</EmptyState>;
   return (
     <section aria-label="Quality">
       <PassRateMeter row={row} />
@@ -1923,7 +1923,7 @@ function tierModelCost(model: Row): string {
 export function ModelUsagePanel({ row }: { row: Row | null }) {
   const modelColor = useModelColor();
   const models = row && Array.isArray(row.by_model) ? asRecords(row.by_model) : [];
-  if (models.length === 0) return <p className="local-dashboard-empty" role="status">No model usage served yet</p>;
+  if (models.length === 0) return <EmptyState>No model usage served yet</EmptyState>;
   const share = (value: unknown) => (isMissing(value) || !Number.isFinite(Number(value)) ? null : Number(value));
   return (
     // AC144: all served models keep upright bars; long names wrap and the plot scrolls inside its panel when narrow.
@@ -1957,7 +1957,7 @@ export function TierMixPanel({ row, compact = false }: { row: Row | null; compac
     ? (row.by_tier as Row) : null;
   const tiers = byTier && Array.isArray(byTier.tiers) ? asRecords(byTier.tiers) : [];
   if (!byTier || tiers.length === 0) {
-    return <p className="local-dashboard-empty" role="status">No tier mix served yet</p>;
+    return <EmptyState>No tier mix served yet</EmptyState>;
   }
   if (compact) {
     // OMN-21166 Maple grid: on Overview the tiers are a ranked list beside Tokens per day; the full breakdown is on Runs.
@@ -2071,7 +2071,7 @@ export function CredentialsTable({ rows }: { rows: readonly unknown[] }) {
   // part keeps what that table does not: no key in use, and the key history.
   return (
     <>
-      {current.length === 0 && <p className="local-dashboard-empty" role="status">No key is in use; every recorded key is revoked</p>}
+      {current.length === 0 && <EmptyState>No key is in use; every recorded key is revoked</EmptyState>}
       {revoked.length > 0 && (
         <details className="local-more">
           <summary>{`Show key history (${formatDashboardCount(revoked.length)} revoked)`}</summary>
@@ -2097,7 +2097,7 @@ function yesOrNo(value: unknown): string {
 export function RunSummary({ decision, showAnalysis = false }: { decision: Row | undefined; showAnalysis?: boolean }) {
   const modelIdentityStyle = useModelIdentityStyle();
   const sectionId = useId();
-  if (!decision) return <p className="local-dashboard-empty" role="status">No decision is served for this run</p>;
+  if (!decision) return <EmptyState>No decision is served for this run</EmptyState>;
   const status = statusOf(decision);
   const fields: Array<[string, string]> = [
     ...(status === 'failed' ? [['Cause', causeTextOf(decision)] as [string, string]] : []),
@@ -2203,7 +2203,7 @@ export function RunTimeline({ steps, run }: {
 }) {
   const rows = asRecords(steps);
   if (rows.length === 0) {
-    return <p className="local-dashboard-empty" role="status">No steps recorded for this run</p>;
+    return <EmptyState>No steps recorded for this run</EmptyState>;
   }
   const named = rows.find((row) => !isMissing(row.failing_step_sequence))?.failing_step_sequence;
   // Part 29 AC197: the steps on one time axis, from the earliest recorded start to the latest recorded end. A step is a
@@ -2358,7 +2358,7 @@ export function WorkflowRun({ component, snapshots, requested, onOpen }: Workflo
   const runId = stepsRead?.runId ?? null;
   // The decisions exposure gates nothing here (a pasted id needs no decision row), so its not-served state is named.
   const decisionsNotServed = decisionsRead?.failure?.kind === 'not-served' && !decisionsRead.lastGoodAt
-    ? <p className="local-dashboard-empty" role="status">{plainFailureMessage(decisionsRead.failure, { topic: decisionsRead.topic })}</p>
+    ? <EmptyState>{plainFailureMessage(decisionsRead.failure, { topic: decisionsRead.topic })}</EmptyState>
     : null;
   if (runId === null) {
     return (
@@ -2368,7 +2368,7 @@ export function WorkflowRun({ component, snapshots, requested, onOpen }: Workflo
         {/* A failed decisions read is named by the panel's read state; it is not an empty store. */}
         {decisionsRead?.failure ? null
           : decisions.length === 0 ? <NoRunsYet />
-          : <p className="local-dashboard-empty" role="status">The newest run has no correlation id recorded</p>}
+          : <EmptyState>The newest run has no correlation id recorded</EmptyState>}
       </>
     );
   }
@@ -2406,9 +2406,9 @@ export function WorkflowRun({ component, snapshots, requested, onOpen }: Workflo
             <RunTimeline steps={rows} run={decisions.find((row) => row.correlation_id === runId)} />
           </section>
           {stepsRead?.truncated && (
-            <p className="local-dashboard-empty" role="status">
+            <EmptyState>
               {`Not the whole run: run-trace.v1 answered a truncated page of ${formatDashboardCount(rows.length)} steps`}
-            </p>
+            </EmptyState>
           )}
         </>
       )}
@@ -2630,7 +2630,7 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns, acti
     const allTime = pickMeteringRow(rawRowsFor(component, snapshots, 0), 'all');
     const byModel = 'row' in allTime ? <SavingsByModel row={allTime.row} /> : null;
     // OMN-21166 Maple grid: savings by model is its own panel beside the day chart.
-    if (slice?.key === 'by-model') return byModel ?? <p className="local-dashboard-empty" role="status">No savings by model served yet</p>;
+    if (slice?.key === 'by-model') return byModel ?? <EmptyState>No savings by model served yet</EmptyState>;
     if (groups.length === 0) return <MeteringDaySeries rows={rows} />;
     return (
       <>{groups.map(([baseline, days]) => <div className="local-usage-savings" key={baseline}>
@@ -2758,7 +2758,7 @@ function WidgetReadState({ component, snapshots, now, interval }: {
         <ReadFailureNotice key={snapshot.topic} snapshot={snapshot} title={component.title} now={now} />
       ))}
       {unservedLookups.map((snapshot) => (
-        <p className="local-dashboard-empty" role="status" key={snapshot.topic}>{plainFailureMessage(snapshot.failure!, { topic: snapshot.topic })}</p>
+        <EmptyState key={snapshot.topic}>{plainFailureMessage(snapshot.failure!, { topic: snapshot.topic })}</EmptyState>
       ))}
       {readAt !== null && (
         // OMN-21166 (Lakshman, 2026-10-18): a fresh read is not drawn on every panel; it stays for assistive tech, and a
@@ -3096,11 +3096,11 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
             ? <ServiceHealthUnread />
             : <EnvironmentPanel rows={rows as Record<string, unknown>[]}
                 complete={!bindings.some(binding => snapshots.some(snapshot => snapshot.topic === binding.projection_topic && snapshot.failure))} />)
-          : notServed ? <p className="local-dashboard-empty" role="status">{notServed}</p>
+          : notServed ? <EmptyState>{notServed}</EmptyState>
           : bindingFailedEmpty(component, snapshots) ? null
           : pricing ? <PricingFacts rows={rows as Record<string, unknown>[]} />
           : emptyState === 'NO_RUNS_YET' ? <NoRunsYet />
-          : emptyState ? <p className="local-dashboard-empty" role="status">Baseline unresolved</p>
+          : emptyState ? <EmptyState>Baseline unresolved</EmptyState>
           : component.component_kind === 'table' ? (
             <TableComponent
               component={component}
@@ -3117,17 +3117,17 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
           ) : pageName === 'overview' && component.data_bindings?.[0]?.projection_topic === LEGACY_OVERVIEW_TOPIC ? (() => {
             const config = metricConfigFor(page, component.component_id);
             return config ? <OverviewAggregateCard component={component} config={config} rows={rows} window={overviewWindow} />
-              : <p className="local-dashboard-empty">Not measured</p>;
+              : <EmptyState status={false}>Not measured</EmptyState>;
           })() : component.data_bindings?.[0]?.projection_topic === METERING_SUMMARY_TOPIC ? (() => {
             const config = metricConfigFor(page, component.component_id);
             return config
               ? <MeteringTotalCard component={component} config={config} rows={rows} window={overviewWindow} now={now} />
-              : <p className="local-dashboard-empty">Not measured</p>;
+              : <EmptyState status={false}>Not measured</EmptyState>;
           })() : (() => {
             const config = metricConfigFor(page, component.component_id);
             return config
               ? <MetricCard component={component} config={config} row={first} caption={captionRowFor(component, snapshots)} />
-              : <p className="local-dashboard-empty">Not measured</p>;
+              : <EmptyState status={false}>Not measured</EmptyState>;
           })()}
         {!pending && <WidgetReadState component={component} snapshots={snapshots} now={now} interval={interval} />}
     </>;

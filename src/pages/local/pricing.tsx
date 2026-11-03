@@ -4,18 +4,19 @@
  * is computed: a value the row leaves empty is left out, and no row at all says so.
  */
 import { readableTime } from '@/components/format/readable-time';
+import { EmptyState } from '@/design-system/components';
 
 const text = (value: unknown) => (value === null || value === undefined ? '' : String(value).trim());
 
 export function PricingFacts({ rows }: { rows: readonly Record<string, unknown>[] }) {
   const row = rows.find(candidate => text(candidate.window_kind) === 'all') ?? rows[0];
-  if (row === undefined) return <p className="local-dashboard-empty" role="status">No pricing recorded yet: it appears after the first measured run.</p>;
+  if (row === undefined) return <EmptyState>No pricing recorded yet: it appears after the first measured run.</EmptyState>;
   const facts: Array<[string, string, boolean]> = [];
   if (text(row.baseline_model)) facts.push(['Baseline model', text(row.baseline_model), true]);
   if (text(row.pricing_manifest_version)) facts.push(['Pricing version', text(row.pricing_manifest_version), true]);
   if (text(row.baseline_state)) facts.push(['Baseline price', text(row.baseline_state) === 'resolved' ? 'Found in the pricing manifest' : text(row.baseline_state), false]);
   if (text(row.as_of)) facts.push(['As of', readableTime(text(row.as_of)) ?? text(row.as_of), false]);
-  if (facts.length === 0) return <p className="local-dashboard-empty" role="status">The baseline model and pricing version are not recorded.</p>;
+  if (facts.length === 0) return <EmptyState>The baseline model and pricing version are not recorded.</EmptyState>;
   return <div className="local-pricing">
     <dl className="local-provider-facts local-pricing-facts">{facts.map(([label, value, mono]) => (
       <div key={label}><dt>{label}</dt><dd className={mono ? 'mono' : undefined}>{value}</dd></div>

@@ -14,6 +14,7 @@ import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { SettingsEmptyState } from '@/components/dashboard/SettingsEmptyState';
 import { readableTime } from '@/components/format/readable-time';
 import { ModelKeysError, listModelKeys, type ModelProviderId, type ModelProviderRow } from '@/services/models-api';
+import { EmptyState } from '@/design-system/components';
 
 /** A served key reference row from tenant-credentials.v1: its name, fingerprint prefix and times. Never a value. */
 export type CredentialKeyRow = Record<string, unknown>;
@@ -258,7 +259,7 @@ export function ModelKeys({ client = LIVE_CLIENT, keys = [], empty }: { client?:
       {keysAlone}
     </section>
   );
-  if (rows === null) return <section className="local-model-keys" aria-label="Model providers"><p className="local-dashboard-empty">Reading model providers…</p>{keysAlone}</section>;
+  if (rows === null) return <section className="local-model-keys" aria-label="Model providers"><EmptyState status={false}>Reading model providers…</EmptyState>{keysAlone}</section>;
 
   // Revision 3 (AC161): nothing listed and no key recorded is one empty state, never a table of headers.
   if (rows.length === 0 && keys.length === 0 && empty) return <section className="local-model-keys" aria-label="Model providers">{empty}</section>;
