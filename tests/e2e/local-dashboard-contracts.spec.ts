@@ -489,7 +489,8 @@ test('local panels follow both themes on every page without losing readable surf
           return {
             title: panel.querySelector('h2')?.textContent,
             background: tile ? (a[3] === 255 && a.slice(0, 3).every((v, i) => Math.abs(v - b[i]) <= 20) ? 'panel-tint' : background) : background,
-            expected: tile ? 'panel-tint' : expected.style.backgroundColor,
+            // OMN-21970 AC10 (Lakshman 2026-11-02, "it should be full page"): Settings' sections and panels sit on the page.
+            expected: tile ? 'panel-tint' : panel.closest('.local-dashboard-page--settings') ? 'rgba(0, 0, 0, 0)' : expected.style.backgroundColor,
           };
         });
       });

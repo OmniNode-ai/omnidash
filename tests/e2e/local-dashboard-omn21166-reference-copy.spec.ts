@@ -61,12 +61,18 @@ for (const theme of ['light', 'dark'] as const) {
   test(`AC178 AC181 AC182 selected states, corners and secondary buttons are neutral in ${theme}`, async ({ page }) => {
     await openTheme(page, theme);
     await settle(page, '/overview');
-    const selected = page.locator('.local-window-options button[aria-checked="true"]').first();
-    const unselected = page.locator('.local-window-options button[aria-checked="false"]').first();
+    // OMN-21970 AC9: the window is one menu; its chosen option is the soft fill with ink text and a tick (Lakshman
+    // 2026-11-03: one chosen state in every list).
+    await page.locator('.local-window-trigger').click();
+    const selected = page.locator('.local-window-list [role="radio"][aria-checked="true"]').first();
+    const unselected = page.locator('.local-window-list [role="radio"][aria-checked="false"]').first();
+    await expect(selected.locator('svg')).toHaveCount(1);
+    await expect(unselected.locator('svg')).toHaveCount(0);
     await expect(selected).toHaveCSS('background-color', RAISED[theme]);
     await expect(selected).toHaveCSS('color', INK[theme]);
     // Control: the unselected option is told apart from the selected one.
     expect(await unselected.evaluate(el => getComputedStyle(el).backgroundColor)).not.toBe(RAISED[theme]);
+    await page.keyboard.press('Escape');
     await expect(page.locator('main article.local-dashboard-panel').first()).toHaveCSS('border-radius', '12px');
     const expand = page.locator('.local-chart-expand').first();
     await expect(expand).toHaveCSS('border-radius', '8px');
@@ -75,9 +81,12 @@ for (const theme of ['light', 'dark'] as const) {
     await expect(expand).toHaveCSS('color', INK2[theme]);
 
     await settle(page, '/settings');
-    const choice = page.locator('.local-settings-choice label').filter({ has: page.locator('input:checked') });
+    // AC208 removed Settings' Appearance choice; the chosen Settings section tab carries the one chosen state now.
+    const choice = page.locator('.local-settings-menu a[aria-current="page"]');
+    await expect(choice).toHaveCount(1);
     await expect(choice).toHaveCSS('background-color', RAISED[theme]);
     await expect(choice).toHaveCSS('color', INK[theme]);
+    expect(await page.locator('.local-settings-menu a:not([aria-current])').first().evaluate(el => getComputedStyle(el).backgroundColor)).not.toBe(RAISED[theme]);
 
     await settle(page, '/runs');
     for (const name of ['Export CSV', 'Export JSON']) {
@@ -135,10 +144,10 @@ test('AC183 Overview pairs share a baseline and every chart title has the panel 
   await expect(pair).toHaveCount(2);
   const bottoms = await pair.locator('.ins-bars').evaluateAll(els => els.map(el => el.getBoundingClientRect().bottom));
   expect(Math.abs(bottoms[0]! - bottoms[1]!)).toBeLessThanOrEqual(1);
-  for (const title of await page.locator('.local-dashboard-page--overview .local-dashboard-panel:not(.local-overview-summary > *) > h2').all()) {
-    await expect(title).toHaveCSS('border-bottom-width', '1px');
-    await expect(title).toHaveCSS('border-bottom-color', LINE.dark);
-  }
+  // The 01+20 look (Lakshman 2026-11-03): a panel title is a small mono label with no rule under it (was a 1px divider).
+  const titles = await page.locator('.local-dashboard-page--overview .local-dashboard-panel:not(.local-overview-summary > *) > h2').all();
+  expect(titles.length, 'positive control: titles exist').toBeGreaterThan(0);
+  for (const title of titles) await expect(title).toHaveCSS('border-bottom-width', '0px');
 });
 
 test('AC184 Delegation Evidence content lines up with its title on desktop and phone', async ({ page }) => {

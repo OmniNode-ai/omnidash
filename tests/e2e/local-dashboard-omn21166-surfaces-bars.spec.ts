@@ -54,11 +54,18 @@ for (const theme of ['light', 'dark'] as const) {
       const want = SURFACES[theme];
       await expect(page.locator('main').first(), `${path} page`).toHaveCSS('background-color', want.page);
       await expect(page.locator('.sidebar').first(), `${path} sidebar`).toHaveCSS('background-color', want.sidebar);
-      // OMN-21166 revision 3 (AC160): on Settings the card is the section; its embedded panels are flat inside it.
-      const card = page.locator('main .local-dashboard-panel:not(.local-overview-summary > .local-dashboard-panel, .local-settings-section .local-dashboard-panel), main .local-settings-section, main.ev-root .panel').first();
-      await expect(card, `${path} card`).toHaveCSS('background-color', want.card);
-      await expect(card, `${path} card border`).toHaveCSS('border-top-color', want.border);
-      await expect(card, `${path} card is flat`).toHaveCSS('box-shadow', 'none');
+      // OMN-21970 AC10 (Lakshman 2026-11-02, "it should be full page"): Settings has no cards; its sections sit on the page.
+      // Every other page draws its panels as cards on the card surface with the hairline.
+      if (path === '/settings') {
+        const section = page.locator('main .local-settings-section:not([hidden])').first();
+        await expect(section, `${path} section`).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+        await expect(section, `${path} section has no edge`).toHaveCSS('border-top-width', '0px');
+      } else {
+        const card = page.locator('main .local-dashboard-panel:not(.local-overview-summary > .local-dashboard-panel), main.ev-root .panel').first();
+        await expect(card, `${path} card`).toHaveCSS('background-color', want.card);
+        await expect(card, `${path} card border`).toHaveCSS('border-top-color', want.border);
+        await expect(card, `${path} card is flat`).toHaveCSS('box-shadow', 'none');
+      }
       const bars = await page.locator(BARS).count();
       const off = await offBars(page);
       expect(off, `${path}: every bar is a solid flat fill`).toEqual([]);

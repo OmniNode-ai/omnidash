@@ -999,7 +999,7 @@ export function SavingsByModel({ row }: { row: Row }) {
           const n = saving(model);
           // Part 29 AC193: a named model opens Runs filtered to it, as Overview's model bars do (AC135).
           const href = isMissing(model.model) ? undefined : `/runs?${writeRunsSearch('', { ...DEFAULT_RUNS_VIEW, model: name })}`;
-          return { key: `${name}-${index}`, name, value: n, basis: 'estimated' as const, color: modelColor(name), href,
+          return { key: `${name}-${index}`, name, model: isMissing(model.model) ? undefined : name, value: n, basis: 'estimated' as const, color: modelColor(name), href,
             opensLabel: href ? `Opens Runs filtered to ${name}` : undefined,
             display: n === null ? 'Not measured' : formatUsd(model.savings_usd), title: `${recordedCount(model.runs_measured)} of ${recordedCount(model.runs)} runs measured` };
         })} />
@@ -1937,7 +1937,7 @@ export function ModelUsagePanel({ row }: { row: Row | null }) {
           const pct = share(model.pct_of_total);
           // Part 19 AC135: a named model opens Runs filtered to it; a model the rows do not name opens nothing.
           const href = isMissing(model.model_name) ? undefined : `/runs?${writeRunsSearch('', { ...DEFAULT_RUNS_VIEW, model: name })}`;
-          return { key: `${name}-${index}`, name, value: runs, basis: 'measured' as const, color: modelColor(name), href, opensLabel: `Opens Runs filtered to ${name}`,
+          return { key: `${name}-${index}`, name, model: isMissing(model.model_name) ? undefined : name, value: runs, basis: 'measured' as const, color: modelColor(name), href, opensLabel: `Opens Runs filtered to ${name}`,
             display: runs === null ? 'Not recorded'
               : `${recordedCount(model.total_count)}${pct === null ? '' : ` · ${pct > 0 && pct * 100 < 0.1 ? '<0.1' : (pct * 100).toFixed(1)}%`}` };
         })} />

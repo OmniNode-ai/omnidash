@@ -10,13 +10,13 @@ const USAGE = prefix + 'usage-by-model-day.v1';
 const DECISIONS = prefix + 'delegation.decisions.v1';
 const ROUTING = prefix + 'delegation.model-routing.v1';
 
-function fixture(names: string[]) {
+function fixture(names: string[], tierOf: (name: string) => string = () => 'local') {
   const day = new Date().toISOString().slice(0, 10);
   const usage = names.map((name, index) => ({
     usage_day: day, model_id: name, input_tokens: 100 + index, output_tokens: 20 + index,
     measured_cost_usd: index === 0 ? null : String(index), call_count: 1,
     unmeasured_call_count: index === 0 ? 1 : 0, call_share: 1 / names.length,
-    cost_tier_name: 'local',
+    cost_tier_name: tierOf(name),
   }));
   return { ...chartRows,
     [USAGE]: usage,
@@ -28,12 +28,14 @@ function fixture(names: string[]) {
     })),
     [ROUTING]: [{ total_delegations: names.length, by_tier: {
       total_tasks: names.length, tier_routed_total: names.length, not_tier_routed_count: 0,
-      tiers: [{ cost_tier_name: 'local', count: names.length, tier_routed: true, pct_of_tier_routed: 1,
-        models: names.map((name, index) => ({ model_name: name, count: 1,
+      tiers: [...new Set(names.map(tierOf))].map(tier => ({ cost_tier_name: tier, tier_routed: true,
+        count: names.filter(name => tierOf(name) === tier).length,
+        pct_of_tier_routed: names.filter(name => tierOf(name) === tier).length / names.length,
+        models: names.map((name, index) => ({ name, index })).filter(({ name }) => tierOf(name) === tier).map(({ name, index }) => ({ model_name: name, count: 1,
           pct_of_tier_routed: 1 / names.length, cost_usd: index === 0 ? null : String(index),
           unmeasured_cost_count: index === 0 ? 1 : 0,
         })),
-      }],
+      })),
     } }],
   };
 }
@@ -110,8 +112,11 @@ for (const selectedTheme of ['light', 'dark']) {
   });
 
   test(`AC3: exact served model IDs do not alias by case, ${selectedTheme}`, async ({ page }, info) => {
+    // OMN-21970 AC5 (product owner): a model is coloured by the tier it ran under, so two models in one tier share a
+    // colour by design. Aliasing by case is caught by serving the two ids under different tiers: merged into one, they
+    // would take one tier's colour; kept apart, each takes its own.
     const names = ['unpriced-model', 'Model-A', 'model-a'];
-    await serveCharts(page, fixture(names));
+    await serveCharts(page, fixture(names, name => (name === 'model-a' ? 'claude' : 'local')));
     await page.goto('/usage');
     await theme(page, selectedTheme);
     await page.getByText('More usage', { exact: true }).press('Enter');

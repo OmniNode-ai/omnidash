@@ -915,17 +915,18 @@ main.ev-root .ev-maple-grid { align-items: start; }
    page-scoped tokens in dashboard-cards.css. */
 :root .app:has(.local-dashboard-page),
 :root .app:has(.ev-root[data-destination="delegation-evidence"]) {
-  /* Amendment (Lakshman 2026-10-27, "more contrast like paradev.com and entire.io"): darker ink, firmer lines. */
-  --bg: #f5f5f3; --panel: #fdfdfc; --panel-2: #efefec; --line: #d4d4cf; --line-2: #e4e4e0;
-  --sidebar: #f2f2ef; --sidebar-line: #d4d4cf; --sidebar-hover: #efefec;
-  --ink: #111111; --ink-2: #3d3d3d; --ink-3: #555555; --ui-accent: #a14a0c;
+  /* OMN-21970 (Lakshman 2026-11-03, "01 + 20 do it"): the shell names carry the 01 Obsidian / 20 Daylight values, the
+     same as editorial.css's --ed-* set, so an element styled through either name draws the one look (the earlier warm
+     paper set left #555 icons, a #111 collapsed sidebar and an orange focus ring beside the new look). */
+  --bg: #ffffff; --panel: #fafafa; --panel-2: #f0f0f0; --line: #e5e5e5; --line-2: #ededed;
+  --sidebar: #ffffff; --sidebar-line: #e5e5e5; --sidebar-hover: #f0f0f0;
+  --ink: #0a0a0a; --ink-2: #262626; --ink-3: #525252; --ui-accent: #0a0a0a;
 }
 :root[data-theme="dark"] .app:has(.local-dashboard-page),
 :root[data-theme="dark"] .app:has(.ev-root[data-destination="delegation-evidence"]) {
-  /* Amendment: Paradev's near-black page (about #0d0d0d), brighter ink and muted text (about #c0c0c0). */
-  --bg: #0e0e0e; --panel: #161616; --panel-2: #1e1e1e; --line: #2b2b2b; --line-2: #222222;
-  --sidebar: #111111; --sidebar-line: #2b2b2b; --sidebar-hover: #1e1e1e;
-  --ink: #fafafa; --ink-2: #c2c2c2; --ink-3: #a8a8a8; --ui-accent: #e9a050;
+  --bg: #0a0a0a; --panel: #141414; --panel-2: #1f1f1f; --line: #262626; --line-2: #1f1f1f;
+  --sidebar: #0a0a0a; --sidebar-line: #262626; --sidebar-hover: #1f1f1f;
+  --ink: #f5f5f5; --ink-2: #d4d4d4; --ink-3: #a3a3a3; --ui-accent: #f5f5f5;
 }
 /* Part 27 AC168: the active item is the neutral raised surface alone; the destination marker light theme already hides
    goes in dark too. */
@@ -1569,7 +1570,7 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ui-accent); outline-o
   }
 }
 
-/* Card styling: a soft resting shadow, the icon in a tinted badge of the card's colour, the figure in IBM Plex Sans
+/* Card styling: a soft resting shadow, the icon in the card's colour, the figure in the sans face
    semibold with tabular digits, and quieter labels. */
 :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel {
   border-radius: 12px;
@@ -1581,10 +1582,10 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ui-accent); outline-o
   letter-spacing: 0.06em;
 }
 :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel > h2 svg {
-  box-sizing: content-box;
-  padding: 4px;
-  border-radius: 7px;
-  background: color-mix(in srgb, var(--card-accent) 16%, transparent);
+  /* Lakshman 2026-11-03 ("box not needed"): the glyph alone, in the card's colour, no tinted square around it. */
+  padding: 0;
+  border-radius: 0;
+  background: none;
 }
 :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel > .local-dashboard-metric {
   font-family: var(--font-sans);

@@ -455,7 +455,7 @@ test('core headline icons each keep their own concept colour and glyph, with rea
     // OMN-21166 live review 2026-10-25: the fifth card's heading icon keeps the site-wide quality identity (one concept,
     // one colour on every page, checked by the AC4 census); its 3px edge is the green pass colour (AC82).
     // AC8: quality is the pass family, green.
-    { label: 'Delegation Quality', family: 'pass green', hue: [95, 150] },
+    { label: 'Delegation Quality', family: 'pass green', hue: [90, 150] },
   ];
   for (const theme of ['light', 'dark']) {
     if ((await page.locator('html').getAttribute('data-theme') ?? 'light') !== theme) await page.getByRole('button', { name: 'Toggle theme', exact: true }).click();

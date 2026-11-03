@@ -46,6 +46,15 @@ html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-e
 :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-dashboard-panel > h2 { display: inline-flex; align-items: center; gap: 6px;
   width: fit-content; padding: 0; border: 0;
   font-family: var(--ed-mono) !important; font-size: 12px !important; font-weight: 500 !important; letter-spacing: .12em; text-transform: uppercase; color: var(--ed-ink-2) !important; }
+/* A Settings section with one panel names it once, in its own heading, so the panel's title is for assistive tech only.
+   The title rule above outranks local-dashboard.css's visually hidden rule (its :is() takes main.ev-root[...]'s weight),
+   so the hidden form is restated here at higher weight. */
+html body .local-dashboard-page .local-settings-section--single .local-dashboard-panel > h2 {
+  position: absolute !important; width: 1px !important; height: 1px !important; min-height: 0; overflow: hidden; clip: rect(0 0 0 0);
+  white-space: nowrap; margin: -1px; padding: 0; border: 0; }
+/* One panel header on every page (Lakshman 2026-11-03, "all pages should follow same type of things"): Evidence's panel
+   headers lose the rule under them, as the local pages' titles have none in the 01+20 look. */
+html body main.ev-root[data-destination="delegation-evidence"] .panel-h { border-bottom: 0 !important; }
 /* Headline figures: Geist, semibold, tight. */
 :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) :is(.local-dashboard-metric, .local-meter-value, .local-recent-value, .local-share-value, .local-donut-focus-value) {
   font-family: var(--ed-display) !important; font-weight: 600 !important; font-variation-settings: normal; letter-spacing: -0.02em; }
@@ -109,6 +118,16 @@ html body .local-dashboard-page .local-window-list [role="radio"] { display: fle
 html body .local-dashboard-page .local-window-list [role="radio"]:hover, html body .local-dashboard-page .local-window-list [role="radio"]:focus-visible {
   background: var(--ed-paper-2) !important; outline: none; }
 html body .local-dashboard-page .local-window-list [role="radio"] svg { color: var(--ed-ink-3); }
+/* One chosen state in every list (Lakshman 2026-11-03, "all pages should follow same type of things"): the chosen option
+   is the soft fill with ink text and its tick, as in the kit dropdown, not the ink block of a segmented control. */
+html body .local-dashboard-page .local-window-list [role="radio"][aria-checked="true"] { background: var(--ed-paper-2) !important;
+  color: var(--ed-ink) !important; font-weight: 600; }
+html body .local-dashboard-page .local-window-list [role="radio"][aria-checked="true"] svg { color: var(--ed-ink); }
+/* The Settings section tabs use the same chosen state: soft fill, ink text (they inverted to ink before, and in dark a
+   later rule left the chosen tab on the page colour). */
+html body .local-dashboard-page--settings .local-settings-menu a[aria-current="page"] { background: var(--ed-paper-2) !important;
+  color: var(--ed-ink) !important; font-weight: 600; }
+html body .local-dashboard-page--settings .local-settings-menu a[aria-current="page"] svg { color: var(--ed-ink) !important; }
 /* OMN-21970 (Lakshman 2026-11-03, option a): model and tier names read in ink, so they keep 4.5:1 contrast, and a small
    square beside each carries the bar's exact colour, so colour still identifies the tier but is never the only label. */
 .rb-chart .rb-name, .gdb-day-label { color: var(--ed-ink) !important; }
@@ -170,6 +189,13 @@ html body .local-dashboard-page--settings .local-settings-section > h2 { font-si
 html body :is(.usage-analysis table th[data-model-name], [data-decision-matrix] tbody th[data-model-name], .usage-trend-name[data-model-name]) { color: var(--ed-ink) !important; }
 html body :is(.usage-analysis table th[data-model-name], [data-decision-matrix] tbody th[data-model-name], .usage-trend-name[data-model-name])::before {
   content: ""; display: inline-block; width: 0.7em; height: 0.7em; margin-right: 0.45em; vertical-align: -0.05em; border-radius: 2px; background: var(--model-color, currentColor); }
+/* The same for every model name drawn through the model identity style (Delegation Evidence's tables and lists): the
+   tier colour moves from the text to its swatch, since tier colours on text measured 3.83 and 4.23:1 there (Codex
+   census review 2026-11-03), under the 4.5:1 text floor. */
+html body :is(.local-dashboard-page, .ev-root) .local-model-identity { color: var(--ed-ink) !important; }
+html body :is(.local-dashboard-page, .ev-root) .local-model-identity::before {
+  content: ""; display: inline-block; flex: none; width: 0.7em; height: 0.7em; margin-right: 0.45em; vertical-align: -0.05em;
+  border-radius: 2px; background: var(--model-identity-color, currentColor); }
 
 /* The sidebar in the 01 + 20 look (Lakshman 2026-11-02, "needs improvements?"): the chosen page is a soft fill only, no
    edge bar or outline; quieter section labels and product line; tighter rows with a hover fill. */

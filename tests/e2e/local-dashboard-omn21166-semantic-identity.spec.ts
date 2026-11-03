@@ -138,7 +138,8 @@ test('routing categories have separate colors matching their legend in both them
     for (const name of names) {
       const item = chart.locator(`[data-ranked-item^="${name}-"]`);
       const color = await item.locator('.rb-bar').evaluate(el => getComputedStyle(el).color);
-      expect(await item.locator('.rb-name').evaluate(el => getComputedStyle(el).color)).toBe(color);
+      // OMN-21970 option a (Lakshman 2026-11-03): the name is ink and the swatch beside it carries the bar's colour.
+      expect(await item.locator('.rb-name .rb-swatch').evaluate(el => getComputedStyle(el).backgroundColor)).toBe(color);
       colors.push(color);
     }
     expect(new Set(colors).size).toBe(names.length);

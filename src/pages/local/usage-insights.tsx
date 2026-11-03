@@ -89,7 +89,7 @@ function SpendByModel({ data }: { data: UsageAggregates }) {
       {priced.length === 0 && <p role="status" className="ins-readout">No measured model spend served</p>}
       <RankedBars layout="vertical" label="Measured spend per model" unit={totalUsd === null ? 'USD · measured spend' : `USD · measured spend · ${money(totalUsd)} in all`}
         items={data.models.map(model => ({
-          key: model.model, name: model.model, value: model.measuredCost, basis: 'measured',
+          key: model.model, name: model.model, model: model.model, value: model.measuredCost, basis: 'measured',
           display: model.measuredCost === null ? 'Not measured' : money(model.measuredCostUsd), color: modelColor(model.model),
           // Part 29 AC193: each model opens Runs filtered to it.
           href: `/runs?${writeRunsSearch('', { ...DEFAULT_RUNS_VIEW, model: model.model })}`, opensLabel: `Opens Runs filtered to ${model.model}`,

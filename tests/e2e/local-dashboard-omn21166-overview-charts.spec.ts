@@ -72,6 +72,7 @@ test('empty or unavailable run figures do not produce fake charts or zeros', asy
   const tokenDays = page.locator('[data-slice="tokens"] button.gdb-day');
   // OMN-21970 AC1 to AC4: the chart now covers every day of the window. The day whose runs recorded no token counts reads
   // not recorded, never 0; a day with no runs at all is a measured zero (Lakshman 2026-10-25, "say 0").
+  await expect(tokenDays.first()).toBeVisible();
   const labels = await tokenDays.evaluateAll(els => els.map(el => el.getAttribute('aria-label') ?? ''));
   expect(labels, 'the run day is drawn').toContain('Oct 17: not recorded in, not recorded out');
   expect(labels.filter(label => label.startsWith('Oct 17:'))).toEqual(['Oct 17: not recorded in, not recorded out']);

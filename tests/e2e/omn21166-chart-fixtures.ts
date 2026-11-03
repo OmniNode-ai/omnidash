@@ -1,6 +1,12 @@
 import type { Page } from 'playwright/test';
 
 export const prefix = 'onex.snapshot.projection.';
+/**
+ * UTC days relative to the real clock, for usage rows: the Usage page reads the latest 30 UTC days from now, so a fixed
+ * date ages out of the window (the 2026-10-01 rows did on 2026-10-31). recentDay(1) is yesterday.
+ */
+export const recentDay = (daysAgo: number) => new Date(Date.now() - daysAgo * 86_400_000).toISOString().slice(0, 10);
+export const USAGE_DAY = recentDay(2);
 export const runIds = ['chart-run-a', 'chart-run-b', 'chart-run-c'];
 export const chartRows: Record<string, unknown[]> = {
   [prefix + 'cost.savings-overview.v1']: [],
@@ -30,8 +36,8 @@ export const chartRows: Record<string, unknown[]> = {
     escalation_count: 0, escalation_rate: 0,
     failure_categories: [{ category: 'fixture quality failure', count: 2, pct_of_failures: 1 }] }],
   [prefix + 'usage-by-model-day.v1']: [
-    { usage_day: '2026-10-01', model_id: 'model-a', input_tokens: 162, output_tokens: 52, measured_cost_usd: '0.001', call_count: 1, call_share: .75, cost_tier_name: 'local' },
-    { usage_day: '2026-10-01', model_id: 'model-b', input_tokens: 90, output_tokens: null, measured_cost_usd: null, call_count: 1, call_share: .25, cost_tier_name: 'cloud' },
+    { usage_day: USAGE_DAY, model_id: 'model-a', input_tokens: 162, output_tokens: 52, measured_cost_usd: '0.001', call_count: 1, call_share: .75, cost_tier_name: 'local' },
+    { usage_day: USAGE_DAY, model_id: 'model-b', input_tokens: 90, output_tokens: null, measured_cost_usd: null, call_count: 1, call_share: .25, cost_tier_name: 'cloud' },
   ],
   [prefix + 'node-generation-completed.v1']: [],
 };

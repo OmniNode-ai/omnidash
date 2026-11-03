@@ -289,7 +289,7 @@ function ModelRouting() {
     <Panel title="MODEL ROUTING" sub={`${formatDashboardCount(agg.total_delegations)} delegations by selected model (aggregate)`}>
       <RankedBars label="Delegations by model" unit="Delegations · measured" order="desc" layout="vertical"
         items={[...byModel.entries()].map(([model, count]) => ({
-          key: model, name: model, value: count, basis: 'measured' as const, color: modelColor(model),
+          key: model, name: model, model, value: count, basis: 'measured' as const, color: modelColor(model),
           display: `${formatDashboardCount(count)} · ${sharePercent(count / agg.total_delegations)}`,
         }))} />
       <TierLegend label="Delegations by model tier colours" models={[...byModel.keys()]} />
@@ -597,7 +597,7 @@ function TokenUsage() {
           count is measured or estimated said in the bar's name. */}
       <RankedBars label="Tokens per model" unit="Tokens · each bar says whether its count is measured or estimated" order="desc" layout="vertical"
         items={models.map(m => ({
-          key: m.model_id, name: m.model_name, value: m.total_tokens, color: modelColor(m.model_id),
+          key: m.model_id, name: m.model_name, model: m.model_id, value: m.total_tokens, color: modelColor(m.model_id),
           basis: m.token_provenance === 'measured' ? 'measured' as const : 'estimated' as const,
           display: `${formatFullCount(m.total_tokens)} tokens`,
         }))} />
