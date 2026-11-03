@@ -1,12 +1,12 @@
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
-import { RankedBars } from '@/components/dashboard/RankedBars';
+import { ChartNotRecorded, RankedBars } from '@/design-system/charts';
 import { UsageAnalysis } from './usage-analysis';
 import { DEFAULT_RUNS_VIEW, writeRunsSearch } from '@/navigation/runs-url-state';
 import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
 import { tierColor } from '@/lib/dashboard-colors';
 import { formatDashboardUsd } from '@/lib/dashboard-currency';
 import { sumDashboardUsd } from '@/lib/dashboard-money-total';
-import { GroupedBars } from '@/components/dashboard/GroupedBars';
+import { GroupedBars } from '@/design-system/charts';
 import { aggregateUsageRows, type UsageAggregates } from './insight-aggregates';
 import { tierLabel } from './plain-text';
 import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
@@ -183,7 +183,7 @@ function CostByRoute({ routing, titled }: { routing: RouteRow[]; titled: boolean
   return (
     <section className="local-chart usage-cost-by-route" aria-label="Cost by route">
       {titled && <h3><ConceptIcon concept="cost-route" size={16} />Cost by route</h3>}
-      {routing.length === 0 ? <p className="local-dashboard-caption" role="status">Route cost is not served yet.</p> : <>
+      {routing.length === 0 ? <ChartNotRecorded role="status">Route cost is not served yet.</ChartNotRecorded> : <>
         <RankedBars layout="vertical" label="Cost per route" unit="USD · measured cost per route" order="desc"
           items={routed.map(row => {
             const value = row.cost.usd === null ? null : Number(row.cost.usd);

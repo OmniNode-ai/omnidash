@@ -2,7 +2,8 @@ import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
 import { formatDashboardUsd } from '@/lib/dashboard-currency';
 import { formatDuration } from '@/components/format/duration';
 import { useEffect, useId, useState } from 'react';
-import { ConceptIcon } from '@/components/dashboard/FieldIcon';
+import { ChartEmpty, ChartHeading } from './frame';
+import { SwatchToggles } from './legend';
 import { Link } from 'wouter';
 import { workflowHref } from '@/navigation/workflow-url-state';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
@@ -45,15 +46,6 @@ export function dayAxisLabel(day: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(day)
     ? new Date(`${day}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
     : day;
-}
-
-/**
- * A chart's title row in the Overview panel style (part 18 AC124): its icon, then a neutral title; a detail line only
- * when it says what the chart counts. No icon badge and no decorative icon.
- */
-function ChartHeading({ title, detail, concept }: { title: string; detail?: string; concept: string }) {
-  return <div className="local-chart-heading"><ConceptIcon concept={concept} label={title} size={16} />
-    <div><h3>{title}</h3>{detail && <p>{detail}</p>}</div></div>;
 }
 
 function RunInspector({ runs, describe }: { runs: readonly ListedRun[]; describe?: (run: ListedRun) => string }) {
@@ -275,22 +267,10 @@ function SpendChartFigure({ group, title, colourPlaces }: { group: SpendByDayGro
       <ChartHeading concept="spend-daily" title="Daily comparison"
         detail={group.series.length > 0 && group.series.every(series => /savings|counterfactual/i.test(series.key))
           ? `Daily values · modelled saving against ${group.baseline}` : `Daily values · ${group.baseline}`} />
-      <div className="local-chart-legend" role="group" aria-label="Series shown">
-        {all.map(({ series, colour }) => (
-          <button
-            type="button"
-            className="local-chart-toggle"
-            aria-pressed={!hidden.has(series.key)}
-            key={series.key}
-            onClick={() => toggle(series.key)}
-          >
-            <span className="local-chart-swatch" data-swatch aria-hidden="true" style={{ backgroundColor: colour }} />
-            {series.name}
-          </button>
-        ))}
-      </div>
+      <SwatchToggles label="Series shown" onToggle={toggle}
+        series={all.map(({ series, colour }) => ({ key: series.key, label: series.name, color: colour, shown: !hidden.has(series.key) }))} />
       {shown.length === 0
-        ? <p className="local-dashboard-empty" role="status">{EVERY_SERIES_HIDDEN}</p>
+        ? <ChartEmpty status>{EVERY_SERIES_HIDDEN}</ChartEmpty>
         : <ReactEChartsCore echarts={echarts} option={{ ...optionFor(group, shown), ...motion.option }} notMerge opts={{ renderer: 'svg' }} className="local-chart-canvas" />}
       <div className="local-chart-inspector"><label htmlFor={dayId}>Inspect day</label>
         <select id={dayId} value={selectedDay === null ? '' : day} onChange={event => setDay(event.target.value)}>
@@ -553,16 +533,10 @@ export function RunDurationChart({ runs, onOpen, title = 'Duration per run' }: {
   return (
     <figure className="local-chart local-chart--runs" aria-label={title} data-motion={motion.reduced ? 'reduced' : 'full'}>
       <ChartHeading title={title} concept="duration" />
-      <div className="local-chart-legend" role="group" aria-label="Statuses shown">
-        {statuses.map((status) => (
-          <button type="button" className="local-chart-toggle" aria-pressed={!hidden.has(status)} key={status} onClick={() => toggle(status)}>
-            <span className="local-chart-swatch" data-swatch aria-hidden="true" style={{ backgroundColor: statusColour(status) }} />
-            {status}
-          </button>
-        ))}
-      </div>
+      <SwatchToggles label="Statuses shown" onToggle={toggle}
+        series={statuses.map(status => ({ key: status, label: status, color: statusColour(status), shown: !hidden.has(status) }))} />
       {statuses.every((status) => hidden.has(status))
-        ? <p className="local-dashboard-empty" role="status">{EVERY_SERIES_HIDDEN}</p>
+        ? <ChartEmpty status>{EVERY_SERIES_HIDDEN}</ChartEmpty>
         : <ReactEChartsCore echarts={echarts} option={option} notMerge opts={{ renderer: 'svg' }} className="local-chart-canvas" onEvents={openOnClick(runs, onOpen)} />}
       <RunInspector runs={runs} />
       <figcaption>Duration of each listed run, in the list&apos;s order, in milliseconds as served. A bar opens its run.</figcaption>
@@ -621,16 +595,10 @@ export function RunTokensChart({ runs, onOpen, title = 'Tokens per run' }: { run
   return (
     <figure className="local-chart local-chart--runs" aria-label={title} data-motion={motion.reduced ? 'reduced' : 'full'}>
       <ChartHeading title={title} concept="tokens" />
-      <div className="local-chart-legend" role="group" aria-label="Series shown">
-        {all.map((series) => (
-          <button type="button" className="local-chart-toggle" data-field-tone={series.key === 'tokensIn' ? 'tokens-in' : 'tokens-out'} aria-pressed={!hidden.has(series.key)} key={series.key} onClick={() => toggle(series.key)}>
-            <span className="local-chart-swatch" data-swatch aria-hidden="true" style={{ backgroundColor: series.colour }} />
-            {series.name}
-          </button>
-        ))}
-      </div>
+      <SwatchToggles label="Series shown" onToggle={toggle}
+        series={all.map(series => ({ key: series.key, label: series.name, color: series.colour, tone: series.key === 'tokensIn' ? 'tokens-in' : 'tokens-out', shown: !hidden.has(series.key) }))} />
       {shown.length === 0
-        ? <p className="local-dashboard-empty" role="status">{EVERY_SERIES_HIDDEN}</p>
+        ? <ChartEmpty status>{EVERY_SERIES_HIDDEN}</ChartEmpty>
         : <ReactEChartsCore echarts={echarts} option={option} notMerge opts={{ renderer: 'svg' }} className="local-chart-canvas" onEvents={openOnClick(runs, onOpen)} />}
       <RunInspector runs={runs} />
       <figcaption>Tokens in and out of each listed run, in the list&apos;s order, as served. A bar opens its run.</figcaption>

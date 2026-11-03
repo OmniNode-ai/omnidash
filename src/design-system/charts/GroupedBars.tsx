@@ -5,6 +5,7 @@
  * value over the largest served value in the chart (layout only).
  */
 import type { CSSProperties } from 'react';
+import { SeriesLegend } from './legend';
 
 export interface GroupedBarValue {
   key: string;
@@ -34,7 +35,8 @@ export function GroupedBars({ label, groups, legend, wrapNames = false }: {
   /** Long names (model ids) wrap under their column instead of sitting on one line. */
   wrapNames?: boolean;
 }) {
-  const max = Math.max(0, ...groups.flatMap(group => group.values.map(entry => entry.value ?? 0)));
+  // A value not served is left out of the scale rather than counted as 0 (OMN-21015 S3); the floor of 0 is unchanged.
+  const max = Math.max(0, ...groups.flatMap(group => group.values.flatMap(entry => (entry.value === null ? [] : [entry.value]))));
   return (
     <>
       <ul className={`ins-bars gdb-plot gdb-plot--list${wrapNames ? ' gdb-plot--names' : ''}`} aria-label={label}>
@@ -57,11 +59,7 @@ export function GroupedBars({ label, groups, legend, wrapNames = false }: {
           </li>
         ))}
       </ul>
-      {legend && legend.length > 0 && (
-        <ul className="ins-token-legend gdb-legend" aria-label="Series">
-          {legend.map(entry => <li key={entry.label}><i aria-hidden="true" style={{ background: entry.color }} />{entry.label}</li>)}
-        </ul>
-      )}
+      {legend && legend.length > 0 && <SeriesLegend label="Series" series={legend} />}
     </>
   );
 }

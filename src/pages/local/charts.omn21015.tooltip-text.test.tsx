@@ -20,7 +20,7 @@ vi.mock('echarts-for-react/lib/core', () => ({
   },
 }));
 
-import { RunDurationChart, RunTokensChart, SpendByDayChart, type ListedRun } from './charts';
+import { RunDurationChart, RunTokensChart, SpendByDayChart, type ListedRun } from '@/design-system/charts';
 
 /** What the library does with a formatter's result: it becomes the HTML of the tooltip's element. */
 function asTooltip(html: string): HTMLElement {

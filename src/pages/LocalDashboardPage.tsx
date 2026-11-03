@@ -27,8 +27,9 @@ import { DEFAULT_RUNS_VIEW, readRunsSearch, writeRunsSearch, type RunsViewState 
 import { runsToCsv, runsToJson, sortRuns, type RunSortKey } from '@/pages/local/runs-sort-export';
 import { PAGE_PATHS } from '@/navigation/page-routes';
 import { normaliseRunId, readWorkflowRunId, workflowHref, writeWorkflowRunId } from '@/navigation/workflow-url-state';
-import { RunDurationChart, RunMetricChart, RunTimingChart, RunTokensChart, SpendByDayChart, runTimingBars, UNRESOLVED_BASELINE, type ListedRun } from '@/pages/local/charts';
-import { PassRateMeter, TIER_TONES } from '@/pages/local/shares';
+import { RunDurationChart, RunMetricChart, RunTimingChart, RunTokensChart, SpendByDayChart, runTimingBars, UNRESOLVED_BASELINE, type ListedRun } from '@/design-system/charts';
+import { PassRateMeter } from '@/pages/local/shares';
+import { TIER_TONES } from '@/design-system/charts';
 import { InsightsSection, InsightsWindowContext, MeteringActivityInsights, OverviewRunsContext, PassRateSparkline, TaskIcon, type ActivityWindow } from '@/pages/local/insight-charts';
 import { UsageInsights } from '@/pages/local/usage-insights';
 import { RoutingAnalysis, RunsTotals } from '@/pages/local/usage-analysis';
@@ -40,7 +41,7 @@ import { SettingsEmptyState } from '@/components/dashboard/SettingsEmptyState';
 import { failureCauseLabel, failureDetailText, notAvailableYet, plainFailureMessage, taskLabel, tierLabel } from '@/pages/local/plain-text';
 import { RunFilterProvider, causeHref, causeLabelOf, useRunFilter } from '@/pages/local/run-filter';
 import { dailySeries, servedDailyDays, summary as runSummary, toInsightRuns, typedFailureCauseOf } from '@/pages/local/insights';
-import { RankedBars } from '@/components/dashboard/RankedBars';
+import { Meter, RankedBars } from '@/design-system/charts';
 import { NO_RUNS_USD, sumDashboardUsd } from '@/lib/dashboard-money-total';
 import { KpiStrip, type KpiItem } from '@/components/dashboard/KpiStrip';
 import { CardBasis } from '@/components/dashboard/CardBasis';
@@ -375,9 +376,7 @@ export function RunLocallyCard({ row }: { row: Record<string, unknown> | null })
       <div className="local-routing-share">
         <p className="local-dashboard-metric">{text}</p>
         <p className="local-dashboard-caption">of all runs executed locally</p>
-        <div className="local-routing-meter" role="meter" aria-label="Local share of all runs" aria-valuemin={0} aria-valuemax={100} aria-valuenow={share * 100} aria-valuetext={text}>
-          <span style={{ width: `${share * 100}%` }} />
-        </div>
+        <Meter kind="routing-share" label="Local share of all runs" min={0} max={100} now={share * 100} valueText={text} share={share} />
       </div>
       <dl className="local-routing-counts">
         <div data-routing-count="local"><dt><ConceptIcon concept="local-run" size={15} />Local runs</dt><dd>{recordedCount(byTier.local_call_count)}</dd></div>
@@ -1834,11 +1833,9 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
               <div><dt>Tokens out</dt><dd>{recordedTokens(selectedRun.tokens_output)}</dd></div>
               <div><dt>Modelled saving</dt><dd>{runModelledCell(selectedRun)}</dd></div>
               <div><dt>Quality score</dt><dd>{recorded(selectedRun.actual_score)}
-                {Number.isFinite(selectedScore) && selectedScore >= 0 && selectedScore <= 1 && <div className="local-selected-quality-meter" role="meter" aria-label="Quality score versus required bar" aria-valuemin={0} aria-valuemax={1} aria-valuenow={selectedScore}
-                  aria-valuetext={`Quality score ${recorded(selectedRun.actual_score)}; required bar ${recorded(selectedRun.required_bar)}`}>
-                  <span style={{ width: `${selectedScore * 100}%` }} />
-                  {Number.isFinite(selectedRequiredBar) && selectedRequiredBar >= 0 && selectedRequiredBar <= 1 && <i style={{ left: `${selectedRequiredBar * 100}%` }} />}
-                </div>}
+                <Meter kind="selected-quality" label="Quality score versus required bar" min={0} max={1} now={selectedScore}
+                  valueText={`Quality score ${recorded(selectedRun.actual_score)}; required bar ${recorded(selectedRun.required_bar)}`}
+                  share={selectedScore} mark={Number.isFinite(selectedRequiredBar) ? selectedRequiredBar : null} />
               </dd></div>
               <div><dt>Required bar</dt><dd>{isMissing(selectedRun.required_bar) ? 'bar not recorded' : recorded(selectedRun.required_bar)}</dd></div>
             </dl>

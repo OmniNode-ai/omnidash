@@ -207,8 +207,9 @@
   --ds-card-insights: #7dd3fc;
 }
 /* One meaning per field across local cards, Workflow and the event views. The tier colours (OMN-21970) are the
-   product owner's palette, checked for colour-blind contrast in both themes; cheap_frontier and cheap_cloud share
-   their family's colour, and a tier no row names is none. */
+   product owner's palette, checked for colour-blind contrast in both themes. cheap_frontier and cheap_cloud are a
+   lighter shade of their family (product owner 2026-11-03), each passing the palette's own floors; in light mode no
+   lighter frontier shade passes, so light cheap_frontier keeps the frontier colour. A tier no row names is none. */
 :root {
   --ds-card-spend: #047857;
   --ds-card-savings: #0f766e;
@@ -286,7 +287,7 @@
   --ds-field-tier-local: #2a78d6;
   --ds-field-tier-harness: #eb6834;
   --ds-field-tier-cheap-frontier: var(--ds-field-tier-frontier);
-  --ds-field-tier-cheap-cloud: var(--ds-field-tier-cloud);
+  --ds-field-tier-cheap-cloud: #8980fd;
   --ds-field-tier-cloud: #6250d6;
   --ds-field-tier-claude: #008300;
   --ds-field-tier-frontier: #1baf7a;
@@ -418,8 +419,8 @@
   --ds-field-quality-comparison: oklch(79% 0.11 142.82768);
   --ds-field-tier-local: #3987e5;
   --ds-field-tier-harness: #d95926;
-  --ds-field-tier-cheap-frontier: var(--ds-field-tier-frontier);
-  --ds-field-tier-cheap-cloud: var(--ds-field-tier-cloud);
+  --ds-field-tier-cheap-frontier: #47be8e;
+  --ds-field-tier-cheap-cloud: #afa8fd;
   --ds-field-tier-cloud: #9085e9;
   --ds-field-tier-claude: #008300;
   --ds-field-tier-frontier: #199e70;

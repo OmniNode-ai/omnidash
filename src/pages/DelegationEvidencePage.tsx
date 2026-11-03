@@ -14,7 +14,7 @@ import { isUnavailableField } from '@/components/dashboard/field-identity';
 import { EvPageShell } from '@/components/dashboard/event-dash/EvPageShell';
 import { KpiStrip } from '@/components/dashboard/KpiStrip';
 import { DashboardTabs } from '@/components/dashboard/DashboardTabs';
-import { RankedBars } from '@/components/dashboard/RankedBars';
+import { RankedBars } from '@/design-system/charts';
 import {
   Badge,
   CodeBlock,
@@ -56,7 +56,7 @@ import {
 import { overviewRunCount } from '@/lib/dashboard-overview-count';
 
 import { formatDuration } from '@/components/format/duration';
-import { percent as sharePercent } from '@/pages/local/shares';
+import { percent as sharePercent } from '@/design-system/charts';
 import { taskLabel } from '@/pages/local/plain-text';
 import { readableTime } from '@/components/format/readable-time';
 import { ModelTiersContext, TierLegend, useModelColor, useModelIdentityStyle } from '@/components/dashboard/model-tiers';

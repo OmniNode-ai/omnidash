@@ -95,7 +95,9 @@ export function componentKnobs(): Set<string> {
   if (knobs) return knobs;
   knobs = new Set();
   for (const path of sourceFiles()) {
-    if (!/\.tsx?$/.test(path) || isExempt(path) || path.startsWith('src/design-system/')) continue;
+    // The kit's own components set knobs too (RankedBars sets --rb-size, --rb-count, --rb-color), so they are read here:
+    // excluding src/design-system/ hid every knob of a chart the moment it moved into the kit. --ds-* names never count.
+    if (!/\.tsx?$/.test(path) || isExempt(path)) continue;
     const code = stripComments(path, read(path));
     for (const m of code.matchAll(/['"](--[a-zA-Z0-9-_]+)['"]\s*[:\]]/g)) if (!m[1]!.startsWith('--ds-')) knobs.add(m[1]!);
     for (const m of code.matchAll(/setProperty\(\s*['"](--[a-zA-Z0-9-_]+)['"]/g)) if (!m[1]!.startsWith('--ds-')) knobs.add(m[1]!);
@@ -128,4 +130,44 @@ export function scanAll(scan: (path: string, text: string) => Hit[]): Hit[] {
 export function summarise(hits: Hit[], limit = 25): string {
   const files = new Set(hits.map(h => h.path));
   return `${hits.length} in ${files.size} files:\n` + hits.slice(0, limit).map(h => `  ${h.path}:${h.line} ${h.text}`).join('\n');
+}
+
+/** AC3: the one chart kit. Every chart a page draws comes from here. */
+export const CHART_KIT = 'src/design-system/charts/';
+/**
+ * The widget dashboard (/dashboard) is a builder of composable widgets, not one of the six product pages AC3 and AC4 name
+ * (Overview, Runs, Workflow, Usage, Settings, Delegation Evidence). Its widgets keep their own ECharts and three.js
+ * scenes; their colours already come from the tokens (AC1) through charts/scene-skin.ts. Named file by file, so a new
+ * widget chart or a page chart cannot hide here.
+ */
+export const WIDGET_DASHBOARD_CHARTS: ReadonlySet<string> = new Set([
+  'src/components/dashboard/ab-compare/AbCompareWidget.tsx',
+  'src/components/dashboard/cost-by-model/CostByModelPie.tsx',
+  'src/components/dashboard/cost-summary/CostSummaryAdapter.tsx',
+  'src/components/dashboard/cost-trend/CostTrend3DArea.tsx',
+  'src/components/dashboard/cost-trend/CostTrend3DBars.tsx',
+  'src/components/dashboard/cost-trend/StackedChart.tsx',
+  'src/components/dashboard/delegation/DoughnutChart.tsx',
+  'src/components/dashboard/projection-container/visualizations/CostScatter.tsx',
+  'src/components/dashboard/quality/QualityScoreHistogram.tsx',
+  'src/components/dashboard/quality/QualityScoreTilted3D.tsx',
+  'src/components/dashboard/receipt-gate/ReceiptGateWidget.tsx',
+  'src/components/dashboard/routing-decision/RoutingDecisionWidget.tsx',
+  'src/components/dashboard/session-timeline/SessionTimelineWidget.tsx',
+]);
+
+// `import 'x'` is the side-effect form, which carries no `from` (the planted-beside-the-allowlist control).
+const CHART_LIBRARY = /(?:from\s+|import\s+|import\(\s*|require\(\s*)['"](?:echarts|echarts-for-react|recharts|chart\.js|three)(?:\/[^'"]*)?['"]/g;
+/** Marks only a chart draws: an SVG plot, a meter, and the kit's bar, slice, dot, cell and track classes. */
+const CHART_MARK = /<svg\b|role=\{?["']meter["']|\b(?:gdb-bar|rb-bar|ins-seg|ins-fill|ins-track|ins-heat-cell|ins-dot|local-donut-slice|local-meter-fill|local-tier-bar-track|usage-analysis-spark|workflow-comparison-track|ins-money-paid|ins-money-saved|ins-money-baseline|local-routing-meter|local-selected-quality-meter)\b/g;
+
+/** AC3: a chart drawn, or a chart library imported, outside the kit. */
+export function chartDrawing(path: string, text: string): Hit[] {
+  if (!/\.tsx?$/.test(path) || path.startsWith(CHART_KIT) || isExempt(path) || WIDGET_DASHBOARD_CHARTS.has(path)) return [];
+  const hits: Hit[] = [];
+  stripComments(path, text).split('\n').forEach((line, i) => {
+    for (const m of line.matchAll(CHART_LIBRARY)) hits.push({ path, line: i + 1, text: m[0] });
+    for (const m of line.matchAll(CHART_MARK)) hits.push({ path, line: i + 1, text: m[0] });
+  });
+  return hits;
 }

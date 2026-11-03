@@ -2,8 +2,8 @@ import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
 
 import { formatDashboardUsd } from '@/lib/dashboard-currency';
 import { formatDuration } from '@/components/format/duration';
-import { createContext, useContext, useId, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
-import { RankedBars } from '@/components/dashboard/RankedBars';
+import { createContext, useContext, useId, useState, type CSSProperties, type ReactNode } from 'react';
+import { BarTrack, ChartCard, ChartEmpty, ChartReadout, CumulativeColumns, DayColumns, Histogram, HourHeatmap, LinePlot, NamedByPanel, RankedBars, SeriesLegend, SeriesToggles, SpendColumns, dayTicks } from '@/design-system/charts';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { causeHref, useSharedRunFilter } from './run-filter';
 import { failureCauseLabel } from './plain-text';
@@ -90,72 +90,12 @@ function dayCounts(day: InsightDay): string {
   return parts.join(', ');
 }
 
-/** True inside a panel whose own heading already names the chart: the chart's title then only labels the figure. */
-const NamedByPanel = createContext(false);
-
-function ChartCard({ title, concept, note, delay, children }: {
-  title: string; concept: string; note?: string; delay: number; children: ReactNode;
-}) {
-  const id = useId();
-  const named = useContext(NamedByPanel);
-  return (
-    <figure className="local-chart ins-card od-card" aria-labelledby={id} style={{ '--ins-accent': `var(--ds-field-${concept})`, animationDelay: `${delay}ms` } as CSSProperties}>
-      <div className="ins-card-head">
-        <h3 id={id} className="ins-title" hidden={named}><span className="ins-badge" aria-hidden="true"><ConceptIcon concept={concept} label={title} size={16} /></span>{title}</h3>
-        {note && <span className="ins-note">{note}</span>}
-      </div>
-      {children}
-    </figure>
-  );
-}
-
-/** A day chart's words for the day pointed at; empty at rest (part 15 AC96), keeping its line so the chart does not move. */
-function Readout({ testId, text, active }: { testId?: string; text: ReactNode; active: boolean }) {
-  if (text === null) return null;
-  return <p className={`ins-readout${active ? ' ins-readout--active' : ''}`} data-testid={testId} aria-live="polite">{text}</p>;
-}
-
-/**
- * Live review 2026-10-25 ("all graphs this style"): one day of a grouped bar chart, the reference screenshot's look:
- * each series a dotted bar side by side, its served value above it; a value not served draws no bar and no number.
- * Heights are each value over the largest single value in the chart.
- */
-function DayBars({ values, max }: { values: ReadonlyArray<{ key: string; value: number | null; color: string; label: string }>; max: number }) {
-  return (
-    <span className="gdb-group">
-      {values.map(entry => (
-        <span key={entry.key} className="gdb-col" data-series={entry.key}>
-          {entry.value !== null && entry.value > 0 && <b className="gdb-val">{entry.label}</b>}
-          {entry.value !== null && entry.value > 0 && (
-            <span className="gdb-bar ins-seg" style={{ height: `${(entry.value / max) * 100}%`, color: entry.color } as CSSProperties} />
-          )}
-        </span>
-      ))}
-    </span>
-  );
-}
-
 /** A short label above a token bar ("2.9K", "206K"); the exact count is in the day's readout and accessible name. */
 function shortCount(value: number | null): string {
   if (value === null) return '';
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(value >= 10_000_000 ? 0 : 1)}M`;
   if (value >= 1_000) return `${(value / 1_000).toFixed(value >= 100_000 ? 0 : 1)}K`;
   return String(value);
-}
-
-/** Day labels under a grouped chart: every day while they fit, else every few days, always the last. */
-/** OMN-21166 part 21 AC139: at most `maxLabels` day labels, so they never touch; Overview's half-width charts show 8. */
-function dayTicks(days: readonly { day: string }[], maxLabels = 14): Set<number> {
-  if (days.length === 0) return new Set();
-  const step = Math.max(1, Math.ceil(days.length / maxLabels));
-  const last = days.length - 1;
-  const ticks = days.map((_, index) => index).filter(index => index % step === 0);
-  // The last day always has a label; the tick before it goes when it would sit beside it (edge case: 30 days at step 4
-  // labelled both index 28 and 29, which overlapped). Onex delegate run 5406a8e7.
-  const previous = ticks.at(-1);
-  if (previous !== undefined && last - previous < step) ticks.pop();
-  ticks.push(last);
-  return new Set(ticks);
 }
 
 function RunsPerDay({ days }: { days: InsightDay[] }) {
@@ -177,55 +117,24 @@ function RunsPerDay({ days }: { days: InsightDay[] }) {
   });
   return (
     <ChartCard title="Runs per day" concept="runs-daily" delay={0}>
-      <Readout testId="runs-per-day-readout" active={active !== null}
+      <ChartReadout testId="runs-per-day-readout" active={active !== null}
         text={active ? <>{dayLabel(active.day)} · <span data-field-tone="count">{count(active.runs)} runs</span> · <span data-field-tone="pass">{count(active.passed)} passed</span> · <span data-field-tone="fail">{count(active.failed)} failed</span>{active.unrecorded ? <> · {count(active.unrecorded)} not recorded</> : null}</> : ''} />
-      <div className="ins-bars gdb-plot" role="group" aria-label="Runs per day" onMouseLeave={() => setHover(null)}
-        onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setHover(null); }}>
-        {days.map((day, index) => (
-          <button key={day.day} type="button" className="ins-bar gdb-day" aria-label={`${dayLabel(day.day)}: ${dayCounts(day)}`}
-            aria-describedby={opensId} onClick={() => openDay(day.day)}
-            data-dim={hover !== null && hover !== index} onMouseEnter={() => setHover(index)} onFocus={() => setHover(index)}>
-            <DayBars max={max} values={[
-              ...(show.passed ? [{ key: 'passed', value: day.passed, color: PASS, label: count(day.passed) }] : []),
-              ...(show.failed ? [{ key: 'failed', value: day.failed, color: FAIL, label: count(day.failed) }] : []),
-              ...(day.unrecorded > 0 ? [{ key: 'unrecorded', value: day.unrecorded, color: UNKNOWN, label: count(day.unrecorded) }] : []),
-            ]} />
-            <span className="gdb-day-label" aria-hidden="true">{ticks.has(index) ? dayLabel(day.day) : ''}</span>
-          </button>
-        ))}
-      </div>
+      <DayColumns label="Runs per day" days={days.map((day, index) => ({
+        key: day.day,
+        ariaLabel: `${dayLabel(day.day)}: ${dayCounts(day)}`,
+        tick: ticks.has(index),
+        values: [
+          ...(show.passed ? [{ key: 'passed', value: day.passed, color: PASS, label: count(day.passed) }] : []),
+          ...(show.failed ? [{ key: 'failed', value: day.failed, color: FAIL, label: count(day.failed) }] : []),
+          ...(day.unrecorded > 0 ? [{ key: 'unrecorded', value: day.unrecorded, color: UNKNOWN, label: count(day.unrecorded) }] : []),
+        ],
+      }))} max={max} hover={hover} onHover={setHover} onOpen={openDay} describedBy={opensId} dayLabel={dayLabel} />
       <span id={opensId} hidden>Opens Runs for this day</span>
-      <div className="ins-toggles gdb-legend" role="group" aria-label="Series">
-        <button type="button" className="ins-toggle" data-field-tone="pass" aria-pressed={show.passed} onClick={() => toggle('passed')} style={{ '--ins-swatch': PASS } as CSSProperties}>Passed</button>
-        <button type="button" className="ins-toggle" data-field-tone="fail" aria-pressed={show.failed} onClick={() => toggle('failed')} style={{ '--ins-swatch': FAIL } as CSSProperties}>Failed</button>
-      </div>
+      <SeriesToggles label="Series" onToggle={key => toggle(key as 'passed' | 'failed')} series={[
+        { key: 'passed', label: 'Passed', color: PASS, tone: 'pass', shown: show.passed },
+        { key: 'failed', label: 'Failed', color: FAIL, tone: 'fail', shown: show.failed },
+      ]} />
     </ChartCard>
-  );
-}
-
-/** An SVG path through the points that have a value; a day without one breaks the line rather than drawing a 0. */
-function linePath(values: ReadonlyArray<number | null>, min: number, max: number, width: number, height: number): string {
-  // The scale's height; a flat scale (every value equal) still needs a non-zero height to draw on.
-  const span = max > min ? max - min : 1;
-  let path = '';
-  let drawing = false;
-  values.forEach((value, index) => {
-    if (value === null) { drawing = false; return; }
-    const x = values.length > 1 ? (index / (values.length - 1)) * width : width / 2;
-    const y = height - 6 - ((value - min) / span) * (height - 12);
-    path += `${drawing ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)} `;
-    drawing = true;
-  });
-  return path.trim();
-}
-
-function HoverColumns({ labels, onHover }: { labels: string[]; onHover: (index: number | null) => void }) {
-  return (
-    <div className="ins-hits" onMouseLeave={() => onHover(null)}>
-      {labels.map((label, index) => (
-        <button key={label} type="button" className="ins-hit" aria-label={label} onMouseEnter={() => onHover(index)} onFocus={() => onHover(index)} />
-      ))}
-    </div>
   );
 }
 
@@ -234,25 +143,13 @@ function PassRateTrend({ days }: { days: InsightDay[] }) {
   const rates = days.map(day => day.passRate);
   const known = rates.filter((rate): rate is number => rate !== null);
   const min = known.length ? Math.max(0, Math.floor(Math.min(...known) / 10) * 10 - 10) : 0;
-  const path = linePath(rates, min, 100, 600, 120);
   const labels = days.map(day => `${dayLabel(day.day)}: ${day.passRate === null ? 'no verdicts' : `${day.passRate.toFixed(1)}% passed`} (${verdictCoverage(day.passed + day.failed, day.runs)})`);
   const active = hover === null ? null : days[hover]!;
-  const x = hover === null ? 0 : days.length > 1 ? (hover / (days.length - 1)) * 100 : 50;
   return (
     <ChartCard title="Pass rate per day" concept="pass-rate-daily" delay={60}>
-      <Readout active={active !== null} text={active ? <>{dayLabel(active.day)} · <span data-field-tone="pass" data-field-unavailable={active.passRate === null}>{active.passRate === null ? 'no verdicts' : `${active.passRate.toFixed(1)}% passed`}</span> · <span data-field-tone="basis">{verdictCoverage(active.passed + active.failed, active.runs)}</span></> : `Scale from ${min}% to 100%`} />
-      <div className="ins-plot">
-        <svg viewBox="0 0 600 120" preserveAspectRatio="none" role="img" aria-label="Pass rate per day">
-          <path className="od-draw" d={path} pathLength={1} fill="none" stroke={PASS} strokeWidth={3} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
-        </svg>
-        {/* A dot on every day that has a verdict, so a single day of runs still shows (a line needs two). */}
-        {rates.map((rate, index) => rate === null ? null : (
-          <span key={days[index]!.day} className="ins-dot" data-active={hover === index}
-            style={{ left: `${days.length > 1 ? (index / (days.length - 1)) * 100 : 50}%`, top: `${((120 - 6 - ((rate - min) / (100 - min)) * 108) / 120) * 100}%` }} />
-        ))}
-        {active && <span className="ins-marker" style={{ left: `${x}%` }} />}
-        <HoverColumns labels={labels} onHover={setHover} />
-      </div>
+      <ChartReadout active={active !== null} text={active ? <>{dayLabel(active.day)} · <span data-field-tone="pass" data-field-unavailable={active.passRate === null}>{active.passRate === null ? 'no verdicts' : `${active.passRate.toFixed(1)}% passed`}</span> · <span data-field-tone="basis">{verdictCoverage(active.passed + active.failed, active.runs)}</span></> : `Scale from ${min}% to 100%`} />
+      <LinePlot label="Pass rate per day" values={rates} keys={days.map(day => day.day)} labels={labels} min={min} max={100}
+        hover={hover} onHover={setHover} color={PASS} />
       <div className="ins-axis"><span>{dayLabel(days[0]!.day)}</span><span>{dayLabel(days[days.length - 1]!.day)}</span></div>
     </ChartCard>
   );
@@ -270,50 +167,12 @@ function ActivityHeatmap({ runs, days, window }: { runs: InsightRun[]; days: rea
     : window.kind === 'custom' ? `for ${window.start || 'start date'} to ${window.end || 'end date'} UTC`
       : 'for all served UTC dates';
   const [hover, setHover] = useState<[number, number] | null>(null);
-  const [activeCell, setActiveCell] = useState(0);
-  const cells = useRef<Array<HTMLButtonElement | null>>([]);
-  const helpId = useId();
   const label = (row: number, hour: number) => `${weekday(grid.days[row]!)} ${String(hour).padStart(2, '0')}:00 UTC · ${runsWord(grid.counts[row]![hour]!)}`;
-  const inspect = (row: number, hour: number) => {
-    setHover([row, hour]);
-    setActiveCell(row * 24 + hour);
-  };
-  const move = (event: KeyboardEvent<HTMLButtonElement>, row: number, hour: number) => {
-    let nextRow = row;
-    let nextHour = hour;
-    switch (event.key) {
-      case 'ArrowLeft': nextHour = Math.max(0, hour - 1); break;
-      case 'ArrowRight': nextHour = Math.min(23, hour + 1); break;
-      case 'ArrowUp': nextRow = Math.max(0, row - 1); break;
-      case 'ArrowDown': nextRow = Math.min(grid.days.length - 1, row + 1); break;
-      case 'Home': nextHour = 0; if (event.ctrlKey || event.metaKey) nextRow = 0; break;
-      case 'End': nextHour = 23; if (event.ctrlKey || event.metaKey) nextRow = grid.days.length - 1; break;
-      default: return;
-    }
-    event.preventDefault();
-    cells.current[nextRow * 24 + nextHour]?.focus();
-  };
   return (
     <ChartCard title="When runs happen" concept="activity-hourly" note={`${rangeLabel}, by UTC hour`} delay={120}>
-      <Readout testId="activity-hour-readout" active={hover !== null} text={hover ? <>{weekday(grid.days[hover[0]]!)} {String(hover[1]).padStart(2, '0')}:00 UTC · <span data-field-tone="count">{count(grid.counts[hover[0]]![hover[1]]!)} runs</span></> : <>Busiest hour: <span data-field-tone="count">{count(grid.max)} runs</span></>} />
-      <p id={helpId} className="sr-only">Use arrow keys to inspect hours and days. Home and End move to the first and last hour. Tab leaves the chart.</p>
-      <div className="ins-heat" role="group" aria-describedby={helpId} aria-label={`Runs by UTC hour ${selectedWindowLabel} (${rangeLabel}); busiest hour has ${count(grid.max)} runs`}>
-        {grid.days.map((day, row) => (
-          <div key={day} className="ins-heat-row">
-            <span className="ins-heat-day">{weekday(day)}</span>
-            {grid.counts[row]!.map((runsInHour, hour) => (
-              <button key={hour} type="button" className="ins-heat-cell" title={label(row, hour)} aria-label={label(row, hour)}
-                ref={node => { cells.current[row * 24 + hour] = node; }} tabIndex={activeCell === row * 24 + hour ? 0 : -1}
-                // A real pointer move, not mouseenter: a page that scrolls under a resting pointer fires a boundary
-                // mouseenter with no move, which would replace the value just tapped or chosen by keyboard.
-                onMouseMove={() => setHover(current => current?.[0] === row && current[1] === hour ? current : [row, hour])}
-                onFocus={() => inspect(row, hour)} onClick={() => inspect(row, hour)}
-                onKeyDown={event => move(event, row, hour)}
-                style={{ background: runsInHour ? `color-mix(in oklch, var(--ds-chart-2) ${Math.round(15 + 85 * (runsInHour / Math.max(1, grid.max)))}%, transparent)` : undefined }} />
-            ))}
-          </div>
-        ))}
-      </div>
+      <ChartReadout testId="activity-hour-readout" active={hover !== null} text={hover ? <>{weekday(grid.days[hover[0]]!)} {String(hover[1]).padStart(2, '0')}:00 UTC · <span data-field-tone="count">{count(grid.counts[hover[0]]![hover[1]]!)} runs</span></> : <>Busiest hour: <span data-field-tone="count">{count(grid.max)} runs</span></>} />
+      <HourHeatmap label={`Runs by UTC hour ${selectedWindowLabel} (${rangeLabel}); busiest hour has ${count(grid.max)} runs`}
+        rows={grid.days.map(day => ({ key: day, label: weekday(day) }))} counts={grid.counts} cellLabel={label} onInspect={setHover} />
     </ChartCard>
   );
 }
@@ -331,7 +190,7 @@ function TaskMix({ runs }: { runs: InsightRun[] }) {
             <li key={group.key} className="ins-list-row" style={{ '--ins-swatch': look.color } as CSSProperties}>
               <span className="ins-chip-icon" aria-hidden="true">{look.icon}</span>
               <span className="ins-list-name">{group.key === NOT_RECORDED ? NOT_RECORDED : readable(group.key)}</span>
-              <span className="ins-track"><span className="ins-fill od-growx" style={{ width: `${(group.runs / max) * 100}%`, animationDelay: `${index * 60}ms` }} /></span>
+              <BarTrack share={group.runs / max} delay={index * 60} />
               <span className="ins-list-value"><span data-field-tone="count">{count(group.runs)}</span> · <span data-field-tone="pass" data-field-unavailable={!judged}>{judged ? `${Math.round((group.passed / judged) * 100)}%` : 'no verdicts'}</span> · <span className="ins-list-coverage" data-field-tone="basis">{verdictCoverage(judged, group.runs)}</span></span>
             </li>
           );
@@ -345,21 +204,13 @@ function DurationHistogram({ runs }: { runs: InsightRun[] }) {
   const edges = durationEdges();
   const { buckets, unrecorded } = durationBuckets(runs, edges);
   const [hover, setHover] = useState<number | null>(null);
-  const max = Math.max(1, ...buckets);
   const name = (index: number) => durationBucketLabel(index);
   const median = summary(runs).medianLatency;
   return (
     <ChartCard title="How long runs take" concept="duration" note={`${count(unrecorded)} not recorded`} delay={240}>
-      <Readout active={hover !== null} text={hover === null ? (median === null ? 'No durations recorded' : <>Median <span data-field-tone="duration">{duration(median)}</span></>) : <><span data-field-tone="duration">{name(hover)}</span> · <span data-field-tone="count">{count(buckets[hover]!)} runs</span></>} />
-      <div className="ins-bars ins-bars--short" role="group" aria-label="Duration buckets" onMouseLeave={() => setHover(null)}>
-        {buckets.map((runsInBucket, index) => (
-          <button key={index} type="button" className="ins-bar" aria-label={`${name(index)}: ${runsWord(runsInBucket)}`}
-            data-dim={hover !== null && hover !== index} onMouseEnter={() => setHover(index)} onFocus={() => setHover(index)}>
-            {/* Part 18 AC122: one hatched series in the duration colour, as every bar (part 16 AC97). */}
-            {runsInBucket > 0 && <span className="ins-seg gdb-bar od-grow" style={{ height: `${(runsInBucket / max) * 100}%`, color: 'var(--ds-field-duration)', animationDelay: `${index * 50}ms` }} />}
-          </button>
-        ))}
-      </div>
+      <ChartReadout active={hover !== null} text={hover === null ? (median === null ? 'No durations recorded' : <>Median <span data-field-tone="duration">{duration(median)}</span></>) : <><span data-field-tone="duration">{name(hover)}</span> · <span data-field-tone="count">{count(buckets[hover]!)} runs</span></>} />
+      <Histogram label="Duration buckets" hover={hover} onHover={setHover} color="var(--ds-field-duration)"
+        buckets={buckets.map((runsInBucket, index) => ({ key: String(index), ariaLabel: `${name(index)}: ${runsWord(runsInBucket)}`, value: runsInBucket }))} />
       <div className="ins-axis"><span>{duration(edges[0]!)}</span><span>{duration(edges[edges.length - 2]!)}+</span></div>
     </ChartCard>
   );
@@ -404,7 +255,7 @@ function FailureCauses({ runs, onInspectFailure, limit }: { runs: InsightRun[]; 
   const max = Math.max(1, ...list.map(entry => entry.count));
   return (
     <ChartCard title="Why runs failed" concept="failures" delay={360}>
-      {list.length === 0 ? <p className="ins-empty">No failed runs in this window</p> : (
+      {list.length === 0 ? <ChartEmpty>No failed runs in this window</ChartEmpty> : (
         <ul className="ins-list" aria-label="Failure causes">
           {list.map((entry, index) => (
             <li key={entry.cause} className="ins-list-row ins-list-row--plain" style={{ '--ins-swatch': [FAIL, 'var(--ds-chart-7)', 'var(--ds-chart-5)', 'var(--ds-chart-4)', 'var(--ds-chart-3)'][index % 5] } as CSSProperties}>
@@ -415,7 +266,7 @@ function FailureCauses({ runs, onInspectFailure, limit }: { runs: InsightRun[]; 
                   {failureCauseLabel(entry.cause)}
                 </button>
               ) : <span className="ins-list-name" data-failure-cause={entry.cause}>{failureCauseLabel(entry.cause)}</span>}
-              <span className="ins-track"><span className="ins-fill od-growx" style={{ width: `${(entry.count / max) * 100}%`, animationDelay: `${index * 60}ms` }} /></span>
+              <BarTrack share={entry.count / max} delay={index * 60} />
               <span className="ins-list-value" data-field-tone="fail">{count(entry.count)}</span>
               <span className="ins-list-seen">
                 <span><SeenAt label="First seen" at={entry.firstSeen} /> · <SeenAt label="Last seen" at={entry.lastSeen} /></span>
@@ -446,24 +297,20 @@ function TokensPerDay({ days }: { days: InsightDay[] }) {
   const ticks = dayTicks(days, location === '/runs' ? 14 : 8);
   return (
     <ChartCard title="Tokens per day" concept="tokens-daily" delay={420}>
-      <Readout active={active !== null} text={active ? <>{dayLabel(active.day)} · <span data-field-tone="tokens-in" data-field-unavailable={active.tokensIn === null}>{side(active.tokensIn, active.tokensInUnmeasured, 'in')}</span>, <span data-field-tone="tokens-out" data-field-unavailable={active.tokensOut === null}>{side(active.tokensOut, active.tokensOutUnmeasured, 'out')}</span></> : ''} />
-      <div className="ins-bars gdb-plot" role="group" aria-label="Tokens per day" onMouseLeave={() => setHover(null)}
-        onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setHover(null); }}>
-        {days.map((day, index) => (
-          <button key={day.day} type="button" className="ins-bar gdb-day" aria-label={label(day)}
-            data-dim={hover !== null && hover !== index} onMouseEnter={() => setHover(index)} onFocus={() => setHover(index)}>
-            <DayBars max={max} values={[
-              { key: 'in', value: day.tokensIn, color: 'var(--ds-field-tokens-in)', label: shortCount(day.tokensIn) },
-              { key: 'out', value: day.tokensOut, color: 'var(--ds-field-tokens-out)', label: shortCount(day.tokensOut) },
-            ]} />
-            <span className="gdb-day-label" aria-hidden="true">{ticks.has(index) ? dayLabel(day.day) : ''}</span>
-          </button>
-        ))}
-      </div>
-      <ul className="ins-token-legend gdb-legend" aria-label="Token series">
-        <li data-field-tone="tokens-in"><i aria-hidden="true" style={{ background: 'var(--ds-field-tokens-in)' }} /><span>Tokens in</span></li>
-        <li data-field-tone="tokens-out"><i aria-hidden="true" style={{ background: 'var(--ds-field-tokens-out)' }} /><span>Tokens out</span></li>
-      </ul>
+      <ChartReadout active={active !== null} text={active ? <>{dayLabel(active.day)} · <span data-field-tone="tokens-in" data-field-unavailable={active.tokensIn === null}>{side(active.tokensIn, active.tokensInUnmeasured, 'in')}</span>, <span data-field-tone="tokens-out" data-field-unavailable={active.tokensOut === null}>{side(active.tokensOut, active.tokensOutUnmeasured, 'out')}</span></> : ''} />
+      <DayColumns label="Tokens per day" days={days.map((day, index) => ({
+        key: day.day,
+        ariaLabel: label(day),
+        tick: ticks.has(index),
+        values: [
+          { key: 'in', value: day.tokensIn, color: 'var(--ds-field-tokens-in)', label: shortCount(day.tokensIn) },
+          { key: 'out', value: day.tokensOut, color: 'var(--ds-field-tokens-out)', label: shortCount(day.tokensOut) },
+        ],
+      }))} max={max} hover={hover} onHover={setHover} dayLabel={dayLabel} />
+      <SeriesLegend label="Token series" series={[
+        { label: 'Tokens in', color: 'var(--ds-field-tokens-in)', tone: 'tokens-in' },
+        { label: 'Tokens out', color: 'var(--ds-field-tokens-out)', tone: 'tokens-out' },
+      ]} />
     </ChartCard>
   );
 }
@@ -691,28 +538,17 @@ function MoneyWindowCharts({ rows, now, days, unavailable }: { rows: readonly un
       <figure className="local-chart ins-money-chart" aria-label="Spend vs all-cloud">
         <ChartHeading concept="spend-daily" title="Spend vs all-cloud" detail={`${days === 1 ? 'Today (UTC)' : `Last ${days} UTC days`} · ${data.baseline ?? 'baseline not recorded'}`} />
         {selected && <p className="ins-readout" role="status">{detail(selected)}</p>}
-        <div className="ins-money-bars" role="group" aria-label="Spend vs all-cloud by UTC day" onMouseLeave={() => setActiveSpend(null)}>
-          {data.days.map((day, index) => <button key={day.day} type="button" className="ins-money-day" aria-label={detail(day)} onMouseEnter={() => setActiveSpend(index)} onFocus={() => setActiveSpend(index)}>
-            <span className="ins-money-day-bars">
-              {day.spend !== null && <span className="ins-money-paid" style={{ height: `${day.spend / max * 100}%` }} />}
-              {day.saved !== null && <span className="ins-money-saved" style={{ height: `${day.saved / max * 100}%` }} />}
-              {day.counterfactual !== null && <span className="ins-money-baseline" style={{ bottom: `${day.counterfactual / max * 100}%` }} />}
-            </span>
-            <span>{dateLabel(day.day)}</span>
-            <span className="ins-money-values">{day.spend === null ? 'Paid not recorded' : usd(day.spend)} · {day.saved === null ? 'saved not recorded' : `${usd(day.saved)} saved`}</span>
-          </button>)}
-        </div>
-        <div className="ins-money-legend"><span data-tone="paid">Paid</span><span data-tone="saved">Saved</span><span data-tone="baseline">All-cloud baseline</span></div>
+        <SpendColumns label="Spend vs all-cloud by UTC day" max={max} onHover={setActiveSpend} days={data.days.map(day => ({
+          key: day.day, ariaLabel: detail(day), dayText: dateLabel(day.day), spend: day.spend, saved: day.saved, baseline: day.counterfactual,
+          valuesText: `${day.spend === null ? 'Paid not recorded' : usd(day.spend)} · ${day.saved === null ? 'saved not recorded' : `${usd(day.saved)} saved`}` }))} />
         <figcaption>Saved uses the served daily savings value. {data.windowComplete ? 'Returned rows cover the selected window.' : 'The returned rows do not cover the full selected window.'}{data.days.some(day => day.served && day.saved === null) ? ' At least one served day has no recorded savings value.' : ''}</figcaption>
       </figure>
       <figure className="local-chart ins-cumulative-chart" aria-label="Cumulative savings">
         <ChartHeading concept="savings" title="Cumulative savings" detail={`${days === 1 ? 'Today (UTC)' : `Last ${days} UTC days`} · ${data.baseline ?? 'baseline not recorded'}`} />
         <p className="ins-readout" role="status">{activeCumulative === null ? `${data.windowComplete && data.saved !== null ? 'Window total' : 'Served rows only · cumulative incomplete'}: ${usd(data.cumulativeSaved[data.cumulativeSaved.length - 1] ?? null)}` : `${dateLabel(data.days[activeCumulative]!.day)} · cumulative ${usd(data.cumulativeSaved[activeCumulative] ?? null)}${!data.days[activeCumulative]!.served ? ' · no served day row; total carried forward' : data.days[activeCumulative]!.saved === null ? ' · savings value not recorded; cumulative unavailable' : ''}`}</p>
-        <div className="ins-bars ins-bars--short" role="group" aria-label="Cumulative savings by UTC day" onMouseLeave={() => setActiveCumulative(null)}>
-          {data.cumulativeSaved.map((value, index) => <button key={data.days[index]!.day} type="button" className="ins-bar" aria-label={`${dateLabel(data.days[index]!.day)}: cumulative ${usd(value)}${!data.days[index]!.served ? ', no served day row; prior total carried forward' : data.days[index]!.saved === null ? ', savings value not recorded' : ''}`} onMouseEnter={() => setActiveCumulative(index)} onFocus={() => setActiveCumulative(index)}>
-            <span className="ins-seg od-grow" style={{ height: `${value === null ? 0 : value / cumulativeMax * 100}%`, background: 'var(--ds-chart-3)' }} />
-          </button>)}
-        </div>
+        <CumulativeColumns label="Cumulative savings by UTC day" max={cumulativeMax} onHover={setActiveCumulative}
+          days={data.cumulativeSaved.map((value, index) => ({ key: data.days[index]!.day, value,
+            ariaLabel: `${dateLabel(data.days[index]!.day)}: cumulative ${usd(value)}${!data.days[index]!.served ? ', no served day row; prior total carried forward' : data.days[index]!.saved === null ? ', savings value not recorded' : ''}` }))} />
         <figcaption>Missing rows carry the prior total forward. A served row without a savings value makes the cumulative total unavailable from that day onward.</figcaption>
       </figure>
     </ChartSection>

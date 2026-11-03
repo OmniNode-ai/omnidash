@@ -40,7 +40,7 @@ export {
   RotateCcw, RotateCw, Route, RouteOff, Rows3, Ruler, Scale, ScrollText, Search, Send, Server, Settings, Sheet,
   ShieldCheck, Shrink, Shuffle, Signpost, SkipBack, SkipForward, SlidersHorizontal, Snail, Sparkles, Split, Square,
   Star, Sun, TableProperties, Target, TestTube, Timer, TimerReset, Trash2, TrendingUp, TriangleAlert, Trophy,
-  UserLock, Waypoints, WholeWord, Workflow, X, Zap,
+  UserLock, Waypoints, WholeWord, Workflow, X, Zap, Info,
 } from 'lucide-react';
 
 /**

@@ -1,6 +1,6 @@
 import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
 import { useId, useState, type CSSProperties, type ReactNode } from 'react';
-import { RunTimingChart } from './charts';
+import { ComparisonTrack, RunTimingChart } from '@/design-system/charts';
 import { ConceptIcon, FieldIcon } from '@/components/dashboard/FieldIcon';
 import { fieldTone, isUnavailableField } from '@/components/dashboard/field-identity';
 import { formatUsd } from '@/components/dashboard/usage/UsageByModelDayWidget';
@@ -39,7 +39,7 @@ function Comparison({ title, kind, values }: {
         return <button type="button" key={item.label} aria-pressed={selected === index}
           onClick={() => setSelected(index)} className="workflow-comparison-row" data-field-tone={fieldTone(item.label)} data-field-unavailable={value === null}
           style={{ '--bar-width': `${value === null ? 0 : value / maximum * 100}%` } as CSSProperties}>
-          <span className="workflow-comparison-track" aria-hidden="true"><span /></span>
+          <ComparisonTrack />
           <span>{item.label}</span><strong>{value === null ? 'Not recorded' : kind === 'tokens' ? formatFullCount(item.value) : recorded(item.value)}</strong>
         </button>;
       })}
