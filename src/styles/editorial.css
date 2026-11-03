@@ -42,9 +42,9 @@ body, .app, .main, :is(.local-dashboard-page, main.ev-root[data-destination="del
 html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) :is(article.local-dashboard-panel, .local-dashboard-panel, .local-overview-surface, .panel, .widget, .local-run-summary-group, .workflow-analysis-card, .local-dashboard-filters) {
   border-radius: var(--ed-radius) !important; box-shadow: none !important; background: var(--ed-paper-3) !important; border: 1px solid var(--ed-rule) !important; }
 :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) :is(.local-dashboard-panel, .panel, .widget):hover { box-shadow: none !important; }
-/* Panel titles are small uppercase mono tags in a hairline box. */
+/* Panel titles are small uppercase mono labels, with no box around them (Lakshman 2026-11-03: "box not needed"). */
 :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-dashboard-panel > h2 { display: inline-flex; align-items: center; gap: 6px;
-  width: fit-content; padding: 3px 8px; border: 1px solid var(--ed-rule-strong); border-radius: var(--ed-radius-tag);
+  width: fit-content; padding: 0; border: 0;
   font-family: var(--ed-mono) !important; font-size: 12px !important; font-weight: 500 !important; letter-spacing: .12em; text-transform: uppercase; color: var(--ed-ink-2) !important; }
 /* Headline figures: Geist, semibold, tight. */
 :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) :is(.local-dashboard-metric, .local-meter-value, .local-recent-value, .local-share-value, .local-donut-focus-value) {
