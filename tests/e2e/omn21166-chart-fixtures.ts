@@ -7,7 +7,9 @@ export const prefix = 'onex.snapshot.projection.';
  * 2026-11-16). serveCharts freezes the browser's date here, so every fixture date keeps its place in the window; timers
  * still run. A spec that builds its rows from the real date calls keepRealClock(page) first.
  */
-export const FIXTURE_NOW = '2026-10-20T12:00:00Z';
+// The real date these fixtures were written against (late October): the Oct 1 usage rows and the Oct 17 runs both sit in
+// the 30-day window, and All time starts at the first run.
+export const FIXTURE_NOW = '2026-10-30T12:00:00Z';
 /** A UTC day the given number of days before the fixtures' now; recentDay(1) is the fixtures' yesterday. */
 export const recentDay = (daysAgo: number) => new Date(Date.parse(FIXTURE_NOW) - daysAgo * 86_400_000).toISOString().slice(0, 10);
 export const USAGE_DAY = recentDay(2);
