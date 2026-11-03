@@ -33,7 +33,7 @@ import { TIER_TONES } from '@/design-system/charts';
 import { InsightsSection, InsightsWindowContext, MeteringActivityInsights, OverviewRunsContext, PassRateSparkline, TaskIcon, type ActivityWindow } from '@/pages/local/insight-charts';
 import { UsageInsights } from '@/pages/local/usage-insights';
 import { RoutingAnalysis, RunsTotals } from '@/pages/local/usage-analysis';
-import { Badge, DashboardTabs, EmptyState, Fact, FactList, Figure, Panel, PanelTitle, StatusChip } from '@/design-system/components';
+import { Badge, DashboardTabs, DataTable, EmptyState, Fact, FactList, Figure, Panel, PanelTitle, StatusChip } from '@/design-system/components';
 import { SinceLastVisit } from '@/pages/local/since-last-visit';
 import { ModelKeys, providerName } from '@/pages/local/model-keys';
 import { EnvironmentPanel, ServiceHealthUnread } from '@/pages/local/environment';
@@ -1443,8 +1443,7 @@ export function RecentRunsTable({ decisions, sessions, now = Date.now(), showCha
         <RunTokensChart runs={listed} onOpen={id => navigate(workflowHref(id))} />
       </section>}
       {recent.length === 0 && <EmptyState>No runs match this filter</EmptyState>}
-      <div className={`local-dashboard-table-wrap local-dashboard-table-wrap--fit local-recent-runs-wrap${showAllFields ? ' local-recent-runs-wrap--all' : ''}`} role="region" aria-label="Recent run fields">
-        <table id={tableId}>
+      <DataTable fit className={`local-recent-runs-wrap${showAllFields ? ' local-recent-runs-wrap--all' : ''}`} region="Recent run fields" id={tableId}>
           <thead><tr>
             <th>Time</th><th>Run</th><th>Status</th><th>Model</th><th>Cost</th><th>Duration</th>
             <th>Age</th><th>Cause</th><th>Task type</th><th>Backend</th><th>Host</th><th>Tokens in</th><th>Tokens out</th>
@@ -1471,8 +1470,7 @@ export function RecentRunsTable({ decisions, sessions, now = Date.now(), showCha
               <td data-label="Quality score"><span className="local-recent-value">{recorded(decision.actual_score)}</span></td>
             </tr>;
           })}</tbody>
-        </table>
-      </div>
+      </DataTable>
       <p className="local-dashboard-caption local-recent-footer"><span>Ten most recent runs</span><Link href={PAGE_PATHS['local-runs']}>View all runs <ArrowUpRight size={12} aria-hidden="true" /></Link></p>
     </>
   );
@@ -1756,8 +1754,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
             <button type="button" onClick={() => exportRuns('csv')}>Export CSV</button>
             <button type="button" onClick={() => exportRuns('json')}>Export JSON</button>
           </span></p>
-          <div className={`local-dashboard-table-wrap local-dashboard-table-wrap--fit local-runs-wrap${showAllFields ? ' local-runs-wrap--all' : ''}`}>
-            <table id={`${id}-table`}>
+          <DataTable fit className={`local-runs-wrap${showAllFields ? ' local-runs-wrap--all' : ''}`} id={`${id}-table`}>
               <thead>
                 <tr>
                   <th>Run</th>{sortHeader('created', 'Created')}<th>Status</th><th>Cause</th><th>Model</th><th>Backend</th>
@@ -1809,8 +1806,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                   <td>{recorded(run.actual_score)}</td>
                 </tr>;
               })}</tbody>
-            </table>
-          </div>
+          </DataTable>
             </div>
           {selectedRun && <aside className="local-run-selected" role="complementary" aria-label="Selected run">
             <div className="local-dashboard-filters"><h3 className="local-dashboard-caption">Selected run</h3><button type="button" aria-label="Close selected run" onClick={() => setSelectedRunId(null)}>Close</button></div>
@@ -1981,8 +1977,7 @@ export function TierMixPanel({ row, compact = false }: { row: Row | null; compac
   return (
     <section aria-label="Tier mix">
       {/* Part 18 AC120: the table, shown directly; the meter bars repeated its shares (Overview's Tier mix draws them). */}
-      <div className="local-dashboard-table-wrap local-dashboard-table-wrap--fit">
-        <table>
+      <DataTable fit>
           <thead><tr><th><span><FieldIcon label="Tier" size={13} />Tier</span></th><th><span><ConceptIcon concept="delegations" label="Runs" size={13} />Runs</span></th><th><span><ConceptIcon concept="routing" label="Share of tier-routed" size={13} />Share of tier-routed</span></th><th><span><FieldIcon label="Cost" size={13} />Cost</span></th></tr></thead>
           <tbody>{tiers.flatMap((tier, index) => {
             const name = String(tier.cost_tier_name);
@@ -2009,8 +2004,7 @@ export function TierMixPanel({ row, compact = false }: { row: Row | null; compac
               </tr>
             )),
           ];})}</tbody>
-        </table>
-      </div>
+      </DataTable>
       <FactList>
         <Fact term={<><FieldIcon label="Tier-routed" />Tier-routed</>} data-field-tone="routing" data-field-unavailable={isMissing(byTier.tier_routed_total)}>{recordedCount(byTier.tier_routed_total)}</Fact>
         <Fact term={<><FieldIcon label="Not tier-routed" />Not tier-routed</>} data-field-tone="unrouted" data-field-unavailable={isMissing(byTier.not_tier_routed_count)}>{recordedCount(byTier.not_tier_routed_count)}</Fact>
@@ -2042,8 +2036,7 @@ export function CredentialsTable({ rows }: { rows: readonly unknown[] }) {
   const current = keys.filter(key => isMissing(key.revoked_at));
   const revoked = keys.filter(key => !isMissing(key.revoked_at));
   const table = (list: Row[], label: string) => (
-    <div className="local-dashboard-table-wrap local-credentials-records">
-      <table aria-label={label}>
+    <DataTable className="local-credentials-records" aria-label={label}>
         <thead><tr><th>Provider</th><th>Key ref</th><th>Fingerprint</th><th>Set</th><th>Last used</th><th>Revoked</th><th>Expires</th><th>Bound host</th></tr></thead>
         <tbody>{list.map((key, index) => (
           <tr key={`${String(key.provider)}-${String(key.name)}-${index}`}>
@@ -2064,8 +2057,7 @@ export function CredentialsTable({ rows }: { rows: readonly unknown[] }) {
             <td data-label="Bound host">{recorded(key.bound_host)}</td>
           </tr>
         ))}</tbody>
-      </table>
-    </div>
+    </DataTable>
   );
   // Part 18 AC128: the keys in use are on their providers' rows of the one Model providers table above (ModelKeys); this
   // part keeps what that table does not: no key in use, and the key history.
@@ -2518,8 +2510,7 @@ export function MeteringDayTable({ title, rows, columns }: {
       {[...groups.entries()].map(([baseline, days]) => {
         const allTime = allTimeFor(baseline);
         return (
-          <div className="local-dashboard-table-wrap local-dashboard-table-wrap--fit" key={baseline}>
-            <table aria-label={`${title} vs ${baseline}`}>
+          <DataTable fit key={baseline} aria-label={`${title} vs ${baseline}`}>
               <thead><tr>{columns.map((column) => <th key={column.key}>{column.header}</th>)}</tr></thead>
               <tbody>
                 {days.map((row, index) => (
@@ -2535,8 +2526,7 @@ export function MeteringDayTable({ title, rows, columns }: {
                   </tr>
                 )}
               </tbody>
-            </table>
-          </div>
+          </DataTable>
         );
       })}
       <p className="local-dashboard-caption">{DAY_FIGURES_MODELLED}</p>

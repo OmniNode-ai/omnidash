@@ -12,7 +12,7 @@ import { useProjectionSnapshotQuery } from '@/hooks/useProjectionSnapshotQuery';
 import { TOPICS } from '@shared/types/topics';
 import { formatUsd } from './UsageByModelDayWidget';
 import { useState } from 'react';
-import { EmptyState } from '@/design-system/components';
+import { DataTable, EmptyState } from '@/design-system/components';
 
 /** The subset of metering-summary.v1 columns the series renders. */
 export interface MeteringSummaryRow {
@@ -76,8 +76,11 @@ function SavingsDays({ baseline, days }: { baseline: string; days: MeteringSumma
   const page = Math.min(requestedPage, last);
   const start = page * DAYS_PER_PAGE;
   return (
-        <div className="local-dashboard-table-wrap local-savings-days">
-          <table aria-label={`Savings per day vs ${baseline}`}>
+        <DataTable className="local-savings-days" aria-label={`Savings per day vs ${baseline}`} footer={<nav className="local-savings-pagination" aria-label={`Savings days for ${baseline}`}>
+            <button type="button" className="local-filter-clear" aria-label={`Previous savings days for ${baseline}`} disabled={page === 0} onClick={() => setPage(page - 1)}>Previous</button>
+            <span role="status">{start + 1}–{Math.min(start + DAYS_PER_PAGE, days.length)} of {formatDashboardCount(days.length)} days</span>
+            <button type="button" className="local-filter-clear" aria-label={`Next savings days for ${baseline}`} disabled={page === last} onClick={() => setPage(page + 1)}>Next</button>
+          </nav>}>
             <thead><tr><th>Day</th><th>{`Savings vs ${baseline}`}</th><th>Runs</th></tr></thead>
             <tbody>{days.slice(start, start + DAYS_PER_PAGE).map((row, index) => (
               <tr key={`${String(row.window_start)}-${index}`}>
@@ -86,13 +89,7 @@ function SavingsDays({ baseline, days }: { baseline: string; days: MeteringSumma
                 <td data-label="Runs">{isMissing(row.runs_total) ? 'Not recorded' : formatDashboardCount(row.runs_total)}</td>
               </tr>
             ))}</tbody>
-          </table>
-          <nav className="local-savings-pagination" aria-label={`Savings days for ${baseline}`}>
-            <button type="button" className="local-filter-clear" aria-label={`Previous savings days for ${baseline}`} disabled={page === 0} onClick={() => setPage(page - 1)}>Previous</button>
-            <span role="status">{start + 1}–{Math.min(start + DAYS_PER_PAGE, days.length)} of {formatDashboardCount(days.length)} days</span>
-            <button type="button" className="local-filter-clear" aria-label={`Next savings days for ${baseline}`} disabled={page === last} onClick={() => setPage(page + 1)}>Next</button>
-          </nav>
-        </div>
+        </DataTable>
   );
 }
 

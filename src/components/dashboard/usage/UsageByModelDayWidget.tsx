@@ -42,7 +42,7 @@ export interface UsageByModelDayRow {
 
 import { formatDashboardUsd as formatUsd } from '@/lib/dashboard-currency';
 import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
-import { EmptyState } from '@/design-system/components';
+import { DataTable, EmptyState } from '@/design-system/components';
 export { formatDashboardUsd as formatUsd } from '@/lib/dashboard-currency';
 
 export const NO_USAGE_ROWS = 'No usage rows yet';
@@ -117,8 +117,7 @@ export function UsageByModelDayTable({ rows, interactive = false }: { rows: read
         </select></label>
         {(activeModel || activeDay) && <button type="button" onClick={() => { setSelectedModel(''); setSelectedDay(''); setPage(0); }}><RotateCcw size={14} aria-hidden="true" />Clear usage filters</button>}
       </div>}
-    <div className="local-dashboard-table-wrap">
-      <table aria-label="Usage by model and day">
+    <DataTable aria-label="Usage by model and day">
         <thead>
           <tr>
             <th>Day</th><th>Model</th><th>Tokens in</th><th>Tokens out</th><th>Cost (measured)</th><th>Unmeasured</th>
@@ -138,8 +137,7 @@ export function UsageByModelDayTable({ rows, interactive = false }: { rows: read
             <td data-label="Share of calls">{callShare(row.call_share)}</td>
           </tr>
         ))}</tbody>
-      </table>
-    </div>
+    </DataTable>
       {interactive && <div className="usage-record-pagination local-dashboard-pager">
         <span role="status">{filtered.length ? `Showing ${currentPage * 25 + 1}–${Math.min((currentPage + 1) * 25, filtered.length)} of ${formatDashboardCount(filtered.length)} records` : 'No records match these filters'}</span>
         {filtered.length > 25 && <div><button type="button" aria-label="Previous usage records" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}><ChevronLeft size={16} aria-hidden="true" />Previous</button>

@@ -14,7 +14,7 @@ import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { SettingsEmptyState } from '@/components/dashboard/SettingsEmptyState';
 import { readableTime } from '@/components/format/readable-time';
 import { ModelKeysError, listModelKeys, type ModelProviderId, type ModelProviderRow } from '@/services/models-api';
-import { Badge, EmptyState, Fact, FactList } from '@/design-system/components';
+import { Badge, DataTable, EmptyState, Fact, FactList } from '@/design-system/components';
 
 /** A served key reference row from tenant-credentials.v1: its name, fingerprint prefix and times. Never a value. */
 export type CredentialKeyRow = Record<string, unknown>;
@@ -236,8 +236,7 @@ export function ModelKeys({ client = LIVE_CLIENT, keys = [], empty }: { client?:
   // Part 18 AC128: the served keys never depend on GET /models. While it loads, or when it cannot be read, they are listed
   // on their own beside the reason.
   const keysAlone = keys.length === 0 ? null : (
-    <div className="local-dashboard-table-wrap">
-      <table aria-label="Provider key references">
+    <DataTable aria-label="Provider key references">
         <thead><tr><th>Provider</th><th>Key ref</th><th>Fingerprint</th><th>Set</th><th>Last used</th></tr></thead>
         <tbody>{keys.map((key, index) => (
           <tr key={`${String(key.provider)}-${String(key.name)}-${index}`}>
@@ -248,8 +247,7 @@ export function ModelKeys({ client = LIVE_CLIENT, keys = [], empty }: { client?:
             <td data-label="Last used"><LastUsed value={key.last_used_at} /></td>
           </tr>
         ))}</tbody>
-      </table>
-    </div>
+    </DataTable>
   );
   // Revision 3 (AC161): an unread list says so once, with the terminal command that shows the same status.
   if (listError !== null) return (

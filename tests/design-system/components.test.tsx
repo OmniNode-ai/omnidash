@@ -39,12 +39,19 @@
  *       or style, or gets a measured mark the page never set;
  *   P3  a page writes a panel or figure class itself, including inside a template literal (the duplicate scan);
  *   K1  a KPI tile loses its tone, its label, value or notes, or marks a value unavailable that the page did not.
+ *
+ * Data table (DataTable: the scroll wrap and its table, on every local page table and the usage widgets)
+ *   D1  the table is not inside its wrap, or loses its head and body;
+ *   D2  the fit variant or a page's wrap class is dropped, or a region name lands on the table instead of the wrap;
+ *   D3  the table loses its id, its name or a data-* mark the tests and the page's own CSS select on;
+ *   D4  a footer (the savings pagination) leaves the wrap or comes before the table;
+ *   D5  a page writes the table wrap class itself (the duplicate scan, with a planted control).
  */
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { Router } from 'wouter';
 import { memoryLocation } from 'wouter/memory-location';
-import { Badge, DashboardTabs, DashboardToggle, EmptyState, Fact, FactList, Figure, KpiTile, Panel, PanelTitle, readTab, StatusChip, writeTab } from '@/design-system/components';
+import { Badge, DashboardTabs, DataTable, DashboardToggle, EmptyState, Fact, FactList, Figure, KpiTile, Panel, PanelTitle, readTab, StatusChip, writeTab } from '@/design-system/components';
 import { pageLocalCopies, scanAll, summarise } from './scan';
 
 afterEach(cleanup);
@@ -282,5 +289,49 @@ describe('KPI tile', () => {
     const plain = render(<KpiTile tone="count" label="Runs" value="4" />).container;
     expect(plain.querySelector('strong')).not.toHaveAttribute('data-field-unavailable');
     expect(pageLocalCopies('src/pages/local/Planted.tsx', '<div className="ins-kpi">')).toHaveLength(1);
+  });
+});
+
+describe('Data table', () => {
+  const body = <><thead><tr><th>Model</th></tr></thead><tbody><tr><td>qwen</td></tr></tbody></>;
+
+  it('D1: the table sits in its wrap with its head and body', () => {
+    const { container } = render(<DataTable aria-label="Usage">{body}</DataTable>);
+    const wrap = container.firstElementChild!;
+    expect(wrap.tagName).toBe('DIV');
+    expect(wrap.className).toBe('local-dashboard-table-wrap');
+    const table = wrap.querySelector(':scope > table')!;
+    expect(table.querySelector('thead th')).toHaveTextContent('Model');
+    expect(table.querySelector('tbody td')).toHaveTextContent('qwen');
+  });
+
+  it('D2: the fit variant and a page class go on the wrap; a region name names the wrap, not the table', () => {
+    const { container } = render(<DataTable fit className="local-recent-runs-wrap" region="Recent run fields">{body}</DataTable>);
+    const wrap = container.firstElementChild!;
+    expect(wrap.className).toBe('local-dashboard-table-wrap local-dashboard-table-wrap--fit local-recent-runs-wrap');
+    expect(wrap).toHaveAttribute('role', 'region');
+    expect(wrap).toHaveAttribute('aria-label', 'Recent run fields');
+    expect(wrap.querySelector('table')).not.toHaveAttribute('aria-label');
+    cleanup();
+    expect(render(<DataTable>{body}</DataTable>).container.firstElementChild).not.toHaveAttribute('role');
+  });
+
+  it('D3: the table keeps its id, its name and its data-* marks', () => {
+    const { container } = render(<DataTable id="runs-table" aria-label="Runs by route" data-routing-table>{body}</DataTable>);
+    const table = container.querySelector('table')!;
+    expect(table).toHaveAttribute('id', 'runs-table');
+    expect(table).toHaveAttribute('aria-label', 'Runs by route');
+    expect(table).toHaveAttribute('data-routing-table', 'true');
+  });
+
+  it('D4: a footer stays in the wrap, after the table', () => {
+    const { container } = render(<DataTable footer={<nav aria-label="pages">1</nav>}>{body}</DataTable>);
+    const wrap = container.firstElementChild!;
+    expect(Array.from(wrap.children).map(child => child.tagName)).toEqual(['TABLE', 'NAV']);
+  });
+
+  it('D5: control: a page writing the table wrap class itself is caught', () => {
+    expect(pageLocalCopies('src/pages/local/Planted.tsx', '<div className="local-dashboard-table-wrap">')).toHaveLength(1);
+    expect(pageLocalCopies('src/components/dashboard/usage/Planted.tsx', '<div className="local-dashboard-table-wrap local-dashboard-table-wrap--fit">').length).toBeGreaterThanOrEqual(1);
   });
 });

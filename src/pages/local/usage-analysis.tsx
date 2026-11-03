@@ -2,7 +2,7 @@ import { useMemo, useState, type CSSProperties } from 'react';
 import { Link } from 'wouter';
 
 import { formatUsd } from '@/lib/currency';
-import { DashboardTabs, DashboardToggle, EmptyState, Panel, PanelTitle } from '@/design-system/components';
+import { DashboardTabs, DashboardToggle, DataTable, EmptyState, Panel, PanelTitle } from '@/design-system/components';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { DEFAULT_RUNS_VIEW, writeRunsSearch, type RunsViewState } from '@/navigation/runs-url-state';
 import {
@@ -79,8 +79,7 @@ function GroupsView({ decisionRows }: { decisionRows: readonly unknown[] }) {
   const label = GROUPS.find(group => group.by === by)!.label;
   return <>
     <DashboardToggle label="Group by" options={GROUPS.map(group => ({ value: group.by, label: group.label }))} value={by} onChange={setBy} />
-    <div className="local-dashboard-table-wrap">
-      <table data-analysis-table aria-label={`Usage by ${label.toLowerCase()}`}>
+    <DataTable data-analysis-table aria-label={`Usage by ${label.toLowerCase()}`}>
         <thead><tr>{header('name', label)}{header('runs', 'Runs')}{header('spend', 'Spend')}
           {header('pass', 'Pass rate')}{header('p50', 'p50 latency')}{header('p95', 'p95 latency')}
           {header('last', 'Last run')}<th scope="col">{`Runs per day (${SPARK_DAYS} days)`}</th></tr></thead>
@@ -96,8 +95,7 @@ function GroupsView({ decisionRows }: { decisionRows: readonly unknown[] }) {
           <td data-cell="last" data-label="Last run">{lastText(group.last)}</td>
           <td data-cell="spark" data-label={`Runs per day (${SPARK_DAYS} days)`}><Sparkline group={group} /></td>
         </tr>)}</tbody>
-      </table>
-    </div>
+    </DataTable>
     {by === 'model' && <TierLegend label="Usage by model tier colours" models={groups.map(group => group.name)} />}
   </>;
 }
@@ -146,8 +144,7 @@ function DecisionMatrix({ decisionRows }: { decisionRows: readonly unknown[] }) 
       <DashboardToggle label="Matrix columns" options={MATRIX_COLUMNS} value={columnsBy} onChange={setColumnsBy} />
     </div>
     <p className="local-dashboard-caption">{`Models by ${columnLabel.toLowerCase()}. A cell with fewer than ${SMALL_SAMPLE} verdicts is a small sample; a pair with no runs reads no runs. Each cell opens its runs.`}</p>
-    <div className="local-dashboard-table-wrap usage-matrix-wrap">
-      <table data-decision-matrix aria-label={`Models by ${columnLabel.toLowerCase()}`}>
+    <DataTable className="usage-matrix-wrap" data-decision-matrix aria-label={`Models by ${columnLabel.toLowerCase()}`}>
         <thead><tr><th scope="col">Model</th>{matrix.columns.map(column => <th key={column} scope="col" data-col={column}>{columnName(column)}</th>)}</tr></thead>
         <tbody>{matrix.rows.map(row => <tr key={row}>
           <th scope="row" data-model-name={row !== NOT_RECORDED ? '' : undefined}
@@ -166,8 +163,7 @@ function DecisionMatrix({ decisionRows }: { decisionRows: readonly unknown[] }) 
             </td>;
           })}
         </tr>)}</tbody>
-      </table>
-    </div>
+    </DataTable>
     <TierLegend label="Model matrix tier colours" models={matrix.rows} />
   </>;
 }
@@ -291,8 +287,7 @@ export function RoutingAnalysis({ rows, complete = false }: { rows: readonly unk
       {`From ${complete ? 'all' : 'the latest'} ${totalsOf(rows).runs} served runs, grouped by requested and routed model, tier, backend, finish reason and escalations. `}
       Not recorded means the run did not record that field; it is not a dispatch failure.
     </p>
-    <div className="local-dashboard-table-wrap">
-      <table data-routing-table aria-label="Runs by route">
+    <DataTable data-routing-table aria-label="Runs by route">
         <thead><tr><th scope="col">Requested model</th><th scope="col">Routed model</th><th scope="col">Tier</th><th scope="col">Backend</th>
           <th scope="col">Finish reason</th><th scope="col">Escalations</th><th scope="col">Runs</th><th scope="col">Pass rate</th></tr></thead>
         <tbody>{routes.map(route => {
@@ -309,7 +304,6 @@ export function RoutingAnalysis({ rows, complete = false }: { rows: readonly unk
             <td data-cell="pass">{passText(route.totals)}</td>
           </tr>;
         })}</tbody>
-      </table>
-    </div>
+    </DataTable>
   </Panel>;
 }
