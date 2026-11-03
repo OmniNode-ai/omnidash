@@ -1,4 +1,4 @@
-import type { Page } from 'playwright/test';
+import { expect, type Page } from 'playwright/test';
 
 export const prefix = 'onex.snapshot.projection.';
 /**
@@ -69,4 +69,18 @@ export async function revealRunFields(page: Page) {
   const disclosure = page.locator('details.local-recent-fields');
   if (await disclosure.count() && await disclosure.getAttribute('open') === null) await disclosure.locator(':scope > summary').press('Enter');
   await page.getByRole('checkbox', { name: 'Show all run fields', exact: true }).check();
+}
+
+/**
+ * Narrow the viewport and wait for the sidebar to settle. Crossing 1024px folds the sidebar through a matchMedia change
+ * event that lands after setViewportSize resolves (Sidebar.tsx), so checking the Collapse sidebar button and then
+ * clicking it raced that event: the click then waited 30 s for a label that had already become Expand sidebar (the
+ * organization and legacy-overview flakes of 2026-11-03). Below the line the page shows the folded sidebar.
+ */
+export async function narrowTo(page: Page, width: number, height: number) {
+  await page.setViewportSize({ width, height });
+  if (width > 1024) return;
+  const sidebar = page.locator('aside.sidebar');
+  if (await sidebar.count() === 0) return;
+  await expect(sidebar).toHaveClass(/(^|\s)collapsed(\s|$)/);
 }

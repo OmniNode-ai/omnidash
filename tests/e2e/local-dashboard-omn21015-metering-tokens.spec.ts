@@ -1,5 +1,5 @@
 import { expect, test } from 'playwright/test';
-import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chartRows, narrowTo, prefix, serveCharts } from './omn21166-chart-fixtures';
 
 // Failures: available aggregate directions hidden by an empty model projection;
 // invented model attribution, rounded full integers, stale producer time hidden,
@@ -39,9 +39,7 @@ for (const theme of ['light', 'dark']) {
     await expect(newest).toBeVisible();
     await page.screenshot({ path: info.outputPath(`metering-tokens-${theme}.png`), fullPage: true });
     for (const width of [390, 320]) {
-      await page.setViewportSize({ width, height: 844 });
-      const collapse = page.getByRole('button', { name: 'Collapse sidebar', exact: true });
-      if (await collapse.isVisible()) await collapse.click();
+      await narrowTo(page, width, 844);
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     }
   });

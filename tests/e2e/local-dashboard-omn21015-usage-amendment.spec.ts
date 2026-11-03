@@ -1,5 +1,5 @@
 import { expect, test } from 'playwright/test';
-import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chartRows, narrowTo, prefix, serveCharts } from './omn21166-chart-fixtures';
 // Failure modes: unbounded table, unequal adjacent panes, token panel on wrong row,
 // keyboard pagination broken, mobile overflow and display precision changing raw chart data.
 test.use({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce', trace: 'on' });
@@ -48,9 +48,7 @@ for (const theme of ['light', 'dark']) {
     await expect(table.locator('tbody tr').first()).toContainText(days[8]!.window_start);
     await page.screenshot({ path: info.outputPath(`usage-${theme}-desktop.png`), fullPage: true });
     for (const width of [390, 320]) {
-      await page.setViewportSize({ width, height: 844 });
-      const collapse = page.getByRole('button', { name: 'Collapse sidebar', exact: true });
-      if (await collapse.isVisible()) await collapse.click();
+      await narrowTo(page, width, 844);
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
       const a = await figure.boundingBox(), b = await table.boundingBox();
       expect(b!.y).toBeGreaterThanOrEqual(a!.y + a!.height);

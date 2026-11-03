@@ -1,5 +1,5 @@
 import { expect, test } from 'playwright/test';
-import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chartRows, narrowTo, prefix, serveCharts } from './omn21166-chart-fixtures';
 
 // Failure modes declared before implementation: charts borrow another run's
 // data, null becomes zero, zero disappears, scores imply a made-up verdict,
@@ -62,9 +62,7 @@ test('Workflow charts and recorded details read the selected run without inventi
   await expect(page.getByRole('region', { name: 'Recorded run details', exact: true })).toContainText('Recorded cost (USD)$0.00');
   await expect(page.getByRole('region', { name: 'Recorded run details', exact: true })).toContainText('fixture');
   await page.screenshot({ path: info.outputPath('workflow-analysis-desktop.png'), animations: 'disabled', fullPage: true });
-  await page.setViewportSize({ width: 390, height: 844 });
-  const collapse = page.getByRole('button', { name: 'Collapse sidebar', exact: true });
-  if (await collapse.isVisible()) await collapse.click();
+  await narrowTo(page, 390, 844);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   await tokens.scrollIntoViewIfNeeded();
   await page.screenshot({ path: info.outputPath('workflow-analysis-phone.png'), animations: 'disabled' });

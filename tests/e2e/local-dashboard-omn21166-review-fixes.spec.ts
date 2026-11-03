@@ -1,5 +1,5 @@
 import { expect, test } from 'playwright/test';
-import { serveCharts, chartRows, prefix, keepRealClock } from './omn21166-chart-fixtures';
+import { chartRows, keepRealClock, narrowTo, prefix, serveCharts } from './omn21166-chart-fixtures';
 // This spec dates its rows from the real clock, so the browser keeps it (see FIXTURE_NOW).
 test.beforeEach(({ page }) => keepRealClock(page));
 
@@ -44,9 +44,7 @@ test('review fixes: exact median and keyboard/touch hourly inspection', async ({
   await page.getByRole('heading', { level: 1, name: 'Runs', exact: true }).hover();
   await expect(page.getByTestId('activity-hour-readout')).toHaveText(`${weekday} 09:00 UTC · 0 runs`);
   for (const width of [1440, 390, 320]) {
-    await page.setViewportSize({ width, height: 900 });
-    const collapse = page.getByRole('button', { name: 'Collapse sidebar', exact: true });
-    if (width < 768 && await collapse.isVisible()) await collapse.click();
+    await narrowTo(page, width, 900);
     await heat.scrollIntoViewIfNeeded();
     await expect(page.getByTestId('activity-hour-readout')).toHaveText(`${weekday} 09:00 UTC · 0 runs`);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);

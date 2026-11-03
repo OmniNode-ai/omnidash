@@ -1,5 +1,5 @@
 import { expect, test } from 'playwright/test';
-import { chartRows, prefix, serveCharts, keepRealClock } from './omn21166-chart-fixtures';
+import { chartRows, keepRealClock, narrowTo, prefix, serveCharts } from './omn21166-chart-fixtures';
 // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the window radios sit in one dropdown; chooseWindow opens it and proves it closed.
 import { chooseWindow } from './overview-window-menu';
 // This spec dates its rows from the real clock, so the browser keeps it (see FIXTURE_NOW).
@@ -20,9 +20,7 @@ test('empty daily savings is compact with its cause accessible and no empty char
   await expect(savings.getByRole('status')).toHaveText('No daily savings data available yet.');
   await expect(savings.locator('.local-chart-canvas')).toHaveCount(0);
   for (const width of [1440, 390, 320]) {
-    await page.setViewportSize({ width, height: 844 });
-    const collapse = page.getByRole('button', { name: 'Collapse sidebar', exact: true });
-    if (width < 768 && await collapse.isVisible()) await collapse.click();
+    await narrowTo(page, width, 844);
     expect(await savings.evaluate(el => el.getBoundingClientRect().height)).toBeLessThanOrEqual(width === 1440 ? 130 : 190);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     await savings.screenshot({ path: info.outputPath(`empty-savings-${width}.png`) });
