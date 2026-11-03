@@ -18,7 +18,7 @@ import {
   type MeteringWindow,
 } from './insight-aggregates';
 import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
-import { EmptyState } from '@/design-system/components';
+import { EmptyState, KpiTile } from '@/design-system/components';
 
 /**
  * OMN-21166 AC26 (mockup build; rule change R-B, Lakshman 2026-10-18): the Overview's trends and breakdowns, counted
@@ -467,8 +467,8 @@ function RunWindowKpis({ runs, decisions, label, comparisonEnabled, now, days }:
   const median = summaryNow.medianLatency === null ? 'Not recorded' : duration(summaryNow.medianLatency);
   return (
     <section className="ins-window-kpis ins-window-kpis--runs" aria-label={`Runs in ${selectedLabel}`}>
-      <div className="ins-kpi local-dashboard-metric" data-field-tone="count"><span>Runs</span><strong>{count(summaryNow.runs)}</strong><small>{selectedLabel} · counted from the returned decision rows</small>{runDelta !== null && <small>{runDelta}</small>}</div>
-      <div className="ins-kpi local-dashboard-metric" data-field-tone="duration"><span>Median duration</span><strong data-field-unavailable={summaryNow.medianLatency === null}>{median}</strong><small>{count(durationMissing)} duration values not recorded</small>{medianDelta !== null && <small>{medianDelta}</small>}</div>
+      <KpiTile tone="count" label="Runs" value={count(summaryNow.runs)}><small>{selectedLabel} · counted from the returned decision rows</small>{runDelta !== null && <small>{runDelta}</small>}</KpiTile>
+      <KpiTile tone="duration" label="Median duration" value={median} unavailable={summaryNow.medianLatency === null}><small>{count(durationMissing)} duration values not recorded</small>{medianDelta !== null && <small>{medianDelta}</small>}</KpiTile>
     </section>
   );
 }
@@ -500,8 +500,8 @@ function MeteringWindowKpis({ current, previous, days, label, comparisonEnabled,
     : previousComplete && current.saved !== null && previous.saved !== null
       ? delta(current.saved - previous.saved, value => usd(value)) : 'Previous window not fully returned';
   return <section className="ins-window-kpis ins-window-kpis--metering" aria-label={`Metered spend summary for ${label}`}>
-    <div className="ins-kpi local-dashboard-metric" data-field-tone="cost"><span>You paid</span><strong data-field-unavailable={!paidReady}>{paidReady ? usd(current.spend) : 'Unavailable'}</strong><small>{paidNote}</small>{paidDelta !== null && <small>{paidDelta}</small>}</div>
-    <div className="ins-kpi local-dashboard-metric" data-field-tone="savings"><span>Saved</span><strong data-field-unavailable={!savedReady}>{savedReady ? usd(current.saved) : 'Unavailable'}</strong><small>{savedNote}</small>{savedDelta !== null && <small>{savedDelta}</small>}</div>
+    <KpiTile tone="cost" label="You paid" value={paidReady ? usd(current.spend) : 'Unavailable'} unavailable={!paidReady}><small>{paidNote}</small>{paidDelta !== null && <small>{paidDelta}</small>}</KpiTile>
+    <KpiTile tone="savings" label="Saved" value={savedReady ? usd(current.saved) : 'Unavailable'} unavailable={!savedReady}><small>{savedNote}</small>{savedDelta !== null && <small>{savedDelta}</small>}</KpiTile>
   </section>;
 }
 
@@ -515,7 +515,7 @@ function MeteringAllTimeKpis({ rows, label, unavailable }: { rows: readonly unkn
   const paidReady = reason === null && total.spend !== null;
   const paidNote = reason ?? (total.spend === null ? 'The all-time spend total is not recorded.' : 'All-time total, as served.');
   return <section className="ins-window-kpis ins-window-kpis--metering" aria-label={`Metered spend summary for ${label}`}>
-    <div className="ins-kpi local-dashboard-metric" data-field-tone="cost"><span>You paid</span><strong data-field-unavailable={!paidReady}>{paidReady ? usd(total.spend) : 'Unavailable'}</strong><small>{paidNote}</small></div>
+    <KpiTile tone="cost" label="You paid" value={paidReady ? usd(total.spend) : 'Unavailable'} unavailable={!paidReady}><small>{paidNote}</small></KpiTile>
   </section>;
 }
 

@@ -2,7 +2,7 @@ import { useMemo, useState, type CSSProperties } from 'react';
 import { Link } from 'wouter';
 
 import { formatUsd } from '@/lib/currency';
-import { DashboardTabs, DashboardToggle, EmptyState } from '@/design-system/components';
+import { DashboardTabs, DashboardToggle, EmptyState, Panel, PanelTitle } from '@/design-system/components';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { DEFAULT_RUNS_VIEW, writeRunsSearch, type RunsViewState } from '@/navigation/runs-url-state';
 import {
@@ -285,8 +285,8 @@ export function RunsTotals({ rows, sample, complete = false }: { rows: readonly 
 export function RoutingAnalysis({ rows, complete = false }: { rows: readonly unknown[]; complete?: boolean }) {
   const routes = useMemo(() => routesOf(rows), [rows]);
   if (routes.length === 0) return <EmptyState>No returned runs to group by route</EmptyState>;
-  return <article className="local-dashboard-panel local-run-routing" aria-label="Routing" aria-busy="false">
-    <h2 className="local-dashboard-panel-title"><ConceptIcon concept="run-routes" label="Routing" size={16} />Routing</h2>
+  return <Panel className="local-run-routing" aria-label="Routing" aria-busy="false">
+    <PanelTitle><ConceptIcon concept="run-routes" label="Routing" size={16} />Routing</PanelTitle>
     <p className="local-dashboard-caption" data-routing-note>
       {`From ${complete ? 'all' : 'the latest'} ${totalsOf(rows).runs} served runs, grouped by requested and routed model, tier, backend, finish reason and escalations. `}
       Not recorded means the run did not record that field; it is not a dispatch failure.
@@ -311,5 +311,5 @@ export function RoutingAnalysis({ rows, complete = false }: { rows: readonly unk
         })}</tbody>
       </table>
     </div>
-  </article>;
+  </Panel>;
 }

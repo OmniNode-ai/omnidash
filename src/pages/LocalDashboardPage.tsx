@@ -33,7 +33,7 @@ import { TIER_TONES } from '@/design-system/charts';
 import { InsightsSection, InsightsWindowContext, MeteringActivityInsights, OverviewRunsContext, PassRateSparkline, TaskIcon, type ActivityWindow } from '@/pages/local/insight-charts';
 import { UsageInsights } from '@/pages/local/usage-insights';
 import { RoutingAnalysis, RunsTotals } from '@/pages/local/usage-analysis';
-import { Badge, DashboardTabs, EmptyState, Fact, FactList, StatusChip } from '@/design-system/components';
+import { Badge, DashboardTabs, EmptyState, Fact, FactList, Figure, Panel, PanelTitle, StatusChip } from '@/design-system/components';
 import { SinceLastVisit } from '@/pages/local/since-last-visit';
 import { ModelKeys, providerName } from '@/pages/local/model-keys';
 import { EnvironmentPanel, ServiceHealthUnread } from '@/pages/local/environment';
@@ -239,8 +239,8 @@ export function MetricCard({ component, config, row, caption, figureLine, figure
   const hasDetails = Boolean((figure && figureLine) || line || modelled || basisExtra);
   return (
     <>
-      <p className="local-dashboard-metric" data-measured={figure} title={figure && config.format === 'number' ? String(row[config.metric_key]) : undefined}
-        style={{ '--figure-chars': String(text).length } as CSSProperties}>{figure && typeof text === 'string' ? <CountUpText text={text} /> : text}</p>
+      <Figure measured={figure} title={figure && config.format === 'number' ? String(row[config.metric_key]) : undefined}
+        style={{ '--figure-chars': String(text).length } as CSSProperties}>{figure && typeof text === 'string' ? <CountUpText text={text} /> : text}</Figure>
       {/* OMN-21166 part 12 AC73, as superseded by part 29 AC191: an Overview headline card shows its figure with its basis
           as a caption under it (first line drawn, every line kept in the page). Every other card keeps its lines in view. */}
       {OVERVIEW_HEADLINE_CARDS.has(component.component_id)
@@ -315,11 +315,11 @@ export function qualityChangeLine(decisions: readonly unknown[], window: Activit
 
 export function QualityCard({ row, change = null }: { row: Row | null; change?: string | null }) {
   if (!row || isMissing(row.overall_pass_rate) || !Number.isFinite(Number(row.overall_pass_rate))) {
-    return <p className="local-dashboard-metric" data-measured="false">Not measured</p>;
+    return <Figure measured={false}>Not measured</Figure>;
   }
   const count = (value: unknown) => (isMissing(value) || !Number.isFinite(Number(value)) ? 'Not recorded' : formatFullCount(String(value)));
   return <>
-    <p className="local-dashboard-metric" data-measured="true"><CountUpText text={`${(Number(row.overall_pass_rate) * 100).toFixed(1)}%`} /></p>
+    <Figure measured><CountUpText text={`${(Number(row.overall_pass_rate) * 100).toFixed(1)}%`} /></Figure>
     {change && <ChangeLine text={change} />}
     <HeadlineHover label="Delegation Quality" lines={[`${count(row.total_passed)} of ${count(row.total_checks)} runs passed the quality gate`,
       `${count(row.total_failed)} failed · deterministic checks`, 'All time: the window above does not change this figure']} />
@@ -369,12 +369,12 @@ export function RunLocallyCard({ row }: { row: Record<string, unknown> | null })
     return <EmptyState>{ROUTING_SHARE_PENDING}</EmptyState>;
   }
   const share = byTier.local_call_share;
-  if (typeof share !== 'number' || !Number.isFinite(share) || share < 0 || share > 1) return <p className="local-dashboard-metric" data-measured="false">Not measured</p>;
+  if (typeof share !== 'number' || !Number.isFinite(share) || share < 0 || share > 1) return <Figure measured={false}>Not measured</Figure>;
   const text = share.toLocaleString('en-US', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 });
   return (
     <div className="local-routing-summary">
       <div className="local-routing-share">
-        <p className="local-dashboard-metric">{text}</p>
+        <Figure>{text}</Figure>
         <p className="local-dashboard-caption">of all runs executed locally</p>
         <Meter kind="routing-share" label="Local share of all runs" min={0} max={100} now={share * 100} valueText={text} share={share} />
       </div>
@@ -579,7 +579,7 @@ export function OverviewAggregateCard({ component, config, rows, window }: {
   component: LocalPageDocument['components'][number]; config: MetricCardConfig;
   rows: readonly unknown[]; window: OverviewWindow;
 }) {
-  const unavailable = (message: string) => <p className="local-dashboard-metric" data-measured="false">{message}</p>;
+  const unavailable = (message: string) => <Figure measured={false}>{message}</Figure>;
   if (window !== 'all') return unavailable('Not measured: daily totals unavailable (UTC)');
   const all = asRecords(rows).filter(row => row.window === 'all')
     .sort((a, b) => timeOf(b.captured_at) - timeOf(a.captured_at));
@@ -838,7 +838,7 @@ export function MeteringTotalCard({ component, config, rows, window = 'all', now
   const picked = pickMeteringRow(rows, window, now);
   // OMN-19980 M6/M7: a card that cannot show its figure says why on the card ("Not measured: no all-time row",
   // "Not measured: 2 baseline models"); days with no runs are zeros, so this is only nothing read or an ambiguous row.
-  if ('message' in picked) return <p className="local-dashboard-metric" data-measured="false">{picked.message}</p>;
+  if ('message' in picked) return <Figure measured={false}>{picked.message}</Figure>;
   const row = picked.row;
   if (config.metric_key === TOKENS_IN_AND_OUT) {
     // A day (or window) with no runs at all processed no tokens: that is a measured 0 (Lakshman 2026-10-25), unlike a
@@ -848,7 +848,7 @@ export function MeteringTotalCard({ component, config, rows, window = 'all', now
     const total = noRunsAtAll ? Number(row.tokens_in) + Number(row.tokens_out) : meteringTokens(row).total;
     // Live review 2026-10-25: the card shows its figure; its hover says tokens in and out in one line.
     const tokenChange = OVERVIEW_HEADLINE_CARDS.has(component.component_id) ? periodChangeLine(rows, window, TOKENS_IN_AND_OUT, row) : null;
-    return <><p className="local-dashboard-metric" data-measured={total !== null}>{total !== null ? <CountUpText text={formatDashboardCount(total)} /> : formatDashboardCount(total)}</p>
+    return <><Figure measured={total !== null}>{total !== null ? <CountUpText text={formatDashboardCount(total)} /> : formatDashboardCount(total)}</Figure>
       {tokenChange && <ChangeLine text={tokenChange} />}
       <HeadlineHover label={component.title} lines={headlineHoverLines(component.component_id, row, null, window)} /></>;
   }
@@ -1850,8 +1850,8 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
           {/* OMN-21166 part 18 AC118: the run charts sit in the page's one "More analysis" (RunChartsSlot). */}
           {/* Outside the Runs page (no slot provided) the list draws its charts after itself. */}
           {chartsSlot !== null && ((panel: ReactNode) => (chartsSlot === undefined ? panel : createPortal(panel, chartsSlot)))(
-            <article className="local-dashboard-panel local-run-charts-panel" aria-label="Run charts">
-              <h2 className="local-dashboard-panel-title" data-page-heading tabIndex={-1}><ConceptIcon concept="duration" label="Run charts" size={16} />Run charts</h2>
+            <Panel className="local-run-charts-panel" aria-label="Run charts">
+              <PanelTitle data-page-heading tabIndex={-1}><ConceptIcon concept="duration" label="Run charts" size={16} />Run charts</PanelTitle>
               <div className="local-run-charts">
                 <RunDurationChart runs={listed} onOpen={openRun} />
                 <RunTokensChart runs={listed} onOpen={openRun} />
@@ -1859,7 +1859,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                 <RunMetricChart runs={listed} onOpen={openRun} metric="score" />
               </div>
               {weekChart}
-            </article>)}
+            </Panel>)}
         </>
       )}
     </>
@@ -3138,8 +3138,8 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
       || component.component_id === 'overview-model-usage' || component.component_id === 'overview-tier-mix'
     ) ? slice?.title ?? component.title : null;
     return (
-      <article
-        className={`local-dashboard-panel${fullView ? ' local-dashboard-panel--full-chart' : ''}`}
+      <Panel
+        full={fullView}
         data-width={String(MAPLE_WIDTHS[`${pageName}:${component.component_id}${slice ? `:${slice.key}` : ''}`] ?? (pageName === 'overview' && component.component_id === 'overview-spend-by-day' ? 12
           : pageName === 'overview' && ['overview-quality', 'overview-last-run'].includes(component.component_id) ? 6
           : pageName === 'overview' && ['overview-recent-runs', 'overview-tier-mix'].includes(component.component_id) ? 6 : widget?.width ?? 12))}
@@ -3165,7 +3165,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
         {/* Part 18 AC128: one table; the keys in use (as served, unrevoked) sit on their provider's row. */}
         {credentialProviders && <ModelKeys keys={asRecords(rows).filter(key => isMissing(key.revoked_at))} empty={asRecords(rows).length === 0 ? <NoProviderKeys /> : undefined} />}
         {credentialProviders ? <div aria-busy={pending}>{readContent}</div> : readContent}
-      </article>
+      </Panel>
     );
   };
   const overviewGroups = {
@@ -3333,8 +3333,8 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
               <details className="local-overview-secondary local-more local-more--page" open={runsAnalysisOpen || undefined}>
                 <summary>More analysis</summary>
                 {/* Part 30 AC206: the run charts and analysis in one tab, the routing groups in another, in one panel (OMN-21015 K1). */}
-                <article className="local-dashboard-panel local-runs-analysis" aria-label="Analysis views" aria-busy="false">
-                <h2 className="local-dashboard-panel-title"><ConceptIcon concept="runs-analysis" label="Analysis views" size={16} />Analysis views</h2>
+                <Panel className="local-runs-analysis" aria-label="Analysis views" aria-busy="false">
+                <PanelTitle><ConceptIcon concept="runs-analysis" label="Analysis views" size={16} />Analysis views</PanelTitle>
                 <DashboardTabs label="Runs analysis views" param="analysis" tabs={[
                   { id: 'charts', label: 'Charts and causes', panel: () => <>
                     <div className="local-run-charts-slot" ref={setRunChartsSlot} />
@@ -3342,7 +3342,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
                   </> },
                   { id: 'routing', label: 'Routing', panel: () => <div className="local-run-routing-slot" ref={setRunRoutingSlot} /> },
                 ]} />
-                </article>
+                </Panel>
               </details>
             </RunRoutingSlot.Provider>
             </RunChartsSlot.Provider>

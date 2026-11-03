@@ -30,12 +30,21 @@
  *   S2  a chip with no served outcome gets one anyway (an empty or guessed data-outcome);
  *   B1  a look does not give its class, or a tone (data-tone) or key is dropped;
  *   B2  a page writes a chip or badge class itself (the duplicate scan, with a planted control).
+ *
+ * Panel and card (Panel, PanelTitle: the article every page component and the Overview headline cards sit in) and figure
+ * card (Figure: a card's headline figure)
+ *   P1  the panel is not an article, loses its full-chart variant or a page's extra class, or drops data-* / aria-*;
+ *   P2  a panel's title loses its class or its page-heading mark;
+ *   G1  a figure loses its measured mark (data-measured, which keeps an unmeasured figure in the unavailable ink), title
+ *       or style, or gets a measured mark the page never set;
+ *   P3  a page writes a panel or figure class itself, including inside a template literal (the duplicate scan);
+ *   K1  a KPI tile loses its tone, its label, value or notes, or marks a value unavailable that the page did not.
  */
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { Router } from 'wouter';
 import { memoryLocation } from 'wouter/memory-location';
-import { Badge, DashboardTabs, DashboardToggle, EmptyState, Fact, FactList, readTab, StatusChip, writeTab } from '@/design-system/components';
+import { Badge, DashboardTabs, DashboardToggle, EmptyState, Fact, FactList, Figure, KpiTile, Panel, PanelTitle, readTab, StatusChip, writeTab } from '@/design-system/components';
 import { pageLocalCopies, scanAll, summarise } from './scan';
 
 afterEach(cleanup);
@@ -211,5 +220,67 @@ describe('Status chip and badge', () => {
     for (const cls of ['local-run-pill', 'local-dashboard-badge', 'local-provider-badge', 'local-run-chip', 'local-since-visit-chip']) {
       expect(pageLocalCopies('src/pages/local/Planted.tsx', `<span className="${cls}">x</span>`), cls).toHaveLength(1);
     }
+  });
+});
+
+describe('Panel, card and figure', () => {
+  it('P1: the panel is an article with its variant, a page class and its marks', () => {
+    const { container } = render(<Panel full className="local-run-routing" aria-label="Routing" aria-busy="false" data-component="usage-routing" data-kind="metric_card">x</Panel>);
+    const panel = container.firstElementChild!;
+    expect(panel.tagName).toBe('ARTICLE');
+    expect(panel.className).toBe('local-dashboard-panel local-dashboard-panel--full-chart local-run-routing');
+    expect(panel).toHaveAttribute('aria-label', 'Routing');
+    expect(panel).toHaveAttribute('aria-busy', 'false');
+    expect(panel).toHaveAttribute('data-component', 'usage-routing');
+    expect(panel).toHaveAttribute('data-kind', 'metric_card');
+    cleanup();
+    expect(render(<Panel>y</Panel>).container.firstElementChild!.className).toBe('local-dashboard-panel');
+  });
+
+  it('P2: a panel title keeps its class and its page-heading mark', () => {
+    const { container } = render(<PanelTitle data-page-heading tabIndex={-1}>Run charts</PanelTitle>);
+    const title = container.firstElementChild!;
+    expect(title.tagName).toBe('H2');
+    expect(title).toHaveClass('local-dashboard-panel-title');
+    expect(title).toHaveAttribute('data-page-heading');
+    expect(title).toHaveAttribute('tabindex', '-1');
+  });
+
+  it('G1: a figure keeps its measured mark, title and style, and gets none it was not given', () => {
+    const { container } = render(<Figure measured={false}>Not measured</Figure>);
+    expect(container.firstElementChild).toHaveClass('local-dashboard-metric');
+    expect(container.firstElementChild).toHaveAttribute('data-measured', 'false');
+    cleanup();
+    const second = render(<Figure measured title="1234" style={{ color: 'red' }}>1.2k</Figure>).container.firstElementChild!;
+    expect(second).toHaveAttribute('data-measured', 'true');
+    expect(second).toHaveAttribute('title', '1234');
+    expect(second).toHaveStyle({ color: 'rgb(255, 0, 0)' });
+    cleanup();
+    expect(render(<Figure>3</Figure>).container.firstElementChild).not.toHaveAttribute('data-measured');
+  });
+
+  it('P3: control: a page writing a panel or figure class itself is caught, in a template literal too', () => {
+    for (const code of ['<article className="local-dashboard-panel">', '<h2 className="local-dashboard-panel-title">', '<p className="local-dashboard-metric">',
+      "<article className={`local-dashboard-panel${full ? ' local-dashboard-panel--full-chart' : ''}`}>"]) {
+      expect(pageLocalCopies('src/pages/local/Planted.tsx', code).length, code).toBeGreaterThanOrEqual(1);
+    }
+  });
+});
+
+describe('KPI tile', () => {
+  it('K1: a tile keeps its tone, label, value and notes, and its unavailable mark only when given', () => {
+    const { container } = render(<KpiTile tone="cost" label="You paid" value="Unavailable" unavailable><small>note</small><small>delta</small></KpiTile>);
+    const tile = container.firstElementChild!;
+    expect(tile.tagName).toBe('DIV');
+    expect(tile.className).toBe('ins-kpi local-dashboard-metric');
+    expect(tile).toHaveAttribute('data-field-tone', 'cost');
+    expect(tile.querySelector('span')).toHaveTextContent('You paid');
+    expect(tile.querySelector('strong')).toHaveTextContent('Unavailable');
+    expect(tile.querySelector('strong')).toHaveAttribute('data-field-unavailable', 'true');
+    expect(tile.querySelectorAll('small')).toHaveLength(2);
+    cleanup();
+    const plain = render(<KpiTile tone="count" label="Runs" value="4" />).container;
+    expect(plain.querySelector('strong')).not.toHaveAttribute('data-field-unavailable');
+    expect(pageLocalCopies('src/pages/local/Planted.tsx', '<div className="ins-kpi">')).toHaveLength(1);
   });
 });
