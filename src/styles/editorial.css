@@ -123,11 +123,6 @@ html body .local-dashboard-page .local-window-list [role="radio"] svg { color: v
 html body .local-dashboard-page .local-window-list [role="radio"][aria-checked="true"] { background: var(--ed-paper-2) !important;
   color: var(--ed-ink) !important; font-weight: 600; }
 html body .local-dashboard-page .local-window-list [role="radio"][aria-checked="true"] svg { color: var(--ed-ink); }
-/* The Settings section tabs use the same chosen state: soft fill, ink text (they inverted to ink before, and in dark a
-   later rule left the chosen tab on the page colour). */
-html body .local-dashboard-page--settings .local-settings-menu a[aria-current="page"] { background: var(--ed-paper-2) !important;
-  color: var(--ed-ink) !important; font-weight: 600; }
-html body .local-dashboard-page--settings .local-settings-menu a[aria-current="page"] svg { color: var(--ed-ink) !important; }
 /* OMN-21970 (Lakshman 2026-11-03, option a): model and tier names read in ink, so they keep 4.5:1 contrast, and a small
    square beside each carries the bar's exact colour, so colour still identifies the tier but is never the only label. */
 .rb-chart .rb-name, .gdb-day-label { color: var(--ed-ink) !important; }
@@ -151,9 +146,11 @@ html body .local-dashboard-page--settings .local-settings-menu { padding: 4px; m
 html body .local-dashboard-page--settings .local-settings-menu ol { gap: 4px; }
 html body .local-dashboard-page--settings .local-settings-menu li + li { border: 0 !important; }
 html body .local-dashboard-page--settings .local-settings-menu a { border-radius: var(--ed-radius-control); padding: 10px 14px; }
-html body .local-dashboard-page--settings .local-settings-menu a[aria-current="page"] { background: var(--ed-paper) !important; color: var(--ed-ink) !important;
-  box-shadow: inset 0 0 0 1px var(--ed-rule-strong); font-weight: 600; }
-html body .local-dashboard-page--settings .local-settings-menu a[aria-current="page"] :is(svg, .local-settings-index) { color: var(--ed-ink) !important; }
+/* The chosen Settings tab is the one chosen state of every list (Lakshman 2026-11-03): the soft fill with ink text, no
+   box (it was a bordered box on the page colour); its concept icon keeps its concept colour. */
+html body .local-dashboard-page--settings .local-settings-menu a[aria-current="page"] { background: var(--ed-paper-2) !important; color: var(--ed-ink) !important;
+  box-shadow: none; font-weight: 600; }
+html body .local-dashboard-page--settings .local-settings-menu a[aria-current="page"] .local-settings-index { color: var(--ed-ink) !important; }
 html body .local-dashboard-page--settings :is(.local-provider-figures, .local-provider-list, .local-settings-section .local-dashboard-grid, .local-pricing-facts, .local-environment-line, #settings-system-status .widget) {
   border: 1px solid var(--ed-rule) !important; border-radius: var(--ed-radius) !important; background: var(--ed-paper-3) !important; overflow: hidden; }
 html body .local-dashboard-page--settings :is(.local-provider-figures > div + div, .local-pricing-facts > div) { border-color: var(--ed-rule) !important; }
@@ -215,3 +212,107 @@ html body .sidebar .brand .parent, html body .sidebar .parent { font-family: var
   text-transform: none !important; color: var(--ed-ink-3) !important; }
 html body aside.sidebar .sidebar-bottom-title, html body aside.sidebar .sidebar-bottom-title * { font-family: var(--font-sans) !important; font-size: 12px !important;
   font-weight: 500 !important; letter-spacing: .04em !important; text-transform: uppercase; color: var(--ed-ink-3) !important; }
+
+/* One colour per concept on every page (Lakshman 2026-11-03: "colorful", "unique colors", "all pages should follow same
+   type of things"). A concept icon draws its own --field-<concept> colour wherever it appears, as the headline cards
+   already did (OMN-21970 AC8), so no concept is drawn in two colours (the OMN-21308 census); icons that name no concept
+   (chevrons, close, the sidebar's destinations) keep the one interface grey. Tier and model icons keep their identity
+   colour by the rule above. Generated from field-identity.css's --field-* tokens and FieldIcon's FIELD_ICONS. */
+html body .app svg.field-icon.field-icon[data-field-icon="activity"]:not([data-semantic-concept^="model:"]) { color: var(--field-activity) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="activity-hourly"]:not([data-semantic-concept^="model:"]) { color: var(--field-activity-hourly) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="age"]:not([data-semantic-concept^="model:"]) { color: var(--field-age) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="analysis"]:not([data-semantic-concept^="model:"]) { color: var(--field-analysis) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="answer"]:not([data-semantic-concept^="model:"]) { color: var(--field-answer) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="backend"]:not([data-semantic-concept^="model:"]) { color: var(--field-backend) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="baseline"]:not([data-semantic-concept^="model:"]) { color: var(--field-baseline) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="basis"]:not([data-semantic-concept^="model:"]) { color: var(--field-basis) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="cache"]:not([data-semantic-concept^="model:"]) { color: var(--field-cache) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="calls"]:not([data-semantic-concept^="model:"]) { color: var(--field-calls) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="cloud-keys"]:not([data-semantic-concept^="model:"]) { color: var(--field-cloud-keys) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="completion"]:not([data-semantic-concept^="model:"]) { color: var(--field-completion) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="compression"]:not([data-semantic-concept^="model:"]) { color: var(--field-compression) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="contract"]:not([data-semantic-concept^="model:"]) { color: var(--field-contract) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="cost"]:not([data-semantic-concept^="model:"]) { color: var(--field-cost) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="cost-per-run"]:not([data-semantic-concept^="model:"]) { color: var(--field-cost-per-run) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="cost-route"]:not([data-semantic-concept^="model:"]) { color: var(--field-cost-route) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="count"]:not([data-semantic-concept^="model:"]) { color: var(--field-count) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="credentials"]:not([data-semantic-concept^="model:"]) { color: var(--field-credentials) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="delegations"]:not([data-semantic-concept^="model:"]) { color: var(--field-delegations) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="duration"]:not([data-semantic-concept^="model:"]) { color: var(--field-duration) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="duration-p95"]:not([data-semantic-concept^="model:"]) { color: var(--field-duration-p95) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="escalated"]:not([data-semantic-concept^="model:"]) { color: var(--field-escalated) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="events"]:not([data-semantic-concept^="model:"]) { color: var(--field-events) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="execution"]:not([data-semantic-concept^="model:"]) { color: var(--field-execution) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="fail"]:not([data-semantic-concept^="model:"]) { color: var(--field-fail) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="failures"]:not([data-semantic-concept^="model:"]) { color: var(--field-failures) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="generation"]:not([data-semantic-concept^="model:"]) { color: var(--field-generation) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="host"]:not([data-semantic-concept^="model:"]) { color: var(--field-host) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="identity"]:not([data-semantic-concept^="model:"]) { color: var(--field-identity) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="last"]:not([data-semantic-concept^="model:"]) { color: var(--field-last) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="load-error"]:not([data-semantic-concept^="model:"]) { color: var(--field-load-error) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="load-slow"]:not([data-semantic-concept^="model:"]) { color: var(--field-load-slow) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="local-access"]:not([data-semantic-concept^="model:"]) { color: var(--field-local-access) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="local-identity"]:not([data-semantic-concept^="model:"]) { color: var(--field-local-identity) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="local-run"]:not([data-semantic-concept^="model:"]) { color: var(--field-local-run) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="model"]:not([data-semantic-concept^="model:"]) { color: var(--field-model) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="pass"]:not([data-semantic-concept^="model:"]) { color: var(--field-pass) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="pass-rate-daily"]:not([data-semantic-concept^="model:"]) { color: var(--field-pass-rate-daily) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="path"]:not([data-semantic-concept^="model:"]) { color: var(--field-path) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="performance-model"]:not([data-semantic-concept^="model:"]) { color: var(--field-performance-model) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="quality"]:not([data-semantic-concept^="model:"]) { color: var(--field-quality) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="quality-comparison"]:not([data-semantic-concept^="model:"]) { color: var(--field-quality-comparison) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="quality-model"]:not([data-semantic-concept^="model:"]) { color: var(--field-quality-model) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="quality-outcomes"]:not([data-semantic-concept^="model:"]) { color: var(--field-quality-outcomes) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="queue"]:not([data-semantic-concept^="model:"]) { color: var(--field-queue) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="recent"]:not([data-semantic-concept^="model:"]) { color: var(--field-recent) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="recorded-rows"]:not([data-semantic-concept^="model:"]) { color: var(--field-recorded-rows) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="routing"]:not([data-semantic-concept^="model:"]) { color: var(--field-routing) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="routing-flow"]:not([data-semantic-concept^="model:"]) { color: var(--field-routing-flow) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="routing-model"]:not([data-semantic-concept^="model:"]) { color: var(--field-routing-model) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="routing-workload"]:not([data-semantic-concept^="model:"]) { color: var(--field-routing-workload) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="run-details"]:not([data-semantic-concept^="model:"]) { color: var(--field-run-details) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="run-outcome"]:not([data-semantic-concept^="model:"]) { color: var(--field-run-outcome) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="run-routes"]:not([data-semantic-concept^="model:"]) { color: var(--field-run-routes) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="runs-analysis"]:not([data-semantic-concept^="model:"]) { color: var(--field-runs-analysis) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="runs-daily"]:not([data-semantic-concept^="model:"]) { color: var(--field-runs-daily) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="runs-model"]:not([data-semantic-concept^="model:"]) { color: var(--field-runs-model) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="runs-tier"]:not([data-semantic-concept^="model:"]) { color: var(--field-runs-tier) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="saving-average"]:not([data-semantic-concept^="model:"]) { color: var(--field-saving-average) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="savings"]:not([data-semantic-concept^="model:"]) { color: var(--field-savings) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="savings-daily"]:not([data-semantic-concept^="model:"]) { color: var(--field-savings-daily) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="score"]:not([data-semantic-concept^="model:"]) { color: var(--field-score) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="selected"]:not([data-semantic-concept^="model:"]) { color: var(--field-selected) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="session"]:not([data-semantic-concept^="model:"]) { color: var(--field-session) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="spend-daily"]:not([data-semantic-concept^="model:"]) { color: var(--field-spend-daily) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="spend-model"]:not([data-semantic-concept^="model:"]) { color: var(--field-spend-model) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="stage-timing"]:not([data-semantic-concept^="model:"]) { color: var(--field-stage-timing) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="step-other"]:not([data-semantic-concept^="model:"]) { color: var(--field-step-other) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="step-provider-call"]:not([data-semantic-concept^="model:"]) { color: var(--field-step-provider-call) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="step-quality"]:not([data-semantic-concept^="model:"]) { color: var(--field-step-quality) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="step-request"]:not([data-semantic-concept^="model:"]) { color: var(--field-step-request) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="step-routing"]:not([data-semantic-concept^="model:"]) { color: var(--field-step-routing) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="step-terminal"]:not([data-semantic-concept^="model:"]) { color: var(--field-step-terminal) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="task"]:not([data-semantic-concept^="model:"]) { color: var(--field-task) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="task-code-generation"]:not([data-semantic-concept^="model:"]) { color: var(--field-task-code-generation) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="task-code-review"]:not([data-semantic-concept^="model:"]) { color: var(--field-task-code-review) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="task-document"]:not([data-semantic-concept^="model:"]) { color: var(--field-task-document) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="task-other"]:not([data-semantic-concept^="model:"]) { color: var(--field-task-other) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="task-research"]:not([data-semantic-concept^="model:"]) { color: var(--field-task-research) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="task-summarization"]:not([data-semantic-concept^="model:"]) { color: var(--field-task-summarization) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="task-test"]:not([data-semantic-concept^="model:"]) { color: var(--field-task-test) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="tenant"]:not([data-semantic-concept^="model:"]) { color: var(--field-tenant) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="threshold"]:not([data-semantic-concept^="model:"]) { color: var(--field-threshold) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="tier"]:not([data-semantic-concept^="model:"]) { color: var(--field-tier) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="timing"]:not([data-semantic-concept^="model:"]) { color: var(--field-timing) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="token-flow"]:not([data-semantic-concept^="model:"]) { color: var(--field-token-flow) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="tokens"]:not([data-semantic-concept^="model:"]) { color: var(--field-tokens) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="tokens-completion"]:not([data-semantic-concept^="model:"]) { color: var(--field-tokens-completion) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="tokens-daily"]:not([data-semantic-concept^="model:"]) { color: var(--field-tokens-daily) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="tokens-in"]:not([data-semantic-concept^="model:"]) { color: var(--field-tokens-in) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="tokens-model"]:not([data-semantic-concept^="model:"]) { color: var(--field-tokens-model) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="tokens-out"]:not([data-semantic-concept^="model:"]) { color: var(--field-tokens-out) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="transport"]:not([data-semantic-concept^="model:"]) { color: var(--field-transport) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="unavailable"]:not([data-semantic-concept^="model:"]) { color: var(--field-unavailable) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="unrouted"]:not([data-semantic-concept^="model:"]) { color: var(--field-unrouted) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="usage-analysis"]:not([data-semantic-concept^="model:"]) { color: var(--field-usage-analysis) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="usage-day"]:not([data-semantic-concept^="model:"]) { color: var(--field-usage-day) !important; }

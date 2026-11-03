@@ -403,7 +403,7 @@ function AcceptanceChecks({ q }: { q: QualityGateRow }) {
         <ul className="ev-acceptance-models" aria-label="Tokens to comply by model">
           {byModel.map((model, index) => (
             <li key={`${String(model.model_name)}-${index}`}>
-              <span className="mono local-model-identity" style={modelIdentityStyle(String(model.model_name ?? ''))}>{isUnavailableField(model.model_name) ? 'Unknown model' : String(model.model_name)}</span>
+              <span className="mono local-model-identity" data-semantic-concept={isUnavailableField(model.model_name) ? undefined : `model:${String(model.model_name)}`} style={modelIdentityStyle(String(model.model_name ?? ''))}>{isUnavailableField(model.model_name) ? 'Unknown model' : String(model.model_name)}</span>
               <span>{wholeTokens(model.avg_tokens)} tokens</span>
               <span>{attempts(model.avg_attempts)} attempts</span>
               <span>{servedNumber(model.sample_count) === null ? 'Not served' : `${formatDashboardCount(model.sample_count)} runs`}</span>
@@ -649,7 +649,7 @@ function RecentDelegations({ decisions }: { decisions: DelegationDecisionRow[] }
   const cols: DataColumn<DelegationDecisionRow>[] = [
     { key: 'correlation_id', label: 'Correlation', render: (r) => <span className="mono c-blue">{shortId(r.correlation_id)}</span> },
     { key: 'task_type', label: 'Task', grow: true, render: (r) => taskLabel(r.task_type) },
-    { key: 'model_name', label: 'Model', truncate: true, render: (r) => <span className="mono local-model-identity" style={modelIdentityStyle(r.model_name)}>{r.model_name.length > 22 ? `${r.model_name.slice(0, 20)}…` : r.model_name}</span> },
+    { key: 'model_name', label: 'Model', truncate: true, render: (r) => <span className="mono local-model-identity" data-semantic-concept={`model:${r.model_name}`} style={modelIdentityStyle(r.model_name)}>{r.model_name.length > 22 ? `${r.model_name.slice(0, 20)}…` : r.model_name}</span> },
     { key: 'state', label: 'State', render: (r) => <StateBadge passed={r.quality_gate_passed} /> },
     { key: 'tokens', label: 'Tokens', num: true, render: (r) => formatDashboardCount(r.tokens_to_compliance) },
     { key: 'latency_ms', label: 'Latency', num: true, render: (r) => fmtLatency(r.latency_ms) },

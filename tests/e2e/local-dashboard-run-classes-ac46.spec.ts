@@ -1,5 +1,7 @@
 import { expect, test, type Page } from 'playwright/test';
-import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chartRows, prefix, serveCharts, keepRealClock } from './omn21166-chart-fixtures';
+// This spec dates its rows from the real clock, so the browser keeps it (see FIXTURE_NOW).
+test.beforeEach(({ page }) => keepRealClock(page));
 
 // OMN-21166 part 9 AC46: the run breakdown under Measured runs shows measured, estimated and unknown as separate
 // labelled counts, each in its own colour from the shared field identity (OMN-21308), in both themes. Unknown means no

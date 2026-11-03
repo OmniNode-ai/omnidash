@@ -1,6 +1,8 @@
 import { expect, test, type Page } from 'playwright/test';
-import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chartRows, prefix, serveCharts, keepRealClock } from './omn21166-chart-fixtures';
 import { chooseWindow, expectWindow } from './overview-window-menu';
+// This spec dates its rows from the real clock, so the browser keeps it (see FIXTURE_NOW).
+test.beforeEach(({ page }) => keepRealClock(page));
 
 // OMN-21166 part 19 (AC133-AC136) and part 23 (AC145). Failure modes declared before code:
 //   P1  a change line computed against a previous window the served rows do not cover, or a zero previous value shown

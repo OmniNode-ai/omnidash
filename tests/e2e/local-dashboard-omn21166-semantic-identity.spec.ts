@@ -84,8 +84,9 @@ test('KPI colors follow their semantic identity instead of inherited gray', asyn
     const channels = hex.replace('#', '').match(/../g)!.map(x => parseInt(x, 16));
     const expected = `rgb(${channels.join(', ')})`;
     await expect(card.locator('.k-l')).toHaveCSS('color', expected);
-    // Part 28a AC177a: interface icons are one grey on every page, Event Bus included; the label and value keep the tone.
-    expect(await card.locator('.k-l svg').evaluate(el => getComputedStyle(el).color)).not.toBe(expected);
+    // One colour per concept on every page, Event Bus included (Lakshman 2026-11-03; was part 28a AC177a's grey): the
+    // icon, the label and the value all draw the card's concept colour.
+    expect(await card.locator('.k-l svg').evaluate(el => getComputedStyle(el).color)).toBe(expected);
     await expect(card.locator('.k-v')).toHaveCSS('color', expected);
     colors.push(expected);
   }

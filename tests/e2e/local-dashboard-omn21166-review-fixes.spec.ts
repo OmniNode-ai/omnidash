@@ -1,5 +1,7 @@
 import { expect, test } from 'playwright/test';
-import { serveCharts, chartRows, prefix } from './omn21166-chart-fixtures';
+import { serveCharts, chartRows, prefix, keepRealClock } from './omn21166-chart-fixtures';
+// This spec dates its rows from the real clock, so the browser keeps it (see FIXTURE_NOW).
+test.beforeEach(({ page }) => keepRealClock(page));
 
 // Declared before the fix: even medians must average the two measured middle
 // durations; null is excluded and zero retained. Every heatmap hover value must

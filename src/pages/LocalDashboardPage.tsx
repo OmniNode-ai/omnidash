@@ -1013,7 +1013,7 @@ export function SavingsByModel({ row }: { row: Row }) {
           const runs = recordedCount(model.runs);
           return (
             <li key={`${name}-${index}`} data-semantic-concept={`model:${name}`} style={{ '--model-color': modelColor(name) } as CSSProperties}>
-              <span className="local-model-identity" style={modelIdentityStyle(name)}>{name}</span>
+              <span className="local-model-identity" data-semantic-concept={`model:${name}`} style={modelIdentityStyle(name)}>{name}</span>
               <span className="local-savings-bar" aria-hidden="true">{n !== null && max > 0 && <i style={{ width: `${Math.max(1, (n / max) * 100)}%` }} />}</span>
               <strong data-field-tone="savings" data-field-unavailable={n === null}>{n === null ? 'Not measured' : formatUsd(model.savings_usd)}</strong>
               <span>{`${recordedCount(model.runs_measured)} of ${runs} runs measured`}</span>
@@ -2004,7 +2004,7 @@ export function TierMixPanel({ row, compact = false }: { row: Row | null; compac
             </tr>,
             ...(Array.isArray(tier.models) ? asRecords(tier.models) : []).map((model, modelIndex) => (
               <tr data-tone={tone} style={{ '--tier-color': tierColor(name) } as CSSProperties} key={`${name}-${index}-${String(model.model_name)}-${modelIndex}`} className="local-dashboard-row--nested local-routing-model-row">
-                <td className="local-dashboard-cell-token local-dashboard-cell-name"><span className="local-routing-name local-model-identity" style={modelIdentityStyle(model.model_name)}><FieldIcon tone="model" value={model.model_name} size={14} />{recorded(model.model_name)}</span></td>
+                <td className="local-dashboard-cell-token local-dashboard-cell-name"><span className="local-routing-name local-model-identity" data-semantic-concept={`model:${String(model.model_name)}`} style={modelIdentityStyle(model.model_name)}><FieldIcon tone="model" value={model.model_name} size={14} />{recorded(model.model_name)}</span></td>
                 <td data-column="runs">{recordedCount(model.count)}</td>
                 <td data-column="share" className="local-dashboard-cell-token">{routed ? <Readable value={model.pct_of_tier_routed} kind="percent" /> : <><span aria-hidden="true">—</span><span className="local-visually-hidden">No share: not tier-routed</span></>}</td>
                 <td data-column="cost" data-unavailable={isMissing(model.cost_usd)}>{tierModelCost(model)}</td>

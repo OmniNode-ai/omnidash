@@ -2,11 +2,18 @@ import type { Page } from 'playwright/test';
 
 export const prefix = 'onex.snapshot.projection.';
 /**
- * UTC days relative to the real clock, for usage rows: the Usage page reads the latest 30 UTC days from now, so a fixed
- * date ages out of the window (the 2026-10-01 rows did on 2026-10-31). recentDay(1) is yesterday.
+ * The fixtures' own "now". The pages read the latest 30 UTC days from the browser's clock, so fixed fixture dates aged
+ * out of the window as the real date moved on (the 2026-10-01 usage rows did on 2026-10-31; the 2026-10-17 runs would on
+ * 2026-11-16). serveCharts freezes the browser's date here, so every fixture date keeps its place in the window; timers
+ * still run. A spec that builds its rows from the real date calls keepRealClock(page) first.
  */
-export const recentDay = (daysAgo: number) => new Date(Date.now() - daysAgo * 86_400_000).toISOString().slice(0, 10);
+export const FIXTURE_NOW = '2026-10-20T12:00:00Z';
+/** A UTC day the given number of days before the fixtures' now; recentDay(1) is the fixtures' yesterday. */
+export const recentDay = (daysAgo: number) => new Date(Date.parse(FIXTURE_NOW) - daysAgo * 86_400_000).toISOString().slice(0, 10);
 export const USAGE_DAY = recentDay(2);
+const realClock = new WeakSet<Page>();
+/** Keep the browser on the real clock, for a spec whose rows are dated from the real date. */
+export function keepRealClock(page: Page) { realClock.add(page); }
 export const runIds = ['chart-run-a', 'chart-run-b', 'chart-run-c'];
 export const chartRows: Record<string, unknown[]> = {
   [prefix + 'cost.savings-overview.v1']: [],
@@ -43,6 +50,7 @@ export const chartRows: Record<string, unknown[]> = {
 };
 
 export async function serveCharts(page: Page, rows = chartRows) {
+  if (!realClock.has(page)) await page.clock.setFixedTime(new Date(FIXTURE_NOW));
   await page.addInitScript(() => localStorage.setItem('omnidash.dataSourceOverride.v1', JSON.stringify({ mode: 'live', baseUrl: location.origin })));
   await page.route('**/projections', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ topics:
     Object.keys(rows).map(topic => ({ topic, status: 'ok', backing: 'bus', bus_backed: true, tenant_scoped: false })) }) }));

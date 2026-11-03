@@ -121,6 +121,7 @@ function GroupsView({ decisionRows }: { decisionRows: readonly unknown[] }) {
           {header('last', 'Last run')}<th scope="col">{`Runs per day (${SPARK_DAYS} days)`}</th></tr></thead>
         <tbody>{sorted.map(group => <tr key={group.name}>
           <th scope="row" data-model-name={by === 'model' && group.name !== NOT_RECORDED ? '' : undefined}
+            data-semantic-concept={by === 'model' && group.name !== NOT_RECORDED ? `model:${group.name}` : undefined}
             style={by === 'model' && group.name !== NOT_RECORDED ? { '--model-color': modelColor(group.name) } as CSSProperties : undefined}>{group.name}</th>
           {/* data-label names each value when a phone stacks the rows as cards (Codex MSG 753d170c). */}
           <td data-cell="runs" data-label="Runs">{group.runs}</td>
@@ -185,7 +186,7 @@ function DecisionMatrix({ decisionRows }: { decisionRows: readonly unknown[] }) 
       <table data-decision-matrix aria-label={`Models by ${columnLabel.toLowerCase()}`}>
         <thead><tr><th scope="col">Model</th>{matrix.columns.map(column => <th key={column} scope="col" data-col={column}>{columnName(column)}</th>)}</tr></thead>
         <tbody>{matrix.rows.map(row => <tr key={row}>
-          <th scope="row" data-model-name={row !== NOT_RECORDED ? '' : undefined}
+          <th scope="row" data-model-name={row !== NOT_RECORDED ? '' : undefined} data-semantic-concept={row !== NOT_RECORDED ? `model:${row}` : undefined}
             style={row !== NOT_RECORDED ? { '--model-color': modelColor(row) } as CSSProperties : undefined}>{row}</th>
           {matrix.columns.map(column => {
             const totals = matrix.cell(row, column);
@@ -245,6 +246,7 @@ function QualityTrend({ decisionRows }: { decisionRows: readonly unknown[] }) {
       {series.map(line => <div key={line.name} className="usage-trend-row" data-series={line.name}
         style={by === 'model' && line.filter && line.name !== NOT_RECORDED ? { '--model-color': modelColor(line.name) } as CSSProperties : undefined}>
         <span className="usage-trend-name" data-model-name={by === 'model' && line.filter && line.name !== NOT_RECORDED ? '' : undefined}
+          data-semantic-concept={by === 'model' && line.filter && line.name !== NOT_RECORDED ? `model:${line.name}` : undefined}
           style={by === 'model' && line.filter && line.name !== NOT_RECORDED ? { '--model-color': modelColor(line.name) } as CSSProperties : undefined}>{line.name}</span>
         <ol className="usage-trend-days" aria-label={`${line.name}, ${metric === 'pass' ? 'pass rate' : 'p95 latency'} per day`}>
           {line.days.map(day => {

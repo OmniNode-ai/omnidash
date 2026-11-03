@@ -18,7 +18,7 @@ test.use({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce', trac
 
 // The 01+20 ink (Lakshman 2026-11-03): #0a0a0a / #f5f5f5 (was #111111 / #fafafa).
 const INK = { light: 'rgb(10, 10, 10)', dark: 'rgb(245, 245, 245)' } as const;
-const INK2 = { light: 'rgb(61, 61, 61)', dark: 'rgb(194, 194, 194)' } as const;
+const INK2 = { light: 'rgb(38, 38, 38)', dark: 'rgb(212, 212, 212)' } as const; // 01+20 ink-2 #262626 / #d4d4d4 (was #3d3d3d / #c2c2c2)
 // the 01+20 look (Lakshman 2026-11-03, "01 + 20 do it"): ink-3 #525252 / #a3a3a3 and the soft fill #f0f0f0 / #1f1f1f for a chosen item.
 const INK3 = { light: 'rgb(82, 82, 82)', dark: 'rgb(163, 163, 163)' } as const;
 const RAISED = { light: 'rgb(240, 240, 240)', dark: 'rgb(31, 31, 31)' } as const;
@@ -44,15 +44,23 @@ for (const theme of ['light', 'dark'] as const) {
     for (const path of PAGES) {
       await settle(page, path);
       const icons = await page.evaluate(() => [...document.querySelectorAll('.sidebar .dash-marker svg, main svg.lucide')]
-        // OMN-21970 AC8: the headline summary cards' icons carry their concept colour; every other interface icon is grey.
-        .filter(svg => !svg.closest('.local-run-pill, .badge, .chain-node, .live-pill, [role="alert"], .local-overview-summary') && !svg.matches('[data-field-icon^="tier-"], [data-semantic-concept^="model:"]') && (svg as SVGElement).getBoundingClientRect().width > 0)
+        // OMN-21970 (Lakshman 2026-11-03, one colour per concept): an icon that names a concept draws its own colour on
+        // every page (checked below); every icon that names none is the interface grey.
+        .filter(svg => !svg.closest('.local-run-pill, .badge, .chain-node, .live-pill, [role="alert"]') && !svg.matches('[data-field-icon], [data-semantic-concept^="model:"]') && (svg as SVGElement).getBoundingClientRect().width > 0)
         .map(svg => ({ color: getComputedStyle(svg).color, active: !!svg.closest('.mvp-nav-item.active') })));
       expect(icons.length, `${path} draws icons`).toBeGreaterThan(3);
       for (const icon of icons) expect(icon.color, `${path} icon`).toBe(INK3[theme]);
-      // Hybrid: a model name under its bar keeps that bar's colour (OMN-21308 AC3).
-      const named = await page.locator('main li[data-ranked-item]').evaluateAll(items => items.filter(item => item.querySelector('.rb-name') && item.querySelector('.rb-bar[data-pattern="hatched"]'))
-        .map(item => ({ name: getComputedStyle(item.querySelector('.rb-name')!).color, bar: getComputedStyle(item.querySelector('.rb-bar')!).color })));
-      for (const item of named) expect(item.name, `${path} model name keeps its bar colour`).toBe(item.bar);
+      const concepts = await page.evaluate(() => [...document.querySelectorAll('main svg.field-icon[data-field-icon]:not([data-field-icon^="tier-"]):not([data-semantic-concept^="model:"])')]
+        .filter(svg => (svg as SVGElement).getBoundingClientRect().width > 0 && !svg.closest('[data-field-unavailable="true"]'))
+        .map(svg => { const concept = svg.getAttribute('data-field-icon')!; const probe = document.createElement('i');
+          probe.style.color = `var(--field-${concept})`; document.body.append(probe); const want = getComputedStyle(probe).color; probe.remove();
+          return { concept, color: getComputedStyle(svg).color, want }; }));
+      for (const icon of concepts) expect(icon.color, `${path} ${icon.concept} icon draws its concept colour`).toBe(icon.want);
+      // Hybrid: a model under its bar keeps that bar's colour (OMN-21308 AC3), on the swatch beside its ink name since
+      // OMN-21970 option a (Lakshman 2026-11-03).
+      const named = await page.locator('main li[data-ranked-item]').evaluateAll(items => items.filter(item => item.querySelector('.rb-name .rb-swatch') && item.querySelector('.rb-bar[data-pattern="hatched"]'))
+        .map(item => ({ name: getComputedStyle(item.querySelector('.rb-name .rb-swatch')!).backgroundColor, bar: getComputedStyle(item.querySelector('.rb-bar')!).color })));
+      for (const item of named) expect(item.name, `${path} model swatch keeps its bar colour`).toBe(item.bar);
     }
     // Control: the data keeps its colour, so a check that turned everything grey would fail here.
     await settle(page, '/overview');

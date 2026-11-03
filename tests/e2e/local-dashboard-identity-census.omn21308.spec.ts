@@ -5,8 +5,10 @@ import { icons } from 'lucide-react';
 import { expect, test, type Page } from 'playwright/test';
 import { PAGE_LABELS, PAGE_PATHS } from '../../src/navigation/page-routes';
 import type { AppPage } from '../../src/store/types';
-import { chartRows, prefix, revealRunFields, serveCharts } from './omn21166-chart-fixtures';
+import { chartRows, prefix, revealRunFields, serveCharts, keepRealClock } from './omn21166-chart-fixtures';
 import { resolveCensusSourceSha } from './census-source.mjs';
+// This spec dates its rows from the real clock, so the browser keeps it (see FIXTURE_NOW).
+test.beforeEach(({ page }) => keepRealClock(page));
 
 const sourceSha = resolveCensusSourceSha();
 
@@ -454,8 +456,7 @@ test('core headline icons each keep their own concept colour and glyph, with rea
     { label: 'Tokens processed', family: 'violet', hue: [250, 295] },
     // OMN-21166 live review 2026-10-25: the fifth card's heading icon keeps the site-wide quality identity (one concept,
     // one colour on every page, checked by the AC4 census); its 3px edge is the green pass colour (AC82).
-    // AC8: quality is the pass family, green.
-    { label: 'Delegation Quality', family: 'pass green', hue: [90, 150] },
+    { label: 'Delegation Quality', family: 'teal-green quality ink', hue: [150, 200] },
   ];
   for (const theme of ['light', 'dark']) {
     if ((await page.locator('html').getAttribute('data-theme') ?? 'light') !== theme) await page.getByRole('button', { name: 'Toggle theme', exact: true }).click();

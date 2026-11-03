@@ -1,6 +1,8 @@
-import { revealRunFields } from './omn21166-chart-fixtures';
+import { revealRunFields, keepRealClock } from './omn21166-chart-fixtures';
 import { expect, test } from 'playwright/test';
 import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+// This spec dates its rows from the real clock, so the browser keeps it (see FIXTURE_NOW).
+test.beforeEach(({ page }) => keepRealClock(page));
 
 // Declared failures before code: Workflow has no field grouping, run controls
 // bury the list, evidence renders hundreds of rows, and long pages have no
@@ -114,7 +116,7 @@ test('Workflow fact cards have distinct semantic Lucide icons and colors', async
     border: getComputedStyle(element).borderTopColor,
   })));
   expect(new Set(identities.map(identity => identity.icon)).size).toBe(4);
-  // Part 28 AC177: the four subject titles and their icons are grey; the subjects stay distinct by icon and title.
-  expect(new Set(identities.map(identity => identity.color)).size).toBe(1);
+  // One colour per concept (Lakshman 2026-11-03): the four subject icons are four concepts, so four colours; the titles stay grey.
+  expect(new Set(identities.map(identity => identity.color)).size).toBe(4);
   expect(new Set(identities.map(identity => identity.border)).size).toBe(1);
 });

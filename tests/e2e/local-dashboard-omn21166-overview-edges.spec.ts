@@ -1,8 +1,10 @@
 import { writeFileSync } from 'node:fs';
 import { expect, test, type Page } from 'playwright/test';
-import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chartRows, prefix, serveCharts, keepRealClock } from './omn21166-chart-fixtures';
 // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the window radios sit in one dropdown; chooseWindow opens it and proves it closed.
 import { chooseWindow } from './overview-window-menu';
+// This spec dates its rows from the real clock, so the browser keeps it (see FIXTURE_NOW).
+test.beforeEach(({ page }) => keepRealClock(page));
 
 // OMN-21166 part 21 edge cases (Lakshman 2026-10-26: "check all edge cases"). Written by claude-920f62a6 after the onex
 // delegate draft timed out (run d5cad0e0). Failure modes, each checked on every case below:

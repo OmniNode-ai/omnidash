@@ -1218,7 +1218,9 @@ html .app svg.field-icon.field-icon:is([data-field-icon^="tier-"], [data-semanti
    names the data beside it (model names and legend labels, tier icons by their bars, Evidence's money and quality
    figures); interface words are grey: the Workflow subject titles, control titles and every link. */
 .local-dashboard-page .usage-record-controls-title { color: var(--ink-2) !important; }
-.local-dashboard-page .local-run-summary-group > h3, .local-dashboard-page .local-run-summary-group > h3 * { color: var(--ink-3) !important; }
+/* The title text is grey; its concept icon keeps its own colour (one colour per concept, editorial.css), and the icon's
+   paths draw that colour (this rule used to grey the paths too, so the icon drew two colours). */
+.local-dashboard-page .local-run-summary-group > h3, .local-dashboard-page .local-run-summary-group > h3 *:not(svg):not(svg *) { color: var(--ink-3) !important; }
 :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) a:not(.dash-item):not(.local-card-link):not(.rb-link):not(.local-settings-link) { color: var(--ink); text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
 :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) a:not(.dash-item):not(.local-card-link):not(.rb-link):not(.local-settings-link):hover { text-decoration-color: currentColor; }
 .local-dashboard-page details.local-run-failure > summary { color: var(--ink-2); }
@@ -1508,9 +1510,9 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ui-accent); outline-o
   border-top: 3px solid var(--card-accent);
   background-image: linear-gradient(180deg, color-mix(in srgb, var(--card-accent) 14%, transparent), transparent 75%);
 }
-:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel > .local-dashboard-metric[data-measured="true"],
-:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel > h2 svg {
-  /* The redesign pins every figure to ink with !important; only these summary-card figures take their card colour. */
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel > .local-dashboard-metric[data-measured="true"] {
+  /* The redesign pins every figure to ink with !important; only these summary-card figures take their card colour. Their
+     icons take their concept colour, the same on every page (editorial.css, one colour per concept). */
   color: var(--card-accent) !important;
 }
 
