@@ -33,7 +33,7 @@ import { TIER_TONES } from '@/design-system/charts';
 import { InsightsSection, InsightsWindowContext, MeteringActivityInsights, OverviewRunsContext, PassRateSparkline, TaskIcon, type ActivityWindow } from '@/pages/local/insight-charts';
 import { UsageInsights } from '@/pages/local/usage-insights';
 import { RoutingAnalysis, RunsTotals } from '@/pages/local/usage-analysis';
-import { DashboardTabs, EmptyState, Fact, FactList } from '@/design-system/components';
+import { Badge, DashboardTabs, EmptyState, Fact, FactList, StatusChip } from '@/design-system/components';
 import { SinceLastVisit } from '@/pages/local/since-last-visit';
 import { ModelKeys, providerName } from '@/pages/local/model-keys';
 import { EnvironmentPanel, ServiceHealthUnread } from '@/pages/local/environment';
@@ -1774,7 +1774,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                   <td className="local-dashboard-cell-token">
                     {/* WF-3: a run opens its own path on Workflow; a run with no recorded id has nothing to open. */}
                     <RunRef id={run.correlation_id} short />
-                    {isFixture(run) && <span className="local-dashboard-badge">fixture</span>}
+                    {isFixture(run) && <Badge>fixture</Badge>}
                   </td>
                   <td className="local-dashboard-cell-token local-dashboard-cell-time"><CellTime value={run.created_at} /></td>
                   <td><OutcomePill value={statusOf(run)} /></td>
@@ -2258,7 +2258,7 @@ export function RunTimeline({ steps, run }: {
             <div className="local-run-step-head">
               <strong>{RUN_STEP_LABELS[kind] ?? recorded(row.step_kind)}</strong>
               <OutcomePill value={row.outcome} />
-              {failing && <span className="local-dashboard-badge">Failed here</span>}
+              {failing && <Badge>Failed here</Badge>}
               <span className="local-run-step-duration" data-measured={isMissing(row.duration_ms) ? 'false' : 'true'}>
                 <span>Duration</span> {duration(row.duration_ms)}
               </span>
@@ -2276,7 +2276,7 @@ export function RunTimeline({ steps, run }: {
             {details.length > 0 && (
               <div className="local-run-chips">
                 {details.map(([name, value]) => (
-                  <span className="local-run-chip" key={name}><span>{name}:</span> {value}</span>
+                  <Badge look="run-fact" key={name}><span>{name}:</span> {value}</Badge>
                 ))}
               </div>
             )}
@@ -2292,7 +2292,7 @@ export function RunTimeline({ steps, run }: {
 /** A served outcome or verdict as a pill, coloured by its own value; a value never served reads Not recorded. */
 function OutcomePill({ value }: { value: unknown }) {
   return (
-    <span className="local-run-pill" data-outcome={isMissing(value) ? undefined : String(value)}>{recorded(value)}</span>
+    <StatusChip outcome={isMissing(value) ? undefined : String(value)}>{recorded(value)}</StatusChip>
   );
 }
 

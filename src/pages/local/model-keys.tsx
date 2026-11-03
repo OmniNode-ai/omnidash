@@ -14,7 +14,7 @@ import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { SettingsEmptyState } from '@/components/dashboard/SettingsEmptyState';
 import { readableTime } from '@/components/format/readable-time';
 import { ModelKeysError, listModelKeys, type ModelProviderId, type ModelProviderRow } from '@/services/models-api';
-import { EmptyState, Fact, FactList } from '@/design-system/components';
+import { Badge, EmptyState, Fact, FactList } from '@/design-system/components';
 
 /** A served key reference row from tenant-credentials.v1: its name, fingerprint prefix and times. Never a value. */
 export type CredentialKeyRow = Record<string, unknown>;
@@ -160,8 +160,8 @@ function ProviderCard({ row, keys, listed = true }: { row: ModelProviderRow; key
         </span>
         <span className="local-provider-cell local-provider-cell--status">
           <span className="local-provider-status" data-tone={status.tone}><span className="local-provider-dot" aria-hidden="true" />{status.text}</span>
-          {row.tried_first === true && <span className="local-provider-badge">
-            {missing(row.first_model) ? 'Tried first' : `Tried first · ${String(row.first_model)}`}</span>}
+          {row.tried_first === true && <Badge look="provider">
+            {missing(row.first_model) ? 'Tried first' : `Tried first · ${String(row.first_model)}`}</Badge>}
         </span>
         {listed && !row.set_up
           ? <span className="local-provider-cell local-provider-cell--setup">{setup}</span>

@@ -5,5 +5,7 @@ export { InfoTip, Tooltip } from './Tooltip';
 export { DashboardTabs, DashboardToggle, readTab, writeTab } from './Tabs';
 export { EmptyState } from './EmptyState';
 export { Fact, FactList } from './FactList';
+export { Badge, StatusChip } from './Badge';
+export type { BadgeLook } from './Badge';
 export type { FactListLook } from './FactList';
 export type { DashboardTab, ToggleOption } from './Tabs';

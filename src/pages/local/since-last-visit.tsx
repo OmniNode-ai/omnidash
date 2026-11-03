@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { BellRing } from '@/design-system/icons';
 import { toInsightRuns } from './insights';
 import { useSharedRunFilter } from './run-filter';
+import { Badge } from '@/design-system/components';
 
 /**
  * OMN-21166 AC26 (mockup build, 2026-10-18): "Since your last visit" on the Overview header. The last visit is a
@@ -44,8 +45,8 @@ export function SinceLastVisit({ decisions, now, onOpenFailures }: { decisions: 
     <p className="local-since-visit" role="status" aria-label="Since your last visit">
       <span className="local-since-visit-icon" aria-hidden="true"><BellRing size={15} /></span>
       <span className="local-since-visit-title">Since your last visit · {visitLabel(previous)}</span>
-      <span className="local-since-visit-chip" data-tone="runs">{formatDashboardCount(fresh.length)} new runs</span>
-      <span className="local-since-visit-chip" data-tone="failed">{formatDashboardCount(failed)} failed</span>
+      <Badge look="since-visit" data-tone="runs">{formatDashboardCount(fresh.length)} new runs</Badge>
+      <Badge look="since-visit" data-tone="failed">{formatDashboardCount(failed)} failed</Badge>
       {(shared || onOpenFailures) && (
         <button type="button" className="local-since-visit-action" onClick={() => {
           if (onOpenFailures) { onOpenFailures(); return; }

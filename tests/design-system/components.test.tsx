@@ -23,12 +23,19 @@
  *   F3  the value's own class (mono, local-identity-value) or title (the served timestamp) is dropped;
  *   F4  a look does not give its list class, or a page's extra class or aria-label is dropped;
  *   F5  a page writes a fact list's class itself (the duplicate scan, with a planted control).
+ *
+ * Status chip (StatusChip, the run outcome pill) and badge (Badge: fixture, failed here, tried first, a run's chip, the
+ * since-last-visit chips)
+ *   S1  the chip loses its words or its served outcome (data-outcome), which its colour keys on;
+ *   S2  a chip with no served outcome gets one anyway (an empty or guessed data-outcome);
+ *   B1  a look does not give its class, or a tone (data-tone) or key is dropped;
+ *   B2  a page writes a chip or badge class itself (the duplicate scan, with a planted control).
  */
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { Router } from 'wouter';
 import { memoryLocation } from 'wouter/memory-location';
-import { DashboardTabs, DashboardToggle, EmptyState, Fact, FactList, readTab, writeTab } from '@/design-system/components';
+import { Badge, DashboardTabs, DashboardToggle, EmptyState, Fact, FactList, readTab, StatusChip, writeTab } from '@/design-system/components';
 import { pageLocalCopies, scanAll, summarise } from './scan';
 
 afterEach(cleanup);
@@ -171,6 +178,38 @@ describe('Fact list', () => {
   it('F5: control: a page writing a fact list class itself is caught', () => {
     for (const cls of ['local-dashboard-fields', 'local-provider-facts', 'local-routing-counts', 'local-provider-figures', 'ev-evidence-derivation']) {
       expect(pageLocalCopies('src/pages/local/Planted.tsx', `<dl className="${cls}">`), cls).toHaveLength(1);
+    }
+  });
+});
+
+describe('Status chip and badge', () => {
+  it('S1: the chip keeps its words and its served outcome', () => {
+    const { container } = render(<StatusChip outcome="failed">failed</StatusChip>);
+    const chip = container.firstElementChild!;
+    expect(chip).toHaveClass('local-run-pill');
+    expect(chip).toHaveAttribute('data-outcome', 'failed');
+    expect(chip).toHaveTextContent('failed');
+  });
+
+  it('S2: a chip with no served outcome carries none', () => {
+    const { container } = render(<StatusChip>Not recorded</StatusChip>);
+    expect(container.firstElementChild).not.toHaveAttribute('data-outcome');
+  });
+
+  it('B1: each look gives its class and keeps a tone', () => {
+    const looks = { default: 'local-dashboard-badge', provider: 'local-provider-badge', 'run-fact': 'local-run-chip', 'since-visit': 'local-since-visit-chip' } as const;
+    for (const [look, cls] of Object.entries(looks)) {
+      const { container } = render(<Badge look={look as keyof typeof looks}>x</Badge>);
+      expect(container.firstElementChild!.className, look).toBe(cls);
+      cleanup();
+    }
+    const { container } = render(<Badge look="since-visit" data-tone="failed">2 failed</Badge>);
+    expect(container.firstElementChild).toHaveAttribute('data-tone', 'failed');
+  });
+
+  it('B2: control: a page writing a chip or badge class itself is caught', () => {
+    for (const cls of ['local-run-pill', 'local-dashboard-badge', 'local-provider-badge', 'local-run-chip', 'local-since-visit-chip']) {
+      expect(pageLocalCopies('src/pages/local/Planted.tsx', `<span className="${cls}">x</span>`), cls).toHaveLength(1);
     }
   });
 });
