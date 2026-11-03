@@ -39,6 +39,10 @@
  *       or style, or gets a measured mark the page never set;
  *   P3  a page writes a panel or figure class itself, including inside a template literal (the duplicate scan);
  *   K1  a KPI tile loses its tone, its label, value or notes, or marks a value unavailable that the page did not.
+ *   C1  a headline card (Card: the Overview-style card KpiStrip draws on Evidence, Runs and Usage) is not an article
+ *       with the panel class, or loses its accent, its kpi mark, its heading or its figure and caption order;
+ *   C2  a card marked unavailable when the page did not mark it, or an available card carrying the mark;
+ *   C3  KpiStrip writes the panel or figure class itself instead of using the kit (the duplicate scan, with a control).
  *
  * Data table (DataTable: the scroll wrap and its table, on every local page table and the usage widgets)
  *   D1  the table is not inside its wrap, or loses its head and body;
@@ -51,7 +55,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { Router } from 'wouter';
 import { memoryLocation } from 'wouter/memory-location';
-import { Badge, DashboardTabs, DataTable, DashboardToggle, EmptyState, Fact, FactList, Figure, KpiTile, Panel, PanelTitle, readTab, StatusChip, writeTab } from '@/design-system/components';
+import { Badge, Card, DashboardTabs, DataTable, DashboardToggle, EmptyState, Fact, FactList, Figure, KpiTile, Panel, PanelTitle, readTab, StatusChip, writeTab } from '@/design-system/components';
 import { pageLocalCopies, scanAll, summarise } from './scan';
 
 afterEach(cleanup);
@@ -333,5 +337,33 @@ describe('Data table', () => {
   it('D5: control: a page writing the table wrap class itself is caught', () => {
     expect(pageLocalCopies('src/pages/local/Planted.tsx', '<div className="local-dashboard-table-wrap">')).toHaveLength(1);
     expect(pageLocalCopies('src/components/dashboard/usage/Planted.tsx', '<div className="local-dashboard-table-wrap local-dashboard-table-wrap--fit">').length).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe('Headline card', () => {
+  it('C1: a card is a panel article with its accent and mark, its heading, then its figure and caption', () => {
+    const { container } = render(<Card heading="Spend" accent="var(--ds-field-cost)" data-kpi-card="Spend">
+      <Figure measured>$0.42</Figure><p className="local-dashboard-caption">Last 7 days</p>
+    </Card>);
+    const card = container.firstElementChild as HTMLElement;
+    expect(card.tagName).toBe('ARTICLE');
+    expect(card.className).toBe('local-dashboard-panel');
+    expect(card).toHaveAttribute('data-kpi-card', 'Spend');
+    expect(card.style.getPropertyValue('--panel-accent')).toBe('var(--ds-field-cost)');
+    expect(Array.from(card.children).map(child => child.tagName)).toEqual(['H2', 'P', 'P']);
+    expect(card.querySelector('h2')).toHaveTextContent('Spend');
+    expect(card.querySelector('.local-dashboard-metric')).toHaveTextContent('$0.42');
+  });
+
+  it('C2: only a card the page marks unavailable carries the mark', () => {
+    const { container } = render(<Card heading="Saved" unavailable><Figure measured={false}>Unavailable</Figure></Card>);
+    expect(container.firstElementChild).toHaveAttribute('data-field-unavailable', 'true');
+    cleanup();
+    expect(render(<Card heading="Runs"><Figure measured>4</Figure></Card>).container.firstElementChild).not.toHaveAttribute('data-field-unavailable');
+  });
+
+  it('C3: control: KpiStrip writing the panel or figure class itself is caught', () => {
+    expect(pageLocalCopies('src/components/dashboard/KpiStrip.tsx', '<article className="local-dashboard-panel">').length).toBe(1);
+    expect(pageLocalCopies('src/components/dashboard/KpiStrip.tsx', '<p className="local-dashboard-metric">').length).toBe(1);
   });
 });

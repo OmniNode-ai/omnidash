@@ -7,6 +7,7 @@ export { EmptyState } from './EmptyState';
 export { Fact, FactList } from './FactList';
 export { Badge, StatusChip } from './Badge';
 export { Figure, KpiTile, Panel, PanelTitle } from './Panel';
+export { Card } from './Card';
 export { DataTable } from './DataTable';
 export type { BadgeLook } from './Badge';
 export type { FactListLook } from './FactList';

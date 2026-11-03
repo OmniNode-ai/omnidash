@@ -6,7 +6,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { StoryPage, StorySection } from '../story-frame';
 import {
-  Badge, DashboardTabs, DashboardToggle, DataTable, Dropdown, EmptyState, Fact, FactList, Figure, InfoTip, KpiTile, Panel, PanelTitle,
+  Badge, Card, DashboardTabs, DashboardToggle, DataTable, Dropdown, EmptyState, Fact, FactList, Figure, InfoTip, KpiTile, Panel, PanelTitle,
   StatusChip, Tooltip,
 } from './index';
 
@@ -40,6 +40,10 @@ function Components() {
         <Figure measured={false}>Not measured</Figure>
       </Panel>
       <Panel full aria-label="An expanded chart panel"><PanelTitle>Expanded chart</PanelTitle><EmptyState>No runs in this window</EmptyState></Panel>
+      <section className="local-overview-summary" aria-label="Headline cards">
+        <Card heading="Spend" accent="var(--ds-field-cost)" data-kpi-card="Spend"><Figure measured>$0.42</Figure><p className="local-dashboard-caption">Last 7 days</p></Card>
+        <Card heading="Saved" unavailable data-kpi-card="Saved"><Figure measured={false}>Unavailable</Figure></Card>
+      </section>
       <section className="ins-window-kpis" aria-label="KPI tiles">
         <KpiTile tone="count" label="Runs" value="42"><small>Last 7 days</small><small>+6 on the previous window</small></KpiTile>
         <KpiTile tone="cost" label="You paid" value="Unavailable" unavailable><small>The spend total is not recorded.</small></KpiTile>

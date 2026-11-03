@@ -141,7 +141,9 @@ export const CHART_KIT = 'src/design-system/charts/';
  */
 export function isKitPage(path: string): boolean {
   return path === 'src/pages/LocalDashboardPage.tsx' || path === 'src/pages/DelegationEvidencePage.tsx'
-    || path.startsWith('src/pages/local/') || path.startsWith('src/components/dashboard/usage/');
+    || path.startsWith('src/pages/local/') || path.startsWith('src/components/dashboard/usage/')
+    // OMN-22168: KpiStrip draws the headline cards of Evidence, Runs and Usage, so it uses the kit's Card and Figure.
+    || path === 'src/components/dashboard/KpiStrip.tsx';
 }
 /** The classes only a kit component writes; a page writing one itself holds a page-local copy. Grows as AC4 moves each. */
 const KIT_COMPONENT_CLASS = /(['"`\s])(local-dashboard-empty|local-dashboard-fields|local-provider-facts(?:--inline)?|local-routing-counts|local-provider-figures|ev-evidence-derivation|local-run-pill|local-dashboard-badge|local-provider-badge|local-run-chip|local-since-visit-chip|local-dashboard-panel(?:-title|--full-chart)?|local-dashboard-metric|ins-kpi|local-dashboard-table-wrap(?:--fit)?)(?=['"`\s$])/g;
