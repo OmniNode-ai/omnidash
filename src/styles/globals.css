@@ -331,6 +331,8 @@
     height: 100vh;
     transition: grid-template-columns 0.2s cubic-bezier(.2,.8,.2,1);
   }
+  /* OMN-21970 AC9: with reduced motion the page column takes its new width at once instead of sliding. */
+  @media (prefers-reduced-motion: reduce) { .app { transition: none; } }
   .app.sidebar-collapsed { --sidebar-w: 56px; }
 
   @media (max-width: 1024px) {

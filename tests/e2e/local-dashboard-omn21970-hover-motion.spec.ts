@@ -7,7 +7,9 @@ import { serveCharts } from './omn21166-chart-fixtures';
 // hid the glow while every unit test passed). Failure modes:
 //   H1 the card lifts but does not glow (a later or stronger rule flattens the shadow);
 //   H2 the card neither lifts nor glows under normal motion;
-//   H3 under reduced motion the card still moves or glows.
+//   H3 under reduced motion the card still moves or glows;
+//   H4 under reduced motion the page column still slides to its new width when the window narrows (the shell grid's
+//      column transition was unguarded, so a phone-width layout was measured mid-slide; the counts spec failed on it).
 test.use({ viewport: { width: 1440, height: 900 } });
 
 async function hovered(page: Page) {
@@ -35,4 +37,18 @@ test('H3: under reduced motion a headline card neither moves nor glows on hover'
   const state = await hovered(page);
   expect(state.transform).toBe('none');
   expect(state.shadow).toBe('none');
+});
+
+test('H4: under reduced motion the page column takes its phone width at once', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await serveCharts(page);
+  await page.goto('/overview');
+  await expect(page.locator('main h1').first()).toBeVisible({ timeout: 20_000 });
+  await page.setViewportSize({ width: 390, height: 844 });
+  // Read in the same frame the resize lands in: no wait, so a running transition shows as a narrower column.
+  const widths = await page.evaluate(() => new Promise<number[]>(done => requestAnimationFrame(() => {
+    const now = document.querySelector('main')!.getBoundingClientRect().width;
+    setTimeout(() => done([now, document.querySelector('main')!.getBoundingClientRect().width]), 500);
+  })));
+  expect(widths[0], 'the column width right after the resize equals its settled width').toBeCloseTo(widths[1]!, 0);
 });
