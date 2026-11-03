@@ -18,8 +18,9 @@ test.use({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce', trac
 
 const INK = { light: 'rgb(17, 17, 17)', dark: 'rgb(250, 250, 250)' } as const;
 const INK2 = { light: 'rgb(61, 61, 61)', dark: 'rgb(194, 194, 194)' } as const;
-const INK3 = { light: 'rgb(85, 85, 85)', dark: 'rgb(168, 168, 168)' } as const;
-const RAISED = { light: 'rgb(239, 239, 236)', dark: 'rgb(30, 30, 30)' } as const;
+// the 01+20 look (Lakshman 2026-11-03, "01 + 20 do it"): ink-3 #525252 / #a3a3a3 and the soft fill #f0f0f0 / #1f1f1f for a chosen item.
+const INK3 = { light: 'rgb(82, 82, 82)', dark: 'rgb(163, 163, 163)' } as const;
+const RAISED = { light: 'rgb(240, 240, 240)', dark: 'rgb(31, 31, 31)' } as const;
 const LINE = { light: 'rgb(212, 212, 207)', dark: 'rgb(43, 43, 43)' } as const;
 const PAGES = ['/overview', '/runs', '/workflow?correlation_id=chart-run-a', '/usage', '/settings', '/delegation-evidence'];
 
@@ -66,9 +67,9 @@ for (const theme of ['light', 'dark'] as const) {
     await expect(selected).toHaveCSS('color', INK[theme]);
     // Control: the unselected option is told apart from the selected one.
     expect(await unselected.evaluate(el => getComputedStyle(el).backgroundColor)).not.toBe(RAISED[theme]);
-    await expect(page.locator('main article.local-dashboard-panel').first()).toHaveCSS('border-radius', '8px');
+    await expect(page.locator('main article.local-dashboard-panel').first()).toHaveCSS('border-radius', '12px');
     const expand = page.locator('.local-chart-expand').first();
-    await expect(expand).toHaveCSS('border-radius', '6px');
+    await expect(expand).toHaveCSS('border-radius', '8px');
     await expect(expand).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
     await expect(expand).toHaveCSS('border-top-color', LINE[theme]);
     await expect(expand).toHaveCSS('color', INK2[theme]);

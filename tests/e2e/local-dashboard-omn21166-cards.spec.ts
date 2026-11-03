@@ -14,7 +14,7 @@ for (const route of ['overview', 'event-bus']) {
     await expect(card).toBeVisible();
     // OMN-21166 part 28 AC181: the seven pages' cards have an 8px radius and are flat (AC165); Event Bus is a developer
     // page outside them and keeps its own lifted 12px panel.
-    expect(await card.evaluate(el => getComputedStyle(el).borderRadius)).toBe(route === 'overview' ? '8px' : '12px');
+    expect(await card.evaluate(el => getComputedStyle(el).borderRadius)).toBe('12px'); // every card has 12px corners in the 01+20 look (was 8px on Overview)
     if (route === 'overview') expect(await card.evaluate(el => getComputedStyle(el).boxShadow)).toBe('none');
     else expect(await card.evaluate(el => getComputedStyle(el).boxShadow)).not.toBe('none');
     // A headline card is only its title and figure, with the neutral 1px edge since part 27 AC167 (no header rule); the

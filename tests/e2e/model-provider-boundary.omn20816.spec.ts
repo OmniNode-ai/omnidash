@@ -42,22 +42,31 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
         // OMN-21166 part 26: Credentials is a section of Settings.
         await page.getByTestId('nav-local-settings').click();
         await expect(page.getByRole('heading', { level: 2, name: 'Model providers', exact: true })).toBeVisible();
-        const table = page.getByRole('table', { name: 'Model providers' });
+        // OMN-21970 AC10 (Lakshman 2026-11-02, Settings redesign): the providers are a list of cards, one article per
+        // provider, each a closed disclosure with its status on the line; the table they replace is gone.
+        const region = page.getByRole('region', { name: 'Model providers' });
+        const cards = region.getByRole('article');
         if (state === 'models-failed') {
           await expect(page.getByText('Model provider service unavailable', { exact: true })).toBeVisible();
-          await expect(table).toHaveCount(0);
+          await expect(cards).toHaveCount(0);
         } else {
-          await expect(table).toBeVisible();
-          await expect(table).toHaveCount(1);
-          await expect(table.getByRole('rowheader')).toHaveText(['Gemini', 'OpenRouter', 'OpenAI', 'Ollama']);
-          await expect(table.getByText('Set up, not tested yet', { exact: true })).toBeVisible();
-          await expect(table.getByText('Last test passed', { exact: true })).toBeVisible();
-          await expect(table.getByText('Last test failed: 401 invalid api key', { exact: true })).toBeVisible();
-          await expect(table.getByText('Not set up', { exact: true })).toBeVisible();
-          expect(await table.evaluate(el => el.closest('[aria-busy="true"]') === null)).toBe(true);
-          await expect(page.getByRole('region', { name: 'Model providers' }).locator('input, textarea, select, form, button, [contenteditable]')).toHaveCount(0);
+          await expect(cards).toHaveCount(4);
+          expect(await cards.evaluateAll(els => els.map(el => el.getAttribute('aria-label')))).toEqual(['Gemini', 'OpenRouter', 'OpenAI', 'Ollama']);
+          await expect(region.getByText('Set up, not tested yet', { exact: true })).toBeVisible();
+          await expect(region.getByText('Last test passed', { exact: true })).toBeVisible();
+          await expect(region.getByText('Last test failed · 401 invalid api key', { exact: true })).toBeVisible();
+          await expect(region.getByText('Not set up', { exact: true })).toBeVisible();
+          // The served failure reason is kept whole behind its card's error disclosure.
+          await expect(cards.nth(2).locator('.local-provider-error pre')).toHaveText('401 invalid api key');
+          expect(await region.evaluate(el => el.closest('[aria-busy="true"]') === null)).toBe(true);
+          // Read-only: disclosures only, no control that writes or submits.
+          await expect(region.locator('input, textarea, select, form, button, [contenteditable]')).toHaveCount(0);
         }
-        if (state === 'healthy') { await expect(table.getByText('onex models add gemini', { exact: true })).toBeVisible(); await expect(page.getByText('No provider credentials recorded')).toHaveCount(0); }
+        if (state === 'healthy') {
+          await cards.first().locator('summary').first().click();
+          await expect(cards.first().getByText('onex models add gemini', { exact: true })).toBeVisible();
+          await expect(page.getByText('No provider credentials recorded')).toHaveCount(0);
+        }
         if (state === 'pending') await expect(page.getByText('Loading data…', { exact: true })).toBeVisible();
         if (['missing', 'models-failed'].includes(state)) await expect(page.getByText('Not available yet: credentials.', { exact: true })).toBeVisible();
         if (state === 'failed') await expect(page.getByRole('alert')).toContainText('data is unavailable.');

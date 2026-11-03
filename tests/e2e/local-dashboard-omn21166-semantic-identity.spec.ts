@@ -114,8 +114,8 @@ test('headline card icons retain semantic colors beside readable identity-tinted
       expect(ratio, `${theme} heading contrast`).toBeGreaterThanOrEqual(4.5);
       colors.push(color);
     }
-    // Part 28 AC177: the headline icons are grey (one colour); each card keeps its own icon and readable heading.
-    expect(new Set(colors).size).toBe(1);
+    // OMN-21970 AC8 (committed 801bf845) supersedes part 28 AC177's one grey: each headline concept has its own colour; each card keeps its own icon and readable heading.
+    expect(new Set(colors).size).toBe(5);
   }
 });
 

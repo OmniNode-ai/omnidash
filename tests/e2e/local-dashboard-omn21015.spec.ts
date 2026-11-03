@@ -54,6 +54,8 @@ async function drawnHeight(page: Page, model: string, series: 'in' | 'out'): Pro
 
 test('OMN-21015: on Usage a bar is as tall as its share of the largest served token count', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
+  // OMN-21970 AC9 added a grow-in to every bar; this measures geometry, so it reads the bars without motion.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await serve(page);
   await page.goto('/usage');
   // OMN-21166 Maple grid: the per-model token bars (the series this test measures) are under the page's closed

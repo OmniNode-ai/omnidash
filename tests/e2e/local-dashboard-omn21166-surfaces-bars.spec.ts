@@ -14,9 +14,11 @@ import { serveCharts } from './omn21166-chart-fixtures';
 test.use({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce', trace: 'on' });
 
 const PAGES = ['/overview', '/runs', '/workflow?correlation_id=chart-run-a', '/usage', '/settings', '/delegation-evidence'];
+// Surfaces of the 01+20 look (Lakshman 2026-11-03, "01 + 20 do it"): page #ffffff / #0a0a0a, card #fafafa / #141414, hairline #e5e5e5 / #262626, and the sidebar
+// on the page colour (was the warm paper set of part 28).
 const SURFACES = {
-  light: { page: 'rgb(245, 245, 243)', card: 'rgb(253, 253, 252)', border: 'rgb(212, 212, 207)', sidebar: 'rgb(242, 242, 239)' },
-  dark: { page: 'rgb(14, 14, 14)', card: 'rgb(22, 22, 22)', border: 'rgb(43, 43, 43)', sidebar: 'rgb(17, 17, 17)' },
+  light: { page: 'rgb(255, 255, 255)', card: 'rgb(250, 250, 250)', border: 'rgb(229, 229, 229)', sidebar: 'rgb(255, 255, 255)' },
+  dark: { page: 'rgb(10, 10, 10)', card: 'rgb(20, 20, 20)', border: 'rgb(38, 38, 38)', sidebar: 'rgb(10, 10, 10)' },
 } as const;
 const BARS = '.rb-bar[data-pattern="hatched"], .gdb-bar.ins-seg, .utc-stack i, .ev-qg-bar > .bar-fill, .local-runs-week-bar > i, .ins-fill';
 

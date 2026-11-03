@@ -88,6 +88,19 @@ html body .local-dashboard-page .local-window-trigger { display: inline-flex; al
   font-size: 15px; font-weight: 500; cursor: pointer; }
 html body .local-dashboard-page .local-window-trigger[aria-expanded="true"] svg { transform: rotate(180deg); }
 html body .local-dashboard-page .local-window-trigger:focus-visible { outline: 2px solid var(--ed-ink); outline-offset: 2px; }
+/* The day calendar sits with the window menu at the end of the header. It opens under the pair, right-aligned with the
+   window menu's edge, so it never runs past the page, whose main area clips sideways overflow (Lakshman 2026-11-03:
+   "calendar should be right but not cut by border"). At 480px and below it is a bottom sheet instead. */
+@media (min-width: 481px) {
+  html body .local-dashboard-page .local-window-options { position: relative; }
+  html body .local-dashboard-page .local-window-options .local-day-picker { position: static; }
+  html body .local-dashboard-page .local-day-pop.local-calendar { left: auto; right: 0; }
+}
+/* At 480px and below the calendar is fixed to the screen, and its desktop top (100% of its button) became 100% of the
+   viewport, so it opened below the screen. It is a bottom sheet there instead, scrolling on its own if the screen is
+   short, without dragging the page behind it (defensive CSS: scroll chaining). */
+@media (max-width: 480px) { html body .local-dashboard-page .local-day-pop.local-calendar { top: auto; bottom: 12px;
+  max-height: calc(100dvh - 24px); overflow-y: auto; overscroll-behavior: contain; } }
 html body .local-dashboard-page .local-window-list.local-window-radios { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; display: grid !important;
   grid-auto-flow: row; flex-direction: column; width: 260px; min-width: 240px; height: auto; gap: 0;
   padding: 6px; border: 1px solid var(--ed-rule-strong); border-radius: var(--ed-radius); background: var(--ed-paper-3); box-shadow: none; }

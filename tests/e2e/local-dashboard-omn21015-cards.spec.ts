@@ -31,8 +31,8 @@ test(`organized cards across all seven MVP pages in ${theme}`, async ({ page }, 
       await expect(page.getByText('Latest five returned runs', { exact: true })).toHaveCount(0);
       if (path === '/overview') await expect(page.getByRole('status', { name: 'Since your last visit' })).toHaveCount(0);
       const activeNav = page.locator('.sidebar .mvp-nav-item.active');
-      // OMN-21166 part 28a AC186: the active item is a lifted neutral surface (card surface in light, #262626 in dark).
-      const activeBackground = theme === 'dark' ? 'rgb(38, 38, 38)' : 'rgb(253, 253, 252)';
+      // OMN-21166 part 28a AC186, as restyled by the 01+20 look (Lakshman 2026-11-03, "01 + 20 do it"): the active item is the soft fill #f0f0f0 / #1f1f1f.
+      const activeBackground = theme === 'dark' ? 'rgb(31, 31, 31)' : 'rgb(240, 240, 240)';
       await expect(activeNav).toHaveCSS('background-color', activeBackground);
       await activeNav.hover();
       await expect(activeNav).toHaveCSS('background-color', activeBackground);

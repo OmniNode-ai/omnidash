@@ -134,7 +134,7 @@ function TokensByModel({ data, titled }: { data: UsageAggregates; titled: boolea
       <GroupedBars label="Token counts by model" wrapNames
         legend={[{ label: 'Tokens in', color: 'var(--field-tokens-in)' }, { label: 'Tokens out', color: 'var(--field-tokens-out)' }]}
         groups={data.models.map(model => ({
-          key: model.model, name: model.model, nameColor: modelColor(model.model),
+          key: model.model, name: model.model, model: model.model, nameColor: modelColor(model.model),
           label: `${model.model}: ${words(model.inputTokens)} tokens in, ${words(model.outputTokens)} tokens out`,
           values: [
             { key: 'in', value: model.inputTokens, display: words(model.inputTokens), color: 'var(--field-tokens-in)', tone: 'tokens-in' },
