@@ -308,11 +308,12 @@ describe('local pages against the captured lab catalogue', () => {
     // Environment from Overview (Environment is Settings' System status section, part 26 revision 2). Overview declares
     // its cards, quality, the activity charts' decisions and the tier mix; the cards switch to metering-summary.v1 at
     // run time (OMN-19980).
-    // OMN-21970 AC2: the activity charts also bind the served per-day totals, delegation.daily.v1.
+    // OMN-21970 AC2's delegation.daily.v1 binding is held back (Lakshman 2026-11-03) until the lab dev lane serves it
+    // (omnibase_infra#5585, omnimarket#4862); the charts fall back to the decision rows meanwhile, and the binding
+    // returns with a recapture of served-catalogue.lab.json.
     expect(new Set(page.components.flatMap(c=>(c.data_bindings??[]).map(b=>b.projection_topic)))).toEqual(new Set([
       'onex.snapshot.projection.cost.savings-overview.v1', 'onex.snapshot.projection.delegation.decisions.v1',
       'onex.snapshot.projection.delegation.quality-gate.v1', 'onex.snapshot.projection.delegation.model-routing.v1',
-      'onex.snapshot.projection.delegation.daily.v1',
     ]));
   });
 
