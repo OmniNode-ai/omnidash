@@ -23,13 +23,13 @@ export function tierConcept(tier: string): string | null {
 }
 
 /**
- * OMN-21970 AC5, AC6: each tier's colour token, from the product owner's palette. cheap_frontier and cheap_cloud, which
- * the palette does not name, share their family's colour; every other tier, and a missing one, is none. No tier is ever
- * coloured by a hash of its name.
+ * OMN-21970 AC5, AC6: each tier's colour token, from the product owner's palette. cheap_frontier and cheap_cloud have
+ * their own tokens, a lighter shade of their family (product owner 2026-11-03); every other tier, and a missing one,
+ * is none. No tier is ever coloured by a hash of its name.
  */
 const TIER_COLOR_TOKENS: Readonly<Record<string, string>> = {
-  local: 'tier-local', harness: 'tier-harness', frontier: 'tier-frontier', cheap_frontier: 'tier-frontier',
-  cloud: 'tier-cloud', cheap_cloud: 'tier-cloud', claude: 'tier-claude', customer_keys: 'tier-customer-keys',
+  local: 'tier-local', harness: 'tier-harness', frontier: 'tier-frontier', cheap_frontier: 'tier-cheap-frontier',
+  cloud: 'tier-cloud', cheap_cloud: 'tier-cheap-cloud', claude: 'tier-claude', customer_keys: 'tier-customer-keys',
 };
 
 export function tierColor(tier: string): string {

@@ -4,8 +4,11 @@
    at least 4.5:1 on the real card backgrounds #fdfdfc and #161616 under the 14% tint. Tested by
    src/styles/card-palette.omn21970.test.tsx. */
 /* One meaning per field across local cards, Workflow and the event views. The tier colours (OMN-21970) are the
-   product owner's palette, checked for colour-blind contrast in both themes; cheap_frontier and cheap_cloud share
-   their family's colour, and a tier no row names is none. */
+   product owner's palette, checked for colour-blind contrast in both themes. cheap_frontier and cheap_cloud are a
+   lighter shade of their family (product owner 2026-11-03), each passing the palette's own floors: OKLab distance to
+   every tier under normal, protan, deutan and tritan vision, and contrast on the page and card. In light mode no
+   lighter frontier shade passes, so light cheap_frontier keeps the frontier colour until the product owner picks one.
+   A tier no row names is none. */
 :root {
   --field-pass: #007607; --field-fail: #960026; --field-count: #1d4ed8;
   --field-score: #a21caf; --field-threshold: #854d0e; --field-model: #6d28d9;
@@ -208,7 +211,7 @@
   --field-tier-local: #2a78d6;
   --field-tier-harness: #eb6834;
   --field-tier-cheap-frontier: var(--field-tier-frontier);
-  --field-tier-cheap-cloud: var(--field-tier-cloud);
+  --field-tier-cheap-cloud: #8980fd;
   --field-tier-cloud: #6250d6;
   --field-tier-claude: #008300;
   --field-tier-frontier: #1baf7a;
@@ -235,8 +238,8 @@
   --field-quality-comparison: oklch(79% 0.11 142.82768);
   --field-tier-local: #3987e5;
   --field-tier-harness: #d95926;
-  --field-tier-cheap-frontier: var(--field-tier-frontier);
-  --field-tier-cheap-cloud: var(--field-tier-cloud);
+  --field-tier-cheap-frontier: #47be8e;
+  --field-tier-cheap-cloud: #afa8fd;
   --field-tier-cloud: #9085e9;
   --field-tier-claude: #008300;
   --field-tier-frontier: #199e70;
