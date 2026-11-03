@@ -37,9 +37,16 @@ test(`organized cards across all seven MVP pages in ${theme}`, async ({ page }, 
       await activeNav.hover();
       await expect(activeNav).toHaveCSS('background-color', activeBackground);
       await expect(activeNav.locator('.dash-marker')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
-      // OMN-21166 revision 3 (AC160): on Settings the card is the section; its embedded panels are flat inside it.
-      const cards = page.locator('.local-dashboard-panel:not(.local-settings-section .local-dashboard-panel), .local-settings-section, .ev-root .panel');
-      await expect(cards.first()).toBeVisible();
+      // OMN-21970 AC10 (Lakshman 2026-11-02, "it should be full page"): Settings has no cards; its sections sit on the page
+      // with no edge. Every other page's cards keep the one subtle 1px border.
+      if (path.startsWith('/settings')) {
+        const sections = page.locator('.local-settings-section:not([hidden])');
+        await expect(sections.first()).toBeVisible();
+        expect(await sections.evaluateAll(els => els.map(el => getComputedStyle(el).borderTopWidth)), 'Settings sections have no edge').toEqual(['0px']);
+      }
+      const cards = page.locator('.local-dashboard-panel:not(.local-dashboard-page--settings .local-dashboard-panel), .ev-root .panel');
+      const settings = path.startsWith('/settings');
+      if (!settings) await expect(cards.first()).toBeVisible();
       const accents = await cards.evaluateAll(elements => elements.map(el => ({
         width: parseFloat(getComputedStyle(el).borderTopWidth), color: getComputedStyle(el).borderTopColor,
         background: getComputedStyle(el).backgroundColor,
@@ -49,7 +56,7 @@ test(`organized cards across all seven MVP pages in ${theme}`, async ({ page }, 
       // OMN-21166 part 27 AC167: every card, headline cards included, keeps the single subtle 1px border in one colour;
       // a headline card's identity colour is on its icon (checked in the reference-style spec), not on an edge.
       expect(accents.every(card => card.width === 1), 'Cards use a single subtle border').toBe(true);
-      expect(new Set(accents.map(card => card.color)).size, 'Every card border is the one line colour').toBe(1);
+      expect(new Set(accents.map(card => card.color)).size, 'Every card border is the one line colour').toBe(settings ? 0 : 1);
       expect(accents.every(card => card.image === 'none'), 'Cards use flat surfaces, without decorative gradients').toBe(true);
       const nestedSurfaces = page.locator('.local-run-summary-group, .workflow-analysis-card, .workflow-flow-node, .local-chart.ins-card, .usage-insight');
       const nestedStyles = await nestedSurfaces.evaluateAll(elements => elements.map(el => ({

@@ -2819,6 +2819,8 @@ export const PANEL_CONCEPTS: Readonly<Record<string, string>> = {
   'workflow-run-path': 'path', 'usage-by-model-day': 'usage-day', 'usage-tokens-by-day': 'tokens-daily',
   'usage-savings-series': 'savings-daily', 'credentials-keys': 'credentials',
   'api-keys-local-identity': 'local-identity', 'api-keys-access': 'local-access', 'api-keys-cloud': 'cloud-keys',
+  // OMN-21970 AC10: Settings' Pricing and routing panel, the one panel title on the six pages that had no icon.
+  'pricing-baseline': 'baseline',
 };
 /** Compatibility inventory, derived from the shared canonical identity rather than a second icon map. */
 export const PANEL_ICONS: Record<string, LucideIcon> = Object.fromEntries(

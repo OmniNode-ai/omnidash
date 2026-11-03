@@ -43,7 +43,8 @@ function sortValue(group: Group, key: SortKey): number | string {
 
 function Sparkline({ group }: { group: Group }) {
   const peak = Math.max(1, ...group.daily.flatMap(day => (day.runs === null ? [] : [day.runs])));
-  return <span className="usage-analysis-spark" role="img"
+  // The bars are one neutral grey, a shape of the group's runs per day, not an identity colour.
+  return <span className="usage-analysis-spark" role="img" data-identity-decoration="sparkline"
     aria-label={`${group.name}: runs per day, ${group.daily.filter(day => day.runs === null).length} days before the sample not covered`}>
     {group.daily.map(day => <i key={day.day} data-day={day.day} data-covered={day.runs === null ? 'false' : 'true'} data-runs={day.runs ?? undefined}
       title={day.runs === null ? `${dayLabel(day.day)}: not covered by the sample` : `${dayLabel(day.day)}: ${day.runs} runs`}

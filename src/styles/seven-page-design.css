@@ -1208,8 +1208,9 @@ main.ev-root[data-destination="delegation-evidence"] .section-label { font-famil
 .app svg.field-icon, :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) svg.lucide { color: var(--icon-grey) !important; }
 /* One literal grey per theme for every page: the developer pages keep older text tokens (their tertiary is a warm
    #6B655E), so var(--ink-3) alone would draw the same icon in two greys across pages (OMN-21308 census). */
-:root { --icon-grey: #555555; }
-:root[data-theme="dark"] { --icon-grey: #a8a8a8; }
+/* The interface grey is the 01+20 ink-3 (Lakshman 2026-11-03; was #555555 / #a8a8a8). */
+:root { --icon-grey: #525252; }
+:root[data-theme="dark"] { --icon-grey: #a3a3a3; }
 :is(.local-run-pill, .badge, .chain-node, .live-pill, [role="alert"]) svg.lucide { color: inherit !important; }
 /* Specificity (0,4,2) on purpose: it must outrank the page-scoped grey rule above (0,3,2), or tier and model icons turn grey. */
 html .app svg.field-icon.field-icon:is([data-field-icon^="tier-"], [data-semantic-concept^="model:"]) { color: var(--field-ink, currentColor) !important; }

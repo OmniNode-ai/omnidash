@@ -20,7 +20,8 @@ for (const route of ['overview', 'event-bus']) {
     // A headline card is only its title and figure, with the neutral 1px edge since part 27 AC167. The 01+20 look
     // (Lakshman 2026-11-03) draws no rule under any panel title, on Overview or Evidence (was 1px).
     const header = page.locator(route === 'overview' ? '.maple-grid [data-component="overview-tier-mix"] h2' : '.ev-root .panel-h').first();
-    expect(await header.evaluate(el => getComputedStyle(el).borderBottomWidth)).toBe('0px');
+    // Event Bus is a developer page outside the six pages the 01+20 look covers; its panel header keeps its rule.
+    expect(await header.evaluate(el => getComputedStyle(el).borderBottomWidth)).toBe(route === 'event-bus' ? '1px' : '0px');
     if (route === 'overview') {
       expect(await card.evaluate(el => getComputedStyle(el).borderTopWidth)).toBe('1px');
       expect(await page.locator('.local-overview-summary').evaluate(el => el.getBoundingClientRect().height)).toBeLessThanOrEqual(160);

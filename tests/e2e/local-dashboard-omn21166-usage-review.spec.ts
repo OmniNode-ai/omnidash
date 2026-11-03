@@ -60,7 +60,8 @@ test('phone Usage records retain every labelled value and the model legend ident
   const segment = page.locator('.utc-stack i[data-token-model="model-alpha"]').first();
   expect(await segment.evaluate(element => getComputedStyle(element).color)).toBe(swatch);
   const name = page.getByRole('figure', { name: 'Tokens in vs out by model', exact: true }).locator('li.gdb-day[aria-label^="model-alpha:"] .gdb-day-label');
-  expect(await name.evaluate(element => getComputedStyle(element).color)).toBe(swatch);
+  // OMN-21970 option a (Lakshman 2026-11-03): the name reads in ink; the swatch beside it carries the model's colour.
+  expect(await name.locator('.gdb-swatch').evaluate(element => getComputedStyle(element).backgroundColor)).toBe(swatch);
   await page.screenshot({ path: info.outputPath('usage-records-phone.png'), fullPage: true, animations: 'disabled' });
 });
 

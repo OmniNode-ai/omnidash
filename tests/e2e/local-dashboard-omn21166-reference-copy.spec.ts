@@ -16,12 +16,14 @@ import { withAllTime } from './omn21166-redesign-fixtures';
 //   C9  Usage Savings per day names its days as ISO dates (AC185).
 test.use({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce', trace: 'on' });
 
-const INK = { light: 'rgb(17, 17, 17)', dark: 'rgb(250, 250, 250)' } as const;
+// The 01+20 ink (Lakshman 2026-11-03): #0a0a0a / #f5f5f5 (was #111111 / #fafafa).
+const INK = { light: 'rgb(10, 10, 10)', dark: 'rgb(245, 245, 245)' } as const;
 const INK2 = { light: 'rgb(61, 61, 61)', dark: 'rgb(194, 194, 194)' } as const;
 // the 01+20 look (Lakshman 2026-11-03, "01 + 20 do it"): ink-3 #525252 / #a3a3a3 and the soft fill #f0f0f0 / #1f1f1f for a chosen item.
 const INK3 = { light: 'rgb(82, 82, 82)', dark: 'rgb(163, 163, 163)' } as const;
 const RAISED = { light: 'rgb(240, 240, 240)', dark: 'rgb(31, 31, 31)' } as const;
-const LINE = { light: 'rgb(212, 212, 207)', dark: 'rgb(43, 43, 43)' } as const;
+// The 01+20 hairline (Lakshman 2026-11-03): #e5e5e5 / #262626 (was #d4d4cf / #2b2b2b).
+const LINE = { light: 'rgb(229, 229, 229)', dark: 'rgb(38, 38, 38)' } as const;
 const PAGES = ['/overview', '/runs', '/workflow?correlation_id=chart-run-a', '/usage', '/settings', '/delegation-evidence'];
 
 async function openTheme(page: Page, theme: 'light' | 'dark') {
@@ -42,7 +44,8 @@ for (const theme of ['light', 'dark'] as const) {
     for (const path of PAGES) {
       await settle(page, path);
       const icons = await page.evaluate(() => [...document.querySelectorAll('.sidebar .dash-marker svg, main svg.lucide')]
-        .filter(svg => !svg.closest('.local-run-pill, .badge, .chain-node, .live-pill, [role="alert"]') && !svg.matches('[data-field-icon^="tier-"], [data-semantic-concept^="model:"]') && (svg as SVGElement).getBoundingClientRect().width > 0)
+        // OMN-21970 AC8: the headline summary cards' icons carry their concept colour; every other interface icon is grey.
+        .filter(svg => !svg.closest('.local-run-pill, .badge, .chain-node, .live-pill, [role="alert"], .local-overview-summary') && !svg.matches('[data-field-icon^="tier-"], [data-semantic-concept^="model:"]') && (svg as SVGElement).getBoundingClientRect().width > 0)
         .map(svg => ({ color: getComputedStyle(svg).color, active: !!svg.closest('.mvp-nav-item.active') })));
       expect(icons.length, `${path} draws icons`).toBeGreaterThan(3);
       for (const icon of icons) expect(icon.color, `${path} icon`).toBe(INK3[theme]);

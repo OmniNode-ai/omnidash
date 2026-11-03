@@ -187,7 +187,7 @@ function CostByRoute({ routing, titled }: { routing: RouteRow[]; titled: boolean
         <RankedBars layout="vertical" label="Cost per route" unit="USD · measured cost per route" order="desc"
           items={routed.map(row => {
             const value = row.cost.usd === null ? null : Number(row.cost.usd);
-            return { key: row.key, name: row.route, basis: 'measured' as const, color: tierColor(row.tier),
+            return { key: row.key, name: row.route, tier: row.tier, basis: 'measured' as const, color: tierColor(row.tier),
               value: value !== null && Number.isFinite(value) ? value : null,
               display: `${row.cost.text} · ${count(row.runs)} runs · ${share(row.share)}` };
           })} />

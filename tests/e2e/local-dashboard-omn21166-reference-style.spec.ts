@@ -22,7 +22,8 @@ import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
 test.use({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce', trace: 'on' });
 
 const PAGES = ['/overview', '/runs', '/workflow?correlation_id=chart-run-a', '/usage', '/settings', '/delegation-evidence'];
-const INK = { light: 'rgb(17, 17, 17)', dark: 'rgb(250, 250, 250)' } as const;
+// The 01+20 ink (Lakshman 2026-11-03): #0a0a0a / #f5f5f5 (was #111111 / #fafafa).
+const INK = { light: 'rgb(10, 10, 10)', dark: 'rgb(245, 245, 245)' } as const;
 // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the editorial look replaced JetBrains Mono, Inter, the grey card line and 8px
 // corners with Geist Mono labels, a Fraunces display face for titles and figures, ink hairlines and square corners.
 // The checks read those from the page's own tokens (--font-mono, --font-sans, --ed-display, --ed-rule), not from
