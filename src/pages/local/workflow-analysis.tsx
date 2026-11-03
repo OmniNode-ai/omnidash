@@ -7,7 +7,7 @@ import { formatUsd } from '@/components/dashboard/usage/UsageByModelDayWidget';
 import type { BoundProjectionSnapshot } from '@/layout/local-page-loader';
 import { plainFailureMessage } from './plain-text';
 import { useModelIdentityStyle } from '@/components/dashboard/model-tiers';
-import { EmptyState } from '@/design-system/components';
+import { EmptyState, Fact, FactList } from '@/design-system/components';
 
 type Run = Record<string, unknown>;
 const recorded = (value: unknown) => value === null || value === undefined || value === '' ? 'Not recorded' : String(value);
@@ -88,7 +88,7 @@ export function WorkflowRecordDetails({ decision, steps }: { decision: Run | und
   return <div className="workflow-record-grid">
     {decision && <section className="workflow-analysis-card workflow-analysis-card--record" aria-labelledby={id}>
       <h3 id={id} className="local-dashboard-caption" data-page-heading tabIndex={-1}><ConceptIcon concept="run-details" size={16} />Recorded run details</h3>
-      <dl className="local-dashboard-fields">
+      <FactList>
         {[
           // OMN-19920 AC5: the run's receipt identity. receipt.json records the correlation id as receipt_id.
           ['Receipt id', decision.correlation_id],
@@ -102,10 +102,10 @@ export function WorkflowRecordDetails({ decision, steps }: { decision: Run | und
             // OMN-21166 AC66: a retried run names the run it retried and how; a run with no lineage leaves both out.
             ['Retry of', decision.parent_correlation_id], ['Lineage', decision.lineage_kind],
           ].filter(([, value]) => value !== null && value !== undefined && value !== ''),
-        ].map(([label, value]) => <div key={String(label)} data-field-tone={fieldTone(label, value)} data-field-unavailable={isUnavailableField(value)}><dt><FieldIcon label={label} value={value} />{String(label)}</dt><dd>{(label === 'Created at' || label === 'Written at') && typeof value === 'string' && Number.isFinite(Date.parse(value))
+        ].map(([label, value]) => <Fact key={String(label)} term={<><FieldIcon label={label} value={value} />{String(label)}</>} data-field-tone={fieldTone(label, value)} data-field-unavailable={isUnavailableField(value)}>{(label === 'Created at' || label === 'Written at') && typeof value === 'string' && Number.isFinite(Date.parse(value))
           ? <time dateTime={value} title={value}>{new Date(value).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'UTC' })} UTC</time>
-          : label === 'Recorded cost (USD)' ? recordedUsd(value) : label === 'Tokens to compliance' ? formatDashboardCount(value) : recorded(value)}</dd></div>)}
-      </dl>
+          : label === 'Recorded cost (USD)' ? recordedUsd(value) : label === 'Tokens to compliance' ? formatDashboardCount(value) : recorded(value)}</Fact>)}
+      </FactList>
     </section>}
     {durations.some(item => measured(item.value) !== null) && <section className="workflow-analysis-card workflow-analysis-card--stages" aria-label="Stage timing analysis">
       <h3 className="local-dashboard-caption" data-page-heading tabIndex={-1}><ConceptIcon concept="stage-timing" size={16} />Execution stage durations</h3>

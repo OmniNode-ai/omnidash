@@ -12,7 +12,7 @@ import { SettingsEmptyState } from '@/components/dashboard/SettingsEmptyState';
 import { AlertBanner } from '@/components/dashboard/alert-banner/AlertBanner';
 import { StatusGrid } from '@/components/dashboard/status-grid/StatusGrid';
 import { validateStatusGridRow, type AlertBannerRow, type StatusGridRow, type StatusGridSeverity } from '@shared/types/component-manifest';
-import { EmptyState } from '@/design-system/components';
+import { EmptyState, Fact, FactList } from '@/design-system/components';
 
 export const ENVIRONMENT_TOPIC = 'onex.snapshot.projection.local-environment.v1';
 
@@ -159,18 +159,18 @@ export function EnvironmentPanel({ rows, complete = true }: { rows: readonly Env
       </p>
       <details className="local-more">
       <summary>Environment details</summary>
-      <dl className="local-dashboard-fields">
-        <div><dt>Mode</dt><dd>{mode}</dd></div>
+      <FactList>
+        <Fact term="Mode">{mode}</Fact>
         {mode === 'native' && <>
-          {versions.length > 0 ? versions.map(([name, version]) => <div key={name}><dt>{labels[name] ?? name}</dt><dd>{text(version) || 'Not recorded'}</dd></div>)
-            : <div><dt>Versions</dt><dd>Not recorded</dd></div>}
-          <div><dt>Store</dt><dd>{text(first.store_kind) || 'Not recorded'}</dd></div>
+          {versions.length > 0 ? versions.map(([name, version]) => <Fact term={labels[name] ?? name} key={name}>{text(version) || 'Not recorded'}</Fact>)
+            : <Fact term="Versions">Not recorded</Fact>}
+          <Fact term="Store">{text(first.store_kind) || 'Not recorded'}</Fact>
           {/* OMN-21970 AC10: where the store is and when the state last changed, each only when served. */}
-          {text(first.store_location) && <div><dt>Store location</dt><dd className="mono" title={text(first.store_location)}>{text(first.store_location)}</dd></div>}
-          {text(first.last_change) && <div><dt>State since</dt><dd title={text(first.last_change)}>{readableTime(text(first.last_change)) ?? text(first.last_change)}</dd></div>}
-          <div><dt>Last start</dt><dd title={text(first.token_minted_at) || undefined}>{text(first.token_minted_at) ? readableTime(text(first.token_minted_at)) ?? text(first.token_minted_at) : 'Not recorded'}</dd></div>
+          {text(first.store_location) && <Fact term="Store location" valueClassName="mono" valueTitle={text(first.store_location)}>{text(first.store_location)}</Fact>}
+          {text(first.last_change) && <Fact term="State since" valueTitle={text(first.last_change)}>{readableTime(text(first.last_change)) ?? text(first.last_change)}</Fact>}
+          <Fact term="Last start" valueTitle={text(first.token_minted_at) || undefined}>{text(first.token_minted_at) ? readableTime(text(first.token_minted_at)) ?? text(first.token_minted_at) : 'Not recorded'}</Fact>
         </>}
-      </dl>
+      </FactList>
       {refusedHealth && <EmptyState>Some service health details are not available.</EmptyState>}
       {validHealth.length > 0 && <div role="status"><EnvironmentStatus rows={validHealth} mode={mode} plain /></div>}
       <div role="status"><EnvironmentAlerts rows={selected} mode={mode} plain allowClear={allowClear} /></div>

@@ -33,7 +33,7 @@ import { TIER_TONES } from '@/design-system/charts';
 import { InsightsSection, InsightsWindowContext, MeteringActivityInsights, OverviewRunsContext, PassRateSparkline, TaskIcon, type ActivityWindow } from '@/pages/local/insight-charts';
 import { UsageInsights } from '@/pages/local/usage-insights';
 import { RoutingAnalysis, RunsTotals } from '@/pages/local/usage-analysis';
-import { DashboardTabs, EmptyState } from '@/design-system/components';
+import { DashboardTabs, EmptyState, Fact, FactList } from '@/design-system/components';
 import { SinceLastVisit } from '@/pages/local/since-last-visit';
 import { ModelKeys, providerName } from '@/pages/local/model-keys';
 import { EnvironmentPanel, ServiceHealthUnread } from '@/pages/local/environment';
@@ -378,11 +378,11 @@ export function RunLocallyCard({ row }: { row: Record<string, unknown> | null })
         <p className="local-dashboard-caption">of all runs executed locally</p>
         <Meter kind="routing-share" label="Local share of all runs" min={0} max={100} now={share * 100} valueText={text} share={share} />
       </div>
-      <dl className="local-routing-counts">
-        <div data-routing-count="local"><dt><ConceptIcon concept="local-run" size={15} />Local runs</dt><dd>{recordedCount(byTier.local_call_count)}</dd></div>
-        <div data-routing-count="total"><dt><FieldIcon label="All runs" size={15} />All runs</dt><dd>{recordedCount(byTier.total_call_count)}</dd></div>
-        <div data-routing-count="untiered" data-field-tone="unrouted"><dt><FieldIcon label="Without a tier" size={15} />Without a tier</dt><dd>{recordedCount(byTier.not_tier_routed_count)}</dd></div>
-      </dl>
+      <FactList look="routing-counts">
+        <Fact term={<><ConceptIcon concept="local-run" size={15} />Local runs</>} data-routing-count="local">{recordedCount(byTier.local_call_count)}</Fact>
+        <Fact term={<><FieldIcon label="All runs" size={15} />All runs</>} data-routing-count="total">{recordedCount(byTier.total_call_count)}</Fact>
+        <Fact term={<><FieldIcon label="Without a tier" size={15} />Without a tier</>} data-routing-count="untiered" data-field-tone="unrouted">{recordedCount(byTier.not_tier_routed_count)}</Fact>
+      </FactList>
       <p className="local-routing-note">Runs without a routing tier are included in the total. They are not classified as local or cloud here.</p>
     </div>
   );
@@ -1342,18 +1342,18 @@ export function LastRunCard({ decisions, sessions, now = Date.now(), compact = f
   ];
   return (
     <section aria-label="Last run" className="local-last-run" data-status={status}>
-      <dl className="local-dashboard-fields local-latest-primary">
+      <FactList className="local-latest-primary">
         {fields.filter(([label]) => ['Status', 'Cause', 'Model', 'Age', 'Run', 'Duration', 'Cost'].includes(label))
-          .map(([label, value]) => <div key={label} data-field={label} data-field-tone={fieldTone(label, label === 'Status' ? status : value)} data-field-unavailable={isUnavailableField(value)} style={fieldTone(label, value) === 'model' && !isUnavailableField(value) ? modelIdentityStyle(value) : undefined}><dt><FieldIcon label={label} value={label === 'Status' ? status : value} />{label}</dt><dd data-failure-cause={label === 'Cause' ? causeOf(last) : undefined}>{compact && label === 'Cause' && typeof value === 'string' && value.length > 120
+          .map(([label, value]) => <Fact key={label} term={<><FieldIcon label={label} value={label === 'Status' ? status : value} />{label}</>} data-field={label} data-field-tone={fieldTone(label, label === 'Status' ? status : value)} data-field-unavailable={isUnavailableField(value)} style={fieldTone(label, value) === 'model' && !isUnavailableField(value) ? modelIdentityStyle(value) : undefined} valueProps={{ 'data-failure-cause': label === 'Cause' ? causeOf(last) : undefined }}>{compact && label === 'Cause' && typeof value === 'string' && value.length > 120
             ? <details className="local-run-cause"><summary><ChevronRight size={12} aria-hidden="true" /><span>{value.slice(0, 120)}…</span></summary><p>{value}</p></details>
-            : value}</dd></div>)}
-      </dl>
+            : value}</Fact>)}
+      </FactList>
       <details className="local-run-more">
         <summary>Execution details</summary>
-        <dl className="local-dashboard-fields">
+        <FactList>
           {fields.filter(([label]) => !['Status', 'Cause', 'Model', 'Age', 'Run', 'Duration', 'Cost'].includes(label))
-            .map(([label, value]) => <div key={label} data-field={label} data-field-tone={fieldTone(label, value)} data-field-unavailable={isUnavailableField(value)} style={fieldTone(label, value) === 'model' && !isUnavailableField(value) ? modelIdentityStyle(value) : undefined}><dt><FieldIcon label={label} value={value} />{label}</dt><dd>{value}</dd></div>)}
-        </dl>
+            .map(([label, value]) => <Fact term={<><FieldIcon label={label} value={value} />{label}</>} key={label} data-field={label} data-field-tone={fieldTone(label, value)} data-field-unavailable={isUnavailableField(value)} style={fieldTone(label, value) === 'model' && !isUnavailableField(value) ? modelIdentityStyle(value) : undefined}>{value}</Fact>)}
+        </FactList>
       </details>
       {compact && typeof last.correlation_id === 'string' && last.correlation_id !== '' && <p className="local-dashboard-caption local-recent-footer"><Link href={workflowHref(last.correlation_id)}>Open run details <ArrowUpRight size={12} aria-hidden="true" /></Link></p>}
     </section>
@@ -1822,23 +1822,23 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                 ? <span className="local-task-cell"><TaskIcon task={String(selectedRun.task_type)} />{taskLabel(selectedRun.task_type)}</span>
                 : <span>{recorded(selectedRun.task_type)}</span>}
             </p>
-            <dl className="local-dashboard-fields">
-              <div><dt>Task</dt><dd>{isMissing(selectedRun.task_type) ? recorded(selectedRun.task_type) : taskLabel(selectedRun.task_type)}</dd></div>
-              <div><dt>Cause</dt><dd><span className="local-runs-cause" data-failure-cause={causeOf(selectedRun)} title={causeTextOf(selectedRun)}>{causeTextOf(selectedRun)}</span></dd></div>
-              <div><dt>Model</dt><dd>{modelOrUnknown(selectedRun.model_name)}</dd></div>
-              <div><dt>Route tier</dt><dd>{tierOf(selectedRun)}</dd></div>
-              <div><dt>Duration</dt><dd>{duration(selectedRun.latency_ms)}</dd></div>
-              <div><dt>Cost</dt><dd>{costOf(selectedSession, selectedRun)}</dd></div>
-              <div><dt>Tokens in</dt><dd>{recordedTokens(selectedRun.tokens_input)}</dd></div>
-              <div><dt>Tokens out</dt><dd>{recordedTokens(selectedRun.tokens_output)}</dd></div>
-              <div><dt>Modelled saving</dt><dd>{runModelledCell(selectedRun)}</dd></div>
-              <div><dt>Quality score</dt><dd>{recorded(selectedRun.actual_score)}
+            <FactList>
+              <Fact term="Task">{isMissing(selectedRun.task_type) ? recorded(selectedRun.task_type) : taskLabel(selectedRun.task_type)}</Fact>
+              <Fact term="Cause"><span className="local-runs-cause" data-failure-cause={causeOf(selectedRun)} title={causeTextOf(selectedRun)}>{causeTextOf(selectedRun)}</span></Fact>
+              <Fact term="Model">{modelOrUnknown(selectedRun.model_name)}</Fact>
+              <Fact term="Route tier">{tierOf(selectedRun)}</Fact>
+              <Fact term="Duration">{duration(selectedRun.latency_ms)}</Fact>
+              <Fact term="Cost">{costOf(selectedSession, selectedRun)}</Fact>
+              <Fact term="Tokens in">{recordedTokens(selectedRun.tokens_input)}</Fact>
+              <Fact term="Tokens out">{recordedTokens(selectedRun.tokens_output)}</Fact>
+              <Fact term="Modelled saving">{runModelledCell(selectedRun)}</Fact>
+              <Fact term="Quality score">{recorded(selectedRun.actual_score)}
                 <Meter kind="selected-quality" label="Quality score versus required bar" min={0} max={1} now={selectedScore}
                   valueText={`Quality score ${recorded(selectedRun.actual_score)}; required bar ${recorded(selectedRun.required_bar)}`}
                   share={selectedScore} mark={Number.isFinite(selectedRequiredBar) ? selectedRequiredBar : null} />
-              </dd></div>
-              <div><dt>Required bar</dt><dd>{isMissing(selectedRun.required_bar) ? 'bar not recorded' : recorded(selectedRun.required_bar)}</dd></div>
-            </dl>
+              </Fact>
+              <Fact term="Required bar">{isMissing(selectedRun.required_bar) ? 'bar not recorded' : recorded(selectedRun.required_bar)}</Fact>
+            </FactList>
             <p className="local-dashboard-caption"><Link href={workflowHref(String(selectedRun.correlation_id))}>Open full run</Link></p>
           </aside>}
           </div>
@@ -1890,9 +1890,9 @@ export function QualityPanel({ row }: { row: Row | null }) {
       <details className="local-more">
         <summary>More quality detail</summary>
         <PassRateSparkline part="trend" />
-        <dl className="local-dashboard-fields">
-          {QUALITY_FIELDS.map(([label, field]) => <div key={field} data-quality-field={field} data-field-tone={fieldTone(label)} data-field-unavailable={isUnavailableField(row[field])}><dt><FieldIcon label={label} />{label}</dt><dd><Readable value={row[field]} kind={field === 'overall_pass_rate' ? 'percent' : field.startsWith('avg_') ? 'decimal' : 'count'} /></dd></div>)}
-        </dl>
+        <FactList>
+          {QUALITY_FIELDS.map(([label, field]) => <Fact term={<><FieldIcon label={label} />{label}</>} key={field} data-quality-field={field} data-field-tone={fieldTone(label)} data-field-unavailable={isUnavailableField(row[field])}><Readable value={row[field]} kind={field === 'overall_pass_rate' ? 'percent' : field.startsWith('avg_') ? 'decimal' : 'count'} /></Fact>)}
+        </FactList>
       </details>
       <p className="local-dashboard-caption local-recent-footer"><Link href="/delegation-evidence">View delegation evidence <ArrowUpRight size={12} aria-hidden="true" /></Link></p>
     </section>
@@ -2011,11 +2011,11 @@ export function TierMixPanel({ row, compact = false }: { row: Row | null; compac
           ];})}</tbody>
         </table>
       </div>
-      <dl className="local-dashboard-fields">
-        <div data-field-tone="routing" data-field-unavailable={isMissing(byTier.tier_routed_total)}><dt><FieldIcon label="Tier-routed" />Tier-routed</dt><dd>{recordedCount(byTier.tier_routed_total)}</dd></div>
-        <div data-field-tone="unrouted" data-field-unavailable={isMissing(byTier.not_tier_routed_count)}><dt><FieldIcon label="Not tier-routed" />Not tier-routed</dt><dd>{recordedCount(byTier.not_tier_routed_count)}</dd></div>
-        <div data-field-tone="delegations" data-field-unavailable={isMissing(byTier.total_tasks)}><dt><FieldIcon label="All runs" />All runs</dt><dd>{recordedCount(byTier.total_tasks)}</dd></div>
-      </dl>
+      <FactList>
+        <Fact term={<><FieldIcon label="Tier-routed" />Tier-routed</>} data-field-tone="routing" data-field-unavailable={isMissing(byTier.tier_routed_total)}>{recordedCount(byTier.tier_routed_total)}</Fact>
+        <Fact term={<><FieldIcon label="Not tier-routed" />Not tier-routed</>} data-field-tone="unrouted" data-field-unavailable={isMissing(byTier.not_tier_routed_count)}>{recordedCount(byTier.not_tier_routed_count)}</Fact>
+        <Fact term={<><FieldIcon label="All runs" />All runs</>} data-field-tone="delegations" data-field-unavailable={isMissing(byTier.total_tasks)}>{recordedCount(byTier.total_tasks)}</Fact>
+      </FactList>
     </section>
   );
 }
@@ -2143,12 +2143,12 @@ export function RunSummary({ decision, showAnalysis = false }: { decision: Row |
           { name: 'Timing', concept: 'timing', labels: ['Queue wait', 'Execution', 'Duration'], help: 'Recorded decision timings. Duration here is the latency field; timeline steps carry separate durations.' },
         ].map(({ name, concept, labels, help }, index) => <section key={name} className="local-run-summary-group" tabIndex={0} aria-labelledby={`${sectionId}-${index}`} aria-describedby={`${sectionId}-${index}-help`}>
           <h3 className="local-dashboard-caption" id={`${sectionId}-${index}`}><ConceptIcon concept={concept} label={name} size={16} />{name}</h3>
-          <dl className="local-dashboard-fields">
-            {index === 0 && <div data-field-tone={fieldTone('Status', status)}><dt><FieldIcon label="Status" value={status} />Status</dt><dd><OutcomePill value={status} /></dd></div>}
-            {fields.filter(([label]) => labels.includes(label)).map(([label, value]) => <div key={label} data-summary-field={label} data-field-tone={fieldTone(label, value)} data-field-unavailable={isUnavailableField(value)} style={fieldTone(label, value) === 'model' && !isUnavailableField(value) ? modelIdentityStyle(value) : undefined}><dt><FieldIcon label={label} value={value} />{label}</dt><dd>{label === 'Cause' && value.length > 120
+          <FactList>
+            {index === 0 && <Fact term={<><FieldIcon label="Status" value={status} />Status</>} data-field-tone={fieldTone('Status', status)}><OutcomePill value={status} /></Fact>}
+            {fields.filter(([label]) => labels.includes(label)).map(([label, value]) => <Fact key={label} term={<><FieldIcon label={label} value={value} />{label}</>} data-summary-field={label} data-field-tone={fieldTone(label, value)} data-field-unavailable={isUnavailableField(value)} style={fieldTone(label, value) === 'model' && !isUnavailableField(value) ? modelIdentityStyle(value) : undefined}>{label === 'Cause' && value.length > 120
               ? <details className="local-run-failure-details"><summary title={value}>Show failure reason</summary><p>{value}</p></details>
-              : value}</dd></div>)}
-          </dl>
+              : value}</Fact>)}
+          </FactList>
           <p className="local-run-summary-help" role="tooltip" id={`${sectionId}-${index}-help`}>{help}</p>
         </section>)}
       </div>
@@ -2429,9 +2429,9 @@ export function WorkflowRun({ component, snapshots, requested, onOpen }: Workflo
  * not drawn (it could only ever read Not recorded). */
 export function LocalIdentity({ row }: { row: Record<string, unknown> | null }) {
   return (
-    <dl className="local-dashboard-fields">
-      <div data-field-tone={fieldTone('Tenant')} data-field-unavailable={isUnavailableField(row?.tenant_id)}><dt><FieldIcon label="Tenant" />Tenant</dt><dd className="local-identity-value"><span>{recorded(row?.tenant_id)}</span>{typeof row?.tenant_id === 'string' && row.tenant_id.trim() !== '' && <CopyButton text={row.tenant_id} label="Copy the tenant identity" />}</dd></div>
-    </dl>
+    <FactList>
+      <Fact term={<><FieldIcon label="Tenant" />Tenant</>} data-field-tone={fieldTone('Tenant')} data-field-unavailable={isUnavailableField(row?.tenant_id)} valueClassName="local-identity-value"><span>{recorded(row?.tenant_id)}</span>{typeof row?.tenant_id === 'string' && row.tenant_id.trim() !== '' && <CopyButton text={row.tenant_id} label="Copy the tenant identity" />}</Fact>
+    </FactList>
   );
 }
 

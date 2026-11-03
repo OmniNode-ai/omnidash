@@ -144,7 +144,7 @@ export function isKitPage(path: string): boolean {
     || path.startsWith('src/pages/local/') || path.startsWith('src/components/dashboard/usage/');
 }
 /** The classes only a kit component writes; a page writing one itself holds a page-local copy. Grows as AC4 moves each. */
-const KIT_COMPONENT_CLASS = /(['"`\s])(local-dashboard-empty)(?=['"`\s])/g;
+const KIT_COMPONENT_CLASS = /(['"`\s])(local-dashboard-empty|local-dashboard-fields|local-provider-facts(?:--inline)?|local-routing-counts|local-provider-figures|ev-evidence-derivation)(?=['"`\s])/g;
 
 /** AC4: a page-local copy of a kit component (its class written outside src/design-system). */
 export function pageLocalCopies(path: string, text: string): Hit[] {

@@ -13,7 +13,7 @@ import { formatUsd } from '@/components/dashboard/usage/UsageByModelDayWidget';
 import { isUnavailableField } from '@/components/dashboard/field-identity';
 import { EvPageShell } from '@/components/dashboard/event-dash/EvPageShell';
 import { KpiStrip } from '@/components/dashboard/KpiStrip';
-import { DashboardTabs } from '@/design-system/components';
+import { DashboardTabs, Fact, FactList } from '@/design-system/components';
 import { RankedBars } from '@/design-system/charts';
 import {
   Badge,
@@ -779,13 +779,13 @@ function EvidenceClaim({ money, unavailable }: { money: HeadlineMoney | null; un
           ? <>Modelled savings: {saved}.</>
           : <>Savings were {saved}, modelled {moneyBasis(money)}.</>}
       </p>
-      <dl className="ev-evidence-derivation" aria-label="Claim derivation">
-        <div><dt>Measured runs</dt><dd>{count(money?.measuredRuns)} measured runs</dd></div>
-        <div><dt>No token counts</dt><dd>{count(money?.unknownTokens)} with no token counts</dd></div>
-        <div><dt>No spend recorded</dt><dd>{count(money?.unknownSpend)} with no spend recorded</dd></div>
-        <div><dt>Actual spend</dt><dd>{money ? servedUsd(money.local) : unavailable}</dd></div>
-        <div><dt>Baseline cost (modelled)</dt><dd>{money ? servedUsd(money.cloud) : unavailable}</dd></div>
-      </dl>
+      <FactList look="evidence-derivation" aria-label="Claim derivation">
+        <Fact term="Measured runs">{count(money?.measuredRuns)} measured runs</Fact>
+        <Fact term="No token counts">{count(money?.unknownTokens)} with no token counts</Fact>
+        <Fact term="No spend recorded">{count(money?.unknownSpend)} with no spend recorded</Fact>
+        <Fact term="Actual spend">{money ? servedUsd(money.local) : unavailable}</Fact>
+        <Fact term="Baseline cost (modelled)">{money ? servedUsd(money.cloud) : unavailable}</Fact>
+      </FactList>
     </section>
   );
 }

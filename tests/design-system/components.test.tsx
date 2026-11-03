@@ -16,12 +16,19 @@
  *   E2  a cell that only says "Not measured" is announced although the page never announced it;
  *   E3  an extra class, data-* or aria-* attribute, or a block element (div) a page needs is dropped;
  *   E4  a page writes the empty state's class itself instead of using the kit (the duplicate scan, with a planted control).
+ *
+ * Fact list (FactList and Fact, replacing the hand-written <dl> of the local pages and Evidence)
+ *   F1  a fact is not a term and value pair (dt and dd inside one row) in a description list;
+ *   F2  a row's tone or unavailable mark (data-field-tone, data-field-unavailable) or another data-* is dropped;
+ *   F3  the value's own class (mono, local-identity-value) or title (the served timestamp) is dropped;
+ *   F4  a look does not give its list class, or a page's extra class or aria-label is dropped;
+ *   F5  a page writes a fact list's class itself (the duplicate scan, with a planted control).
  */
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { Router } from 'wouter';
 import { memoryLocation } from 'wouter/memory-location';
-import { DashboardTabs, DashboardToggle, EmptyState, readTab, writeTab } from '@/design-system/components';
+import { DashboardTabs, DashboardToggle, EmptyState, Fact, FactList, readTab, writeTab } from '@/design-system/components';
 import { pageLocalCopies, scanAll, summarise } from './scan';
 
 afterEach(cleanup);
@@ -119,5 +126,51 @@ describe('Empty state', () => {
   it('E4: no local page or Delegation Evidence writes a kit component\'s class itself', () => {
     const hits = scanAll(pageLocalCopies);
     expect(hits, summarise(hits)).toEqual([]);
+  });
+});
+
+describe('Fact list', () => {
+  it('F1: a fact is a term and value pair in one row of a description list', () => {
+    const { container } = render(<FactList><Fact term="Tenant">acme</Fact></FactList>);
+    const list = container.querySelector('dl')!;
+    expect(list).toHaveClass('local-dashboard-fields');
+    const row = list.firstElementChild!;
+    expect(row.tagName).toBe('DIV');
+    expect(row.querySelector('dt')).toHaveTextContent('Tenant');
+    expect(row.querySelector('dd')).toHaveTextContent('acme');
+  });
+
+  it('F2: the row keeps its tone, its unavailable mark and other data-* attributes', () => {
+    const { container } = render(<FactList><Fact term="All runs" data-field-tone="delegations" data-field-unavailable data-routing-count="total">4</Fact></FactList>);
+    const row = container.querySelector('dl > div')!;
+    expect(row).toHaveAttribute('data-field-tone', 'delegations');
+    expect(row).toHaveAttribute('data-field-unavailable', 'true');
+    expect(row).toHaveAttribute('data-routing-count', 'total');
+  });
+
+  it('F3: the value keeps its own class and title', () => {
+    const { container } = render(<FactList><Fact term="Minted" valueClassName="mono" valueTitle="2026-10-25T10:36:18Z">Oct 25</Fact></FactList>);
+    const value = container.querySelector('dd')!;
+    expect(value).toHaveClass('mono');
+    expect(value).toHaveAttribute('title', '2026-10-25T10:36:18Z');
+  });
+
+  it('F4: each look gives its list class; a page may add a class and a name', () => {
+    const looks = { fields: 'local-dashboard-fields', provider: 'local-provider-facts', 'provider-inline': 'local-provider-facts local-provider-facts--inline',
+      'routing-counts': 'local-routing-counts', 'provider-figures': 'local-provider-figures', 'evidence-derivation': 'ev-evidence-derivation' } as const;
+    for (const [look, classes] of Object.entries(looks)) {
+      const { container } = render(<FactList look={look as keyof typeof looks}><Fact term="a">b</Fact></FactList>);
+      expect(container.querySelector('dl')!.className, look).toBe(classes);
+      cleanup();
+    }
+    const { container } = render(<FactList className="local-latest-primary" aria-label="Claim derivation"><Fact term="a">b</Fact></FactList>);
+    expect(container.querySelector('dl')).toHaveClass('local-dashboard-fields', 'local-latest-primary');
+    expect(container.querySelector('dl')).toHaveAttribute('aria-label', 'Claim derivation');
+  });
+
+  it('F5: control: a page writing a fact list class itself is caught', () => {
+    for (const cls of ['local-dashboard-fields', 'local-provider-facts', 'local-routing-counts', 'local-provider-figures', 'ev-evidence-derivation']) {
+      expect(pageLocalCopies('src/pages/local/Planted.tsx', `<dl className="${cls}">`), cls).toHaveLength(1);
+    }
   });
 });

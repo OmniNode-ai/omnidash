@@ -4,4 +4,6 @@ export type { DropdownOption } from './Dropdown';
 export { InfoTip, Tooltip } from './Tooltip';
 export { DashboardTabs, DashboardToggle, readTab, writeTab } from './Tabs';
 export { EmptyState } from './EmptyState';
+export { Fact, FactList } from './FactList';
+export type { FactListLook } from './FactList';
 export type { DashboardTab, ToggleOption } from './Tabs';

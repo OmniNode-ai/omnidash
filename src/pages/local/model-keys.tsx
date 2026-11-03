@@ -14,7 +14,7 @@ import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { SettingsEmptyState } from '@/components/dashboard/SettingsEmptyState';
 import { readableTime } from '@/components/format/readable-time';
 import { ModelKeysError, listModelKeys, type ModelProviderId, type ModelProviderRow } from '@/services/models-api';
-import { EmptyState } from '@/design-system/components';
+import { EmptyState, Fact, FactList } from '@/design-system/components';
 
 /** A served key reference row from tenant-credentials.v1: its name, fingerprint prefix and times. Never a value. */
 export type CredentialKeyRow = Record<string, unknown>;
@@ -110,13 +110,13 @@ function KeyList({ provider, list }: { provider: string; list: readonly Credenti
   return <ul aria-label={`${provider} keys`} className="local-provider-keys">{list.map((key, index) => (
     <li key={`${String(key.name)}-${index}`}>
       <span className="local-provider-key-name mono">{served(key.name)}</span>
-      <dl className="local-provider-facts local-provider-facts--inline">
-        <div><dt>Fingerprint</dt><dd className="mono">{served(key.fingerprint)}</dd></div>
-        <div><dt>Set</dt><dd><KeyTime value={key.set_at} /></dd></div>
-        <div><dt>Last used</dt><dd><LastUsed value={key.last_used_at} /></dd></div>
-        {!missing(key.expires_at) && <div><dt>Expires</dt><dd><KeyTime value={key.expires_at} /></dd></div>}
-        {!missing(key.bound_host) && <div><dt>Bound host</dt><dd className="mono">{String(key.bound_host)}</dd></div>}
-      </dl>
+      <FactList look="provider-inline">
+        <Fact term="Fingerprint" valueClassName="mono">{served(key.fingerprint)}</Fact>
+        <Fact term="Set"><KeyTime value={key.set_at} /></Fact>
+        <Fact term="Last used"><LastUsed value={key.last_used_at} /></Fact>
+        {!missing(key.expires_at) && <Fact term="Expires"><KeyTime value={key.expires_at} /></Fact>}
+        {!missing(key.bound_host) && <Fact term="Bound host" valueClassName="mono">{String(key.bound_host)}</Fact>}
+      </FactList>
     </li>
   ))}</ul>;
 }
@@ -177,9 +177,9 @@ function ProviderCard({ row, keys, listed = true }: { row: ModelProviderRow; key
         <ChevronRight className="local-provider-chevron" size={18} aria-hidden="true" />
       </summary>
       <div className="local-provider-detail">
-        {facts.length > 0 && <dl className="local-provider-facts">{facts.map(([label, value, mono]) => (
-          <div key={label}><dt>{label}</dt><dd className={mono ? 'mono' : undefined}>{value}</dd></div>
-        ))}</dl>}
+        {facts.length > 0 && <FactList look="provider">{facts.map(([label, value, mono]) => (
+          <Fact term={label} key={label} valueClassName={mono ? 'mono' : undefined}>{value}</Fact>
+        ))}</FactList>}
         {reason !== null && <details className="local-provider-error">
           <summary>Show the full error</summary>
           <pre>{reason}</pre>
@@ -270,12 +270,12 @@ export function ModelKeys({ client = LIVE_CLIENT, keys = [], empty }: { client?:
   const showHost = keys.some(key => !missing(key.bound_host));
   return (
     <section className="local-model-keys" aria-label="Model providers">
-      <dl className="local-provider-figures">
-        <div><dt>Passed their last test</dt><dd><strong>{rows.filter(row => row.last_test?.status === 'passed').length}</strong><small>{`of ${rows.length} providers`}</small></dd></div>
-        <div><dt>Set up</dt><dd><strong>{rows.filter(row => row.set_up).length}</strong><small>{`of ${rows.length} providers`}</small></dd></div>
-        <div><dt>Keys in use</dt><dd><strong>{keys.length}</strong><small>{keys.length === 1 ? 'key' : 'keys'}</small></dd></div>
-        <div><dt>Models listed</dt><dd><strong>{rows.reduce((sum, row) => sum + row.models.length, 0)}</strong><small>across providers</small></dd></div>
-      </dl>
+      <FactList look="provider-figures">
+        <Fact term="Passed their last test"><strong>{rows.filter(row => row.last_test?.status === 'passed').length}</strong><small>{`of ${rows.length} providers`}</small></Fact>
+        <Fact term="Set up"><strong>{rows.filter(row => row.set_up).length}</strong><small>{`of ${rows.length} providers`}</small></Fact>
+        <Fact term="Keys in use"><strong>{keys.length}</strong><small>{keys.length === 1 ? 'key' : 'keys'}</small></Fact>
+        <Fact term="Models listed"><strong>{rows.reduce((sum, row) => sum + row.models.length, 0)}</strong><small>across providers</small></Fact>
+      </FactList>
       <div className="local-provider-list">
         <div className="local-provider-head-band" aria-hidden="true">
           <span>Provider</span><span>Status</span><span>Models</span><span>Key</span><span>Last test</span><span />
