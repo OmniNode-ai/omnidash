@@ -798,7 +798,7 @@ export function OverviewDayPicker({ days, value, onChange, now = Date.now() }: {
  * keep naming their baseline and pricing version (OMN-21304 AC4). `pctLine` is the served savings ratio line, read by
  * the card that owns that field.
  */
-export function headlineHoverLines(componentId: string, row: Row, pctLine: string | null, window: OverviewWindow = 'all', pctRatio: number | null = null): string[] {
+export function headlineHoverLines(componentId: string, row: Row, pctLine: string | null, window: OverviewWindow = 'all'): string[] {
   const count = (value: unknown) => (isMissing(value) || !Number.isFinite(Number(value)) ? 'Not recorded' : formatFullCount(String(value)));
   const unknownTokens = row.runs_unknown_tokens;
   const unknownSpend = row.runs_unknown_spend;
@@ -826,11 +826,11 @@ export function headlineHoverLines(componentId: string, row: Row, pctLine: strin
         : componentId === 'overview-tokens' ? [`${count(row.tokens_in)} in · ${count(row.tokens_out)} out`]
           : [];
   if (Number.isFinite(noRuns) && noRuns > 0) lines.push(`Includes ${noRuns} ${noRuns === 1 ? 'day' : 'days'} with no runs`);
-  // OMN-22168 (Lakshman 2026-11-04): Savings leads with the served percentage below its baseline, shown only where the
-  // percentage line itself is (a measured saving against a named, resolved baseline). The card passes the served ratio,
-  // read where the percentage line's own field is read.
-  if (componentId === 'overview-savings' && pctLine !== null && pctRatio !== null && Number.isFinite(pctRatio) && !isMissing(row.baseline_model)) {
-    lines.unshift(`${Math.abs(pctRatio * 100).toFixed(1)}% ${pctRatio < 0 ? 'above' : 'below'} ${unbroken(String(row.baseline_model))}`);
+  // OMN-22168 (Lakshman 2026-11-04): Savings leads with its percentage line (OMN-20008 AC5's wording, shown only beside
+  // a measured saving against a named, resolved baseline), so the drawn caption is the percentage below the baseline.
+  if (componentId === 'overview-savings' && pctLine !== null && lines.includes(pctLine)) {
+    lines.splice(lines.indexOf(pctLine), 1);
+    lines.unshift(pctLine);
   }
   return lines.filter((line): line is string => line !== null);
 }
@@ -887,8 +887,7 @@ export function MeteringTotalCard({ component, config, rows, window = 'all', now
       {(() => { const change = periodChangeLine(rows, window, config.metric_key, row); return change && <ChangeLine text={change} />; })()}
       {/* OMN-20008 L6: no figure, no line: the percentage shows only beside a measured saving with a named, resolved baseline. */}
       <HeadlineHover label={component.title} lines={headlineHoverLines(component.component_id, row,
-        row.baseline_state === 'unresolved' || isMissing(row[config.metric_key]) || isMissing(row.baseline_model) ? null : pct, window,
-        required.includes(pctField) && !isMissing(row[pctField]) && Number.isFinite(Number(row[pctField])) ? Number(row[pctField]) : null)} />
+        row.baseline_state === 'unresolved' || isMissing(row[config.metric_key]) || isMissing(row.baseline_model) ? null : pct, window)} />
     </>;
   }
   return (
@@ -2077,10 +2076,11 @@ export function QualityBarPanel({ row }: { row: Row | null }) {
   );
 }
 
-/** OMN-22168: each trend metric in the colour of the concept its header names (one concept, one colour). */
+/** OMN-22168 (Lakshman 2026-11-04, "each should have visually different colour, distinct"): five hues far apart on the
+ * wheel, so no two trend lines can be mistaken for each other on one chart, in either theme. */
 const TREND_TONES: Readonly<Record<string, string>> = {
-  Runs: 'var(--ds-field-calls)', 'Tokens in': 'var(--ds-field-tokens-in)', 'Tokens out': 'var(--ds-field-tokens-out)',
-  Spend: 'var(--ds-field-cost)', Savings: 'var(--ds-field-savings)',
+  Runs: 'var(--ds-hue-blue)', 'Tokens in': 'var(--ds-hue-purple)', 'Tokens out': 'var(--ds-hue-red)',
+  Spend: 'var(--ds-hue-amber)', Savings: 'var(--ds-hue-green)',
 };
 
 /** The UTC days a window covers, first to last; all time runs from the first served day to today. */
@@ -3401,18 +3401,6 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
           <span className="local-dashboard-page-icon" aria-hidden="true"><DestinationIcon page={destination} size={20} /></span>
           <div>
             <h1>{page?.dashboard.name ?? PAGE_TITLES[pageName]}</h1>
-            {/* OMN-22168 (Lakshman 2026-11-04, superseding the 2026-10-25 waiver of an environment line on Overview). */}
-            {pageName === 'overview' && page && (() => {
-              const status = page.components.find(candidate => candidate.component_id === 'status-environment');
-              const usage = page.components.find(candidate => candidate.component_id === 'overview-model-usage');
-              if (!status) return null;
-              const record = (value: unknown) => (value && typeof value === 'object' && !Array.isArray(value) ? (value as Row) : null);
-              // As TableComponent reads it (OMN-21970 AC3): the decisions read is complete when it walked every page.
-              const walk = snapshots.find(snapshot => snapshot.topic === DELEGATION_DECISIONS_TOPIC);
-              return <OverviewStatusStrip env={record(rawRowsFor(status, snapshots, 0)[0])} now={now}
-                complete={walk !== undefined && !walk.failure && walk.truncated !== true} decisions={walk?.rows ?? []}
-                routing={usage ? record(rawRowsFor(usage, snapshots, 0)[0]) : null} />;
-            })()}
           </div>
         </div>
         {/* One toolbar row: the page's own control when it has one, and the runtime mode at the right. */}
@@ -3463,6 +3451,18 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
         {!loading && !error && page && pageName === 'usage' && (() => {
           const read = snapshots.find(snapshot => snapshot.topic === METERING_SUMMARY_TOPIC);
           return read && !read.failure ? <UsageKpis rows={read.rows} /> : null;
+        })()}
+        {/* OMN-22168 (Lakshman 2026-11-04, superseding the 2026-10-25 waiver of an environment line on Overview). */}
+        {pageName === 'overview' && page && (() => {
+          const status = page.components.find(candidate => candidate.component_id === 'status-environment');
+          const usage = page.components.find(candidate => candidate.component_id === 'overview-model-usage');
+          if (!status) return null;
+          const record = (value: unknown) => (value && typeof value === 'object' && !Array.isArray(value) ? (value as Row) : null);
+          // As TableComponent reads it (OMN-21970 AC3): the decisions read is complete when it walked every page.
+          const walk = snapshots.find(snapshot => snapshot.topic === DELEGATION_DECISIONS_TOPIC);
+          return <OverviewStatusStrip env={record(rawRowsFor(status, snapshots, 0)[0])} now={now}
+            complete={walk !== undefined && !walk.failure && walk.truncated !== true} decisions={walk?.rows ?? []}
+            routing={usage ? record(rawRowsFor(usage, snapshots, 0)[0]) : null} />;
         })()}
       </header>}
       {loading && <p role="status">Loading runtime exposures…</p>}

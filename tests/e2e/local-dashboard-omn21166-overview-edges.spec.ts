@@ -41,7 +41,9 @@ const routing = (byModel: unknown[], tiers: unknown[], notTier = 0) => [{ total_
 const twelveModels = LONG_MODELS.map((name, index) => ({ model_name: name, total_count: [4000, 1200, 800, 333, 120, 60, 25, 9, 4, 3, 2, 1][index], pct_of_total: 0.08 }));
 
 function panels(page: Page) {
-  return page.locator('.maple-cell--half > .local-dashboard-panel');
+  // OMN-22168 (Lakshman 2026-11-04): Work delegated and Quality vs bar share the half-width row below; these checks are
+  // about the four chart panels, so the two are left out.
+  return page.locator('.maple-cell--half > .local-dashboard-panel:not([data-component="overview-task-mix"]):not([data-component="overview-quality-bar"])');
 }
 
 /** E1-E4 on whatever Overview shows now. */
@@ -50,7 +52,7 @@ async function invariants(page: Page, label: string, opts: { twoColumns: boolean
   const report = await page.evaluate(() => {
     const overlaps = (boxes: DOMRect[]) => boxes.some((a, i) => boxes.slice(i + 1).some(b => a.left < b.right - 2 && b.left < a.right - 2 && a.top < b.bottom && b.top < a.bottom));
     const visible = (el: Element) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden' && (el.textContent ?? '').trim() !== ''; };
-    const chartPanels = [...document.querySelectorAll('.maple-cell--half > .local-dashboard-panel')] as HTMLElement[];
+    const chartPanels = [...document.querySelectorAll('.maple-cell--half > .local-dashboard-panel:not([data-component="overview-task-mix"]):not([data-component="overview-quality-bar"])')] as HTMLElement[];
     const cards = [...document.querySelectorAll('.local-overview-summary > .local-dashboard-panel')] as HTMLElement[];
     return {
       sideways: document.documentElement.scrollWidth - document.documentElement.clientWidth,

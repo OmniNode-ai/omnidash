@@ -139,14 +139,14 @@ describe('Quality vs bar', () => {
 
 describe('card lines', () => {
   it('C1: Savings leads with the served percentage below the baseline', () => {
-    // The baseline model's hyphens are non-breaking (unbroken), so the name never wraps inside the caption.
-    expect(headlineHoverLines('overview-savings', METERING, '99% below the claude-sonnet-5-5 baseline (modelled)', 'all', 0.987354)[0]
-      ?.replace(/\u2011/g, '-')).toBe('98.7% below claude-sonnet-5-5');
+    // OMN-20008 AC5's line, moved first so it is the drawn caption; it appears once.
+    const shown = headlineHoverLines('overview-savings', METERING, '99% below the claude-sonnet-5-5 baseline (modelled)');
+    expect(shown[0]).toBe('99% below the claude-sonnet-5-5 baseline (modelled)');
+    expect(shown.filter(line => line === shown[0])).toHaveLength(1);
   });
 
   it('C3: neither line is drawn when its field is not served', () => {
-    expect(headlineHoverLines('overview-savings', METERING, null, 'all', 0.987354)[0]).toMatch(/^Modelled vs /);
-    expect(headlineHoverLines('overview-savings', METERING, '99% below the claude-sonnet-5-5 baseline (modelled)', 'all', null)[0]).toMatch(/^Modelled vs /);
+    expect(headlineHoverLines('overview-savings', METERING, null)[0]).toMatch(/^Modelled vs /);
     expect(headlineHoverLines('overview-measured', METERING, null)[0]).toBe('2,419 of 2,484 runs measured');
   });
 });

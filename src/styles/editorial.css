@@ -551,3 +551,7 @@ html body .app svg.field-icon.field-icon[data-field-icon="usage-day"]:not([data-
 .local-quality-reasons li:last-child { border-bottom: 0; }
 .local-quality-reasons li > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ds-ink); }
 .local-quality-share { color: var(--ds-ink-2); font-variant-numeric: tabular-nums; }
+/* The status line is its own row at the foot of the header, so the title and the window control keep one centre line. */
+/* The header is a grid: the status line spans every column on a row of its own. */
+.local-dashboard-page .local-dashboard-header:has(> .local-overview-status) { row-gap: 6px; }
+.local-dashboard-page .local-dashboard-header > .local-overview-status { grid-column: 1 / -1; order: 99; margin: 0; }

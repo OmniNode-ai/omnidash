@@ -23,7 +23,11 @@ test('Overview is a compact summary with exact day links and no detailed tables'
   // Live review 2026-10-25: Why runs failed, More activity, Recent runs, Last run and Additional runtime metrics are
   // deleted from Overview (AC86, Lakshman 2026-10-25); the figures in view are Runs per day, Tokens per day and Runs by
   // tier (Model usage is a ranked-bars cell that shows its empty state on these fixtures, which serve no by_model).
-  await expect(page.locator('main figure:visible')).toHaveCount(3);
+  // OMN-22168 (Lakshman 2026-11-04): the Daily trend and Work delegated join them (these fixtures serve no failure
+  // categories, so Quality vs bar draws no reasons figure).
+  await expect(page.locator('main figure:visible')).toHaveCount(5);
+  await expect(page.getByRole('figure', { name: 'Daily trend', exact: true })).toBeVisible();
+  await expect(page.getByRole('figure', { name: 'Runs by task type', exact: true })).toBeVisible();
   await expect(page.getByRole('figure', { name: 'Runs per day', exact: true })).toBeVisible();
   await expect(page.getByRole('figure', { name: 'Why runs failed', exact: true })).toHaveCount(0);
   await expect(page.getByRole('figure', { name: 'Tokens per day', exact: true })).toBeVisible();

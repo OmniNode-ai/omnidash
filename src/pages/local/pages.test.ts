@@ -311,9 +311,11 @@ describe('local pages against the captured lab catalogue', () => {
     // OMN-21970 AC2's delegation.daily.v1 binding is held back (Lakshman 2026-11-03) until the lab dev lane serves it
     // (omnibase_infra#5585, omnimarket#4862); the charts fall back to the decision rows meanwhile, and the binding
     // returns with a recapture of served-catalogue.lab.json.
+    // OMN-22168 (Lakshman 2026-11-04): the status line reads local-environment.v1 and the daily trend metering-summary.v1.
     expect(new Set(page.components.flatMap(c=>(c.data_bindings??[]).map(b=>b.projection_topic)))).toEqual(new Set([
       'onex.snapshot.projection.cost.savings-overview.v1', 'onex.snapshot.projection.delegation.decisions.v1',
       'onex.snapshot.projection.delegation.quality-gate.v1', 'onex.snapshot.projection.delegation.model-routing.v1',
+      'onex.snapshot.projection.local-environment.v1', 'onex.snapshot.projection.metering-summary.v1',
     ]));
   });
 
