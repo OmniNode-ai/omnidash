@@ -2058,6 +2058,7 @@ export function OverviewTrendPanel({ rows, columns, window, now }: {
   const active = hover === null ? undefined : days[hover];
   return (
     <figure className="local-chart local-trend" aria-label="Daily trend">
+      <p className="local-dashboard-caption">Runs, tokens in and out, spend and savings for each UTC day.</p>
       <SeriesToggles label="Trend lines" onToggle={key => toggle(key)}
         series={columns.map(column => ({ key: slug(column.header), label: column.header, color: TREND_TONES[column.header] ?? 'var(--ds-ink-2)',
           shown: shown[slug(column.header)] ?? true }))} />
@@ -3430,12 +3431,22 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
                       day, Tokens per day, Model usage and Tier mix are one full-width row of tabs, one big chart at a time;
                       the chosen tab is kept in the address (?chart=). */}
                   <div className="maple-cell maple-cell--full local-overview-charts">
-                    <DashboardTabs label="Overview charts" param="chart" tabs={[
-                      { id: 'runs', label: 'Runs per day', panel: () => slice('runs', 'Runs per day', 'runs-daily') },
-                      { id: 'tokens', label: 'Tokens per day', panel: () => slice('tokens', 'Tokens per day', 'tokens-daily') },
-                      { id: 'models', label: 'Model usage', panel: () => renderGroup(['overview-model-usage']) },
-                      { id: 'tiers', label: 'Tier mix', panel: () => renderGroup(['overview-tier-mix']) },
-                    ]} />
+                    {/* Lakshman 2026-11-04, "give heading to ... bar chart and each tab colourful modern": one titled panel
+                        around the tabs; each tab carries its chart's own glyph and colour. */}
+                    <Panel className="local-overview-charts-panel" aria-labelledby="overview-charts-title">
+                      <PanelTitle id="overview-charts-title"><ConceptIcon concept="analysis" label="Activity breakdown" size={14} />Activity breakdown</PanelTitle>
+                      <p className="local-dashboard-caption">Runs, tokens, models and tiers over the chosen window. Pick a chart.</p>
+                      <DashboardTabs label="Overview charts" param="chart" tabs={[
+                        { id: 'runs', label: 'Runs per day', tone: 'var(--ds-hue-green)',
+                          icon: <ConceptIcon concept="runs-daily" label="Runs per day" size={14} />, panel: () => slice('runs', 'Runs per day', 'runs-daily') },
+                        { id: 'tokens', label: 'Tokens per day', tone: 'var(--ds-hue-blue)',
+                          icon: <ConceptIcon concept="tokens-daily" label="Tokens per day" size={14} />, panel: () => slice('tokens', 'Tokens per day', 'tokens-daily') },
+                        { id: 'models', label: 'Model usage', tone: 'var(--ds-hue-purple)',
+                          icon: <ConceptIcon concept="runs-model" label="Model usage" size={14} />, panel: () => renderGroup(['overview-model-usage']) },
+                        { id: 'tiers', label: 'Tier mix', tone: 'var(--ds-hue-amber)',
+                          icon: <ConceptIcon concept="tier-mix" label="Tier mix" size={14} />, panel: () => renderGroup(['overview-tier-mix']) },
+                      ]} />
+                    </Panel>
                   </div>
                 </>;
               })()}

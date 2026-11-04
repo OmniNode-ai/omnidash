@@ -554,3 +554,36 @@ html body .app svg.field-icon.field-icon[data-field-icon="usage-day"]:not([data-
   .local-dashboard-page--overview .local-overview-charts .ins-bars.gdb-plot { height: 220px; }
   .local-dashboard-page--overview .local-overview-charts .rb-chart.rb-chart--vertical .rb-track { height: 180px; }
 }
+
+/* OMN-22168 (Lakshman 2026-11-04, "give heading to line chart and bar chart and each tab colourful modern"). The tabbed
+   charts sit in one titled panel; the chart inside keeps its own heading but loses its second frame. */
+.local-overview-charts-panel { display: grid; gap: 12px; }
+.local-overview-charts-panel .local-dashboard-panel-title { display: flex; align-items: center; gap: 8px; margin: 0; }
+.local-overview-charts-panel > .local-dashboard-caption { margin: -6px 0 0; }
+.local-overview-charts-panel .local-dashboard-tabpanel > .local-dashboard-panel,
+.local-overview-charts-panel .local-dashboard-tabpanel .maple-cell > .local-dashboard-panel {
+  border: 0 !important; background: transparent !important; box-shadow: none !important; padding: 0 !important; }
+/* Tabs: pills with their chart's glyph in its colour; the chosen tab is tinted in that colour. */
+.local-dashboard-tablist [role="tab"][data-toned] {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 0 14px; border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--tab-tone) 30%, var(--ds-line));
+  background: color-mix(in oklab, var(--tab-tone) 7%, transparent); color: var(--ds-ink-2); font-weight: 600;
+  transition: background var(--ds-motion-fast) var(--ds-ease), border-color var(--ds-motion-fast) var(--ds-ease), color var(--ds-motion-fast) var(--ds-ease); }
+.local-dashboard-tablist [role="tab"][data-toned] svg { flex: none; } /* the glyph keeps its concept's colour */
+@media (hover: hover) { .local-dashboard-tablist [role="tab"][data-toned]:hover { border-color: color-mix(in oklab, var(--tab-tone) 55%, var(--ds-line)); color: var(--ds-ink); } }
+.local-dashboard-tablist [role="tab"][data-toned][aria-selected="true"] {
+  background: color-mix(in oklab, var(--tab-tone) 22%, transparent); border-color: var(--tab-tone);
+  color: var(--ds-ink); box-shadow: 0 0 0 3px color-mix(in oklab, var(--tab-tone) 18%, transparent); }
+.local-dashboard-tablist [role="tab"][data-toned]:focus-visible { outline: 2px solid var(--tab-tone); outline-offset: 2px; }
+.local-dashboard-tablist:has([data-toned]) { display: flex; flex-wrap: wrap; gap: 8px; border: 0; background: transparent; padding: 0; }
+/* Lakshman 2026-11-04, "horizontal height increase and make it best": taller pills, each tab's colour visible at rest,
+   the chosen tab filled in its colour; the tab row loses its outer box. */
+.local-overview-charts-panel .local-dashboard-tablist { border: 0 !important; background: transparent !important; padding: 0 !important;
+  box-shadow: none !important; gap: 10px !important; }
+.local-overview-charts-panel .local-dashboard-tablist [role="tab"][data-toned] {
+  min-height: 44px; padding: 0 18px; gap: 9px; font-size: 14px;
+  background: color-mix(in oklab, var(--tab-tone) 14%, transparent); border-color: color-mix(in oklab, var(--tab-tone) 45%, var(--ds-line)); }
+.local-overview-charts-panel .local-dashboard-tablist [role="tab"][data-toned] svg { width: 16px; height: 16px; }
+.local-overview-charts-panel .local-dashboard-tablist [role="tab"][data-toned][aria-selected="true"] {
+  background: color-mix(in oklab, var(--tab-tone) 32%, transparent); border-color: var(--tab-tone); color: var(--ds-ink);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--tab-tone) 22%, transparent), 0 6px 18px -8px var(--tab-tone); }

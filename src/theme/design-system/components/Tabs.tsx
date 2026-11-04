@@ -1,4 +1,4 @@
-import { useId, useRef, type KeyboardEvent, type ReactNode } from 'react';
+import { useId, useRef, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { useLocation, useSearch } from 'wouter';
 
 /**
@@ -8,7 +8,11 @@ import { useLocation, useSearch } from 'wouter';
  * tabs pattern (arrow keys, Home and End move and select, one tab in the tab order) and only the selected panel is drawn.
  * Both controls sit in the shared filter part, so their text is drawn where every panel's controls are (OMN-21015 K2).
  */
-export interface DashboardTab { id: string; label: string; panel: () => ReactNode }
+export interface DashboardTab {
+  id: string; label: string; panel: () => ReactNode;
+  /** OMN-22168 (Lakshman 2026-11-04, "each tab colourful modern"): the tab's glyph, from the icon registry, and its tone. */
+  icon?: ReactNode; tone?: string;
+}
 
 /** The tab a search string selects for one panel: its parameter when it names a tab, else the first tab. */
 export function readTab(search: string, param: string, ids: readonly string[]): string {
@@ -57,8 +61,9 @@ export function DashboardTabs({ label, param, tabs }: { label: string; param: st
     <div className="local-dashboard-filters local-dashboard-tablist" role="tablist" aria-label={label}>
       {tabs.map((tab, index) => <button key={tab.id} ref={element => { buttons.current[index] = element; }} type="button" role="tab"
         id={`${base}-${tab.id}-tab`} aria-controls={`${base}-${tab.id}-panel`} aria-selected={tab.id === active}
-        tabIndex={tab.id === active ? 0 : -1} data-tab={tab.id} onClick={() => select(tab.id)} onKeyDown={event => onKeyDown(event, index)}>
-        {tab.label}
+        tabIndex={tab.id === active ? 0 : -1} data-tab={tab.id} onClick={() => select(tab.id)} onKeyDown={event => onKeyDown(event, index)}
+        data-toned={tab.tone ? '' : undefined} style={tab.tone ? { '--tab-tone': tab.tone } as CSSProperties : undefined}>
+        {tab.icon}{tab.label}
       </button>)}
     </div>
     <div role="tabpanel" id={`${base}-${panel.id}-panel`} aria-labelledby={`${base}-${panel.id}-tab`} tabIndex={0}
