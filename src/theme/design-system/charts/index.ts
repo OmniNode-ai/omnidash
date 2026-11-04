@@ -15,7 +15,7 @@ export { SeriesLegend, SeriesToggles, TierLegend, useSeriesToggles } from './leg
 export type { LegendSeries, ToggleSeries } from './legend';
 export { DayColumns, Histogram, dayTicks } from './DayColumns';
 export type { DayBarValue, DayColumn, HistogramBucket } from './DayColumns';
-export { LinePlot, linePath } from './LinePlot';
+export { LinePlot, MultiLinePlot, linePath, type PlotLine } from './LinePlot';
 export { CumulativeColumns, SpendColumns } from './SpendColumns';
 export type { CumulativeDay, SpendDay } from './SpendColumns';
 export { BarSparkline } from './BarSparkline';

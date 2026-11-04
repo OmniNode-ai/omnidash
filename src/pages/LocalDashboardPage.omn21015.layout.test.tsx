@@ -53,6 +53,7 @@ const ORDER: Record<PageName, Array<[title: string, width: number]>> = {
     ['Environment', 12],
     ['Work delegated', 12],
     ['Quality vs bar', 12],
+    ['Daily trend', 12],
   ],
   usage: [
     ['Savings per day', 12], ['Tokens per day', 12],
@@ -66,6 +67,8 @@ const RENDERED_ORDER: Record<PageName, Array<[title: string, width: number]>> = 
   // runs on the panels after it. The original declarative grid is still checked separately by Y4/Y5.
   overview: [
     ['Actual spend', 3], ['Savings', 3], ['Agent calls', 3], ['Tokens processed', 3], ['Delegation Quality', 3],
+    // OMN-22168 (Lakshman 2026-11-04): the daily trend, every metric one line, the full row under the cards.
+    ['Daily trend', 12],
     ['Runs per day', 12], ['Tokens per day', 12], ['Model usage', 12], ['Tier mix', 12],
     // OMN-22168: the two panels after Tier mix (the status line sits in the page header, not a panel).
     ['Work delegated', 12], ['Quality vs bar', 12],
@@ -86,7 +89,7 @@ const BEFORE: Record<PageName, string[]> = {
   // tier mix; Environment and the "Additional runtime metrics" panels are not drawn there.
   // OMN-22168 (Lakshman 2026-11-04): Work delegated and Quality vs bar join it.
   overview: ['Actual spend', 'Savings', 'Agent calls', 'Tokens processed', 'Delegation Quality', 'Runs per day', 'Tokens per day', 'Model usage', 'Tier mix',
-    'Work delegated', 'Quality vs bar'].sort(),
+    'Work delegated', 'Quality vs bar', 'Daily trend'].sort(),
   // OMN-21166 Maple grid: Usage insights is drawn as Spend by model and, under "More usage", one panel per chart (part 17:
   // Cost per run, Tokens by model, Cost by route); the day-by-day token list is gone (the table holds its rows).
   usage: ['Savings per day', 'Savings by model', 'Tokens per day', 'Spend by model', 'Usage analysis', 'Cost per run', 'Tokens by model', 'Cost by route',

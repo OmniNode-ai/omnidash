@@ -42,7 +42,7 @@ import { SettingsEmptyState } from '@/components/dashboard/SettingsEmptyState';
 import { escalationReason, failureCauseLabel, failureDetailText, notAvailableYet, plainFailureMessage, taskLabel, tierLabel } from '@/pages/local/plain-text';
 import { RunFilterProvider, causeHref, causeLabelOf, useRunFilter } from '@/pages/local/run-filter';
 import { dailySeries, servedDailyDays, summary as runSummary, toInsightRuns, typedFailureCauseOf } from '@/pages/local/insights';
-import { Meter, RankedBars } from '@/theme/design-system/charts';
+import { ChartReadout, Meter, MultiLinePlot, RankedBars, SeriesToggles, useSeriesToggles } from '@/theme/design-system/charts';
 import { NO_RUNS_USD, sumDashboardUsd } from '@/lib/dashboard-money-total';
 import { KpiStrip, type KpiItem } from '@/components/dashboard/KpiStrip';
 import { CardBasis } from '@/components/dashboard/CardBasis';
@@ -2077,6 +2077,78 @@ export function QualityBarPanel({ row }: { row: Row | null }) {
   );
 }
 
+/** OMN-22168: each trend metric in the colour of the concept its header names (one concept, one colour). */
+const TREND_TONES: Readonly<Record<string, string>> = {
+  Runs: 'var(--ds-field-calls)', 'Tokens in': 'var(--ds-field-tokens-in)', 'Tokens out': 'var(--ds-field-tokens-out)',
+  Spend: 'var(--ds-field-cost)', Savings: 'var(--ds-field-savings)',
+};
+
+/** The UTC days a window covers, first to last; all time runs from the first served day to today. */
+function trendDays(window: OverviewWindow, served: readonly string[], now: number): string[] {
+  const today = utcDay(now);
+  const [start, end] = window === 'all' ? [served[0] ?? today, today]
+    : window === 'today' ? [today, today]
+      : window.startsWith('day:') ? [window.slice(4), window.slice(4)]
+        : window.slice(6).split('..') as [string, string];
+  const days: string[] = [];
+  for (let at = Date.parse(`${start}T00:00:00Z`); Number.isFinite(at) && at <= Date.parse(`${end}T00:00:00Z`) && days.length < 400; at += 86_400_000) {
+    days.push(new Date(at).toISOString().slice(0, 10));
+  }
+  return days;
+}
+
+/**
+ * OMN-22168 (Lakshman 2026-11-04: "one linear chart to show runs, models, tokens etc.", then "legend and one line chart
+ * for all ... with hover numbers"): metering-summary.v1's served day rows over the Overview window, every metric the page
+ * declares as a column drawn as its own line on one chart, each against its own busiest day (the units differ), with a
+ * legend that shows or hides each line and a readout of every served value for the day in focus. A day with no served
+ * row, or served by two rows, is a gap in every line, never 0 or one of the two; the all-time row is never a day.
+ */
+export function OverviewTrendPanel({ rows, columns, window, now }: {
+  rows: readonly unknown[]; columns: readonly DeclaredColumn[]; window: OverviewWindow; now: number;
+}) {
+  const [hover, setHover] = useState<number | null>(null);
+  const slug = (header: string) => header.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  const { shown, toggle } = useSeriesToggles(columns.map(column => slug(column.header)));
+  const byDay = new Map<string, Row[]>();
+  for (const row of asRecords(rows)) {
+    if (row.window_kind !== 'day' || isMissing(row.window_start)) continue;
+    const day = String(row.window_start).slice(0, 10);
+    byDay.set(day, [...(byDay.get(day) ?? []), row]);
+  }
+  if (byDay.size === 0 || columns.length === 0) return <EmptyState>No day rows served yet</EmptyState>;
+  const days = trendDays(window, [...byDay.keys()].sort(), now);
+  const label = (day: string) => new Date(`${day}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  const twice = (day: string) => (byDay.get(day) ?? []).length > 1;
+  const valueOf = (day: string, column: DeclaredColumn) => {
+    const served = byDay.get(day) ?? [];
+    if (served.length !== 1) return null;
+    const raw = served[0]![column.key];
+    return isMissing(raw) || !Number.isFinite(Number(raw)) ? null : Number(raw);
+  };
+  const say = (value: number | null, column: DeclaredColumn, compact: boolean) => (value === null ? 'not recorded'
+    : `${column.format === 'currency' ? formatUsd(value) : compact ? formatDashboardCount(value) : formatFullCount(String(value))} ${column.header.toLowerCase()}`);
+  const visible = columns.filter(column => shown[slug(column.header)]);
+  const lines = visible.map(column => ({ key: slug(column.header), color: TREND_TONES[column.header] ?? 'var(--ds-ink-2)',
+    values: days.map(day => valueOf(day, column)) }));
+  const dayText = (day: string, compact: boolean) => (byDay.has(day) ? twice(day) ? 'not recorded (two rows for this day)'
+    : visible.map(column => say(valueOf(day, column), column, compact)).join(', ') : 'not recorded');
+  const active = hover === null ? undefined : days[hover];
+  return (
+    <figure className="local-chart local-trend" aria-label="Daily trend">
+      <SeriesToggles label="Trend lines" onToggle={key => toggle(key)}
+        series={columns.map(column => ({ key: slug(column.header), label: column.header, color: TREND_TONES[column.header] ?? 'var(--ds-ink-2)',
+          shown: shown[slug(column.header)] ?? true }))} />
+      <ChartReadout active={active !== undefined}
+        text={active !== undefined ? <>{label(active)} · {dayText(active, true).replaceAll(', ', ' · ')}</> : 'Hover or focus a day to read its numbers'} />
+      <MultiLinePlot label="Daily trend" lines={lines} keys={days} hover={hover} onHover={setHover}
+        labels={days.map(day => `${label(day)}: ${dayText(day, false)}`)} />
+      <div className="ins-axis"><span>{label(days[0]!)}</span><span>{label(days[days.length - 1]!)}</span></div>
+      <p className="local-dashboard-caption">Each line is scaled to its own busiest day, so lines of different units fit one chart.</p>
+    </figure>
+  );
+}
+
 /**
  * OMN-20225 AC3: the tier mix, from delegation.model-routing.v1's served by_tier (view migration 0045). Each tier's
  * count and share are the view's; runs with no tier are the served not_tier_routed_count, never folded into a tier.
@@ -2722,6 +2794,14 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns, acti
     navigate(causeHref(cause));
     document.querySelector('[data-component="recent-runs"]')?.scrollIntoView?.({ block: 'start' });
   }} />}</>;
+  if (component.component_id === 'overview-trend') {
+    // The Overview window, as the activity charts receive it.
+    const now = Date.now();
+    const window: OverviewWindow = !activityWindow || activityWindow.kind === 'all' ? 'all'
+      : activityWindow.kind === 'days' ? meteringRangeFor(activityWindow.days, now) : `range:${activityWindow.start}..${activityWindow.end}`;
+    return <OverviewTrendPanel rows={rawRowsFor(component, snapshots, 0)} window={window} now={now}
+      columns={columns} />;
+  }
   if (component.component_id === 'overview-task-mix' || component.component_id === 'overview-quality-bar') {
     const first = rawRowsFor(component, snapshots, 0)[0];
     const row = first && typeof first === 'object' && !Array.isArray(first) ? (first as Row) : null;
@@ -2944,7 +3024,7 @@ export const PANEL_CONCEPTS: Readonly<Record<string, string>> = {
   'runs-tier-mix': 'tier-mix', 'overview-run-locally': 'local-run',
   'overview-avg-saving-per-call': 'saving-average', 'overview-baseline-spend': 'baseline',
   'overview-quality': 'quality', 'overview-model-usage': 'runs-model', 'overview-tier-mix': 'tier-mix',
-  'overview-task-mix': 'task', 'overview-quality-bar': 'quality-comparison', 'overview-compression': 'compression',
+  'overview-task-mix': 'task', 'overview-quality-bar': 'quality-comparison', 'overview-trend': 'activity', 'overview-compression': 'compression',
   'overview-cache-hit-rate': 'cache', 'overview-spend-by-day': 'spend-daily', 'recent-runs': 'recent',
   'workflow-run-path': 'path', 'usage-by-model-day': 'usage-day', 'usage-tokens-by-day': 'tokens-daily',
   'usage-savings-series': 'savings-daily', 'credentials-keys': 'credentials',
@@ -3425,6 +3505,8 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
                 // Live review 2026-10-25: "Why runs failed" left Overview (its causes stay on Runs under More analysis);
                 // Runs per day sits beside Tier mix and Tokens per day takes the row.
                 return <>
+                  {/* OMN-22168 (Lakshman 2026-11-04): one line chart, a metric at a time, the full row under the cards. */}
+                  <div className="maple-cell maple-cell--full">{renderGroup(['overview-trend'])}</div>
                   {/* Live review 2026-10-25: every bar chart takes the full row. */}
                   {/* Live review 2026-10-25: Model usage, then Tier mix last. */}
                   {/* OMN-21166 part 21 AC139: the four charts in two columns (one under 1100px). */}

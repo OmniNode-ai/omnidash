@@ -6,7 +6,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { StoryPage, StorySection } from '../story-frame';
 import {
   BarSparkline, BarTrack, ChartCard, ChartEmpty, ChartHeading, ChartNotRecorded, ChartReadout, ComparisonTrack, CostQualityScatter,
-  CumulativeColumns, DayColumns, GroupedBars, Histogram, HourHeatmap, LinePlot, Meter, NamedByPanel, RankedBars, RunDurationChart,
+  CumulativeColumns, DayColumns, GroupedBars, Histogram, HourHeatmap, LinePlot, Meter, MultiLinePlot, NamedByPanel, RankedBars, RunDurationChart,
   RunMetricChart, RunTimingChart, RunTokensChart, SeriesLegend, SeriesToggles, SpendByDayChart, SpendColumns, TierLegend, TierMix,
   type ListedRun,
 } from './index';
@@ -101,6 +101,10 @@ function Charts() {
     <StorySection title="Line and sparkline">
       <LinePlot label="Median duration per day" values={[4.2, 3.9, null, 5.1, 4.4, 3.6, 4.0]} keys={DAYS} labels={DAYS} min={0} max={6}
         hover={null} onHover={none} color="var(--ds-chart-3)" />
+      {/* OMN-22168: several lines over the same days, each against its own busiest day. */}
+      <MultiLinePlot label="Runs and tokens per day" keys={DAYS} labels={DAYS} hover={null} onHover={() => undefined}
+        lines={[{ key: 'runs', color: 'var(--ds-field-calls)', values: [12, 18, null, 25, 21, 30, 28] },
+          { key: 'tokens', color: 'var(--ds-field-tokens-in)', values: [5e4, 9e4, null, 1.2e5, 8e4, 1.5e5, 1.1e5] }]} />
       <BarSparkline label="Runs per day" days={DAYS.map((day, index) => ({ key: day, value: COUNTS[index], title: day }))} />
     </StorySection>
 

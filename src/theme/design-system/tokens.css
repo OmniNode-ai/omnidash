@@ -609,6 +609,7 @@
   /* OMN-22168: Overview's Work delegated and Quality vs bar. */
   --ds-accent-panel-overview-task-mix: #7E22CE;
   --ds-accent-panel-overview-quality-bar: #047857;
+  --ds-accent-panel-overview-trend: #1D4ED8;
   --ds-accent-panel-runs-tier-mix: #0E7490;
   --ds-accent-panel-overview-recent-runs: #C2410C;
   --ds-accent-panel-recent-runs: #C2410C;
@@ -655,6 +656,7 @@
   --ds-accent-panel-overview-tier-mix: #22D3EE;
   --ds-accent-panel-overview-task-mix: #D8B4FE;
   --ds-accent-panel-overview-quality-bar: #6EE7B7;
+  --ds-accent-panel-overview-trend: #93C5FD;
   --ds-accent-panel-runs-tier-mix: #22D3EE;
   --ds-accent-panel-overview-recent-runs: #FB923C;
   --ds-accent-panel-recent-runs: #FB923C;
