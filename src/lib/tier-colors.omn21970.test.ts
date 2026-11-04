@@ -119,7 +119,11 @@ describe('tier colours follow the palette (OMN-21970)', () => {
     it(`every cheap shade passes the palette's colour-blind floors in ${theme}`, () => {
       const page = tokenValue(body, '--ds-page')!; const card = tokenValue(body, '--ds-surface')!;
       const palette = Object.values(PALETTE).map(pair => pair[index]!);
-      const cheap = Object.values(CHEAP).map(shade => (index === 0 ? shade.light : shade.dark));
+      // The shades the stylesheet serves, not the expected values above, so a served shade that fails is caught here too.
+      const cheap = Object.keys(CHEAP).map(tier => {
+        const value = tokenValue(body, `--ds-field-tier-${tier.replace('_', '-')}`);
+        return value?.startsWith('var(') ? tokenValue(body, value.slice(4, -1))! : value!;
+      });
       for (const vision of Object.keys(MACHADO) as (keyof typeof MACHADO)[]) {
         const floor = Math.min(...palette.flatMap((a, i) => palette.slice(i + 1).map(b => cvdDistance(a, b, vision))));
         for (const shade of cheap) {
