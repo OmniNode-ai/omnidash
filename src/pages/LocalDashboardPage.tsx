@@ -1210,7 +1210,7 @@ const SERVED_DECIMAL = /^(-?)(\d+)(?:\.(\d+))?$/;
 /**
  * OMN-21015 AC3: one run's modelled saving as served on delegation.decisions.v1, named against the baseline it was priced
  * against. The page formats the served figure and computes nothing. A run that was not measured says why, never 0; a
- * measured zero is a zero. Decimal text is formatted under the approved two-decimal display policy
+ * measured zero is a zero. Decimal text is formatted with every served digit (OMN-22168, replacing the earlier two-decimal policy)
  * without changing the source value; anything that is not a plain decimal is not shown as a figure.
  */
 export function runModelledCell(run: Row): string {
@@ -3499,7 +3499,8 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
                   <div className="maple-cell maple-cell--full local-overview-charts">
                     {/* Lakshman 2026-11-04, "give heading to ... bar chart and each tab colourful modern": one titled panel
                         around the tabs; each tab carries its chart's own glyph and colour. */}
-                    <Panel className="local-overview-charts-panel" aria-labelledby="overview-charts-title" data-width="12">
+                    {/* The frame reads nothing itself (as Runs' "Analysis views"): the chart inside carries its own busy state. */}
+                    <Panel className="local-overview-charts-panel" aria-labelledby="overview-charts-title" aria-busy="false" data-width="12">
                       <PanelTitle id="overview-charts-title"><ConceptIcon concept="analysis" label="Activity breakdown" size={14} />Activity breakdown</PanelTitle>
                       {/* Lakshman 2026-11-04 ("make sure all information written is correct"): models and tiers are served all
                           time only (usage-by-model-day counts provider calls, not runs, so it cannot stand in). */}

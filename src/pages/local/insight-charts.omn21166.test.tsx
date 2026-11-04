@@ -125,13 +125,16 @@ describe('OMN-21166: Overview insight charts', () => {
     expect(new Set(icons).size).toBe(TITLES.length);
   });
 
-  it('C2, C4, C6: focusing a day reads that UTC day: passed, failed and not recorded apart', () => {
+  // OMN-22168 (Lakshman 2026-11-04, "Verdict not recorded - removed and don't show anything if we don't have"): a run
+  // with no recorded verdict is not drawn or counted on the day; it is never folded into passed or failed either.
+  it('C2, C4, C6: focusing a day reads that UTC day: passed and failed apart, an unrecorded verdict not shown', () => {
     render(<InsightsSection decisions={ROWS} now={NOW} />);
     const chart = screen.getByRole('group', { name: 'Runs per day' });
     const today = within(chart).getByRole('button', { name: /^Oct 18:/ });
-    expect(today).toHaveAccessibleName('Oct 18: 3 runs, 1 passed, 1 failed, 1 not recorded');
+    expect(today).toHaveAccessibleName('Oct 18: 2 runs, 1 passed, 1 failed');
     fireEvent.focus(today);
-    expect(screen.getByTestId('runs-per-day-readout')).toHaveTextContent('Oct 18 · 3 runs · 1 passed · 1 failed · 1 not recorded');
+    expect(screen.getByTestId('runs-per-day-readout')).toHaveTextContent('Oct 18 · 2 runs · 1 passed · 1 failed');
+    expect(screen.getByTestId('runs-per-day-readout').textContent).not.toMatch(/not recorded/);
   });
 
   // OMN-21166 part 15 AC96: the day chart says nothing at rest; its words appear only for the day a reader points at.

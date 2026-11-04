@@ -131,7 +131,7 @@ describe('OMN-21015 AC7: the Overview tiles switch between today (UTC) and all t
     await open('overview', [ALL_ROW, YESTERDAY_ROW, TODAY_ROW]);
     chooseWindow('today');
     chooseWindow('all');
-    expect(['Actual spend', 'Savings', 'Agent calls', 'Tokens processed'].map(figure)).toEqual(['$12.30', '$2.99', '23', '6.13K']);
+    expect(['Actual spend', 'Savings', 'Agent calls', 'Tokens processed'].map(figure)).toEqual(['$12.30', '$2.992', '23', '6.13K']);
   });
 
   it("W3: a day with no runs is that day's zero, says so, and never shows yesterday's figures", async () => {

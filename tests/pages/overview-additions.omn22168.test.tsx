@@ -4,8 +4,8 @@
  * (Work delegated and Quality vs bar were removed again by Lakshman later the same day.) Failure modes, each a test below:
  *   S1 no runtime row reads "Runtime status not recorded", never running;  S2 a stopped or degraded runtime shows its own
  *   state and reason, not the running tone;  S3 no served run time never reads "0 min ago";  S4 the run total is the
- *   routing view's served total_delegations, never a count of the rows read;  S5 the median names the latest runs when
- *   the read did not walk every page;
+ *   routing view's served total_delegations, never a count of the rows read;  S5 a read that did not cover the window
+ *   shows no median (Lakshman 2026-11-04: no "(latest N runs)", the line follows the chosen window);
  * Overview may not bind delegation.summary.v1 (the reader answers it by hand-written SQL) and a headline card reads one
  * source (OMN-19980), so the run time lives on the status line, not on Agent calls.
  *   C1 Savings keeps its short caption with the percentage in its hover;  C3 Agent calls keeps its one-source line.
@@ -69,9 +69,11 @@ describe('status strip', () => {
     expect(screen.getAllByRole('status', { name: 'Runtime status' })[1]!.textContent).toContain('Runs not recorded');
   });
 
-  it('S5: a read that did not walk every page names the latest runs beside the median', () => {
+  it('S5: a read that did not cover the window shows no median, never one over the latest runs only', () => {
     render(<OverviewStatusStrip env={ENV} decisions={DECISIONS} routing={ROUTING} now={NOW} complete={false} />);
-    expect(screen.getByRole('status', { name: 'Runtime status' }).textContent).toContain('Median run 9.0 s (latest 3 runs)');
+    const strip = screen.getByRole('status', { name: 'Runtime status' });
+    expect(strip.textContent).not.toMatch(/Median run|latest/);
+    expect(strip.textContent).toContain('Last run 3 min ago');
   });
 });
 

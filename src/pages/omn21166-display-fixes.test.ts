@@ -75,8 +75,8 @@ describe('recordedUsd', () => {
     expect(recordedUsd(0)).toBe('$0.00');
     expect(recordedUsd('0.0')).toBe('$0.00');
   });
-  it('uses the approved two-decimal money display', () => {
-    expect(recordedUsd(0.012345)).toBe('$0.01');
+  it('uses the full served money display (OMN-22168)', () => {
+    expect(recordedUsd(0.012345)).toBe('$0.012345');
     expect(recordedUsd('1234.5')).toBe('$1,234.50');
   });
   it('says Not recorded for a missing cost, never $0.00', () => {

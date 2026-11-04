@@ -70,7 +70,7 @@ const allRow = (fields: Record<string, unknown> = {}): Record<string, unknown> =
 // OMN-21166 live review 2026-10-25 ("crisp and important info in short"): the card shows its figure, and its hover
 // lines say the same facts shorter: modelled, the runs not counted (here not recorded), the baseline and pricing.
 const BEFORE = [
-  '$0.01',
+  '$0.0156',
   // OMN-21166 part 29 AC191: the short drawn caption first (the model name kept whole), then the full sentence.
   'Modelled vs claude\u2011sonnet\u20115\u20115',
   'Modelled at claude-sonnet-5-5 prices. The baseline never ran.',
@@ -175,7 +175,7 @@ describe('OMN-20008 AC5: the Overview page', () => {
     harness.reachable = new Set([METERING, OVERVIEW]);
     harness.answer = (topic) => Promise.resolve(topic === OVERVIEW ? [{ window: 'all', captured_at: '2026-10-09T21:00:00Z', total_savings_usd: '0.0156' }] : topic === METERING ? [allRow({ [PCT]: '0.42' })] : []);
     const panel = await savingsPanel();
-    expect(panel.querySelector('.local-dashboard-metric')?.textContent).toBe('$0.01');
+    expect(panel.querySelector('.local-dashboard-metric')?.textContent).toBe('$0.0156');
     expect(panel.textContent).not.toMatch(PCT_LINE);
     expect(panel.textContent).toContain('Modelled · vs cloud baseline');
     expect(panel.textContent).not.toMatch(/verified/i);
@@ -185,7 +185,7 @@ describe('OMN-20008 AC5: the Overview page', () => {
     harness.reachable = new Set([METERING, OVERVIEW]);
     harness.answer = (topic) => Promise.resolve(topic === OVERVIEW ? [{ window: 'all', captured_at: '2026-10-09T21:00:00Z', total_savings_usd: '0.0156' }] : topic === METERING ? [allRow()] : []);
     const panel = await savingsPanel();
-    expect(panel.querySelector('.local-dashboard-metric')?.textContent).toBe('$0.01');
+    expect(panel.querySelector('.local-dashboard-metric')?.textContent).toBe('$0.0156');
     expect(panel.textContent).not.toMatch(PCT_LINE);
   });
 });

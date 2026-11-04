@@ -68,7 +68,7 @@ describe('OMN-20758 Overview titles match the demo mockup', () => {
 
   it('T1: Actual spend shows the served spend_usd', async () => {
     await overview();
-    expect(figure('Actual spend')).toBe('$0.01');
+    expect(figure('Actual spend')).toBe('$0.0123');
   });
 
   it('T1: Agent calls shows the served runs_measured', async () => {

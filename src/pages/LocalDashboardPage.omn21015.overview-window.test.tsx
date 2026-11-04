@@ -148,9 +148,9 @@ describe('OMN-21015 AC7: the Overview tiles switch between today (UTC) and all t
 
   it('W5: latest legacy captured_at selects All time independently of metering baselines', async () => {
     await open('overview', [ALL_ROW, TODAY_ROW], [{ ...LEGACY_ALL, captured_at: '2026-10-09T09:00:00Z', total_savings_usd: '9.9000' }, LEGACY_ALL]);
-    expect(figure('Savings')).toBe('$2.99');
+    expect(figure('Savings')).toBe('$2.992');
     chooseWindow('today'); expect(figure('Savings')).toBe(DAILY_UNAVAILABLE);
-    chooseWindow('all'); expect(figure('Savings')).toBe('$2.99');
+    chooseWindow('all'); expect(figure('Savings')).toBe('$2.992');
   });
   it('W5: tied newest legacy timestamps are refused on every card', async () => {
     await open('overview', [ALL_ROW, TODAY_ROW], [{ ...LEGACY_ALL, total_savings_usd: '9.9000' }, LEGACY_ALL]);

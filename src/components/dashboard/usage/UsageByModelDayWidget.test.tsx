@@ -65,10 +65,10 @@ describe('UsageByModelDayTable', () => {
     expect(screen.queryByText('Not measured')).not.toBeInTheDocument();
   });
 
-  it('formats a Postgres NUMERIC as served money, with the approved two-decimal display', () => {
+  it('formats a Postgres NUMERIC as served money, every served digit (OMN-22168), trailing zeros trimmed', () => {
     render(<UsageByModelDayTable rows={[row({ measured_cost_usd: '0.25000000' }), row({ model_id: 'm2', measured_cost_usd: 0.00012345 })]} />);
     expect(screen.getByText('$0.25')).toBeInTheDocument();
-    expect(screen.getByText('$0.01')).toBeInTheDocument();
+    expect(screen.getByText('$0.00012345')).toBeInTheDocument();
     expect(screen.queryByText(/0\.25000000/)).not.toBeInTheDocument();
   });
 

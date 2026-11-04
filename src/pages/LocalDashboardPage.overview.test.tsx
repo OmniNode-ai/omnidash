@@ -51,7 +51,7 @@ describe('MetricCard', () => {
       config={{ metric_key: 'total_cost_usd', label: 'Spend', format: 'currency', precision: 4 }}
       row={{ total_cost_usd: 0.00686, roi_percent: 99 }}
     />);
-    expect(screen.getByText('$0.01')).toBeInTheDocument();
+    expect(screen.getByText('$0.00686')).toBeInTheDocument();
     expect(screen.queryByText(/99/)).not.toBeInTheDocument();
   });
 
@@ -71,7 +71,7 @@ describe('MetricCard', () => {
       config={{ metric_key: 'total_savings_usd', label: 'Savings', format: 'currency', precision: 4 }}
       row={{ total_savings_usd: 1.22354, total_baseline_cost_usd: 1.2304 }}
     />);
-    expect(screen.getByText('$1.22')).toBeInTheDocument();
+    expect(screen.getByText('$1.22354')).toBeInTheDocument();
   });
 
   it('renders Not measured for an absent field, never zero', () => {
@@ -102,7 +102,7 @@ describe('MetricCard captions and pending sources (Amendment 4)', () => {
       row={{ total_savings_usd: 1.22354, total_baseline_cost_usd: 1.2304 }}
       caption={{ baseline_model: 'claude-sonnet-5-5', pricing_manifest_version: 1 }}
     />);
-    expect(screen.getByText('$1.22')).toBeInTheDocument();
+    expect(screen.getByText('$1.22354')).toBeInTheDocument();
     expect(screen.getByText('Baseline claude-sonnet-5-5 · pricing manifest v1')).toBeInTheDocument();
   });
 
