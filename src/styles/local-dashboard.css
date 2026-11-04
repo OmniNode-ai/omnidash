@@ -904,7 +904,11 @@
 .local-chart-reset:hover { color: var(--ds-ink); border-color: var(--ds-ink-3); background: var(--ds-surface-2); }
 .local-chart-inspector { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding-top: 10px; border-top: 1px solid var(--ds-line); }
 .local-chart-inspector > label { font-size: 12px; color: var(--ds-ink-2); font-weight: 500; }
-.local-chart-inspector select { flex: 1; min-width: 0; max-width: 100%; min-height: 34px; border: 1px solid var(--ds-hue-blue); border-radius: 7px; padding: 5px 8px; background: var(--ds-surface); color: var(--ds-ink); font: inherit; font-size: 12px; text-overflow: ellipsis; }
+/* At rest the inspector reads like the page's other selects; blue marks only the one a keyboard has focused (live review
+   2026-11-04: an idle select drawn in the focus colour looked selected). */
+.local-chart-inspector select:hover { border-color: var(--ds-ink-3); }
+.local-chart-inspector select:focus-visible { border-color: var(--ds-hue-blue); outline: 2px solid var(--ds-hue-blue); outline-offset: 1px; }
+.local-chart-inspector select { flex: 1; min-width: 0; max-width: 100%; min-height: 34px; border: 1px solid var(--ds-line-strong); border-radius: 7px; padding: 5px 8px; background: var(--ds-surface); color: var(--ds-ink); font: inherit; font-size: 12px; text-overflow: ellipsis; }
 .local-chart-detail { width: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px; margin-top: 8px; border: 1px solid color-mix(in oklch, var(--panel-accent) 24%, var(--ds-line)); border-radius: 8px; background: color-mix(in oklch, var(--panel-accent) 5%, var(--ds-surface)); font-size: 12px; overflow-wrap: anywhere; animation: chart-detail-enter 180ms ease-out; }
 .local-chart-detail strong { font-weight: 600; }
 .local-chart-detail-id { display: block; font-family: var(--ds-font-mono); font-size: 12px; color: var(--ds-ink-2); }

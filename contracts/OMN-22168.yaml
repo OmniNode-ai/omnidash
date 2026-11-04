@@ -87,6 +87,25 @@ dod_evidence:
           tests/design-system/charts.test.tsx tests/design-system/chart-scan.test.ts
           tests/design-system/tooltip.test.tsx
         cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn22168-ac3-charts-draw-whole"
+    description: >-
+      AC3, the 2026-11-04 live review of every page only, not the whole criterion: the kit's line draws to its last
+      day, its tooltips take the dark theme, the run charts fill their tab and keep their value labels apart, a long
+      model name stays inside its table cell, an idle inspector select is not drawn in the focus colour, and a model
+      name wraps at its joins, each measured on the page.
+    source: "manual"
+    binds_ac: ["AC3"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          test -d node_modules || npm ci --no-audit --no-fund; npx vitest run
+          tests/design-system/breakable-name.omn22168.test.tsx
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: >-
+          test -d node_modules || npm ci --no-audit --no-fund; npx playwright test
+          tests/e2e/design-system-dashboard-polish.omn22168.spec.ts --project=chromium --workers=1 --retries=0
+        cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn22168-ac4-component-kit"
     description: >-
       The tests prove that the component kit is used by every local page and Delegation Evidence

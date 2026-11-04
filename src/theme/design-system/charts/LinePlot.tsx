@@ -37,7 +37,7 @@ export function LinePlot({ label, values, keys, labels, min, max, hover, onHover
   return (
     <div className="ins-plot">
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label={label}>
-        <path className="od-draw" d={linePath(values, min, max, W, H)} pathLength={1} fill="none" stroke={color} strokeWidth={3} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+        <path className="od-draw" d={linePath(values, min, max, W, H)} fill="none" stroke={color} strokeWidth={3} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
       </svg>
       {/* A dot on every point that has a value, so a single day still shows (a line needs two). */}
       {values.map((value, index) => value === null ? null : (

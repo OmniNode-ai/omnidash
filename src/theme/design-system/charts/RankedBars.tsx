@@ -10,6 +10,14 @@ import { Link } from 'wouter';
 
 export type RankedBarBasis = 'measured' | 'estimated' | 'unknown';
 
+/**
+ * A model id such as thinkingmachines/inkling:free wraps at its joins (after a slash, colon, hyphen or underscore), not
+ * in the middle of a word (live review 2026-11-04). The text is unchanged; only line-break opportunities are added.
+ */
+export function breakableName(name: string): ReactNode[] {
+  return name.split(/(?<=[/:_-])/).flatMap((part, index) => (index === 0 ? [part] : [<wbr key={index} />, part]));
+}
+
 export interface RankedBarItem {
   key: string;
   name: string;
@@ -78,7 +86,7 @@ export function RankedBars({ label, unit, items, order = 'asc', note, footnote, 
               <span className="rb-bar" data-pattern={item.basis === 'unknown' ? 'outline' : 'hatched'} style={scaled === undefined ? undefined : { '--rb-size': scaled } as CSSProperties} />
             </span>
             {/* OMN-21970 (Lakshman 2026-11-03, option a): the name is ink for contrast; a swatch beside it carries the bar's colour. */}
-            <span className="rb-name" title={item.name}><span className="rb-swatch" aria-hidden="true" data-model-id={item.model} data-tier={item.tier} />{item.name}</span>
+            <span className="rb-name" title={item.name}><span className="rb-swatch" aria-hidden="true" data-model-id={item.model} data-tier={item.tier} />{breakableName(item.name)}</span>
           </>;
           return (
             // Focusable, so a keyboard reader reveals the value as a pointer does on hover (live review 2026-10-25). A bar

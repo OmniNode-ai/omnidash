@@ -171,6 +171,14 @@ function tone(token: string): string {
 }
 
 /**
+ * OMN-22168: every chart tooltip in the page's theme. The chart library draws a white box by default, which stayed
+ * white in the dark theme (live review 2026-11-04).
+ */
+export function tooltipSkin() {
+  return { backgroundColor: tone('--ds-surface'), borderColor: tone('--ds-line-strong'), textStyle: { color: tone('--ds-ink') } };
+}
+
+/**
  * One colour per plotted series, by its place among the plotted columns, unless the panel says which of the four
  * colours each takes (`places`, 1 to 4). A panel says so when it plots a figure another panel also plots, so the
  * figure is one colour on every page: Savings is the third colour on Overview and is given the third on Usage, where
@@ -208,6 +216,7 @@ function optionFor(group: SpendByDayGroup, shown: ReadonlyArray<{ series: Served
     ...(fontFamily ? { textStyle: { fontFamily } } : {}),
     grid: { left: 64, right: 20, top: 16, bottom: 28 },
     tooltip: {
+      ...tooltipSkin(),
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
       // The tooltip shows the served text of each figure, not the number the axis needed. The chart numbers the
@@ -366,6 +375,7 @@ function timingOption(bars: readonly RunTimingBar[], colours: readonly string[],
     ...(fontFamily ? { textStyle: { fontFamily } } : {}),
     grid: { left: compact ? 60 : 96, right: compact ? 64 : 84, top: 6, bottom: 24 }, // room for the longest label ("1 min 10 s") at 390px
     tooltip: {
+      ...tooltipSkin(),
       trigger: 'item',
       formatter: (param: { dataIndex: number; name: string; marker: string }) => `${param.marker}${asText(param.name)}: ${asText(servedText(param.dataIndex))}`,
     },
@@ -478,6 +488,9 @@ function runChartFrame(runs: readonly ListedRun[], axisLabel: (value: number) =>
     },
     yAxis: {
       type: 'value',
+      // Three or so steps: the per-run charts are 150 to 210px tall, where the library's default of five stacked eight
+      // labels into 90px (live review 2026-11-04).
+      splitNumber: 3,
       axisLabel: { color: text, formatter: axisLabel },
       splitLine: { lineStyle: { color: line, type: 'dashed' } },
     },
@@ -522,6 +535,7 @@ export function RunDurationChart({ runs, onOpen, title = 'Duration per run' }: {
     ...runChartFrame(runs, millisecondsAxisLabel),
     ...motion.option,
     tooltip: {
+      ...tooltipSkin(),
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
       formatter: (params: Array<{ dataIndex: number; marker: string }>) => {
@@ -582,6 +596,7 @@ export function RunTokensChart({ runs, onOpen, title = 'Tokens per run' }: { run
     ...runChartFrame(runs, countAxisLabel),
     ...motion.option,
     tooltip: {
+      ...tooltipSkin(),
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
       formatter: (params: Array<{ dataIndex: number; seriesIndex: number; marker: string; seriesName: string }>) => {
@@ -638,6 +653,7 @@ export function RunMetricChart({ runs, onOpen, metric }: {
     ...runChartFrame(runs, value => value === 0 ? '' : cost ? formatDashboardUsd(value) : String(value)),
     ...motion.option,
     tooltip: {
+      ...tooltipSkin(),
       trigger: 'axis', axisPointer: { type: 'shadow' },
       formatter: (params: Array<{ dataIndex: number }>) => {
         const run = runs[params[0]?.dataIndex ?? 0];
