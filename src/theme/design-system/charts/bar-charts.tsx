@@ -458,9 +458,11 @@ function runLabel(run: ListedRun): string {
 }
 
 /** The colour of a run's status, the same the status pill in its row carries. */
+// OMN-22168 (Lakshman 2026-11-05, "each unique thing has a unique colour and vice versa"): a passed or failed run is the
+// same pass and fail concept the Pass rate and Failed cards wear, not a second green and red.
 function statusColour(status: string): string {
-  if (status === 'passed') return tone('--ds-ok');
-  if (status === 'failed') return tone('--ds-bad');
+  if (status === 'passed') return tone('--ds-field-pass');
+  if (status === 'failed') return tone('--ds-field-fail');
   return tone('--ds-ink-3');
 }
 
@@ -555,7 +557,8 @@ export function RunDurationChart({ runs, onOpen, title = 'Duration per run' }: {
     <figure className="local-chart local-chart--runs" aria-label={title} data-motion={motion.reduced ? 'reduced' : 'full'}>
       <ChartHeading title={title} concept="duration" />
       <SwatchToggles label="Statuses shown" onToggle={toggle}
-        series={statuses.map(status => ({ key: status, label: status, color: statusColour(status), shown: !hidden.has(status) }))} />
+        series={statuses.map(status => ({ key: status, label: status, color: statusColour(status), shown: !hidden.has(status),
+          tone: status === 'passed' ? 'pass' : status === 'failed' ? 'fail' : undefined }))} />
       {statuses.every((status) => hidden.has(status))
         ? <ChartEmpty status>{EVERY_SERIES_HIDDEN}</ChartEmpty>
         : <ReactEChartsCore echarts={echarts} option={option} notMerge opts={{ renderer: 'svg' }} className="local-chart-canvas" onEvents={openOnClick(runs, onOpen)} />}

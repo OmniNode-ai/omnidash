@@ -693,18 +693,18 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
             const plural = (value: number, word: string) => `${formatDashboardCount(value)} ${word}${value === 1 ? '' : 's'}`;
             const distinct = (pick: (run: InsightRun) => string | null) => new Set(runs.map(pick).filter((value): value is string => value !== null)).size;
             return <DashboardTabs label="Run analysis" param="insight" tabs={[
-              { id: 'tasks', label: 'Tasks', tone: 'var(--ds-hue-teal)', icon: <ListChecks size={18} />,
+              { id: 'tasks', label: 'Tasks', tone: 'var(--ds-field-task)', icon: <ListChecks size={18} />,
                 hint: plural(distinct(run => run.task), 'task type'), panel: () => <TaskMix runs={runs} /> },
-              { id: 'pass-rate', label: 'Pass rate per day', tone: 'var(--ds-hue-green)', icon: <CircleCheck size={18} />,
+              { id: 'pass-rate', label: 'Pass rate per day', tone: 'var(--ds-field-pass-rate-daily)', icon: <CircleCheck size={18} />,
                 hint: plural(chartDays.length, 'day'), panel: () => <PassRateTrend days={chartDays} /> },
-              { id: 'failures', label: 'Why runs failed', tone: 'var(--ds-hue-red)', icon: <TriangleAlert size={18} />,
+              { id: 'failures', label: 'Why runs failed', tone: 'var(--ds-field-failures)', icon: <TriangleAlert size={18} />,
                 hint: plural(runs.filter(run => run.status === 'failed').length, 'failed run'),
                 panel: () => <FailureCauses runs={runs} onInspectFailure={onInspectFailure} /> },
-              { id: 'duration', label: 'How long runs take', tone: 'var(--ds-hue-orange)', icon: <Timer size={18} />,
+              { id: 'duration', label: 'How long runs take', tone: 'var(--ds-field-duration)', icon: <Timer size={18} />,
                 hint: `${formatDashboardCount(runs.filter(run => run.latencyMs !== null).length)} timed`, panel: () => <DurationHistogram runs={runs} /> },
-              { id: 'models', label: 'Model scoreboard', tone: 'var(--ds-hue-purple)', icon: <Bot size={18} />,
+              { id: 'models', label: 'Model scoreboard', tone: 'var(--ds-field-quality-model)', icon: <Bot size={18} />,
                 hint: plural(distinct(run => run.model), 'model'), panel: () => <ModelScoreboard runs={runs} /> },
-              { id: 'hours', label: 'When runs happen', tone: 'var(--ds-hue-blue)', icon: <Clock3 size={18} />,
+              { id: 'hours', label: 'When runs happen', tone: 'var(--ds-field-activity-hourly)', icon: <Clock3 size={18} />,
                 hint: 'By UTC hour', panel: () => <ActivityHeatmap runs={runs} days={chartDaysList} window={window} /> },
             ]} />;
           })()}

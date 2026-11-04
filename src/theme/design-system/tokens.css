@@ -167,11 +167,14 @@
   --ds-radius-bar: 3px;
   --ds-radius-pill: 999px;
 
-  --ds-pad-y: 14px;
+  /* OMN-22168 (Lakshman 2026-11-05, "fix all pages and make it uniform"): one 16px rhythm for every panel, card and
+     section gap on every page; the compact density below keeps its own smaller set. */
+  --ds-pad-y: 16px;
   --ds-pad-x: 16px;
   --ds-row-gap: 16px;
-  --ds-gap: 14px;
-  --ds-pad-card: 18px;
+  --ds-gap: 16px;
+  --ds-pad-card: 16px;
+  --ds-chip-h: 28px;
   --ds-pad-row: 10px 14px;
   --ds-row-h: 32px;
   --ds-kpi-num: 32px;
@@ -195,6 +198,7 @@
   --ds-row-gap: 12px;
   --ds-gap: 10px;
   --ds-pad-card: 14px;
+  --ds-chip-h: 24px;
   --ds-pad-row: 8px 12px;
   --ds-row-h: 28px;
 }

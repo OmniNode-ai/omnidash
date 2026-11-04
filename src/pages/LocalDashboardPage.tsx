@@ -1005,8 +1005,7 @@ export function SavingsByModel({ row }: { row: Row }) {
             display: n === null ? 'Not measured' : formatUsd(model.savings_usd), title: `${recordedCount(model.runs_measured)} of ${recordedCount(model.runs)} runs measured` };
         })} />
       <TierLegend label="Savings by model tier colours" models={models.map(model => (isMissing(model.model) ? '' : String(model.model)))} />
-      <details className="local-more">
-      <summary>Savings by model as a table</summary>
+      <div className="local-more local-more--open" data-section="Savings by model as a table">
       <ul>
         {models.map((model, index) => {
           const n = saving(model);
@@ -1023,7 +1022,7 @@ export function SavingsByModel({ row }: { row: Row }) {
           );
         })}
       </ul>
-      </details>
+      </div>
       <p className="local-dashboard-caption">Modelled against {isMissing(row.baseline_model) ? 'an unresolved baseline' : String(row.baseline_model)}; the totals above are these rows summed by the runtime.</p>
     </section>
   );
@@ -1682,14 +1681,14 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
           the kit Dropdown with its own glyph and colour; options carry the status, tier and model colours and task icons. */}
       <div className="local-dashboard-filters">
         <div className="local-filter-field">
-        <Dropdown id={`${id}-task`} label="Task" value={task} icon={<ListChecks size={15} />} tone="var(--ds-hue-purple)"
+        <Dropdown id={`${id}-task`} label="Task" value={task} icon={<ListChecks size={15} />} tone="var(--ds-field-task)"
           onChange={value => updateView({ task: value, page: 1 })}
           options={[{ value: 'all', label: 'All tasks' }, ...tasks.map(name => ({ value: name,
             label: `${taskLabel(name)} (${formatDashboardCount(taskFacetRuns.filter(run => recorded(run.task_type) === name).length)})`,
             icon: <TaskIcon task={name} /> }))]} />
         </div>
         <div className="local-filter-field">
-        <Dropdown id={`${id}-status`} label="Status" value={status} icon={<CircleCheck size={15} />} tone="var(--ds-hue-green)"
+        <Dropdown id={`${id}-status`} label="Status" value={status} icon={<CircleCheck size={15} />} tone="var(--ds-field-pass)"
           onChange={value => filter('status')({ target: { value } })}
           options={[{ value: 'all', label: 'All statuses' },
             { value: 'passed', label: 'passed', tone: 'var(--ds-field-pass)' },
@@ -1697,37 +1696,37 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
             { value: 'Not recorded', label: 'Not recorded', tone: 'var(--ds-ink-3)' }]} />
         </div>
         <div className="local-filter-field">
-        <Dropdown id={`${id}-cause`} label="Cause" value={cause} icon={<TriangleAlert size={15} />} tone="var(--ds-hue-amber)"
+        <Dropdown id={`${id}-cause`} label="Cause" value={cause} icon={<TriangleAlert size={15} />} tone="var(--ds-field-failures)"
           onChange={value => filter('cause')({ target: { value } })}
           options={[{ value: 'all', label: 'All causes' },
             ...(cause !== 'all' && !causes.includes(cause) ? [{ value: cause, label: `${failureCauseLabel(cause)} (not in current data)` }] : []),
-            ...causes.map(name => ({ value: name, label: failureCauseLabel(name), tone: 'var(--ds-hue-amber)' }))]} />
+            ...causes.map(name => ({ value: name, label: failureCauseLabel(name), tone: 'var(--ds-field-failures)' }))]} />
         </div>
         <div className="local-filter-field">
-        <Dropdown id={`${id}-model`} label="Model" value={model} icon={<Bot size={15} />} tone="var(--ds-hue-blue)"
+        <Dropdown id={`${id}-model`} label="Model" value={model} icon={<Bot size={15} />} tone="var(--ds-field-model)"
           onChange={value => filter('model')({ target: { value } })}
           options={[{ value: 'all', label: 'All models' },
             ...(model !== 'all' && !models.includes(model) ? [{ value: model, label: `${model} (not in current data)` }] : []),
             ...models.map(name => ({ value: name, label: name, tone: modelColorOf(name) }))]} />
         </div>
         <div className="local-filter-field">
-        <Dropdown id={`${id}-tier`} label="Tier" value={tier} icon={<Layers size={15} />} tone="var(--ds-hue-teal)"
+        <Dropdown id={`${id}-tier`} label="Tier" value={tier} icon={<Layers size={15} />} tone="var(--ds-field-tier)"
           onChange={value => filter('tier')({ target: { value } })}
           options={[{ value: 'all', label: 'All tiers' },
             ...(tier !== 'all' && !tiers.includes(tier) ? [{ value: tier, label: `${tierLabel(tier)} (not in current data)` }] : []),
             ...tiers.map(name => ({ value: name, label: tierLabel(name), tone: tierColor(name) }))]} />
         </div>
         <div className="local-filter-field">
-        <Dropdown id={`${id}-backend`} label="Backend" value={backend} icon={<Server size={15} />} tone="var(--ds-hue-orange)"
+        <Dropdown id={`${id}-backend`} label="Backend" value={backend} icon={<Server size={15} />} tone="var(--ds-field-backend)"
           onChange={value => filter('backend')({ target: { value } })}
           options={[{ value: 'all', label: 'All backends' },
             ...(backend !== 'all' && !backends.includes(backend) ? [{ value: backend, label: `${backend} (not in current data)` }] : []),
-            ...backends.map(name => ({ value: name, label: name, icon: <Server size={15} />, tone: 'var(--ds-hue-orange)' }))]} />
+            ...backends.map(name => ({ value: name, label: name, icon: <Server size={15} />, tone: 'var(--ds-field-backend)' }))]} />
         </div>
         <div className="local-filter-field">
-        <Dropdown id={`${id}-window`} label="Window" value={span} icon={<CalendarDays size={15} />} tone="var(--ds-hue-pink)"
+        <Dropdown id={`${id}-window`} label="Window" value={span} icon={<CalendarDays size={15} />} tone="var(--ds-field-activity)"
           onChange={value => filter('span')({ target: { value } })}
-          options={[{ value: 'all', label: 'All time' }, { value: 'today', label: 'Today (UTC)', icon: <CalendarDays size={15} />, tone: 'var(--ds-hue-pink)' }]} />
+          options={[{ value: 'all', label: 'All time' }, { value: 'today', label: 'Today (UTC)', icon: <CalendarDays size={15} />, tone: 'var(--ds-field-activity)' }]} />
         </div>
         {filtered && (
           <button type="button" className="local-filter-clear" onClick={() => { setSelectedRunId(null); updateView({ ...DEFAULT_RUNS_VIEW, query: '', day: '', task: 'all', tier: 'all' }); }}>Clear filters</button>
@@ -1871,19 +1870,19 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                 const of = (count: number) => `${formatDashboardCount(count)} of ${formatDashboardCount(listed.length)} runs`;
                 const weekRuns = week.reduce((sum, item) => sum + item.runs, 0);
                 return <DashboardTabs label="Run charts" param="runchart" tabs={[
-                  { id: 'duration', label: 'Duration per run', tone: 'var(--ds-hue-orange)', icon: <Timer size={18} />,
+                  { id: 'duration', label: 'Duration per run', tone: 'var(--ds-field-duration)', icon: <Timer size={18} />,
                     hint: of(listed.filter(run => served(run.duration)).length),
                     panel: () => <div className="local-run-charts"><RunDurationChart runs={listed} onOpen={openRun} /></div> },
-                  { id: 'tokens', label: 'Tokens per run', tone: 'var(--ds-hue-blue)', icon: <ChartArea size={18} />,
+                  { id: 'tokens', label: 'Tokens per run', tone: 'var(--ds-field-tokens)', icon: <ChartArea size={18} />,
                     hint: of(listed.filter(run => served(run.tokensIn) || served(run.tokensOut)).length),
                     panel: () => <div className="local-run-charts"><RunTokensChart runs={listed} onOpen={openRun} /></div> },
-                  { id: 'cost', label: 'Cost per run', tone: 'var(--ds-hue-amber)', icon: <CircleDollarSign size={18} />,
+                  { id: 'cost', label: 'Cost per run', tone: 'var(--ds-field-cost)', icon: <CircleDollarSign size={18} />,
                     hint: of(listed.filter(run => served(run.cost)).length),
                     panel: () => <div className="local-run-charts"><RunMetricChart runs={listed} onOpen={openRun} metric="cost" /></div> },
-                  { id: 'score', label: 'Quality score per run', tone: 'var(--ds-hue-green)', icon: <Gauge size={18} />,
+                  { id: 'score', label: 'Quality score per run', tone: 'var(--ds-field-score)', icon: <Gauge size={18} />,
                     hint: of(listed.filter(run => served(run.score)).length),
                     panel: () => <div className="local-run-charts"><RunMetricChart runs={listed} onOpen={openRun} metric="score" /></div> },
-                  { id: 'week', label: 'This week', tone: 'var(--ds-hue-purple)', icon: <CalendarDays size={18} />,
+                  { id: 'week', label: 'This week', tone: 'var(--ds-field-runs-daily)', icon: <CalendarDays size={18} />,
                     hint: truncated ? `Latest ${formatDashboardCount(weekRuns)} runs` : `${formatDashboardCount(weekRuns)} runs`, panel: () => weekChart },
                 ]} />;
               })()}
@@ -2039,8 +2038,14 @@ export function OverviewStatusStrip({ env, decisions, routing, now, window = 'al
 /** OMN-22168 (Lakshman 2026-11-04, "each should have visually different colour, distinct"): five hues far apart on the
  * wheel, so no two trend lines can be mistaken for each other on one chart, in either theme. */
 const TREND_TONES: Readonly<Record<string, string>> = {
-  Runs: 'var(--ds-hue-blue)', 'Tokens in': 'var(--ds-hue-purple)', 'Tokens out': 'var(--ds-hue-red)',
-  Spend: 'var(--ds-hue-amber)', Savings: 'var(--ds-hue-green)',
+  // Lakshman 2026-11-05 ("each unique thing has a unique colour and vice versa"): each line is its concept's own token,
+  // the same one its summary card wears (runs as calls, tokens in and out, spend as cost, savings).
+  Runs: 'var(--ds-field-calls)', 'Tokens in': 'var(--ds-field-tokens-in)', 'Tokens out': 'var(--ds-field-tokens-out)',
+  Spend: 'var(--ds-field-cost)', Savings: 'var(--ds-field-savings)',
+};
+/** The concept each trend line is, so its value in the readout wears the line's colour (data-field-tone). */
+const TREND_FIELDS: Readonly<Record<string, string>> = {
+  Runs: 'calls', 'Tokens in': 'tokens-in', 'Tokens out': 'tokens-out', Spend: 'cost', Savings: 'savings',
 };
 
 /** The UTC days a window covers, first to last; all time runs from the first served day to today. */
@@ -2107,7 +2112,10 @@ export function OverviewTrendPanel({ rows, columns, window, now }: {
         series={columns.map(column => ({ key: slug(column.header), label: column.header, color: TREND_TONES[column.header] ?? 'var(--ds-ink-2)',
           shown: shown[slug(column.header)] ?? true }))} />
       <ChartReadout active={active !== undefined}
-        text={active !== undefined ? <>{label(active)} · {dayText(active, true).replaceAll(', ', ' · ')}</> : ''} />
+        // Lakshman 2026-11-05 ("this also should be colorful"): each value in the readout wears its own line's colour.
+        text={active !== undefined ? <>{label(active)}{byDay.has(active) && !twice(active)
+          ? visible.map(column => <span key={column.key}>{' · '}<span data-field-tone={TREND_FIELDS[column.header]}>{say(valueOf(active, column), column, true)}</span></span>)
+          : <>{' · '}{dayText(active, true)}</>}</> : ''} />
       {/* OMN-22168 ("do all", item 5): one line shown is drawn on its real scale, with its top value and 0 marked. */}
       {(() => {
         const single = visible.length === 1 ? visible[0]! : null;
@@ -2261,10 +2269,9 @@ export function CredentialsTable({ rows }: { rows: readonly unknown[] }) {
     <>
       {current.length === 0 && <EmptyState>No key is in use; every recorded key is revoked</EmptyState>}
       {revoked.length > 0 && (
-        <details className="local-more">
-          <summary>{`Show key history (${formatDashboardCount(revoked.length)} revoked)`}</summary>
+        <div className="local-more local-more--open" data-section="Key history">
           {table(revoked, 'Revoked key references')}
-        </details>
+        </div>
       )}
     </>
   );
@@ -2847,7 +2854,7 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns, acti
             Its one series takes the savings identity colour, the colour of Overview's Savings card. */}
         <SpendByDayChart title={component.title} rows={days} columns={columns} colourPlaces={[5]} />
         {/* OMN-21166 part 13: the day table repeats the chart, so it is one click away. */}
-        <details className="local-more"><summary>Savings by day as a table</summary><MeteringDaySeries rows={days} /></details>
+        <div className="local-more local-more--open" data-section="Savings by day as a table"><MeteringDaySeries rows={days} /></div>
       </div>)}</>
     );
   }
@@ -3542,13 +3549,13 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
                         ? asRecords((routing.by_tier as Row).tiers as unknown[]).filter(tier => tier.tier_routed !== false).length : null;
                       const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
                       return <DashboardTabs label="Overview charts" param="chart" tabs={[
-                        { id: 'runs', label: 'Runs per day', tone: 'var(--ds-hue-green)', icon: <CalendarRange size={18} />,
+                        { id: 'runs', label: 'Runs per day', tone: 'var(--ds-field-runs-daily)', icon: <CalendarRange size={18} />,
                           hint: Number.isFinite(runs) ? `${formatDashboardCount(runs)} runs` : 'Runs not recorded', panel: () => slice('runs', 'Runs per day', 'runs-daily') },
-                        { id: 'tokens', label: 'Tokens per day', tone: 'var(--ds-hue-blue)', icon: <ChartArea size={18} />,
+                        { id: 'tokens', label: 'Tokens per day', tone: 'var(--ds-field-tokens-daily)', icon: <ChartArea size={18} />,
                           hint: tokens !== null ? `${formatDashboardCount(tokens)} tokens` : 'Tokens not recorded', panel: () => slice('tokens', 'Tokens per day', 'tokens-daily') },
-                        { id: 'models', label: 'Model usage', tone: 'var(--ds-hue-purple)', icon: <Bot size={18} />,
+                        { id: 'models', label: 'Model usage', tone: 'var(--ds-field-runs-model)', icon: <Bot size={18} />,
                           hint: models !== null ? `${plural(models, 'model')}${overviewWindow === 'all' ? '' : ' · all time'}` : 'Models not recorded', panel: () => renderGroup(['overview-model-usage']) },
-                        { id: 'tiers', label: 'Tier mix', tone: 'var(--ds-hue-amber)', icon: <ChartPie size={18} />,
+                        { id: 'tiers', label: 'Tier mix', tone: 'var(--ds-field-tier-mix)', icon: <ChartPie size={18} />,
                           hint: tierRows !== null ? `${plural(tierRows, 'tier')}${overviewWindow === 'all' ? '' : ' · all time'}` : 'Tiers not recorded', panel: () => renderGroup(['overview-tier-mix']) },
                       ]} />;
                     })()}
@@ -3613,9 +3620,9 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
                     <Panel className="local-runs-routing-panel" aria-labelledby="runs-routing-title" aria-busy="false">
                       <PanelTitle id="runs-routing-title"><ConceptIcon concept="runs-analysis" label="Routing" size={16} />Routing</PanelTitle>
                       <DashboardTabs label="Routing views" param="routing" tabs={[
-                        ...(tiers ? [{ id: 'tiers', label: 'Tier breakdown', tone: 'var(--ds-hue-amber)', icon: <ChartPie size={18} />,
+                        ...(tiers ? [{ id: 'tiers', label: 'Tier breakdown', tone: 'var(--ds-field-tier-mix)', icon: <ChartPie size={18} />,
                           hint: 'Runs by tier and model', panel: () => renderComponent(tiers) }] : []),
-                        { id: 'groups', label: 'Routing groups', tone: 'var(--ds-hue-teal)', icon: <Layers size={18} />,
+                        { id: 'groups', label: 'Routing groups', tone: 'var(--ds-field-run-routes)', icon: <Layers size={18} />,
                           hint: 'Runs by route', panel: () => <div className="local-run-routing-slot" ref={setRunRoutingSlot} /> },
                       ]} />
                     </Panel>

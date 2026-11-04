@@ -61,6 +61,7 @@ import { escalationReason, taskLabel } from '@/pages/local/plain-text';
 import { readableTime } from '@/components/format/readable-time';
 import { ModelTiersContext, TierLegend, useModelColor, useModelIdentityStyle } from '@/components/dashboard/model-tiers';
 import { modelTiersFrom } from '@/lib/dashboard-colors';
+import { Bot, ListChecks, TriangleAlert } from '@/theme/design-system/icons';
 
 /**
  * OMN-21166 AC72 pass 1: a rate on Evidence reads to one decimal, as Overview writes the same served rate (91.6%, not
@@ -446,7 +447,9 @@ export function FailureTriage({ decisions, available, complete = false }: { deci
   const failedChecks = servedNumber(quality?.total_failed);
   return <Panel title="FAILURE TRIAGE" sub="Where quality failed">
     <DashboardTabs label="Failure triage" param="triage" tabs={[
-      { id: 'category', label: 'By category', panel: () => <div className="ev-triage-panel">
+      { id: 'category', label: 'By category', tone: 'var(--ds-field-failures)', icon: <TriangleAlert size={18} />,
+        hint: failedChecks === null ? 'Failed checks not served' : `${formatDashboardCount(failedChecks)} failed checks`,
+        panel: () => <div className="ev-triage-panel">
         {qualityQ.isLoading ? <EvEmpty title="Loading quality checks…" /> : !quality
           ? <EvEmpty title="No quality-gate rows" reason={plainUnservedReason(qualityQ.data?.degradedReason ?? (qualityQ.error ? 'The runtime could not answer' : null))} />
           : <>
@@ -462,12 +465,16 @@ export function FailureTriage({ decisions, available, complete = false }: { deci
               </li>)}</ol>}
           </>}
       </div> },
-      { id: 'model', label: 'By model', panel: () => <div className="ev-triage-panel">
+      { id: 'model', label: 'By model', tone: 'var(--ds-field-model)', icon: <Bot size={18} />,
+        hint: available ? `${formatDashboardCount(failed.length)} failed runs` : 'Not measured',
+        panel: () => <div className="ev-triage-panel">
         <p className="note">{sampleLine}</p>
         {available ? <TriageRows rows={grouped('model')} denominator={failed.length} kind="model" />
           : <EvEmpty title="Failed runs not measured" note="The latest decisions could not be read." />}
       </div> },
-      { id: 'task', label: 'By task', panel: () => <div className="ev-triage-panel">
+      { id: 'task', label: 'By task', tone: 'var(--ds-field-task)', icon: <ListChecks size={18} />,
+        hint: available ? `${formatDashboardCount(failed.length)} failed runs` : 'Not measured',
+        panel: () => <div className="ev-triage-panel">
         <p className="note">{sampleLine}</p>
         {available ? <TriageRows rows={grouped('task')} denominator={failed.length} kind="task" />
           : <EvEmpty title="Failed runs not measured" note="The latest decisions could not be read." />}
