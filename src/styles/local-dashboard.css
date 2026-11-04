@@ -2041,8 +2041,8 @@ figure.local-chart.usage-insight { min-width: 0; margin: 0; padding: 14px; }
   box-shadow: none;
 }
 .local-dashboard-page--runs .local-run-charts > .local-chart:nth-child(2) { --panel-accent: var(--ds-accent-panel-runs); }
-.local-dashboard-page--runs .local-run-charts > .local-chart--cost { --panel-accent: var(--ds-accent-panel-runs); }
-.local-dashboard-page--runs .local-run-charts > .local-chart--score { --panel-accent: var(--ds-accent-panel-runs); }
+.local-dashboard-page--runs .local-run-charts > .local-chart--cost { --panel-accent: var(--ds-run-cost-accent); }
+.local-dashboard-page--runs .local-run-charts > .local-chart--score { --panel-accent: var(--ds-run-score-accent); }
 [data-theme="dark"] .local-dashboard-page--runs .local-run-charts > .local-chart:first-child { --panel-accent: var(--ds-accent-panel-2); }
 [data-theme="dark"] .local-dashboard-page--runs .local-run-charts > .local-chart:nth-child(2) { --panel-accent: var(--ds-accent-panel-runs); }
 .local-dashboard-page--runs .local-run-charts > .local-chart:is(:hover, :focus-within) {

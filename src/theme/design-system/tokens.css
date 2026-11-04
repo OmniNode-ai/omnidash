@@ -511,6 +511,16 @@
   --ds-status-ok: var(--ds-field-pass);
   --ds-status-bad: var(--ds-field-fail);
 }
+/* Runs' cost and score charts: the bars and their panel share one accent each (globals.css held these as
+   --run-cost-accent and --run-score-accent before the design system). */
+:root {
+  --ds-run-cost-accent: #a35d09;
+  --ds-run-score-accent: #14735c;
+}
+[data-theme="dark"] {
+  --ds-run-cost-accent: #f3bf6b;
+  --ds-run-score-accent: #69d4b4;
+}
 [data-destination] {
   --ds-destination-accent: #8C641F;
 }

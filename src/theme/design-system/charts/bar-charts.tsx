@@ -619,7 +619,7 @@ export function RunMetricChart({ runs, onOpen, metric }: {
   const measured = points.some(p => p.value !== null);
   const recordedCount = points.filter(p => p.value !== null).length;
   const allRecordedZero = measured && points.every(p => p.value === null || p.value === 0);
-  const color = tone(cost ? '--ds-field-cost' : '--ds-field-score');
+  const color = tone(cost ? '--ds-run-cost-accent' : '--ds-run-score-accent');
   const valueText = (run: ListedRun) => {
     const served = point(run[metric]).served;
     return `${label}: ${served === null ? 'Not recorded' : cost ? formatDashboardUsd(served) : served}`;
