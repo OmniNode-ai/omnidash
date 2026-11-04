@@ -58,9 +58,14 @@ async function evidenceKpi(page: Page, label: string) {
   return { value: (await card.locator('.local-dashboard-metric').textContent()) ?? '', sub: (await card.locator('.local-card-caption').textContent()) ?? '' };
 }
 
-test.use({ viewport: { width: 1440, height: 900 }, trace: 'on' });
+// OMN-21970 AC9: headline figures count up on load; this reads the settled figures, so it runs with reduced motion
+// (CountUpText shows the figure at once then).
+test.use({ viewport: { width: 1440, height: 900 }, trace: 'on', reducedMotion: 'reduce' });
 
 test('Overview and Delegation Evidence show one savings, tokens and runs figure from one served field', async ({ page }, info) => {
+  // Measured 2026-11-03 on .201: the file-level reducedMotion option did not reach the page (matchMedia said false and
+  // the figure was read mid count-up, $240.81 then $999.75), so the media is emulated on the page itself.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await serveCharts(page, rows);
 
   await page.goto('/');

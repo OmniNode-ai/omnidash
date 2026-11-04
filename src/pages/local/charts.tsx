@@ -180,7 +180,7 @@ function tone(token: string, fallback: number): string {
 function seriesColours(count: number, places: readonly number[] | undefined): string[] {
   // Place 5 is the savings identity colour, the colour of the Savings headline card (OMN-21166 live review 2026-10-25).
   const palette = [tone('--chart-1', 0x58a6ff), tone('--chart-4', 0xf0703c), tone('--chart-2', 0x3fb9a0), tone('--chart-3', 0xd9b530),
-    tone('--field-savings', 0x0f766e)];
+    tone('--field-savings', 0x014e44)];
   return Array.from({ length: count }, (_, index) => {
     const place = places?.[index];
     // The default cycle is the four chart colours; the savings colour is only ever asked for by place.
@@ -586,7 +586,8 @@ export function RunTokensChart({ runs, onOpen, title = 'Tokens per run' }: { run
   const motion = useChartMotion();
   const [hidden, setHidden] = useState<ReadonlySet<string>>(() => new Set());
   // Keep input/output identities consistent with daily charts and run metadata.
-  const colours = [tone('--field-tokens-in', 0x155e75), tone('--field-tokens-out', 0x9d174d)];
+  // OMN-21970 AC8: the fallbacks are the light theme's concept colours, so a test without CSS sees the card colours.
+  const colours = [tone('--field-tokens-in', 0x356f87), tone('--field-tokens-out', 0xc10174)];
   const all = RUN_TOKEN_SERIES.map((series, index) => ({ ...series, colour: colours[index]!, points: runs.map((run) => point(run[series.key])) }));
   if (all.every((series) => series.points.every(({ value }) => value === null))) return null;
   const shown = all.filter((series) => !hidden.has(series.key));

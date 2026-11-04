@@ -58,6 +58,7 @@ export function notAvailableYet(waitsOn: string | undefined): string {
  */
 const PLAIN_DATA_NAMES: Readonly<Record<string, string>> = {
   'delegation.decisions.v1': 'run records',
+  'delegation.daily.v1': 'daily run totals',
   'delegation.savings.v1': 'run savings',
   'cost.savings-overview.v1': 'savings summary',
   'metering-summary.v1': 'usage summary',

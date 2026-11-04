@@ -37,7 +37,8 @@ function client(list: ModelProviderRow[], extra: Partial<ModelKeysClient> = {}):
 }
 
 function row(name: string): HTMLElement {
-  return screen.getByRole('row', { name: new RegExp(`^${name}\\b`) });
+  // OMN-21970 AC10: each provider is its own card, named by the provider.
+  return screen.getByRole('article', { name });
 }
 
 afterEach(() => vi.restoreAllMocks());
@@ -45,29 +46,35 @@ afterEach(() => vi.restoreAllMocks());
 describe('OMN-20816 read-only model providers on the Credentials page', () => {
   it('R1: lists the four providers in order, each in its served state with its models', async () => {
     render(<ModelKeys client={client(EVERY_STATE)} />);
-    await screen.findByRole('table', { name: 'Model providers' });
-    expect(screen.getAllByRole('rowheader').map((cell) => cell.textContent)).toEqual(['Gemini', 'OpenRouter', 'OpenAI', 'Ollama']);
+    await screen.findByRole('article', { name: 'Gemini' });
+    expect(screen.getAllByRole('article').map((card) => card.getAttribute('aria-label'))).toEqual(['Gemini', 'OpenRouter', 'OpenAI', 'Ollama']);
     expect(within(row('Gemini')).getByText('Set up, not tested yet')).toBeTruthy();
     expect(within(row('Gemini')).getByText('gemini-a')).toBeTruthy();
     expect(within(row('OpenRouter')).getByText('Last test passed')).toBeTruthy();
-    expect(within(row('OpenRouter')).getByText('openai/gpt-5-nano')).toBeTruthy();
+    // OMN-21970 AC10: the tested model also shows as a fact, so the model list is read from its own list.
+    expect(within(within(row('OpenRouter')).getByRole('list', { name: 'OpenRouter models' })).getByText('openai/gpt-5-nano')).toBeTruthy();
+    expect(within(row('OpenRouter')).getByText('openai/gpt-5-nano', { selector: 'dd' })).toBeTruthy();
     expect(within(row('OpenRouter')).getByText('anthropic/claude-x')).toBeTruthy();
-    expect(within(row('OpenAI')).getByText('Last test failed: 401 invalid api key')).toBeTruthy();
+    // OMN-21970 AC10: the short status names the failure class; the full reason sits in a closed disclosure.
+    expect(within(row('OpenAI')).getByText('Last test failed · 401 invalid api key')).toBeTruthy();
+    expect(within(row('OpenAI')).getByText('401 invalid api key', { selector: 'pre' }).closest('details')?.open).toBe(false);
     expect(within(row('Ollama')).getByText('Not set up')).toBeTruthy();
     expect(screen.queryByText('Anthropic')).toBeNull();
   });
 
-  it('R1: a provider the page does not show is dropped, not added as a row', async () => {
+  // OMN-21970 AC10 (Lakshman 2026-11-02, keeping OMN-20816 decision b): the server still lists only the four, but a name
+  // the page does not know is no longer dropped; it gets a card after the four.
+  it('R1: a provider name the page does not know gets its own card after the four', async () => {
     const served = [...rows(), { provider: 'anthropic', set_up: true, last_test: null, models: ['claude-x'] }] as unknown as ModelProviderRow[];
     render(<ModelKeys client={client(served)} />);
-    await screen.findByRole('table', { name: 'Model providers' });
-    expect(screen.getAllByRole('rowheader')).toHaveLength(4);
-    expect(screen.queryByText('claude-x')).toBeNull();
+    await screen.findByRole('article', { name: 'Gemini' });
+    expect(screen.getAllByRole('article').map((card) => card.getAttribute('aria-label'))).toEqual(['Gemini', 'OpenRouter', 'OpenAI', 'Ollama', 'Anthropic']);
+    expect(within(row('Anthropic')).getByText('claude-x')).toBeTruthy();
   });
 
   it('R2: there is no button, form, input or key field anywhere, whatever the states', async () => {
     const { container } = render(<ModelKeys client={client(EVERY_STATE)} />);
-    await screen.findByRole('table', { name: 'Model providers' });
+    await screen.findByRole('article', { name: 'Gemini' });
     expect(screen.queryAllByRole('button')).toHaveLength(0);
     expect(screen.queryAllByRole('textbox')).toHaveLength(0);
     expect(container.querySelectorAll('form, input, textarea, select, button, [contenteditable]')).toHaveLength(0);
@@ -76,7 +83,7 @@ describe('OMN-20816 read-only model providers on the Credentials page', () => {
 
   it('R3: Ollama says onboarding sets it up, and each keyed provider names the terminal command', async () => {
     render(<ModelKeys client={client(EVERY_STATE)} />);
-    await screen.findByRole('table', { name: 'Model providers' });
+    await screen.findByRole('article', { name: 'Gemini' });
     expect(within(row('Ollama')).getByText(/onboarding/)).toBeTruthy();
     for (const [name, id] of [['Gemini', 'gemini'], ['OpenRouter', 'openrouter'], ['OpenAI', 'openai']] as const) {
       expect(within(row(name)).getByText(`onex models add ${id}`)).toBeTruthy();
@@ -86,13 +93,13 @@ describe('OMN-20816 read-only model providers on the Credentials page', () => {
   it('R4: a list that cannot be read says so and shows no table', async () => {
     render(<ModelKeys client={client([], { list: vi.fn(async () => { throw new ModelKeysError(0, 'file_mode', 'Model providers are listed on the live local dashboard.'); }) })} />);
     expect((await screen.findByRole('status')).textContent).toContain('Model providers are listed on the live local dashboard.');
-    expect(screen.queryByRole('table', { name: 'Model providers' })).toBeNull();
+    expect(screen.queryAllByRole('article')).toHaveLength(0);
   });
 
   it('R4: a dashboard that cannot be reached says so too', async () => {
     render(<ModelKeys client={client([], { list: vi.fn(async () => { throw new TypeError('fetch failed'); }) })} />);
     expect((await screen.findByRole('status')).textContent).toContain('could not be reached');
-    expect(screen.queryByRole('table', { name: 'Model providers' })).toBeNull();
+    expect(screen.queryAllByRole('article')).toHaveLength(0);
   });
 });
 
@@ -105,7 +112,7 @@ describe('OMN-20816 models client', () => {
   it('R5: the page, on its live client, only ever GETs /models', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(JSON.stringify({ providers: EVERY_STATE }), { status: 200 }));
     render(<ModelKeys />);
-    await screen.findByRole('table', { name: 'Model providers' });
+    await screen.findByRole('article', { name: 'Gemini' });
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     for (const [url, init] of fetchMock.mock.calls) {
       expect(String(url).endsWith('/models')).toBe(true);

@@ -5,8 +5,10 @@ import { icons } from 'lucide-react';
 import { expect, test, type Page } from 'playwright/test';
 import { PAGE_LABELS, PAGE_PATHS } from '../../src/navigation/page-routes';
 import type { AppPage } from '../../src/store/types';
-import { chartRows, prefix, revealRunFields, serveCharts } from './omn21166-chart-fixtures';
+import { chartRows, prefix, revealRunFields, serveCharts, keepRealClock } from './omn21166-chart-fixtures';
 import { resolveCensusSourceSha } from './census-source.mjs';
+// This spec dates its rows from the real clock, so the browser keeps it (see FIXTURE_NOW).
+test.beforeEach(({ page }) => keepRealClock(page));
 
 const sourceSha = resolveCensusSourceSha();
 
@@ -439,7 +441,7 @@ test.use({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce', trac
 
 // OMN-21166 part 28a (Lakshman 2026-10-27, grey icons with unique glyphs): the headline icons are one readable grey; each
 // concept stays unique by its own glyph (AC1 is checked by the census below), and its colour lives on its chart marks.
-test('core headline icons are one readable grey, each its own glyph, with readable contrast', async ({ page }, info) => {
+test('core headline icons each keep their own concept colour and glyph, with readable contrast', async ({ page }, info) => {
   await serveCharts(page, rows);
   await page.goto('/overview');
   await expect(page.locator('.local-overview-summary article')).toHaveCount(5); // OMN-21166 live review 2026-10-25: Delegation Quality is the fifth headline card.
@@ -509,12 +511,15 @@ test('core headline icons are one readable grey, each its own glyph, with readab
       colors.push(measured.color);
       // Persist measurements before an assertion: the failed base is an artifact.
       writeFileSync(info.outputPath('core-palette-contrast.json'), JSON.stringify(readings, null, 2));
-      expect(measured.hue, `${concept.label} icon is grey`).toBeNull();
+      // OMN-21970 AC8 (committed 801bf845) supersedes part 28 AC177's one grey: each headline concept has its own colour, in its family's hue range.
+      expect(measured.hue, `${concept.label} icon has a colour`).not.toBeNull();
+      expect(measured.hue!, `${concept.label} icon in the ${concept.family} family`).toBeGreaterThanOrEqual(concept.hue[0]!);
+      expect(measured.hue!, `${concept.label} icon in the ${concept.family} family`).toBeLessThanOrEqual(concept.hue[1]!);
       expect(measured.iconContrast, `${concept.label} icon/background`).toBeGreaterThanOrEqual(3);
       expect(measured.textContrast, `${concept.label} caption/background`).toBeGreaterThanOrEqual(4.5);
       expect(measured.valueContrast, `${concept.label} value/background`).toBeGreaterThanOrEqual(4.5);
     }
-    expect(new Set(colors).size, 'one interface grey').toBe(1);
+    expect(new Set(colors).size, 'five concept colours (AC8)').toBe(5);
     const glyphs = await page.locator('.local-overview-summary article h2 svg').evaluateAll(els => els.map(el => el.getAttribute('data-field-icon')));
     expect(new Set(glyphs).size, 'each headline concept keeps its own glyph').toBe(5);
     await page.screenshot({ path: info.outputPath(`core-palette-${theme}.png`), fullPage: true });

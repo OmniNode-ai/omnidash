@@ -64,6 +64,12 @@ export interface ProjectionResult<T> {
   isDegraded: boolean;
   /** Backend-supplied reason when degraded/unknown (verbatim), else null. */
   degradedReason: string | null;
+  /** OMN-21970: true when the exposure said this answer is one truncated page, so the rows are not all there is. */
+  truncated?: boolean;
+  /** OMN-21970: where the next page starts (next_cursor), passed back as `since`. */
+  nextCursor?: string | null;
+  /** OMN-21970: on the decisions read, true when every page was read, so the rows are every served run. */
+  complete?: boolean;
 }
 
 interface RawEnvelope {
@@ -74,6 +80,8 @@ interface RawEnvelope {
   status?: unknown;
   reason?: unknown;
   error?: unknown;
+  truncated?: unknown;
+  next_cursor?: unknown;
 }
 
 function asString(v: unknown): string | null {
@@ -149,6 +157,8 @@ function normalize<T>(body: unknown): ProjectionResult<T> {
     latestEventAt: asString(env.latest_event_at),
     isDegraded: freshness !== "fresh",
     degradedReason: null,
+    ...(env.truncated === true ? { truncated: true } : {}),
+    ...(typeof env.next_cursor === "string" ? { nextCursor: env.next_cursor } : {}),
   };
 }
 
@@ -453,9 +463,60 @@ export interface ContextExperimentScoreRow {
 
 // ── Public fetchers ──────────────────────────────────────────────────────────
 
-export const fetchDelegationDecisions = (): Promise<
-  ProjectionResult<DelegationDecisionRow>
-> => readProjection<DelegationDecisionRow>(TOPICS.delegationDecisions);
+/** OMN-21970: a bound on the decisions walk, as in the page loader (500 runs a page, so 100,000 runs). */
+export const DECISIONS_WALK_MAX_PAGES = 200;
+
+const runKey = (row: unknown): string | null => {
+  if (row === null || typeof row !== "object") return null;
+  const record = row as Record<string, unknown>;
+  for (const field of ["projection_cursor", "id", "correlation_id"]) {
+    const value = record[field];
+    if ((typeof value === "number" && Number.isFinite(value)) || (typeof value === "string" && value !== "")) return `${field}:${value}`;
+  }
+  return null;
+};
+const writtenAt = (row: unknown): number => {
+  const value = row !== null && typeof row === "object" ? (row as Record<string, unknown>).written_at : undefined;
+  const parsed = typeof value === "string" ? Date.parse(value) : Number.NaN;
+  return Number.isFinite(parsed) ? parsed : Number.NEGATIVE_INFINITY;
+};
+const walkCursor = (row: unknown): number => {
+  const value = row !== null && typeof row === "object" ? (row as Record<string, unknown>).projection_cursor : undefined;
+  return typeof value === "number" ? value : 0;
+};
+
+/**
+ * OMN-21970 (ticket body: "remove the 500-run limit from every view"): Delegation Evidence's decisions read walks every
+ * page the exposure serves, merges them by run so each served run appears once, and sorts newest first. A failed page,
+ * a cursor that does not move, a row with no key or the page bound ends the walk, and the read stays incomplete
+ * (complete false) with the runs read so far, never presented as the whole store.
+ */
+export async function fetchDelegationDecisions(): Promise<ProjectionResult<DelegationDecisionRow>> {
+  const first = await readProjection<DelegationDecisionRow>(TOPICS.delegationDecisions);
+  if (first.truncated !== true || typeof first.nextCursor !== "string") {
+    return { ...first, complete: first.truncated !== true && first.degradedReason === null };
+  }
+  const byRun = new Map<string, DelegationDecisionRow>();
+  const add = (rows: readonly DelegationDecisionRow[]) => rows.every(row => {
+    const key = runKey(row);
+    if (key === null) return false;
+    byRun.set(key, row);
+    return true;
+  });
+  if (!add(first.rows)) return { ...first, complete: false };
+  let cursor: string = first.nextCursor;
+  let complete = false;
+  for (let pages = 0; pages < DECISIONS_WALK_MAX_PAGES; pages += 1) {
+    const next = await readProjection<DelegationDecisionRow>(TOPICS.delegationDecisions, `since=${encodeURIComponent(cursor)}`);
+    if (next.degradedReason !== null && next.rows.length === 0) break;
+    if (!add(next.rows)) break;
+    if (next.truncated !== true) { complete = true; break; }
+    if (typeof next.nextCursor !== "string" || next.nextCursor === cursor) break;
+    cursor = next.nextCursor;
+  }
+  const rows = [...byRun.values()].sort((a, b) => writtenAt(b) - writtenAt(a) || walkCursor(b) - walkCursor(a));
+  return { ...first, rows, rowCount: rows.length, truncated: !complete, nextCursor: complete ? null : cursor, complete };
+}
 
 export const fetchDelegationSummary = (): Promise<
   ProjectionResult<DelegationSummaryRow>

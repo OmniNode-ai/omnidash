@@ -1,5 +1,5 @@
 import { expect, test } from 'playwright/test';
-import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chartRows, narrowTo, prefix, serveCharts } from './omn21166-chart-fixtures';
 test.use({ viewport: { width: 1440, height: 900 }, trace: 'on', reducedMotion: 'reduce' });
 // Real UI failures: raw headline/count table values, compacted directions, equal colors,
 // clipped full integers, a missing input silently zeroed, lost paging and source values changed.
@@ -44,9 +44,7 @@ for (const theme of ['light', 'dark'] as const) {
     expect(await tokens.locator('[data-field-tone="tokens-in"]').evaluate(el => getComputedStyle(el).color))
       .not.toBe(await tokens.locator('[data-field-tone="tokens-out"]').evaluate(el => getComputedStyle(el).color));
     await page.screenshot({ path: info.outputPath(`overview-counts-${theme}.png`), fullPage: true });
-    await page.setViewportSize({ width: 390, height: 844 });
-    const collapse = page.getByRole('button', { name: 'Collapse sidebar', exact: true });
-    if (await collapse.isVisible()) await collapse.click();
+    await narrowTo(page, 390, 844);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
     // Part 29 AC191: the directions are in the card's caption; nothing to focus.
     await expect(tokens.locator('[data-field-tone="tokens-in"]')).toBeVisible();
@@ -61,6 +59,7 @@ for (const theme of ['light', 'dark'] as const) {
   });
 }
 
+// OMN-21970 (Lakshman 2026-11-03, option a): names read in ink for contrast; the swatch beside each name carries its colour.
 test('metering-backed Overview uses the same compact total and arrow-only full directions', async ({ page }) => {
   const overview = prefix + 'cost.savings-overview.v1';
   await serveCharts(page, { ...chartRows, [prefix + 'metering-summary.v1']: [{
@@ -138,13 +137,13 @@ for (const theme of ['light','dark'] as const) {
     await page.locator('summary').filter({hasText:/^More analysis$/}).click();
     const model = page.getByRole('figure',{name:'Pass rate by model',exact:true}).locator('[data-ranked-item]').filter({has:page.getByText('model-a',{exact:true})});
     await expect(model).toBeVisible();
-    const color = await model.locator('.rb-name').evaluate(el => getComputedStyle(el).color);
+    const color = await model.locator('.rb-name .rb-swatch').evaluate(el => getComputedStyle(el).backgroundColor);
     await page.goto('/usage');
     // OMN-21166 AC64: Usage's spend donut and legend buttons are ranked bars ("Measured spend per model"); the
     // stacked "Tokens per day" chart's legend swatch carries the same model colour.
     const spend = page.getByRole('figure',{name:'Measured spend per model',exact:true}).locator('[data-ranked-item]').filter({has:page.getByText('model-a',{exact:true})});
     await expect(spend).toBeVisible();
-    expect(await spend.locator('.rb-name').evaluate(el => getComputedStyle(el).color)).toBe(color);
+    expect(await spend.locator('.rb-name .rb-swatch').evaluate(el => getComputedStyle(el).backgroundColor)).toBe(color);
     const legend = page.locator('.utc-legend li').filter({hasText:'model-a'});
     await expect(legend).toBeVisible();
     expect(await legend.locator('i').evaluate(el => getComputedStyle(el).backgroundColor)).toBe(color);

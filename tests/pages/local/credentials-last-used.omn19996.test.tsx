@@ -68,13 +68,11 @@ const providers = [{ provider: 'openrouter', set_up: true, models: ['m'], last_t
 
 async function inUseLastUsed(key: Record<string, unknown>): Promise<string> {
   render(<ModelKeys client={{ list: vi.fn(async () => providers) }} keys={[key]} />);
-  const table = await screen.findByRole('table', { name: 'Model providers' });
-  expect(within(table).getAllByRole('columnheader').map((header) => header.textContent)).toEqual(
-    ['Provider', 'State', 'Models', 'Key ref', 'Fingerprint', 'Set', 'Last used', 'Set up with'],
-  );
-  const cell = within(table).getByRole('row', { name: /^OpenRouter/ }).querySelector('td[data-label="Last used"]');
-  expect(cell).not.toBeNull();
-  return cell?.textContent ?? '';
+  // OMN-21970 AC10: the key sits in its provider's card, Last used right after Set.
+  const card = await screen.findByRole('article', { name: 'OpenRouter' });
+  const terms = within(card).getAllByRole('term').map((term) => term.textContent);
+  expect(terms.slice(terms.indexOf('Set'), terms.indexOf('Set') + 2)).toEqual(['Set', 'Last used']);
+  return within(card).getByText('Last used').nextElementSibling?.textContent ?? '';
 }
 
 describe('OMN-19996 Credentials last used, keys in use', () => {
@@ -110,14 +108,11 @@ describe('OMN-19996 Credentials last used, keys in use', () => {
   it('L10: with Expires and Bound host shown, each header keeps one cell and Last used stays after Set', async () => {
     const full = { ...inUse, last_used_at: '2026-10-07T07:35:12+00:00', expires_at: '2026-12-01T00:00:00+00:00', bound_host: 'onex-201' };
     render(<ModelKeys client={{ list: vi.fn(async () => providers) }} keys={[full]} />);
-    const table = await screen.findByRole('table', { name: 'Model providers' });
-    const headers = within(table).getAllByRole('columnheader').map((header) => header.textContent);
-    expect(headers).toEqual(
-      ['Provider', 'State', 'Models', 'Key ref', 'Fingerprint', 'Set', 'Last used', 'Expires', 'Bound host', 'Set up with'],
-    );
-    const row = within(table).getByRole('row', { name: /^OpenRouter/ });
-    expect(within(row).getAllByRole('rowheader').length + within(row).getAllByRole('cell').length).toBe(headers.length);
-    expect(row.querySelector('td[data-label="Last used"]')?.textContent).toBe('Oct 7, 07:35:12 UTC');
+    const card = await screen.findByRole('article', { name: 'OpenRouter' });
+    const keyFacts = within(within(card).getByRole('list', { name: 'OpenRouter keys' })).getAllByRole('term').map((term) => term.textContent);
+    expect(keyFacts).toEqual(['Fingerprint', 'Set', 'Last used', 'Expires', 'Bound host']);
+    expect(within(card).getByText('Last used').nextElementSibling?.textContent).toBe('Oct 7, 07:35:12 UTC');
+    expect(within(card).getByText('onex-201')).toBeTruthy();
     cleanup();
     render(<CredentialsTable rows={[{ ...revoked, ...full, revoked_at: revoked.revoked_at }]} />);
     const history = screen.getByRole('table', { name: 'Revoked key references' });

@@ -1,6 +1,9 @@
 import { expect, test } from 'playwright/test';
-import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chartRows, prefix, serveCharts, keepRealClock } from './omn21166-chart-fixtures';
+// This spec dates its rows from the real clock, so the browser keeps it (see FIXTURE_NOW).
+test.beforeEach(({ page }) => keepRealClock(page));
 
+// OMN-21970 (Lakshman 2026-11-03, option a): names read in ink for contrast; the swatch beside each name carries its colour.
 // Remaining AC1/AC2 failure mode found by the actual census: a named tier's
 // icon, served-share chart and run-count chart use three independent palettes.
 // Written before changing any tier resolver or palette.
@@ -30,7 +33,7 @@ for (const selectedTheme of ['light', 'dark']) {
       await expect(item).toHaveCount(1);
       await expect(item.locator('.rb-bar')).toBeVisible();
       evidence[tier] = { icon: '', count: await item.locator('.rb-bar').evaluate(el => getComputedStyle(el).color),
-        countName: await item.locator('.rb-name').evaluate(el => getComputedStyle(el).color) };
+        countName: await item.locator('.rb-name .rb-swatch').evaluate(el => getComputedStyle(el).backgroundColor) };
     }
     await page.goto('/runs');
     await expect(page.locator('body')).toHaveClass(new RegExp(`theme-${selectedTheme}`));

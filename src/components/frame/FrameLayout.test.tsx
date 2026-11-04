@@ -39,8 +39,8 @@ describe('FrameLayout', () => {
       </FrameLayout>,
       { wrapper: Wrapper },
     );
-    // Brand renders as "Omni" + <em>Dash</em>; check the "an omninode product" tagline.
-    expect(screen.getByText('an omninode product')).toBeInTheDocument();
+    // Brand renders as "Omni" + <em>Dash</em>; check the "An OmniNode Product" tagline (Lakshman 2026-11-03).
+    expect(screen.getByText('An OmniNode Product')).toBeInTheDocument();
   });
 
   it('renders children in the main area', () => {

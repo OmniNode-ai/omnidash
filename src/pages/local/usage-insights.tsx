@@ -3,12 +3,13 @@ import { RankedBars } from '@/components/dashboard/RankedBars';
 import { UsageAnalysis } from './usage-analysis';
 import { DEFAULT_RUNS_VIEW, writeRunsSearch } from '@/navigation/runs-url-state';
 import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
-import { modelColor, tierColor } from '@/lib/dashboard-colors';
+import { tierColor } from '@/lib/dashboard-colors';
 import { formatDashboardUsd } from '@/lib/dashboard-currency';
 import { sumDashboardUsd } from '@/lib/dashboard-money-total';
 import { GroupedBars } from '@/components/dashboard/GroupedBars';
 import { aggregateUsageRows, type UsageAggregates } from './insight-aggregates';
 import { tierLabel } from './plain-text';
+import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
 
 const USAGE_WINDOW_DAYS = 30;
 
@@ -77,6 +78,7 @@ function routeSpendByTier(row: Row): RouteRow[] {
 }
 
 function SpendByModel({ data }: { data: UsageAggregates }) {
+  const modelColor = useModelColor();
   // OMN-21166 AC64: ranked bars, one per model; a model whose spend is not measured is drawn as not measured, never $0.00.
   const priced = data.models.filter(model => model.measuredCost !== null);
   const totalUsd = sumDashboardUsd(priced.map(model => model.measuredCostUsd));
@@ -87,12 +89,13 @@ function SpendByModel({ data }: { data: UsageAggregates }) {
       {priced.length === 0 && <p role="status" className="ins-readout">No measured model spend served</p>}
       <RankedBars layout="vertical" label="Measured spend per model" unit={totalUsd === null ? 'USD · measured spend' : `USD · measured spend · ${money(totalUsd)} in all`}
         items={data.models.map(model => ({
-          key: model.model, name: model.model, value: model.measuredCost, basis: 'measured',
+          key: model.model, name: model.model, model: model.model, value: model.measuredCost, basis: 'measured',
           display: model.measuredCost === null ? 'Not measured' : money(model.measuredCostUsd), color: modelColor(model.model),
           // Part 29 AC193: each model opens Runs filtered to it.
           href: `/runs?${writeRunsSearch('', { ...DEFAULT_RUNS_VIEW, model: model.model })}`, opensLabel: `Opens Runs filtered to ${model.model}`,
         }))}
         footnote={gaps.length > 0 ? gaps.map(model => `${model.model}: ${model.unmeasuredCalls === null ? 'unmeasured runs not recorded' : `${count(model.unmeasuredCalls)} unmeasured`}`).join(' · ') : undefined} />
+      <TierLegend label="Spend by model tier colours" models={data.models.map(model => model.model)} />
       <p className="local-dashboard-caption">Measured spend only, summed from the latest {USAGE_WINDOW_DAYS} UTC days of served usage rows.</p>
     </figure>
   );
@@ -123,6 +126,7 @@ function CostPerRun({ data, titled }: { data: UsageAggregates; titled: boolean }
 
 /** Part 17 AC114: tokens in and out per model as hatched grouped bars; a count not recorded draws no bar. */
 function TokensByModel({ data, titled }: { data: UsageAggregates; titled: boolean }) {
+  const modelColor = useModelColor();
   const words = (value: number | null) => (value === null ? 'Not recorded' : formatFullCount(value));
   return <figure className="local-chart usage-insight" aria-label="Tokens in vs out by model">
     {titled && <h3><ConceptIcon concept="tokens-model" size={16} />Tokens in vs out by model</h3>}
@@ -130,7 +134,7 @@ function TokensByModel({ data, titled }: { data: UsageAggregates; titled: boolea
       <GroupedBars label="Token counts by model" wrapNames
         legend={[{ label: 'Tokens in', color: 'var(--field-tokens-in)' }, { label: 'Tokens out', color: 'var(--field-tokens-out)' }]}
         groups={data.models.map(model => ({
-          key: model.model, name: model.model, nameColor: modelColor(model.model),
+          key: model.model, name: model.model, model: model.model, nameColor: modelColor(model.model),
           label: `${model.model}: ${words(model.inputTokens)} tokens in, ${words(model.outputTokens)} tokens out`,
           values: [
             { key: 'in', value: model.inputTokens, display: words(model.inputTokens), color: 'var(--field-tokens-in)', tone: 'tokens-in' },
@@ -138,11 +142,14 @@ function TokensByModel({ data, titled }: { data: UsageAggregates; titled: boolea
           ],
         }))} />
     )}
+    {data.models.length > 0 && <TierLegend label="Tokens by model tier colours" models={data.models.map(model => model.model)} />}
   </figure>;
 }
 
-export function UsageInsights({ usageRows, decisionRows, routingRows, now = Date.now(), part = 'all' }: {
+export function UsageInsights({ usageRows, decisionRows, routingRows, now = Date.now(), part = 'all', complete = false }: {
   usageRows: readonly unknown[]; decisionRows: readonly unknown[]; routingRows: readonly unknown[]; now?: number;
+  /** OMN-21970: true when the decisions read walked every page. */
+  complete?: boolean;
   /** 'spend' is Spend by model; part 17: each "More usage" chart is its own panel, so each is its own part. */
   part?: 'all' | 'spend' | 'cost-per-run' | 'tokens-by-model' | 'cost-by-route' | 'analysis';
 }) {
@@ -150,7 +157,7 @@ export function UsageInsights({ usageRows, decisionRows, routingRows, now = Date
   const routing = routeSpendByTier(records(routingRows)[0] ?? {});
   // A part sits in a panel whose title names it, so it draws no heading of its own.
   // Part 29 AC194, AC195: the analysis of the served decisions, its own full-row panel (AC89).
-  if (part === 'analysis') return <section className="usage-insights" aria-label="Usage insights"><UsageAnalysis decisionRows={decisionRows} /></section>;
+  if (part === 'analysis') return <section className="usage-insights" aria-label="Usage insights"><UsageAnalysis decisionRows={decisionRows} complete={complete} /></section>;
   if (part === 'spend') return <section className="usage-insights" aria-label="Usage insights"><SpendByModel data={data} /></section>;
   if (part === 'cost-per-run') return <section className="usage-insights" aria-label="Usage insights"><CostPerRun data={data} titled={false} /></section>;
   if (part === 'tokens-by-model') return <section className="usage-insights" aria-label="Usage insights"><TokensByModel data={data} titled={false} /></section>;
@@ -180,7 +187,7 @@ function CostByRoute({ routing, titled }: { routing: RouteRow[]; titled: boolean
         <RankedBars layout="vertical" label="Cost per route" unit="USD · measured cost per route" order="desc"
           items={routed.map(row => {
             const value = row.cost.usd === null ? null : Number(row.cost.usd);
-            return { key: row.key, name: row.route, basis: 'measured' as const, color: tierColor(row.tier),
+            return { key: row.key, name: row.route, tier: row.tier, basis: 'measured' as const, color: tierColor(row.tier),
               value: value !== null && Number.isFinite(value) ? value : null,
               display: `${row.cost.text} · ${count(row.runs)} runs · ${share(row.share)}` };
           })} />

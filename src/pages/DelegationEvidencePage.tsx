@@ -54,12 +54,13 @@ import {
   captionText, meteringMoneyBasis, meteringTokens, overviewHeadlineSource, pickMeteringRow, runBreakdownText, runModelledCell,
 } from '@/pages/LocalDashboardPage';
 import { overviewRunCount } from '@/lib/dashboard-overview-count';
-import { modelColor } from '@/lib/dashboard-colors';
+
 import { formatDuration } from '@/components/format/duration';
 import { percent as sharePercent } from '@/pages/local/shares';
 import { taskLabel } from '@/pages/local/plain-text';
 import { readableTime } from '@/components/format/readable-time';
-import { modelIdentityStyle } from '@/components/dashboard/model-identity';
+import { ModelTiersContext, TierLegend, useModelColor, useModelIdentityStyle } from '@/components/dashboard/model-tiers';
+import { modelTiersFrom } from '@/lib/dashboard-colors';
 
 /**
  * OMN-21166 AC72 pass 1: a rate on Evidence reads to one decimal, as Overview writes the same served rate (91.6%, not
@@ -266,6 +267,7 @@ function SelectedRun({ correlationId, decision }: { correlationId: string | null
 // ── model routing (aggregate — no correlation_id) ────────────────────────────
 
 function ModelRouting() {
+  const modelColor = useModelColor();
   const { data, isLoading } = useDelegationModelRouting();
   if (isLoading || !data) {
     return <Panel title="MODEL ROUTING"><EvEmpty title="Loading…" /></Panel>;
@@ -287,9 +289,10 @@ function ModelRouting() {
     <Panel title="MODEL ROUTING" sub={`${formatDashboardCount(agg.total_delegations)} delegations by selected model (aggregate)`}>
       <RankedBars label="Delegations by model" unit="Delegations · measured" order="desc" layout="vertical"
         items={[...byModel.entries()].map(([model, count]) => ({
-          key: model, name: model, value: count, basis: 'measured' as const, color: modelColor(model),
+          key: model, name: model, model, value: count, basis: 'measured' as const, color: modelColor(model),
           display: `${formatDashboardCount(count)} · ${sharePercent(count / agg.total_delegations)}`,
         }))} />
+      <TierLegend label="Delegations by model tier colours" models={[...byModel.keys()]} />
     </Panel>
   );
 }
@@ -372,6 +375,7 @@ const attempts = (value: unknown) => {
  * is left out.
  */
 function AcceptanceChecks({ q }: { q: QualityGateRow }) {
+  const modelIdentityStyle = useModelIdentityStyle();
   const checks = Array.isArray(q.by_check_type) ? q.by_check_type : [];
   const byModel = Array.isArray(q.tokens_to_compliance_by_model) ? q.tokens_to_compliance_by_model : [];
   return (
@@ -399,7 +403,7 @@ function AcceptanceChecks({ q }: { q: QualityGateRow }) {
         <ul className="ev-acceptance-models" aria-label="Tokens to comply by model">
           {byModel.map((model, index) => (
             <li key={`${String(model.model_name)}-${index}`}>
-              <span className="mono local-model-identity" style={modelIdentityStyle(String(model.model_name ?? ''))}>{isUnavailableField(model.model_name) ? 'Unknown model' : String(model.model_name)}</span>
+              <span className="mono local-model-identity" data-semantic-concept={isUnavailableField(model.model_name) ? undefined : `model:${String(model.model_name)}`} style={modelIdentityStyle(String(model.model_name ?? ''))}>{isUnavailableField(model.model_name) ? 'Unknown model' : String(model.model_name)}</span>
               <span>{wholeTokens(model.avg_tokens)} tokens</span>
               <span>{attempts(model.avg_attempts)} attempts</span>
               <span>{servedNumber(model.sample_count) === null ? 'Not served' : `${formatDashboardCount(model.sample_count)} runs`}</span>
@@ -425,15 +429,17 @@ function triageName(value: unknown, kind: 'model' | 'task'): string {
   return String(value);
 }
 
-function TriageRows({ rows, denominator, kind }: {
-  rows: ReadonlyArray<{ name: string; count: number | null; href: string }>;
+export function TriageRows({ rows, denominator, kind }: {
+  /** `id` is the served value the row stands for (unique); `name` is how it reads, which two rows can share once
+   * shortened, so the key is the id. `title` is the full value, shown on hover. */
+  rows: ReadonlyArray<{ id?: string; name: string; title?: string; count: number | null; href: string }>;
   denominator: number | null;
   kind: 'category' | 'check' | 'model' | 'task';
 }) {
   if (rows.length === 0) return <p className="note">No failures in this population.</p>;
   return <ol className="ev-triage-rows" aria-label={`Failures by ${kind}`}>
-    {rows.map(row => <li data-triage-row key={`${kind}-${row.name}`}>
-      <a href={row.href} aria-label={`View failed runs for ${row.name}`}>{row.name}</a>
+    {rows.map(row => <li data-triage-row key={`${kind}-${row.id ?? row.name}`}>
+      <a href={row.href} title={row.title} aria-label={`View failed runs for ${row.name}`}>{row.name}</a>
       <span className="mono">{row.count === null ? 'Not served' : formatDashboardCount(row.count)} · {row.count === null || denominator === null || denominator === 0
         ? 'Share not served' : sharePercent(row.count / denominator)}</span>
     </li>)}
@@ -441,12 +447,13 @@ function TriageRows({ rows, denominator, kind }: {
 }
 
 /** AC205/AC205a: quality categories describe all-time checks; model and task groups describe only the served sample. */
-function FailureTriage({ decisions, available }: { decisions: readonly DelegationDecisionRow[]; available: boolean }) {
+export function FailureTriage({ decisions, available, complete = false }: { decisions: readonly DelegationDecisionRow[]; available: boolean; complete?: boolean }) {
   const qualityQ = useDelegationQualityGate();
   const quality = qualityQ.data?.rows[0];
   const failed = decisions.filter(isFailedDecision);
   const sampleLine = available
-    ? `${formatDashboardCount(failed.length)} failed of ${formatDashboardCount(decisions.length)} latest served runs`
+    // OMN-21970: a read that walked every page holds every served run, so the caption does not call them the latest.
+    ? `${formatDashboardCount(failed.length)} failed of ${formatDashboardCount(decisions.length)} ${complete ? 'served runs' : 'latest served runs'}`
     : 'Latest served runs: Not measured';
   const grouped = (kind: 'model' | 'task') => {
     const groups = new Map<string, number>();
@@ -460,10 +467,17 @@ function FailureTriage({ decisions, available }: { decisions: readonly Delegatio
       href: `/runs?status=failed&${kind}=${encodeURIComponent(name)}`,
     }));
   };
-  const categories = Array.isArray(quality?.failure_categories) ? quality.failure_categories.map(item => ({
-    name: (() => { const text = escalationReason(item.category).text; return text.charAt(0).toUpperCase() + text.slice(1); })(),
-    count: servedNumber(item.count), href: '/runs?status=failed',
-  })).sort((a, b) => (b.count ?? -1) - (a.count ?? -1) || a.name.localeCompare(b.name)) : null;
+  // Found 2026-11-02: different served categories can shorten to the same sentence, so each row is keyed by its served
+  // category and carries the full (masked) text on hover.
+  const categories = Array.isArray(quality?.failure_categories) ? quality.failure_categories.map(item => {
+    const reason = escalationReason(item.category);
+    return {
+      id: String(item.category),
+      name: reason.text.charAt(0).toUpperCase() + reason.text.slice(1),
+      title: reason.title,
+      count: servedNumber(item.count), href: '/runs?status=failed',
+    };
+  }).sort((a, b) => (b.count ?? -1) - (a.count ?? -1) || a.name.localeCompare(b.name)) : null;
   const checks = Array.isArray(quality?.by_check_type) ? quality.by_check_type.map(item => ({
     name: checkName(item.check_type), count: servedNumber(item.failed), total: servedNumber(item.total),
   })).sort((a, b) => (b.count ?? -1) - (a.count ?? -1) || a.name.localeCompare(b.name)) : null;
@@ -557,6 +571,7 @@ function SavingsPanel({ money, unavailable }: { money: HeadlineMoney | null; una
 // ── token usage (by model) ───────────────────────────────────────────────────
 
 function TokenUsage() {
+  const modelColor = useModelColor();
   const { data, isLoading } = useDelegationTokenUsage();
   if (isLoading || !data) {
     return <Panel title="TOKEN USAGE"><EvEmpty title="Loading…" /></Panel>;
@@ -582,10 +597,11 @@ function TokenUsage() {
           count is measured or estimated said in the bar's name. */}
       <RankedBars label="Tokens per model" unit="Tokens · each bar says whether its count is measured or estimated" order="desc" layout="vertical"
         items={models.map(m => ({
-          key: m.model_id, name: m.model_name, value: m.total_tokens, color: modelColor(m.model_id),
+          key: m.model_id, name: m.model_name, model: m.model_id, value: m.total_tokens, color: modelColor(m.model_id),
           basis: m.token_provenance === 'measured' ? 'measured' as const : 'estimated' as const,
           display: `${formatFullCount(m.total_tokens)} tokens`,
         }))} />
+      <TierLegend label="Token usage tier colours" models={models.map(m => m.model_id)} />
     </Panel>
   );
 }
@@ -629,10 +645,11 @@ function DecisionDetail({ row }: { row: DelegationDecisionRow }) {
 }
 
 function RecentDelegations({ decisions }: { decisions: DelegationDecisionRow[] }) {
+  const modelIdentityStyle = useModelIdentityStyle();
   const cols: DataColumn<DelegationDecisionRow>[] = [
     { key: 'correlation_id', label: 'Correlation', render: (r) => <span className="mono c-blue">{shortId(r.correlation_id)}</span> },
     { key: 'task_type', label: 'Task', grow: true, render: (r) => taskLabel(r.task_type) },
-    { key: 'model_name', label: 'Model', truncate: true, render: (r) => <span className="mono local-model-identity" style={modelIdentityStyle(r.model_name)}>{r.model_name.length > 22 ? `${r.model_name.slice(0, 20)}…` : r.model_name}</span> },
+    { key: 'model_name', label: 'Model', truncate: true, render: (r) => <span className="mono local-model-identity" data-semantic-concept={`model:${r.model_name}`} style={modelIdentityStyle(r.model_name)}>{r.model_name.length > 22 ? `${r.model_name.slice(0, 20)}…` : r.model_name}</span> },
     { key: 'state', label: 'State', render: (r) => <StateBadge passed={r.quality_gate_passed} /> },
     { key: 'tokens', label: 'Tokens', num: true, render: (r) => formatDashboardCount(r.tokens_to_compliance) },
     { key: 'latency_ms', label: 'Latency', num: true, render: (r) => fmtLatency(r.latency_ms) },
@@ -652,6 +669,7 @@ function RecentDelegations({ decisions }: { decisions: DelegationDecisionRow[] }
         rowKey={(r) => r.correlation_id}
         renderDetail={(r) => <DecisionDetail row={r} />}
       />
+      <TierLegend label="Recent delegations tier colours" models={decisions.map(r => r.model_name)} />
     </Panel>
   );
 }
@@ -916,6 +934,8 @@ export function DelegationEvidencePage() {
   ) : null;
 
   return (
+    // OMN-21970 AC5: a model is its tier's colour here too, from the served runs and token rows that name both.
+    <ModelTiersContext.Provider value={modelTiersFrom([...decisions, ...(tokensQ.data?.rows ?? [])])}>
     <EvPageShell
       crumb="OmniDash · Delegation Evidence"
       title="Delegation Evidence"
@@ -944,7 +964,8 @@ export function DelegationEvidencePage() {
         <div className="maple-cell maple-cell--wide"><SelectedRun correlationId={latestCid} decision={decisions[0]} /></div>
         <div className="maple-cell"><QualityGate /></div>
         <div className="maple-cell maple-cell--full"><FailureTriage decisions={decisions}
-          available={!decisionsQ.isLoading && !!decisionsQ.data && !decisionsQ.data.degradedReason} /></div>
+          available={!decisionsQ.isLoading && !!decisionsQ.data && !decisionsQ.data.degradedReason}
+          complete={decisionsQ.data?.complete === true} /></div>
         <div className="maple-cell maple-cell--full"><ModelRouting /></div>
         <div className="maple-cell maple-cell--full"><SavingsPanel money={headline.money} unavailable={headline.unavailable} /></div>
         <div className="maple-cell maple-cell--full"><SavingsBridge rows={meteringQ.data?.rows} loading={meteringQ.isLoading} /></div>
@@ -962,5 +983,6 @@ export function DelegationEvidencePage() {
         <RecentDelegations decisions={decisions} />
       )}
     </EvPageShell>
+    </ModelTiersContext.Provider>
   );
 }

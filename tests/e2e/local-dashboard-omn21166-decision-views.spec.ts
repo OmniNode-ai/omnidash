@@ -18,7 +18,8 @@ import { withRev7, withSevenModels } from './omn21166-redesign-fixtures';
 //   D10 the Routing columns toggle does not add the routing fields to the Runs table (AC206).
 test.use({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce', trace: 'on' });
 
-const SAMPLE = 'latest 10 served runs, covering Oct 14 to Oct 17';
+// OMN-21970 (d0476f95, captions after a complete read): with every run read, the sample is all of them, not the latest N.
+const SAMPLE = 'all 10 served runs, covering Oct 14 to Oct 17';
 
 async function settle(page: Page, path: string) {
   await page.goto(path);

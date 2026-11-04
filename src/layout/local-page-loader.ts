@@ -5,7 +5,7 @@ import type { ModelComponentContract } from '../shared/types/generated/onex-mode
 import { COMPONENT_WIDGET_KINDS } from '@shared/types/component-manifest';
 import { isTenantNotConfiguredError } from '../data-source/projection-tenant';
 
-export type LocalPageName = 'overview' | 'runs' | 'workflow' | 'usage' | 'credentials' | 'api-keys' | 'status';
+export type LocalPageName = 'overview' | 'runs' | 'workflow' | 'usage' | 'credentials' | 'api-keys' | 'status' | 'pricing';
 export type LocalPageEmptyState = 'NO_RUNS_YET' | 'BASELINE_UNRESOLVED';
 
 /** Narrow dashboard fields consumed by this renderer; the YAML itself is a core config. */
@@ -97,6 +97,37 @@ function sharedRead(
 
 export const DELEGATION_SAVINGS_TOPIC = 'onex.snapshot.projection.delegation.savings.v1';
 export const DELEGATION_DECISIONS_TOPIC = 'onex.snapshot.projection.delegation.decisions.v1';
+/**
+ * OMN-21970 AC1, AC2: one row per tenant whose `days` list holds every UTC day's runs, verdicts and token totals, with
+ * no row cap; Overview's Runs per day and Tokens per day draw from it.
+ */
+export const DELEGATION_DAILY_TOPIC = 'onex.snapshot.projection.delegation.daily.v1';
+/**
+ * OMN-21970 AC3: a bound on the decisions walk, so a server whose cursor never ends cannot hold the page forever. At
+ * 500 runs a page it is 100,000 runs; a store deeper than that is read to this depth and stays marked incomplete.
+ */
+export const DECISIONS_WALK_MAX_PAGES = 200;
+
+/** The key that tells one served run from another across walk pages: its walk cursor, else its id. */
+function runKey(row: unknown): string | null {
+  if (!isRecord(row)) return null;
+  for (const field of ['projection_cursor', 'id', 'correlation_id']) {
+    const value = row[field];
+    if ((typeof value === 'number' && Number.isFinite(value)) || (typeof value === 'string' && value !== '')) return `${field}:${value}`;
+  }
+  return null;
+}
+
+/** Newest first by when the run was written, then by walk cursor, so the walked rows read like the ranked page. */
+function newestFirst(a: unknown, b: unknown): number {
+  const at = (row: unknown) => {
+    const value = isRecord(row) ? row.written_at : undefined;
+    const parsed = typeof value === 'string' ? Date.parse(value) : Number.NaN;
+    return Number.isFinite(parsed) ? parsed : Number.NEGATIVE_INFINITY;
+  };
+  const cursor = (row: unknown) => (isRecord(row) && typeof row.projection_cursor === 'number' ? row.projection_cursor : 0);
+  return at(b) - at(a) || cursor(b) - cursor(a);
+}
 /**
  * One run's steps in the order the delegate orchestrator assigned (OMN-19987). It is only ever read for one run,
  * with ?correlation_id=: unfiltered it serves every run's steps together, which no page shows.
@@ -253,8 +284,38 @@ export async function loadLocalPageSnapshots(
     if (options.isCurrent?.() !== false) options.onSnapshot?.(snapshot);
   };
   const perRun = [...topics].filter(isPerRunTopic);
+  /**
+   * OMN-21970 AC3: decisions.v1's first page is its newest 500 runs. When more exist it names the start of an ascending
+   * walk; every page of that walk is read and merged by run, so each served run appears once. A page that fails, a
+   * cursor that does not move, or a row with no key stops the walk, and the read stays marked incomplete (truncated)
+   * with the runs read so far, never presented as the whole store.
+   */
+  const walkDecisions = async (first: BoundProjectionSnapshot): Promise<BoundProjectionSnapshot> => {
+    if (first.failure || first.truncated !== true || typeof first.nextCursor !== 'string') return first;
+    const byRun = new Map<string, unknown>();
+    const add = (rows: readonly unknown[]) => rows.every(row => {
+      const key = runKey(row);
+      if (key === null) return false;
+      byRun.set(key, row);
+      return true;
+    });
+    if (!add(first.rows)) return first;
+    let cursor: string = first.nextCursor;
+    let complete = false;
+    for (let pages = 0; pages < DECISIONS_WALK_MAX_PAGES; pages += 1) {
+      if (options.isCurrent?.() === false) break;
+      const next = await readTopicResult(DELEGATION_DECISIONS_TOPIC, { since: cursor });
+      if (next.failure || !add(next.rows)) break;
+      if (next.truncated !== true) { complete = true; break; }
+      if (typeof next.nextCursor !== 'string' || next.nextCursor === cursor) break;
+      cursor = next.nextCursor;
+    }
+    const rows = [...byRun.values()].sort(newestFirst);
+    const { truncated: _truncated, nextCursor: _next, ...rest } = first;
+    return complete ? { ...rest, rows, rowCount: rows.length } : { ...rest, rows, rowCount: rows.length, truncated: true, nextCursor: cursor };
+  };
   const readTopic = async (topic: string, params?: Readonly<Record<string, string>>) => {
-    const snapshot = await readTopicResult(topic, params, async late => {
+    const read = await readTopicResult(topic, params, async late => {
       publish(isPerRunTopic(topic) ? { ...late, runId: params?.correlation_id ?? null } : late);
       // A delayed decisions response may be the first time the newest run is
       // known. Fetch only its per-run reads, with the same caller/current-state guard.
@@ -263,6 +324,7 @@ export async function loadLocalPageSnapshots(
         await readRun(newestRunId(page, [late]));
       }
     });
+    const snapshot = topic === DELEGATION_DECISIONS_TOPIC && params === undefined ? await walkDecisions(read) : read;
     // Per-run reads need their correlation attached before they can be published.
     if (!isPerRunTopic(topic)) publish(snapshot);
     return snapshot;

@@ -85,8 +85,8 @@ const config: Config = {
         ring: "var(--ring)",
       },
       fontFamily: {
-        sans: ['"Inter"', "system-ui", "-apple-system", "Helvetica", "Arial", "sans-serif"],
-        mono: ['"JetBrains Mono"', "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
+        sans: ['"Geist Variable"', "system-ui", "-apple-system", "Helvetica", "Arial", "sans-serif"],
+        mono: ['"Geist Mono Variable"', "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
       },
       borderRadius: {
         DEFAULT: "var(--radius)",

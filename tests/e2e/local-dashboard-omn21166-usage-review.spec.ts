@@ -1,12 +1,12 @@
 import { expect, test, type Page } from 'playwright/test';
-import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chartRows, prefix, serveCharts, recentDay } from './omn21166-chart-fixtures';
 
 // Failure modes before implementation: long tables bury records; filters hide
 // unpriced rows or turn null into zero; phone cells lose labels; model legend
 // controls do not identify the colors in the token bars.
 test.use({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce', trace: 'on' });
 const usage = Array.from({ length: 28 }, (_, index) => ({
-  usage_day: index < 26 ? '2026-10-01' : '2026-10-02', model_id: index % 2 ? 'model-beta' : 'model-alpha',
+  usage_day: index < 26 ? recentDay(2) : recentDay(1), model_id: index % 2 ? 'model-beta' : 'model-alpha',
   input_tokens: index, output_tokens: index === 1 ? null : index + 100,
   measured_cost_usd: index === 1 ? null : '0.00000000', unmeasured_call_count: index === 1 ? 1 : 0,
   call_count: 1, call_share: '0.5', cost_tier_name: index % 2 ? 'cloud' : 'local',
@@ -32,7 +32,7 @@ test('Usage records can be paged and filtered without rewriting served figures',
   await expect(table.locator('tbody tr')).toHaveCount(14);
   await expect(table).toContainText('Not measured');
   await expect(table).toContainText('1 unmeasured');
-  await panel.getByLabel('Filter usage UTC day', { exact: true }).selectOption('2026-10-02');
+  await panel.getByLabel('Filter usage UTC day', { exact: true }).selectOption(recentDay(1));
   await expect(table.locator('tbody tr')).toHaveCount(1);
   await expect(table.locator('tbody tr')).toContainText('model-beta');
   await panel.getByRole('button', { name: 'Clear usage filters', exact: true }).click();
@@ -60,7 +60,8 @@ test('phone Usage records retain every labelled value and the model legend ident
   const segment = page.locator('.utc-stack i[data-token-model="model-alpha"]').first();
   expect(await segment.evaluate(element => getComputedStyle(element).color)).toBe(swatch);
   const name = page.getByRole('figure', { name: 'Tokens in vs out by model', exact: true }).locator('li.gdb-day[aria-label^="model-alpha:"] .gdb-day-label');
-  expect(await name.evaluate(element => getComputedStyle(element).color)).toBe(swatch);
+  // OMN-21970 option a (Lakshman 2026-11-03): the name reads in ink; the swatch beside it carries the model's colour.
+  expect(await name.locator('.gdb-swatch').evaluate(element => getComputedStyle(element).backgroundColor)).toBe(swatch);
   await page.screenshot({ path: info.outputPath('usage-records-phone.png'), fullPage: true, animations: 'disabled' });
 });
 

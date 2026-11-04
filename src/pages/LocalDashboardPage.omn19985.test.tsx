@@ -30,23 +30,25 @@ const live = {
 const providers = [{ provider: 'openrouter', set_up: true, models: ['m'], last_test: null }] as unknown as ModelProviderRow[];
 const client = { list: async () => providers };
 
+// OMN-21970 AC10: the key sits in its provider's card; its facts are a name, then labelled values.
 async function keyCells(keys: Record<string, unknown>[]): Promise<string[]> {
   render(<ModelKeys client={client} keys={keys} />);
-  await screen.findByRole('table', { name: 'Model providers' });
-  return within(screen.getByRole('row', { name: /^OpenRouter/ })).getAllByRole('cell').map((cell) => cell.textContent ?? '');
+  const card = await screen.findByRole('article', { name: 'OpenRouter' });
+  const key = within(within(card).getByRole('list', { name: 'OpenRouter keys' })).getAllByRole('listitem')[0];
+  return [key.querySelector('.local-provider-key-name')?.textContent ?? '', ...within(key).getAllByRole('definition').map((value) => value.textContent ?? '')];
 }
 
 describe('OMN-19985 Credentials keys', () => {
   it('K1: shows the served fingerprint prefix and set time in their own columns', async () => {
     const cells = await keyCells([live]);
-    const headers = screen.getAllByRole('columnheader').map((header) => header.textContent);
-    expect(headers.slice(3, 6)).toEqual(['Key ref', 'Fingerprint', 'Set']);
-    expect(cells.slice(2, 5)).toEqual(['llm.openrouter.api_key', '0123abcd', 'Oct 7, 07:30:00 UTC']);
+    const keyList = screen.getByRole('list', { name: 'OpenRouter keys' });
+    expect(within(keyList).getAllByRole('term').map((term) => term.textContent).slice(0, 2)).toEqual(['Fingerprint', 'Set']);
+    expect(cells.slice(0, 3)).toEqual(['llm.openrouter.api_key', '0123abcd', 'Oct 7, 07:30:00 UTC']);
   });
 
   it('K2: a row without them says Not recorded for each, never a blank', async () => {
     const cells = await keyCells([{ ...live, fingerprint: null, set_at: undefined }]);
-    expect(cells.slice(3, 5)).toEqual(['Not recorded', 'Not recorded']);
+    expect(cells.slice(1, 3)).toEqual(['Not recorded', 'Not recorded']);
   });
 
   it('K3: Set is the served set_at, not the projection created_at', async () => {

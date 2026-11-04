@@ -3,10 +3,10 @@ import { useId, useState, type CSSProperties, type ReactNode } from 'react';
 import { RunTimingChart } from './charts';
 import { ConceptIcon, FieldIcon } from '@/components/dashboard/FieldIcon';
 import { fieldTone, isUnavailableField } from '@/components/dashboard/field-identity';
-import { modelIdentityStyle } from '@/components/dashboard/model-identity';
 import { formatUsd } from '@/components/dashboard/usage/UsageByModelDayWidget';
 import type { BoundProjectionSnapshot } from '@/layout/local-page-loader';
 import { plainFailureMessage } from './plain-text';
+import { useModelIdentityStyle } from '@/components/dashboard/model-tiers';
 
 type Run = Record<string, unknown>;
 const recorded = (value: unknown) => value === null || value === undefined || value === '' ? 'Not recorded' : String(value);
@@ -169,6 +169,7 @@ export function FlowConnector() {
 /** A relationship visual from decision fields, explicitly separate from an
  * execution trace. It never invents a stage, duration, or live progress. */
 export function WorkflowRoutingFlow({ decision, outcome }: { decision: Run; outcome: string }) {
+  const modelIdentityStyle = useModelIdentityStyle();
   return <section aria-label="Recorded routing flow">
     <figure className="local-chart workflow-routing-flow">
       <h3 className="local-dashboard-caption" data-page-heading tabIndex={-1}><ConceptIcon concept="routing-flow" size={16} />Recorded routing flow</h3>

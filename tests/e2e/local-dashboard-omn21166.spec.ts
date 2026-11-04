@@ -3,6 +3,7 @@ import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { expect, test, type Page, type TestInfo } from 'playwright/test';
+import { showSettingsSection } from './settings-sections';
 
 // Failure modes declared before implementation: advanced tools exposed by default,
 // evidence hidden with them, inaccessible collapsed control, lost deep link, persisted
@@ -141,9 +142,11 @@ test('AC3/AC4 builder and assistant are absent with saved layouts preserved', as
 test('AC5 local identity remains while Cloud Keys is absent', async ({ page }) => {
   await page.goto('/settings');
   await expect(page.getByRole('heading', { level: 1, name: 'Settings', exact: true })).toBeVisible();
+  // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): Access is chosen from the section links; hidden sections count for Cloud Keys too.
+  await showSettingsSection(page, 'Access');
   await expect(page.getByRole('heading', { level: 2, name: 'Access', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Local identity', exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: /cloud keys/i })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: /cloud keys/i, includeHidden: true })).toHaveCount(0);
 });
 
 test('AC7 theme switching and sidebar collapse preserve the current Runs view', async ({ page }) => {

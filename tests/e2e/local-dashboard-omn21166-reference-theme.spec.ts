@@ -55,8 +55,9 @@ test('the active navigation item is neutral and outcome plots match their semant
   if (await page.locator('html').getAttribute('data-theme') === 'dark') await page.getByRole('button', { name:'Toggle theme' }).click();
   const nav=page.getByRole('link', { name:'Overview', exact:true });
   // OMN-21166 part 28a AC186 (after part 27 AC168 replaced AC69's blue): a lifted neutral item with primary ink (light here).
-  await expect(nav).toHaveCSS('background-color','rgb(253, 253, 252)');
-  await expect(nav.locator('.dash-name')).toHaveCSS('color','rgb(17, 17, 17)');
+  // the 01+20 look (Lakshman 2026-11-03, "01 + 20 do it"): the active item is the soft fill #f0f0f0 (was the card surface).
+  await expect(nav).toHaveCSS('background-color','rgb(240, 240, 240)');
+  await expect(nav.locator('.dash-name')).toHaveCSS('color','rgb(10, 10, 10)'); // the 01+20 ink (was #111111)
   const chart=page.getByRole('figure', { name:'Runs per day', exact:true });
   const passed=chart.getByRole('button', { name:'Passed', exact:true });
   await expect(passed).toHaveAttribute('aria-pressed','true');

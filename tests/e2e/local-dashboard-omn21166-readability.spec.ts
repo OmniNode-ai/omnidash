@@ -19,10 +19,11 @@ test('recent runs remain readable and retain all fields at desktop and narrow wi
   // OMN-21166 live review 2026-10-25: the Runs list sets its body at 13px in the compact view and at the 12px floor
   // with every field shown (the dense layout), so the 13px check reads the compact view, before the fields are revealed.
   // Task type (the 14th column) is the human-facing value: the Runs table keeps run ids and the model id in the
-  // identifier face (JetBrains Mono, as on dev), so Inter and 'not monospace' are read from Task type, size from both.
+  // identifier face (Geist Mono since the 01+20 look, Lakshman 2026-11-03; JetBrains Mono before), so the text face (Geist,
+  // was Inter) and 'not monospace' are read from Task type, size from both.
   const compact = await cellType(13);
   expect(compact.size).toBeGreaterThanOrEqual(13);
-  expect(compact.family).toContain('Inter');
+  expect(compact.family).toContain('Geist Variable');
   expect(compact.family).not.toMatch(/mono/i);
   expect((await cellType(4)).size).toBeGreaterThanOrEqual(12);
   await revealRunFields(page);
@@ -30,7 +31,7 @@ test('recent runs remain readable and retain all fields at desktop and narrow wi
   const before = await readValues();
   const bodyType = await cellType(13);
   expect(bodyType.size).toBeGreaterThanOrEqual(12);
-  expect(bodyType.family).toContain('Inter');
+  expect(bodyType.family).toContain('Geist Variable');
   expect(bodyType.family).not.toMatch(/mono/i);
   expect((await cellType(1)).size).toBeGreaterThanOrEqual(12);
   // OMN-21166 AC86 (Lakshman 2026-10-25): the Quality panel's detail list (dt labels) is deleted; Quality is a card whose

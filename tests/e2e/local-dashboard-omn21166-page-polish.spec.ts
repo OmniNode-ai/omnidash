@@ -1,5 +1,6 @@
 import { expect, test } from 'playwright/test';
 import { chartRows, prefix, revealRunFields, serveCharts } from './omn21166-chart-fixtures';
+import { gotoSettings } from './settings-sections';
 
 // Visual failures found in main Chrome: split header words, narrow identity values,
 // inconsistent advanced-page titles and horizontally overflowing pipeline stages.
@@ -31,7 +32,8 @@ test('local identity values use available width instead of narrow metric columns
   // OMN-21166 part 11: the tenant is read from the native local-runtime row of local-environment.v1, so serve that row.
   await serveCharts(page, { ...chartRows, [prefix + 'local-environment.v1']: [
     { mode: 'native', service: 'local-runtime', tenant_id: 'chart-fixture-tenant', updated_at: '2026-10-17T10:00:00Z' }] });
-  await page.goto('/settings');
+  // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the identity is in the Access section, opened by its address.
+  await gotoSettings(page, 'Access');
   const values = page.locator('.local-dashboard-fields dd');
   await expect(values.first()).toBeVisible();
   expect(await values.first().evaluate(el => el.getBoundingClientRect().width)).toBeGreaterThanOrEqual(320);
@@ -62,10 +64,23 @@ for (const route of ['delegation-evidence', 'experiments', 'agent-workbench', 'e
     // (24px side padding; since part 27 AC168 the page title of every other page, 28px and 24px on phones); the other
     // advanced pages keep the 30/36 desktop and 24 phone scale.
     const compact = route === 'delegation-evidence';
-    expect(await title.evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBe(compact ? 28 : 30);
+    // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the editorial look gives the seven pages one display title scale
+    // (clamp(36px, 4.2vw, 56px)); Delegation Evidence must match Overview's title at the same width, and the other
+    // advanced pages must keep their own 30px desktop / 24px phone title (editorial.css must not reach them).
+    const overviewTitle = async () => {
+      const at = page.url();
+      await page.goto('/overview');
+      const size = await page.locator('.local-dashboard-header h1').evaluate(el => parseFloat(getComputedStyle(el).fontSize));
+      await page.goto(at);
+      await expect(title).toBeVisible();
+      return size;
+    };
+    const desktop = compact ? await overviewTitle() : 30;
+    if (compact) expect(desktop, 'the seven pages share a title larger than the advanced pages').toBeGreaterThan(30);
+    expect(await title.evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBe(desktop);
     expect(await page.locator('.ev-page-head').evaluate(el => parseFloat(getComputedStyle(el).paddingLeft))).toBe(compact ? 24 : 36);
     await page.setViewportSize({ width: 390, height: 844 });
-    expect(await title.evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBe(24);
+    expect(await title.evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBe(compact ? await overviewTitle() : 24);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     await page.screenshot({ path: info.outputPath(`${route}-narrow.png`), fullPage: true });
   });

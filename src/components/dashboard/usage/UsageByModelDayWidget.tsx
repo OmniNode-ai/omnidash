@@ -1,7 +1,7 @@
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { tierLabel } from '@/pages/local/plain-text';
 import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
-import { modelColor } from '@/lib/dashboard-colors';
+
 // OMN-20006: tokens in, tokens out and measured cost per model per UTC day, from usage-by-model-day.v1.
 //
 // One renderer serves the local Usage page and the dashboard palette, and this module is the declared reader of
@@ -41,6 +41,7 @@ export interface UsageByModelDayRow {
 }
 
 import { formatDashboardUsd as formatUsd } from '@/lib/dashboard-currency';
+import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
 export { formatDashboardUsd as formatUsd } from '@/lib/dashboard-currency';
 
 export const NO_USAGE_ROWS = 'No usage rows yet';
@@ -180,6 +181,7 @@ export default function UsageByModelDayWidget() {
  * a count that is not served draws no segment, adds nothing to the scale and is named in the day's label.
  */
 export function UsageTokensChart({ rows, days = 14 }: { rows: readonly unknown[]; days?: number }) {
+  const modelColor = useModelColor();
   const [direction, setDirection] = useState<'in' | 'out'>('in');
   const usage = asRows(rows);
   const field = direction === 'in' ? 'input_tokens' : 'output_tokens';
@@ -212,6 +214,7 @@ export function UsageTokensChart({ rows, days = 14 }: { rows: readonly unknown[]
         <ul className="utc-legend" aria-label="Models">
           {names.map(name => <li key={name}><i aria-hidden="true" style={{ background: modelColor(name) }} />{name}</li>)}
         </ul>
+        <TierLegend label="Tokens per day tier colours" models={names} />
       </div>
       <ol className="utc-plot" style={{ '--utc-count': shown.length } as CSSProperties}>
         {shown.map(day => {

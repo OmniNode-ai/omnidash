@@ -123,8 +123,14 @@ describe('OMN-21015 AC7: the Overview page', () => {
   });
   afterEach(() => { vi.useRealTimers(); });
 
-  const chooseWindow = (value: 'all' | 'today') =>
+  // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the radios sit in the list the "Figures for …" button opens (as openWindows()
+  // in LocalDashboardPage.omn21015.overview-window.test.tsx); choosing one closes it again.
+  const chooseWindow = (value: 'all' | 'today') => {
+    const trigger = screen.getByRole('button', { name: /^Figures for/ });
+    if (trigger.getAttribute('aria-expanded') !== 'true') fireEvent.click(trigger);
     fireEvent.click(screen.getByRole('radio', { name: value === 'today' ? 'Today (UTC)' : 'All time' }));
+    expect(screen.queryByRole('radiogroup', { name: 'Figures for' })).toBeNull();
+  };
 
   const panel = () => screen.getByRole('heading', { name: 'Savings' }).closest('article') as HTMLElement;
 

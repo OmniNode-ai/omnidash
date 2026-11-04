@@ -173,6 +173,14 @@ export function buildProxyMap(
       rewrite: (path) => path,
       configure,
     };
+    // Settings' model providers (`/models`, `/models/<provider>/...`) are served by the same `onex dashboard` as the
+    // projections; without this, plain `vite` answers them with index.html.
+    proxyMap['/models'] = {
+      target: env.VITE_PROJECTION_API_URL,
+      changeOrigin: true,
+      rewrite: (path) => path,
+      configure,
+    };
   }
 
   // OMN-19994 AC1: `/projection` (which also matches the `/projections` catalogue) goes to the overlay's backend.

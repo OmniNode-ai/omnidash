@@ -1,4 +1,6 @@
 import { formatDashboardCount, formatFullCount, wholeCount } from '@/lib/dashboard-count';
+import { PricingFacts } from './local/pricing';
+import { WindowMenu } from './local/window-menu';
 import { readableTime } from '@/components/format/readable-time';
 import { exactMs, formatDuration } from '@/components/format/duration';
 import { dailyMeteringTokens } from '@/lib/daily-metering-tokens';
@@ -6,7 +8,7 @@ import { DailyMeteringTokens } from '@/components/dashboard/usage/DailyMeteringT
 import { TokenDirections } from '@/components/dashboard/usage/TokenDirections';
 import { Fragment, createContext, useContext, useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { modelColor, tierColor, tierConcept } from '@/lib/dashboard-colors';
+import { modelTiersFrom, tierColor, tierConcept } from '@/lib/dashboard-colors';
 import { Link, useLocation, useSearch } from 'wouter';
 import {
   CalendarDays, Maximize2, X,
@@ -37,7 +39,7 @@ import { EnvironmentPanel, ServiceHealthUnread } from '@/pages/local/environment
 import { SettingsEmptyState } from '@/components/dashboard/SettingsEmptyState';
 import { failureCauseLabel, failureDetailText, notAvailableYet, plainFailureMessage, taskLabel, tierLabel } from '@/pages/local/plain-text';
 import { RunFilterProvider, causeHref, causeLabelOf, useRunFilter } from '@/pages/local/run-filter';
-import { dailySeries, summary as runSummary, toInsightRuns, typedFailureCauseOf } from '@/pages/local/insights';
+import { dailySeries, servedDailyDays, summary as runSummary, toInsightRuns, typedFailureCauseOf } from '@/pages/local/insights';
 import { RankedBars } from '@/components/dashboard/RankedBars';
 import { NO_RUNS_USD, sumDashboardUsd } from '@/lib/dashboard-money-total';
 import { KpiStrip, type KpiItem } from '@/components/dashboard/KpiStrip';
@@ -45,11 +47,12 @@ import { CardBasis } from '@/components/dashboard/CardBasis';
 import { AccessNotServed, DashboardAccess, dashboardAccessRow } from '@/pages/local/access';
 import { shortId } from '@/components/dashboard/event-dash/primitives';
 import { ConceptIcon, FIELD_ICONS, FieldIcon } from '@/components/dashboard/FieldIcon';
-import { modelIdentityStyle } from '@/components/dashboard/model-identity';
+import { CountUpText } from '@/components/dashboard/CountUpText';
 import { fieldTone, isUnavailableField } from '@/components/dashboard/field-identity';
 import '@/styles/local-dashboard.css';
 import '@/styles/dashboard-cards.css';
 import '@/styles/seven-page-design.css';
+import '@/styles/editorial.css';
 import { overviewRunCount } from '@/lib/dashboard-overview-count';
 import { DestinationIcon } from '@/navigation/destination-icons';
 import type { AppPage } from '@/store/types';
@@ -63,6 +66,7 @@ import {
   withLastGood,
   newestRunId as newestWorkflowRunId,
   DELEGATION_DECISIONS_TOPIC,
+  DELEGATION_DAILY_TOPIC,
   METERING_SUMMARY_TOPIC,
   RUN_TRACE_TOPIC,
   CORRELATION_TRACE_TOPIC,
@@ -72,6 +76,7 @@ import {
   type LocalPageDocument,
   type LocalPageName,
 } from '@/layout/local-page-loader';
+import { TierLegend, ModelTiersContext, useModelColor, useModelIdentityStyle } from '@/components/dashboard/model-tiers';
 
 interface LocalDashboardPageProps {
   pageName: LocalPageName;
@@ -233,7 +238,7 @@ export function MetricCard({ component, config, row, caption, figureLine, figure
   return (
     <>
       <p className="local-dashboard-metric" data-measured={figure} title={figure && config.format === 'number' ? String(row[config.metric_key]) : undefined}
-        style={{ '--figure-chars': String(text).length } as CSSProperties}>{text}</p>
+        style={{ '--figure-chars': String(text).length } as CSSProperties}>{figure && typeof text === 'string' ? <CountUpText text={text} /> : text}</p>
       {/* OMN-21166 part 12 AC73, as superseded by part 29 AC191: an Overview headline card shows its figure with its basis
           as a caption under it (first line drawn, every line kept in the page). Every other card keeps its lines in view. */}
       {OVERVIEW_HEADLINE_CARDS.has(component.component_id)
@@ -282,7 +287,7 @@ export { CardBasis };
  * onex delegate run a450aca8 failed).
  */
 export function qualityChangeLine(decisions: readonly unknown[], window: ActivityWindow, now: number = Date.now()): string | null {
-  if (window.kind !== 'days' || ![7, 15, 30].includes(window.days)) return null;
+  if (window.kind !== 'days' || ![7, 15, 30, 90].includes(window.days)) return null;
   const DAY = 86_400_000;
   const today = Date.parse(`${utcDay(now)}T00:00:00Z`);
   const currentStart = utcDay(today - (window.days - 1) * DAY);
@@ -291,8 +296,10 @@ export function qualityChangeLine(decisions: readonly unknown[], window: Activit
     .filter(entry => /^\d{4}-\d{2}-\d{2}$/.test(entry.day));
   if (!dated.some(entry => entry.day <= previousStart)) return 'No earlier data';
   const rate = (from: string, to: string) => {
-    const verdicts = dated.filter(entry => entry.day >= from && entry.day <= to && typeof entry.row.quality_gate_passed === 'boolean');
-    return verdicts.length === 0 ? null : verdicts.filter(entry => entry.row.quality_gate_passed === true).length / verdicts.length;
+    // Found 2026-11-02: the local store serves the verdict as 1 or 0, the Postgres path as true or false; both count,
+    // and a run with no verdict (null) is left out.
+    const verdicts = dated.filter(entry => entry.day >= from && entry.day <= to && servedBoolean(entry.row.quality_gate_passed) !== null);
+    return verdicts.length === 0 ? null : verdicts.filter(entry => servedBoolean(entry.row.quality_gate_passed) === true).length / verdicts.length;
   };
   const current = rate(currentStart, utcDay(now));
   if (current === null) return null;
@@ -310,7 +317,7 @@ export function QualityCard({ row, change = null }: { row: Row | null; change?: 
   }
   const count = (value: unknown) => (isMissing(value) || !Number.isFinite(Number(value)) ? 'Not recorded' : formatFullCount(String(value)));
   return <>
-    <p className="local-dashboard-metric" data-measured="true">{`${(Number(row.overall_pass_rate) * 100).toFixed(1)}%`}</p>
+    <p className="local-dashboard-metric" data-measured="true"><CountUpText text={`${(Number(row.overall_pass_rate) * 100).toFixed(1)}%`} /></p>
     {change && <ChangeLine text={change} />}
     <HeadlineHover label="Delegation Quality" lines={[`${count(row.total_passed)} of ${count(row.total_checks)} runs passed the quality gate`,
       `${count(row.total_failed)} failed · deterministic checks`, 'All time: the window above does not change this figure']} />
@@ -421,10 +428,11 @@ const CARD_LINKS: Readonly<Record<string, { href: string; page: string }>> = {
   'overview-quality': { href: '/delegation-evidence', page: 'Delegation Evidence' },
 };
 
-const WINDOW_DAYS: Readonly<Record<string, number>> = { today: 1, '7d': 7, '15d': 15, '30d': 30 };
+// OMN-21970 (Lakshman 2026-11-02, "add 90 days also"): 90 joins the windows.
+const WINDOW_DAYS: Readonly<Record<string, number>> = { today: 1, '7d': 7, '15d': 15, '30d': 30, '90d': 90 };
 
 /** OMN-21166 part 19 AC136 (onex delegate run abfb8d86, UTC-safe): the Overview window from its address. `?window=today`,
- * `7d`, `15d` or `30d`, or `?day=YYYY-MM-DD`; anything else is all time and marked malformed so the address is corrected. */
+ * `7d`, `15d`, `30d` or `90d`, or `?day=YYYY-MM-DD`; anything else is all time and marked malformed so the address is corrected. */
 export function readOverviewWindow(search: string, now: number = Date.now()): { overview: OverviewWindow; activity: ActivityWindow; malformed: boolean } {
   const params = new URLSearchParams(search);
   const window = params.get('window');
@@ -840,7 +848,7 @@ export function MeteringTotalCard({ component, config, rows, window = 'all', now
     const total = noRunsAtAll ? Number(row.tokens_in) + Number(row.tokens_out) : meteringTokens(row).total;
     // Live review 2026-10-25: the card shows its figure; its hover says tokens in and out in one line.
     const tokenChange = OVERVIEW_HEADLINE_CARDS.has(component.component_id) ? periodChangeLine(rows, window, TOKENS_IN_AND_OUT, row) : null;
-    return <><p className="local-dashboard-metric" data-measured={total !== null}>{formatDashboardCount(total)}</p>
+    return <><p className="local-dashboard-metric" data-measured={total !== null}>{total !== null ? <CountUpText text={formatDashboardCount(total)} /> : formatDashboardCount(total)}</p>
       {tokenChange && <ChangeLine text={tokenChange} />}
       <HeadlineHover label={component.title} lines={headlineHoverLines(component.component_id, row, null, window)} /></>;
   }
@@ -890,7 +898,7 @@ const SPARK_DAYS = 14;
  * runs, pass rate with its coverage, median and p95 duration with what is unrecorded, failed runs and escalated runs.
  * The sparkline is runs per UTC day over the same rows; a day with no row is a gap, never zero.
  */
-export function RunsKpis({ rows, now }: { rows: readonly unknown[]; now: number }) {
+export function RunsKpis({ rows, now, complete = false }: { rows: readonly unknown[]; now: number; complete?: boolean }) {
   const runs = toInsightRuns(rows);
   if (runs.length === 0) return null;
   const totals = runSummary(runs);
@@ -905,7 +913,8 @@ export function RunsKpis({ rows, now }: { rows: readonly unknown[]; now: number 
   const items: KpiItem[] = [
     // One concept, one colour: a count of runs is Overview's Agent calls concept and colour.
     { label: 'Runs', value: formatDashboardCount(totals.runs), accent: 'var(--field-calls)', concept: 'calls',
-      lines: [`Latest ${formatDashboardCount(totals.runs)} returned runs`],
+      // OMN-21970 AC3: a read that walked every page holds every served run, so the caption does not call them the latest.
+      lines: [complete ? `All ${formatDashboardCount(totals.runs)} served runs` : `Latest ${formatDashboardCount(totals.runs)} returned runs`],
       trend: { days: dayKeys, values: days.map(day => (day.runs > 0 ? day.runs : null)), format: value => formatDashboardCount(value) } },
     { label: 'Pass rate', value: totals.passRate === null ? 'Not recorded' : `${totals.passRate.toFixed(1)}%`, unavailable: totals.passRate === null,
       accent: 'var(--field-pass)', concept: 'pass',
@@ -915,11 +924,11 @@ export function RunsKpis({ rows, now }: { rows: readonly unknown[]; now: number 
       title: totals.medianLatency === null ? undefined : exactMs(totals.medianLatency), accent: 'var(--field-duration)', concept: 'duration',
       lines: [totals.medianLatency === null ? null : `Exactly ${exactMs(totals.medianLatency)}`, `${formatDashboardCount(runs.length - latencies.length)} without a duration`] },
     { label: 'p95 duration', value: p95 === null ? 'Not recorded' : formatDuration(p95), unavailable: p95 === null, title: p95 === null ? undefined : exactMs(p95),
-      accent: 'var(--field-age)', concept: 'age', lines: [p95 === null ? null : `Exactly ${exactMs(p95)}`, `Over ${formatDashboardCount(latencies.length)} recorded durations`] },
+      accent: 'var(--field-duration-p95)', concept: 'duration-p95', lines: [p95 === null ? null : `Exactly ${exactMs(p95)}`, `Over ${formatDashboardCount(latencies.length)} recorded durations`] },
     { label: 'Failed', value: formatDashboardCount(totals.failed), accent: 'var(--field-fail)', concept: 'fail',
       lines: [totals.unrecorded > 0 ? `${formatDashboardCount(totals.unrecorded)} without a verdict` : 'Of the returned runs'] },
     { label: 'Escalated', value: escalationServed.length === 0 ? 'Not recorded' : formatDashboardCount(escalated), unavailable: escalationServed.length === 0,
-      accent: 'var(--field-threshold)', concept: 'threshold',
+      accent: 'var(--field-escalated)', concept: 'escalated',
       lines: [escalationServed.length === 0 ? null : `Of ${formatDashboardCount(escalationServed.length)} runs recording escalations`] },
   ];
   return <KpiStrip label="Run summary" items={items} />;
@@ -972,6 +981,8 @@ export function UsageKpis({ rows }: { rows: readonly unknown[] }) {
  * here is summed, so the list cannot disagree with the Savings total it breaks down.
  */
 export function SavingsByModel({ row }: { row: Row }) {
+  const modelColor = useModelColor();
+  const modelIdentityStyle = useModelIdentityStyle();
   const summary = asRecord(row.summary_json);
   const models = summary && Array.isArray(summary.by_model) ? asRecords(summary.by_model) : [];
   // The breakdown adds to the panel's own figures; a row that serves none adds nothing, not a second waiting line.
@@ -988,10 +999,11 @@ export function SavingsByModel({ row }: { row: Row }) {
           const n = saving(model);
           // Part 29 AC193: a named model opens Runs filtered to it, as Overview's model bars do (AC135).
           const href = isMissing(model.model) ? undefined : `/runs?${writeRunsSearch('', { ...DEFAULT_RUNS_VIEW, model: name })}`;
-          return { key: `${name}-${index}`, name, value: n, basis: 'estimated' as const, color: modelColor(name), href,
+          return { key: `${name}-${index}`, name, model: isMissing(model.model) ? undefined : name, value: n, basis: 'estimated' as const, color: modelColor(name), href,
             opensLabel: href ? `Opens Runs filtered to ${name}` : undefined,
             display: n === null ? 'Not measured' : formatUsd(model.savings_usd), title: `${recordedCount(model.runs_measured)} of ${recordedCount(model.runs)} runs measured` };
         })} />
+      <TierLegend label="Savings by model tier colours" models={models.map(model => (isMissing(model.model) ? '' : String(model.model)))} />
       <details className="local-more">
       <summary>Savings by model as a table</summary>
       <ul>
@@ -1001,7 +1013,7 @@ export function SavingsByModel({ row }: { row: Row }) {
           const runs = recordedCount(model.runs);
           return (
             <li key={`${name}-${index}`} data-semantic-concept={`model:${name}`} style={{ '--model-color': modelColor(name) } as CSSProperties}>
-              <span className="local-model-identity" style={modelIdentityStyle(name)}>{name}</span>
+              <span className="local-model-identity" data-semantic-concept={`model:${name}`} style={modelIdentityStyle(name)}>{name}</span>
               <span className="local-savings-bar" aria-hidden="true">{n !== null && max > 0 && <i style={{ width: `${Math.max(1, (n / max) * 100)}%` }} />}</span>
               <strong data-field-tone="savings" data-field-unavailable={n === null}>{n === null ? 'Not measured' : formatUsd(model.savings_usd)}</strong>
               <span>{`${recordedCount(model.runs_measured)} of ${runs} runs measured`}</span>
@@ -1303,6 +1315,7 @@ export { readableTime };
 
 /** OV-4: the newest run, its typed cause when it failed, and every figure typed when it is not served. */
 export function LastRunCard({ decisions, sessions, now = Date.now(), compact = false }: RunViewProps & { compact?: boolean }) {
+  const modelIdentityStyle = useModelIdentityStyle();
   const last = newestFirst(decisions)[0];
   if (!last) return <NoRunsYet />;
   const session = indexBy(sessions, 'session_id').get(String(last.correlation_id));
@@ -1641,7 +1654,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
         <h3 className="local-dashboard-caption local-section-heading">This week</h3>
       <div className="local-runs-week-days" role="group" aria-label="This week">
         <p role={day ? 'status' : undefined}>{day ? selectedDay ? `${formatDashboardCount(selectedDay.runs)} runs · ${formatDashboardCount(selectedDay.passed)} passed · ${formatDashboardCount(selectedDay.failed)} failed${selectedDay.unrecorded ? ` · ${formatDashboardCount(selectedDay.unrecorded)} not recorded` : ''} for ${day}` : `No runs for ${day}`
-          : `${formatDashboardCount(week.reduce((sum, item) => sum + item.runs, 0))} runs in the latest returned rows · by created day (UTC)`}</p>
+          : `${formatDashboardCount(week.reduce((sum, item) => sum + item.runs, 0))} ${truncated ? 'runs in the latest returned rows' : 'runs served this week'} · by created day (UTC)`}</p>
         {week.map(item => <div key={item.day} role="group" data-selected={day === item.day ? 'true' : undefined}
           aria-label={`${weekLabel(item.day)} · ${formatDashboardCount(item.runs)} runs · ${formatDashboardCount(item.passed)} passed · ${formatDashboardCount(item.failed)} failed${item.unrecorded ? ` · ${formatDashboardCount(item.unrecorded)} not recorded` : ''}`}>
           <span>{weekLabel(item.day)}</span><span className="local-runs-week-bar" aria-hidden="true"><i data-outcome="passed" style={{ flex: item.passed }} /><i data-outcome="failed" style={{ flex: item.failed }} /><i data-outcome="unknown" style={{ flex: item.unrecorded }} /></span>
@@ -1724,8 +1737,8 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
       <p id={`${id}-scope`} className="local-dashboard-caption local-runs-scope">{truncated
         ? `${formatDashboardCount(runs.length)} recent runs returned; earlier history is not included. Search, filters and charts use these records.`
         : `${formatDashboardCount(runs.length)} returned runs. Search, filters and charts use these records.`}</p>
-      <RunsTotals rows={matching} sample={runs.length} />
-      {routingSlot && createPortal(<RoutingAnalysis rows={runs} />, routingSlot)}
+      <RunsTotals rows={matching} sample={runs.length} complete={!truncated} />
+      {routingSlot && createPortal(<RoutingAnalysis rows={runs} complete={!truncated} />, routingSlot)}
       {shown.length === 0 ? <p className="local-dashboard-empty" role="status">No runs match these filters</p> : (
         <>
           <div className={`local-runs-list-detail${selectedRun ? ' local-runs-list-detail--selected' : ''}`}>
@@ -1910,6 +1923,7 @@ function tierModelCost(model: Row): string {
  * counted or divided here; a model served without a count says Not recorded.
  */
 export function ModelUsagePanel({ row }: { row: Row | null }) {
+  const modelColor = useModelColor();
   const models = row && Array.isArray(row.by_model) ? asRecords(row.by_model) : [];
   if (models.length === 0) return <p className="local-dashboard-empty" role="status">No model usage served yet</p>;
   const share = (value: unknown) => (isMissing(value) || !Number.isFinite(Number(value)) ? null : Number(value));
@@ -1923,10 +1937,11 @@ export function ModelUsagePanel({ row }: { row: Row | null }) {
           const pct = share(model.pct_of_total);
           // Part 19 AC135: a named model opens Runs filtered to it; a model the rows do not name opens nothing.
           const href = isMissing(model.model_name) ? undefined : `/runs?${writeRunsSearch('', { ...DEFAULT_RUNS_VIEW, model: name })}`;
-          return { key: `${name}-${index}`, name, value: runs, basis: 'measured' as const, color: modelColor(name), href, opensLabel: `Opens Runs filtered to ${name}`,
+          return { key: `${name}-${index}`, name, model: isMissing(model.model_name) ? undefined : name, value: runs, basis: 'measured' as const, color: modelColor(name), href, opensLabel: `Opens Runs filtered to ${name}`,
             display: runs === null ? 'Not recorded'
               : `${recordedCount(model.total_count)}${pct === null ? '' : ` · ${pct > 0 && pct * 100 < 0.1 ? '<0.1' : (pct * 100).toFixed(1)}%`}` };
         })} />
+      <TierLegend label="Model usage tier colours" models={models.map(model => (isMissing(model.model_name) ? '' : String(model.model_name)))} />
       <p className="local-dashboard-caption">{`${recordedCount(row?.total_delegations)} runs · ${models.length} ${models.length === 1 ? 'model' : 'models'}`}</p>
     </section>
   );
@@ -1939,6 +1954,7 @@ export function ModelUsagePanel({ row }: { row: Row | null }) {
  * the tier-routed runs and cost. Nothing is added up here; a tier served without models shows none.
  */
 export function TierMixPanel({ row, compact = false }: { row: Row | null; compact?: boolean }) {
+  const modelIdentityStyle = useModelIdentityStyle();
   const byTier = row && typeof row.by_tier === 'object' && row.by_tier !== null && !Array.isArray(row.by_tier)
     ? (row.by_tier as Row) : null;
   const tiers = byTier && Array.isArray(byTier.tiers) ? asRecords(byTier.tiers) : [];
@@ -1988,7 +2004,7 @@ export function TierMixPanel({ row, compact = false }: { row: Row | null; compac
             </tr>,
             ...(Array.isArray(tier.models) ? asRecords(tier.models) : []).map((model, modelIndex) => (
               <tr data-tone={tone} style={{ '--tier-color': tierColor(name) } as CSSProperties} key={`${name}-${index}-${String(model.model_name)}-${modelIndex}`} className="local-dashboard-row--nested local-routing-model-row">
-                <td className="local-dashboard-cell-token local-dashboard-cell-name"><span className="local-routing-name local-model-identity" style={modelIdentityStyle(model.model_name)}><FieldIcon tone="model" value={model.model_name} size={14} />{recorded(model.model_name)}</span></td>
+                <td className="local-dashboard-cell-token local-dashboard-cell-name"><span className="local-routing-name local-model-identity" data-semantic-concept={`model:${String(model.model_name)}`} style={modelIdentityStyle(model.model_name)}><FieldIcon tone="model" value={model.model_name} size={14} />{recorded(model.model_name)}</span></td>
                 <td data-column="runs">{recordedCount(model.count)}</td>
                 <td data-column="share" className="local-dashboard-cell-token">{routed ? <Readable value={model.pct_of_tier_routed} kind="percent" /> : <><span aria-hidden="true">—</span><span className="local-visually-hidden">No share: not tier-routed</span></>}</td>
                 <td data-column="cost" data-unavailable={isMissing(model.cost_usd)}>{tierModelCost(model)}</td>
@@ -2081,6 +2097,7 @@ function yesOrNo(value: unknown): string {
  * value is one served field of that run's own row; a run with no served decision says so and borrows no other run's.
  */
 export function RunSummary({ decision, showAnalysis = false }: { decision: Row | undefined; showAnalysis?: boolean }) {
+  const modelIdentityStyle = useModelIdentityStyle();
   const sectionId = useId();
   if (!decision) return <p className="local-dashboard-empty" role="status">No decision is served for this run</p>;
   const status = statusOf(decision);
@@ -2554,6 +2571,12 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns, acti
     if (slice?.key === 'newest') return rows.length === 0 ? <NoRunsYet /> : <NewestRunLine decisions={rows} />;
     return rows.length === 0 ? <NoRunsYet /> : <OverviewRunPreview decisions={rows} sessions={lookup} />;
   }
+  // OMN-21970 AC3: the decisions read is complete when it walked every page (no truncated mark), so the charts and
+  // captions may treat its rows as every served run; AC2: the daily charts draw delegation.daily.v1 when it is served.
+  const decisionsWalk = snapshots.find(snapshot => snapshot.topic === DELEGATION_DECISIONS_TOPIC);
+  const decisionsComplete = decisionsWalk !== undefined && !decisionsWalk.failure && decisionsWalk.truncated !== true;
+  const dailyRead = snapshots.find(snapshot => snapshot.topic === DELEGATION_DAILY_TOPIC);
+  const servedDays = dailyRead && !dailyRead.failure ? servedDailyDays(dailyRead.rows) : null;
   // OMN-21166 AC26: trends and breakdowns, counted from the served decision rows (rule change R-B, 2026-10-18).
   if (component.component_id === 'overview-insights') {
     // AC42: the metering KPIs for the selected window sit in this open panel, and their charts in its analysis,
@@ -2564,14 +2587,14 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns, acti
     // OMN-21166 part 13: Overview keeps the activity summary; the window's spend line sits in "More activity" with the
     // run counts, and the detailed analysis lives on Runs (its "Explore run analysis" link stays).
     if (slice) return rows.length === 0 ? <NoRunsYet /> : <InsightsSection decisions={rows} now={Date.now()} view={slice.key as 'runs' | 'tokens' | 'failures'} onInspectFailure={cause => navigate(causeHref(cause))}
- />;
+      servedDays={servedDays} complete={decisionsComplete} />;
     return rows.length === 0 ? <NoRunsYet /> : <>
-    <InsightsSection decisions={rows} now={Date.now()} view="summary" more={meteringRows.length > 0
+    <InsightsSection decisions={rows} now={Date.now()} view="summary" servedDays={servedDays} complete={decisionsComplete} more={meteringRows.length > 0
       ? <MeteringActivityInsights rows={meteringRows} now={Date.now()} window={activityWindow} unavailable={meteringUnavailable} display="kpis" />
       : null} />
   </>;
   }
-  if (component.component_id === 'runs-insights') return <>{rows.length === 0 ? <NoRunsYet /> : <InsightsSection decisions={rows} now={Date.now()} view="analysis" onInspectFailure={cause => {
+  if (component.component_id === 'runs-insights') return <>{rows.length === 0 ? <NoRunsYet /> : <InsightsSection decisions={rows} now={Date.now()} view="analysis" complete={decisionsComplete} onInspectFailure={cause => {
     navigate(causeHref(cause));
     document.querySelector('[data-component="recent-runs"]')?.scrollIntoView?.({ block: 'start' });
   }} />}</>;
@@ -2596,7 +2619,7 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns, acti
   // Usage analysis and the raw row table are separate declared components so the analysis does not duplicate rows.
   if (component.component_id === 'usage-insights') return <UsageInsights usageRows={rows}
     part={slice && ['spend', 'cost-per-run', 'tokens-by-model', 'cost-by-route', 'analysis'].includes(slice.key) ? slice.key as 'spend' | 'cost-per-run' | 'tokens-by-model' | 'cost-by-route' | 'analysis' : 'all'}
-    decisionRows={rawRowsFor(component, snapshots, 1)} routingRows={rawRowsFor(component, snapshots, 2)} />;
+    decisionRows={rawRowsFor(component, snapshots, 1)} routingRows={rawRowsFor(component, snapshots, 2)} complete={decisionsComplete} />;
   // US-1, US-2, US-4: served rows as served. The exposure is tenant-scoped, so the server filters, not the browser.
   if (component.component_id === 'usage-by-model-day') return <UsageByModelDayTable rows={rows} interactive />;
   // US-1 (OMN-21015 AC4): the same served rows as a stacked series, tokens in and out apart, split by model.
@@ -2796,6 +2819,8 @@ export const PANEL_CONCEPTS: Readonly<Record<string, string>> = {
   'workflow-run-path': 'path', 'usage-by-model-day': 'usage-day', 'usage-tokens-by-day': 'tokens-daily',
   'usage-savings-series': 'savings-daily', 'credentials-keys': 'credentials',
   'api-keys-local-identity': 'local-identity', 'api-keys-access': 'local-access', 'api-keys-cloud': 'cloud-keys',
+  // OMN-21970 AC10: Settings' Pricing and routing panel, the one panel title on the six pages that had no icon.
+  'pricing-baseline': 'baseline',
 };
 /** Compatibility inventory, derived from the shared canonical identity rather than a second icon map. */
 export const PANEL_ICONS: Record<string, LucideIcon> = Object.fromEntries(
@@ -2810,6 +2835,7 @@ const PAGE_TITLES: Record<LocalPageName, string> = {
   credentials: 'Credentials',
   'api-keys': 'API Keys',
   status: 'System status',
+  pricing: 'Pricing and routing',
 };
 
 export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache, embedded = false }: LocalDashboardPageProps) {
@@ -3062,6 +3088,8 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
     // must only gate the key-reference region, including its aria-busy state.
     const credentialProviders = component.component_id === 'credentials-keys';
     const environment = component.component_id === 'status-environment';
+    // OMN-21970 AC10: Settings' Pricing and routing section, from the served all-time metering row.
+    const pricing = component.component_id === 'pricing-baseline';
     const readContent = <>
         {pending ? <p className="local-dashboard-caption" role="status">Loading data…</p>
           : unbound && component.component_kind !== 'metric_card' ? <PendingState componentId={component.component_id} />
@@ -3074,6 +3102,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
                 complete={!bindings.some(binding => snapshots.some(snapshot => snapshot.topic === binding.projection_topic && snapshot.failure))} />)
           : notServed ? <p className="local-dashboard-empty" role="status">{notServed}</p>
           : bindingFailedEmpty(component, snapshots) ? null
+          : pricing ? <PricingFacts rows={rows as Record<string, unknown>[]} />
           : emptyState === 'NO_RUNS_YET' ? <NoRunsYet />
           : emptyState ? <p className="local-dashboard-empty" role="status">Baseline unresolved</p>
           : component.component_kind === 'table' ? (
@@ -3121,7 +3150,9 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
         data-component={component.component_id}
         data-slice={slice?.key}
         data-kind={component.component_kind}
-        data-field-tone={component.component_kind === 'metric_card' ? fieldTone(component.title) : undefined}
+        data-field-tone={component.component_kind === 'metric_card' ? fieldTone(component.title)
+          // OMN-21970 (Lakshman 2026-11-02): the Delegation Quality card carries the quality colour like its neighbours.
+          : component.component_id === 'overview-quality' ? 'pass' : undefined}
         aria-busy={credentialProviders ? 'false' : pending}
         key={slice ? `${component.component_id}-${slice.key}` : component.component_id}
       >
@@ -3150,6 +3181,9 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
   });
   return (
     <RunFilterProvider>
+    {/* OMN-21970 AC5: one model -> tier map from every served row that names both, so a model is its tier's colour on
+        every chart and table this page draws. */}
+    <ModelTiersContext.Provider value={modelTiersFrom(snapshots.flatMap(snapshot => snapshot.rows ?? []))}>
     <Frame data-destination={destination} aria-label={embedded ? undefined : `${page?.dashboard.name ?? 'Local dashboard'} page`}
       className={`${embedded ? 'local-settings-embed' : 'local-dashboard-page'} local-dashboard-page--${pageName}`}>
       {!embedded && <header className="local-dashboard-header">
@@ -3161,7 +3195,8 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
         </div>
         {/* One toolbar row: the page's own control when it has one, and the runtime mode at the right. */}
         {pageName === 'overview' && !loading && !error && page && (
-          // OMN-21166 mockup build: the window is a two-button switch (radio semantics), not a dropdown.
+          // OMN-21166 mockup build used a button switch (radio semantics); OMN-21970 AC9 (Lakshman 2026-11-02) made it one
+          // button that opens the list, each option keeping its radio semantics.
           // Live review 2026-10-25: one compact control; the name stays "Figures for" and each option keeps its full name
           // ("Today (UTC)") for screen readers, while the visible label is short with UTC as a muted suffix.
           <div className="local-dashboard-filters local-window-switch">
@@ -3172,20 +3207,21 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
               <OverviewDayPicker value={overviewWindow} now={now}
                 onChange={value => { setOverviewWindow(value); if (value.startsWith('day:')) setActivityWindow({ kind: 'custom', start: value.slice(4), end: value.slice(4) }); }}
                 days={servedMeteringDays(snapshots.find(snapshot => snapshot.topic === METERING_SUMMARY_TOPIC)?.rows ?? [])} />
-              <div role="radiogroup" aria-labelledby={windowId} className="local-window-radios">
-              {([['all', 'All', 'All time', 0], ['today', 'Today', 'Today (UTC)', 1], ['last-7', '7 days', 'Last 7 days (UTC)', 7],
-                ['last-15', '15 days', 'Last 15 days (UTC)', 15], ['last-30', '30 days', 'Last 30 days (UTC)', 30]] as const).map(([value, label, name, days]) => {
-                const target: OverviewWindow = days === 0 ? 'all' : days === 1 ? 'today' : meteringRangeFor(days, now);
-                const checked = days === 0 ? overviewWindow === 'all' : days === 1 ? overviewWindow === 'today'
-                  : overviewWindow.startsWith('range:') && activityWindow.kind === 'days' && activityWindow.days === days;
-                return (
-                  <button key={value} type="button" role="radio" data-window={value} aria-checked={checked} aria-label={name}
-                    onClick={() => { setOverviewWindow(target); setActivityWindow(days === 0 ? { kind: 'all' } : { kind: 'days', days }); }}>
-                    {label}
-                  </button>
-                );
-              })}
-              </div>
+              {(() => {
+                // OMN-21970 AC9 (Lakshman 2026-11-02): one button opens the list of windows, the chosen one ticked.
+                const options = ([['all', 'All time', 'All time', 0], ['today', 'Today', 'Today (UTC)', 1], ['last-7', 'Last 7 days', 'Last 7 days (UTC)', 7],
+                  ['last-15', 'Last 15 days', 'Last 15 days (UTC)', 15], ['last-30', 'Last 30 days', 'Last 30 days (UTC)', 30],
+                  ['last-90', 'Last 90 days', 'Last 90 days (UTC)', 90]] as const).map(([value, label, name, days]) => {
+                  const target: OverviewWindow = days === 0 ? 'all' : days === 1 ? 'today' : meteringRangeFor(days, now);
+                  const checked = days === 0 ? overviewWindow === 'all' : days === 1 ? overviewWindow === 'today'
+                    : overviewWindow.startsWith('range:') && activityWindow.kind === 'days' && activityWindow.days === days;
+                  return { value, label, name, checked,
+                    onSelect: () => { setOverviewWindow(target); setActivityWindow(days === 0 ? { kind: 'all' } : { kind: 'days', days }); } };
+                });
+                const chosen = options.find(option => option.checked);
+                const current = chosen ? chosen.label : overviewWindow.startsWith('day:') ? `Day ${overviewWindow.slice(4)} (UTC)` : 'All time';
+                return <WindowMenu labelledBy={windowId} options={options} current={current} />;
+              })()}
             </div>
           </div>
         )}
@@ -3200,7 +3236,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
             read; a read that failed draws no strip (its panels say why). */}
         {!loading && !error && page && pageName === 'runs' && (() => {
           const read = snapshots.find(snapshot => snapshot.topic === DELEGATION_DECISIONS_TOPIC);
-          return read && !read.failure ? <RunsKpis rows={read.rows} now={now} /> : null;
+          return read && !read.failure ? <RunsKpis rows={read.rows} now={now} complete={read.truncated !== true} /> : null;
         })()}
         {!loading && !error && page && pageName === 'usage' && (() => {
           const read = snapshots.find(snapshot => snapshot.topic === METERING_SUMMARY_TOPIC);
@@ -3331,6 +3367,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
         </>}
       </dialog>
     </Frame>
+    </ModelTiersContext.Provider>
     </RunFilterProvider>
   );
 }

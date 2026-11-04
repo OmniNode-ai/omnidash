@@ -36,8 +36,8 @@ test('Evidence summary cards each have a logical icon and their own identity col
       return { border: style.borderTopColor, bottom: style.borderBottomColor, color: getComputedStyle(element.querySelector('svg')!).color, icon: element.querySelector('svg')?.getAttribute('class') };
     }));
     expect(new Set(identities.map(item => item.border)).size).toBe(1);
-    // Part 28 AC177: the card icons are grey (one colour); each card is still told apart by its own icon shape.
-    expect(new Set(identities.map(item => item.color)).size).toBe(1);
+    // OMN-21970 AC8 (committed 801bf845) supersedes part 28 AC177's one grey: each headline concept has its own colour on Evidence too; each card also keeps its own icon shape.
+    expect(new Set(identities.map(item => item.color)).size).toBe(identities.length);
     expect(new Set(identities.map(item => item.icon)).size).toBe(4);
     await cards.first().hover();
     await expect.poll(() => cards.first().evaluate(element => getComputedStyle(element).boxShadow)).toBe('none');

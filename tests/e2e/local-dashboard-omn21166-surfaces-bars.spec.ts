@@ -14,9 +14,11 @@ import { serveCharts } from './omn21166-chart-fixtures';
 test.use({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce', trace: 'on' });
 
 const PAGES = ['/overview', '/runs', '/workflow?correlation_id=chart-run-a', '/usage', '/settings', '/delegation-evidence'];
+// Surfaces of the 01+20 look (Lakshman 2026-11-03, "01 + 20 do it"): page #ffffff / #0a0a0a, card #fafafa / #141414, hairline #e5e5e5 / #262626, and the sidebar
+// on the page colour (was the warm paper set of part 28).
 const SURFACES = {
-  light: { page: 'rgb(245, 245, 243)', card: 'rgb(253, 253, 252)', border: 'rgb(212, 212, 207)', sidebar: 'rgb(242, 242, 239)' },
-  dark: { page: 'rgb(14, 14, 14)', card: 'rgb(22, 22, 22)', border: 'rgb(43, 43, 43)', sidebar: 'rgb(17, 17, 17)' },
+  light: { page: 'rgb(255, 255, 255)', card: 'rgb(250, 250, 250)', border: 'rgb(229, 229, 229)', sidebar: 'rgb(255, 255, 255)' },
+  dark: { page: 'rgb(10, 10, 10)', card: 'rgb(20, 20, 20)', border: 'rgb(38, 38, 38)', sidebar: 'rgb(10, 10, 10)' },
 } as const;
 const BARS = '.rb-bar[data-pattern="hatched"], .gdb-bar.ins-seg, .utc-stack i, .ev-qg-bar > .bar-fill, .local-runs-week-bar > i, .ins-fill';
 
@@ -52,11 +54,18 @@ for (const theme of ['light', 'dark'] as const) {
       const want = SURFACES[theme];
       await expect(page.locator('main').first(), `${path} page`).toHaveCSS('background-color', want.page);
       await expect(page.locator('.sidebar').first(), `${path} sidebar`).toHaveCSS('background-color', want.sidebar);
-      // OMN-21166 revision 3 (AC160): on Settings the card is the section; its embedded panels are flat inside it.
-      const card = page.locator('main .local-dashboard-panel:not(.local-overview-summary > .local-dashboard-panel, .local-settings-section .local-dashboard-panel), main .local-settings-section, main.ev-root .panel').first();
-      await expect(card, `${path} card`).toHaveCSS('background-color', want.card);
-      await expect(card, `${path} card border`).toHaveCSS('border-top-color', want.border);
-      await expect(card, `${path} card is flat`).toHaveCSS('box-shadow', 'none');
+      // OMN-21970 AC10 (Lakshman 2026-11-02, "it should be full page"): Settings has no cards; its sections sit on the page.
+      // Every other page draws its panels as cards on the card surface with the hairline.
+      if (path === '/settings') {
+        const section = page.locator('main .local-settings-section:not([hidden])').first();
+        await expect(section, `${path} section`).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+        await expect(section, `${path} section has no edge`).toHaveCSS('border-top-width', '0px');
+      } else {
+        const card = page.locator('main .local-dashboard-panel:not(.local-overview-summary > .local-dashboard-panel), main.ev-root .panel').first();
+        await expect(card, `${path} card`).toHaveCSS('background-color', want.card);
+        await expect(card, `${path} card border`).toHaveCSS('border-top-color', want.border);
+        await expect(card, `${path} card is flat`).toHaveCSS('box-shadow', 'none');
+      }
       const bars = await page.locator(BARS).count();
       const off = await offBars(page);
       expect(off, `${path}: every bar is a solid flat fill`).toEqual([]);

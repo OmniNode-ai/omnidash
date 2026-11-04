@@ -1,6 +1,9 @@
 import { expect, test, type Page } from 'playwright/test';
-import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chartRows, prefix, serveCharts, keepRealClock } from './omn21166-chart-fixtures';
+// This spec dates its rows from the real clock, so the browser keeps it (see FIXTURE_NOW).
+test.beforeEach(({ page }) => keepRealClock(page));
 
+// OMN-21970 (Lakshman 2026-11-03, option a): names read in ink for contrast; the swatch beside each name carries its colour.
 // AC3 failure modes, before product changes: the unpriced first model shifts
 // priced-slice identity; refresh/reordering recolours a model; exact model IDs
 // are merged by lowercasing; routing names and chart marks use different maps.
@@ -9,13 +12,13 @@ const USAGE = prefix + 'usage-by-model-day.v1';
 const DECISIONS = prefix + 'delegation.decisions.v1';
 const ROUTING = prefix + 'delegation.model-routing.v1';
 
-function fixture(names: string[]) {
+function fixture(names: string[], tierOf: (name: string) => string = () => 'local') {
   const day = new Date().toISOString().slice(0, 10);
   const usage = names.map((name, index) => ({
     usage_day: day, model_id: name, input_tokens: 100 + index, output_tokens: 20 + index,
     measured_cost_usd: index === 0 ? null : String(index), call_count: 1,
     unmeasured_call_count: index === 0 ? 1 : 0, call_share: 1 / names.length,
-    cost_tier_name: 'local',
+    cost_tier_name: tierOf(name),
   }));
   return { ...chartRows,
     [USAGE]: usage,
@@ -27,12 +30,14 @@ function fixture(names: string[]) {
     })),
     [ROUTING]: [{ total_delegations: names.length, by_tier: {
       total_tasks: names.length, tier_routed_total: names.length, not_tier_routed_count: 0,
-      tiers: [{ cost_tier_name: 'local', count: names.length, tier_routed: true, pct_of_tier_routed: 1,
-        models: names.map((name, index) => ({ model_name: name, count: 1,
+      tiers: [...new Set(names.map(tierOf))].map(tier => ({ cost_tier_name: tier, tier_routed: true,
+        count: names.filter(name => tierOf(name) === tier).length,
+        pct_of_tier_routed: names.filter(name => tierOf(name) === tier).length / names.length,
+        models: names.map((name, index) => ({ name, index })).filter(({ name }) => tierOf(name) === tier).map(({ name, index }) => ({ model_name: name, count: 1,
           pct_of_tier_routed: 1 / names.length, cost_usd: index === 0 ? null : String(index),
           unmeasured_cost_count: index === 0 ? 1 : 0,
         })),
-      }],
+      })),
     } }],
   };
 }
@@ -58,7 +63,7 @@ async function usageColors(page: Page, names: string[]) {
   for (const name of names) {
     const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const item = spend.locator(`li[data-ranked-item="${name}"]`);
-    const color = await item.locator('.rb-name').evaluate(el => getComputedStyle(el).color);
+    const color = await item.locator('.rb-name .rb-swatch').evaluate(el => getComputedStyle(el).backgroundColor);
     expect(color, `${name}: real ranked-bar colour`).not.toBe('rgba(0, 0, 0, 0)');
     const bar = item.locator('.rb-bar');
     if (name === 'unpriced-model') {
@@ -81,7 +86,7 @@ async function usageColors(page: Page, names: string[]) {
     // Part 17 AC114: the model's name under its pair of bars is in the model's colour.
     const pairName = tokens.locator('li.gdb-day').filter({ has: page.locator('.gdb-day-label', { hasText: new RegExp(`^${escaped}$`) }) }).locator('.gdb-day-label');
     await expect(pairName).toHaveCount(1);
-    expect(await pairName.evaluate(el => getComputedStyle(el).color), `${name}: Tokens by model name`).toBe(color);
+    expect(await pairName.locator('.gdb-swatch').evaluate(el => getComputedStyle(el).backgroundColor), `${name}: Tokens by model name swatch`).toBe(color);
     result[name] = color;
   }
   return result;
@@ -109,8 +114,11 @@ for (const selectedTheme of ['light', 'dark']) {
   });
 
   test(`AC3: exact served model IDs do not alias by case, ${selectedTheme}`, async ({ page }, info) => {
+    // OMN-21970 AC5 (product owner): a model is coloured by the tier it ran under, so two models in one tier share a
+    // colour by design. Aliasing by case is caught by serving the two ids under different tiers: merged into one, they
+    // would take one tier's colour; kept apart, each takes its own.
     const names = ['unpriced-model', 'Model-A', 'model-a'];
-    await serveCharts(page, fixture(names));
+    await serveCharts(page, fixture(names, name => (name === 'model-a' ? 'claude' : 'local')));
     await page.goto('/usage');
     await theme(page, selectedTheme);
     await page.getByText('More usage', { exact: true }).press('Enter');
@@ -133,7 +141,7 @@ for (const selectedTheme of ['light', 'dark']) {
       const mark = page.getByRole('figure', { name: 'Pass rate by model', exact: true }).locator(`li[data-ranked-item="${name}"]`);
       await expect(mark).toHaveCount(1);
       const ringColor = await mark.locator('.rb-bar').evaluate(el => getComputedStyle(el).color);
-      const nameColor = await mark.locator('.rb-name').evaluate(el => getComputedStyle(el).color);
+      const nameColor = await mark.locator('.rb-name .rb-swatch').evaluate(el => getComputedStyle(el).backgroundColor);
       const routing = page.locator('.local-routing-model-row').filter({ hasText: name }).locator('.local-model-identity svg.field-icon[data-field-tone="model"]');
       await expect(routing).toHaveCount(1);
       // OMN-21166 new look: model names in tables are set in ink (seven-page-design.css); the model's identity colour is its icon.

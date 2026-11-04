@@ -1,5 +1,5 @@
 import { expect, test, type Page } from 'playwright/test';
-import { chartRows, prefix, runIds, serveCharts } from './omn21166-chart-fixtures';
+import { chartRows, prefix, runIds, serveCharts, USAGE_DAY } from './omn21166-chart-fixtures';
 
 // Failure modes declared before implementation: wrong bar after hiding/zoom;
 // stale selection after filters; missing value becomes zero; unknown day filled;
@@ -120,7 +120,7 @@ test('usage model bars do not change figures, table or other model colors', asyn
   await page.goto('/usage');
   // OMN-21166 Maple grid: the page's Tokens per day is a stacked chart that prints each served count in the day's label;
   // part 17 AC114: "Tokens by model" (under "More usage") is hatched grouped bars, two per model, values on hover or focus.
-  await expect(page.locator('[data-component="usage-tokens-by-day"]:not([data-slice]) li[data-token-day="2026-10-01"]')).toHaveAttribute('aria-label', /model-a: 162/);
+  await expect(page.locator(`[data-component="usage-tokens-by-day"]:not([data-slice]) li[data-token-day="${USAGE_DAY}"]`)).toHaveAttribute('aria-label', /model-a: 162/);
   await page.getByText('More usage', { exact: true }).press('Enter');
   const figure = page.getByRole('figure', { name: 'Tokens in vs out by model', exact: true });
   const modelA = figure.locator('li.gdb-day[aria-label^="model-a:"]');

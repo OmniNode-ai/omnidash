@@ -1,5 +1,7 @@
 import { expect, test } from 'playwright/test';
-import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chartRows, narrowTo, prefix, serveCharts } from './omn21166-chart-fixtures';
+// OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the window radios sit in one dropdown; chooseWindow opens it and proves it closed.
+import { chooseWindow } from './overview-window-menu';
 
 const topic = prefix + 'cost.savings-overview.v1';
 const legacy = { window: 'all', captured_at: '2026-10-19T16:00:00Z', total_cost_usd: 3.392282,
@@ -26,9 +28,7 @@ test('restores four exact legacy totals instead of unrelated metering values', a
   await expect(card(page, 'overview-measured')).toContainText('4.65K unknown');
   await expect(page.locator('.local-overview-summary')).not.toContainText('999');
   for (const width of [1440, 390, 320]) {
-    await page.setViewportSize({ width, height: 900 });
-    const collapse = page.getByRole('button', { name: 'Collapse sidebar', exact: true });
-    if (width < 768 && await collapse.isVisible()) await collapse.click();
+    await narrowTo(page, width, 900);
     expect(await page.locator('.local-overview-summary').evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
     await page.locator('.local-overview-summary').screenshot({ path: info.outputPath(`legacy-overview-${width}.png`) });
   }
@@ -56,10 +56,10 @@ test('never presents all-time legacy totals as today', async ({ page }) => {
   await serveCharts(page, { ...chartRows, [topic]: [legacy] });
   await page.goto('/overview');
   await expect(figure(page, 'overview-measured')).toHaveText('49.14K');
-  await page.getByRole('radio', { name: 'Today (UTC)', exact: true }).click();
+  await chooseWindow(page, 'Today (UTC)');
   for (const id of ['overview-spend', 'overview-savings', 'overview-measured', 'overview-tokens'])
     await expect(figure(page, id)).toHaveText('Not measured: daily totals unavailable (UTC)');
-  await page.getByRole('radio', { name: 'All time', exact: true }).click();
+  await chooseWindow(page, 'All time');
   await expect(figure(page, 'overview-measured')).toHaveText('49.14K');
 });
 
@@ -89,9 +89,7 @@ for (const total_savings_usd of [legacy.total_savings_usd, -legacy.total_savings
   await expect(figure(page, 'overview-tokens')).toHaveText('183.69M');
   await expect(figure(page, 'overview-savings')).toHaveText(total_savings_usd < 0 ? '-$1,008.47' : '$1,008.47');
   for (const width of [390, 320]) {
-    await page.setViewportSize({ width, height: 844 });
-    const collapse = page.getByRole('button', { name: 'Collapse sidebar', exact: true });
-    if (await collapse.isVisible()) await collapse.click();
+    await narrowTo(page, width, 844);
     const geometry = await page.locator('.local-overview-summary .local-dashboard-metric[data-measured="true"]').evaluateAll(nodes => nodes.map(el => {
       const range = document.createRange(); range.selectNodeContents(el);
       return { text: el.textContent, lines: range.getClientRects().length, overflow: el.scrollWidth-el.clientWidth, font: parseFloat(getComputedStyle(el).fontSize) };

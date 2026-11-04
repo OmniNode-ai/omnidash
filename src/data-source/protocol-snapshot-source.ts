@@ -9,6 +9,11 @@ export interface ProjectionSnapshot<T = unknown> {
   readAt: string;
   /** True when the exposure said this answer is one truncated page, so the rows are not all there is. */
   truncated?: boolean;
+  /**
+   * OMN-21970 AC3: where the exposure says the next page starts (its next_cursor), when this page is not all there is;
+   * a reader passes it back as `since`.
+   */
+  nextCursor?: string | null;
 }
 
 export interface ProtocolSnapshotSource {

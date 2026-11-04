@@ -24,6 +24,8 @@ export interface GroupedBarGroup {
   /** The column's accessible name, with every value in words. */
   label: string;
   nameColor?: string;
+  /** The served model the column is, when it is one: its swatch is then that model's identity mark. */
+  model?: string;
   values: readonly GroupedBarValue[];
 }
 
@@ -52,7 +54,8 @@ export function GroupedBars({ label, groups, legend, wrapNames = false }: {
                 );
               })}
             </span>
-            <span className="gdb-day-label" aria-hidden="true" style={group.nameColor ? { color: group.nameColor } : undefined}>{group.name}</span>
+            {/* OMN-21970 (Lakshman 2026-11-03, option a): ink name for contrast; the swatch carries the model's colour. */}
+            <span className="gdb-day-label" aria-hidden="true">{group.nameColor && <span className="gdb-swatch" data-model-id={group.model} style={{ background: group.nameColor }} />}{group.name}</span>
           </li>
         ))}
       </ul>

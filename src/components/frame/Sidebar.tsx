@@ -236,7 +236,7 @@ export function Sidebar() {
             <span className="primary">
               Omni<em>Dash</em>
             </span>
-            <span className="parent">an omninode product</span>
+            <span className="parent">An OmniNode Product</span>
           </div>
         )}
         <button

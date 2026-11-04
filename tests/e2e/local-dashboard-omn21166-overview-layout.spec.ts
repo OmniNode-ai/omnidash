@@ -153,11 +153,13 @@ test('AC142: the line under Runs per day appears only when the chart does not dr
   await expect(runsPanel().locator('.gdb-day').first()).toBeVisible();
   await expect(runsPanel().getByTestId('insights-total')).toHaveCount(0);
   await expect(runsPanel()).not.toContainText(/served/i);
-  // The read returned its limit: older runs may be left out.
+  // OMN-21970 AC3 (committed 801bf845) replaced "Showing the latest 500 runs": the page walks every page of runs, so a
+  // complete read of 500 runs has no line (the walk that cannot finish is covered by the E5 case in overview-edges).
   await page.unrouteAll({ behavior: 'ignoreErrors' });
   await serveCharts(page, { ...chartRows, [prefix + 'delegation.decisions.v1']: fullRead });
   await page.goto('/overview');
-  await expect(runsPanel().getByTestId('insights-total')).toHaveText('Showing the latest 500 runs');
+  await expect(runsPanel().locator('.gdb-day').first()).toBeVisible();
+  await expect(runsPanel().getByTestId('insights-total')).toHaveCount(0);
   // One run with no date is not drawn, and says so.
   await page.unrouteAll({ behavior: 'ignoreErrors' });
   await serveCharts(page, { ...chartRows, [prefix + 'delegation.decisions.v1']: [...chartRows[prefix + 'delegation.decisions.v1'], undatedRow] });

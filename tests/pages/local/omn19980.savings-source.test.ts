@@ -456,7 +456,8 @@ const readSources = () => SOURCE_FILES.map((file) => ({ file, source: readFileSy
 function instrumentProblems(pages: readonly LoadedPage[]): string[] {
   const problems: string[] = [];
   // OMN-21166 part 26 revision 2 (AC158) added status, the System status section of Settings.
-  if (pages.length !== 7) problems.push(`expected the seven local pages, loaded ${pages.length}`);
+  // OMN-21970 AC10 added Settings' Pricing and routing page, the eighth, read from metering-summary.v1.
+  if (pages.length !== 8) problems.push(`expected the eight local pages, loaded ${pages.length}`);
   if (pages.flatMap(bindingsOf).length === 0) problems.push('no binding read');
   return problems;
 }
@@ -508,14 +509,14 @@ const plantedOnly = (findings: string[]) => findings.filter((finding) => finding
 describe('OMN-19980 AC2d: savings figures come from metering-summary.v1 only', () => {
   it('instrument: loads the seven local pages and reads their bindings', () => {
     const pages = loadPages();
-    expect(pageNames).toEqual(['api-keys', 'credentials', 'overview', 'runs', 'status', 'usage', 'workflow']);
+    expect(pageNames).toEqual(['api-keys', 'credentials', 'overview', 'pricing', 'runs', 'status', 'usage', 'workflow']);
     expect(instrumentProblems(pages)).toEqual([]);
     // The allowed topic is the loader's metering-summary topic, the one Overview's headline cards read.
     expect(ALLOWED_TOPIC).toBe(METERING_SUMMARY_TOPIC);
   });
 
   it('instrument: an empty or binding-free load is reported, never read as clean', () => {
-    expect(instrumentProblems([])).toEqual(['expected the seven local pages, loaded 0', 'no binding read']);
+    expect(instrumentProblems([])).toEqual(['expected the eight local pages, loaded 0', 'no binding read']);
     const unbound = loadPages().map((page) => ({ ...page, doc: { ...page.doc, components: [] } }));
     expect(instrumentProblems(unbound)).toEqual(['no binding read']);
   });

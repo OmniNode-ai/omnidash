@@ -97,7 +97,8 @@ describe('OMN-21015 U2: savings per day on Usage, as bars', () => {
     // jsdom has no canvas, so a chart colour is its token's fallback: the series must use --field-savings's, and that
     // fallback must be the light theme's --field-savings, the colour of the Savings card.
     const savingsToken = /--field-savings:\s*(#[0-9a-f]{6});/i.exec(readFileSync('src/styles/field-identity.css', 'utf8'))?.[1]?.toLowerCase();
-    expect(savingsToken).toBe('#0f766e');
+    // OMN-21970 AC8 moved light savings from #0f766e to #014e44 (4.5:1 under the card tint, distinct from pass).
+    expect(savingsToken).toBe('#014e44');
     await open([row('day', '2026-10-12', '0.300000')]);
     // Part 28 AC180: a bar is a solid fill in its colour, no hatch.
     expect(harness.handed.at(-1)!.series[0].itemStyle.color).toBe(savingsToken);

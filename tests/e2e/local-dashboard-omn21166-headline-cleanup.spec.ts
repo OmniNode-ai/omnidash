@@ -1,5 +1,6 @@
 import { expect, test, type Page } from 'playwright/test';
 import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { openWindows, windowTrigger, WINDOW_NAMES } from './overview-window-menu';
 
 // OMN-21166 part 9, AC44 and AC45 (Lakshman, 2026-10-23): the Overview headline cards carry no Details fold and no
 // "All calls" / "All-time aggregate" captions. The accounting facts OMN-21304 AC4 requires stay visible under Spend and
@@ -35,7 +36,9 @@ test('AC44 AC45 headline cards show their basis in view, with no Details fold an
     if (id === 'overview-savings') await expect(tip).toContainText('Modelled · vs cloud baseline');
     await expect(tip.locator(':scope > :first-child')).toBeVisible();
   }
-  await expect(page.getByRole('radiogroup', { name: 'Figures for', exact: true })).toBeVisible();
+  // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the window is one "Figures for" button whose list holds the radios.
+  await expect(windowTrigger(page)).toBeVisible();
+  await expect((await openWindows(page)).getByRole('radio')).toHaveCount(WINDOW_NAMES.length);
 });
 
 test('AC45 a missing total is still a typed state (control)', async ({ page }) => {

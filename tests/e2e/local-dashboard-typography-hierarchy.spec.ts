@@ -36,14 +36,16 @@ for (const width of [1440, 390]) {
       expect(caption.size, caption.text).toBeGreaterThanOrEqual(12);
       expect(caption.weight, caption.text).toBeLessThanOrEqual(500);
       expect(caption.leading, caption.text).toBeGreaterThanOrEqual(1.4);
-      expect(caption.family).toContain('Inter');
+      // The 01+20 look (Lakshman 2026-11-03): captions in the text face, Geist (was Inter).
+      expect(caption.family).toContain('Geist Variable');
     }
     for (const value of values) {
       expect(value.size, value.text).toBeGreaterThanOrEqual(20);
       expect(value.weight, value.text).toBeLessThanOrEqual(700);
-      // OMN-21166 part 27 AC166: figures are JetBrains Mono at its bundled 500 weight (no new weight file).
+      // OMN-21166 part 27 AC166 as restyled by the 01+20 look (Lakshman 2026-11-03): figures are the display face, Geist,
+      // at 500 to 700 (was JetBrains Mono at 500).
       expect(value.weight, value.text).toBeGreaterThanOrEqual(500);
-      expect(value.family, value.text).toMatch(/JetBrains Mono/);
+      expect(value.family, value.text).toMatch(/^"?Geist Variable/);
     }
     await page.screenshot({ path: info.outputPath('summary-type.png'), fullPage: true });
   });

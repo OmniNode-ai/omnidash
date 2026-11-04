@@ -1,6 +1,10 @@
 import { writeFileSync } from 'node:fs';
 import { expect, test, type Page } from 'playwright/test';
-import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chartRows, prefix, serveCharts, keepRealClock } from './omn21166-chart-fixtures';
+// OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the window radios sit in one dropdown; chooseWindow opens it and proves it closed.
+import { chooseWindow } from './overview-window-menu';
+// This spec dates its rows from the real clock, so the browser keeps it (see FIXTURE_NOW).
+test.beforeEach(({ page }) => keepRealClock(page));
 
 // OMN-21166 part 21 edge cases (Lakshman 2026-10-26: "check all edge cases"). Written by claude-920f62a6 after the onex
 // delegate draft timed out (run d5cad0e0). Failure modes, each checked on every case below:
@@ -13,6 +17,10 @@ import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
 //   E7  part 24 AC144: a model name is cut, a model is left out, or a model bar turns horizontal;
 //       only the Model usage row may pass 340px.
 test.use({ reducedMotion: 'reduce', trace: 'on' });
+// OMN-21970 AC9/AC10 (Lakshman 2026-11-02): cards and panels now rise in and figures count up unless reduced motion is
+// asked for. On the lab (Playwright 1.59.1, Chromium 147) test.use({ reducedMotion }) reached the page as false while
+// page.emulateMedia did not, so the measurements below would read panels mid-animation; ask for it on the page too.
+test.beforeEach(async ({ page }) => { await page.emulateMedia({ reducedMotion: 'reduce' }); });
 
 const DAY = 86_400_000;
 const decisionsTopic = prefix + 'delegation.decisions.v1';
@@ -110,13 +118,23 @@ test('E2 exactly one run on one day', async ({ page }, info) => {
   await shot(page, info, 'e2-one-run');
 });
 
-test('E5 499 runs draw every run with no line; 500 runs say the read limit', async ({ page }, info) => {
+test('E5 499 runs draw every run with no line; 500 runs say the read limit only when the walk could not finish', async ({ page }, info) => {
   await open(page, { [decisionsTopic]: runs(499) });
   await expect(runsPanel(page).getByTestId('insights-total')).toHaveCount(0);
   await invariants(page, '499 runs', { twoColumns: true });
   await page.unrouteAll({ behavior: 'ignoreErrors' });
-  await open(page, { [decisionsTopic]: runs(500) });
-  await expect(runsPanel(page).getByTestId('insights-total')).toHaveText('Showing the latest 500 runs');
+  // OMN-21970 AC3 (committed 801bf845) replaced "Showing the latest 500 runs": the page walks every page of runs, and
+  // only a walk that could not finish says so. Here every page is truncated and its next_cursor never moves, so the walk
+  // stops at the 500 runs it read.
+  // The daily totals topic (OMN-21970 AC2) is declared, empty, as a current runtime serves it, so the panel carries only
+  // this case's own line and not also the "Not available yet: daily run totals" notice of an older runtime.
+  await open(page, { [decisionsTopic]: runs(500), [prefix + 'delegation.daily.v1']: [] });
+  await expect(runsPanel(page).getByTestId('insights-total'), 'a complete read of 500 runs has no limit line').toHaveCount(0);
+  const stuck = runs(500);
+  await page.route(url => decodeURIComponent(url.pathname).endsWith(`/${decisionsTopic}`), route => route.fulfill({ contentType: 'application/json',
+    body: JSON.stringify({ rows: stuck, row_count: stuck.length, data_freshness: 'stale', truncated: true, next_cursor: 'e5-cursor-that-never-moves' }) }));
+  await page.reload();
+  await expect(runsPanel(page).getByTestId('insights-total')).toHaveText('Showing 500 runs read; the rest could not be read');
   await invariants(page, '500 runs', { twoColumns: true });
   await shot(page, info, 'e5-500-runs');
 });
@@ -176,9 +194,9 @@ test('E4 only not-tier-routed runs: Tier mix gives no share', async ({ page }, i
 
 test('E3 every window keeps the layout and draws only its days', async ({ page }, info) => {
   await open(page, { [decisionsTopic]: runs(300) });
-  const windows = page.getByRole('radiogroup', { name: 'Figures for', exact: true });
-  for (const [name, days] of [['Today (UTC)', 1], ['Last 7 days (UTC)', 7], ['Last 15 days (UTC)', 15], ['Last 30 days (UTC)', 30], ['All time', 30]] as const) {
-    await windows.getByRole('radio', { name, exact: true }).click();
+  // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the windows are in one dropdown, and Last 90 days joined them.
+  for (const [name, days] of [['Today (UTC)', 1], ['Last 7 days (UTC)', 7], ['Last 15 days (UTC)', 15], ['Last 30 days (UTC)', 30], ['Last 90 days (UTC)', 90], ['All time', 30]] as const) {
+    await chooseWindow(page, name);
     await expect(runsPanel(page).locator('.gdb-day'), name).toHaveCount(days);
     await invariants(page, name, { twoColumns: true });
   }
@@ -227,7 +245,7 @@ test('E2 dark theme with twelve long model names', async ({ page }, info) => {
 
 test('E6 keyboard: focus walks the days, the readout follows, and clears when focus leaves', async ({ page }) => {
   await open(page, { [decisionsTopic]: runs(70, () => ({}), 7) });
-  await page.getByRole('radiogroup', { name: 'Figures for', exact: true }).getByRole('radio', { name: 'Last 7 days (UTC)', exact: true }).click();
+  await chooseWindow(page, 'Last 7 days (UTC)');
   const days = runsPanel(page).locator('.gdb-day');
   await expect(days).toHaveCount(7);
   const readout = page.getByTestId('runs-per-day-readout');

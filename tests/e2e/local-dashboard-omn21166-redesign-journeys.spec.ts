@@ -1,7 +1,11 @@
 import { writeFileSync } from 'node:fs';
 import { expect, test, type Page } from 'playwright/test';
-import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chartRows, prefix, serveCharts, keepRealClock } from './omn21166-chart-fixtures';
+// OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the window radios sit in one dropdown; chooseWindow opens it and proves it closed.
+import { chooseWindow } from './overview-window-menu';
 import { withAllTime, withAnalysis, withTrace } from './omn21166-redesign-fixtures';
+// This spec dates its rows from the real clock, so the browser keeps it (see FIXTURE_NOW).
+test.beforeEach(({ page }) => keepRealClock(page));
 
 // OMN-21166 part 29, revision 6 (Lakshman 2026-10-27: "based on delegation data you can redesign all pages and make a best
 // dashboard", benchmarked against 20 platforms; Codex critique MSGs cf609ee2, 02a3961e, c8abbf3f). Journeys, not one
@@ -108,8 +112,10 @@ test('AC194 AC195 Usage analysis groups the served sample with its own denominat
   await settle(page, '/usage');
   const analysis = page.locator('[data-usage-analysis]');
   await expect(analysis).toBeVisible();
-  // J6: the scope is stated, not implied.
-  await expect(analysis).toContainText('latest 6 served runs, covering Oct 15 to Oct 17');
+  // J6: the scope is stated, not implied. OMN-21970 AC3 (committed d0476f95): a read that walked every page (this fixture
+  // serves no next_cursor) holds every served run, so it says "all", never "the latest".
+  await expect(analysis).toContainText('From all 6 served runs, covering Oct 15 to Oct 17');
+  await expect(analysis).not.toContainText('latest 6 served runs');
   const row = (name: string) => analysis.locator('table[data-analysis-table] tbody tr').filter({ has: page.locator('th', { hasText: new RegExp(`^${name}$`) }) });
   await expect(analysis.locator('table[data-analysis-table] tbody tr')).toHaveCount(3);
   // J7: own denominators per rate; a missing verdict is not a failure and a missing latency is not 0 ms.
@@ -147,7 +153,9 @@ test('AC196 Runs states its totals for the current filter, labelled as the serve
   await serveCharts(page, withAnalysis);
   await settle(page, '/runs');
   const line = page.locator('[data-runs-totals]');
-  await expect(line).toContainText('current filter · latest 6 served runs');
+  // OMN-21970 AC3 (committed d0476f95): a complete read is "all" the served runs, never "latest".
+  await expect(line).toContainText('current filter · all 6 served runs');
+  await expect(line).not.toContainText('latest');
   await expect(line.locator('[data-total="runs"]')).toHaveText('6 runs');
   await expect(line.locator('[data-total="pass"]')).toHaveText('60.0% passed (3 of 5)');
   await expect(line.locator('[data-total="p95"]')).toHaveText('p95 500 ms');
@@ -212,7 +220,7 @@ test('AC200 a window summed over days on two pricing versions reads as a mixed b
     await page.unrouteAll({ behavior: 'ignoreErrors' });
     await serve([...versions]);
     await settle(page, '/overview');
-    await page.getByRole('radio', { name: 'Last 7 days (UTC)', exact: true }).click();
+    await chooseWindow(page, 'Last 7 days (UTC)');
     const caption = page.locator('[data-component="overview-savings"] .local-card-caption');
     await expect(caption).toContainText(expected);
     if (versions.length === 2 && versions[0] !== versions[1] || versions.join() === ',') await expect(caption).not.toContainText(/pricing v\d/);

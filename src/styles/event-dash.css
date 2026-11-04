@@ -9,7 +9,7 @@
 
    Fonts: omnidash does NOT load Space Grotesk, so the scoped display font
    falls back to the system / omnidash sans stack rather than adding a webfont
-   request. JetBrains Mono already lives in omnidash's `--font-mono` stack, so
+   request. IBM Plex Mono already lives in omnidash's `--font-mono` stack, so
    `--ev-font-mono` reuses the same fallback chain.
    ============================================================================ */
 
