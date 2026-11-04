@@ -501,3 +501,8 @@ html body .app svg.field-icon.field-icon[data-field-icon="usage-day"]:not([data-
 .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-export button[data-export]:hover {
   background: color-mix(in oklab, var(--tone) 20%, transparent) !important; border-color: color-mix(in oklab, var(--tone) 70%, var(--ds-line)) !important; }
 .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-export button[data-export] svg.lucide { color: var(--tone-ink) !important; }
+
+/* OMN-22168 (Lakshman 2026-11-04): each Recent runs column header leads with its concept's glyph, in that concept's colour. */
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap thead :is(.local-runs-head, .local-sort-header) {
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap thead .field-icon { flex: none; }

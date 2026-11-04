@@ -17,6 +17,8 @@ import { chartRows, prefix, recentDay, serveCharts } from './omn21166-chart-fixt
  *      colour for these controls over the 10-27 one grey; the page's grey-icon rule had painted them all grey).
  *   L9 Overview's Model usage breaks a model name only at its joins (Lakshman 2026-11-04, "widen the model usage columns
  *      so names don't break"; the 64px columns broke thinkingmachines mid-word). The plot scrolls inside its panel.
+ *   L10 every Recent runs column header has its own glyph and its own colour (Lakshman 2026-11-04, "all should be in
+ *      different color and different icons"), each its concept's canonical glyph and colour, never the interface grey.
  */
 const LONG = 'nvidia/nemotron-3-ultra-550b-a55b:free';
 const template = chartRows[prefix + 'delegation.decisions.v1'][0] as Record<string, unknown>;
@@ -187,3 +189,28 @@ for (const width of [1440, 390] as const) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth), 'the page never scrolls sideways').toBeLessThanOrEqual(0);
   });
 }
+
+test('L10: each Recent runs column header has its own glyph and colour', async ({ page }) => {
+  await page.goto('/runs');
+  await expect(page.locator('.local-runs-wrap tbody tr').first()).toBeVisible();
+  await page.getByLabel('Show all run fields', { exact: true }).check();
+  await page.getByLabel('Routing columns', { exact: true }).check();
+  for (const theme of ['light', 'dark'] as const) {
+    await useTheme(page, theme);
+    const heads = await page.locator('.local-runs-wrap table').first().locator('thead th').evaluateAll(cells => {
+      const grey = getComputedStyle(document.querySelector('.sidebar .dash-marker svg')!).color;
+      return cells.filter(cell => getComputedStyle(cell).display !== 'none').map(cell => {
+        const icons = [...cell.querySelectorAll('svg')];
+        const glyph = icons[0] ? [...icons[0].classList].find(name => name.startsWith('lucide-') && name !== 'lucide-icon') ?? 'unnamed' : 'none';
+        return { name: cell.textContent?.trim() ?? '', count: icons.length, glyph, color: icons[0] ? getComputedStyle(icons[0]).color : 'none', grey };
+      });
+    });
+    expect(heads.length, `${theme}: every column shown`).toBe(21);
+    expect(heads.filter(head => head.count !== 1).map(head => `${head.name}: ${head.count} glyphs`), `${theme}: one glyph each`).toEqual([]);
+    expect(heads.filter(head => head.color === head.grey).map(head => head.name), `${theme}: no header glyph is the interface grey`).toEqual([]);
+    const sharedGlyph = heads.filter(head => heads.some(other => other !== head && other.glyph === head.glyph));
+    expect(sharedGlyph.map(head => `${head.name}: ${head.glyph}`), `${theme}: no two headers share a glyph`).toEqual([]);
+    const sharedColour = heads.filter(head => heads.some(other => other !== head && other.color === head.color));
+    expect(sharedColour.map(head => `${head.name}: ${head.color}`), `${theme}: no two headers share a colour`).toEqual([]);
+  }
+});

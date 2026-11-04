@@ -1627,13 +1627,17 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
   const weekLabel = (value: string) => value === today ? `Today ${value}` : `${new Date(`${value}T00:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })} ${value}`;
   // OMN-21166 AC75: a sortable header names its order for assistive tech; the first click puts the largest or newest
   // first, the next reverses it.
-  const sortHeader = (key: RunSortKey, label: string) => {
+  // Lakshman 2026-11-04, "all should be in different color and different icons": each column header carries its
+  // concept's own glyph in that concept's colour (the same pair the concept draws on every other page).
+  const headIcon = (concept: string, label: string) => <ConceptIcon concept={concept} label={label} size={13} />;
+  const plainHeader = (concept: string, label: string) => <th><span className="local-runs-head">{headIcon(concept, label)}{label}</span></th>;
+  const sortHeader = (key: RunSortKey, label: string, concept: string) => {
     const active = view.sort === key;
     const direction = active ? view.dir ?? 'desc' : null;
     return <th aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}>
       <button type="button" className="local-sort-header" data-sort-active={active ? '' : undefined}
         onClick={() => updateView({ sort: key, dir: active && direction === 'desc' ? 'asc' : 'desc', page: 1 })}>
-        {label}<span aria-hidden="true">{direction === 'asc' ? ' ↑' : direction === 'desc' ? ' ↓' : ''}</span>
+        {headIcon(concept, label)}{label}<span aria-hidden="true">{direction === 'asc' ? ' ↑' : direction === 'desc' ? ' ↓' : ''}</span>
       </button>
     </th>;
   };
@@ -1763,10 +1767,14 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
           <DataTable fit className={`local-runs-wrap${showAllFields ? ' local-runs-wrap--all' : ''}${showRouting ? ' local-runs-wrap--routing' : ''}`} id={`${id}-table`}>
               <thead>
                 <tr>
-                  <th>Run</th>{sortHeader('created', 'Created')}<th>Status</th><th>Cause</th><th>Model</th><th>Backend</th>
-                  {showRouting && <><th>Requested model</th><th>Finish reason</th><th>Escalations</th></>}<th>Host</th>
-                  <th>Tokens in</th><th>Tokens out</th>{sortHeader('cost', 'Cost')}<th>Modelled saving</th><th>Baseline model</th>
-                  <th>Basis</th><th>Task type</th>{sortHeader('duration', 'Duration')}<th>Tokens to compliance</th><th>Route tier</th><th>Quality score</th>
+                  {plainHeader('identity', 'Run')}{sortHeader('created', 'Created', 'age')}{plainHeader('run-outcome', 'Status')}
+                  {plainHeader('failures', 'Cause')}{plainHeader('model', 'Model')}{plainHeader('backend', 'Backend')}
+                  {showRouting && <>{plainHeader('routing-model', 'Requested model')}{plainHeader('completion', 'Finish reason')}
+                    {plainHeader('escalated', 'Escalations')}</>}{plainHeader('host', 'Host')}
+                  {plainHeader('tokens-in', 'Tokens in')}{plainHeader('tokens-out', 'Tokens out')}{sortHeader('cost', 'Cost', 'cost')}
+                  {plainHeader('savings', 'Modelled saving')}{plainHeader('baseline', 'Baseline model')}{plainHeader('basis', 'Basis')}
+                  {plainHeader('task', 'Task type')}{sortHeader('duration', 'Duration', 'duration')}
+                  {plainHeader('tokens-completion', 'Tokens to compliance')}{plainHeader('tier', 'Route tier')}{plainHeader('score', 'Quality score')}
                 </tr>
               </thead>
               <tbody>{page.map((run, index) => {
