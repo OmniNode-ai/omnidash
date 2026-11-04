@@ -707,3 +707,49 @@ html body .local-dashboard-page .local-overview-charts-panel :is(figure.local-ch
   border: 0 !important; background: transparent !important; box-shadow: none !important; padding-left: 0 !important; padding-right: 0 !important; }
 html body .local-dashboard-page .local-overview-charts-panel .local-dashboard-tabpanel article.local-dashboard-panel {
   border: 0 !important; background: transparent !important; box-shadow: none !important; padding: 0 !important; }
+
+/* OMN-22168 (Lakshman 2026-11-04, "not happy with design, use best design and impress user"): stat tabs. Four equal
+   cards across the row; each has a glyph tile in its tone, the chart's name and a served headline. The chosen card has a
+   soft gradient in its tone, a tone border and a glow; the others are quiet cards that lift on hover. */
+html body .local-dashboard-page .local-overview-charts-panel .local-dashboard-tab-slider { display: none !important; }
+html body .local-dashboard-page .local-overview-charts-panel .local-dashboard-tablist:has([data-stat]) {
+  display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px !important; width: 100%;
+  padding: 0 !important; border: 0 !important; background: transparent !important; }
+@media (max-width: 900px) { html body .local-dashboard-page .local-overview-charts-panel .local-dashboard-tablist:has([data-stat]) { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+html body .local-dashboard-page .local-overview-charts-panel .local-dashboard-tablist [role="tab"][data-stat] {
+  display: flex; align-items: center; gap: 12px; min-height: 76px; padding: 14px 16px; text-align: left;
+  border: 1px solid var(--ds-line) !important; border-radius: 14px !important; background: var(--ds-surface) !important;
+  color: var(--ds-ink) !important; box-shadow: none !important; cursor: pointer;
+  transition: transform 180ms var(--ds-ease, ease), border-color 180ms ease, box-shadow 180ms ease, background 180ms ease; }
+@media (hover: hover) {
+  html body .local-dashboard-page .local-overview-charts-panel .local-dashboard-tablist [role="tab"][data-stat]:hover {
+    transform: translateY(-2px); border-color: color-mix(in oklab, var(--tab-tone) 45%, var(--ds-line)) !important;
+    box-shadow: 0 8px 20px -14px var(--tab-tone) !important; } }
+html body .local-dashboard-page .local-overview-charts-panel .local-dashboard-tablist [role="tab"][data-stat][aria-selected="true"] {
+  border-color: var(--tab-tone) !important;
+  background: linear-gradient(135deg, color-mix(in oklab, var(--tab-tone) 20%, var(--ds-surface)) 0%, var(--ds-surface) 75%) !important;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--tab-tone) 18%, transparent), 0 12px 28px -16px var(--tab-tone) !important; }
+html body .local-dashboard-page .local-overview-charts-panel .local-dashboard-tablist [role="tab"][data-stat]:focus-visible {
+  outline: 2px solid var(--tab-tone); outline-offset: 3px; }
+.local-tab-chip { display: inline-grid; place-items: center; flex: none; width: 42px; height: 42px; border-radius: 12px;
+  background: color-mix(in oklab, var(--tab-tone) 16%, transparent); }
+html body .local-dashboard-page .local-tab-chip svg.lucide { color: var(--tab-tone) !important; width: 20px; height: 20px; }
+[aria-selected="true"] > .local-tab-chip { background: var(--tab-tone); }
+html body .local-dashboard-page [aria-selected="true"] > .local-tab-chip svg.lucide { color: var(--ds-on-accent) !important; }
+.local-tab-text { display: grid; gap: 2px; min-width: 0; }
+.local-tab-label { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ds-ink-3); }
+.local-tab-hint { font-size: 20px; font-weight: 700; line-height: 1.15; color: var(--ds-ink); font-variant-numeric: tabular-nums;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+[aria-selected="true"] .local-tab-label { color: var(--tab-tone); }
+
+/* Lakshman 2026-11-04 ("colourful"): the status line's facts are chips, each with its glyph in its own tone. */
+.local-overview-status { gap: 8px 10px; }
+.local-status-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
+  color: var(--ds-ink); background: color-mix(in oklab, var(--chip-tone) 13%, transparent);
+  border: 1px solid color-mix(in oklab, var(--chip-tone) 35%, var(--ds-line)); }
+.local-status-chip[data-tone="blue"] { --chip-tone: var(--ds-hue-blue); }
+.local-status-chip[data-tone="purple"] { --chip-tone: var(--ds-hue-purple); }
+.local-status-chip[data-tone="amber"] { --chip-tone: var(--ds-hue-amber); }
+html body .local-dashboard-page .local-status-chip svg.lucide { color: var(--chip-tone) !important; }
+.local-overview-status[data-state="running"] > strong { color: var(--ds-hue-green); }
+.local-overview-status > span[aria-hidden="true"]:not(.local-overview-status-dot) { display: none; }

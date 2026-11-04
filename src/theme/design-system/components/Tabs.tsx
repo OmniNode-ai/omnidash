@@ -12,6 +12,9 @@ export interface DashboardTab {
   id: string; label: string; panel: () => ReactNode;
   /** OMN-22168 (Lakshman 2026-11-04, "each tab colourful modern"): the tab's glyph, from the icon registry, and its tone. */
   icon?: ReactNode; tone?: string;
+  /** OMN-22168 (Lakshman 2026-11-04, "best design, impress user"): a headline under the label (a stat tab). The tab keeps
+   * its label as its accessible name. */
+  hint?: ReactNode;
 }
 
 /** The tab a search string selects for one panel: its parameter when it names a tab, else the first tab. */
@@ -80,8 +83,13 @@ export function DashboardTabs({ label, param, tabs }: { label: string; param: st
       {tabs.map((tab, index) => <button key={tab.id} ref={element => { buttons.current[index] = element; }} type="button" role="tab"
         id={`${base}-${tab.id}-tab`} aria-controls={`${base}-${tab.id}-panel`} aria-selected={tab.id === active}
         tabIndex={tab.id === active ? 0 : -1} data-tab={tab.id} onClick={() => select(tab.id)} onKeyDown={event => onKeyDown(event, index)}
-        data-toned={tab.tone ? '' : undefined} style={tab.tone ? { '--tab-tone': tab.tone } as CSSProperties : undefined}>
-        {tab.icon}{tab.label}
+        data-toned={tab.tone ? '' : undefined} data-stat={tab.hint !== undefined ? '' : undefined}
+        aria-label={tab.hint !== undefined ? tab.label : undefined}
+        style={tab.tone ? { '--tab-tone': tab.tone } as CSSProperties : undefined}>
+        {tab.hint !== undefined
+          ? <>{tab.icon && <span className="local-tab-chip" aria-hidden="true">{tab.icon}</span>}
+            <span className="local-tab-text"><span className="local-tab-label">{tab.label}</span><span className="local-tab-hint">{tab.hint}</span></span></>
+          : <>{tab.icon}{tab.label}</>}
       </button>)}
     </div>
     <div role="tabpanel" id={`${base}-${panel.id}-panel`} aria-labelledby={`${base}-${panel.id}-tab`} tabIndex={0}

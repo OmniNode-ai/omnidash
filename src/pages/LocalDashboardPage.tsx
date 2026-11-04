@@ -34,7 +34,7 @@ import { InsightsSection, InsightsWindowContext, MeteringActivityInsights, Overv
 import { UsageInsights } from '@/pages/local/usage-insights';
 import { RoutingAnalysis } from '@/pages/local/usage-analysis';
 import { Badge, ConfirmDialog, DashboardTabs, DataTable, Dropdown, EmptyState, Fact, FactList, Figure, InfoTip, Panel, PanelTitle, StatusChip } from '@/theme/design-system/components';
-import { Bot, CircleCheck, FileJson, FileSpreadsheet, Layers, ListChecks, Server, TriangleAlert } from '@/theme/design-system/icons';
+import { Bot, CalendarRange, ChartArea, ChartPie, CircleCheck, Clock3, FileJson, FileSpreadsheet, Layers, ListChecks, Rows3, Server, Timer, TriangleAlert } from '@/theme/design-system/icons';
 import { SinceLastVisit } from '@/pages/local/since-last-visit';
 import { ModelKeys, providerName } from '@/pages/local/model-keys';
 import { EnvironmentPanel, ServiceHealthUnread } from '@/pages/local/environment';
@@ -1967,8 +1967,11 @@ export function ModelUsagePanel({ row }: { row: Row | null }) {
  * reason. The last run is the newest served decision's time, the run total delegation.model-routing.v1's served
  * total_delegations, and the median run time the served decisions' durations, as the Runs page reads them.
  */
-export function OverviewStatusStrip({ env, decisions, routing, now, complete = false }: {
+export function OverviewStatusStrip({ env, decisions, routing, now, window = 'all', metering = null }: {
   env: Row | null; decisions: readonly unknown[]; routing: Row | null; now: number; complete?: boolean;
+  /** Lakshman 2026-11-04 ("based on time selected ... make everything dynamic"): the Overview window, and the served
+   * metering rows its run count is read from (the row the cards read for that window). */
+  window?: OverviewWindow; metering?: readonly unknown[] | null;
 }) {
   const observed = env && !isMissing(env.observed_state) ? String(env.observed_state) : null;
   const state = observed === null ? 'unknown' : observed === 'running' ? 'running' : 'attention';
@@ -1980,11 +1983,22 @@ export function OverviewStatusStrip({ env, decisions, routing, now, complete = f
     : ago < 60_000 ? 'Last run under a minute ago'
       : ago < 3_600_000 ? `Last run ${Math.floor(ago / 60_000)} min ago`
         : ago < 172_800_000 ? `Last run ${Math.floor(ago / 3_600_000)} h ago` : `Last run ${Math.floor(ago / 86_400_000)} days ago`;
-  const served = routing && !isMissing(routing.total_delegations) ? Number(routing.total_delegations) : NaN;
+  // The run count follows the window: the window's metering row (as the cards read it); all time falls back to the
+  // routing view's served total when no metering row is read.
+  const picked = metering ? pickMeteringRow(metering, window, now) : null;
+  const windowRuns = picked && 'row' in picked && !isMissing(picked.row.runs_total) ? Number(picked.row.runs_total) : NaN;
+  const served = Number.isFinite(windowRuns) ? windowRuns
+    : window === 'all' && routing && !isMissing(routing.total_delegations) ? Number(routing.total_delegations) : NaN;
   const total = Number.isFinite(served) ? `${formatFullCount(String(served))} runs` : 'Runs not recorded';
-  const latencies = runs.map(run => run.latencyMs).filter((value): value is number => value !== null).sort((a, b) => a - b);
+  // The median run time is the window's runs only.
+  const today = utcDay(now);
+  const [from, to] = window === 'all' ? ['', '9999-12-31'] : window === 'today' ? [today, today]
+    : window.startsWith('day:') ? [window.slice(4), window.slice(4)] : (window.slice(6).split('..') as [string, string]);
+  const inWindow = runs.filter(run => run.day >= from && run.day <= to);
+  const latencies = inWindow.map(run => run.latencyMs).filter((value): value is number => value !== null).sort((a, b) => a - b);
   const median = latencies.length === 0 ? null : latencies[Math.floor((latencies.length - 1) / 2)]!;
-  const speed = median === null ? null : `Median run ${(median / 1000).toFixed(1)} s${complete ? '' : ` (latest ${formatFullCount(String(runs.length))} runs)`}`;
+  // Lakshman 2026-11-04 ("colourful and remove 500 latest runs text"): the median reads plainly, without the read's size.
+  const speed = median === null ? null : `Median run ${(median / 1000).toFixed(1)} s`;
   const reason = state === 'attention' && env && !isMissing(env.reason) ? String(env.reason) : null;
   return (
     <div className="local-overview-status" role="status" aria-label="Runtime status" data-state={state}>
@@ -1992,9 +2006,10 @@ export function OverviewStatusStrip({ env, decisions, routing, now, complete = f
       {/* OMN-22168 ("do all", item 3): the state opens Settings' System status, where the runtime's details are. */}
       <strong><Link href="/settings#system" className="local-overview-status-link">{observed === null ? 'Runtime status not recorded' : `Runtime ${observed}`}</Link></strong>
       {reason && <span className="local-overview-status-reason">{reason}</span>}
-      <span aria-hidden="true">·</span><span>{lastRun}</span>
-      <span aria-hidden="true">·</span><span>{total}</span>
-      {speed && <><span aria-hidden="true">·</span><span>{speed}</span></>}
+      {/* Lakshman 2026-11-04 ("colourful"): each fact is a chip with its own glyph and tone. */}
+      <span className="local-status-chip" data-tone="blue"><Clock3 size={14} aria-hidden="true" />{lastRun}</span>
+      <span className="local-status-chip" data-tone="purple"><Rows3 size={14} aria-hidden="true" />{total}</span>
+      {speed && <span className="local-status-chip" data-tone="amber"><Timer size={14} aria-hidden="true" />{speed}</span>}
     </div>
   );
 }
@@ -3418,7 +3433,9 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
           const record = (value: unknown) => (value && typeof value === 'object' && !Array.isArray(value) ? (value as Row) : null);
           // As TableComponent reads it (OMN-21970 AC3): the decisions read is complete when it walked every page.
           const walk = snapshots.find(snapshot => snapshot.topic === DELEGATION_DECISIONS_TOPIC);
-          return <OverviewStatusStrip env={record(rawRowsFor(status, snapshots, 0)[0])} now={now}
+          const meteringRead = snapshots.find(snapshot => snapshot.topic === METERING_SUMMARY_TOPIC);
+          return <OverviewStatusStrip env={record(rawRowsFor(status, snapshots, 0)[0])} now={now} window={overviewWindow}
+            metering={meteringRead && !meteringRead.failure ? meteringRead.rows : null}
             complete={walk !== undefined && !walk.failure && walk.truncated !== true} decisions={walk?.rows ?? []}
             routing={usage ? record(rawRowsFor(usage, snapshots, 0)[0]) : null} />;
         })()}
@@ -3477,16 +3494,35 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
                     <Panel className="local-overview-charts-panel" aria-labelledby="overview-charts-title" data-width="12">
                       <PanelTitle id="overview-charts-title"><ConceptIcon concept="analysis" label="Activity breakdown" size={14} />Activity breakdown</PanelTitle>
                       <p className="local-dashboard-caption">Runs, tokens, models and tiers over the chosen window. Pick a chart.</p>
-                      <DashboardTabs label="Overview charts" param="chart" tabs={[
-                        { id: 'runs', label: 'Runs per day', tone: 'var(--ds-hue-green)',
-                          icon: <ConceptIcon concept="runs-daily" label="Runs per day" size={14} />, panel: () => slice('runs', 'Runs per day', 'runs-daily') },
-                        { id: 'tokens', label: 'Tokens per day', tone: 'var(--ds-hue-blue)',
-                          icon: <ConceptIcon concept="tokens-daily" label="Tokens per day" size={14} />, panel: () => slice('tokens', 'Tokens per day', 'tokens-daily') },
-                        { id: 'models', label: 'Model usage', tone: 'var(--ds-hue-purple)',
-                          icon: <ConceptIcon concept="runs-model" label="Model usage" size={14} />, panel: () => renderGroup(['overview-model-usage']) },
-                        { id: 'tiers', label: 'Tier mix', tone: 'var(--ds-hue-amber)',
-                          icon: <ConceptIcon concept="tier-mix" label="Tier mix" size={14} />, panel: () => renderGroup(['overview-tier-mix']) },
-                      ]} />
+                      {/* Lakshman 2026-11-04 ("not happy ... use best design and impress user"): stat tabs. Each tab is a small
+                        card with its glyph tile, the chart's name and a served headline (the routing view's run total and
+                        its model and tier counts; the window's token total, as the Tokens processed card reads it). */}
+                    {(() => {
+                      const usage = page.components.find(candidate => candidate.component_id === 'overview-model-usage');
+                      const routingValue = usage ? rawRowsFor(usage, snapshots, 0)[0] : undefined;
+                      const routing = routingValue && typeof routingValue === 'object' && !Array.isArray(routingValue) ? routingValue as Row : null;
+                      const metering = snapshots.find(snapshot => snapshot.topic === METERING_SUMMARY_TOPIC);
+                      const picked = metering && !metering.failure ? pickMeteringRow(metering.rows, overviewWindow, now) : null;
+                      const tokens = picked && 'row' in picked ? meteringTokens(picked.row).total : null;
+                      // The runs headline follows the window, as the cards do; all time falls back to the routing total.
+                      const windowRuns = picked && 'row' in picked && !isMissing(picked.row.runs_total) ? Number(picked.row.runs_total) : NaN;
+                      const runs = Number.isFinite(windowRuns) ? windowRuns
+                        : overviewWindow === 'all' && routing && !isMissing(routing.total_delegations) ? Number(routing.total_delegations) : NaN;
+                      const models = routing && Array.isArray(routing.by_model) ? routing.by_model.length : null;
+                      const tierRows = routing && routing.by_tier && typeof routing.by_tier === 'object' && Array.isArray((routing.by_tier as Row).tiers)
+                        ? ((routing.by_tier as Row).tiers as unknown[]).length : null;
+                      const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
+                      return <DashboardTabs label="Overview charts" param="chart" tabs={[
+                        { id: 'runs', label: 'Runs per day', tone: 'var(--ds-hue-green)', icon: <CalendarRange size={18} />,
+                          hint: Number.isFinite(runs) ? `${formatDashboardCount(runs)} runs` : 'Runs not recorded', panel: () => slice('runs', 'Runs per day', 'runs-daily') },
+                        { id: 'tokens', label: 'Tokens per day', tone: 'var(--ds-hue-blue)', icon: <ChartArea size={18} />,
+                          hint: tokens !== null ? `${formatDashboardCount(tokens)} tokens` : 'Tokens not recorded', panel: () => slice('tokens', 'Tokens per day', 'tokens-daily') },
+                        { id: 'models', label: 'Model usage', tone: 'var(--ds-hue-purple)', icon: <Bot size={18} />,
+                          hint: models !== null ? plural(models, 'model') : 'Models not recorded', panel: () => renderGroup(['overview-model-usage']) },
+                        { id: 'tiers', label: 'Tier mix', tone: 'var(--ds-hue-amber)', icon: <ChartPie size={18} />,
+                          hint: tierRows !== null ? plural(tierRows, 'tier') : 'Tiers not recorded', panel: () => renderGroup(['overview-tier-mix']) },
+                      ]} />;
+                    })()}
                     </Panel>
                   </div>
                 </>;
