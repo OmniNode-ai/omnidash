@@ -689,3 +689,21 @@ html body .local-dashboard-page .local-day-picker .local-day-button svg { color:
 html body .local-dashboard-page .local-day-picker .local-day-button[aria-pressed="true"] { background: color-mix(in oklab, var(--day-tone) 22%, transparent) !important; }
 /* Specificity (0,4,3) on purpose: above the page-scoped grey icon rule (0,3,2). */
 html body .local-dashboard-page .local-window-menu svg.lucide.local-window-icon { color: var(--win-tone, var(--ds-ink-3)) !important; }
+/* Lakshman 2026-11-04 ("polish"): the daily trend's scale, gridlines and date ticks. */
+.local-trend-scaled--axis { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; }
+.local-trend-yaxis { display: flex; flex-direction: column; justify-content: space-between; height: 300px; padding: 0;
+  font-size: 12px; color: var(--ds-ink-3); font-variant-numeric: tabular-nums; text-align: right; }
+@media (max-width: 700px) { .local-trend-yaxis { height: 220px; } }
+.local-trend-plot { min-width: 0; }
+.local-dashboard-page .local-trend .ins-plot {
+  background-image: linear-gradient(to bottom, var(--ds-line) 1px, transparent 1px);
+  background-size: 100% 50%; background-repeat: repeat-y; border-bottom: 1px solid var(--ds-line); }
+.local-trend-ticks { position: relative; height: 20px; margin-top: 6px; font-size: 12px; color: var(--ds-ink-3); }
+.local-trend-ticks > span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
+.local-trend-ticks > span:first-child { transform: none; }
+.local-trend-ticks > span:last-child { transform: translateX(-100%); }
+/* No frame inside the tab panel: the chart sits straight in the "Activity breakdown" panel. */
+html body .local-dashboard-page .local-overview-charts-panel :is(figure.local-chart, .ins-card, .rb-chart) {
+  border: 0 !important; background: transparent !important; box-shadow: none !important; padding-left: 0 !important; padding-right: 0 !important; }
+html body .local-dashboard-page .local-overview-charts-panel .local-dashboard-tabpanel article.local-dashboard-panel {
+  border: 0 !important; background: transparent !important; box-shadow: none !important; padding: 0 !important; }

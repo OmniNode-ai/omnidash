@@ -2070,14 +2070,26 @@ export function OverviewTrendPanel({ rows, columns, window, now }: {
         const single = visible.length === 1 ? visible[0]! : null;
         const known = single ? lines[0]!.values.filter((value): value is number => value !== null) : [];
         const top = known.length === 0 ? null : Math.max(...known);
-        return <div className={single && top !== null ? 'local-trend-scaled local-trend-scaled--axis' : 'local-trend-scaled'}>
-          {single && top !== null && <div className="local-trend-yaxis" aria-hidden="true">
-            <span>{single.format === 'currency' ? formatUsd(top) : formatDashboardCount(top)}</span><span>0</span></div>}
-          <MultiLinePlot label="Daily trend" lines={lines} keys={days} hover={hover} onHover={setHover}
-            labels={days.map(day => `${label(day)}: ${dayText(day, false)}`)} />
+        // Lakshman 2026-11-04 ("polish"): a scale at the left (the real values for one line; the share of each line's own
+        // busiest day for several), gridlines behind the lines, and a date every few days below.
+        const real = single && top !== null;
+        const scale = real ? [top, top / 2, 0].map(value => (single!.format === 'currency' ? formatUsd(value) : formatDashboardCount(Math.round(value))))
+          : ['100%', '50%', '0'];
+        const step = Math.max(1, Math.ceil(days.length / 6));
+        const ticks = days.map((day, index) => ({ day, index })).filter(({ index }) => index % step === 0 || index === days.length - 1)
+          .filter(({ index }, position, all) => index === days.length - 1 || all[position + 1] === undefined || all[position + 1]!.index - index >= step / 2);
+        return <div className="local-trend-scaled local-trend-scaled--axis">
+          <div className="local-trend-yaxis" aria-hidden="true" title={real ? undefined : 'Share of each line\'s busiest day'}>
+            {scale.map((text, index) => <span key={index}>{text}</span>)}</div>
+          <div className="local-trend-plot">
+            <MultiLinePlot label="Daily trend" lines={lines} keys={days} hover={hover} onHover={setHover}
+              labels={days.map(day => `${label(day)}: ${dayText(day, false)}`)} />
+            <div className="local-trend-ticks" aria-hidden="true">
+              {ticks.map(({ day, index }) => <span key={day} style={{ left: `${days.length > 1 ? (index / (days.length - 1)) * 100 : 50}%` }}>{label(day)}</span>)}
+            </div>
+          </div>
         </div>;
       })()}
-      <div className="ins-axis"><span>{label(days[0]!)}</span><span>{label(days[days.length - 1]!)}</span></div>
       <p className="local-dashboard-caption">{visible.length === 1
         ? `${visible[0]!.header} per UTC day, on its real scale.`
         : 'Each line is scaled to its own busiest day, so lines of different units fit one chart. Hide the others to read one on its real scale.'}</p>
@@ -2721,6 +2733,10 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns, acti
   const meteringDays = snapshots.find(snapshot => snapshot.topic === METERING_SUMMARY_TOPIC);
   const tokenDays = servedDays ?? (!decisionsCompleteRead(snapshots) && meteringDays && !meteringDays.failure
     ? meteringFilledDays(meteringDays.rows, snapshots.find(snapshot => snapshot.topic === DELEGATION_DECISIONS_TOPIC)?.rows ?? []) : null);
+  // Runs per day spans the same served days, and draws only the verdicts read (Lakshman: "don't show anything if we don't
+  // have"): a day's runs are its passed and failed runs, nothing not recorded.
+  const runVerdictDays = tokenDays && !servedDays
+    ? tokenDays.map(day => ({ ...day, runs: day.passed + day.failed, unrecorded: 0 })) : null;
   // OMN-21166 AC26: trends and breakdowns, counted from the served decision rows (rule change R-B, 2026-10-18).
   if (component.component_id === 'overview-insights') {
     // AC42: the metering KPIs for the selected window sit in this open panel, and their charts in its analysis,
@@ -2731,7 +2747,7 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns, acti
     // OMN-21166 part 13: Overview keeps the activity summary; the window's spend line sits in "More activity" with the
     // run counts, and the detailed analysis lives on Runs (its "Explore run analysis" link stays).
     if (slice) return rows.length === 0 ? <NoRunsYet /> : <InsightsSection decisions={rows} now={Date.now()} view={slice.key as 'runs' | 'tokens' | 'failures'} onInspectFailure={cause => navigate(causeHref(cause))}
-      servedDays={slice.key === 'tokens' ? tokenDays : servedDays} complete={decisionsComplete} />;
+      servedDays={slice.key === 'tokens' ? tokenDays : servedDays ?? runVerdictDays} complete={decisionsComplete} />;
     return rows.length === 0 ? <NoRunsYet /> : <>
     <InsightsSection decisions={rows} now={Date.now()} view="summary" servedDays={servedDays} complete={decisionsComplete} more={meteringRows.length > 0
       ? <MeteringActivityInsights rows={meteringRows} now={Date.now()} window={activityWindow} unavailable={meteringUnavailable} display="kpis" />
