@@ -149,20 +149,18 @@ test('AC194 AC195 Usage analysis groups the served sample with its own denominat
   await page.screenshot({ path: info.outputPath('ac194-usage-analysis.png'), fullPage: true });
 });
 
-test('AC196 Runs states its totals for the current filter, labelled as the served sample', async ({ page }) => {
+// OMN-21166 AC196's totals line, and the scope line above it, are removed from Runs (Lakshman 2026-11-04: "remove 500
+// recent runs returned; earlier history is not included ... latest 500 served runs"). The pager still counts the matching
+// runs and follows the filter.
+test('Runs shows no scope or totals line; the pager counts the matching runs', async ({ page }) => {
   await serveCharts(page, withAnalysis);
   await settle(page, '/runs');
-  const line = page.locator('[data-runs-totals]');
-  // OMN-21970 AC3 (committed d0476f95): a complete read is "all" the served runs, never "latest".
-  await expect(line).toContainText('current filter · all 6 served runs');
-  await expect(line).not.toContainText('latest');
-  await expect(line.locator('[data-total="runs"]')).toHaveText('6 runs');
-  await expect(line.locator('[data-total="pass"]')).toHaveText('60.0% passed (3 of 5)');
-  await expect(line.locator('[data-total="p95"]')).toHaveText('p95 500 ms');
-  // J10: the line follows the filter.
+  await expect(page.locator('[data-runs-totals]')).toHaveCount(0);
+  await expect(page.locator('.local-runs-scope')).toHaveCount(0);
+  await expect(page.locator('main')).not.toContainText('earlier history is not included');
+  await expect(page.locator('[data-component="recent-runs"] .local-dashboard-pager')).toContainText('Runs 1–6 of 6');
   await settle(page, '/runs?model=model-a');
-  await expect(line.locator('[data-total="runs"]')).toHaveText('3 runs');
-  await expect(line.locator('[data-total="pass"]')).toHaveText('66.7% passed (2 of 3)');
+  await expect(page.locator('[data-component="recent-runs"] .local-dashboard-pager')).toContainText('Runs 1–3 of 3');
 });
 
 test('AC197 Workflow draws the run as a waterfall: bars only for steps with a start and a duration, attempts as their own rows', async ({ page }, info) => {

@@ -32,7 +32,7 @@ import { PassRateMeter } from '@/pages/local/shares';
 import { TIER_TONES } from '@/theme/design-system/charts';
 import { InsightsSection, InsightsWindowContext, MeteringActivityInsights, OverviewRunsContext, PassRateSparkline, TaskIcon, type ActivityWindow } from '@/pages/local/insight-charts';
 import { UsageInsights } from '@/pages/local/usage-insights';
-import { RoutingAnalysis, RunsTotals } from '@/pages/local/usage-analysis';
+import { RoutingAnalysis } from '@/pages/local/usage-analysis';
 import { Badge, DashboardTabs, DataTable, EmptyState, Fact, FactList, Figure, Panel, PanelTitle, StatusChip } from '@/theme/design-system/components';
 import { SinceLastVisit } from '@/pages/local/since-last-visit';
 import { ModelKeys, providerName } from '@/pages/local/model-keys';
@@ -1668,8 +1668,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
       <div className="local-runs-search">
         <label htmlFor={`${id}-search`} className="local-visually-hidden">Search runs</label>
         <input id={`${id}-search`} type="search" value={query} placeholder="Search runs…" title="Search by run ID, model, task, backend or failure"
-          autoComplete="off" spellCheck={false} onChange={event => updateView({ query: event.target.value, page: 1 }, true)}
-          aria-describedby={`${id}-scope`} />
+          autoComplete="off" spellCheck={false} onChange={event => updateView({ query: event.target.value, page: 1 }, true)} />
       </div>
       <div className="local-dashboard-filters">
         <div className="local-filter-field">
@@ -1732,10 +1731,8 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
         )}
       </div>
       </div>
-      <p id={`${id}-scope`} className="local-dashboard-caption local-runs-scope">{truncated
-        ? `${formatDashboardCount(runs.length)} recent runs returned; earlier history is not included. Search, filters and charts use these records.`
-        : `${formatDashboardCount(runs.length)} returned runs. Search, filters and charts use these records.`}</p>
-      <RunsTotals rows={matching} sample={runs.length} complete={!truncated} />
+      {/* Lakshman 2026-11-04: the scope line ("N recent runs returned; earlier history is not included") and the totals
+          line under it are removed from Runs; the pager below still counts the matching runs. */}
       {routingSlot && createPortal(<RoutingAnalysis rows={runs} complete={!truncated} />, routingSlot)}
       {shown.length === 0 ? <EmptyState>No runs match these filters</EmptyState> : (
         <>
