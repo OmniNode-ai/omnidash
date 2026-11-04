@@ -33,7 +33,7 @@ import { TIER_TONES } from '@/theme/design-system/charts';
 import { InsightsSection, InsightsWindowContext, MeteringActivityInsights, OverviewRunsContext, PassRateSparkline, TaskIcon, type ActivityWindow } from '@/pages/local/insight-charts';
 import { UsageInsights } from '@/pages/local/usage-insights';
 import { RoutingAnalysis } from '@/pages/local/usage-analysis';
-import { Badge, DashboardTabs, DataTable, EmptyState, Fact, FactList, Figure, Panel, PanelTitle, StatusChip } from '@/theme/design-system/components';
+import { Badge, DashboardTabs, DataTable, EmptyState, Fact, FactList, Figure, Panel, PanelTitle, StatusChip, Tooltip } from '@/theme/design-system/components';
 import { SinceLastVisit } from '@/pages/local/since-last-visit';
 import { ModelKeys, providerName } from '@/pages/local/model-keys';
 import { EnvironmentPanel, ServiceHealthUnread } from '@/pages/local/environment';
@@ -1739,14 +1739,15 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
           <div className={`local-runs-list-detail${selectedRun ? ' local-runs-list-detail--selected' : ''}`}>
             <div className="local-runs-table-column">
           <h3 className="local-visually-hidden" data-page-heading tabIndex={-1}>Run list</h3>
-          <p className="local-dashboard-caption local-recent-toolbar"><label>
+          {/* Lakshman 2026-11-04: each view switch says on hover (and keyboard focus) what it adds to the table. */}
+          <p className="local-dashboard-caption local-recent-toolbar"><Tooltip side="bottom" text={RUN_FIELDS_TIP}><label>
             <input type="checkbox" checked={showAllFields} onChange={event => setShowAllFields(event.target.checked)} aria-controls={`${id}-table`} />
             Show all run fields
-          </label>
-          <label>
+          </label></Tooltip>
+          <Tooltip side="bottom" text={ROUTING_COLUMNS_TIP}><label>
             <input type="checkbox" checked={showRouting} onChange={event => setShowRouting(event.target.checked)} aria-controls={`${id}-table`} />
             Routing columns
-          </label>
+          </label></Tooltip>
           <span className="local-runs-export" role="group" aria-label="Export the matching runs">
             <button type="button" onClick={() => exportRuns('csv')}>Export CSV</button>
             <button type="button" onClick={() => exportRuns('json')}>Export JSON</button>
@@ -1913,6 +1914,12 @@ function tierModelCost(model: Row): string {
  * time, from delegation.model-routing.v1's served by_model (total_count and pct_of_total, over every run). Nothing is
  * counted or divided here; a model served without a count says Not recorded.
  */
+/** What each Runs view switch adds to the run list, shown on hover and keyboard focus. */
+const RUN_FIELDS_TIP = 'Shows every recorded field of each run: backend, host, tokens in and out, modelled saving, baseline model, '
+  + 'basis, tokens to compliance, route tier and quality score. The table scrolls sideways; the Run column stays in place.';
+const ROUTING_COLUMNS_TIP = 'Adds how each run was routed: the model it asked for, why the model stopped answering (finish reason) '
+  + 'and how many times it escalated to another model.';
+
 export function ModelUsagePanel({ row }: { row: Row | null }) {
   const modelColor = useModelColor();
   const models = row && Array.isArray(row.by_model) ? asRecords(row.by_model) : [];

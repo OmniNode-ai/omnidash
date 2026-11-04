@@ -300,3 +300,112 @@ html body .app svg.field-icon.field-icon[data-field-icon="unavailable"]:not([dat
 html body .app svg.field-icon.field-icon[data-field-icon="unrouted"]:not([data-semantic-concept^="model:"]) { color: var(--ds-field-unrouted) !important; }
 html body .app svg.field-icon.field-icon[data-field-icon="usage-analysis"]:not([data-semantic-concept^="model:"]) { color: var(--ds-field-usage-analysis) !important; }
 html body .app svg.field-icon.field-icon[data-field-icon="usage-day"]:not([data-semantic-concept^="model:"]) { color: var(--ds-field-usage-day) !important; }
+
+/* ============================================================================
+   OMN-22168 (Lakshman 2026-11-04, "make it modern"): the Recent runs panel on Runs. Markup and behaviour are unchanged;
+   this restyles the toolbar and the table with design-system tokens only.
+   - Search and filters are one row of soft pills; a filter that is set reads as active.
+   - "Show all run fields" and "Routing columns" are switches; the exports are quiet buttons at the row's end.
+   - The table has a small-caps header, roomier rows, a hover row and plain-ink links.
+   ============================================================================ */
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-toolbar { gap: 10px; margin-bottom: 10px; }
+/* The search box spans the panel on its own row; the filters sit under it (Lakshman 2026-11-04: "should be full box"). */
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-toolbar .local-runs-search { flex: 1 1 100% !important; min-width: 0; max-width: none; }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-toolbar .local-runs-search input { max-width: none !important; width: 100% !important; }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-toolbar .local-runs-search input {
+  height: 36px; min-height: 36px; border-radius: 10px; border: 1px solid var(--ds-line); background-color: var(--ds-surface-2);
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-toolbar .local-runs-search input:focus-visible {
+  outline: none; border-color: var(--ds-hue-blue); box-shadow: 0 0 0 3px color-mix(in oklab, var(--ds-hue-blue) 22%, transparent);
+}
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-toolbar .local-dashboard-filters { gap: 6px; }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-toolbar .local-dashboard-filters > .local-filter-field > select {
+  height: 32px; min-height: 32px; padding: 0 26px 0 12px; border-radius: 999px !important; border: 1px solid var(--ds-line);
+  background-color: transparent; color: var(--ds-ink-2); font-size: 12.5px; cursor: pointer;
+  transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
+}
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-toolbar .local-dashboard-filters > .local-filter-field > select:hover {
+  border-color: var(--ds-line-strong); color: var(--ds-ink); background-color: var(--ds-surface-2);
+}
+/* A filter that is set (any choice but its first, "All ...") reads as an active pill. */
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-toolbar .local-filter-field:has(option:checked:not(:first-child)) > select {
+  border-color: color-mix(in oklab, var(--ds-hue-blue) 55%, var(--ds-line)); color: var(--ds-ink);
+  background-color: color-mix(in oklab, var(--ds-hue-blue) 12%, transparent);
+}
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-toolbar .local-dashboard-filters > .local-filter-field > select:focus-visible {
+  outline: 2px solid var(--ds-hue-blue); outline-offset: 2px;
+}
+
+/* The view toggles as switches, the exports as quiet buttons pushed to the row's end. */
+.local-dashboard-page--runs [data-component="recent-runs"] .local-recent-toolbar { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin: 0 0 12px; }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-recent-toolbar label { gap: 9px; min-height: 32px; font-size: 13px; color: var(--ds-ink-2); }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-recent-toolbar label:hover { color: var(--ds-ink); }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-recent-toolbar input[type="checkbox"] {
+  appearance: none; -webkit-appearance: none; position: relative; flex: none; width: 30px; height: 18px; margin: 0; border-radius: 999px;
+  background: var(--ds-line-strong); cursor: pointer; transition: background-color 140ms ease;
+}
+.local-dashboard-page--runs [data-component="recent-runs"] .local-recent-toolbar input[type="checkbox"]::before {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--ds-page); box-shadow: 0 1px 2px rgb(0 0 0 / 0.35); transition: transform 140ms ease;
+}
+.local-dashboard-page--runs [data-component="recent-runs"] .local-recent-toolbar input[type="checkbox"]:checked { background: var(--ds-hue-blue); }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-recent-toolbar input[type="checkbox"]:checked::before { transform: translateX(12px); background: #ffffff; }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-recent-toolbar input[type="checkbox"]:focus-visible { outline: 2px solid var(--ds-hue-blue); outline-offset: 2px; }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-export { margin-left: auto; display: inline-flex; gap: 6px; }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-export button {
+  height: 32px; min-height: 32px; padding: 0 12px; border-radius: 8px !important; border: 1px solid var(--ds-line); background: transparent;
+  color: var(--ds-ink-2); font-size: 12.5px; font-weight: 500; cursor: pointer; transition: background-color 120ms ease, color 120ms ease;
+}
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-export button:hover { background: var(--ds-surface-2); color: var(--ds-ink); border-color: var(--ds-line-strong); }
+
+/* The table: small-caps header, roomier rows, a hover row, links in plain ink. */
+.local-dashboard-page--runs [data-component="recent-runs"] .local-dashboard-table-wrap { border-radius: 12px !important; overflow-x: auto; }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap table thead th {
+  background: var(--ds-surface-2) !important; color: var(--ds-ink-3) !important; font-size: 11px !important; font-weight: 600 !important;
+  text-transform: uppercase !important; letter-spacing: 0.06em !important; padding: 10px 12px !important; border-bottom: 1px solid var(--ds-line);
+}
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap table thead th button { text-transform: inherit; letter-spacing: inherit; font: inherit; color: inherit; }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody :is(td, th) { padding: 11px 12px; border-bottom: 1px solid var(--ds-line-soft, var(--ds-line)); }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody tr:last-child :is(td, th) { border-bottom: 0; }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody tr { transition: background-color 100ms ease; }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody tr:hover { background: color-mix(in oklab, var(--ds-surface-2) 70%, transparent); }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody td a,
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody .local-cell-filter {
+  color: var(--ds-ink); text-decoration: none; border-bottom: 0;
+}
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody td a:hover,
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody .local-cell-filter:hover { text-decoration: underline; text-underline-offset: 3px; }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody .local-cell-time { color: var(--ds-ink-2); }
+/* The status pill: a dot and the word, compact. */
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap .local-run-pill {
+  display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 600; line-height: 18px;
+}
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap .local-run-pill::before {
+  content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none;
+}
+/* With every field or the routing columns shown, the table keeps each column at its natural width and scrolls sideways
+   inside its panel, instead of squeezing 18 columns into the panel and breaking words letter by letter (live review
+   2026-11-04: "doc / ume / nt"). The Run column stays in place while the rest scroll; a long cause is cut with its full
+   text in its tooltip. */
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap:is(.local-runs-wrap--all, .local-runs-wrap--routing) {
+  overflow-x: auto !important; overscroll-behavior-x: contain; scrollbar-width: thin;
+}
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap:is(.local-runs-wrap--all, .local-runs-wrap--routing) table {
+  width: max-content !important; min-width: 100%; table-layout: auto !important;
+}
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap:is(.local-runs-wrap--all, .local-runs-wrap--routing) :is(th, td) {
+  width: auto !important; white-space: nowrap !important; overflow-wrap: normal !important; word-break: normal !important;
+}
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap:is(.local-runs-wrap--all, .local-runs-wrap--routing) .local-runs-cause {
+  display: inline-block; max-width: 280px; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom;
+}
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap:is(.local-runs-wrap--all, .local-runs-wrap--routing) :is(thead th, tbody td):first-child {
+  position: sticky; left: 0; z-index: 1; background: var(--ds-surface);
+  box-shadow: 1px 0 0 var(--ds-line);
+}
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap:is(.local-runs-wrap--all, .local-runs-wrap--routing) thead th:first-child { z-index: 2; background: var(--ds-surface-2) !important; }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap:is(.local-runs-wrap--all, .local-runs-wrap--routing) tbody tr:hover td:first-child { background: var(--ds-surface-2); }
+@media (prefers-reduced-motion: reduce) {
+  .local-dashboard-page--runs [data-component="recent-runs"] :is(input, select, button, tr, input::before) { transition: none !important; }
+}
