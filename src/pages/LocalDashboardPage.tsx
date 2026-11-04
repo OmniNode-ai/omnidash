@@ -34,7 +34,7 @@ import { InsightsSection, InsightsWindowContext, MeteringActivityInsights, Overv
 import { UsageInsights } from '@/pages/local/usage-insights';
 import { RoutingAnalysis } from '@/pages/local/usage-analysis';
 import { Badge, ConfirmDialog, DashboardTabs, DataTable, Dropdown, EmptyState, Fact, FactList, Figure, InfoTip, Panel, PanelTitle, StatusChip } from '@/theme/design-system/components';
-import { Bot, CalendarRange, ChartArea, ChartPie, CircleCheck, Clock3, FileJson, FileSpreadsheet, Layers, ListChecks, Rows3, Server, Timer, TriangleAlert } from '@/theme/design-system/icons';
+import { Bot, CalendarRange, ChartArea, ChartPie, CircleCheck, CircleDollarSign, Clock3, FileJson, FileSpreadsheet, Gauge, Layers, ListChecks, Rows3, Server, Timer, TriangleAlert } from '@/theme/design-system/icons';
 import { SinceLastVisit } from '@/pages/local/since-last-visit';
 import { ModelKeys, providerName } from '@/pages/local/model-keys';
 import { EnvironmentPanel, ServiceHealthUnread } from '@/pages/local/environment';
@@ -1862,13 +1862,31 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
           {chartsSlot !== null && ((panel: ReactNode) => (chartsSlot === undefined ? panel : createPortal(panel, chartsSlot)))(
             <Panel className="local-run-charts-panel" aria-label="Run charts">
               <PanelTitle data-page-heading tabIndex={-1}><ConceptIcon concept="duration" label="Run charts" size={16} />Run charts</PanelTitle>
-              <div className="local-run-charts">
-                <RunDurationChart runs={listed} onOpen={openRun} />
-                <RunTokensChart runs={listed} onOpen={openRun} />
-                <RunMetricChart runs={listed} onOpen={openRun} metric="cost" />
-                <RunMetricChart runs={listed} onOpen={openRun} metric="score" />
-              </div>
-              {weekChart}
+              {/* Lakshman 2026-11-05 ("in runs page many bar graph use tab and full page"): the five run charts are one
+                  full-width row of tabs, one big chart at a time, as on Overview; the chosen tab is kept in the address
+                  (?runchart=). Each hint counts the listed runs that served that chart's value, never a computed figure. */}
+              {(() => {
+                const served = (value: unknown) => (typeof value === 'number' || typeof value === 'string')
+                  && String(value).trim() !== '' && Number.isFinite(Number(value));
+                const of = (count: number) => `${formatDashboardCount(count)} of ${formatDashboardCount(listed.length)} runs`;
+                const weekRuns = week.reduce((sum, item) => sum + item.runs, 0);
+                return <DashboardTabs label="Run charts" param="runchart" tabs={[
+                  { id: 'duration', label: 'Duration per run', tone: 'var(--ds-hue-orange)', icon: <Timer size={18} />,
+                    hint: of(listed.filter(run => served(run.duration)).length),
+                    panel: () => <div className="local-run-charts"><RunDurationChart runs={listed} onOpen={openRun} /></div> },
+                  { id: 'tokens', label: 'Tokens per run', tone: 'var(--ds-hue-blue)', icon: <ChartArea size={18} />,
+                    hint: of(listed.filter(run => served(run.tokensIn) || served(run.tokensOut)).length),
+                    panel: () => <div className="local-run-charts"><RunTokensChart runs={listed} onOpen={openRun} /></div> },
+                  { id: 'cost', label: 'Cost per run', tone: 'var(--ds-hue-amber)', icon: <CircleDollarSign size={18} />,
+                    hint: of(listed.filter(run => served(run.cost)).length),
+                    panel: () => <div className="local-run-charts"><RunMetricChart runs={listed} onOpen={openRun} metric="cost" /></div> },
+                  { id: 'score', label: 'Quality score per run', tone: 'var(--ds-hue-green)', icon: <Gauge size={18} />,
+                    hint: of(listed.filter(run => served(run.score)).length),
+                    panel: () => <div className="local-run-charts"><RunMetricChart runs={listed} onOpen={openRun} metric="score" /></div> },
+                  { id: 'week', label: 'This week', tone: 'var(--ds-hue-purple)', icon: <CalendarDays size={18} />,
+                    hint: truncated ? `Latest ${formatDashboardCount(weekRuns)} runs` : `${formatDashboardCount(weekRuns)} runs`, panel: () => weekChart },
+                ]} />;
+              })()}
             </Panel>)}
         </>
       )}
