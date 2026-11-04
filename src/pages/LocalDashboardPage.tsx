@@ -41,7 +41,7 @@ import { EnvironmentPanel, ServiceHealthUnread } from '@/pages/local/environment
 import { SettingsEmptyState } from '@/components/dashboard/SettingsEmptyState';
 import { failureCauseLabel, failureDetailText, notAvailableYet, plainFailureMessage, taskLabel, tierLabel } from '@/pages/local/plain-text';
 import { RunFilterProvider, causeHref, causeLabelOf, useRunFilter } from '@/pages/local/run-filter';
-import { dailySeries, servedDailyDays, summary as runSummary, toInsightRuns, typedFailureCauseOf } from '@/pages/local/insights';
+import { dailySeries, meteringFilledDays, servedDailyDays, summary as runSummary, toInsightRuns, typedFailureCauseOf } from '@/pages/local/insights';
 import { ChartReadout, Meter, MultiLinePlot, RankedBars, SeriesToggles, useSeriesToggles } from '@/theme/design-system/charts';
 import { NO_RUNS_USD, sumDashboardUsd } from '@/lib/dashboard-money-total';
 import { KpiStrip, type KpiItem } from '@/components/dashboard/KpiStrip';
@@ -1989,7 +1989,8 @@ export function OverviewStatusStrip({ env, decisions, routing, now, complete = f
   return (
     <div className="local-overview-status" role="status" aria-label="Runtime status" data-state={state}>
       <span className="local-overview-status-dot" aria-hidden="true" />
-      <strong>{observed === null ? 'Runtime status not recorded' : `Runtime ${observed}`}</strong>
+      {/* OMN-22168 ("do all", item 3): the state opens Settings' System status, where the runtime's details are. */}
+      <strong><Link href="/settings#system" className="local-overview-status-link">{observed === null ? 'Runtime status not recorded' : `Runtime ${observed}`}</Link></strong>
       {reason && <span className="local-overview-status-reason">{reason}</span>}
       <span aria-hidden="true">·</span><span>{lastRun}</span>
       <span aria-hidden="true">·</span><span>{total}</span>
@@ -2064,10 +2065,22 @@ export function OverviewTrendPanel({ rows, columns, window, now }: {
           shown: shown[slug(column.header)] ?? true }))} />
       <ChartReadout active={active !== undefined}
         text={active !== undefined ? <>{label(active)} · {dayText(active, true).replaceAll(', ', ' · ')}</> : 'Hover or focus a day to read its numbers'} />
-      <MultiLinePlot label="Daily trend" lines={lines} keys={days} hover={hover} onHover={setHover}
-        labels={days.map(day => `${label(day)}: ${dayText(day, false)}`)} />
+      {/* OMN-22168 ("do all", item 5): one line shown is drawn on its real scale, with its top value and 0 marked. */}
+      {(() => {
+        const single = visible.length === 1 ? visible[0]! : null;
+        const known = single ? lines[0]!.values.filter((value): value is number => value !== null) : [];
+        const top = known.length === 0 ? null : Math.max(...known);
+        return <div className={single && top !== null ? 'local-trend-scaled local-trend-scaled--axis' : 'local-trend-scaled'}>
+          {single && top !== null && <div className="local-trend-yaxis" aria-hidden="true">
+            <span>{single.format === 'currency' ? formatUsd(top) : formatDashboardCount(top)}</span><span>0</span></div>}
+          <MultiLinePlot label="Daily trend" lines={lines} keys={days} hover={hover} onHover={setHover}
+            labels={days.map(day => `${label(day)}: ${dayText(day, false)}`)} />
+        </div>;
+      })()}
       <div className="ins-axis"><span>{label(days[0]!)}</span><span>{label(days[days.length - 1]!)}</span></div>
-      <p className="local-dashboard-caption">Each line is scaled to its own busiest day, so lines of different units fit one chart.</p>
+      <p className="local-dashboard-caption">{visible.length === 1
+        ? `${visible[0]!.header} per UTC day, on its real scale.`
+        : 'Each line is scaled to its own busiest day, so lines of different units fit one chart. Hide the others to read one on its real scale.'}</p>
     </figure>
   );
 }
@@ -2559,6 +2572,12 @@ export function LocalIdentity({ row }: { row: Record<string, unknown> | null }) 
 }
 
 /** The raw served rows of a component's binding, before any envelope unpacking. */
+/** OMN-21970 AC3: the decisions read is complete when it walked every page (no truncated mark). */
+function decisionsCompleteRead(snapshots: readonly BoundProjectionSnapshot[]): boolean {
+  const walk = snapshots.find(snapshot => snapshot.topic === DELEGATION_DECISIONS_TOPIC);
+  return walk !== undefined && !walk.failure && walk.truncated !== true;
+}
+
 function rawRowsFor(
   component: LocalPageDocument['components'][number],
   snapshots: readonly BoundProjectionSnapshot[],
@@ -2696,6 +2715,12 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns, acti
   const decisionsComplete = decisionsWalk !== undefined && !decisionsWalk.failure && decisionsWalk.truncated !== true;
   const dailyRead = snapshots.find(snapshot => snapshot.topic === DELEGATION_DAILY_TOPIC);
   const servedDays = dailyRead && !dailyRead.failure ? servedDailyDays(dailyRead.rows) : null;
+  // OMN-22168 (Lakshman 2026-11-04): without delegation.daily.v1, a decisions read that stopped short of every run draws
+  // Tokens per day from metering-summary.v1's served day totals, so it covers the same days as the Daily trend. Runs per
+  // day keeps the runs it read: "don't show anything if we don't have" (no verdict, no bar).
+  const meteringDays = snapshots.find(snapshot => snapshot.topic === METERING_SUMMARY_TOPIC);
+  const tokenDays = servedDays ?? (!decisionsCompleteRead(snapshots) && meteringDays && !meteringDays.failure
+    ? meteringFilledDays(meteringDays.rows, snapshots.find(snapshot => snapshot.topic === DELEGATION_DECISIONS_TOPIC)?.rows ?? []) : null);
   // OMN-21166 AC26: trends and breakdowns, counted from the served decision rows (rule change R-B, 2026-10-18).
   if (component.component_id === 'overview-insights') {
     // AC42: the metering KPIs for the selected window sit in this open panel, and their charts in its analysis,
@@ -2706,7 +2731,7 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns, acti
     // OMN-21166 part 13: Overview keeps the activity summary; the window's spend line sits in "More activity" with the
     // run counts, and the detailed analysis lives on Runs (its "Explore run analysis" link stays).
     if (slice) return rows.length === 0 ? <NoRunsYet /> : <InsightsSection decisions={rows} now={Date.now()} view={slice.key as 'runs' | 'tokens' | 'failures'} onInspectFailure={cause => navigate(causeHref(cause))}
-      servedDays={servedDays} complete={decisionsComplete} />;
+      servedDays={slice.key === 'tokens' ? tokenDays : servedDays} complete={decisionsComplete} />;
     return rows.length === 0 ? <NoRunsYet /> : <>
     <InsightsSection decisions={rows} now={Date.now()} view="summary" servedDays={servedDays} complete={decisionsComplete} more={meteringRows.length > 0
       ? <MeteringActivityInsights rows={meteringRows} now={Date.now()} window={activityWindow} unavailable={meteringUnavailable} display="kpis" />

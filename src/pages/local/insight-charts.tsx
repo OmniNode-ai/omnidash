@@ -37,7 +37,6 @@ const RANGES = [
 
 const PASS = 'var(--ds-field-pass)';
 const FAIL = 'var(--ds-field-fail)';
-const UNKNOWN = 'var(--ds-chart-unknown)';
 
 const TASK_CONCEPT: Readonly<Record<string, string>> = {
   document: 'task-document', code_generation: 'task-code-generation', research: 'task-research',
@@ -86,9 +85,8 @@ function runsWord(value: number): string {
 }
 
 function dayCounts(day: InsightDay): string {
-  const parts = [runsWord(day.runs), `${count(day.passed)} passed`, `${count(day.failed)} failed`];
-  if (day.unrecorded > 0) parts.push(`${count(day.unrecorded)} not recorded`);
-  return parts.join(', ');
+  // OMN-22168 (Lakshman 2026-11-04, "don't show anything if we don't have"): a run without a verdict is not drawn or named.
+  return [runsWord(day.passed + day.failed), `${count(day.passed)} passed`, `${count(day.failed)} failed`].join(', ');
 }
 
 /** A short label above a token bar ("2.9K", "206K"); the exact count is in the day's readout and accessible name. */
@@ -109,7 +107,7 @@ function RunsPerDay({ days }: { days: InsightDay[] }) {
   const openDay = (key: string) => navigate(`/runs?${writeRunsSearch(onRuns ? search : '', { ...(onRuns ? readRunsSearch(search) : DEFAULT_RUNS_VIEW), day: key, page: 1 })}`);
   const opensId = useId();
   const [show, setShow] = useState({ passed: true, failed: true });
-  const max = Math.max(1, ...days.flatMap(day => [show.passed ? day.passed : 0, show.failed ? day.failed : 0, day.unrecorded]));
+  const max = Math.max(1, ...days.flatMap(day => [show.passed ? day.passed : 0, show.failed ? day.failed : 0]));
   const active = hover === null ? null : days[hover]!;
   const ticks = dayTicks(days, onRuns ? 14 : 8);
   const toggle = (key: 'passed' | 'failed') => setShow(current => {
@@ -119,7 +117,7 @@ function RunsPerDay({ days }: { days: InsightDay[] }) {
   return (
     <ChartCard title="Runs per day" concept="runs-daily" delay={0}>
       <ChartReadout testId="runs-per-day-readout" active={active !== null}
-        text={active ? <>{dayLabel(active.day)} · <span data-field-tone="count">{count(active.runs)} runs</span> · <span data-field-tone="pass">{count(active.passed)} passed</span> · <span data-field-tone="fail">{count(active.failed)} failed</span>{active.unrecorded ? <> · {count(active.unrecorded)} not recorded</> : null}</> : ''} />
+        text={active ? <>{dayLabel(active.day)} · <span data-field-tone="count">{count(active.passed + active.failed)} runs</span> · <span data-field-tone="pass">{count(active.passed)} passed</span> · <span data-field-tone="fail">{count(active.failed)} failed</span></> : ''} />
       <DayColumns label="Runs per day" days={days.map((day, index) => ({
         key: day.day,
         ariaLabel: `${dayLabel(day.day)}: ${dayCounts(day)}`,
@@ -127,7 +125,6 @@ function RunsPerDay({ days }: { days: InsightDay[] }) {
         values: [
           ...(show.passed ? [{ key: 'passed', value: day.passed, color: PASS, label: count(day.passed) }] : []),
           ...(show.failed ? [{ key: 'failed', value: day.failed, color: FAIL, label: count(day.failed) }] : []),
-          ...(day.unrecorded > 0 ? [{ key: 'unrecorded', value: day.unrecorded, color: UNKNOWN, label: count(day.unrecorded) }] : []),
         ],
       }))} max={max} hover={hover} onHover={setHover} onOpen={openDay} describedBy={opensId} dayLabel={dayLabel} />
       <span id={opensId} hidden>Opens Runs for this day</span>
