@@ -1,39 +1,15 @@
 import { expect, test } from 'playwright/test';
 import { serveCharts } from './omn21166-chart-fixtures';
 
-// Reference targets declared before CSS: warm canvas/card/inset separation,
-// readable ordinary text, matching dark hierarchy, all routes and controls retained.
+// Reference targets declared before CSS: readable ordinary text, matching dark hierarchy, all routes and controls
+// retained.
 test.use({ viewport: { width: 1440, height: 900 }, trace: 'on' });
 test.beforeEach(async ({ page }) => { await serveCharts(page); await page.emulateMedia({ reducedMotion: 'reduce' }); });
 
-test('reference theme separates warm cards and inset plots without losing readable text', async ({ page }, info) => {
-  await page.goto('/runs');
-  // OMN-21166 part 18 AC118: the run charts sit first inside Runs' one closed "More analysis"; open it first.
-  await page.getByText('More analysis', { exact:true }).press('Enter');
-  const chart=page.getByRole('figure', { name:'Quality score per run', exact:true });
-  await expect(chart.locator('svg').first()).toBeVisible();
-  for (const theme of ['light','dark']) {
-    if ((await page.locator('html').getAttribute('data-theme') === 'dark' ? 'dark' : 'light') !== theme) await page.getByRole('button', { name:'Toggle theme' }).click();
-    const layers=await page.evaluate(() => {
-      const root=getComputedStyle(document.documentElement);
-      const canvas=document.createElement('canvas'); canvas.width=canvas.height=1;
-      const ctx=canvas.getContext('2d')!;
-      const rgb=(color:string)=>{ctx.clearRect(0,0,1,1);ctx.fillStyle=color;ctx.fillRect(0,0,1,1);return [...ctx.getImageData(0,0,1,1).data].slice(0,3);};
-      const lum=(c:number[])=>c.map(v=>v/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4).reduce((s,v,i)=>s+v*[.2126,.7152,.0722][i],0);
-      const bg=root.getPropertyValue('--panel').trim(), ink=root.getPropertyValue('--ink-2').trim();
-      const l=[lum(rgb(bg)),lum(rgb(ink))].sort((a,b)=>b-a);
-      return { canvas:root.getPropertyValue('--bg').trim(), card:bg, inset:root.getPropertyValue('--panel-2').trim(), contrast:(l[0]+.05)/(l[1]+.05) };
-    });
-    // OMN-21166 token palette (commit c8d5ab0f, Geist light/dark tokens): warm canvas, card and inset values moved.
-    expect(layers.canvas).toBe(theme==='light'?'#fafaf9':'#121110');
-    expect(layers.card).toBe(theme==='light'?'#ffffff':'#191817');
-    expect(layers.card).not.toBe(layers.canvas);
-    expect(layers.inset).not.toBe(layers.card);
-    expect(layers.contrast).toBeGreaterThanOrEqual(4.5);
-    await chart.scrollIntoViewIfNeeded();
-    await page.screenshot({ path:info.outputPath(`reference-runs-${theme}.png`) });
-  }
-});
+// OMN-22168 (Lakshman 2026-11-04, retired): "reference theme separates warm cards and inset plots" checked the warm
+// canvas, card and inset tokens (--bg #fafaf9, --panel, --panel-2) the old palette defined on the root. The pages already
+// painted the 01+20 paper over them, and the one design system removed those tokens, so nothing drawn changed; the
+// readable-text and theme checks below still cover the routes.
 
 test('shared reference theme keeps all seven routes usable in light and dark', async ({ page }, info) => {
   // OMN-21166 part 26: credentials and api-keys are sections of Settings.
