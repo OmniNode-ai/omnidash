@@ -493,9 +493,11 @@ html body .app svg.field-icon.field-icon[data-field-icon="usage-day"]:not([data-
    takes its own tone, and the CSV and JSON exports keep their green and purple. Specificity (0,4,2) and !important on
    purpose: the page-scoped grey rule in seven-page-design.css is (0,3,2) !important. Every other interface icon stays grey. */
 :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .ds-dropdown-mark svg.lucide { color: var(--mark, var(--ds-ink-3)) !important; }
+/* The word and glyph are the tone mixed toward ink, so they read at 4.5:1 or more on the tint in both themes (AC170). */
 .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-export button[data-export] {
-  color: var(--tone) !important; border-color: color-mix(in oklab, var(--tone) 45%, var(--ds-line)) !important;
+  --tone-ink: color-mix(in oklab, var(--tone) 72%, var(--ds-ink));
+  color: var(--tone-ink) !important; border-color: color-mix(in oklab, var(--tone) 45%, var(--ds-line)) !important;
   background: color-mix(in oklab, var(--tone) 10%, transparent) !important; }
 .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-export button[data-export]:hover {
   background: color-mix(in oklab, var(--tone) 20%, transparent) !important; border-color: color-mix(in oklab, var(--tone) 70%, var(--ds-line)) !important; }
-.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-export button[data-export] svg.lucide { color: var(--tone) !important; }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-export button[data-export] svg.lucide { color: var(--tone-ink) !important; }

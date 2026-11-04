@@ -47,6 +47,9 @@ for (const theme of ['light', 'dark'] as const) {
         // OMN-21970 (Lakshman 2026-11-03, one colour per concept): an icon that names a concept draws its own colour on
         // every page (checked below); every icon that names none is the interface grey.
         .filter(svg => !svg.closest('.local-run-pill, .badge, .chain-node, .live-pill, [role="alert"]') && !svg.matches('[data-field-icon], [data-semantic-concept^="model:"]') && (svg as SVGElement).getBoundingClientRect().width > 0)
+        // OMN-22168 (Lakshman 2026-11-04, chosen over this grey for these controls only): each Runs filter's glyph and the
+        // CSV and JSON export glyphs carry their own colour; design-system-dashboard-polish L8 checks them.
+        .filter(svg => !svg.closest('.local-dashboard-filters .ds-dropdown-mark, .local-runs-export button[data-export]'))
         .map(svg => ({ color: getComputedStyle(svg).color, active: !!svg.closest('.mvp-nav-item.active') })));
       expect(icons.length, `${path} draws icons`).toBeGreaterThan(3);
       for (const icon of icons) expect(icon.color, `${path} icon`).toBe(INK3[theme]);
@@ -100,10 +103,13 @@ for (const theme of ['light', 'dark'] as const) {
     expect(await page.locator('.local-settings-menu a:not([aria-current])').first().evaluate(el => getComputedStyle(el).backgroundColor)).not.toBe(RAISED[theme]);
 
     await settle(page, '/runs');
+    // OMN-22168 (Lakshman 2026-11-04): the exports carry their own colour, and stay secondary: a light tint (alpha 0.25 or
+    // less), never a solid fill.
     for (const name of ['Export CSV', 'Export JSON']) {
       const button = page.getByRole('button', { name, exact: true });
-      await expect(button).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
-      await expect(button).toHaveCSS('color', INK2[theme]);
+      const fill = await button.evaluate(el => getComputedStyle(el).backgroundColor);
+      const alpha = Number(/\/\s*([\d.]+)\)$/.exec(fill)?.[1] ?? /rgba\([^)]*,\s*([\d.]+)\)$/.exec(fill)?.[1] ?? 1);
+      expect(alpha, `${name} fill ${fill}`).toBeLessThanOrEqual(0.25);
     }
   });
 }
