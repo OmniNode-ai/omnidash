@@ -1,0 +1,111 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+schema_version: "1.0.0"
+ticket_id: "OMN-22168"
+title: "Design System Acceptance"
+summary: >-
+  Design-system acceptance criteria for OMN-22168, copied from the live ticket on 2026-11-04,
+  with paths under src/theme/design-system after the 2026-11-04 move; AC7 (no served value or
+  behaviour changes) is proven by lab receipts at base and head, and AC6 (the Storybook page) by an
+  npm run build-storybook receipt beside the storybook coverage test, not by a check here.
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-design-system-acceptance"
+    statement: >-
+      The design-system acceptance criteria of OMN-22168 copied from the live ticket on 2026-11-04,
+      with paths under src/theme/design-system after the 2026-11-04 move; AC7 (no served value or
+      behaviour changes) is proven by lab receipts at base and head, and AC6 (the Storybook page) by an
+      npm run build-storybook receipt beside the storybook coverage test, not by a check here.
+    acceptance:
+      - id: "AC1"
+        statement: >-
+          every colour omnidash draws is defined once in src/theme/design-system/tokens.css for
+          light and dark, and no other .ts, .tsx or .css file under src holds a raw hex, rgb or
+          hsl colour literal
+      - id: "AC2"
+        statement: >-
+          every icon resolves through one registry, src/theme/design-system/icons.ts, by concept,
+          and no file outside src/theme/design-system imports lucide-react
+      - id: "AC3"
+        statement: >-
+          one chart kit in src/theme/design-system/charts draws daily bars, stacked bars, tier mix,
+          model usage, line and sparkline, each with its legend, tooltip, not-recorded and empty
+          states, and every page chart uses it
+      - id: "AC4"
+        statement: >-
+          one component kit in src/theme/design-system/components (card, figure card, panel, data
+          table, tabs, dropdown, status chip, badge, fact list, empty state) is used by every local
+          page and Delegation Evidence, with no page-local copy
+      - id: "AC5"
+        statement: >-
+          pages reference only --ds-* custom properties, so the token file can switch to OmniUI's
+          exported tokens (OMN-21848) with no page change
+dod_evidence:
+  - id: "dod-omn22168-ac1-one-colour-source"
+    description: >-
+      The test proves that no raw colour literals exist outside the token file, catching a planted
+      control.
+    source: "manual"
+    binds_ac:
+      - "AC1"
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          test -d node_modules || npm ci --no-audit --no-fund; npx vitest run
+          tests/design-system/no-raw-colours.test.ts
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn22168-ac2-icon-registry"
+    description: >-
+      The test proves that all icons resolve through the single registry and no external file
+      imports lucide-react, catching a planted control.
+    source: "manual"
+    binds_ac:
+      - "AC2"
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          test -d node_modules || npm ci --no-audit --no-fund; npx vitest run
+          tests/design-system/lint-guards.test.ts
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn22168-ac3-chart-kit"
+    description: >-
+      The tests prove that the chart kit renders all required chart types with their states and
+      that every page chart uses it.
+    source: "manual"
+    binds_ac:
+      - "AC3"
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          test -d node_modules || npm ci --no-audit --no-fund; npx vitest run
+          tests/design-system/charts.test.tsx tests/design-system/chart-scan.test.ts
+          tests/design-system/tooltip.test.tsx
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn22168-ac4-component-kit"
+    description: >-
+      The tests prove that the component kit is used by every local page and Delegation Evidence
+      with no page-local copy.
+    source: "manual"
+    binds_ac:
+      - "AC4"
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          test -d node_modules || npm ci --no-audit --no-fund; npx vitest run
+          tests/design-system/components.test.tsx tests/design-system/dropdown.test.tsx
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn22168-ac5-token-seam"
+    description: >-
+      The test proves that pages reference only --ds-* custom properties, catching a planted
+      control.
+    source: "manual"
+    binds_ac:
+      - "AC5"
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          test -d node_modules || npm ci --no-audit --no-fund; npx vitest run
+          tests/design-system/token-seam.test.ts
+        cwd: "${OMNI_HOME}/omnidash"
