@@ -811,7 +811,7 @@ main.ev-root .ev-maple-grid { align-items: start; }
 .gdb-col { flex: 1 1 0; max-width: 28px; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; min-width: 0; }
 .gdb-val { font-family: var(--ds-font-mono); font-weight: 500; font-size: 12px; color: var(--ds-ink); text-align: center; line-height: 1; margin-bottom: 4px; white-space: nowrap; }
 .gdb-bar.ins-seg {
-  display: block; width: 100%; min-height: 0; border-radius: 0; animation: none; background: none !important;
+  display: block; width: 100%; min-height: 0; border-radius: var(--ds-radius-bar) var(--ds-radius-bar) 0 0; animation: none; background: none !important;
 }
 .gdb-day-label { position: absolute; top: calc(100% + 6px); left: -4px; right: -4px; text-align: center; font-size: 12px; color: var(--ds-ink-3); white-space: nowrap; }
 .gdb-legend { display: flex; flex-wrap: wrap; gap: 16px; margin: 4px 0 0; padding: 0; list-style: none; }
