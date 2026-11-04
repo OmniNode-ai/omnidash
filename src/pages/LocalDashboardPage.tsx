@@ -3509,8 +3509,9 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
                       const runs = Number.isFinite(windowRuns) ? windowRuns
                         : overviewWindow === 'all' && routing && !isMissing(routing.total_delegations) ? Number(routing.total_delegations) : NaN;
                       const models = routing && Array.isArray(routing.by_model) ? routing.by_model.length : null;
+                      // Only the tier-routed tiers count, as Tier mix draws them (the served not-tier-routed row is not a tier).
                       const tierRows = routing && routing.by_tier && typeof routing.by_tier === 'object' && Array.isArray((routing.by_tier as Row).tiers)
-                        ? ((routing.by_tier as Row).tiers as unknown[]).length : null;
+                        ? asRecords((routing.by_tier as Row).tiers as unknown[]).filter(tier => tier.tier_routed !== false).length : null;
                       const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
                       return <DashboardTabs label="Overview charts" param="chart" tabs={[
                         { id: 'runs', label: 'Runs per day', tone: 'var(--ds-hue-green)', icon: <CalendarRange size={18} />,
