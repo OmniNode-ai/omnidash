@@ -64,7 +64,7 @@ function SortArrow({ active, dir }: { active: boolean; dir: 'asc' | 'desc' | nul
       </span>
     );
   return (
-    <span style={{ display: 'inline-block', width: 8, marginLeft: 4, color: 'var(--accent)' }}>
+    <span style={{ display: 'inline-block', width: 8, marginLeft: 4, color: 'var(--ds-brand)' }}>
       {dir === 'asc' ? '↑' : '↓'}
     </span>
   );
@@ -115,8 +115,8 @@ export function SortableTable<T>({
             gridTemplateColumns: gridTemplate,
             gap: 12,
             padding: '8px 12px',
-            borderTop: '1px solid var(--line)',
-            borderBottom: '1px solid var(--line)',
+            borderTop: '1px solid var(--ds-line)',
+            borderBottom: '1px solid var(--ds-line)',
           }}
         >
           {visibleCols.map((col) => {
@@ -136,7 +136,7 @@ export function SortableTable<T>({
                   textAlign: col.align || 'left',
                   fontSize: 9,
                   fontWeight: 700,
-                  color: active ? 'var(--accent-ink)' : 'var(--ink-3)',
+                  color: active ? 'var(--ds-link)' : 'var(--ds-ink-3)',
                   letterSpacing: '0.16em',
                   textTransform: 'uppercase',
                 }}
@@ -159,7 +159,7 @@ export function SortableTable<T>({
               gridTemplateColumns: gridTemplate,
               gap: 12,
               padding: `${padY}px 12px`,
-              borderBottom: i < sorted.length - 1 ? '1px solid var(--line-2)' : 'none',
+              borderBottom: i < sorted.length - 1 ? '1px solid var(--ds-line-soft)' : 'none',
               cursor: onRowClick ? 'pointer' : 'default',
               alignItems: 'center',
               ...(typeof rowStyle === 'function' ? rowStyle(row, i) : {}),
@@ -172,7 +172,7 @@ export function SortableTable<T>({
                 style={{
                   fontSize: 12,
                   textAlign: col.align || 'left',
-                  color: 'var(--ink)',
+                  color: 'var(--ds-ink)',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',

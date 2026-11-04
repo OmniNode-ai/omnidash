@@ -5,7 +5,7 @@
  * an option closes the list, as do Escape and a click outside it; focus returns to the button.
  */
 import { useEffect, useId, useRef, useState } from 'react';
-import { Check, ChevronDown } from 'lucide-react';
+import { Check, ChevronDown } from '@/theme/design-system/icons';
 
 export interface WindowMenuOption { value: string; label: string; name: string; checked: boolean; onSelect: () => void }
 

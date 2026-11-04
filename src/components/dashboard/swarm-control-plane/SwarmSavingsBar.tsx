@@ -44,7 +44,7 @@ export function SwarmSavingsBar({ runs }: { runs: SwarmRunRow[] }) {
           height: 28,
           borderRadius: 6,
           overflow: 'hidden',
-          border: '1px solid var(--line)',
+          border: '1px solid var(--ds-line)',
         }}
       >
         {localPct > 0 && (
@@ -52,7 +52,7 @@ export function SwarmSavingsBar({ runs }: { runs: SwarmRunRow[] }) {
             title={`Local cost: ${fmtUsd(totalLocal)}`}
             style={{
               width: `${localPct}%`,
-              background: 'var(--color-warn, #f59e0b)',
+              background: 'var(--ds-warn, var(--ds-hue-amber))',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -69,8 +69,8 @@ export function SwarmSavingsBar({ runs }: { runs: SwarmRunRow[] }) {
             title={`Savings: ${fmtUsd(totalSavings)}`}
             style={{
               width: `${savingsPct}%`,
-              background: 'color-mix(in srgb, var(--color-ok, #22c55e) 30%, transparent)',
-              borderLeft: '1px solid var(--color-ok, #22c55e)',
+              background: 'color-mix(in srgb, var(--ds-ok, var(--ds-hue-green)) 30%, transparent)',
+              borderLeft: '1px solid var(--ds-ok, var(--ds-ok))',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -85,9 +85,9 @@ export function SwarmSavingsBar({ runs }: { runs: SwarmRunRow[] }) {
 
       {/* Legend + per-run breakdown */}
       <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
-        <LegendItem color="var(--color-warn, #f59e0b)" label="Local cost" value={fmtUsd(totalLocal)} />
-        <LegendItem color="var(--color-ok, #22c55e)" label="Saved vs cloud" value={fmtUsd(totalSavings)} />
-        <LegendItem color="var(--line)" label="Cloud equivalent" value={fmtUsd(totalCloud)} />
+        <LegendItem color="var(--ds-warn, var(--ds-hue-amber))" label="Local cost" value={fmtUsd(totalLocal)} />
+        <LegendItem color="var(--ds-ok, var(--ds-hue-green))" label="Saved vs cloud" value={fmtUsd(totalSavings)} />
+        <LegendItem color="var(--ds-line)" label="Cloud equivalent" value={fmtUsd(totalCloud)} />
       </div>
 
       {/* Per-run rows */}
@@ -103,12 +103,12 @@ export function SwarmSavingsBar({ runs }: { runs: SwarmRunRow[] }) {
                   {run.run_id.slice(0, 8)}…
                 </Text>
               </div>
-              <div style={{ flex: 1, height: 10, borderRadius: 3, overflow: 'hidden', background: 'var(--panel-2)', border: '1px solid var(--line-2)' }}>
+              <div style={{ flex: 1, height: 10, borderRadius: 3, overflow: 'hidden', background: 'var(--ds-surface-2)', border: '1px solid var(--ds-line-soft)' }}>
                 {runLocalPct > 0 && (
-                  <div style={{ width: `${runLocalPct}%`, height: '100%', background: 'var(--color-warn, #f59e0b)', float: 'left' }} />
+                  <div style={{ width: `${runLocalPct}%`, height: '100%', background: 'var(--ds-warn, var(--ds-hue-amber))', float: 'left' }} />
                 )}
                 {runSavingsPct > 0 && (
-                  <div style={{ width: `${runSavingsPct}%`, height: '100%', background: 'color-mix(in srgb, var(--color-ok, #22c55e) 40%, transparent)', float: 'left' }} />
+                  <div style={{ width: `${runSavingsPct}%`, height: '100%', background: 'color-mix(in srgb, var(--ds-ok, var(--ds-hue-green)) 40%, transparent)', float: 'left' }} />
                 )}
               </div>
               <Text as="span" size="xs" family="mono" color={run.savings_usd > 0 ? 'ok' : 'tertiary'} style={{ flex: '0 0 60px', textAlign: 'right' }}>

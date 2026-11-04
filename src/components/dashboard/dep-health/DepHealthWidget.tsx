@@ -55,7 +55,7 @@ function FindingRow({ row }: { row: DepHealthFindingRow }) {
     <div
       style={{
         padding: '6px 0',
-        borderBottom: '1px solid var(--line-2)',
+        borderBottom: '1px solid var(--ds-line-soft)',
         display: 'grid',
         gridTemplateColumns: '80px 120px 1fr',
         gap: 8,
@@ -96,7 +96,7 @@ function RepoGroup({ repo, rows }: { repo: string; rows: DepHealthFindingRow[] }
         size="xs"
         color="tertiary"
         weight="semibold"
-        style={{ marginBottom: 4, paddingBottom: 2, borderBottom: '1px solid var(--line)' }}
+        style={{ marginBottom: 4, paddingBottom: 2, borderBottom: '1px solid var(--ds-line)' }}
       >
         {repo} ({rows.length})
       </Text>
@@ -163,7 +163,7 @@ export default function DepHealthWidget(props: { config: DepHealthWidgetConfig }
               gridTemplateColumns: 'repeat(3, 1fr)',
               gap: 12,
               paddingBottom: 12,
-              borderBottom: '1px solid var(--line)',
+              borderBottom: '1px solid var(--ds-line)',
             }}
           >
             <KPI label="Total findings" value={findings.length} />

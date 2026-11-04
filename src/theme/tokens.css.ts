@@ -1,35 +1,31 @@
 import { createGlobalThemeContract } from '@vanilla-extract/css';
 
-// NOTE: This vanilla-extract contract is used only by the legacy Header
-// and AgentChatPanel .css.ts files. The canonical token system lives in
-// src/styles/globals.css (OKLCH prototype tokens + `--font-sans`/`--font-mono`).
-// Font variables are deliberately omitted here — components that need a
-// font reference the raw CSS var directly (e.g. `fontFamily: 'var(--font-mono)'`)
-// so there is a single source of truth for typography.
+// OMN-22168: the TypeScript face of src/theme/design-system/tokens.css. The legacy Header, AgentChatPanel and dashboard
+// .css.ts files read tokens through this contract; it names --ds-* properties only and holds no values.
 export const vars = createGlobalThemeContract({
   color: {
-    background: '--background',
-    foreground: '--foreground',
-    card: '--card',
-    border: '--border',
-    primary: '--primary',
-    muted: '--muted',
-    accent: '--accent',
-    destructive: '--destructive',
-    statusHealthy: '--status-healthy',
-    statusWarning: '--status-warning',
-    statusError: '--status-error',
-    chart1: '--chart-1',
-    chart2: '--chart-2',
-    chart3: '--chart-3',
-    chart4: '--chart-4',
-    chart5: '--chart-5',
-    chart6: '--chart-6',
-    chart7: '--chart-7',
+    background: '--ds-page',
+    foreground: '--ds-ink',
+    card: '--ds-surface',
+    border: '--ds-line',
+    primary: '--ds-brand',
+    muted: '--ds-surface-2',
+    accent: '--ds-brand',
+    destructive: '--ds-bad',
+    statusHealthy: '--ds-ok',
+    statusWarning: '--ds-warn',
+    statusError: '--ds-bad',
+    chart1: '--ds-chart-1',
+    chart2: '--ds-chart-2',
+    chart3: '--ds-chart-3',
+    chart4: '--ds-chart-4',
+    chart5: '--ds-chart-5',
+    chart6: '--ds-chart-6',
+    chart7: '--ds-chart-7',
   },
   radius: {
-    sm: '--radius-sm',
-    md: '--radius-md',
-    lg: '--radius-lg',
+    sm: '--ds-radius-tag',
+    md: '--ds-radius-control',
+    lg: '--ds-radius',
   },
 });

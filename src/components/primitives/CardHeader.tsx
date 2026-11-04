@@ -20,7 +20,7 @@ export function CardHeader({ eyebrow, title, sub, right }: CardHeaderProps) {
           <div style={{ fontSize: 18, fontWeight: 700, marginTop: 6 }}>{title}</div>
         )}
         {sub && (
-          <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 4, fontStyle: 'italic' }}>
+          <div style={{ fontSize: 12, color: 'var(--ds-ink-3)', marginTop: 4, fontStyle: 'italic' }}>
             {sub}
           </div>
         )}

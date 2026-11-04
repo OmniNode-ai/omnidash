@@ -55,11 +55,11 @@ const FALLBACK_MODELS: RoutingModel[] = [
 ];
 
 const FALLBACK_INTENTS: RoutingIntent[] = [
-  { id: 'code_generation', label: 'Code generation', color: 'var(--compute)' },
-  { id: 'debugging', label: 'Debugging', color: 'var(--reducer)' },
-  { id: 'classification', label: 'Classification', color: 'var(--orchestrator)' },
-  { id: 'complex_reasoning', label: 'Complex reasoning', color: 'var(--accent)' },
-  { id: 'large_context', label: 'Large context', color: 'var(--effect)' },
+  { id: 'code_generation', label: 'Code generation', color: 'var(--ds-kind-compute)' },
+  { id: 'debugging', label: 'Debugging', color: 'var(--ds-kind-reducer)' },
+  { id: 'classification', label: 'Classification', color: 'var(--ds-kind-orchestrator)' },
+  { id: 'complex_reasoning', label: 'Complex reasoning', color: 'var(--ds-brand)' },
+  { id: 'large_context', label: 'Large context', color: 'var(--ds-kind-effect)' },
 ];
 
 const FALLBACK_TASK_PRESETS: RoutingTaskPreset[] = [
@@ -83,8 +83,8 @@ const FALLBACK_ROUTING_RULES: RoutingRule[] = [
 function Arrow({ accent }: { accent?: boolean }) {
   return (
     <svg width="32" height="20" viewBox="0 0 32 20" style={{ overflow: 'visible' }}>
-      <line x1="0" y1="10" x2="26" y2="10" stroke={accent ? 'var(--accent)' : 'var(--ink-3)'} strokeWidth={accent ? 2 : 1.5} />
-      <path d="M22,5 L30,10 L22,15" fill={accent ? 'var(--accent)' : 'var(--ink-3)'} />
+      <line x1="0" y1="10" x2="26" y2="10" stroke={accent ? 'var(--ds-brand)' : 'var(--ds-ink-3)'} strokeWidth={accent ? 2 : 1.5} />
+      <path d="M22,5 L30,10 L22,15" fill={accent ? 'var(--ds-brand)' : 'var(--ds-ink-3)'} />
     </svg>
   );
 }
@@ -93,7 +93,7 @@ function Arrow({ accent }: { accent?: boolean }) {
 
 function ConfidenceBar({ value, color }: { value: number; color: string }) {
   return (
-    <div style={{ flex: 1, height: 4, background: 'var(--line)', borderRadius: 2, overflow: 'hidden' }}>
+    <div style={{ flex: 1, height: 4, background: 'var(--ds-line)', borderRadius: 2, overflow: 'hidden' }}>
       <div style={{ width: `${value * 100}%`, height: '100%', background: color, transition: 'width .5s' }} />
     </div>
   );
@@ -141,14 +141,14 @@ function RoutingRulesTable({ rules, activeIntent, onSelectIntent }: {
           all: 'unset',
           cursor: 'pointer',
           "fontSize": 10,
-          color: active ? 'var(--accent-ink)' : 'var(--ink-3)',
+          color: active ? 'var(--ds-link)' : 'var(--ds-ink-3)',
           "letterSpacing": '0.18em',
           "fontWeight": 700,
           textAlign: align as 'left' | 'right',
         }}
       >
         {label}
-        <span style={{ marginLeft: 4, color: active ? 'var(--accent)' : 'currentColor', opacity: active ? 1 : 0.35 }}>
+        <span style={{ marginLeft: 4, color: active ? 'var(--ds-brand)' : 'currentColor', opacity: active ? 1 : 0.35 }}>
           {!active ? '⇕' : sort!.dir === 'asc' ? '↑' : '↓'}
         </span>
       </button>
@@ -156,8 +156,8 @@ function RoutingRulesTable({ rules, activeIntent, onSelectIntent }: {
   };
 
   return (
-    <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--line)', borderRadius: 6, overflow: 'hidden' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.5fr 70px', padding: '8px 12px', borderBottom: '1px solid var(--line)' }}>
+    <div style={{ background: 'var(--ds-surface)', border: '1px solid var(--ds-line)', borderRadius: 6, overflow: 'hidden' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.5fr 70px', padding: '8px 12px', borderBottom: '1px solid var(--ds-line)' }}>
         <Header label="TASK TYPE" k="type" />
         <Header label="MODEL" k="model" />
         <Header label="COST" k="cost" align="right" />
@@ -176,15 +176,15 @@ function RoutingRulesTable({ rules, activeIntent, onSelectIntent }: {
               gridTemplateColumns: '1.2fr 1.5fr 70px',
               padding: '10px 12px',
               alignItems: 'center',
-              background: isActive ? 'var(--accent-soft)' : 'transparent',
-              borderLeft: isActive ? '3px solid var(--accent)' : '3px solid transparent',
-              borderBottom: i < sorted.length - 1 ? '1px solid var(--line-2)' : 'none',
+              background: isActive ? 'var(--ds-brand-soft)' : 'transparent',
+              borderLeft: isActive ? '3px solid var(--ds-brand)' : '3px solid transparent',
+              borderBottom: i < sorted.length - 1 ? '1px solid var(--ds-line-soft)' : 'none',
               transition: 'background .3s, border-color .3s',
               cursor: 'pointer',
             }}
           >
-            <div style={{ "fontSize": 12, "fontWeight": 600, "color": 'var(--ink)' }}>{r.type}</div>
-            <div className="mono" style={{ "fontSize": 12, color: r.cost === 0 ? 'var(--compute-ink)' : 'var(--effect)', "fontWeight": 700 }}>
+            <div style={{ "fontSize": 12, "fontWeight": 600, "color": 'var(--ds-ink)' }}>{r.type}</div>
+            <div className="mono" style={{ "fontSize": 12, color: r.cost === 0 ? 'var(--ds-kind-compute-ink)' : 'var(--ds-kind-effect)', "fontWeight": 700 }}>
               {r.model}
             </div>
             <div style={{ textAlign: 'right' }}>
@@ -194,8 +194,8 @@ function RoutingRulesTable({ rules, activeIntent, onSelectIntent }: {
                   display: 'inline-block',
                   padding: '2px 8px',
                   borderRadius: 999,
-                  background: r.cost === 0 ? 'var(--compute)' : 'var(--effect)',
-                  color: '#fff',
+                  background: r.cost === 0 ? 'var(--ds-kind-compute)' : 'var(--ds-kind-effect)',
+                  color: 'var(--ds-on-accent)',
                   "fontSize": 10,
                   "fontWeight": 700,
                 }}
@@ -258,7 +258,7 @@ export default function RoutingDecisionWidget() {
           <label
             htmlFor="task-selector"
             className="mono"
-            style={{ "fontSize": 10, "color": 'var(--ink-3)', "letterSpacing": '0.1em', "textTransform": 'uppercase', "fontWeight": 600, marginBottom: 6, display: 'block' }}
+            style={{ "fontSize": 10, "color": 'var(--ds-ink-3)', "letterSpacing": '0.1em', "textTransform": 'uppercase', "fontWeight": 600, marginBottom: 6, display: 'block' }}
           >
             Select task
           </label>
@@ -272,9 +272,9 @@ export default function RoutingDecisionWidget() {
               padding: '8px 12px',
               "fontSize": 12,
               "fontWeight": 500,
-              "color": 'var(--ink)',
-              background: 'var(--bg-elevated)',
-              border: '1px solid var(--line)',
+              "color": 'var(--ds-ink)',
+              background: 'var(--ds-surface)',
+              border: '1px solid var(--ds-line)',
               borderRadius: 6,
               cursor: 'pointer',
               appearance: 'auto',
@@ -289,8 +289,8 @@ export default function RoutingDecisionWidget() {
         {/* Live trace */}
         <div
           style={{
-            background: 'var(--bg-sunken)',
-            border: '1px solid var(--line)',
+            background: 'var(--ds-inset)',
+            border: '1px solid var(--ds-line)',
             borderRadius: 8,
             padding: 16,
             marginBottom: 18,
@@ -301,10 +301,10 @@ export default function RoutingDecisionWidget() {
             {/* INPUT */}
             <div>
               <NodePill kind="cmd">input</NodePill>
-              <div className="mono" style={{ "fontSize": 12, marginTop: 8, "color": 'var(--ink-2)', "lineHeight": 1.4 }}>
+              <div className="mono" style={{ "fontSize": 12, marginTop: 8, "color": 'var(--ds-ink-2)', "lineHeight": 1.4 }}>
                 {task.label}
               </div>
-              <div className="mono" style={{ "fontSize": 10, "color": 'var(--ink-3)', marginTop: 4 }}>
+              <div className="mono" style={{ "fontSize": 10, "color": 'var(--ds-ink-3)', marginTop: 4 }}>
                 ticket-{4470 + safeIdx} {'·'} 1.2 KB
               </div>
             </div>
@@ -314,12 +314,12 @@ export default function RoutingDecisionWidget() {
             {/* CLASSIFY */}
             <div>
               <NodePill kind="compute">classify</NodePill>
-              <div style={{ "fontSize": 13, "fontWeight": 700, marginTop: 8, "color": 'var(--ink)' }}>
+              <div style={{ "fontSize": 13, "fontWeight": 700, marginTop: 8, "color": 'var(--ds-ink)' }}>
                 {intent.label}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
                 <ConfidenceBar value={0.91} color={intent.color} />
-                <span className="mono" style={{ "fontSize": 10, "color": 'var(--ink-3)' }}>0.91</span>
+                <span className="mono" style={{ "fontSize": 10, "color": 'var(--ds-ink-3)' }}>0.91</span>
               </div>
             </div>
 
@@ -328,12 +328,12 @@ export default function RoutingDecisionWidget() {
             {/* ROUTE */}
             <div>
               <NodePill kind="effect">route</NodePill>
-              <div className="mono" style={{ "fontSize": 13, "fontWeight": 700, marginTop: 8, "color": 'var(--ink)' }}>
+              <div className="mono" style={{ "fontSize": 13, "fontWeight": 700, marginTop: 8, "color": 'var(--ds-ink)' }}>
                 {chosen.name}
               </div>
               <div style={{ marginTop: 4 }}>
                 <Price value={chosen.cost} />
-                <span className="mono" style={{ "fontSize": 10, "color": 'var(--ink-3)', marginLeft: 8 }}>
+                <span className="mono" style={{ "fontSize": 10, "color": 'var(--ds-ink-3)', marginLeft: 8 }}>
                   {'·'} {chosen.host}
                 </span>
               </div>
@@ -353,12 +353,12 @@ export default function RoutingDecisionWidget() {
         />
 
         {isUpstreamBlocked && (
-          <div style={{ marginTop: 10, "fontSize": 11, "color": 'var(--ink-3)', fontStyle: 'italic' }}>
+          <div style={{ marginTop: 10, "fontSize": 11, "color": 'var(--ds-ink-3)', fontStyle: 'italic' }}>
             Projection upstream-blocked — displaying contract-valid fixtures.
           </div>
         )}
 
-        <div style={{ marginTop: 14, "fontSize": 11, "color": 'var(--ink-3)', fontStyle: 'italic', textAlign: 'center' }}>
+        <div style={{ marginTop: 14, "fontSize": 11, "color": 'var(--ds-ink-3)', fontStyle: 'italic', textAlign: 'center' }}>
           Every routing decision produces a receipt with <span className="mono">model_chosen</span>, <span className="mono">tokens</span>, <span className="mono">cost</span>.
         </div>
       </div>

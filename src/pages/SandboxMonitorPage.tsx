@@ -34,10 +34,10 @@ function VerdictBadge({ verdict }: { verdict: 'allow' | 'deny' }) {
         padding: '2px 8px',
         borderRadius: 4,
         background: verdict === 'allow'
-          ? 'color-mix(in oklch, var(--status-ok) 20%, transparent)'
-          : 'color-mix(in oklch, var(--bad, oklch(62% 0.18 25)) 20%, transparent)',
-        border: `1px solid ${verdict === 'allow' ? 'var(--status-ok)' : 'var(--bad, oklch(62% 0.18 25))'}`,
-        color: verdict === 'allow' ? 'var(--status-ok)' : 'var(--bad, oklch(62% 0.18 25))',
+          ? 'color-mix(in oklch, var(--ds-ok) 20%, transparent)'
+          : 'color-mix(in oklch, var(--ds-bad, var(--ds-hue-red)) 20%, transparent)',
+        border: `1px solid ${verdict === 'allow' ? 'var(--ds-ok)' : 'var(--ds-bad, var(--ds-bad))'}`,
+        color: verdict === 'allow' ? 'var(--ds-ok)' : 'var(--ds-bad, var(--ds-bad))',
         whiteSpace: 'nowrap',
       }}
     >
@@ -48,10 +48,10 @@ function VerdictBadge({ verdict }: { verdict: 'allow' | 'deny' }) {
 
 function DenyRateBar({ denyRate }: { denyRate: number }) {
   const pct = Math.min(100, Math.max(0, denyRate * 100));
-  const color = pct > 30 ? 'var(--bad, oklch(62% 0.18 25))' : pct > 10 ? 'var(--status-warn)' : 'var(--status-ok)';
+  const color = pct > 30 ? 'var(--ds-bad, var(--ds-hue-red))' : pct > 10 ? 'var(--ds-warn)' : 'var(--ds-ok)';
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-      <div style={{ flex: 1, height: 6, background: 'var(--border, oklch(20% 0.01 260))', borderRadius: 3, overflow: 'hidden' }}>
+      <div style={{ flex: 1, height: 6, background: 'var(--ds-line, var(--ds-surface))', borderRadius: 3, overflow: 'hidden' }}>
         <div
           style={{ height: '100%', width: `${pct}%`, background: color, transition: 'width 0.3s ease' }}
         />
@@ -106,7 +106,7 @@ export function SandboxMonitorPage() {
         </div>
         <div className="header-actions" style={{ gap: 12 }}>
           <Text size="sm" color="ok">{allowCount} allowed</Text>
-          <Text size="sm" style={{ color: 'var(--bad, oklch(62% 0.18 25))' }}>{denyCount} denied</Text>
+          <Text size="sm" style={{ color: 'var(--ds-bad, var(--ds-hue-red))' }}>{denyCount} denied</Text>
         </div>
       </div>
 
@@ -115,14 +115,14 @@ export function SandboxMonitorPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
           {([
             { label: 'Total Decisions', value: String(total), color: undefined as string | undefined },
-            { label: 'Allowed', value: String(allowCount), color: 'var(--status-ok)' as string | undefined },
-            { label: 'Denied', value: String(denyCount), color: 'var(--bad, oklch(62% 0.18 25))' as string | undefined },
+            { label: 'Allowed', value: String(allowCount), color: 'var(--ds-ok)' as string | undefined },
+            { label: 'Denied', value: String(denyCount), color: 'var(--ds-bad, var(--ds-hue-red))' as string | undefined },
           ]).map(({ label, value, color }) => (
             <div
               key={label}
               style={{
-                background: 'var(--surface, oklch(14% 0.01 260))',
-                border: '1px solid var(--border, oklch(20% 0.01 260))',
+                background: 'var(--ds-surface, var(--ds-page))',
+                border: '1px solid var(--ds-line, var(--ds-line-soft))',
                 borderRadius: 8,
                 padding: '16px 20px',
               }}
@@ -138,8 +138,8 @@ export function SandboxMonitorPage() {
         {/* Deny rate bar */}
         <div
           style={{
-            background: 'var(--surface, oklch(14% 0.01 260))',
-            border: '1px solid var(--border, oklch(20% 0.01 260))',
+            background: 'var(--ds-surface, var(--ds-page))',
+            border: '1px solid var(--ds-line, var(--ds-line-soft))',
             borderRadius: 8,
             padding: '16px 20px',
             marginBottom: 24,
@@ -155,19 +155,19 @@ export function SandboxMonitorPage() {
         {byPolicy.length > 0 && (
           <div
             style={{
-              background: 'var(--surface, oklch(14% 0.01 260))',
-              border: '1px solid var(--border, oklch(20% 0.01 260))',
+              background: 'var(--ds-surface, var(--ds-page))',
+              border: '1px solid var(--ds-line, var(--ds-line-soft))',
               borderRadius: 8,
               overflow: 'hidden',
               marginBottom: 24,
             }}
           >
-            <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border, oklch(20% 0.01 260))' }}>
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--ds-line, var(--ds-line-soft))' }}>
               <Heading level={3} size="sm">By Policy Rule</Heading>
             </div>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid var(--border, oklch(20% 0.01 260))' }}>
+                <tr style={{ borderBottom: '1px solid var(--ds-line, var(--ds-line-soft))' }}>
                   {(['Policy Rule', 'Allowed', 'Denied', 'Deny Rate'] as const).map((h) => (
                     <th key={h} style={{ padding: '8px 12px', textAlign: 'left' }}>
                       <Text size="xs" color="tertiary" weight="semibold" transform="uppercase">{h}</Text>
@@ -180,10 +180,10 @@ export function SandboxMonitorPage() {
                   const rowTotal = counts.allow + counts.deny;
                   const rowDenyRate = rowTotal > 0 ? counts.deny / rowTotal : 0;
                   return (
-                    <tr key={rule} style={{ borderBottom: '1px solid var(--border, oklch(20% 0.01 260))' }}>
+                    <tr key={rule} style={{ borderBottom: '1px solid var(--ds-line, var(--ds-line-soft))' }}>
                       <td style={{ padding: '10px 12px' }}><Text size="sm" family="mono">{rule}</Text></td>
                       <td style={{ padding: '10px 12px' }}><Text size="sm" color="ok">{counts.allow}</Text></td>
-                      <td style={{ padding: '10px 12px' }}><Text size="sm" style={{ color: 'var(--bad, oklch(62% 0.18 25))' }}>{counts.deny}</Text></td>
+                      <td style={{ padding: '10px 12px' }}><Text size="sm" style={{ color: 'var(--ds-bad, var(--ds-hue-red))' }}>{counts.deny}</Text></td>
                       <td style={{ padding: '10px 12px', minWidth: 160 }}><DenyRateBar denyRate={rowDenyRate} /></td>
                     </tr>
                   );
@@ -196,13 +196,13 @@ export function SandboxMonitorPage() {
         {/* Live event stream */}
         <div
           style={{
-            background: 'var(--surface, oklch(14% 0.01 260))',
-            border: '1px solid var(--border, oklch(20% 0.01 260))',
+            background: 'var(--ds-surface, var(--ds-page))',
+            border: '1px solid var(--ds-line, var(--ds-line-soft))',
             borderRadius: 8,
             overflow: 'hidden',
           }}
         >
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border, oklch(20% 0.01 260))', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--ds-line, var(--ds-line-soft))', display: 'flex', alignItems: 'center', gap: 8 }}>
             <Heading level={3} size="sm">Decision Stream</Heading>
             <Text size="xs" color="tertiary">most recent first</Text>
           </div>
@@ -221,7 +221,7 @@ export function SandboxMonitorPage() {
           {!isLoading && sorted.length > 0 && (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid var(--border, oklch(20% 0.01 260))' }}>
+                <tr style={{ borderBottom: '1px solid var(--ds-line, var(--ds-line-soft))' }}>
                   {(['Time', 'Node', 'Action', 'Resource', 'Verdict', 'Policy Rule'] as const).map((h) => (
                     <th key={h} style={{ padding: '8px 12px', textAlign: 'left' }}>
                       <Text size="xs" color="tertiary" weight="semibold" transform="uppercase">{h}</Text>
@@ -233,7 +233,7 @@ export function SandboxMonitorPage() {
                 {sorted.slice(0, 100).map((d) => (
                   <tr
                     key={d.decision_id}
-                    style={{ borderBottom: '1px solid var(--border, oklch(20% 0.01 260))' }}
+                    style={{ borderBottom: '1px solid var(--ds-line, var(--ds-line-soft))' }}
                   >
                     <td style={{ padding: '8px 12px' }}>
                       <Text size="xs" family="mono" color="tertiary">{formatTimestamp(d.timestamp)}</Text>

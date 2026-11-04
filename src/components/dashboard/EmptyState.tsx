@@ -5,7 +5,7 @@
 //     (LayoutGrid, Plus) already present in other components.
 //   - onAdd in v2 enters edit mode (which reveals the widget library) since v2 has no
 //     separate libOpen state.
-import { LayoutGrid, Plus } from 'lucide-react';
+import { LayoutGrid, Plus } from '@/theme/design-system/icons';
 import { Text } from '@/components/ui/typography';
 
 interface EmptyStateProps {
@@ -16,7 +16,7 @@ export function EmptyState({ onAdd }: EmptyStateProps) {
   return (
     <div
       style={{
-        border: '1.5px dashed var(--line)',
+        border: '1.5px dashed var(--ds-line)',
         borderRadius: 14,
         padding: '56px 20px',
         textAlign: 'center',
@@ -30,7 +30,7 @@ export function EmptyState({ onAdd }: EmptyStateProps) {
           position: 'absolute',
           inset: 0,
           backgroundImage:
-            'repeating-linear-gradient(45deg, transparent 0 10px, var(--line-2) 10px 11px)',
+            'repeating-linear-gradient(45deg, transparent 0 10px, var(--ds-line-soft) 10px 11px)',
           opacity: 0.4,
           pointerEvents: 'none',
         }}
@@ -40,12 +40,12 @@ export function EmptyState({ onAdd }: EmptyStateProps) {
           width: 48,
           height: 48,
           borderRadius: 10,
-          background: 'var(--panel-2)',
-          border: '1px solid var(--line)',
+          background: 'var(--ds-surface-2)',
+          border: '1px solid var(--ds-line)',
           display: 'grid',
           placeItems: 'center',
           margin: '0 auto 14px',
-          color: 'var(--brand-ink)',
+          color: 'var(--ds-brand-ink)',
           position: 'relative',
         }}
       >

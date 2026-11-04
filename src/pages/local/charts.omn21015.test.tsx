@@ -29,7 +29,7 @@ vi.mock('echarts-for-react/lib/core', () => ({
   default: ({ option }: { option: unknown }) => <div data-testid="served-chart" data-option={JSON.stringify(option)} />,
 }));
 
-import { SpendByDayChart, spendByDayGroups, valueAxisLabel } from './charts';
+import { SpendByDayChart, spendByDayGroups, valueAxisLabel } from '@/theme/design-system/charts';
 
 const day = (start: string, extra: Record<string, unknown> = {}) => ({
   window_kind: 'day', window_start: start, as_of: `${start}T23:00:00+00:00`, baseline_model: 'claude-sonnet-5-5',

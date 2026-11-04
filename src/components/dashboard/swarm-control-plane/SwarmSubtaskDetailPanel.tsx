@@ -78,16 +78,16 @@ function SubtaskStatusBadge({ status }: { status: SwarmSubtaskRow['status'] }) {
     : 'tertiary';
 
   const bg =
-    status === 'succeeded' ? 'color-mix(in srgb, var(--color-ok, #22c55e) 12%, transparent)'
-    : status === 'failed' ? 'color-mix(in srgb, var(--color-bad, #ef4444) 12%, transparent)'
-    : status === 'pending' ? 'color-mix(in srgb, var(--color-warn, #f59e0b) 12%, transparent)'
-    : 'var(--panel-2)';
+    status === 'succeeded' ? 'color-mix(in srgb, var(--ds-ok, var(--ds-ok)) 12%, transparent)'
+    : status === 'failed' ? 'color-mix(in srgb, var(--ds-bad, var(--ds-bad)) 12%, transparent)'
+    : status === 'pending' ? 'color-mix(in srgb, var(--ds-warn, var(--ds-warn)) 12%, transparent)'
+    : 'var(--ds-surface-2)';
 
   const borderColor =
-    status === 'succeeded' ? 'color-mix(in srgb, var(--color-ok, #22c55e) 30%, transparent)'
-    : status === 'failed' ? 'color-mix(in srgb, var(--color-bad, #ef4444) 30%, transparent)'
-    : status === 'pending' ? 'color-mix(in srgb, var(--color-warn, #f59e0b) 30%, transparent)'
-    : 'var(--line-2)';
+    status === 'succeeded' ? 'color-mix(in srgb, var(--ds-ok, var(--ds-ok)) 30%, transparent)'
+    : status === 'failed' ? 'color-mix(in srgb, var(--ds-bad, var(--ds-bad)) 30%, transparent)'
+    : status === 'pending' ? 'color-mix(in srgb, var(--ds-warn, var(--ds-warn)) 30%, transparent)'
+    : 'var(--ds-line-soft)';
 
   return (
     <div
@@ -116,8 +116,8 @@ export function SwarmSubtaskDetailPanel({ run }: { run: SwarmRunRow }) {
         style={{
           padding: '10px 12px',
           borderRadius: 6,
-          border: '1px solid var(--line-2)',
-          background: 'var(--panel-1)',
+          border: '1px solid var(--ds-line-soft)',
+          background: 'var(--ds-surface)',
         }}
       >
         <Text as="div" size="xs" color="tertiary">
@@ -135,8 +135,8 @@ export function SwarmSubtaskDetailPanel({ run }: { run: SwarmRunRow }) {
         style={{
           padding: '6px 10px',
           borderRadius: 6,
-          background: 'color-mix(in srgb, var(--color-warn, #f59e0b) 10%, transparent)',
-          border: '1px solid color-mix(in srgb, var(--color-warn, #f59e0b) 25%, transparent)',
+          background: 'color-mix(in srgb, var(--ds-warn, var(--ds-hue-amber)) 10%, transparent)',
+          border: '1px solid color-mix(in srgb, var(--ds-warn, var(--ds-warn)) 25%, transparent)',
         }}
       >
         <Text as="div" size="xs" color="warn">
@@ -156,7 +156,7 @@ export function SwarmSubtaskDetailPanel({ run }: { run: SwarmRunRow }) {
                   style={{
                     textAlign: 'left',
                     padding: '4px 8px',
-                    borderBottom: '1px solid var(--line)',
+                    borderBottom: '1px solid var(--ds-line)',
                     whiteSpace: 'nowrap',
                   }}
                 >
@@ -167,7 +167,7 @@ export function SwarmSubtaskDetailPanel({ run }: { run: SwarmRunRow }) {
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.subtaskId} style={{ borderBottom: '1px solid var(--line-2)' }}>
+              <tr key={row.subtaskId} style={{ borderBottom: '1px solid var(--ds-line-soft)' }}>
                 <td style={{ padding: '5px 8px' }}>
                   <Text as="span" size="xs" family="mono" color="tertiary">{row.subtaskId}</Text>
                 </td>

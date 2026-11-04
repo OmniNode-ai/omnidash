@@ -5,12 +5,12 @@ import { fmtMs } from './format';
 
 function StatusDot({ status }: { status: string }) {
   const color = status === 'succeeded'
-    ? 'var(--color-ok, #22c55e)'
+    ? 'var(--ds-ok, var(--ds-ok))'
     : status === 'failed'
-    ? 'var(--color-bad, #ef4444)'
+    ? 'var(--ds-bad, var(--ds-bad))'
     : status === 'running'
-    ? 'var(--color-warn, #f59e0b)'
-    : 'var(--text-tertiary, #888)';
+    ? 'var(--ds-warn, var(--ds-hue-amber))'
+    : 'var(--ds-ink-3, var(--ds-ink-4))';
   return (
     <div
       style={{
@@ -32,9 +32,9 @@ function SubtaskSlot({ index, label, status }: { index: number; label: string; s
         alignItems: 'center',
         gap: 6,
         padding: '4px 8px',
-        border: '1px solid var(--line-2)',
+        border: '1px solid var(--ds-line-soft)',
         borderRadius: 6,
-        background: 'var(--panel-2)',
+        background: 'var(--ds-surface-2)',
       }}
     >
       <StatusDot status={status} />
@@ -60,10 +60,10 @@ function WaveBlock({
   return (
     <div
       style={{
-        border: `1px solid ${isWaiting ? 'var(--line-2)' : 'var(--line)'}`,
+        border: `1px solid ${isWaiting ? 'var(--ds-line-soft)' : 'var(--ds-line)'}`,
         borderRadius: 8,
         padding: 10,
-        background: isWaiting ? 'var(--panel-1)' : 'var(--panel-2)',
+        background: isWaiting ? 'var(--ds-surface)' : 'var(--ds-surface-2)',
         opacity: isWaiting ? 0.65 : 1,
         display: 'flex',
         flexDirection: 'column',
@@ -106,9 +106,9 @@ export function SwarmWaveVisualization({ run }: { run: SwarmRunRow }) {
       <div
         style={{
           padding: 12,
-          border: '1px dashed var(--line-2)',
+          border: '1px dashed var(--ds-line-soft)',
           borderRadius: 8,
-          background: 'var(--panel-1)',
+          background: 'var(--ds-surface)',
         }}
       >
         <Text as="div" size="sm" color="tertiary">

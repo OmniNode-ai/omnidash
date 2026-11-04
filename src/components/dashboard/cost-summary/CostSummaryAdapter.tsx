@@ -1,5 +1,5 @@
 /* eslint-disable local/no-typography-inline -- OMN-10509 keeps prototype widget layout while source-level typography compliance is enforced separately. */
-import { useState, useMemo } from 'react';
+import { useState, useMemo, type CSSProperties } from 'react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
@@ -52,6 +52,9 @@ interface PerModelRow {
   color: string;
 }
 
+// OMN-22168: these six demo rows are frozen by the hardcoded-model-config ratchet (config/hardcoded_model_config_baseline.yaml,
+// "entries only leave"), so their lines stay byte-identical. Their colour strings name six legacy properties; the
+// widget's root maps each one to its design token (LEGACY_ROW_COLOURS below), so nothing here reads an old token.
 const PER_MODEL_SAVINGS: PerModelRow[] = [
   { id: 'qwen3-coder-30b', name: 'Qwen3-Coder-30B', tier: 'local', tasks: 412, tokensM: 14.8, spent: 0.00, wouldHaveCost: 198.40, p50: 1.4, p95: 2.9, accuracy: 0.942, color: 'var(--compute)' },
   { id: 'deepseek-r1-32b', name: 'DeepSeek-R1-32B', tier: 'local', tasks: 187, tokensM: 9.2, spent: 0.00, wouldHaveCost: 142.18, p50: 7.0, p95: 12.4, accuracy: 0.918, color: 'var(--reducer)' },
@@ -61,18 +64,28 @@ const PER_MODEL_SAVINGS: PerModelRow[] = [
   { id: 'glm-4-plus', name: 'GLM-4-Plus', tier: 'cloud', tasks: 41, tokensM: 1.4, spent: 3.40, wouldHaveCost: 3.40, p50: 8.7, p95: 14.2, accuracy: 0.889, "color": 'var(--ink-3)' },
 ];
 
+/** The frozen rows' colour names, mapped to the tokens they always meant (node kinds, brand, muted ink). */
+const LEGACY_ROW_COLOURS = {
+  '--compute': 'var(--ds-kind-compute)',
+  '--reducer': 'var(--ds-kind-reducer)',
+  '--orchestrator': 'var(--ds-kind-orchestrator)',
+  '--effect': 'var(--ds-kind-effect)',
+  '--accent': 'var(--ds-brand)',
+  '--ink-3': 'var(--ds-ink-3)',
+} as CSSProperties;
+
 // ── SmallKPI ────────────────────────────────────────────────────────
 
 function SmallKPI({ label, value, prefix = '', suffix = '', decimals = 0, tone = 'default' }: {
   label: string; value: number; prefix?: string; suffix?: string; decimals?: number; tone?: string;
 }) {
-  const c = tone === 'good' ? 'var(--good)' : 'var(--ink)';
+  const c = tone === 'good' ? 'var(--ds-ok)' : 'var(--ds-ink)';
   return (
     <div>
       <div className="mono tnum" style={{ "fontSize": 18, "fontWeight": 700, color: c, "lineHeight": 1 }}>
         <CountUp value={value} prefix={prefix} suffix={suffix} decimals={decimals} />
       </div>
-      <div style={{ "fontSize": 10, "color": 'var(--ink-3)', "letterSpacing": '0.1em', "textTransform": 'uppercase', marginTop: 4, "fontWeight": 500 }}>
+      <div style={{ "fontSize": 10, "color": 'var(--ds-ink-3)', "letterSpacing": '0.1em', "textTransform": 'uppercase', marginTop: 4, "fontWeight": 500 }}>
         {label}
       </div>
     </div>
@@ -107,46 +120,46 @@ function CostLineChart({ data }: { data: typeof COST_TREND }) {
     <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: 'block' }}>
       {/* horizontal gridlines */}
       {yTicks.map((t) => (
-        <line key={t} x1={padL} x2={W - padR} y1={y(t)} y2={y(t)} stroke="var(--ink-4)" strokeWidth="0.5" />
+        <line key={t} x1={padL} x2={W - padR} y1={y(t)} y2={y(t)} stroke="var(--ds-ink-4)" strokeWidth="0.5" />
       ))}
 
       {/* y-axis labels */}
       {yTicks.map((t) => (
-        <text key={`y-${t}`} x={padL - 6} y={y(t) + 3} fontSize="9" fill="var(--ink-3)" fontFamily="var(--font-mono)" textAnchor="end">
+        <text key={`y-${t}`} x={padL - 6} y={y(t) + 3} fontSize="9" fill="var(--ds-ink-3)" fontFamily="var(--ds-font-mono)" textAnchor="end">
           ${t.toFixed(2)}
         </text>
       ))}
 
       {/* cloud-only baseline — same weight as actual spend */}
-      <path d={baselinePath} fill="none" stroke="var(--warn)" strokeWidth="1.5" />
+      <path d={baselinePath} fill="none" stroke="var(--ds-warn)" strokeWidth="1.5" />
       {baseline.map((v, i) => (
-        <circle key={`b-${i}`} cx={x(i)} cy={y(v)} r="1.5" fill="var(--warn)" opacity="0.5" />
+        <circle key={`b-${i}`} cx={x(i)} cy={y(v)} r="1.5" fill="var(--ds-warn)" opacity="0.5" />
       ))}
 
       {/* actual spend — thin line, small dots */}
-      <path d={actualPath} fill="none" stroke="var(--good)" strokeWidth="1.5" strokeLinejoin="round" />
+      <path d={actualPath} fill="none" stroke="var(--ds-ok)" strokeWidth="1.5" strokeLinejoin="round" />
       {data.map((d, i) => (
-        <circle key={`a-${i}`} cx={x(i)} cy={y(d.cloud)} r={d.cloud > 0.01 ? 3 : 1.5} fill="var(--good)" />
+        <circle key={`a-${i}`} cx={x(i)} cy={y(d.cloud)} r={d.cloud > 0.01 ? 3 : 1.5} fill="var(--ds-ok)" />
       ))}
 
       {/* x-axis line */}
-      <line x1={padL} x2={W - padR} y1={y(0)} y2={y(0)} stroke="var(--ink-4)" strokeWidth="0.5" />
+      <line x1={padL} x2={W - padR} y1={y(0)} y2={y(0)} stroke="var(--ds-ink-4)" strokeWidth="0.5" />
 
       {/* x-axis labels */}
-      <text x={padL} y={H - 8} fontSize="9" fill="var(--ink-3)" fontFamily="var(--font-mono)">{'−'}30m</text>
-      <text x={padL + innerW * 0.33} y={H - 8} fontSize="9" fill="var(--ink-3)" fontFamily="var(--font-mono)" textAnchor="middle">{'−'}20m</text>
-      <text x={padL + innerW * 0.66} y={H - 8} fontSize="9" fill="var(--ink-3)" fontFamily="var(--font-mono)" textAnchor="middle">{'−'}10m</text>
-      <text x={W - padR} y={H - 8} fontSize="9" fill="var(--ink-3)" fontFamily="var(--font-mono)" textAnchor="end">now</text>
+      <text x={padL} y={H - 8} fontSize="9" fill="var(--ds-ink-3)" fontFamily="var(--ds-font-mono)">{'−'}30m</text>
+      <text x={padL + innerW * 0.33} y={H - 8} fontSize="9" fill="var(--ds-ink-3)" fontFamily="var(--ds-font-mono)" textAnchor="middle">{'−'}20m</text>
+      <text x={padL + innerW * 0.66} y={H - 8} fontSize="9" fill="var(--ds-ink-3)" fontFamily="var(--ds-font-mono)" textAnchor="middle">{'−'}10m</text>
+      <text x={W - padR} y={H - 8} fontSize="9" fill="var(--ds-ink-3)" fontFamily="var(--ds-font-mono)" textAnchor="end">now</text>
 
       {/* legend */}
       <g transform={`translate(${padL}, ${padT - 12})`}>
-        <line x1="0" y1="0" x2="16" y2="0" stroke="var(--warn)" strokeWidth="1.5" />
-        <circle cx="8" cy="0" r="2" fill="var(--warn)" />
-        <text x="22" y="3" fontSize="9" fill="var(--ink-2)" fontFamily="var(--font-mono)">cloud-only baseline</text>
+        <line x1="0" y1="0" x2="16" y2="0" stroke="var(--ds-warn)" strokeWidth="1.5" />
+        <circle cx="8" cy="0" r="2" fill="var(--ds-warn)" />
+        <text x="22" y="3" fontSize="9" fill="var(--ds-ink-2)" fontFamily="var(--ds-font-mono)">cloud-only baseline</text>
 
-        <line x1="160" y1="0" x2="176" y2="0" stroke="var(--good)" strokeWidth="1.5" />
-        <circle cx="168" cy="0" r="2" fill="var(--good)" />
-        <text x="182" y="3" fontSize="9" fill="var(--ink-2)" fontFamily="var(--font-mono)">actual spend</text>
+        <line x1="160" y1="0" x2="176" y2="0" stroke="var(--ds-ok)" strokeWidth="1.5" />
+        <circle cx="168" cy="0" r="2" fill="var(--ds-ok)" />
+        <text x="182" y="3" fontSize="9" fill="var(--ds-ink-2)" fontFamily="var(--ds-font-mono)">actual spend</text>
       </g>
     </svg>
   );
@@ -172,12 +185,12 @@ function ColumnPicker({ open, onToggle, options, visible, setVisible }: {
           cursor: 'pointer',
           height: 24,
           padding: '0 10px',
-          background: open ? 'var(--bg-sunken)' : 'var(--bg-elevated)',
-          border: '1px solid var(--line)',
+          background: open ? 'var(--ds-inset)' : 'var(--ds-surface)',
+          border: '1px solid var(--ds-line)',
           borderRadius: 6,
           "fontSize": 10,
           "fontWeight": 700,
-          "color": 'var(--ink-2)',
+          "color": 'var(--ds-ink-2)',
           "letterSpacing": '0.08em',
           "textTransform": 'uppercase',
           display: 'inline-flex',
@@ -197,11 +210,11 @@ function ColumnPicker({ open, onToggle, options, visible, setVisible }: {
             right: 0,
             top: 30,
             zIndex: 10,
-            background: 'var(--bg-elevated)',
-            border: '1px solid var(--line)',
+            background: 'var(--ds-surface)',
+            border: '1px solid var(--ds-line)',
             borderRadius: 8,
             padding: 8,
-            boxShadow: 'var(--shadow)',
+            boxShadow: 'var(--ds-shadow-md)',
             minWidth: 160,
           }}
         >
@@ -216,7 +229,7 @@ function ColumnPicker({ open, onToggle, options, visible, setVisible }: {
                 padding: '5px 4px',
                 cursor: 'pointer',
                 "fontSize": 12,
-                "color": 'var(--ink-2)',
+                "color": 'var(--ds-ink-2)',
                 borderRadius: 4,
               }}
             >
@@ -224,7 +237,7 @@ function ColumnPicker({ open, onToggle, options, visible, setVisible }: {
                 type="checkbox"
                 checked={!!visible[opt.key]}
                 onChange={() => setVisible((v) => ({ ...v, [opt.key]: !v[opt.key] }))}
-                style={{ accentColor: 'var(--accent)' }}
+                style={{ accentColor: 'var(--ds-brand)' }}
               />
               {opt.label}
             </label>
@@ -247,25 +260,25 @@ function TotalView({ k, trend, localPctDeg, cloudPctDeg }: {
     <>
       {/* Hero */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 14 }}>
-        <div className="mono tnum" style={{ "fontSize": 38, "fontWeight": 800, color: 'var(--good)', "lineHeight": 1, "letterSpacing": '-0.02em' }}>
+        <div className="mono tnum" style={{ "fontSize": 38, "fontWeight": 800, color: 'var(--ds-ok)', "lineHeight": 1, "letterSpacing": '-0.02em' }}>
           <CountUp value={localPctDeg} suffix="%" />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ "fontSize": 12, "fontWeight": 500, "color": 'var(--ink-2)' }}>tokens routed locally</div>
-          <div style={{ "fontSize": 11, "color": 'var(--ink-3)', marginTop: 2 }}>$0 marginal cost {'·'} 4 hosts on-prem</div>
+          <div style={{ "fontSize": 12, "fontWeight": 500, "color": 'var(--ds-ink-2)' }}>tokens routed locally</div>
+          <div style={{ "fontSize": 11, "color": 'var(--ds-ink-3)', marginTop: 2 }}>$0 marginal cost {'·'} 4 hosts on-prem</div>
         </div>
       </div>
 
       {/* Split bar */}
       <div style={{ display: 'flex', height: 22, borderRadius: 3, overflow: 'hidden' }}>
-        <div style={{ width: `${localPctDeg}%`, background: 'var(--good)', display: 'flex', alignItems: 'center', paddingLeft: 10, color: '#fff', "fontSize": 10, "fontWeight": 600, "letterSpacing": '0.08em', transition: 'width .9s cubic-bezier(.2,.7,.3,1)' }}>
+        <div style={{ width: `${localPctDeg}%`, background: 'var(--ds-ok)', display: 'flex', alignItems: 'center', paddingLeft: 10, color: 'var(--ds-on-inverse)', "fontSize": 10, "fontWeight": 600, "letterSpacing": '0.08em', transition: 'width .9s cubic-bezier(.2,.7,.3,1)' }}>
           {localPctDeg}% LOCAL
         </div>
-        <div style={{ width: `${cloudPctDeg}%`, background: 'var(--accent)', display: 'flex', alignItems: 'center', paddingLeft: 10, color: '#fff', "fontSize": 10, "fontWeight": 600, "letterSpacing": '0.08em' }}>
+        <div style={{ width: `${cloudPctDeg}%`, background: 'var(--ds-brand)', display: 'flex', alignItems: 'center', paddingLeft: 10, color: 'var(--ds-on-inverse)', "fontSize": 10, "fontWeight": 600, "letterSpacing": '0.08em' }}>
           {cloudPctDeg}% CLOUD
         </div>
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, "fontSize": 10, "color": 'var(--ink-3)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, "fontSize": 10, "color": 'var(--ds-ink-3)' }}>
         <span>Routed to local models</span>
         <span className="mono">$<CountUp value={k.cloudAvoided} decimals={2} /> avoided</span>
       </div>
@@ -279,10 +292,10 @@ function TotalView({ k, trend, localPctDeg, cloudPctDeg }: {
       </div>
 
       {/* Line chart */}
-      <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--line-2)' }}>
+      <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--ds-line-soft)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
           <div className="eyebrow">cost per minute {'·'} last 30 min</div>
-          <div className="mono" style={{ "fontSize": 9, "color": 'var(--ink-3)' }}>{'↓'} 87% vs cloud-only</div>
+          <div className="mono" style={{ "fontSize": 9, "color": 'var(--ds-ink-3)' }}>{'↓'} 87% vs cloud-only</div>
         </div>
         <CostLineChart data={trend} />
       </div>
@@ -317,21 +330,21 @@ function PerModelView({ models, totalSaved }: { models: PerModelRow[]; totalSave
     {
       key: 'tier', label: 'Tier', width: '52px',
       render: (m) => (
-        <span className="mono" style={{ "fontSize": 10, color: m.tier === 'local' ? 'var(--good)' : 'var(--accent-ink)', "textTransform": 'uppercase', "letterSpacing": '0.06em', "fontWeight": 600 }}>{m.tier}</span>
+        <span className="mono" style={{ "fontSize": 10, color: m.tier === 'local' ? 'var(--ds-ok)' : 'var(--ds-link)', "textTransform": 'uppercase', "letterSpacing": '0.06em', "fontWeight": 600 }}>{m.tier}</span>
       ),
     },
     { key: 'tasks', label: 'Tasks', width: '56px', align: 'right', mono: true, render: (m) => m.tasks.toLocaleString() },
     { key: 'tokensM', label: 'Tokens', width: '62px', align: 'right', mono: true, render: (m) => `${m.tokensM.toFixed(1)}M` },
     {
       key: 'p50', label: 'p50', width: '56px', align: 'right', mono: true,
-      render: (m) => <span style={{ color: m.p50 < 3 ? 'var(--good)' : m.p50 < 10 ? 'var(--ink)' : 'var(--bad)' }}>{m.p50.toFixed(1)}s</span>,
+      render: (m) => <span style={{ color: m.p50 < 3 ? 'var(--ds-ok)' : m.p50 < 10 ? 'var(--ds-ink)' : 'var(--ds-bad)' }}>{m.p50.toFixed(1)}s</span>,
     },
     { key: 'p95', label: 'p95', width: '56px', align: 'right', mono: true, render: (m) => `${m.p95.toFixed(1)}s` },
     {
       key: 'accuracy', label: 'Acc', width: '60px', align: 'right', mono: true,
       sortValue: (m) => m.accuracy,
       render: (m) => (
-        <span style={{ color: m.accuracy >= 0.93 ? 'var(--good)' : m.accuracy >= 0.88 ? 'var(--ink)' : 'var(--warn)', "fontWeight": 600 }}>
+        <span style={{ color: m.accuracy >= 0.93 ? 'var(--ds-ok)' : m.accuracy >= 0.88 ? 'var(--ds-ink)' : 'var(--ds-warn)', "fontWeight": 600 }}>
           {(m.accuracy * 100).toFixed(1)}%
         </span>
       ),
@@ -346,7 +359,7 @@ function PerModelView({ models, totalSaved }: { models: PerModelRow[]; totalSave
       render: (m) => {
         const saved = m.wouldHaveCost - m.spent;
         return (
-          <span style={{ "fontWeight": 700, color: m.tier === 'local' ? 'var(--good)' : 'var(--ink-3)' }}>
+          <span style={{ "fontWeight": 700, color: m.tier === 'local' ? 'var(--ds-ok)' : 'var(--ds-ink-3)' }}>
             {m.tier === 'local' ? `+$${saved.toFixed(2)}` : '—'}
           </span>
         );
@@ -359,9 +372,9 @@ function PerModelView({ models, totalSaved }: { models: PerModelRow[]; totalSave
         const wouldPct = (m.wouldHaveCost / max) * 100;
         const spentPct = (m.spent / max) * 100;
         return (
-          <div style={{ position: 'relative', height: 8, background: 'var(--bg-sunken)', borderRadius: 999, overflow: 'hidden' }} title={`would have cost $${m.wouldHaveCost.toFixed(2)} · actual $${m.spent.toFixed(2)}`}>
-            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${wouldPct}%`, background: m.tier === 'local' ? 'var(--good-soft)' : 'var(--accent-soft)' }} />
-            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${spentPct}%`, background: 'var(--accent)' }} />
+          <div style={{ position: 'relative', height: 8, background: 'var(--ds-inset)', borderRadius: 999, overflow: 'hidden' }} title={`would have cost $${m.wouldHaveCost.toFixed(2)} · actual $${m.spent.toFixed(2)}`}>
+            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${wouldPct}%`, background: m.tier === 'local' ? 'var(--ds-ok-soft)' : 'var(--ds-brand-soft)' }} />
+            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${spentPct}%`, background: 'var(--ds-brand)' }} />
           </div>
         );
       },
@@ -386,12 +399,12 @@ function PerModelView({ models, totalSaved }: { models: PerModelRow[]; totalSave
     <>
       {/* Hero */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 14 }}>
-        <div className="mono tnum" style={{ "fontSize": 32, "fontWeight": 800, color: 'var(--good)', "lineHeight": 1, "letterSpacing": '-0.02em' }}>
+        <div className="mono tnum" style={{ "fontSize": 32, "fontWeight": 800, color: 'var(--ds-ok)', "lineHeight": 1, "letterSpacing": '-0.02em' }}>
           $<CountUp value={totalSaved} decimals={2} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ "fontSize": 12, "fontWeight": 500, "color": 'var(--ink-2)' }}>saved {'·'} routed to local models</div>
-          <div style={{ "fontSize": 11, "color": 'var(--ink-3)', marginTop: 2 }}>{local.length} local {'·'} {cloud.length} cloud {'·'} last 7 days</div>
+          <div style={{ "fontSize": 12, "fontWeight": 500, "color": 'var(--ds-ink-2)' }}>saved {'·'} routed to local models</div>
+          <div style={{ "fontSize": 11, "color": 'var(--ds-ink-3)', marginTop: 2 }}>{local.length} local {'·'} {cloud.length} cloud {'·'} last 7 days</div>
         </div>
         <ColumnPicker open={pickerOpen} onToggle={() => setPickerOpen((o) => !o)} options={colOptions} visible={visible} setVisible={setVisible} />
       </div>
@@ -446,7 +459,7 @@ export default function CostSummaryAdapter(_config: CostSummaryConfig) {
       error={error ?? undefined}
       isEmpty={false}
     >
-      <div style={{ width: '100%' }}>
+      <div style={{ width: '100%', ...LEGACY_ROW_COLOURS }}>
         <div className="card-hd">
           <div>
             <div className="eyebrow">Cost summary {'·'} last 7 days</div>

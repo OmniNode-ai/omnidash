@@ -16,7 +16,8 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const css = readFileSync(resolve(__dirname, 'seven-page-design.css'), 'utf8');
-const charts = readFileSync(resolve(__dirname, '../pages/local/insight-charts.tsx'), 'utf8');
+// OMN-22168 AC3: the drawn line moved into the chart kit.
+const charts = readFileSync(resolve(__dirname, '../theme/design-system/charts/LinePlot.tsx'), 'utf8');
 
 /** The body of the first `@media <query> {` block that follows the OMN-21970 AC9 banner, found by brace counting. */
 function mediaBlock(query: string): string {

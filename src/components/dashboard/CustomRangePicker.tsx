@@ -101,8 +101,8 @@ export function CustomRangePicker({ initial, onCancel, onApply }: CustomRangePic
           className="text-input-sm mono"
           style={{
             padding: '3px 6px',
-            background: 'var(--panel-2)',
-            border: '1px solid var(--line)',
+            background: 'var(--ds-surface-2)',
+            border: '1px solid var(--ds-line)',
             borderRadius: 4,
             color: 'inherit',
           }}
@@ -118,8 +118,8 @@ export function CustomRangePicker({ initial, onCancel, onApply }: CustomRangePic
           className="text-input-sm mono"
           style={{
             padding: '3px 6px',
-            background: 'var(--panel-2)',
-            border: '1px solid var(--line)',
+            background: 'var(--ds-surface-2)',
+            border: '1px solid var(--ds-line)',
             borderRadius: 4,
             color: 'inherit',
           }}
@@ -131,7 +131,7 @@ export function CustomRangePicker({ initial, onCancel, onApply }: CustomRangePic
           justifyContent: 'flex-end',
           gap: 8,
           padding: '8px 8px 4px',
-          borderTop: '1px solid var(--line-2)',
+          borderTop: '1px solid var(--ds-line-soft)',
           marginTop: 6,
         }}
       >

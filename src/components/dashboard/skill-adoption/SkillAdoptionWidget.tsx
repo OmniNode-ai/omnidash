@@ -38,7 +38,7 @@ function SkillRow({ row }: { row: SkillAdoptionRow }) {
     <div
       style={{
         padding: '6px 0',
-        borderBottom: '1px solid var(--line-2)',
+        borderBottom: '1px solid var(--ds-line-soft)',
         display: 'grid',
         gridTemplateColumns: '1fr 70px 70px 130px 70px',
         gap: 8,
@@ -90,7 +90,7 @@ function HeaderRow() {
     <div
       style={{
         padding: '4px 0',
-        borderBottom: '1px solid var(--line)',
+        borderBottom: '1px solid var(--ds-line)',
         display: 'grid',
         gridTemplateColumns: '1fr 70px 70px 130px 70px',
         gap: 8,
@@ -142,7 +142,7 @@ export default function SkillAdoptionWidget(props: { config: SkillAdoptionWidget
               gridTemplateColumns: 'repeat(4, 1fr)',
               gap: 12,
               paddingBottom: 12,
-              borderBottom: '1px solid var(--line)',
+              borderBottom: '1px solid var(--ds-line)',
             }}
           >
             <KPI label="Started" value={summary.totalStarted} />

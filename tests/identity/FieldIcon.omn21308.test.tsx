@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import * as Fields from '@/components/dashboard/FieldIcon';
+import * as Icons from '@/theme/design-system/icons';
 import { fieldTone } from '@/components/dashboard/field-identity';
 import { WorkflowRoutingFlow } from '@/pages/local/workflow-analysis';
 import * as Destinations from '@/navigation/destination-icons';
@@ -21,8 +22,11 @@ const shape = (svg: Element) => svg.innerHTML;
 
 // This is a declared-CSS inventory, not a claim about computed browser colour.
 // The browser census separately catches specificity, inherited ink and inline overrides.
-const fieldCss = readFileSync('src/styles/field-identity.css', 'utf8');
-const destinationCss = readFileSync('src/styles/destination-identity.css', 'utf8');
+// OMN-22168: the colour values live in src/theme/design-system/tokens.css; the selector rules that pick them stay with the
+// identity stylesheets. The inventory reads both, values first.
+const tokensCss = readFileSync('src/theme/design-system/tokens.css', 'utf8');
+const fieldCss = tokensCss + '\n' + readFileSync('src/styles/field-identity.css', 'utf8');
+const destinationCss = tokensCss + '\n' + readFileSync('src/styles/destination-identity.css', 'utf8');
 
 // The historical base has private ICONS maps. Discover only their literal keys;
 // never evaluate source or substitute a head registry into the base product.
@@ -38,9 +42,10 @@ function sourceRegistryKeys(file: string, exportedName: string): string[] {
     return literal[1] ?? literal[2] ?? literal[3]!;
   });
 }
-const parsedFieldKeys = sourceRegistryKeys('src/components/dashboard/FieldIcon.tsx', 'FIELD_ICONS');
+// OMN-22168 AC2: the concept registry moved from FieldIcon.tsx to src/theme/design-system/icons.ts as CONCEPT_ICONS.
+const parsedFieldKeys = sourceRegistryKeys('src/theme/design-system/icons.ts', 'CONCEPT_ICONS');
 const parsedDestinationKeys = sourceRegistryKeys('src/navigation/destination-icons.tsx', 'DESTINATION_ICONS');
-const fieldKeys = Fields.FIELD_ICONS ? Object.keys(Fields.FIELD_ICONS) : parsedFieldKeys;
+const fieldKeys = Object.keys(Icons.CONCEPT_ICONS);
 const destinationKeys = Destinations.DESTINATION_ICONS ? Object.keys(Destinations.DESTINATION_ICONS) : parsedDestinationKeys;
 const cssRules = (css: string) => [...css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)]
   .flatMap(([, selectors, body]) => selectors!.split(',').map(selector => ({
@@ -90,7 +95,7 @@ function declaredPairs(dark: boolean): IdentityPair[] {
       || (dark && rule.selector === `[data-theme="dark"] ${selector}`));
     const ink = applicable.flatMap(rule => rule.declarations).filter(([key]) => key === '--field-ink').at(-1)?.[1];
     if (!ink) throw new Error(`Missing canonical colour selector ${selector}`);
-    if (!variables.has(`--field-${id}`)) throw new Error(`Missing canonical colour token --field-${id}`);
+    if (!variables.has(`--ds-field-${id}`)) throw new Error(`Missing canonical colour token --ds-field-${id}`);
     return { id: `field:${id}`, shape: shape(svgOf(renderToStaticMarkup(<Fields.FieldIcon tone={id} />))),
       colour: normaliseColour(resolveVariable(ink, variables)) };
   });
@@ -99,7 +104,7 @@ function declaredPairs(dark: boolean): IdentityPair[] {
     const selector = `[data-destination="${page}"]`;
     const matching = destinations.filter(rule => rule.selector === '[data-destination]' || rule.selector === selector
       || (dark && (rule.selector === '[data-theme="dark"] [data-destination]' || rule.selector === `[data-theme="dark"] ${selector}`)));
-    const ink = matching.flatMap(rule => rule.declarations).filter(([key]) => key === '--nav-accent').at(-1)?.[1];
+    const ink = matching.flatMap(rule => rule.declarations).filter(([key]) => key === '--ds-destination-accent').at(-1)?.[1];
     if (!ink) throw new Error(`Missing destination colour ${page}`);
     return { id: `destination:${page}`, shape: shape(svgOf(renderToStaticMarkup(<Destinations.DestinationIcon page={page} />))),
       colour: normaliseColour(resolveVariable(ink, variables)) };
@@ -113,7 +118,7 @@ describe('OMN-21308 AC1 canonical field identities', () => {
     expect(parsedDestinationKeys.length).toBeGreaterThan(0);
     expect(new Set(parsedFieldKeys).size).toBe(parsedFieldKeys.length);
     expect(new Set(parsedDestinationKeys).size).toBe(parsedDestinationKeys.length);
-    if (Fields.FIELD_ICONS) expect([...fieldKeys].sort()).toEqual([...parsedFieldKeys].sort());
+    expect([...fieldKeys].sort()).toEqual([...parsedFieldKeys].sort());
     if (Destinations.DESTINATION_ICONS) expect([...destinationKeys].sort()).toEqual([...parsedDestinationKeys].sort());
     // The fallback population must actually render through the public components.
     for (const id of parsedFieldKeys) svgOf(renderToStaticMarkup(<Fields.FieldIcon tone={id} />));

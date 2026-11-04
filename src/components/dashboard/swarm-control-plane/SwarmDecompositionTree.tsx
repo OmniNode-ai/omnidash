@@ -6,10 +6,10 @@ import { fmtMs, fmtUsd } from './format';
 function RootNode({ run }: { run: SwarmRunRow }) {
   const status = normalizeStatus(run.status);
   const dotColor = status === 'succeeded'
-    ? 'var(--color-ok, #22c55e)'
+    ? 'var(--ds-ok, var(--ds-ok))'
     : status === 'failed'
-    ? 'var(--color-bad, #ef4444)'
-    : 'var(--color-warn, #f59e0b)';
+    ? 'var(--ds-bad, var(--ds-bad))'
+    : 'var(--ds-warn, var(--ds-hue-amber))';
 
   return (
     <div
@@ -18,9 +18,9 @@ function RootNode({ run }: { run: SwarmRunRow }) {
         alignItems: 'flex-start',
         gap: 10,
         padding: '8px 12px',
-        border: '1px solid var(--line)',
+        border: '1px solid var(--ds-line)',
         borderRadius: 8,
-        background: 'var(--panel-2)',
+        background: 'var(--ds-surface-2)',
       }}
     >
       <div style={{ width: 10, height: 10, borderRadius: '50%', background: dotColor, marginTop: 4, flexShrink: 0 }} />
@@ -55,18 +55,18 @@ function SubtaskNode({
   isLast: boolean;
 }) {
   const dotColor = status === 'succeeded'
-    ? 'var(--color-ok, #22c55e)'
+    ? 'var(--ds-ok, var(--ds-ok))'
     : status === 'failed'
-    ? 'var(--color-bad, #ef4444)'
-    : 'var(--text-tertiary, #888)';
+    ? 'var(--ds-bad, var(--ds-bad))'
+    : 'var(--ds-ink-3, var(--ds-ink-4))';
 
   return (
     <div style={{ display: 'flex', gap: 0 }}>
       {/* Tree connector */}
       <div style={{ width: 24, display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
-        <div style={{ width: 1, flex: 1, background: 'var(--line-2)', minHeight: isLast ? '50%' : '100%' }} />
-        <div style={{ width: 12, height: 1, background: 'var(--line-2)', flexShrink: 0 }} />
-        {!isLast && <div style={{ width: 1, flex: 1, background: 'var(--line-2)' }} />}
+        <div style={{ width: 1, flex: 1, background: 'var(--ds-line-soft)', minHeight: isLast ? '50%' : '100%' }} />
+        <div style={{ width: 12, height: 1, background: 'var(--ds-line-soft)', flexShrink: 0 }} />
+        {!isLast && <div style={{ width: 1, flex: 1, background: 'var(--ds-line-soft)' }} />}
       </div>
       <div
         style={{
@@ -75,9 +75,9 @@ function SubtaskNode({
           alignItems: 'center',
           gap: 8,
           padding: '5px 10px',
-          border: '1px solid var(--line-2)',
+          border: '1px solid var(--ds-line-soft)',
           borderRadius: 6,
-          background: 'var(--panel-1)',
+          background: 'var(--ds-surface)',
           marginBottom: isLast ? 0 : 4,
           marginTop: 4,
         }}

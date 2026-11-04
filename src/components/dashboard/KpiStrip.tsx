@@ -8,6 +8,7 @@ import type { CSSProperties, ReactNode } from 'react';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { CardBasis } from '@/components/dashboard/CardBasis';
 import { CountUpText } from '@/components/dashboard/CountUpText';
+import { Card, Figure } from '@/theme/design-system/components';
 
 /** A figure's served value per UTC day (oldest first), and how to write one value. */
 export interface KpiTrend {
@@ -22,7 +23,7 @@ export interface KpiItem {
   label: string;
   /** The served figure, formatted by the caller (or its typed state). */
   value: ReactNode;
-  /** The identity colour of the card's 3px edge and tooltip, e.g. var(--field-cost). */
+  /** The identity colour of the card's 3px edge and tooltip, e.g. var(--ds-field-cost). */
   accent: string;
   /** The concept whose icon heads the card (ConceptIcon). */
   concept?: string;
@@ -67,13 +68,12 @@ export function KpiStrip({ label, items }: { label: string; items: readonly KpiI
           const short = trend && (item.lines ?? []).filter(Boolean).length === 0 ? trendCaption(item.trend!) : null;
           const lines = [...(item.lines ?? []), short, trend].filter((line): line is string => Boolean(line));
           return (
-            <article key={item.label} className="local-dashboard-panel" data-kpi-card={item.label}
-              data-field-unavailable={item.unavailable ? 'true' : undefined} style={{ '--panel-accent': item.accent } as CSSProperties}>
-              <h2>{item.concept && <ConceptIcon concept={item.concept} label={item.label} size={14} />}{item.label}</h2>
-              <p className="local-dashboard-metric" data-measured={item.unavailable ? 'false' : 'true'} title={item.title}
-                style={{ '--figure-chars': String(item.value).length } as CSSProperties}>{!item.unavailable && typeof item.value === 'string' ? <CountUpText text={item.value} /> : item.value}</p>
+            <Card key={item.label} heading={<>{item.concept && <ConceptIcon concept={item.concept} label={item.label} size={14} />}{item.label}</>}
+              accent={item.accent} unavailable={item.unavailable} data-kpi-card={item.label}>
+              <Figure measured={!item.unavailable} title={item.title}
+                style={{ '--figure-chars': String(item.value).length } as CSSProperties}>{!item.unavailable && typeof item.value === 'string' ? <CountUpText text={item.value} /> : item.value}</Figure>
               {lines.length > 0 && <CardBasis label={item.label}>{lines.map(line => <p key={line} className="local-dashboard-caption">{line}</p>)}</CardBasis>}
-            </article>
+            </Card>
           );
         })}
       </section>

@@ -17,7 +17,7 @@
 // Visual language reuses the honesty palette (compute = live, warn = fixtures)
 // established by HonestyStateBadge (OMN-12981 lineage).
 import { useState } from 'react';
-import { Database, HardDrive, ChevronDown, Check } from 'lucide-react';
+import { Database, HardDrive, ChevronDown, Check } from '@/theme/design-system/icons';
 import {
   PositionedMenu,
   usePositionedMenu,
@@ -71,14 +71,14 @@ export function DataSourceControl() {
   // the compute (green) palette. The two are deliberately not confusable.
   const triggerStyle: React.CSSProperties = isFile
     ? {
-        background: 'var(--warn-soft)',
-        border: '1px solid var(--warn)',
-        color: 'var(--warn)',
+        background: 'var(--ds-warn-soft)',
+        border: '1px solid var(--ds-warn)',
+        color: 'var(--ds-warn)',
       }
     : {
-        background: 'var(--compute-soft)',
-        border: '1px solid var(--compute)',
-        color: 'var(--compute-ink)',
+        background: 'var(--ds-kind-compute-soft)',
+        border: '1px solid var(--ds-kind-compute)',
+        color: 'var(--ds-kind-compute-ink)',
       };
 
   return (
@@ -128,7 +128,7 @@ export function DataSourceControl() {
                 <Database size={14} />
                 <Text as="span" size="md" weight="semibold">Live projection backend</Text>
                 {!isFile && (
-                  <Check size={13} style={{ color: 'var(--compute)' }} aria-label="active" />
+                  <Check size={13} style={{ color: 'var(--ds-kind-compute)' }} aria-label="active" />
                 )}
               </span>
               <input
@@ -144,8 +144,8 @@ export function DataSourceControl() {
                 className="text-input-sm mono"
                 style={{
                   padding: '5px 8px',
-                  background: 'var(--panel-2)',
-                  border: '1px solid var(--line)',
+                  background: 'var(--ds-surface-2)',
+                  border: '1px solid var(--ds-line)',
                   borderRadius: 4,
                   color: 'inherit',
                   width: '100%',
@@ -175,7 +175,7 @@ export function DataSourceControl() {
               <HardDrive size={14} />
               <Text as="span" size="md" color="inherit">File fixtures (development data)</Text>
               {isFile && (
-                <Check size={13} style={{ color: 'var(--warn)' }} aria-label="active" />
+                <Check size={13} style={{ color: 'var(--ds-warn)' }} aria-label="active" />
               )}
             </button>
 

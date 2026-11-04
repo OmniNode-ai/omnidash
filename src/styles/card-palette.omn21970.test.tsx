@@ -17,10 +17,10 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { FIELD_ICONS } from '@/components/dashboard/FieldIcon';
+import { CONCEPT_ICONS } from '@/theme/design-system/icons';
 import { PANEL_CONCEPTS, RunsKpis, UsageKpis } from '@/pages/LocalDashboardPage';
 
-const css = readFileSync(resolve(__dirname, 'field-identity.css'), 'utf8');
+const css = readFileSync(resolve(__dirname, '../theme/design-system/tokens.css'), 'utf8');
 const blocks = (selector: string) => {
   const bodies: string[] = [];
   for (let start = css.indexOf(`${selector} {`); start >= 0; start = css.indexOf(`${selector} {`, start + 1)) {
@@ -32,7 +32,7 @@ const THEMES = { light: blocks(':root'), dark: blocks('[data-theme="dark"]') } a
 // The real card backgrounds, read from Chrome on the dev dashboard 2026-11-02 (computed background-color).
 const CARD = { light: '#fdfdfc', dark: '#161616' } as const;
 const token = (theme: keyof typeof THEMES, concept: string) => {
-  const matches = [...THEMES[theme].matchAll(new RegExp(`--field-${concept}:\\s*(#[0-9a-fA-F]{6})\\s*;`, 'g'))];
+  const matches = [...THEMES[theme].matchAll(new RegExp(`--ds-field-${concept}:\\s*(#[0-9a-fA-F]{6})\\s*;`, 'g'))];
   return matches.length ? matches[matches.length - 1]![1]!.toLowerCase() : null;
 };
 
@@ -56,7 +56,7 @@ const contrast = (fg: string, bg: number[]) => {
 const tinted = (accent: string, bg: string, alpha = 0.14) => rgb(accent).map((value, i) => Math.round(alpha * value + (1 - alpha) * rgb(bg)[i]!));
 
 const accentConcepts = (container: HTMLElement) => [...container.querySelectorAll('article[data-kpi-card]')]
-  .map(card => /var\(--field-([a-z0-9-]+)\)/.exec((card as HTMLElement).style.getPropertyValue('--panel-accent'))?.[1] ?? '(none)');
+  .map(card => /var\(--ds-field-([a-z0-9-]+)\)/.exec((card as HTMLElement).style.getPropertyValue('--panel-accent'))?.[1] ?? '(none)');
 
 const NOW = Date.parse('2026-11-02T12:00:00Z');
 const RUN_ROWS = Array.from({ length: 30 }, (_, index) => ({
@@ -131,12 +131,12 @@ describe('OMN-21970 AC8: card colours and icons', () => {
     // colour); the KpiStrip pages draw the icon of each card's own concept.
     const iconConcepts = { ...pages(), overview: ['overview-spend', 'overview-savings', 'overview-measured', 'overview-tokens', 'overview-quality'].map(id => PANEL_CONCEPTS[id]!) };
     for (const [name, concepts] of Object.entries(iconConcepts)) {
-      const icons = concepts.map(concept => FIELD_ICONS[concept]);
+      const icons = concepts.map(concept => CONCEPT_ICONS[concept]);
       expect(icons.every(Boolean), `${name}: every card concept has an icon`).toBe(true);
       expect(new Set(icons).size, `${name}: ${concepts.join(', ')}`).toBe(concepts.length);
     }
-    expect(FIELD_ICONS.tokens).not.toBe(FIELD_ICONS.cost);
-    expect(FIELD_ICONS.tokens?.displayName ?? '').not.toMatch(/Coin|Dollar|Banknote/);
+    expect(CONCEPT_ICONS.tokens).not.toBe(CONCEPT_ICONS.cost);
+    expect(CONCEPT_ICONS.tokens?.displayName ?? '').not.toMatch(/Coin|Dollar|Banknote/);
   });
 
   it('P6: the tier colours are not touched by the card palette', () => {

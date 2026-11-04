@@ -13,8 +13,8 @@ import { formatUsd } from '@/components/dashboard/usage/UsageByModelDayWidget';
 import { isUnavailableField } from '@/components/dashboard/field-identity';
 import { EvPageShell } from '@/components/dashboard/event-dash/EvPageShell';
 import { KpiStrip } from '@/components/dashboard/KpiStrip';
-import { DashboardTabs } from '@/components/dashboard/DashboardTabs';
-import { RankedBars } from '@/components/dashboard/RankedBars';
+import { DashboardTabs, Fact, FactList } from '@/theme/design-system/components';
+import { RankedBars } from '@/theme/design-system/charts';
 import {
   Badge,
   CodeBlock,
@@ -56,7 +56,7 @@ import {
 import { overviewRunCount } from '@/lib/dashboard-overview-count';
 
 import { formatDuration } from '@/components/format/duration';
-import { percent as sharePercent } from '@/pages/local/shares';
+import { percent as sharePercent } from '@/theme/design-system/charts';
 import { taskLabel } from '@/pages/local/plain-text';
 import { readableTime } from '@/components/format/readable-time';
 import { ModelTiersContext, TierLegend, useModelColor, useModelIdentityStyle } from '@/components/dashboard/model-tiers';
@@ -321,14 +321,14 @@ function QualityGate() {
   return (
     <Panel title="QUALITY GATE" sub="All quality checks served · deterministic checks">
       <div className="ev-qg-stats">
-        <span className="stat-inline"><span className="big c-amber" style={{ color: 'var(--field-pass)' }}>{servedNumber(q.overall_pass_rate) === null ? 'Not served' : passRate(q.overall_pass_rate)}</span><span className="note">pass rate</span></span>
-        <span className="stat-inline" data-field-tone="pass"><span className="big c-green" style={{ color: 'var(--field-pass)' }}>{passed === null ? 'Not served' : formatDashboardCount(passed)}</span><span className="note">pass</span></span>
-        <span className="stat-inline" data-field-tone="fail"><span className="big c-red" style={{ color: 'var(--field-fail)' }}>{failed === null ? 'Not served' : formatDashboardCount(failed)}</span><span className="note">fail</span></span>
+        <span className="stat-inline"><span className="big c-amber" style={{ color: 'var(--ds-field-pass)' }}>{servedNumber(q.overall_pass_rate) === null ? 'Not served' : passRate(q.overall_pass_rate)}</span><span className="note">pass rate</span></span>
+        <span className="stat-inline" data-field-tone="pass"><span className="big c-green" style={{ color: 'var(--ds-field-pass)' }}>{passed === null ? 'Not served' : formatDashboardCount(passed)}</span><span className="note">pass</span></span>
+        <span className="stat-inline" data-field-tone="fail"><span className="big c-red" style={{ color: 'var(--ds-field-fail)' }}>{failed === null ? 'Not served' : formatDashboardCount(failed)}</span><span className="note">fail</span></span>
         <span className="stat-inline"><span className="big">{servedNumber(q.escalation_rate) === null ? 'Not served' : passRate(q.escalation_rate)}</span><span className="note">escalation rate</span></span>
       </div>
       <div className="bar-track ev-qg-bar">
-        <div className="bar-fill m-green" data-field-tone="pass" data-semantic-concept="field:pass" data-semantic-label="Passed checks" style={{ background: 'var(--field-pass)', width: total && passed !== null ? `${(passed / total) * 100}%` : '0%' }} />
-        <div className="bar-fill m-red" data-field-tone="fail" data-semantic-concept="field:fail" data-semantic-label="Failed checks" style={{ background: 'var(--field-fail)', width: total && failed !== null ? `${(failed / total) * 100}%` : '0%' }} />
+        <div className="bar-fill m-green" data-field-tone="pass" data-semantic-concept="field:pass" data-semantic-label="Passed checks" style={{ background: 'var(--ds-field-pass)', width: total && passed !== null ? `${(passed / total) * 100}%` : '0%' }} />
+        <div className="bar-fill m-red" data-field-tone="fail" data-semantic-concept="field:fail" data-semantic-label="Failed checks" style={{ background: 'var(--ds-field-fail)', width: total && failed !== null ? `${(failed / total) * 100}%` : '0%' }} />
       </div>
       {/* OMN-21166 Maple grid: the headline in view; the checks by type, cost to comply and escalation reasons are one
           click away, so the panel sits beside the selected run without running the length of the page. */}
@@ -553,16 +553,16 @@ function SavingsPanel({ money, unavailable }: { money: HeadlineMoney | null; una
       right={pricing ? <span className="src-tag">{pricing}</span> : undefined}
     >
       <span className="stat-inline ev-savings-hero" data-field-tone="savings">
-        <span className="big c-amber" style={{ color: money && finite(money.saved) ? 'var(--field-savings)' : 'var(--field-unavailable)' }}>{money ? servedUsd(money.saved) : unavailable}</span>
+        <span className="big c-amber" style={{ color: money && finite(money.saved) ? 'var(--ds-field-savings)' : 'var(--ds-field-unavailable)' }}>{money ? servedUsd(money.saved) : unavailable}</span>
         <span className="note">cumulative savings (modelled) over {money ? servedCount(money.measuredRuns) : 'Not measured'} measured runs</span>
       </span>
       {/* The money source names the runs it leaves out where it serves them; the savings population cannot fill it. */}
       <p className="note">{money?.basis ?? 'Unpriced runs not recorded'}</p>
       <RankedBars label="Cost against the cloud baseline" unit="USD · baseline and saving modelled, local cost measured" order="desc" layout="vertical"
         items={[
-          moneyBar('baseline', 'Cloud baseline cost', cloud, 'estimated', 'var(--field-baseline)'),
-          moneyBar('cost', 'Local / delegated cost', money?.local, 'measured', 'var(--field-cost)'),
-          moneyBar('savings', 'Saved', money?.saved, 'estimated', 'var(--field-savings)'),
+          moneyBar('baseline', 'Cloud baseline cost', cloud, 'estimated', 'var(--ds-field-baseline)'),
+          moneyBar('cost', 'Local / delegated cost', money?.local, 'measured', 'var(--ds-field-cost)'),
+          moneyBar('savings', 'Saved', money?.saved, 'estimated', 'var(--ds-field-savings)'),
         ]} />
     </Panel>
   );
@@ -779,13 +779,13 @@ function EvidenceClaim({ money, unavailable }: { money: HeadlineMoney | null; un
           ? <>Modelled savings: {saved}.</>
           : <>Savings were {saved}, modelled {moneyBasis(money)}.</>}
       </p>
-      <dl className="ev-evidence-derivation" aria-label="Claim derivation">
-        <div><dt>Measured runs</dt><dd>{count(money?.measuredRuns)} measured runs</dd></div>
-        <div><dt>No token counts</dt><dd>{count(money?.unknownTokens)} with no token counts</dd></div>
-        <div><dt>No spend recorded</dt><dd>{count(money?.unknownSpend)} with no spend recorded</dd></div>
-        <div><dt>Actual spend</dt><dd>{money ? servedUsd(money.local) : unavailable}</dd></div>
-        <div><dt>Baseline cost (modelled)</dt><dd>{money ? servedUsd(money.cloud) : unavailable}</dd></div>
-      </dl>
+      <FactList look="evidence-derivation" aria-label="Claim derivation">
+        <Fact term="Measured runs">{count(money?.measuredRuns)} measured runs</Fact>
+        <Fact term="No token counts">{count(money?.unknownTokens)} with no token counts</Fact>
+        <Fact term="No spend recorded">{count(money?.unknownSpend)} with no spend recorded</Fact>
+        <Fact term="Actual spend">{money ? servedUsd(money.local) : unavailable}</Fact>
+        <Fact term="Baseline cost (modelled)">{money ? servedUsd(money.cloud) : unavailable}</Fact>
+      </FactList>
     </section>
   );
 }
@@ -949,11 +949,11 @@ export function DelegationEvidencePage() {
       <KpiStrip label="Delegation summary" items={[
         // Part 29 AC191: one fact per line, so the drawn caption is the short first one ('Of N runs') and the exclusions
         // stay in the page instead of being cut off.
-        { label: 'Delegations', value: headline.runs, accent: 'var(--field-calls)', concept: 'calls', lines: headline.runsSub ? String(headline.runsSub).split(' \u00b7 ') : [] },
+        { label: 'Delegations', value: headline.runs, accent: 'var(--ds-field-calls)', concept: 'calls', lines: headline.runsSub ? String(headline.runsSub).split(' \u00b7 ') : [] },
         { label: 'Quality pass', value: summary ? passRate(summary.qualityGatePassRate) : 'Not measured', unavailable: !summary,
-          accent: 'var(--field-pass)', concept: 'pass', lines: [withFixtureNotice('deterministic gate', fixtureNotice)] },
-        { label: 'Savings (modelled)', value: headline.savings, accent: 'var(--field-savings)', concept: 'savings', lines: [moneyBasis(headline.money)] },
-        { label: 'Tokens', value: headline.tokens, accent: 'var(--field-tokens)', concept: 'tokens',
+          accent: 'var(--ds-field-pass)', concept: 'pass', lines: [withFixtureNotice('deterministic gate', fixtureNotice)] },
+        { label: 'Savings (modelled)', value: headline.savings, accent: 'var(--ds-field-savings)', concept: 'savings', lines: [moneyBasis(headline.money)] },
+        { label: 'Tokens', value: headline.tokens, accent: 'var(--ds-field-tokens)', concept: 'tokens',
           lines: [summary ? withFixtureNotice(`avg ${formatDuration(summary.avgLatencyMs)} latency`, fixtureNotice) : null] },
       ]} />
 

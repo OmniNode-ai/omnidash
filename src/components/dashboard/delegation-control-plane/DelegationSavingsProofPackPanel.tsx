@@ -45,10 +45,10 @@ const PRINT_CSS = `
   }
   .proof-pack-no-print { display: none !important; }
   table { border-collapse: collapse !important; width: 100% !important; }
-  th, td { border: 1px solid #ccc !important; padding: 4px 6px !important; font-size: 8pt !important; }
-  th { background: #f0f0f0 !important; }
-  .proof-gate-passed { color: #166534 !important; }
-  .proof-gate-failed { color: #991b1b !important; }
+  th, td { border: 1px solid var(--ds-line-strong) !important; padding: 4px 6px !important; font-size: 8pt !important; }
+  th { background: var(--ds-surface-2) !important; }
+  .proof-gate-passed { color: var(--ds-hue-green) !important; }
+  .proof-gate-failed { color: var(--ds-hue-red) !important; }
 }
 `;
 
@@ -120,10 +120,10 @@ export function DelegationSavingsProofPackPanel() {
             display: 'inline-flex',
             alignItems: 'center',
             gap: 6,
-            border: '1px solid var(--line)',
+            border: '1px solid var(--ds-line)',
             borderRadius: 6,
             padding: '6px 14px',
-            background: 'var(--panel-3)',
+            background: 'var(--ds-surface-2)',
             color: 'inherit',
             cursor: 'pointer',
           }}
@@ -173,7 +173,7 @@ function ProofPackHeader({
     ? 'This report is generated from live projection data and is reproducible by re-querying the same projection endpoints.'
     : 'This report is generated from a local development data source and is not a live projection.';
   return (
-    <div style={{ marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid var(--line)' }}>
+    <div style={{ marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid var(--ds-line)' }}>
       <Text as="div" size="lg" weight="semibold" color="primary" style={{ marginBottom: 6 }}>
         OmniNode Delegation Savings Report
       </Text>
@@ -214,8 +214,8 @@ function RunTable({ runs }: { runs: DelegationRun[] }) {
                 style={{
                   textAlign: 'left',
                   padding: '5px 8px',
-                  borderBottom: '1px solid var(--line)',
-                  background: 'var(--panel-2)',
+                  borderBottom: '1px solid var(--ds-line)',
+                  background: 'var(--ds-surface-2)',
                   whiteSpace: 'nowrap',
                 }}
               >
@@ -240,7 +240,7 @@ function RunTable({ runs }: { runs: DelegationRun[] }) {
 function RunRow({ run, index }: { run: DelegationRun; index: number }) {
   const cls = gateClass(run.status);
   return (
-    <tr style={{ borderBottom: '1px solid var(--line-2)' }}>
+    <tr style={{ borderBottom: '1px solid var(--ds-line-soft)' }}>
       <td style={{ padding: '4px 8px' }}>
         <Text as="span" size="xs" family="mono" color="tertiary">{index + 1}</Text>
       </td>
@@ -301,7 +301,7 @@ function TotalsRow({ runs }: { runs: DelegationRun[] }) {
   const passRate = runs.length > 0 ? `${Math.round((passedCount / runs.length) * 100)}%` : '-';
 
   return (
-    <tr style={{ borderTop: '2px solid var(--line)', background: 'var(--panel-2)' }}>
+    <tr style={{ borderTop: '2px solid var(--ds-line)', background: 'var(--ds-surface-2)' }}>
       <td style={{ padding: '5px 8px' }} colSpan={4}>
         <Text as="span" size="xs" weight="semibold" color="primary">Totals ({runs.length} runs)</Text>
       </td>

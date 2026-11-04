@@ -3,7 +3,7 @@
 //
 // Important: the launcher's current styling does NOT match the
 // Claude Design prototype's intended orb — its background uses
-// `hsl(var(--primary))`, but `--primary` resolves to an `oklch(...)`
+// `var(--ds-brand)`, but `--ds-brand` resolves to an `oklch(...)`
 // expression in this project, so `hsl(oklch(...))` is invalid CSS
 // and the orb renders without its intended fill. That mismatch is
 // the explicit motivation for OMN-119: bring the orb into Storybook
@@ -31,8 +31,8 @@ const meta: Meta<typeof AgentLauncher> = {
           position: 'relative',
           width: 320,
           height: 120,
-          background: 'var(--panel-2)',
-          border: '1px solid var(--line)',
+          background: 'var(--ds-surface-2)',
+          border: '1px solid var(--ds-line)',
           borderRadius: 8,
         }}
       >

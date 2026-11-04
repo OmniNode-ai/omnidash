@@ -17,16 +17,16 @@ function StatusBadge({ status }: { status: string }) {
         padding: '2px 8px',
         borderRadius: 4,
         background: status === 'succeeded'
-          ? 'color-mix(in srgb, var(--color-ok, #22c55e) 12%, transparent)'
+          ? 'color-mix(in srgb, var(--ds-ok, var(--ds-ok)) 12%, transparent)'
           : status === 'failed'
-          ? 'color-mix(in srgb, var(--color-bad, #ef4444) 12%, transparent)'
-          : 'var(--panel-2)',
+          ? 'color-mix(in srgb, var(--ds-bad, var(--ds-bad)) 12%, transparent)'
+          : 'var(--ds-surface-2)',
         border: '1px solid',
         borderColor: status === 'succeeded'
-          ? 'color-mix(in srgb, var(--color-ok, #22c55e) 30%, transparent)'
+          ? 'color-mix(in srgb, var(--ds-ok, var(--ds-ok)) 30%, transparent)'
           : status === 'failed'
-          ? 'color-mix(in srgb, var(--color-bad, #ef4444) 30%, transparent)'
-          : 'var(--line-2)',
+          ? 'color-mix(in srgb, var(--ds-bad, var(--ds-bad)) 30%, transparent)'
+          : 'var(--ds-line-soft)',
       }}
     >
       <Text as="span" size="xs" weight="semibold" color={color}>{status}</Text>
@@ -51,10 +51,10 @@ export function SwarmSubtaskCard({ run }: { run: SwarmRunRow }) {
   return (
     <div
       style={{
-        border: '1px solid var(--line)',
+        border: '1px solid var(--ds-line)',
         borderRadius: 8,
         padding: 12,
-        background: 'var(--panel-1)',
+        background: 'var(--ds-surface)',
         display: 'flex',
         flexDirection: 'column',
         gap: 10,
@@ -95,9 +95,9 @@ export function SwarmSubtaskCard({ run }: { run: SwarmRunRow }) {
               <Text key={m} as="span" size="xs" family="mono" color="secondary"
                 style={{
                   padding: '2px 6px',
-                  border: '1px solid var(--line-2)',
+                  border: '1px solid var(--ds-line-soft)',
                   borderRadius: 4,
-                  background: 'var(--panel-2)',
+                  background: 'var(--ds-surface-2)',
                 }}
               >
                 {m}

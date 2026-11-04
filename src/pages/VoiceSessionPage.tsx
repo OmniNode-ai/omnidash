@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Mic, MicOff } from 'lucide-react';
+import { Mic, MicOff } from '@/theme/design-system/icons';
 import { Text, Heading } from '@/components/ui/typography';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
@@ -55,7 +55,7 @@ function AudioTimeline({
       style={{
         position: 'relative',
         height: 48,
-        background: 'var(--surface-2, oklch(18% 0.01 260))',
+        background: 'var(--ds-surface-2, var(--ds-surface))',
         borderRadius: 6,
         overflow: 'hidden',
       }}
@@ -82,10 +82,10 @@ function AudioTimeline({
               minWidth: 3,
               borderRadius: 3,
               background: isActive
-                ? 'var(--brand, oklch(55% 0.2 260))'
+                ? 'var(--ds-brand, var(--ds-hue-blue))'
                 : isAgent
-                  ? 'var(--status-ok)'
-                  : 'var(--status-warn)',
+                  ? 'var(--ds-ok)'
+                  : 'var(--ds-warn)',
               opacity: isActive ? 1 : 0.7,
               cursor: 'pointer',
               transition: 'opacity 0.1s',
@@ -129,13 +129,13 @@ function TranscriptPanel({ turns, activeTurnId }: { turns: TranscriptTurn[]; act
                 width: 28,
                 height: 28,
                 borderRadius: '50%',
-                background: isAgent ? 'color-mix(in oklch, var(--status-ok) 20%, transparent)' : 'color-mix(in oklch, var(--status-warn) 20%, transparent)',
+                background: isAgent ? 'color-mix(in oklch, var(--ds-ok) 20%, transparent)' : 'color-mix(in oklch, var(--ds-warn) 20%, transparent)',
                 flexShrink: 0,
               }}
             >
               {isAgent
-                ? <Mic size={12} style={{ color: 'var(--status-ok)' }} />
-                : <MicOff size={12} style={{ color: 'var(--status-warn)' }} />
+                ? <Mic size={12} style={{ color: 'var(--ds-ok)' }} />
+                : <MicOff size={12} style={{ color: 'var(--ds-warn)' }} />
               }
             </div>
             <div
@@ -144,9 +144,9 @@ function TranscriptPanel({ turns, activeTurnId }: { turns: TranscriptTurn[]; act
                 padding: '8px 12px',
                 borderRadius: 8,
                 background: isActive
-                  ? 'color-mix(in oklch, var(--brand, oklch(55% 0.2 260)) 12%, var(--surface-2, oklch(18% 0.01 260)))'
-                  : 'var(--surface-2, oklch(18% 0.01 260))',
-                border: isActive ? '1px solid var(--brand, oklch(55% 0.2 260))' : '1px solid var(--border, oklch(20% 0.01 260))',
+                  ? 'color-mix(in oklch, var(--ds-brand, var(--ds-hue-blue)) 12%, var(--ds-surface-2, var(--ds-surface)))'
+                  : 'var(--ds-surface-2, var(--ds-surface))',
+                border: isActive ? '1px solid var(--ds-brand, var(--ds-hue-blue))' : '1px solid var(--ds-line, var(--ds-line-soft))',
               }}
             >
               <Text size="xs" color="tertiary" family="mono" style={{ marginBottom: 4, display: 'block' }}>
@@ -210,13 +210,13 @@ export function VoiceSessionPage() {
             {/* Session list */}
             <div
               style={{
-                background: 'var(--surface, oklch(14% 0.01 260))',
-                border: '1px solid var(--border, oklch(20% 0.01 260))',
+                background: 'var(--ds-surface, var(--ds-page))',
+                border: '1px solid var(--ds-line, var(--ds-line-soft))',
                 borderRadius: 8,
                 overflow: 'hidden',
               }}
             >
-              <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border, oklch(20% 0.01 260))' }}>
+              <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--ds-line, var(--ds-line-soft))' }}>
                 <Text size="xs" weight="semibold" color="tertiary" transform="uppercase">Sessions</Text>
               </div>
               {sorted.length === 0 && (
@@ -238,9 +238,9 @@ export function VoiceSessionPage() {
                     width: '100%',
                     padding: '10px 14px',
                     cursor: 'pointer',
-                    borderBottom: '1px solid var(--border, oklch(20% 0.01 260))',
-                    borderLeft: `3px solid ${sess.session_id === selectedId ? 'var(--brand, oklch(55% 0.2 260))' : sess.is_active ? 'var(--status-ok)' : 'transparent'}`,
-                    background: sess.session_id === selectedId ? 'color-mix(in oklch, var(--brand, oklch(55% 0.2 260)) 8%, transparent)' : 'transparent',
+                    borderBottom: '1px solid var(--ds-line, var(--ds-line-soft))',
+                    borderLeft: `3px solid ${sess.session_id === selectedId ? 'var(--ds-brand, var(--ds-hue-blue))' : sess.is_active ? 'var(--ds-ok)' : 'transparent'}`,
+                    background: sess.session_id === selectedId ? 'color-mix(in oklch, var(--ds-brand, var(--ds-hue-blue)) 8%, transparent)' : 'transparent',
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -262,8 +262,8 @@ export function VoiceSessionPage() {
               {!selected ? (
                 <div
                   style={{
-                    background: 'var(--surface, oklch(14% 0.01 260))',
-                    border: '1px solid var(--border, oklch(20% 0.01 260))',
+                    background: 'var(--ds-surface, var(--ds-page))',
+                    border: '1px solid var(--ds-line, var(--ds-line-soft))',
                     borderRadius: 8,
                     padding: 40,
                     textAlign: 'center',
@@ -276,8 +276,8 @@ export function VoiceSessionPage() {
                   {/* Session metadata */}
                   <div
                     style={{
-                      background: 'var(--surface, oklch(14% 0.01 260))',
-                      border: '1px solid var(--border, oklch(20% 0.01 260))',
+                      background: 'var(--ds-surface, var(--ds-page))',
+                      border: '1px solid var(--ds-line, var(--ds-line-soft))',
                       borderRadius: 8,
                       padding: '14px 18px',
                       display: 'flex',
@@ -309,8 +309,8 @@ export function VoiceSessionPage() {
                   {selected.transcript_turns.length > 0 && (
                     <div
                       style={{
-                        background: 'var(--surface, oklch(14% 0.01 260))',
-                        border: '1px solid var(--border, oklch(20% 0.01 260))',
+                        background: 'var(--ds-surface, var(--ds-page))',
+                        border: '1px solid var(--ds-line, var(--ds-line-soft))',
                         borderRadius: 8,
                         padding: '14px 18px',
                       }}
@@ -318,9 +318,9 @@ export function VoiceSessionPage() {
                       <div style={{ marginBottom: 10, display: 'flex', alignItems: 'center', gap: 12 }}>
                         <Heading level={3} size="sm">Audio Timeline</Heading>
                         <Text size="xs" color="tertiary">
-                          <span style={{ color: 'var(--status-ok)' }}>■</span> agent
+                          <span style={{ color: 'var(--ds-ok)' }}>■</span> agent
                           {' '}
-                          <span style={{ color: 'var(--status-warn)' }}>■</span> user
+                          <span style={{ color: 'var(--ds-warn)' }}>■</span> user
                         </Text>
                       </div>
                       <AudioTimeline
@@ -335,15 +335,15 @@ export function VoiceSessionPage() {
                   {/* Transcript */}
                   <div
                     style={{
-                      background: 'var(--surface, oklch(14% 0.01 260))',
-                      border: '1px solid var(--border, oklch(20% 0.01 260))',
+                      background: 'var(--ds-surface, var(--ds-page))',
+                      border: '1px solid var(--ds-line, var(--ds-line-soft))',
                       borderRadius: 8,
                       overflow: 'hidden',
                       maxHeight: 520,
                       overflowY: 'auto',
                     }}
                   >
-                    <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border, oklch(20% 0.01 260))', position: 'sticky', top: 0, background: 'var(--surface, oklch(14% 0.01 260))' }}>
+                    <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--ds-line, var(--ds-line-soft))', position: 'sticky', top: 0, background: 'var(--ds-surface, var(--ds-page))' }}>
                       <Heading level={3} size="sm">Transcript</Heading>
                     </div>
                     <TranscriptPanel turns={selected.transcript_turns} activeTurnId={activeTurnId} />

@@ -1,5 +1,5 @@
 import { useState, type ComponentType } from 'react';
-import { Activity, BarChart2, CircleDollarSign, GitBranch, LayoutDashboard, List } from 'lucide-react';
+import { Activity, BarChart2, CircleDollarSign, GitBranch, LayoutDashboard, List } from '@/theme/design-system/icons';
 import { Text } from '@/components/ui/typography';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useSwarmSnapshot } from './useSwarmSnapshot';
@@ -47,7 +47,7 @@ function SwarmEvidenceTabs({ selectedRun, runs }: { selectedRun: SwarmRunRow | n
     <section>
       <div
         role="tablist"
-        style={{ display: 'flex', gap: 6, flexWrap: 'wrap', borderBottom: '1px solid var(--line)', paddingBottom: 8, marginBottom: 12 }}
+        style={{ display: 'flex', gap: 6, flexWrap: 'wrap', borderBottom: '1px solid var(--ds-line)', paddingBottom: 8, marginBottom: 12 }}
       >
         {TABS.map(({ id, label, Icon }) => (
           <button
@@ -60,10 +60,10 @@ function SwarmEvidenceTabs({ selectedRun, runs }: { selectedRun: SwarmRunRow | n
               display: 'inline-flex',
               alignItems: 'center',
               gap: 6,
-              border: '1px solid var(--line)',
+              border: '1px solid var(--ds-line)',
               borderRadius: 6,
               padding: '6px 9px',
-              background: activeTab === id ? 'var(--panel-2)' : 'transparent',
+              background: activeTab === id ? 'var(--ds-surface-2)' : 'transparent',
               color: 'inherit',
               cursor: 'pointer',
             }}

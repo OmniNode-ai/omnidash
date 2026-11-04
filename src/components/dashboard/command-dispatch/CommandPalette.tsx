@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, X, Send, Loader, Check, AlertCircle } from 'lucide-react';
+import { Search, X, Send, Loader, Check, AlertCircle } from '@/theme/design-system/icons';
 import { Text } from '@/components/ui/typography';
 import { useDispatch } from './useDispatch';
 
@@ -31,7 +31,7 @@ interface CommandPaletteProps {
 // Each node type maps to the design-system node-type role tokens
 // (--<kind>, --<kind>-soft, --<kind>-ink) defined in design-tokens.css for
 // both light and dark themes. Using one token family per type — instead of
-// mixing var(--accent)/var(--text-tertiary) with hardcoded hex — renders all
+// mixing var(--ds-brand)/var(--ds-ink-3) with hardcoded hex — renders all
 // four badges as consistent, theme-aware chips with adequate contrast.
 function kindTokens(kind: string): { border: string; bg: string; ink: string } {
   const role =
@@ -136,7 +136,7 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
       onClick={onClose}
       style={{
         position: 'fixed', inset: 0, zIndex: 9000,
-        background: 'rgba(0,0,0,0.55)',
+        background: 'color-mix(in srgb, var(--ds-shadow-ink) 55%, transparent)',
         display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
         paddingTop: '20vh',
       }}
@@ -150,24 +150,24 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
         aria-label="Command palette"
         style={{
           width: 540, maxWidth: '90vw',
-          background: 'var(--panel)',
-          border: '1px solid var(--line)',
+          background: 'var(--ds-surface)',
+          border: '1px solid var(--ds-line)',
           borderRadius: 10,
-          boxShadow: '0 24px 80px rgba(0,0,0,0.4)',
+          boxShadow: '0 24px 80px color-mix(in srgb, var(--ds-shadow-ink) 40%, transparent)',
           overflow: 'hidden',
           display: 'flex', flexDirection: 'column',
         }}
       >
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderBottom: '1px solid var(--line)' }}>
-          {stage === 'search' && <Search size={16} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderBottom: '1px solid var(--ds-line)' }}>
+          {stage === 'search' && <Search size={16} style={{ color: 'var(--ds-ink-3)', flexShrink: 0 }} />}
           {stage === 'payload' && selectedNode && (
             <Text size="sm" color="brand" family="mono" style={{ flexShrink: 0 }}>{selectedNode.id}</Text>
           )}
           {stage === 'result' && (
             dispatchState === 'success'
-              ? <Check size={16} style={{ color: 'var(--good)', flexShrink: 0 }} />
-              : <AlertCircle size={16} style={{ color: 'var(--bad)', flexShrink: 0 }} />
+              ? <Check size={16} style={{ color: 'var(--ds-ok)', flexShrink: 0 }} />
+              : <AlertCircle size={16} style={{ color: 'var(--ds-bad)', flexShrink: 0 }} />
           )}
           {stage === 'search' && (
             <input
@@ -186,7 +186,7 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
             onClick={onClose}
             style={{
               all: 'unset', cursor: 'pointer', display: 'flex', alignItems: 'center',
-              color: 'var(--text-tertiary)', padding: 2, borderRadius: 4,
+              color: 'var(--ds-ink-3)', padding: 2, borderRadius: 4,
             }}
           >
             <X size={16} />
@@ -209,8 +209,8 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
                 style={{
                   all: 'unset', display: 'flex', alignItems: 'center', gap: 10,
                   width: '100%', padding: '10px 14px', cursor: 'pointer',
-                  background: i === activeIndex ? 'var(--accent-soft)' : 'transparent',
-                  borderBottom: '1px solid var(--line-2)',
+                  background: i === activeIndex ? 'var(--ds-brand-soft)' : 'transparent',
+                  borderBottom: '1px solid var(--ds-line-soft)',
                   boxSizing: 'border-box',
                 }}
               >
@@ -224,7 +224,7 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
         {/* Payload stage */}
         {stage === 'payload' && selectedNode && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-            <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--line)' }}>
+            <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--ds-line)' }}>
               <Text size="xs" color="tertiary">Edit the JSON payload to dispatch with</Text>
             </div>
             {/* textarea is exempt from the typography rule — it is a form control, not text display */}
@@ -238,12 +238,12 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
               className="dispatch-payload-editor"
               style={{
                 border: 0, outline: 0, resize: 'none', padding: '10px 14px',
-                background: 'var(--bg-sunken)', borderBottom: '1px solid var(--line)',
+                background: 'var(--ds-inset)', borderBottom: '1px solid var(--ds-line)',
               }}
             />
             {payloadError && (
-              <div style={{ padding: '6px 14px', background: 'rgba(239,68,68,0.08)' }}>
-                <Text size="xs" style={{ color: 'var(--bad)' }}>{payloadError}</Text>
+              <div style={{ padding: '6px 14px', background: 'color-mix(in srgb, var(--ds-bad) 8%, transparent)' }}>
+                <Text size="xs" style={{ color: 'var(--ds-bad)' }}>{payloadError}</Text>
               </div>
             )}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px' }}>
@@ -260,12 +260,12 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
                 style={{
                   all: 'unset', display: 'inline-flex', alignItems: 'center', gap: 6,
                   padding: '6px 14px', borderRadius: 6,
-                  // var(--accent) resolves to --brand-soft (a pale hover tint), not the
+                  // var(--ds-brand) resolves to --brand-soft (a pale hover tint), not the
                   // brand color — so it paired badly with literal 'white' text and went
                   // invisible in light mode. Use the brand fill + its on-brand text token
                   // (--primary-foreground = --brand-ink) so the CTA stays legible in both themes.
-                  background: dispatchState === 'sending' ? 'var(--panel-2)' : 'var(--brand)',
-                  color: dispatchState === 'sending' ? 'var(--text-tertiary)' : 'var(--primary-foreground)',
+                  background: dispatchState === 'sending' ? 'var(--ds-surface-2)' : 'var(--ds-brand)',
+                  color: dispatchState === 'sending' ? 'var(--ds-ink-3)' : 'var(--ds-brand-ink)',
                   cursor: dispatchState === 'sending' ? 'not-allowed' : 'pointer',
                 }}
               >
@@ -283,7 +283,7 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
           <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
             {dispatchState === 'success' && dispatchResult ? (
               <>
-                <Text size="sm" style={{ color: 'var(--good)' }}>Dispatched successfully</Text>
+                <Text size="sm" style={{ color: 'var(--ds-ok)' }}>Dispatched successfully</Text>
                 <Text size="xs" color="secondary" family="mono">
                   {`correlation_id: ${dispatchResult.correlation_id ?? '—'}`}
                 </Text>
@@ -293,7 +293,7 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
               </>
             ) : (
               <>
-                <Text size="sm" style={{ color: 'var(--bad)' }}>Dispatch failed</Text>
+                <Text size="sm" style={{ color: 'var(--ds-bad)' }}>Dispatch failed</Text>
                 {errorMsg && <Text size="xs" color="secondary" family="mono">{errorMsg}</Text>}
               </>
             )}
@@ -301,7 +301,7 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
               onClick={onClose}
               style={{
                 all: 'unset', cursor: 'pointer', padding: '6px 14px',
-                borderRadius: 6, border: '1px solid var(--line)',
+                borderRadius: 6, border: '1px solid var(--ds-line)',
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 alignSelf: 'flex-end',
               }}
@@ -313,7 +313,7 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
 
         {/* Footer hint */}
         {stage === 'search' && (
-          <div style={{ padding: '6px 14px', borderTop: '1px solid var(--line)', display: 'flex', gap: 12 }}>
+          <div style={{ padding: '6px 14px', borderTop: '1px solid var(--ds-line)', display: 'flex', gap: 12 }}>
             <Text size="xs" color="tertiary">↑↓ navigate</Text>
             <Text size="xs" color="tertiary">↵ select</Text>
             <Text size="xs" color="tertiary">Esc close</Text>

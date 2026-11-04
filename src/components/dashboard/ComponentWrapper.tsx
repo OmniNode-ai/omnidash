@@ -11,7 +11,7 @@
 //   - Uses `PositionedMenu` (prototype pattern) rather than a third-party dropdown
 //     primitive, so the markup and behavior match the prototype 1:1.
 import { useRef, type ReactNode, type DragEvent, type MouseEvent } from 'react';
-import { GripVertical, MoreVertical, Settings, Copy, Trash2 } from 'lucide-react';
+import { GripVertical, MoreVertical, Settings, Copy, Trash2 } from '@/theme/design-system/icons';
 import {
   PositionedMenu,
   MenuItem,
@@ -134,8 +134,8 @@ export function ComponentWrapper({
               style={{
                 padding: '1px 6px',
                 borderRadius: 4,
-                background: 'color-mix(in srgb, var(--text-tertiary) 12%, transparent)',
-                border: '1px solid color-mix(in srgb, var(--text-tertiary) 25%, transparent)',
+                background: 'color-mix(in srgb, var(--ds-ink-3) 12%, transparent)',
+                border: '1px solid color-mix(in srgb, var(--ds-ink-3) 25%, transparent)',
               }}
             >
               File Mode

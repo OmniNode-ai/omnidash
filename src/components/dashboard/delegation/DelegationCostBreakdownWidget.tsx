@@ -196,7 +196,7 @@ export default function DelegationCostBreakdownWidget(props: { config: Delegatio
                 gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
                 gap: 12,
                 paddingBottom: 12,
-                borderBottom: '1px solid var(--line)',
+                borderBottom: '1px solid var(--ds-line)',
               }}
             >
               <KPI

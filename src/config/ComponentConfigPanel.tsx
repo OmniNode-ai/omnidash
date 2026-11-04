@@ -16,7 +16,7 @@ import Form from '@rjsf/core';
 import validator from '@rjsf/validator-ajv8';
 import type { IChangeEvent } from '@rjsf/core';
 import { useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X } from '@/theme/design-system/icons';
 import { useFrameStore } from '@/store/store';
 import { useRegistry } from '@/registry/RegistryProvider';
 

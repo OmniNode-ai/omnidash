@@ -15,10 +15,10 @@ export function Price({ value, big = false }: PriceProps) {
     : '$' + value.toFixed(value < 0.01 ? 4 : 3);
 
   const color = free
-    ? 'var(--good)'
+    ? 'var(--ds-ok)'
     : value > 0.05
-      ? 'var(--bad)'
-      : 'var(--warn)';
+      ? 'var(--ds-bad)'
+      : 'var(--ds-warn)';
 
   return (
     <span

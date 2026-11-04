@@ -5,26 +5,26 @@
    the library's `.rdp-root` (one class) also gives us headroom on
    specificity if the library shifts things in a future release. */
 .dash-calendar-wrapper .rdp-root {
-  --rdp-accent-color: var(--brand);
-  --rdp-accent-background-color: var(--brand-soft);
+  --rdp-accent-color: var(--ds-brand);
+  --rdp-accent-background-color: var(--ds-brand-soft);
 
   /* Range start/end: the picked endpoint cells get a full brand fill.
      White text gives a consistent high-contrast reading in both
      themes (--brand-ink's dark green didn't contrast well enough on
      --brand). */
-  --rdp-range_start-date-background-color: var(--brand);
-  --rdp-range_end-date-background-color: var(--brand);
-  --rdp-range_start-color: #ffffff;
-  --rdp-range_end-color: #ffffff;
+  --rdp-range_start-date-background-color: var(--ds-brand);
+  --rdp-range_end-date-background-color: var(--ds-brand);
+  --rdp-range_start-color: var(--ds-page);
+  --rdp-range_end-color: var(--ds-page);
 
   /* Range middle: days between the endpoints sit on a soft tint. Dark
      ink on pale brand-soft reads cleanly; the library's default
      (`inherit`) was picking up a color from the outer light-gray
      chrome that vanished on top of the soft-green fill. */
-  --rdp-range_middle-background-color: var(--brand-soft);
-  --rdp-range_middle-color: var(--ink);
+  --rdp-range_middle-background-color: var(--ds-brand-soft);
+  --rdp-range_middle-color: var(--ds-ink);
 
-  --rdp-today-color: var(--brand);
+  --rdp-today-color: var(--ds-brand);
 
   /* Compact sizing so the popover fits at ~320px wide. */
   --rdp-day-height: 30px;

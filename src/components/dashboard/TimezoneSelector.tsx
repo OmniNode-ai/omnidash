@@ -11,7 +11,7 @@
 // because the off-list case is rare and a ten-row menu is faster to
 // pick from than a typeahead.
 import { Fragment, useMemo } from 'react';
-import { Globe, ChevronDown } from 'lucide-react';
+import { Globe, ChevronDown } from '@/theme/design-system/icons';
 import {
   PositionedMenu,
   MenuItem,

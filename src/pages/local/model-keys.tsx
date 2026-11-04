@@ -9,11 +9,12 @@
  * that changes it.
  */
 import { useEffect, useState, type ReactNode } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight } from '@/theme/design-system/icons';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { SettingsEmptyState } from '@/components/dashboard/SettingsEmptyState';
 import { readableTime } from '@/components/format/readable-time';
 import { ModelKeysError, listModelKeys, type ModelProviderId, type ModelProviderRow } from '@/services/models-api';
+import { Badge, DataTable, EmptyState, Fact, FactList } from '@/theme/design-system/components';
 
 /** A served key reference row from tenant-credentials.v1: its name, fingerprint prefix and times. Never a value. */
 export type CredentialKeyRow = Record<string, unknown>;
@@ -109,13 +110,13 @@ function KeyList({ provider, list }: { provider: string; list: readonly Credenti
   return <ul aria-label={`${provider} keys`} className="local-provider-keys">{list.map((key, index) => (
     <li key={`${String(key.name)}-${index}`}>
       <span className="local-provider-key-name mono">{served(key.name)}</span>
-      <dl className="local-provider-facts local-provider-facts--inline">
-        <div><dt>Fingerprint</dt><dd className="mono">{served(key.fingerprint)}</dd></div>
-        <div><dt>Set</dt><dd><KeyTime value={key.set_at} /></dd></div>
-        <div><dt>Last used</dt><dd><LastUsed value={key.last_used_at} /></dd></div>
-        {!missing(key.expires_at) && <div><dt>Expires</dt><dd><KeyTime value={key.expires_at} /></dd></div>}
-        {!missing(key.bound_host) && <div><dt>Bound host</dt><dd className="mono">{String(key.bound_host)}</dd></div>}
-      </dl>
+      <FactList look="provider-inline">
+        <Fact term="Fingerprint" valueClassName="mono">{served(key.fingerprint)}</Fact>
+        <Fact term="Set"><KeyTime value={key.set_at} /></Fact>
+        <Fact term="Last used"><LastUsed value={key.last_used_at} /></Fact>
+        {!missing(key.expires_at) && <Fact term="Expires"><KeyTime value={key.expires_at} /></Fact>}
+        {!missing(key.bound_host) && <Fact term="Bound host" valueClassName="mono">{String(key.bound_host)}</Fact>}
+      </FactList>
     </li>
   ))}</ul>;
 }
@@ -159,8 +160,8 @@ function ProviderCard({ row, keys, listed = true }: { row: ModelProviderRow; key
         </span>
         <span className="local-provider-cell local-provider-cell--status">
           <span className="local-provider-status" data-tone={status.tone}><span className="local-provider-dot" aria-hidden="true" />{status.text}</span>
-          {row.tried_first === true && <span className="local-provider-badge">
-            {missing(row.first_model) ? 'Tried first' : `Tried first · ${String(row.first_model)}`}</span>}
+          {row.tried_first === true && <Badge look="provider">
+            {missing(row.first_model) ? 'Tried first' : `Tried first · ${String(row.first_model)}`}</Badge>}
         </span>
         {listed && !row.set_up
           ? <span className="local-provider-cell local-provider-cell--setup">{setup}</span>
@@ -176,9 +177,9 @@ function ProviderCard({ row, keys, listed = true }: { row: ModelProviderRow; key
         <ChevronRight className="local-provider-chevron" size={18} aria-hidden="true" />
       </summary>
       <div className="local-provider-detail">
-        {facts.length > 0 && <dl className="local-provider-facts">{facts.map(([label, value, mono]) => (
-          <div key={label}><dt>{label}</dt><dd className={mono ? 'mono' : undefined}>{value}</dd></div>
-        ))}</dl>}
+        {facts.length > 0 && <FactList look="provider">{facts.map(([label, value, mono]) => (
+          <Fact term={label} key={label} valueClassName={mono ? 'mono' : undefined}>{value}</Fact>
+        ))}</FactList>}
         {reason !== null && <details className="local-provider-error">
           <summary>Show the full error</summary>
           <pre>{reason}</pre>
@@ -235,8 +236,7 @@ export function ModelKeys({ client = LIVE_CLIENT, keys = [], empty }: { client?:
   // Part 18 AC128: the served keys never depend on GET /models. While it loads, or when it cannot be read, they are listed
   // on their own beside the reason.
   const keysAlone = keys.length === 0 ? null : (
-    <div className="local-dashboard-table-wrap">
-      <table aria-label="Provider key references">
+    <DataTable aria-label="Provider key references">
         <thead><tr><th>Provider</th><th>Key ref</th><th>Fingerprint</th><th>Set</th><th>Last used</th></tr></thead>
         <tbody>{keys.map((key, index) => (
           <tr key={`${String(key.provider)}-${String(key.name)}-${index}`}>
@@ -247,8 +247,7 @@ export function ModelKeys({ client = LIVE_CLIENT, keys = [], empty }: { client?:
             <td data-label="Last used"><LastUsed value={key.last_used_at} /></td>
           </tr>
         ))}</tbody>
-      </table>
-    </div>
+    </DataTable>
   );
   // Revision 3 (AC161): an unread list says so once, with the terminal command that shows the same status.
   if (listError !== null) return (
@@ -258,7 +257,7 @@ export function ModelKeys({ client = LIVE_CLIENT, keys = [], empty }: { client?:
       {keysAlone}
     </section>
   );
-  if (rows === null) return <section className="local-model-keys" aria-label="Model providers"><p className="local-dashboard-empty">Reading model providers…</p>{keysAlone}</section>;
+  if (rows === null) return <section className="local-model-keys" aria-label="Model providers"><EmptyState status={false}>Reading model providers…</EmptyState>{keysAlone}</section>;
 
   // Revision 3 (AC161): nothing listed and no key recorded is one empty state, never a table of headers.
   if (rows.length === 0 && keys.length === 0 && empty) return <section className="local-model-keys" aria-label="Model providers">{empty}</section>;
@@ -269,12 +268,12 @@ export function ModelKeys({ client = LIVE_CLIENT, keys = [], empty }: { client?:
   const showHost = keys.some(key => !missing(key.bound_host));
   return (
     <section className="local-model-keys" aria-label="Model providers">
-      <dl className="local-provider-figures">
-        <div><dt>Passed their last test</dt><dd><strong>{rows.filter(row => row.last_test?.status === 'passed').length}</strong><small>{`of ${rows.length} providers`}</small></dd></div>
-        <div><dt>Set up</dt><dd><strong>{rows.filter(row => row.set_up).length}</strong><small>{`of ${rows.length} providers`}</small></dd></div>
-        <div><dt>Keys in use</dt><dd><strong>{keys.length}</strong><small>{keys.length === 1 ? 'key' : 'keys'}</small></dd></div>
-        <div><dt>Models listed</dt><dd><strong>{rows.reduce((sum, row) => sum + row.models.length, 0)}</strong><small>across providers</small></dd></div>
-      </dl>
+      <FactList look="provider-figures">
+        <Fact term="Passed their last test"><strong>{rows.filter(row => row.last_test?.status === 'passed').length}</strong><small>{`of ${rows.length} providers`}</small></Fact>
+        <Fact term="Set up"><strong>{rows.filter(row => row.set_up).length}</strong><small>{`of ${rows.length} providers`}</small></Fact>
+        <Fact term="Keys in use"><strong>{keys.length}</strong><small>{keys.length === 1 ? 'key' : 'keys'}</small></Fact>
+        <Fact term="Models listed"><strong>{rows.reduce((sum, row) => sum + row.models.length, 0)}</strong><small>across providers</small></Fact>
+      </FactList>
       <div className="local-provider-list">
         <div className="local-provider-head-band" aria-hidden="true">
           <span>Provider</span><span>Status</span><span>Models</span><span>Key</span><span>Last test</span><span />

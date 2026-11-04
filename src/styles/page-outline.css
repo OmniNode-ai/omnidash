@@ -1,5 +1,5 @@
 .page-outline {
-  --outline-accent: var(--nav-accent, var(--link-ink));
+  --outline-accent: var(--ds-destination-accent, var(--ds-link));
   position: sticky;
   top: 0;
   z-index: 6;
@@ -13,11 +13,11 @@
   overflow-x: auto;
   overscroll-behavior-inline: contain;
   scrollbar-width: thin;
-  border: 1px solid var(--line);
+  border: 1px solid var(--ds-line);
   border-radius: 12px;
-  background: color-mix(in oklab, var(--panel) 96%, transparent);
+  background: color-mix(in oklab, var(--ds-surface) 96%, transparent);
   backdrop-filter: blur(12px);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--ds-shadow-sm);
 }
 .page-outline-label {
   display: inline-flex;
@@ -25,7 +25,7 @@
   align-items: center;
   gap: 5px;
   margin-inline: 4px 8px;
-  color: var(--text-secondary);
+  color: var(--ds-ink-2);
   font-size: 12px;
   white-space: nowrap;
 }
@@ -36,22 +36,22 @@
   border: 1px solid transparent;
   border-radius: 7px;
   background: transparent;
-  color: var(--text-secondary);
+  color: var(--ds-ink-2);
   font: inherit;
   font-size: 12px;
   white-space: nowrap;
   cursor: pointer;
   transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease;
 }
-.page-outline button:hover { color: var(--text-primary); background: var(--panel-2); }
+.page-outline button:hover { color: var(--ds-ink); background: var(--ds-surface-2); }
 .page-outline button[aria-current="location"] {
   color: var(--outline-accent);
-  border-color: color-mix(in oklab, var(--outline-accent) 35%, var(--line));
-  background: color-mix(in oklab, var(--outline-accent) 12%, var(--panel));
+  border-color: color-mix(in oklab, var(--outline-accent) 35%, var(--ds-line));
+  background: color-mix(in oklab, var(--outline-accent) 12%, var(--ds-surface));
   font-weight: 600;
 }
 .page-outline button:focus-visible, [data-page-heading]:focus-visible {
-  outline: 2px solid var(--nav-accent, var(--link-ink));
+  outline: 2px solid var(--ds-destination-accent, var(--ds-link));
   outline-offset: 2px;
 }
 [data-page-heading] { scroll-margin-block-start: var(--page-outline-offset, 12px); }

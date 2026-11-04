@@ -15,7 +15,7 @@
 //   - OMN-47: CSS ported verbatim to src/styles/dashboard.css + buttons.css; TSX rewritten to use prototype class names.
 
 import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react';
-import { Check, ChevronDown, LogOut, Pencil, Plus, X } from 'lucide-react';
+import { Check, ChevronDown, LogOut, Pencil, Plus, X } from '@/theme/design-system/icons';
 import { Text } from '@/components/ui/typography';
 import { useFrameStore } from '@/store/store';
 import { useRegistry } from '@/registry/RegistryProvider';
@@ -301,7 +301,7 @@ export function DashboardView() {
               title="Click to rename"
             >
               {activeDashboard.name}
-              <ChevronDown size={18} style={{ color: 'var(--text-tertiary)' }} />
+              <ChevronDown size={18} style={{ color: 'var(--ds-ink-3)' }} />
             </div>
           )}
           {/* Filter row — data source, auto-refresh, time range, and timezone as
@@ -391,7 +391,7 @@ export function DashboardView() {
               // in the way.
               <div
                 className={`drop-slot${dropTargetIndex === 0 ? ' active' : ''}`}
-                style={{ margin: 'var(--row-gap)' }}
+                style={{ margin: 'var(--ds-row-gap)' }}
                 onDragOver={handleAppendDragOver}
                 onDrop={handleAppendDrop}
               >

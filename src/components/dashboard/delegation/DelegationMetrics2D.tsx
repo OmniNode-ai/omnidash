@@ -8,10 +8,11 @@ import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { Text } from '@/components/ui/typography';
-import { useThemeColors } from '@/theme';
+
 import type { DelegationSummary } from './DelegationMetrics3D';
 import { useDelegationRunContextOptional } from '@/components/dashboard/delegation-control-plane/DelegationRunContext';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
+import { useTokenColors } from '@/theme/design-system/useTokenColors';
 
 // avgLatencyMs is not in every projection snapshot (the file-source
 // fixture omits it); treat it and the per-model breakdown as optional so
@@ -67,8 +68,8 @@ function StatTile({
         flexDirection: 'column',
         gap: 2,
         padding: '8px 10px',
-        background: 'var(--panel-2)',
-        border: '1px solid var(--line-2)',
+        background: 'var(--ds-surface-2)',
+        border: '1px solid var(--ds-line-soft)',
         borderRadius: 6,
       }}
     >
@@ -113,7 +114,7 @@ function BreakdownRow({ seg, dimmed, onHover }: { seg: Segment; dimmed: boolean;
           style={{
             height: 4,
             borderRadius: 2,
-            background: 'var(--panel-2)',
+            background: 'var(--ds-surface-2)',
             overflow: 'hidden',
           }}
         >
@@ -158,7 +159,7 @@ export default function DelegationMetrics2D({ config }: { config: Record<string,
   const error = runCtx ? runCtx.snapshot.primaryError : queryError;
   const data = (runCtx ? runCtx.snapshot.summary : (dataArr?.[0] ?? null)) as Summary | null;
 
-  const colors = useThemeColors();
+  const colors = useTokenColors();
   const [hoverModel, setHoverModel] = useState<number | null>(null);
   const [hoverTask, setHoverTask] = useState<string | null>(null);
 
@@ -246,8 +247,8 @@ export default function DelegationMetrics2D({ config }: { config: Record<string,
                   height: 14,
                   borderRadius: 4,
                   overflow: 'hidden',
-                  border: '1px solid var(--line-2)',
-                  background: 'var(--panel-2)',
+                  border: '1px solid var(--ds-line-soft)',
+                  background: 'var(--ds-surface-2)',
                 }}
               >
                 {modelSegments.map((seg, i) => (
@@ -334,15 +335,15 @@ export default function DelegationMetrics2D({ config }: { config: Record<string,
                   height: 10,
                   borderRadius: 4,
                   overflow: 'hidden',
-                  border: '1px solid var(--line-2)',
-                  background: 'var(--panel-2)',
+                  border: '1px solid var(--ds-line-soft)',
+                  background: 'var(--ds-surface-2)',
                 }}
               >
                 <div
                   title={`${passed} handled locally`}
                   style={{
                     width: `${(passed / gateTotal) * 100}%`,
-                    background: 'var(--status-ok)',
+                    background: 'var(--ds-ok)',
                     transition: 'width 0.5s ease-out',
                   }}
                 />
@@ -351,7 +352,7 @@ export default function DelegationMetrics2D({ config }: { config: Record<string,
                     title={`${failed} escalated to cloud`}
                     style={{
                       width: `${(failed / gateTotal) * 100}%`,
-                      background: 'var(--status-bad)',
+                      background: 'var(--ds-bad)',
                       transition: 'width 0.5s ease-out',
                     }}
                   />

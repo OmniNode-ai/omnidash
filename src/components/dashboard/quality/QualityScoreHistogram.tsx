@@ -12,7 +12,7 @@ import { ComponentWrapper } from '../ComponentWrapper';
 import { Text } from '@/components/ui/typography';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
-import { useThemeColors } from '@/theme';
+import { useTokenColors } from '@/theme/design-system/useTokenColors';
 
 interface QualityDistributionBucket {
   bucket: string;
@@ -73,7 +73,7 @@ export default function QualityScoreHistogram({ config }: { config: Config }) {
       Math.max(1, data.totalMeasurements)
     : 0;
 
-  const colors = useThemeColors();
+  const colors = useTokenColors();
 
   return (
     <ComponentWrapper

@@ -23,7 +23,9 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { Text } from '@/components/ui/typography';
-import { useThemeColors, useThemeName, cssColorToHex } from '@/theme';
+import { useThemeName } from '@/theme';
+import { useTokenColors } from '@/theme/design-system/useTokenColors';
+import { colorToNumber, tokenNumber } from '@/theme/design-system/color';
 
 export interface DoughnutSlice {
   label: string;
@@ -112,10 +114,10 @@ const DARK_DOUGHNUT_THEME: DoughnutTheme = {
   sliceMetalness: 0.15,
   sliceRoughness: 0.45,
   emissiveIntensity: 0.12,
-  canvasBgCss: 'var(--panel-2)',
-  groundHex: 0x020812,
-  labelTextColor: '#cfe8ff',
-  leaderLineHex: 0x9ad6ff,
+  canvasBgCss: 'var(--ds-surface-2)',
+  get groundHex() { return tokenNumber('--ds-surface'); },
+  labelTextColor: 'var(--ds-ink)',
+  get leaderLineHex() { return tokenNumber('--ds-ink-3'); },
 };
 
 const LIGHT_DOUGHNUT_THEME: DoughnutTheme = {
@@ -125,10 +127,10 @@ const LIGHT_DOUGHNUT_THEME: DoughnutTheme = {
   sliceMetalness: 0,
   sliceRoughness: 0,
   emissiveIntensity: 0,
-  canvasBgCss: 'var(--panel-2)',
-  groundHex: 0xf7f8fa,
-  labelTextColor: '#0a0d12',
-  leaderLineHex: 0x6b7580,
+  canvasBgCss: 'var(--ds-surface-2)',
+  get groundHex() { return tokenNumber('--ds-surface'); },
+  labelTextColor: 'var(--ds-ink)',
+  get leaderLineHex() { return tokenNumber('--ds-ink-3'); },
 };
 
 // ---------- DOM label helper ----------
@@ -149,7 +151,7 @@ const LIGHT_DOUGHNUT_THEME: DoughnutTheme = {
 function makeLabelObject(text: string, color: string): CSS2DObject {
   const el = document.createElement('div');
   el.textContent = text;
-  el.style.fontFamily = "var(--font-sans)";
+  el.style.fontFamily = "var(--ds-font-sans)";
   el.style.fontSize = '11px';
   el.style.fontWeight = '600';
   el.style.lineHeight = '1';
@@ -176,7 +178,7 @@ export interface DoughnutChartProps {
 }
 
 export function DoughnutChart({ slices, height = 200 }: DoughnutChartProps) {
-  const colors = useThemeColors();
+  const colors = useTokenColors();
   const themeName = useThemeName();
   const theme = themeName === 'dark' ? DARK_DOUGHNUT_THEME : LIGHT_DOUGHNUT_THEME;
 
@@ -196,7 +198,7 @@ export function DoughnutChart({ slices, height = 200 }: DoughnutChartProps) {
   const [hover, setHover] = useState<HoverInfo | null>(null);
 
   const paletteHex = useMemo(
-    () => colors.chart.map((c) => cssColorToHex(c)),
+    () => colors.chart.map((c) => colorToNumber(c)),
     [colors.chart],
   );
 
@@ -213,7 +215,7 @@ export function DoughnutChart({ slices, height = 200 }: DoughnutChartProps) {
       preserveDrawingBuffer: true,
     });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-    renderer.setClearColor(0x000000, 0);
+    renderer.setClearColor(tokenNumber('--ds-mix-dark'), 0);
     renderer.domElement.style.display = 'block';
     renderer.domElement.style.width = '100%';
     renderer.domElement.style.height = '100%';
@@ -243,10 +245,10 @@ export function DoughnutChart({ slices, height = 200 }: DoughnutChartProps) {
     camera.lookAt(0, 0.05, 0);
     cameraRef.current = camera;
 
-    const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+    const ambient = new THREE.AmbientLight(tokenNumber('--ds-mix-light'), 0.6);
     ambient.name = 'ambient';
     scene.add(ambient);
-    const key = new THREE.DirectionalLight(0xffffff, 0.9);
+    const key = new THREE.DirectionalLight(tokenNumber('--ds-mix-light'), 0.9);
     key.name = 'key';
     key.position.set(3, 5, 2);
     scene.add(key);
@@ -542,7 +544,7 @@ export function DoughnutChart({ slices, height = 200 }: DoughnutChartProps) {
         width: '100%',
         height,
         background: theme.canvasBgCss,
-        border: '1px solid var(--line-2)',
+        border: '1px solid var(--ds-line-soft)',
         borderRadius: 6,
       }}
       onPointerMove={handlePointerMove}
@@ -555,10 +557,10 @@ export function DoughnutChart({ slices, height = 200 }: DoughnutChartProps) {
             left: hover.clientX + 14,
             top: hover.clientY + 14,
             padding: '6px 10px',
-            background: 'var(--panel)',
-            border: '1px solid var(--line)',
+            background: 'var(--ds-surface)',
+            border: '1px solid var(--ds-line)',
             borderRadius: 6,
-            boxShadow: 'var(--shadow-md)',
+            boxShadow: 'var(--ds-shadow-md)',
             minWidth: 160,
             pointerEvents: 'none',
             zIndex: 1000,

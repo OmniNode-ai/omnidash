@@ -185,7 +185,7 @@ describe('DelegationMetrics2D', () => {
       </DataSourceTestProvider>
     );
     const warn = (await screen.findByText('75%')) as HTMLElement;
-    expect(warn.style.color).toBe('var(--text-warn)');
+    expect(warn.style.color).toBe('var(--ds-warn)');
     unmount();
 
     mockFetchWithItems([{
@@ -203,6 +203,6 @@ describe('DelegationMetrics2D', () => {
       </DataSourceTestProvider>
     );
     const ok = (await screen.findByText('75%')) as HTMLElement;
-    expect(ok.style.color).toBe('var(--text-ok)');
+    expect(ok.style.color).toBe('var(--ds-ok)');
   });
 });

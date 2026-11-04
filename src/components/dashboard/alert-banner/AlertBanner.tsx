@@ -35,7 +35,7 @@ function AlertLine({ alert, onDismiss, codeLabel }: { alert: AlertBannerRow; onD
       data-severity={alert.severity}
       style={{
         borderLeft: `4px solid ${role.edge}`,
-        background: 'var(--panel-2)',
+        background: 'var(--ds-surface-2)',
         borderRadius: 6,
         padding: '8px 12px',
         display: 'flex',
@@ -118,7 +118,7 @@ export function AlertBanner({ alerts, waitsOn, codeLabel, refusalMessage }: Aler
           data-testid="alert-banner-clear"
           style={{
             borderLeft: `4px solid ${SEVERITY_ROLES.nominal.edge}`,
-            background: 'var(--panel-2)',
+            background: 'var(--ds-surface-2)',
             borderRadius: 6,
             padding: '8px 12px',
           }}

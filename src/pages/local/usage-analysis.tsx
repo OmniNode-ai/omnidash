@@ -2,7 +2,7 @@ import { useMemo, useState, type CSSProperties } from 'react';
 import { Link } from 'wouter';
 
 import { formatUsd } from '@/lib/currency';
-import { DashboardTabs, DashboardToggle } from '@/components/dashboard/DashboardTabs';
+import { DashboardTabs, DashboardToggle, DataTable, EmptyState, Panel, PanelTitle } from '@/theme/design-system/components';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { DEFAULT_RUNS_VIEW, writeRunsSearch, type RunsViewState } from '@/navigation/runs-url-state';
 import {
@@ -10,6 +10,7 @@ import {
   type Group, type GroupBy, type Totals, type TrendDay, type TrendSeriesBy,
 } from './decision-analysis';
 import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
+import { BarSparkline, CostQualityScatter } from '@/theme/design-system/charts';
 
 /**
  * OMN-21166 part 29 (revision 6) AC194 and AC195: Usage analysis, read from the latest N served decisions (Langfuse's
@@ -41,60 +42,24 @@ function sortValue(group: Group, key: SortKey): number | string {
   }
 }
 
+// OMN-22168 AC3: the sparkline and the scatter are the kit's; this page only shapes its groups for them.
 function Sparkline({ group }: { group: Group }) {
-  const peak = Math.max(1, ...group.daily.flatMap(day => (day.runs === null ? [] : [day.runs])));
-  // The bars are one neutral grey, a shape of the group's runs per day, not an identity colour.
-  return <span className="usage-analysis-spark" role="img" data-identity-decoration="sparkline"
-    aria-label={`${group.name}: runs per day, ${group.daily.filter(day => day.runs === null).length} days before the sample not covered`}>
-    {group.daily.map(day => <i key={day.day} data-day={day.day} data-covered={day.runs === null ? 'false' : 'true'} data-runs={day.runs ?? undefined}
-      title={day.runs === null ? `${dayLabel(day.day)}: not covered by the sample` : `${dayLabel(day.day)}: ${day.runs} runs`}
-      style={day.runs === null ? undefined : { '--spark-height': `${(day.runs / peak) * 100}%` } as CSSProperties} />)}
-  </span>;
+  return <BarSparkline label={`${group.name}: runs per day, ${group.daily.filter(day => day.runs === null).length} days before the sample not covered`}
+    days={group.daily.map(day => ({ key: day.day, value: day.runs,
+      title: day.runs === null ? `${dayLabel(day.day)}: not covered by the sample` : `${dayLabel(day.day)}: ${day.runs} runs` }))} />;
 }
 
 function QualityChart({ groups }: { groups: Group[] }) {
   const modelColor = useModelColor();
-  const [active, setActive] = useState<string | null>(null);
   const plotted = groups.filter(group => group.name !== NOT_RECORDED && group.spend !== null && group.spendMeasured > 0 && group.verdicts > 0);
   const unplotted = groups.filter(group => !plotted.includes(group));
   const perRun = (group: Group) => group.spend! / group.spendMeasured;
-  const maxCost = Math.max(...plotted.map(perRun), 0);
-  // The plot starts INSET past the axes so a point at $0 or at 100% never sits on an axis label or leaves the frame.
-  const W = 640, H = 260, INSET = 24, PAD = { left: 56, right: 200, top: 24, bottom: 40 };
-  const x = (value: number) => PAD.left + INSET + (maxCost === 0 ? 0 : (value / maxCost) * (W - PAD.left - INSET - PAD.right));
-  const y = (rate: number) => PAD.top + INSET + (1 - rate) * (H - PAD.top - INSET - PAD.bottom);
-  const maxRuns = Math.max(1, ...plotted.map(group => group.runs));
-  // Nothing measured to plot: no axes and no $0 ticks, only the list of what could not be drawn.
-  if (plotted.length === 0) return <figure className="local-chart usage-analysis-quality" aria-label="Cost versus quality per model">
-    <p className="local-dashboard-caption" data-quality-unplotted>No model has both a measured cost and a verdict yet{unplotted.length > 0 ? `: ${unplotted.map(group => group.name).join(', ')}` : ''}</p>
-  </figure>;
-  return <figure className="local-chart usage-analysis-quality" aria-label="Cost versus quality per model">
-    <figcaption className="local-dashboard-caption">Cost per measured run against quality pass rate; point area is runs</figcaption>
-    <svg viewBox={`0 0 ${W} ${H}`} role="group" aria-label="Cost versus quality per model">
-      <line x1={PAD.left} x2={W - PAD.right} y1={H - PAD.bottom} y2={H - PAD.bottom} className="usage-analysis-axis" />
-      <line x1={PAD.left} x2={PAD.left} y1={PAD.top} y2={H - PAD.bottom} className="usage-analysis-axis" />
-      {[0, 0.5, 1].map(rate => <text key={rate} x={PAD.left - 8} y={y(rate) + 4} textAnchor="end" className="usage-analysis-tick">{`${rate * 100}%`}</text>)}
-      <text x={x(0)} y={H - 12} textAnchor="middle" className="usage-analysis-tick">{formatUsd(0)}</text>
-      <text x={x(maxCost)} y={H - 12} textAnchor="middle" className="usage-analysis-tick">{usd(maxCost)}</text>
-      {plotted.map(group => {
-        const rate = group.passed / group.verdicts;
-        const radius = 5 + 13 * Math.sqrt(group.runs / maxRuns);
-        const detail = `${group.name}: ${usd(perRun(group))} per measured run, ${passText(group).replace(' (', ' passed (')}, ${group.runs} runs`;
-        // The same words on hover and keyboard focus (the readout under the chart), not only for screen readers.
-        return <g key={group.name}>
-          <circle data-quality-point={group.name} data-cost={String(perRun(group))} cx={x(perRun(group))} cy={y(rate)} r={radius} tabIndex={0}
-            role="img" aria-label={detail} onMouseEnter={() => setActive(detail)} onFocus={() => setActive(detail)}
-            onMouseLeave={() => setActive(null)} onBlur={() => setActive(null)}
-            style={{ '--point-color': modelColor(group.name) } as CSSProperties}><title>{detail}</title></circle>
-          <text x={x(perRun(group)) + radius + 4} y={y(rate) + 4} className="usage-analysis-point-name">{group.name}</text>
-        </g>;
-      })}
-    </svg>
-    <p className="local-dashboard-caption usage-analysis-readout" data-quality-readout aria-hidden="true">{active ?? ''}</p>
-    {unplotted.length > 0 && <p className="local-dashboard-caption" data-quality-unplotted>
-      Not drawn (no measured cost or no verdicts): {unplotted.map(group => group.name).join(', ')}</p>}
-    <TierLegend label="Cost versus quality tier colours" models={plotted.map(group => group.name)} />
-  </figure>;
+  // usd(0) is formatUsd(0), so one formatter labels both ticks as the page did.
+  return <CostQualityScatter label="Cost versus quality per model" formatCost={usd} unplotted={unplotted.map(group => group.name)}
+    points={plotted.map(group => ({ key: group.name, name: group.name, cost: perRun(group), rate: group.passed / group.verdicts, runs: group.runs,
+      color: modelColor(group.name),
+      detail: `${group.name}: ${usd(perRun(group))} per measured run, ${passText(group).replace(' (', ' passed (')}, ${group.runs} runs` }))}
+    legend={<TierLegend label="Cost versus quality tier colours" models={plotted.map(group => group.name)} />} />;
 }
 
 function GroupsView({ decisionRows }: { decisionRows: readonly unknown[] }) {
@@ -114,8 +79,7 @@ function GroupsView({ decisionRows }: { decisionRows: readonly unknown[] }) {
   const label = GROUPS.find(group => group.by === by)!.label;
   return <>
     <DashboardToggle label="Group by" options={GROUPS.map(group => ({ value: group.by, label: group.label }))} value={by} onChange={setBy} />
-    <div className="local-dashboard-table-wrap">
-      <table data-analysis-table aria-label={`Usage by ${label.toLowerCase()}`}>
+    <DataTable data-analysis-table aria-label={`Usage by ${label.toLowerCase()}`}>
         <thead><tr>{header('name', label)}{header('runs', 'Runs')}{header('spend', 'Spend')}
           {header('pass', 'Pass rate')}{header('p50', 'p50 latency')}{header('p95', 'p95 latency')}
           {header('last', 'Last run')}<th scope="col">{`Runs per day (${SPARK_DAYS} days)`}</th></tr></thead>
@@ -132,8 +96,7 @@ function GroupsView({ decisionRows }: { decisionRows: readonly unknown[] }) {
           <td data-cell="last" data-label="Last run">{lastText(group.last)}</td>
           <td data-cell="spark" data-label={`Runs per day (${SPARK_DAYS} days)`}><Sparkline group={group} /></td>
         </tr>)}</tbody>
-      </table>
-    </div>
+    </DataTable>
     {by === 'model' && <TierLegend label="Usage by model tier colours" models={groups.map(group => group.name)} />}
   </>;
 }
@@ -182,8 +145,7 @@ function DecisionMatrix({ decisionRows }: { decisionRows: readonly unknown[] }) 
       <DashboardToggle label="Matrix columns" options={MATRIX_COLUMNS} value={columnsBy} onChange={setColumnsBy} />
     </div>
     <p className="local-dashboard-caption">{`Models by ${columnLabel.toLowerCase()}. A cell with fewer than ${SMALL_SAMPLE} verdicts is a small sample; a pair with no runs reads no runs. Each cell opens its runs.`}</p>
-    <div className="local-dashboard-table-wrap usage-matrix-wrap">
-      <table data-decision-matrix aria-label={`Models by ${columnLabel.toLowerCase()}`}>
+    <DataTable className="usage-matrix-wrap" data-decision-matrix aria-label={`Models by ${columnLabel.toLowerCase()}`}>
         <thead><tr><th scope="col">Model</th>{matrix.columns.map(column => <th key={column} scope="col" data-col={column}>{columnName(column)}</th>)}</tr></thead>
         <tbody>{matrix.rows.map(row => <tr key={row}>
           <th scope="row" data-model-name={row !== NOT_RECORDED ? '' : undefined} data-semantic-concept={row !== NOT_RECORDED ? `model:${row}` : undefined}
@@ -202,8 +164,7 @@ function DecisionMatrix({ decisionRows }: { decisionRows: readonly unknown[] }) 
             </td>;
           })}
         </tr>)}</tbody>
-      </table>
-    </div>
+    </DataTable>
     <TierLegend label="Model matrix tier colours" models={matrix.rows} />
   </>;
 }
@@ -281,7 +242,7 @@ export function UsageAnalysis({ decisionRows, complete = false }: { decisionRows
   const models = useMemo(() => groupDecisions(decisionRows, 'model'), [decisionRows]);
   const coverage = coverageOf(decisionRows);
   const sample = totalsOf(decisionRows).runs;
-  if (sample === 0) return <p className="local-dashboard-empty" role="status" data-usage-analysis>No served runs to analyse yet</p>;
+  if (sample === 0) return <EmptyState data-usage-analysis>No served runs to analyse yet</EmptyState>;
   // Part 30 AC202: four views of one sample, behind tabs; the sample label stays above them so every view keeps it.
   return <section className="usage-analysis" data-usage-analysis aria-label="Usage analysis">
     <p className="local-dashboard-caption">
@@ -321,15 +282,14 @@ export function RunsTotals({ rows, sample, complete = false }: { rows: readonly 
  */
 export function RoutingAnalysis({ rows, complete = false }: { rows: readonly unknown[]; complete?: boolean }) {
   const routes = useMemo(() => routesOf(rows), [rows]);
-  if (routes.length === 0) return <p className="local-dashboard-empty" role="status">No returned runs to group by route</p>;
-  return <article className="local-dashboard-panel local-run-routing" aria-label="Routing" aria-busy="false">
-    <h2 className="local-dashboard-panel-title"><ConceptIcon concept="run-routes" label="Routing" size={16} />Routing</h2>
+  if (routes.length === 0) return <EmptyState>No returned runs to group by route</EmptyState>;
+  return <Panel className="local-run-routing" aria-label="Routing" aria-busy="false">
+    <PanelTitle><ConceptIcon concept="run-routes" label="Routing" size={16} />Routing</PanelTitle>
     <p className="local-dashboard-caption" data-routing-note>
       {`From ${complete ? 'all' : 'the latest'} ${totalsOf(rows).runs} served runs, grouped by requested and routed model, tier, backend, finish reason and escalations. `}
       Not recorded means the run did not record that field; it is not a dispatch failure.
     </p>
-    <div className="local-dashboard-table-wrap">
-      <table data-routing-table aria-label="Runs by route">
+    <DataTable data-routing-table aria-label="Runs by route">
         <thead><tr><th scope="col">Requested model</th><th scope="col">Routed model</th><th scope="col">Tier</th><th scope="col">Backend</th>
           <th scope="col">Finish reason</th><th scope="col">Escalations</th><th scope="col">Runs</th><th scope="col">Pass rate</th></tr></thead>
         <tbody>{routes.map(route => {
@@ -346,7 +306,6 @@ export function RoutingAnalysis({ rows, complete = false }: { rows: readonly unk
             <td data-cell="pass">{passText(route.totals)}</td>
           </tr>;
         })}</tbody>
-      </table>
-    </div>
-  </article>;
+    </DataTable>
+  </Panel>;
 }

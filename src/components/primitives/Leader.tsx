@@ -7,7 +7,7 @@ export function Leader() {
       style={{
         flex: 1,
         margin: '0 8px',
-        borderBottom: '1px dotted var(--line)',
+        borderBottom: '1px dotted var(--ds-line)',
         transform: 'translateY(-4px)',
       }}
     />

@@ -33,7 +33,7 @@ const CHEAP: Record<string, { family: string; light: string | 'family'; dark: st
   cheap_cloud: { family: 'cloud', light: '#8980fd', dark: '#afa8fd' },
 };
 
-const css = readFileSync(resolve(__dirname, '../styles/field-identity.css'), 'utf8');
+const css = readFileSync(resolve(__dirname, '../theme/design-system/tokens.css'), 'utf8');
 // Every block with this selector, in file order; a later declaration of a token wins, as in the browser.
 const block = (selector: string) => {
   const bodies: string[] = [];
@@ -74,7 +74,7 @@ describe('tier colours follow the palette (OMN-21970)', () => {
   for (const [tier, shade] of Object.entries(CHEAP)) {
     it(`${tier} is its own token, a lighter shade of ${shade.family} where one passes the palette check`, () => {
       const token = tokenOf(tier);
-      expect(token, `${tier} resolves to its own CSS token`).toBe(`--field-tier-${tier.replace('_', '-')}`);
+      expect(token, `${tier} resolves to its own CSS token`).toBe(`--ds-field-tier-${tier.replace('_', '-')}`);
       const [familyLight, familyDark] = PALETTE[shade.family]!;
       const resolve = (body: string, value: string | null) => (value?.startsWith('var(') ? tokenValue(body, value.slice(4, -1)) : value);
       expect(resolve(light, tokenValue(light, token!))).toBe(shade.light === 'family' ? familyLight : shade.light);

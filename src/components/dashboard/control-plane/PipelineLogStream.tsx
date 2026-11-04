@@ -26,10 +26,10 @@ export interface PipelineEvent {
 }
 
 const TYPE_COLORS: Record<PipelineEvent['type'], string> = {
-  request: 'var(--accent)',
-  validation: 'var(--status-warn)',
-  success: 'var(--status-ok)',
-  error: 'var(--status-bad)',
+  request: 'var(--ds-brand)',
+  validation: 'var(--ds-warn)',
+  success: 'var(--ds-ok)',
+  error: 'var(--ds-bad)',
 };
 
 function formatTime(iso: string): string {
@@ -76,9 +76,9 @@ function ArtifactBlock({ label, value }: { label: string; value: string | null |
         style={{
           margin: 0,
           padding: 10,
-          border: '1px solid var(--line)',
+          border: '1px solid var(--ds-line)',
           borderRadius: 6,
-          background: 'var(--panel)',
+          background: 'var(--ds-surface)',
           whiteSpace: 'pre-wrap',
           wordBreak: 'break-word',
         }}
@@ -151,8 +151,8 @@ export function PipelineLogStream({ events }: { events: PipelineEvent[] }) {
   return (
     <div
       style={{
-        background: 'var(--bg-sunken)',
-        border: '1px solid var(--line)',
+        background: 'var(--ds-inset)',
+        border: '1px solid var(--ds-line)',
         borderRadius: 6,
         padding: 0,
         width: '100%',
@@ -177,8 +177,8 @@ export function PipelineLogStream({ events }: { events: PipelineEvent[] }) {
               gridTemplateColumns: '72px 80px 1fr',
               gap: 10,
               padding: '6px 12px',
-              borderLeft: `3px solid ${TYPE_COLORS[evt.type] ?? 'var(--line)'}`,
-              borderBottom: '1px solid var(--line-2)',
+              borderLeft: `3px solid ${TYPE_COLORS[evt.type] ?? 'var(--ds-line)'}`,
+              borderBottom: '1px solid var(--ds-line-soft)',
               opacity: evt.simulated ? 0.7 : 1,
             }}
           >
@@ -201,9 +201,9 @@ export function PipelineLogStream({ events }: { events: PipelineEvent[] }) {
                   weight="bold"
                   className="mono"
                   style={{
-                    color: 'var(--status-warn)',
+                    color: 'var(--ds-warn)',
                     marginRight: 6,
-                    border: '1px solid var(--status-warn)',
+                    border: '1px solid var(--ds-warn)',
                     padding: '0 3px',
                     borderRadius: 2,
                   }}

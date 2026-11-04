@@ -7,8 +7,8 @@ export const header = style({
   justifyContent: 'space-between',
   padding: '0 1rem',
   height: '48px',
-  borderBottom: `1px solid hsl(${vars.color.border})`,
-  backgroundColor: `hsl(${vars.color.card})`,
+  borderBottom: `1px solid ${vars.color.border}`,
+  backgroundColor: `${vars.color.card}`,
   position: 'relative',
 });
 
@@ -20,19 +20,19 @@ export const newDashboardForm = style({
   gap: '0.5rem',
   alignItems: 'center',
   padding: '0.5rem',
-  border: `1px solid hsl(${vars.color.border})`,
+  border: `1px solid ${vars.color.border}`,
   borderRadius: vars.radius.md,
-  backgroundColor: `hsl(${vars.color.card})`,
-  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+  backgroundColor: `${vars.color.card}`,
+  boxShadow: '0 2px 8px color-mix(in srgb, var(--ds-shadow-ink) 10%, transparent)',
   zIndex: 10,
 });
 
 export const newDashboardInput = style({
   padding: '0.25rem 0.5rem',
   borderRadius: vars.radius.sm,
-  border: `1px solid hsl(${vars.color.border})`,
-  backgroundColor: `hsl(${vars.color.background})`,
-  color: `hsl(${vars.color.foreground})`,
+  border: `1px solid ${vars.color.border}`,
+  backgroundColor: `${vars.color.background}`,
+  color: `${vars.color.foreground}`,
   fontSize: '0.8125rem',
   minWidth: '200px',
 });
@@ -40,8 +40,8 @@ export const newDashboardInput = style({
 export const title = style({
   fontSize: '1.125rem',
   fontWeight: 600,
-  fontFamily: 'var(--font-mono)',
-  color: `hsl(${vars.color.foreground})`,
+  fontFamily: 'var(--ds-font-mono)',
+  color: `${vars.color.foreground}`,
 });
 
 export const actions = style({
@@ -53,12 +53,12 @@ export const actions = style({
 export const themeButton = style({
   padding: '0.25rem 0.75rem',
   borderRadius: vars.radius.md,
-  border: `1px solid hsl(${vars.color.border})`,
+  border: `1px solid ${vars.color.border}`,
   backgroundColor: 'transparent',
-  color: `hsl(${vars.color.foreground})`,
+  color: `${vars.color.foreground}`,
   cursor: 'pointer',
   fontSize: '0.8125rem',
   ':hover': {
-    backgroundColor: `hsl(${vars.color.border})`,
+    backgroundColor: `${vars.color.border}`,
   },
 });

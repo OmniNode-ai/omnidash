@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Search } from 'lucide-react';
+import { Search } from '@/theme/design-system/icons';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
@@ -137,8 +137,8 @@ function BusHeader({ template }: { template: string }) {
         gridTemplateColumns: template,
         gap: 12,
         padding: '6px 12px',
-        borderTop: '1px solid var(--line)',
-        borderBottom: '1px solid var(--line)',
+        borderTop: '1px solid var(--ds-line)',
+        borderBottom: '1px solid var(--ds-line)',
         marginBottom: 6,
       }}
     >
@@ -222,7 +222,7 @@ export default function LiveEventStreamWidget() {
           <Text size="xs" color="tertiary" family="mono">
             {filteredEvents.length} visible · {sourceCount} sources · auto-updating
           </Text>
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--good)', boxShadow: '0 0 0 3px rgba(21,128,61,.18)' }} />
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--ds-ok)', boxShadow: '0 0 0 3px color-mix(in srgb, var(--ds-ok) 18%, transparent)' }} />
         </span>
       }
     >
@@ -240,7 +240,7 @@ export default function LiveEventStreamWidget() {
             ['Sources', sourceCount.toLocaleString()],
             ['Newest', newestLabel],
           ].map(([label, value]) => (
-            <div key={label} style={{ border: '1px solid var(--line)', borderRadius: 6, padding: '8px 10px', background: 'var(--panel-2)' }}>
+            <div key={label} style={{ border: '1px solid var(--ds-line)', borderRadius: 6, padding: '8px 10px', background: 'var(--ds-surface-2)' }}>
               <Text as="div" size="xs" weight="bold" color="tertiary" family="mono" transform="uppercase">{label}</Text>
               <Text as="div" size="md" weight="bold" color="primary" family="mono" style={{ marginTop: 2 }}>{value}</Text>
             </div>
@@ -256,12 +256,12 @@ export default function LiveEventStreamWidget() {
               alignItems: 'center',
               gap: 8,
               padding: '7px 10px',
-              border: '1px solid var(--line)',
+              border: '1px solid var(--ds-line)',
               borderRadius: 6,
-              background: 'var(--panel-2)',
+              background: 'var(--ds-surface-2)',
             }}
           >
-            <Search size={14} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
+            <Search size={14} style={{ color: 'var(--ds-ink-3)', flexShrink: 0 }} />
             <input
               type="text"
               value={filters.query}
@@ -285,9 +285,9 @@ export default function LiveEventStreamWidget() {
             style={{
               minHeight: 34,
               padding: '6px 10px',
-              border: '1px solid var(--line)',
+              border: '1px solid var(--ds-line)',
               borderRadius: 6,
-              background: 'var(--panel-2)',
+              background: 'var(--ds-surface-2)',
               color: 'inherit',
             }}
           >
@@ -303,9 +303,9 @@ export default function LiveEventStreamWidget() {
               alignItems: 'center',
               gap: 7,
               padding: '6px 10px',
-              border: '1px solid var(--line)',
+              border: '1px solid var(--ds-line)',
               borderRadius: 6,
-              background: 'var(--panel-2)',
+              background: 'var(--ds-surface-2)',
               cursor: 'pointer',
             }}
           >
@@ -323,7 +323,7 @@ export default function LiveEventStreamWidget() {
           )}
         </div>
 
-        <div style={{ border: '1px solid var(--line)', borderRadius: 6, overflow: 'hidden', background: 'var(--panel)' }}>
+        <div style={{ border: '1px solid var(--ds-line)', borderRadius: 6, overflow: 'hidden', background: 'var(--ds-surface)' }}>
           <BusHeader template={ROW_TEMPLATE} />
 
           <div style={{ maxHeight: 520, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
@@ -337,9 +337,9 @@ export default function LiveEventStreamWidget() {
                   data-testid="live-event-row"
                   open={i === 0}
                   style={{
-                    borderBottom: '1px solid var(--line-2)',
-                    borderLeft: `3px solid ${isNewest ? 'var(--accent)' : 'transparent'}`,
-                    background: isNewest ? 'var(--accent-soft)' : 'transparent',
+                    borderBottom: '1px solid var(--ds-line-soft)',
+                    borderLeft: `3px solid ${isNewest ? 'var(--ds-brand)' : 'transparent'}`,
+                    background: isNewest ? 'var(--ds-brand-soft)' : 'transparent',
                   }}
                 >
                   <summary
@@ -381,8 +381,8 @@ export default function LiveEventStreamWidget() {
                       overflow: 'auto',
                       padding: 10,
                       borderRadius: 6,
-                      border: '1px solid var(--line)',
-                      background: 'var(--bg-sunken)',
+                      border: '1px solid var(--ds-line)',
+                      background: 'var(--ds-inset)',
                       whiteSpace: 'pre-wrap',
                       wordBreak: 'break-word',
                     }}

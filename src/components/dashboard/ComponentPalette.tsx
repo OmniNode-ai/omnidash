@@ -21,7 +21,7 @@ import {
   HeartPulse,
   LayoutGrid,
   X,
-} from 'lucide-react';
+} from '@/theme/design-system/icons';
 import type { RegisteredComponent } from '@/registry/types';
 import { COMPONENT_CATEGORIES, type ComponentCategory } from '@shared/types/component-manifest';
 import { Text } from '@/components/ui/typography';

@@ -119,9 +119,9 @@ function TileEmpty({
       data-testid={`kpi-tile-${slugify(config.label)}`}
       data-empty-reason={reason}
       style={{
-        background: 'var(--panel)',
-        border: '1px solid var(--line)',
-        borderRadius: 'var(--radius)',
+        background: 'var(--ds-surface)',
+        border: '1px solid var(--ds-line)',
+        borderRadius: 'var(--ds-radius-control)',
         padding: '16px 20px',
         display: 'flex',
         flexDirection: 'column',
@@ -155,9 +155,9 @@ function TilePopulated({
     <div
       data-testid={`kpi-tile-${slugify(config.label)}`}
       style={{
-        background: 'var(--panel)',
-        border: '1px solid var(--line)',
-        borderRadius: 'var(--radius)',
+        background: 'var(--ds-surface)',
+        border: '1px solid var(--ds-line)',
+        borderRadius: 'var(--ds-radius-control)',
         padding: '16px 20px',
         display: 'flex',
         flexDirection: 'column',
@@ -208,7 +208,7 @@ export function KPITileCluster<T extends Record<string, unknown> = Record<string
       style={{
         display: 'grid',
         gridTemplateColumns: `repeat(auto-fill, minmax(160px, 1fr))`,
-        gap: 'var(--row-gap)',
+        gap: 'var(--ds-row-gap)',
         width: '100%',
       }}
     >

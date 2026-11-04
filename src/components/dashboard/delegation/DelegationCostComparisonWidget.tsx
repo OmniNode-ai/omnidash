@@ -45,7 +45,7 @@ function shortSession(id: string): string {
 type ProvenanceKind = 'measured' | 'estimated' | 'unknown';
 
 function ProvenanceBadge({ kind }: { kind: ProvenanceKind }) {
-  const color = kind === 'measured' ? 'var(--color-ok, #22c55e)' : kind === 'estimated' ? '#d97706' : 'var(--text-tertiary)';
+  const color = kind === 'measured' ? 'var(--ds-ok, var(--ds-hue-green))' : kind === 'estimated' ? 'var(--ds-hue-amber)' : 'var(--ds-ink-3)';
   return (
     <Text
       as="span"
@@ -90,8 +90,8 @@ function SessionRow({
         gap: 8,
         alignItems: 'center',
         padding: '6px 0',
-        borderBottom: '1px solid var(--line-2)',
-        background: index % 2 === 0 ? 'transparent' : 'var(--panel-1)',
+        borderBottom: '1px solid var(--ds-line-soft)',
+        background: index % 2 === 0 ? 'transparent' : 'var(--ds-surface)',
       }}
     >
       <Text as="span" size="xs" family="mono" color="secondary" title={session.session_id}>
@@ -213,10 +213,10 @@ export default function DelegationCostComparisonWidget({
                 type="button"
                 onClick={() => setSortKey(k)}
                 style={{
-                  border: '1px solid var(--line)',
+                  border: '1px solid var(--ds-line)',
                   borderRadius: 4,
                   padding: '2px 8px',
-                  background: sortKey === k ? 'var(--panel-2)' : 'transparent',
+                  background: sortKey === k ? 'var(--ds-surface-2)' : 'transparent',
                   color: 'inherit',
                   cursor: 'pointer',
                 }}
@@ -236,7 +236,7 @@ export default function DelegationCostComparisonWidget({
               gridTemplateColumns: COLS,
               gap: 8,
               paddingBottom: 5,
-              borderBottom: '1px solid var(--line)',
+              borderBottom: '1px solid var(--ds-line)',
             }}
           >
             {['Session', 'Task', 'Model', 'Tokens', 'Latency', 'Local $', 'Cloud $', 'Saved', showProvenance ? 'Source' : ''].map((h) => (
@@ -255,7 +255,7 @@ export default function DelegationCostComparisonWidget({
           )}
 
           {showProvenance && (
-            <div style={{ display: 'flex', gap: 12, marginTop: 10, paddingTop: 8, borderTop: '1px solid var(--line-2)' }}>
+            <div style={{ display: 'flex', gap: 12, marginTop: 10, paddingTop: 8, borderTop: '1px solid var(--ds-line-soft)' }}>
               <Text as="span" size="xs" color="tertiary">Provenance:</Text>
               <ProvenanceBadge kind="measured" />
               <Text as="span" size="xs" color="tertiary">— token counts from llm_call_metrics</Text>

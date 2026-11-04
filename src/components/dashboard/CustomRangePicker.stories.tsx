@@ -4,7 +4,7 @@
 // `useProjectionQuery`, no Zustand reads), so cache seeding via
 // `makeDashboardDecorator`'s `prefetched` option is unnecessary —
 // however the decorator is still applied to wire the
-// `ThemeProvider` (the popover reads `--panel-2`, `--line`, etc.
+// `ThemeProvider` (the popover reads `--ds-surface-2`, `--ds-line`, etc.
 // from the theme tokens) and the 16px-padded container that gives
 // the calendar room to breathe in the Storybook canvas.
 //

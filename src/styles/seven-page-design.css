@@ -10,16 +10,16 @@
   display: grid;
   grid-template-columns: repeat(var(--kpi-count, 4), minmax(0, 1fr));
   gap: 0;
-  border: 1px solid var(--line);
+  border: 1px solid var(--ds-line);
   border-radius: 10px;
-  background: var(--panel);
+  background: var(--ds-surface);
   overflow: hidden;
 }
 :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel {
   border: 0;
   border-radius: 0;
-  border-inline-end: 1px solid var(--line);
-  background: var(--panel);
+  border-inline-end: 1px solid var(--ds-line);
+  background: var(--ds-surface);
   box-shadow: none;
   padding: 14px 18px 16px;
   min-width: 0;
@@ -30,35 +30,35 @@
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > h2.local-dashboard-panel-title,
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > h2 {
   /* Part 27 AC166: monospace labels, as in the reference style. */
-  font-family: var(--font-mono);
+  font-family: var(--ds-font-mono);
   font-size: 12px;
   font-weight: 400;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--ink-2);
+  color: var(--ds-ink-2);
 }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > h2 svg { width: 14px; height: 14px; }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-metric[data-measured="true"] {
-  font-family: var(--font-sans);
+  font-family: var(--ds-font-sans);
   font-weight: 600;
   font-size: clamp(24px, 2vw, 30px);
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
-  color: var(--ink);
+  color: var(--ds-ink);
 }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-caption {
   font-size: 12px;
   line-height: 1.45;
-  color: var(--ink-3);
+  color: var(--ds-ink-3);
 }
 @media (max-width: 1100px) {
   :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel:nth-child(2n) { border-inline-end: 0; }
-  :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel:nth-child(n + 3) { border-top: 1px solid var(--line); }
+  :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel:nth-child(n + 3) { border-top: 1px solid var(--ds-line); }
 }
 @media (max-width: 600px) {
   :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary { grid-template-columns: minmax(0, 1fr); }
-  :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel { border-inline-end: 0; border-top: 1px solid var(--line); }
+  :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel { border-inline-end: 0; border-top: 1px solid var(--ds-line); }
   :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel:first-child { border-top: 0; }
 }
 
@@ -75,12 +75,12 @@ main.ev-root[data-destination="delegation-evidence"] :is(.kpi .k-v, .big, td) {
 }
 .local-dashboard-page table th,
 main.ev-root[data-destination="delegation-evidence"] .dt-head {
-  font-family: var(--font-sans);
+  font-family: var(--ds-font-sans);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--ink-3);
+  color: var(--ds-ink-3);
 }
 
 /* Quality: the latest-runs pass rate reads as one line, label beside its figure and coverage. */
@@ -88,7 +88,7 @@ main.ev-root[data-destination="delegation-evidence"] .dt-head {
   display: flex; flex-wrap: wrap; align-items: baseline; justify-content: flex-start; gap: 6px 10px;
 }
 .local-dashboard-page .ins-pass-headline .ins-pass-line strong {
-  font-family: var(--font-sans); font-size: 16px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums;
+  font-family: var(--ds-font-sans); font-size: 16px; font-weight: 600; color: var(--ds-ink); font-variant-numeric: tabular-nums;
 }
 .local-dashboard-page .local-meter-value { font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
 
@@ -97,7 +97,7 @@ main.ev-root[data-destination="delegation-evidence"] .dt-head {
 .local-dashboard-page :is(.local-donut-focus-value, .local-share-value, .local-meter-value, .local-readable,
   .local-routing-name:not(.local-model-identity), .local-run-step-time, .workflow-comparison-row strong),
 .local-dashboard-page [data-environment] :is(span, strong, dd) {
-  font-family: var(--font-sans);
+  font-family: var(--ds-font-sans);
   font-variant-numeric: tabular-nums;
 }
 
@@ -105,20 +105,20 @@ main.ev-root[data-destination="delegation-evidence"] .dt-head {
 
 
 
-.local-dashboard-page .usage-cost-value { font-variant-numeric: tabular-nums; color: var(--ink-2); white-space: nowrap; }
-.local-dashboard-page .usage-cost-track { display: flex; align-items: flex-end; width: 18px; height: 100%; border-bottom: 1px solid var(--line); }
-.local-dashboard-page .usage-cost-track > i { display: block; width: 100%; border-radius: 3px 3px 0 0; background: var(--field-cost, var(--ui-accent)); }
+.local-dashboard-page .usage-cost-value { font-variant-numeric: tabular-nums; color: var(--ds-ink-2); white-space: nowrap; }
+.local-dashboard-page .usage-cost-track { display: flex; align-items: flex-end; width: 18px; height: 100%; border-bottom: 1px solid var(--ds-line); }
+.local-dashboard-page .usage-cost-track > i { display: block; width: 100%; border-radius: 3px 3px 0 0; background: var(--ds-field-cost); }
 
 
-.local-dashboard-page .usage-cost-unmeasured { max-width: 9ch; color: var(--ink-3); line-height: 1.3; }
+.local-dashboard-page .usage-cost-unmeasured { max-width: 9ch; color: var(--ds-ink-3); line-height: 1.3; }
 
 /* Evidence › Acceptance checks (AC66): served check types and the cost of compliance, compact rows. */
 main.ev-root .ev-acceptance-checks, main.ev-root .ev-acceptance-models { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 6px; }
 main.ev-root .ev-acceptance-checks > li, main.ev-root .ev-acceptance-models > li {
   display: grid; grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr)); gap: 8px; align-items: baseline;
-  font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink-2);
+  font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ds-ink-2);
 }
-main.ev-root .ev-acceptance-checks > li > :first-child, main.ev-root .ev-acceptance-models > li > :first-child { color: var(--ink); overflow-wrap: anywhere; }
+main.ev-root .ev-acceptance-checks > li > :first-child, main.ev-root .ev-acceptance-models > li > :first-child { color: var(--ds-ink); overflow-wrap: anywhere; }
 @media (max-width: 600px) {
   main.ev-root .ev-acceptance-checks > li, main.ev-root .ev-acceptance-models > li { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 }
@@ -129,12 +129,12 @@ main.ev-root .ev-acceptance-checks > li > :first-child, main.ev-root .ev-accepta
 .local-dashboard-page .local-savings-by-model details ul { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 8px; }
 .local-dashboard-page .local-savings-by-model details ul > li {
   display: grid; grid-template-columns: minmax(0, 2fr) minmax(80px, 2fr) 96px minmax(0, 1.2fr) minmax(0, 1fr);
-  gap: 10px; align-items: center; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink-2);
+  gap: 10px; align-items: center; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ds-ink-2);
 }
 .local-dashboard-page .local-savings-by-model details ul > li > :first-child { overflow-wrap: anywhere; }
-.local-dashboard-page .local-savings-by-model strong { color: var(--ink); font-weight: 600; text-align: right; }
-.local-dashboard-page .local-savings-bar { height: 6px; border-radius: 3px; background: var(--line-2); overflow: hidden; }
-.local-dashboard-page .local-savings-bar > i { display: block; height: 100%; background: var(--model-color, var(--field-savings)); }
+.local-dashboard-page .local-savings-by-model strong { color: var(--ds-ink); font-weight: 600; text-align: right; }
+.local-dashboard-page .local-savings-bar { height: 6px; border-radius: 3px; background: var(--ds-line-soft); overflow: hidden; }
+.local-dashboard-page .local-savings-bar > i { display: block; height: 100%; background: var(--model-color, var(--ds-field-savings)); }
 @media (max-width: 760px) {
   .local-dashboard-page .local-savings-by-model details ul > li { grid-template-columns: minmax(0, 1fr) auto; }
   .local-dashboard-page .local-savings-bar { grid-column: 1 / -1; }
@@ -165,7 +165,7 @@ main.ev-root .ev-acceptance-checks > li > :first-child, main.ev-root .ev-accepta
  * ═════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
 
 /* Page frame */
-.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"] { background: var(--bg); }
+.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"] { background: var(--ds-page); }
 /* Part 27 round 7: the scrolling page region contains its absolutely positioned children (visually hidden titles, the
    "As of" line). Without it they were placed against the body, far below the window, so the document grew taller than the
    viewport and focus or scrollIntoView lifted the whole app frame, leaving a blank band under it. */
@@ -178,63 +178,63 @@ main.ev-root .ev-acceptance-checks > li > :first-child, main.ev-root .ev-accepta
   /* Part 27 round 4: the stacked header starts at the left, so a title-only header (Settings) is not centred. */
   .local-dashboard-page .local-dashboard-header { align-items: flex-start; }
 }
-.local-dashboard-page .local-dashboard-header .local-dashboard-page-icon { width: 20px; height: 20px; color: var(--ink-3); }
+.local-dashboard-page .local-dashboard-header .local-dashboard-page-icon { width: 20px; height: 20px; color: var(--ds-ink-3); }
 
 /* Controls: outline buttons and a segmented window switch, in the one accent */
 .local-dashboard-page .local-explore-runs {
   display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: 6px;
-  border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-size: 12px; font-weight: 500; text-decoration: none;
+  border: 1px solid var(--ds-line); background: var(--ds-surface); color: var(--ds-ink); font-size: 12px; font-weight: 500; text-decoration: none;
 }
-.local-dashboard-page .local-explore-runs:hover { border-color: var(--ink-3); }
-.local-dashboard-page .local-window-options { display: inline-flex; padding: 2px; gap: 2px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); }
+.local-dashboard-page .local-explore-runs:hover { border-color: var(--ds-ink-3); }
+.local-dashboard-page .local-window-options { display: inline-flex; padding: 2px; gap: 2px; border: 1px solid var(--ds-line); border-radius: 7px; background: var(--ds-surface); }
 .local-dashboard-page .local-window-options button {
-  height: 26px; padding: 0 10px; border: 0; border-radius: 5px; background: transparent; color: var(--ink-2); font-size: 12px; font-weight: 500;
+  height: 26px; padding: 0 10px; border: 0; border-radius: 5px; background: transparent; color: var(--ds-ink-2); font-size: 12px; font-weight: 500;
 }
-.local-dashboard-page .local-window-options button[aria-checked="true"] { background: var(--ink); color: var(--panel); }
+.local-dashboard-page .local-window-options button[aria-checked="true"] { background: var(--ds-ink); color: var(--ds-surface); }
 .local-dashboard-page .local-dashboard-filters :is(select, input) {
-  min-height: 32px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-size: 13px;
+  min-height: 32px; border-radius: 6px; border: 1px solid var(--ds-line); background: var(--ds-surface); color: var(--ds-ink); font-size: 13px;
 }
 
 /* Panels: one quiet surface, compact title row; icons keep their identity colour */
 .local-dashboard-page .local-dashboard-panel,
 .local-dashboard-page .local-dashboard-panel:hover,
 main.ev-root[data-destination="delegation-evidence"] :is(.panel, .kpi, .kpi[data-tone]:hover) {
-  border: 1px solid var(--line); border-radius: 12px; background: var(--panel); box-shadow: none; transform: none; animation: none;
+  border: 1px solid var(--ds-line); border-radius: 12px; background: var(--ds-surface); box-shadow: none; transform: none; animation: none;
 }
 /* Hover keeps the resting padding: a panel's content no longer shifts 2px when pointed at (found 2026-10-25). */
 .local-dashboard-page .local-dashboard-panel, .local-dashboard-page .local-dashboard-panel:hover { padding: 14px 16px; }
-.local-dashboard-page .local-dashboard-panel > h2 { margin-bottom: 12px; font-size: 13px; font-weight: 500; color: var(--ink); }
+.local-dashboard-page .local-dashboard-panel > h2 { margin-bottom: 12px; font-size: 13px; font-weight: 500; color: var(--ds-ink); }
 .local-dashboard-page .local-dashboard-panel > h2 svg,
 .local-dashboard-page .local-section-heading svg,
 .local-dashboard-page .overview-chart-heading svg,
 main.ev-root[data-destination="delegation-evidence"] :is(.ev-panel-icon, .k-l svg) { width: 15px; height: 15px; }
 /* Icons keep their concept identity colour (OMN-21308 census, AC9/AC10); only their size is set here. */
-.local-dashboard-page .local-dashboard-asof { font-size: 12px; color: var(--ink-3); }
+.local-dashboard-page .local-dashboard-asof { font-size: 12px; color: var(--ds-ink-3); }
 main.ev-root[data-destination="delegation-evidence"] .panel-h .pt { font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none; }
 
 /* Figures read in the one ink; status keeps its colour (pass, fail) and series keep theirs in charts */
 .local-dashboard-page :is(dd, .local-recent-value, .local-dashboard-metric, .ins-kpi strong, .ins-list-value, .local-share-value, .local-readable),
-main.ev-root[data-destination="delegation-evidence"] :is(.kv .v, .kpi .k-v) { color: var(--ink) !important; }
+main.ev-root[data-destination="delegation-evidence"] :is(.kv .v, .kpi .k-v) { color: var(--ds-ink) !important; }
 /* Evidence's statistics and bar values keep their OMN-21308 concept colours (pass, fail, savings, baseline, cost). */
 .local-dashboard-page :is(dt, .ins-kpi > span, .ins-kpi small),
-main.ev-root[data-destination="delegation-evidence"] :is(.kv .k, .kpi .k-l, .note) { color: var(--ink-3) !important; }
-.local-dashboard-page [data-field-tone="fail"] :is(strong, .ins-list-value), .local-dashboard-page strong[data-field-tone="fail"] { color: var(--ui-fail) !important; }
-.local-dashboard-page [data-field-tone="pass"] strong { color: var(--ui-pass) !important; }
-.local-dashboard-page [data-field-unavailable="true"] :is(dd, strong), .local-dashboard-page :is(dd, strong)[data-field-unavailable="true"] { color: var(--ink-3) !important; font-weight: 500; }
+main.ev-root[data-destination="delegation-evidence"] :is(.kv .k, .kpi .k-l, .note) { color: var(--ds-ink-3) !important; }
+.local-dashboard-page [data-field-tone="fail"] :is(strong, .ins-list-value), .local-dashboard-page strong[data-field-tone="fail"] { color: var(--ds-bad) !important; }
+.local-dashboard-page [data-field-tone="pass"] strong { color: var(--ds-ok) !important; }
+.local-dashboard-page [data-field-unavailable="true"] :is(dd, strong), .local-dashboard-page :is(dd, strong)[data-field-unavailable="true"] { color: var(--ds-ink-3) !important; font-weight: 500; }
 /* dt icons keep their field identity colour (OMN-21308). */
 
 /* Run and model identifiers in IBM Plex Mono, in ink; links in the link colour */
-.local-dashboard-page :is(.local-model-identity, .local-routing-name.local-model-identity) { font-family: var(--font-mono); font-size: 12px; color: var(--ink) !important; }
-.local-dashboard-page a { color: var(--link-ink); }
+.local-dashboard-page :is(.local-model-identity, .local-routing-name.local-model-identity) { font-family: var(--ds-font-mono); font-size: 12px; color: var(--ds-ink) !important; }
+.local-dashboard-page a { color: var(--ds-link); }
 
 /* Dense tables */
 .local-dashboard-page table { border-collapse: separate; border-spacing: 0; font-size: 13px; }
-.local-dashboard-page thead th { background: transparent; border-bottom: 1px solid var(--line); padding: 8px 10px; white-space: nowrap; }
+.local-dashboard-page thead th { background: transparent; border-bottom: 1px solid var(--ds-line); padding: 8px 10px; white-space: nowrap; }
 /* A fit table's columns are only as wide as their data, so its headers wrap between words (never inside one): with
    nowrap, "Quality score" overflowed the all-fields Runs table by 38px and long headers ran into their neighbours. */
 .local-dashboard-page .local-dashboard-table-wrap--fit thead th { white-space: normal; overflow-wrap: normal; word-break: normal; }
-.local-dashboard-page tbody td { padding: 8px 10px; border-bottom: 1px solid var(--line-2); vertical-align: middle; }
-.local-dashboard-page tbody tr:hover > td { background: var(--panel-2); }
+.local-dashboard-page tbody td { padding: 8px 10px; border-bottom: 1px solid var(--ds-line-soft); vertical-align: middle; }
+.local-dashboard-page tbody tr:hover > td { background: var(--ds-surface-2); }
 .local-dashboard-page tbody tr:last-child > td { border-bottom: 0; }
 
 /* Status pills: quiet tinted chips */
@@ -245,24 +245,24 @@ main.ev-root[data-destination="delegation-evidence"] :is(.kv .k, .kpi .k-l, .not
 /* Charts sit on the panel surface: no grey plot fill, hairline grid */
 .local-dashboard-page :is(.ins-card, .local-chart, .usage-insight, .workflow-analysis-card) { background: transparent; box-shadow: none; }
 
-.local-dashboard-page .ins-card { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+.local-dashboard-page .ins-card { border: 1px solid var(--ds-line); border-radius: 8px; padding: 12px 14px; }
 
 /* KPI strip (AC63): label, figure, note, then the sparkline under them */
 
 /* Filter chips: compact, neutral, monochrome icon; the pressed chip takes the ink */
 .local-dashboard-page .local-dashboard-filters > button,
 .local-dashboard-page .local-dashboard-filters button[aria-pressed] {
-  min-height: 28px; height: auto; padding: 3px 9px; gap: 6px; border-radius: 6px; border: 1px solid var(--line);
-  background: var(--panel); color: var(--ink-2); font-size: 12px; font-weight: 500; box-shadow: none;
+  min-height: 28px; height: auto; padding: 3px 9px; gap: 6px; border-radius: 6px; border: 1px solid var(--ds-line);
+  background: var(--ds-surface); color: var(--ds-ink-2); font-size: 12px; font-weight: 500; box-shadow: none;
 }
-.local-dashboard-page .local-dashboard-filters button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--panel); }
-.local-dashboard-page .local-dashboard-filters button > span:last-child { color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.local-dashboard-page .local-dashboard-filters button[aria-pressed="true"] { background: var(--ds-ink); border-color: var(--ds-ink); color: var(--ds-surface); }
+.local-dashboard-page .local-dashboard-filters button > span:last-child { color: var(--ds-ink-3); font-variant-numeric: tabular-nums; }
 .local-dashboard-page .local-dashboard-filters button[aria-pressed="true"] > span:last-child { color: inherit; opacity: 0.8; }
 .local-dashboard-page .local-dashboard-filters button svg,
 .local-dashboard-page .local-task-cell svg { width: 14px; height: 14px; padding: 0; background: transparent !important; border-radius: 0; }
 .local-dashboard-page .local-dashboard-filters button [class*="icon"],
 .local-dashboard-page .local-task-cell [class*="icon"] { background: transparent !important; padding: 0; }
-.local-dashboard-page h3.local-dashboard-caption { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3); }
+.local-dashboard-page h3.local-dashboard-caption { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ds-ink-3); }
 
 /* One ink in every strip: the old per-field colours no longer tint labels or figures (status keeps its colour). */
 
@@ -281,16 +281,16 @@ main.ev-root[data-destination="delegation-evidence"] :is(.kv .k, .kpi .k-l, .not
    and --figure-chars is the figure's length, a monospace character being 0.6em wide. */
 :is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel { container-type: inline-size; }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-metric:not([data-measured="false"]) {
-  font-family: var(--font-mono); font-size: min(32px, calc(100cqi / (var(--figure-chars, 1) * 0.6))); font-weight: 500;
+  font-family: var(--ds-font-mono); font-size: min(32px, calc(100cqi / (var(--figure-chars, 1) * 0.6))); font-weight: 500;
   letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; overflow-wrap: normal;
 }
 @media (max-width: 600px) {
   :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-metric:not([data-measured="false"]) { font-size: min(24px, calc(100cqi / (var(--figure-chars, 1) * 0.6))); }
 }
 /* "This week" and the other uppercase section labels share the monospace label style. */
-.local-dashboard-page .local-section-heading.local-dashboard-caption { font-family: var(--font-mono); font-weight: 400; letter-spacing: .04em; text-transform: uppercase; }
-:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-token-directions { color: var(--ink-2); font-size: 12px; }
-:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-token-directions strong { color: var(--ink) !important; }
+.local-dashboard-page .local-section-heading.local-dashboard-caption { font-family: var(--ds-font-mono); font-weight: 400; letter-spacing: .04em; text-transform: uppercase; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-token-directions { color: var(--ds-ink-2); font-size: 12px; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-token-directions strong { color: var(--ds-ink) !important; }
 
 /* Overview › Quality and Last run side by side on wide screens (their declared half widths), so the newest run's
  * status, model and age sit in the first screen at 1440x900 (AC49) and the page reads as one dense summary. */
@@ -303,11 +303,11 @@ main.ev-root[data-destination="delegation-evidence"] :is(.kv .k, .kpi .k-l, .not
 .local-dashboard-page--overview .local-meter-value { font-size: 40px; line-height: 1.1; }
 
 /* Delegation Evidence in the same look: compact page head, Overview's headline cards, values in Inter (ids stay mono). */
-main.ev-root[data-destination="delegation-evidence"] .ev-page-head { padding: 20px 24px 12px; border-bottom: 0; background: var(--bg); }
+main.ev-root[data-destination="delegation-evidence"] .ev-page-head { padding: 20px 24px 12px; border-bottom: 0; background: var(--ds-page); }
 main.ev-root[data-destination="delegation-evidence"] .ev-page-head :is(h1, .ev-title) { font-size: 20px; font-weight: 600; letter-spacing: -0.015em; }
-main.ev-root[data-destination="delegation-evidence"] .kv .v { font-family: var(--font-sans); font-variant-numeric: tabular-nums; }
+main.ev-root[data-destination="delegation-evidence"] .kv .v { font-family: var(--ds-font-sans); font-variant-numeric: tabular-nums; }
 main.ev-root[data-destination="delegation-evidence"] .kv .v.accent,
-main.ev-root[data-destination="delegation-evidence"] .kv [data-field-tone="model"] .v { font-family: var(--font-mono); font-size: 12px; }
+main.ev-root[data-destination="delegation-evidence"] .kv [data-field-tone="model"] .v { font-family: var(--ds-font-mono); font-size: 12px; }
 .local-dashboard-page .local-dashboard-header { flex-wrap: wrap; }
 
 /* ── Overview headline cards: figure only, basis in a tooltip (part 12 AC73) ────────────────────────────────── */
@@ -315,17 +315,17 @@ main.ev-root[data-destination="delegation-evidence"] .kv [data-field-tone="model
 .local-card-basis-tip { position: absolute; top: 12px; right: 12px; z-index: 5; }
 .local-card-info {
   display: inline-grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%;
-  background: transparent; color: var(--ink-3); cursor: help;
+  background: transparent; color: var(--ds-ink-3); cursor: help;
 }
-.local-card-info:is(:hover, :focus-visible) { background: var(--panel-2); color: var(--ink); outline: none; }
-.local-card-info:focus-visible { box-shadow: 0 0 0 2px var(--ui-accent); }
+.local-card-info:is(:hover, :focus-visible) { background: var(--ds-surface-2); color: var(--ds-ink); outline: none; }
+.local-card-info:focus-visible { box-shadow: 0 0 0 2px var(--ds-accent); }
 .local-card-tooltip {
   position: absolute; top: calc(100% + 6px); right: 0; width: min(320px, 80vw); padding: 10px 12px;
-  border: 1px solid var(--line); border-radius: 8px; background: var(--panel); box-shadow: var(--shadow-md);
+  border: 1px solid var(--ds-line); border-radius: 8px; background: var(--ds-surface); box-shadow: var(--ds-shadow-md);
   visibility: hidden; opacity: 0; transform: translateY(-2px); transition: opacity 120ms ease, transform 120ms ease;
   text-align: left; pointer-events: none;
 }
-.local-card-tooltip .local-dashboard-caption { margin: 0 0 6px; font-size: 12px; line-height: 1.45; color: var(--ink-2) !important; }
+.local-card-tooltip .local-dashboard-caption { margin: 0 0 6px; font-size: 12px; line-height: 1.45; color: var(--ds-ink-2) !important; }
 .local-card-tooltip .local-dashboard-caption:last-child { margin-bottom: 0; }
 .local-card-basis-tip[data-open="true"] .local-card-tooltip,
 .local-card-basis-tip:focus-within .local-card-tooltip { visibility: visible; opacity: 1; transform: none; pointer-events: auto; }
@@ -338,62 +338,62 @@ main.ev-root[data-destination="delegation-evidence"] .kv [data-field-tone="model
 :is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel.local-dashboard-panel { overflow: visible; }
 
 /* ── Part 13: "More …" disclosures and one-line status ─────────────────────────────────────────────────────── */
-.local-dashboard-page details.local-more { margin-top: 10px; border-top: 1px solid var(--line-2); padding-top: 8px; }
+.local-dashboard-page details.local-more { margin-top: 10px; border-top: 1px solid var(--ds-line-soft); padding-top: 8px; }
 .local-dashboard-page details.local-more > summary {
   display: inline-flex; align-items: center; gap: 6px; cursor: pointer; list-style: none;
-  font-size: 12px; font-weight: 500; color: var(--ink-3); padding: 2px 0;
+  font-size: 12px; font-weight: 500; color: var(--ds-ink-3); padding: 2px 0;
 }
 .local-dashboard-page details.local-more > summary::-webkit-details-marker { display: none; }
-.local-dashboard-page details.local-more > summary::before { content: '+'; display: inline-grid; place-items: center; width: 14px; height: 14px; border: 1px solid var(--line); border-radius: 3px; font-size: 12px; line-height: 1; }
+.local-dashboard-page details.local-more > summary::before { content: '+'; display: inline-grid; place-items: center; width: 14px; height: 14px; border: 1px solid var(--ds-line); border-radius: 3px; font-size: 12px; line-height: 1; }
 .local-dashboard-page details.local-more[open] > summary::before { content: '−'; }
-.local-dashboard-page details.local-more > summary:hover, .local-dashboard-page details.local-more > summary:focus-visible { color: var(--ink); }
+.local-dashboard-page details.local-more > summary:hover, .local-dashboard-page details.local-more > summary:focus-visible { color: var(--ds-ink); }
 .local-dashboard-page details.local-more[open] > :not(summary) { margin-top: 10px; }
-.local-dashboard-page .local-environment-line { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 13px; color: var(--ink-2); }
-.local-dashboard-page .local-environment-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); flex: none; }
-.local-dashboard-page [data-environment-state="clear"] .local-environment-dot { background: var(--ui-pass); }
-.local-dashboard-page [data-environment-state="alert"] .local-environment-dot { background: var(--ui-fail); }
+.local-dashboard-page .local-environment-line { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 13px; color: var(--ds-ink-2); }
+.local-dashboard-page .local-environment-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ds-ink-3); flex: none; }
+.local-dashboard-page [data-environment-state="clear"] .local-environment-dot { background: var(--ds-ok); }
+.local-dashboard-page [data-environment-state="alert"] .local-environment-dot { background: var(--ds-bad); }
 .local-dashboard-page .local-show-all {
-  margin-top: 8px; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 6px;
-  background: var(--panel); color: var(--ink-2); font-size: 12px; font-weight: 500; cursor: pointer;
+  margin-top: 8px; height: 28px; padding: 0 10px; border: 1px solid var(--ds-line); border-radius: 6px;
+  background: var(--ds-surface); color: var(--ds-ink-2); font-size: 12px; font-weight: 500; cursor: pointer;
 }
-.local-dashboard-page .local-show-all:hover { color: var(--ink); border-color: var(--ink-3); }
-.local-dashboard-page details.local-more--page { margin: 4px 0 0; padding: 12px 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
-.ev-unserved-line { margin: 0; padding: 10px 14px; border: 1px dashed var(--line); border-radius: 8px; font-size: 13px; color: var(--ink-3); }
+.local-dashboard-page .local-show-all:hover { color: var(--ds-ink); border-color: var(--ds-ink-3); }
+.local-dashboard-page details.local-more--page { margin: 4px 0 0; padding: 12px 16px; border: 1px solid var(--ds-line); border-radius: 10px; background: var(--ds-surface); }
+.ev-unserved-line { margin: 0; padding: 10px 14px; border: 1px dashed var(--ds-line); border-radius: 8px; font-size: 13px; color: var(--ds-ink-3); }
 .local-dashboard-page details.local-more--page { grid-column: 1 / -1; width: 100%; box-sizing: border-box; }
 /* Part 13: the savings chart takes the row; its table opens under it. */
 .local-usage-savings { grid-template-columns: minmax(0, 1fr); }
 
 /* ── AC64: ranked bars (one bar per model, value above, name below, pattern by how the figure was obtained) ── */
 .rb-chart { container-type: inline-size; margin: 0; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-.rb-chart .rb-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; font-size: 12px; color: var(--ink-3); }
+.rb-chart .rb-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; font-size: 12px; color: var(--ds-ink-3); }
 .rb-chart .rb-plot {
   list-style: none; margin: 0; padding: 0; display: grid; align-items: end; gap: clamp(8px, 2vw, 20px);
-  grid-template-columns: repeat(var(--rb-count), minmax(0, 1fr)); border-bottom: 1px solid var(--line);
+  grid-template-columns: repeat(var(--rb-count), minmax(0, 1fr)); border-bottom: 1px solid var(--ds-line);
   max-width: calc(var(--rb-count) * 120px);
 }
 .rb-chart .rb-plot > li { grid-template-columns: none; gap: 0; border: 0; background: none; padding: 0; margin: 0; display: flex; flex-direction: column; align-items: stretch; min-width: 0; position: relative; padding-bottom: 0; }
-.rb-chart .rb-value { font-family: var(--font-mono); font-size: 12px; color: var(--ink); text-align: center; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rb-chart [data-basis="unknown"] > .rb-value { color: var(--ink-3); font-family: var(--font-sans); }
+.rb-chart .rb-value { font-family: var(--ds-font-mono); font-size: 12px; color: var(--ds-ink); text-align: center; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rb-chart [data-basis="unknown"] > .rb-value { color: var(--ds-ink-3); font-family: var(--ds-font-sans); }
 .rb-chart .rb-track { height: 180px; display: flex; align-items: flex-end; }
 .rb-chart .rb-bar { display: block; width: 100%; height: var(--rb-size, 0); min-height: 0; box-sizing: border-box; color: var(--rb-color); }
-.rb-chart .rb-bar[data-pattern="outline"] { height: 14px; border: 1px dashed var(--ink-3); border-bottom: 0; background: none; }
+.rb-chart .rb-bar[data-pattern="outline"] { height: 14px; border: 1px dashed var(--ds-ink-3); border-bottom: 0; background: none; }
 .rb-chart .rb-name {
   margin-top: 8px; font-size: 12px; line-height: 1.3; color: var(--rb-color); text-align: center;
   overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-break: break-word;
   position: absolute; top: 100%; left: 0; right: 0;
 }
 .rb-chart .rb-plot { margin-bottom: calc(2.6em + 10px); }
-.rb-chart .rb-footnote { margin: 0; font-size: 12px; color: var(--ink-3); }
+.rb-chart .rb-footnote { margin: 0; font-size: 12px; color: var(--ds-ink-3); }
 
 /* AC71: below 560 px of chart width the bars run sideways (name, bar, value per row), so no label is cut to an ellipsis. */
 @container (max-width: 560px) {
-  .rb-chart .rb-plot { display: flex; flex-direction: column; align-items: stretch; gap: 10px; max-width: none; margin-bottom: 0; border-bottom: 0; border-left: 1px solid var(--line); padding-left: 0; }
+  .rb-chart .rb-plot { display: flex; flex-direction: column; align-items: stretch; gap: 10px; max-width: none; margin-bottom: 0; border-bottom: 0; border-left: 1px solid var(--ds-line); padding-left: 0; }
   .rb-chart .rb-plot > li { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name value" "track track"; row-gap: 4px; column-gap: 12px; }
   .rb-chart .rb-name { position: static; grid-area: name; text-align: left; margin: 0 0 0 8px; -webkit-line-clamp: 1; }
   .rb-chart .rb-value { grid-area: value; margin: 0; text-align: right; }
   .rb-chart .rb-track { grid-area: track; height: 12px; align-items: stretch; }
   .rb-chart .rb-bar { height: auto; width: var(--rb-size, 0); }
-  .rb-chart .rb-bar[data-pattern="outline"] { width: 14px; height: auto; border: 1px dashed var(--ink-3); border-left: 0; }
+  .rb-chart .rb-bar[data-pattern="outline"] { width: 14px; height: auto; border: 1px dashed var(--ds-ink-3); border-left: 0; }
 }
 
 /* ── Maple grid (2026-10-25, chosen by Lakshman): KPI strip, then rows of chart (8/12) beside its ranking (4/12),
@@ -414,19 +414,19 @@ main.ev-root[data-destination="delegation-evidence"] .kv [data-field-tone="model
 .ins-section--slice { display: flex; flex-direction: column; gap: 10px; }
 .ins-slice-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
 .ins-slice-tools .ins-sub { margin: 0; }
-.ins-slice-tools .ins-range-presets { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
-.ins-slice-tools .ins-range-presets button { height: 26px; padding: 0 10px; border: 0; border-right: 1px solid var(--line); background: transparent; color: var(--ink-3); font-size: 12px; cursor: pointer; }
+.ins-slice-tools .ins-range-presets { display: inline-flex; border: 1px solid var(--ds-line); border-radius: 7px; overflow: hidden; }
+.ins-slice-tools .ins-range-presets button { height: 26px; padding: 0 10px; border: 0; border-right: 1px solid var(--ds-line); background: transparent; color: var(--ds-ink-3); font-size: 12px; cursor: pointer; }
 .ins-slice-tools .ins-range-presets button:last-child { border-right: 0; }
-.ins-slice-tools .ins-range-presets button[aria-pressed="true"] { background: var(--ink); color: var(--panel); }
+.ins-slice-tools .ins-range-presets button[aria-pressed="true"] { background: var(--ds-ink); color: var(--ds-surface); }
 
 /* Maple grid: Overview's recent runs as dense one-line rows. */
 .local-dashboard-page .local-run-preview { list-style: none; margin: 0; padding: 0; }
 .local-dashboard-page .local-run-preview > li {
   display: grid; grid-template-columns: minmax(120px, 1.1fr) minmax(0, 1.4fr) auto 64px 72px; align-items: center; gap: 12px;
-  padding: 9px 0; border-bottom: 1px solid var(--line-2); font-size: 13px;
+  padding: 9px 0; border-bottom: 1px solid var(--ds-line-soft); font-size: 13px;
 }
 .local-dashboard-page .local-run-preview > li > div { display: contents; }
-.local-dashboard-page .local-run-preview > li a { font-family: var(--font-mono); font-size: 12px; }
+.local-dashboard-page .local-run-preview > li a { font-family: var(--ds-font-mono); font-size: 12px; }
 .local-dashboard-page .local-run-preview > li [data-field-tone="model"] { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .local-dashboard-page .local-run-preview > li [data-field-tone="duration"] { text-align: right; font-variant-numeric: tabular-nums; }
 .local-dashboard-page .local-run-preview > li .local-dashboard-caption { text-align: right; margin: 0; }
@@ -439,7 +439,7 @@ main.ev-root[data-destination="delegation-evidence"] .kv [data-field-tone="model
 .local-dashboard-panel[data-slice="failures"] .ins-list-name { grid-area: name; white-space: normal; overflow: visible; text-overflow: clip; text-align: left; }
 .local-dashboard-panel[data-slice="failures"] .ins-list-value { grid-area: value; }
 .local-dashboard-panel[data-slice="failures"] .ins-track { grid-area: track; }
-.local-dashboard-panel[data-slice="failures"] .ins-list-seen { grid-area: seen; font-size: 12px; color: var(--ink-3); }
+.local-dashboard-panel[data-slice="failures"] .ins-list-seen { grid-area: seen; font-size: 12px; color: var(--ds-ink-3); }
 
 /* Labels kept for screen readers and tests, not drawn. */
 .local-visually-hidden { position: absolute !important; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
@@ -448,18 +448,18 @@ main.ev-root[data-destination="delegation-evidence"] .kv [data-field-tone="model
 .local-dashboard-page .local-runs-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 6px; }
 .local-dashboard-page .local-runs-toolbar .local-runs-search { flex: 1 1 260px; margin: 0; }
 .local-dashboard-page .local-runs-toolbar .local-runs-search input {
-  width: 100%; height: 32px; box-sizing: border-box; padding: 0 10px 0 30px; border: 1px solid var(--line); border-radius: 7px;
-  background: var(--panel) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%23888' stroke-width='2' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") no-repeat 10px center;
-  font-size: 13px; color: var(--ink);
+  width: 100%; height: 32px; box-sizing: border-box; padding: 0 10px 0 30px; border: 1px solid var(--ds-line); border-radius: 7px;
+  background: var(--ds-surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%23888' stroke-width='2' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") no-repeat 10px center;
+  font-size: 13px; color: var(--ds-ink);
 }
 .local-dashboard-page .local-runs-toolbar .local-dashboard-filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; border: 0; }
 .local-dashboard-page .local-runs-toolbar .local-filter-field { margin: 0; display: block; }
 .local-dashboard-page .local-runs-toolbar select {
-  height: 32px; padding: 0 28px 0 10px; border: 1px solid var(--line); border-radius: 7px; background-color: var(--panel);
-  font-size: 13px; color: var(--ink-2); max-width: 220px; min-width: 0; width: auto;
+  height: 32px; padding: 0 28px 0 10px; border: 1px solid var(--ds-line); border-radius: 7px; background-color: var(--ds-surface);
+  font-size: 13px; color: var(--ds-ink-2); max-width: 220px; min-width: 0; width: auto;
 }
 .local-dashboard-page .local-runs-toolbar .local-filter-clear { min-height: 40px; padding: 0 10px; font-size: 13px; }
-.local-dashboard-page .local-runs-scope { margin: 0 0 10px; font-size: 12px; color: var(--ink-3); }
+.local-dashboard-page .local-runs-scope { margin: 0 0 10px; font-size: 12px; color: var(--ds-ink-3); }
 .local-dashboard-page .local-runs-toolbar .local-dashboard-filters > .local-filter-field { flex: 0 0 auto; width: auto; min-width: 0; max-width: none; }
 .local-dashboard-page .local-runs-toolbar .local-dashboard-filters > .local-filter-field > select { width: auto; inline-size: auto; max-width: 220px; }
 /* The row wraps rather than push Clear filters past the panel edge (seen at 1440 with a filter set, 2026-10-25). */
@@ -478,23 +478,23 @@ main.ev-root[data-destination="delegation-evidence"] .kv [data-field-tone="model
 /* Maple grid: Usage's stacked tokens chart. */
 .utc-chart { margin: 0; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .utc-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
-.utc-switch { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
-.utc-switch button { height: 26px; padding: 0 10px; border: 0; background: transparent; color: var(--ink-3); font-size: 12px; cursor: pointer; }
-.utc-switch button + button { border-left: 1px solid var(--line); }
+.utc-switch { display: inline-flex; border: 1px solid var(--ds-line); border-radius: 7px; overflow: hidden; }
+.utc-switch button { height: 26px; padding: 0 10px; border: 0; background: transparent; color: var(--ds-ink-3); font-size: 12px; cursor: pointer; }
+.utc-switch button + button { border-left: 1px solid var(--ds-line); }
 /* Part 27 round 1: the selected option is Paradev's accent tint with an accent edge, as on the window switch. */
-.utc-switch button[aria-pressed="true"] { background: color-mix(in srgb, var(--ui-accent) 6%, transparent); color: var(--ui-accent); box-shadow: inset 0 0 0 1px var(--ui-accent); }
-.utc-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--ink-2); flex: 1 1 320px; min-width: 0; justify-content: flex-end; }
+.utc-switch button[aria-pressed="true"] { background: color-mix(in srgb, var(--ds-accent) 6%, transparent); color: var(--ds-accent); box-shadow: inset 0 0 0 1px var(--ds-accent); }
+.utc-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--ds-ink-2); flex: 1 1 320px; min-width: 0; justify-content: flex-end; }
 /* Part 27 round 2: a model's whole name; a flex item draws no ellipsis, so the 220px cap cut names mid-word. */
 .utc-legend li { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .utc-legend i { width: 8px; height: 8px; border-radius: 2px; flex: none; }
-.utc-plot { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(var(--utc-count), minmax(0, 1fr)); gap: 6px; align-items: end; border-bottom: 1px solid var(--line); }
+.utc-plot { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(var(--utc-count), minmax(0, 1fr)); gap: 6px; align-items: end; border-bottom: 1px solid var(--ds-line); }
 .utc-plot > li { display: flex; flex-direction: column; align-items: stretch; min-width: 0; position: relative; }
-.utc-value { font-family: var(--font-mono); font-size: 12px; color: var(--ink-3); text-align: center; margin-bottom: 4px; white-space: nowrap; overflow: hidden; }
+.utc-value { font-family: var(--ds-font-mono); font-size: 12px; color: var(--ds-ink-3); text-align: center; margin-bottom: 4px; white-space: nowrap; overflow: hidden; }
 .utc-track { height: 180px; display: flex; align-items: flex-end; }
 .utc-stack { width: 100%; display: flex; flex-direction: column-reverse; border-radius: 3px 3px 0 0; overflow: hidden; min-height: 0; }
 .utc-stack i { display: block; min-height: 1px; }
-.utc-missing { position: absolute; top: 0; right: 0; font-size: 12px; color: var(--ink-3); border: 1px dashed var(--ink-3); border-radius: 3px; padding: 0 2px; }
-.utc-day { position: absolute; top: calc(100% + 6px); left: 0; right: 0; text-align: center; font-size: 12px; color: var(--ink-3); white-space: nowrap; }
+.utc-missing { position: absolute; top: 0; right: 0; font-size: 12px; color: var(--ds-ink-3); border: 1px dashed var(--ds-ink-3); border-radius: 3px; padding: 0 2px; }
+.utc-day { position: absolute; top: calc(100% + 6px); left: 0; right: 0; text-align: center; font-size: 12px; color: var(--ds-ink-3); white-space: nowrap; }
 .utc-chart figcaption { margin-top: 22px; }
 
 /* A slice panel's own heading is the panel's; the inner duplicate title is not drawn. */
@@ -507,7 +507,7 @@ main.ev-root[data-destination="delegation-evidence"] .kv [data-field-tone="model
 .maple-cell .local-usage-savings > figure.local-chart { border: 0; background: none; box-shadow: none; padding: 0; margin: 0; }
 .maple-cell .local-usage-savings > figure.local-chart .local-chart-heading h3 { display: none; }
 .maple-cell .local-usage-savings > figure.local-chart .local-chart-heading { min-height: 0; margin: 0 0 6px; }
-.maple-cell .local-usage-savings > figure.local-chart .local-chart-heading p { margin: 0; font-size: 12px; color: var(--ink-3); }
+.maple-cell .local-usage-savings > figure.local-chart .local-chart-heading p { margin: 0; font-size: 12px; color: var(--ds-ink-3); }
 .maple-cell .local-usage-savings > figure.local-chart .local-chart-canvas { background: transparent; }
 .maple-cell .local-usage-savings > figure.local-chart .local-chart-legend { display: none; }
 .maple-cell .local-usage-savings select { width: auto; max-width: 260px; }
@@ -518,16 +518,16 @@ main.ev-root[data-destination="delegation-evidence"] .kv [data-field-tone="model
 .local-dashboard-page--workflow .local-run-summary-groups > .local-run-summary-group {
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--line);
+  border: 1px solid var(--ds-line);
   border-radius: 12px;
-  background: var(--panel);
+  background: var(--ds-surface);
   /* Nested panels stay flat, no shadow (OMN-21015 cards rule). */
   box-shadow: none;
 }
 .local-dashboard-page--workflow .local-run-summary-groups > .local-run-summary-group:first-child:has([data-field-tone="fail"]) {
-  --fact-accent: var(--field-fail);
+  --fact-accent: var(--ds-field-fail);
 }
-.local-dashboard-page--workflow .local-run-summary-group h3 { color: var(--fact-accent); font-family: var(--font-mono); font-weight: 500; letter-spacing: .04em; }
+.local-dashboard-page--workflow .local-run-summary-group h3 { color: var(--fact-accent); font-family: var(--ds-font-mono); font-weight: 500; letter-spacing: .04em; }
 .local-dashboard-page--workflow .local-run-summary-group:focus-visible {
   outline: 2px solid var(--fact-accent);
   outline-offset: 2px;
@@ -537,22 +537,22 @@ main.ev-root[data-destination="delegation-evidence"] .kv [data-field-tone="model
   padding: 10px 0 0;
   min-height: 58px;
   border-top: 1px solid transparent;
-  color: var(--ink-2);
+  color: var(--ds-ink-2);
   font-size: 12px;
   line-height: 1.45;
   visibility: hidden;
   opacity: 0;
 }
 .local-dashboard-page--workflow .local-run-summary-group:is(:hover, :focus, :focus-within) .local-run-summary-help {
-  border-top-color: color-mix(in srgb, var(--fact-accent) 30%, var(--line));
+  border-top-color: color-mix(in srgb, var(--fact-accent) 30%, var(--ds-line));
   visibility: visible;
   opacity: 1;
 }
 .local-dashboard-page--workflow .local-run-timeline > h3 {
   /* Part 27 round 4: the section label style of This week and the card labels (AC174), still a visible heading (AC152). */
   margin: 16px 0 10px;
-  color: var(--ink-2);
-  font-family: var(--font-mono);
+  color: var(--ds-ink-2);
+  font-family: var(--ds-font-mono);
   font-size: 12px;
   font-weight: 500;
   letter-spacing: .04em;
@@ -560,10 +560,10 @@ main.ev-root[data-destination="delegation-evidence"] .kv [data-field-tone="model
 }
 .maple-cell > .panel { flex: 1; margin: 0; }
 main.ev-root .maple-grid { margin-bottom: 16px; }
-main.ev-root details.ev-more { margin-top: 12px; border-top: 1px solid var(--line-2); padding-top: 8px; }
-main.ev-root details.ev-more > summary { cursor: pointer; font-size: 12px; font-weight: 500; color: var(--ink-3); list-style: none; display: inline-flex; gap: 6px; align-items: center; }
+main.ev-root details.ev-more { margin-top: 12px; border-top: 1px solid var(--ds-line-soft); padding-top: 8px; }
+main.ev-root details.ev-more > summary { cursor: pointer; font-size: 12px; font-weight: 500; color: var(--ds-ink-3); list-style: none; display: inline-flex; gap: 6px; align-items: center; }
 main.ev-root details.ev-more > summary::-webkit-details-marker { display: none; }
-main.ev-root details.ev-more > summary::before { content: '+'; display: inline-grid; place-items: center; width: 14px; height: 14px; border: 1px solid var(--line); border-radius: 3px; font-size: 12px; }
+main.ev-root details.ev-more > summary::before { content: '+'; display: inline-grid; place-items: center; width: 14px; height: 14px; border: 1px solid var(--ds-line); border-radius: 3px; font-size: 12px; }
 main.ev-root details.ev-more[open] > summary::before { content: '−'; }
 main.ev-root .ev-maple-grid { align-items: start; }
 /* Maple grid: API Keys' two short cards side by side. */
@@ -574,12 +574,12 @@ main.ev-root .ev-maple-grid { align-items: start; }
 
 /* Live review 2026-10-25: Overview headline tiles end with their day sparkline; the info icon sits on the label line. */
 :is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel { display: flex; flex-direction: column; }
-:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-spark { margin-top: auto; padding-top: 10px; color: var(--panel-accent, var(--ink-3)); }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-spark { margin-top: auto; padding-top: 10px; color: var(--panel-accent, var(--ds-ink-3)); }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > h2 { align-items: center; }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-basis-button,
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > h2 button { align-self: center; margin-top: 0; }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-basis-tip { top: 15px; right: 16px; }
-:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-info { display: inline-grid; place-items: center; width: 20px; height: 20px; padding: 0; color: var(--ink-3); }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-info { display: inline-grid; place-items: center; width: 20px; height: 20px; padding: 0; color: var(--ds-ink-3); }
 :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel { display: flex; flex-direction: column; gap: 6px; }
 :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel { align-items: stretch; text-align: left; min-height: 0; }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > h2 { justify-content: flex-start; }
@@ -587,8 +587,8 @@ main.ev-root .ev-maple-grid { align-items: start; }
 
 /* Part 27 AC167 (revision 4): headline cards are the plain neutral card; each keeps its identity colour (OMN-21308: amber
    spend, teal savings, blue calls, violet tokens) on its icon only. */
-:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel { background: var(--panel); }
-:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > h2 svg { color: var(--panel-accent, var(--ink-3)); }
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel { background: var(--ds-surface); }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > h2 svg { color: var(--panel-accent, var(--ds-ink-3)); }
 
 /* Separate headline cards with the one neutral border (part 27 AC167); the basis tooltip opens inside its own card so it
    is never cut off; the sparkline is labelled. */
@@ -596,13 +596,13 @@ main.ev-root .ev-maple-grid { align-items: start; }
 :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel,
 :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel:first-child,
 :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel:last-child {
-  border: 1px solid var(--line); border-radius: 12px; box-shadow: none;
+  border: 1px solid var(--ds-line); border-radius: 12px; box-shadow: none;
 }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-basis-tip { position: static; }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-info { position: absolute; top: 13px; right: 14px; }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip { top: 44px; left: 12px; right: 12px; width: auto; }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-spark { display: flex; flex-direction: column; gap: 4px; cursor: default; }
-:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-spark-label { font-size: 12px; color: var(--ink-3); }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-spark-label { font-size: 12px; color: var(--ds-ink-3); }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-figure-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-figure-row .local-token-directions { margin: 0; font-size: 12px; }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-spark { margin-top: 8px; }
@@ -613,28 +613,28 @@ main.ev-root .ev-maple-grid { align-items: start; }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel:hover .local-card-tooltip { visibility: visible; opacity: 1; transform: none; pointer-events: auto; }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip { top: 40px; z-index: 6; }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip .local-token-directions { display: flex; gap: 12px; margin: 0 0 8px; font-size: 12px; }
-:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip .local-card-spark { margin-top: 6px; color: var(--panel-accent, var(--ink-3)); }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip .local-card-spark { margin-top: 6px; color: var(--panel-accent, var(--ds-ink-3)); }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip { top: calc(100% + 6px); left: 0; right: 0; }
 
 /* Live review 2026-10-25 ("remove i"): no info icon on the headline cards; the whole card is the focus and hover target
    (the button stays for keyboard and screen readers, stretched invisibly over the card). */
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-info { inset: 0; top: 0; right: 0; width: 100%; height: 100%; border-radius: 10px; opacity: 0; cursor: default; }
-:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-info:focus-visible { opacity: 1; background: transparent; box-shadow: 0 0 0 2px var(--panel-accent, var(--ui-accent)) inset; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-info:focus-visible { opacity: 1; background: transparent; box-shadow: 0 0 0 2px var(--panel-accent, var(--ds-accent)) inset; }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-info:focus-visible svg { display: none; }
 /* The card-wide hover button must not swallow a card's own controls: a read-failure notice's "Technical details" and
    "Try again" were unclickable under it (found by the lab e2e run, refresh-ux, 2026-10-25). */
 :is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel :is([role="alert"], [role="status"], details, summary, a, button:not(.local-card-info)) { position: relative; z-index: 6; }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip { width: auto; padding: 8px 12px; }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip .local-dashboard-caption { margin: 0 0 2px; }
-:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip .local-dashboard-caption:first-child { color: var(--ink) !important; font-weight: 500; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip .local-dashboard-caption:first-child { color: var(--ds-ink) !important; font-weight: 500; }
 
 /* Live review 2026-10-25: the headline hover is a tooltip bubble above its card, pointing down at it, in the card's colour. */
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip {
   top: auto; bottom: calc(100% + 12px); left: 50%; right: auto; width: max-content; max-width: min(300px, 92%);
   padding: 9px 12px; border-radius: 10px; overflow: visible;
-  background: color-mix(in srgb, var(--panel-accent, var(--ink-3)) 12%, var(--panel));
-  border: 1px solid color-mix(in srgb, var(--panel-accent, var(--ink-3)) 55%, var(--line));
-  box-shadow: 0 6px 18px rgb(0 0 0 / 0.12);
+  background: color-mix(in srgb, var(--panel-accent, var(--ds-ink-3)) 12%, var(--ds-surface));
+  border: 1px solid color-mix(in srgb, var(--panel-accent, var(--ds-ink-3)) 55%, var(--ds-line));
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--ds-shadow-ink) 12%, transparent);
   transform: translate(-50%, 4px);
 }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip::after {
@@ -644,137 +644,137 @@ main.ev-root .ev-maple-grid { align-items: start; }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel:hover .local-card-tooltip,
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-basis-tip[data-open="true"] .local-card-tooltip,
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-basis-tip:focus-within .local-card-tooltip { transform: translate(-50%, 0); }
-:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip .local-dashboard-caption:first-child { color: color-mix(in srgb, var(--panel-accent, var(--ink)) 70%, var(--ink)) !important; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip .local-dashboard-caption:first-child { color: color-mix(in srgb, var(--panel-accent, var(--ds-ink)) 70%, var(--ds-ink)) !important; }
 /* The bubble opens below its card (above, the top bar cut it off), its arrow pointing up at the card. */
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip { bottom: auto; top: calc(100% + 12px); }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip::after {
   bottom: auto; top: -7px; border-right: 0; border-bottom: 0;
-  border-left: 1px solid color-mix(in srgb, var(--panel-accent, var(--ink-3)) 55%, var(--line));
-  border-top: 1px solid color-mix(in srgb, var(--panel-accent, var(--ink-3)) 55%, var(--line));
+  border-left: 1px solid color-mix(in srgb, var(--panel-accent, var(--ds-ink-3)) 55%, var(--ds-line));
+  border-top: 1px solid color-mix(in srgb, var(--panel-accent, var(--ds-ink-3)) 55%, var(--ds-line));
 }
 
 /* Live review 2026-10-25: Overview's window control: one compact segmented pill with a calendar icon, soft selection. */
 .local-dashboard-page .local-window-switch { gap: 0; margin: 0; padding: 0; border: 0; }
 .local-dashboard-page .local-window-switch .local-window-options {
   display: inline-flex; align-items: center; gap: 2px; height: 32px; padding: 2px 3px 2px 10px; box-sizing: border-box;
-  border: 1px solid var(--line); border-radius: 8px; background: var(--panel);
+  border: 1px solid var(--ds-line); border-radius: 8px; background: var(--ds-surface);
 }
-.local-dashboard-page .local-window-switch .local-window-icon { color: var(--ink-3); margin-right: 6px; flex: none; }
+.local-dashboard-page .local-window-switch .local-window-icon { color: var(--ds-ink-3); margin-right: 6px; flex: none; }
 .local-dashboard-page .local-window-switch .local-window-options button {
-  height: 26px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: var(--ink-2);
+  height: 26px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: var(--ds-ink-2);
   font-size: 13px; font-weight: 500; display: inline-flex; align-items: baseline; gap: 4px; cursor: pointer; box-shadow: none;
 }
-.local-dashboard-page .local-window-switch .local-window-options button small { font-size: 12px; font-weight: 400; color: var(--ink-3); }
-.local-dashboard-page .local-window-switch .local-window-options button:hover { color: var(--ink); background: var(--panel-2); }
+.local-dashboard-page .local-window-switch .local-window-options button small { font-size: 12px; font-weight: 400; color: var(--ds-ink-3); }
+.local-dashboard-page .local-window-switch .local-window-options button:hover { color: var(--ds-ink); background: var(--ds-surface-2); }
 .local-dashboard-page .local-window-switch .local-window-options button[aria-checked="true"] {
-  background: color-mix(in srgb, var(--ui-accent) 14%, var(--panel)); color: var(--ink);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ui-accent) 45%, var(--line));
+  background: color-mix(in srgb, var(--ds-accent) 14%, var(--ds-surface)); color: var(--ds-ink);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ds-accent) 45%, var(--ds-line));
 }
-.local-dashboard-page .local-window-switch .local-window-options button:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 1px; }
+.local-dashboard-page .local-window-switch .local-window-options button:focus-visible { outline: 2px solid var(--ds-accent); outline-offset: 1px; }
 /* The options keep the 40px touch target; the pill fits around them. */
 .local-dashboard-page .local-window-switch .local-window-options { height: auto; padding: 0 2px 0 10px; }
 .local-dashboard-page .local-window-switch .local-window-options button { height: 34px; min-height: 40px; margin: 0; }
-.local-dashboard-page .local-window-switch .local-window-options button[aria-checked="true"] { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ui-accent) 45%, var(--line)); }
+.local-dashboard-page .local-window-switch .local-window-options button[aria-checked="true"] { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ds-accent) 45%, var(--ds-line)); }
 .local-dashboard-page .local-window-switch .local-window-options button { align-items: center; justify-content: center; line-height: 1; }
 
 /* Live review 2026-10-25 ("pick a day"): the calendar opens a list of the served UTC days. */
 .local-dashboard-page .local-window-switch .local-window-options { padding-left: 3px; }
 .local-dashboard-page .local-window-switch .local-window-radios { display: inline-flex; gap: 2px; }
 .local-dashboard-page .local-day-picker { position: relative; display: inline-flex; }
-.local-dashboard-page .local-window-switch .local-window-options .local-day-button { color: var(--ink-3); gap: 6px; padding: 0 10px; }
+.local-dashboard-page .local-window-switch .local-window-options .local-day-button { color: var(--ds-ink-3); gap: 6px; padding: 0 10px; }
 .local-dashboard-page .local-window-switch .local-window-options .local-day-button[aria-pressed="true"] {
-  color: var(--ink); background: color-mix(in srgb, var(--ui-accent) 14%, var(--panel));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ui-accent) 45%, var(--line));
+  color: var(--ds-ink); background: color-mix(in srgb, var(--ds-accent) 14%, var(--ds-surface));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ds-accent) 45%, var(--ds-line));
 }
 .local-dashboard-page .local-day-list {
   position: absolute; top: calc(100% + 6px); right: 0; z-index: 20; margin: 0; padding: 4px; list-style: none;
-  min-width: 170px; max-height: 300px; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px;
-  background: var(--panel); box-shadow: 0 8px 24px rgb(0 0 0 / 0.14);
+  min-width: 170px; max-height: 300px; overflow-y: auto; border: 1px solid var(--ds-line); border-radius: 8px;
+  background: var(--ds-surface); box-shadow: 0 8px 24px color-mix(in srgb, var(--ds-shadow-ink) 14%, transparent);
 }
 .local-dashboard-page .local-day-list > li {
   display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 36px; padding: 0 10px;
-  border-radius: 6px; font-size: 13px; color: var(--ink); cursor: pointer;
+  border-radius: 6px; font-size: 13px; color: var(--ds-ink); cursor: pointer;
 }
-.local-dashboard-page .local-day-list > li small { font-family: var(--font-mono); font-size: 12px; color: var(--ink-3); }
-.local-dashboard-page .local-day-list > li:is(:hover, :focus-visible) { background: var(--panel-2); outline: none; }
-.local-dashboard-page .local-day-list > li[aria-selected="true"] { background: color-mix(in srgb, var(--ui-accent) 14%, var(--panel)); }
+.local-dashboard-page .local-day-list > li small { font-family: var(--ds-font-mono); font-size: 12px; color: var(--ds-ink-3); }
+.local-dashboard-page .local-day-list > li:is(:hover, :focus-visible) { background: var(--ds-surface-2); outline: none; }
+.local-dashboard-page .local-day-list > li[aria-selected="true"] { background: color-mix(in srgb, var(--ds-accent) 14%, var(--ds-surface)); }
 
 /* Live review 2026-10-25: the chart window presets sit in the header beside the cards' window, each labelled. */
 .local-dashboard-page .local-window-switch { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
-.local-dashboard-page .local-window-label { font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-3); }
+.local-dashboard-page .local-window-label { font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--ds-ink-3); }
 .local-dashboard-page .local-window-label + .local-visually-hidden + .local-window-options,
 .local-dashboard-page .local-chart-window + .local-window-label { margin-left: 8px; }
-.local-dashboard-page .local-chart-window { display: inline-flex; height: 42px; box-sizing: border-box; padding: 0 2px; align-items: center; gap: 2px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); overflow: visible; }
+.local-dashboard-page .local-chart-window { display: inline-flex; height: 42px; box-sizing: border-box; padding: 0 2px; align-items: center; gap: 2px; border: 1px solid var(--ds-line); border-radius: 8px; background: var(--ds-surface); overflow: visible; }
 .local-dashboard-page .local-chart-window > button {
-  height: 34px; min-height: 40px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: var(--ink-2);
+  height: 34px; min-height: 40px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: var(--ds-ink-2);
   font-size: 13px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center;
 }
-.local-dashboard-page .local-chart-window > button:hover { background: var(--panel-2); color: var(--ink); }
+.local-dashboard-page .local-chart-window > button:hover { background: var(--ds-surface-2); color: var(--ds-ink); }
 .local-dashboard-page .local-chart-window > button[aria-pressed="true"] {
-  background: color-mix(in srgb, var(--ui-accent) 14%, var(--panel)); color: var(--ink);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ui-accent) 45%, var(--line));
+  background: color-mix(in srgb, var(--ds-accent) 14%, var(--ds-surface)); color: var(--ds-ink);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ds-accent) 45%, var(--ds-line));
 }
 .local-dashboard-page .local-day-pop {
   position: absolute; top: calc(100% + 6px); right: 0; z-index: 20; min-width: 210px; padding: 8px;
-  border: 1px solid var(--line); border-radius: 8px; background: var(--panel); box-shadow: 0 8px 24px rgb(0 0 0 / 0.14);
+  border: 1px solid var(--ds-line); border-radius: 8px; background: var(--ds-surface); box-shadow: 0 8px 24px color-mix(in srgb, var(--ds-shadow-ink) 14%, transparent);
 }
 .local-dashboard-page .local-day-pop .local-day-list { position: static; box-shadow: none; border: 0; padding: 4px 0 0; max-height: 240px; min-width: 0; }
-.local-dashboard-page .local-day-any { display: flex; flex-direction: column; gap: 4px; padding-bottom: 8px; border-bottom: 1px solid var(--line-2); font-size: 12px; color: var(--ink-3); }
-.local-dashboard-page .local-day-any input { height: 36px; min-height: 36px; padding: 0 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--ink); font-size: 13px; }
+.local-dashboard-page .local-day-any { display: flex; flex-direction: column; gap: 4px; padding-bottom: 8px; border-bottom: 1px solid var(--ds-line-soft); font-size: 12px; color: var(--ds-ink-3); }
+.local-dashboard-page .local-day-any input { height: 36px; min-height: 36px; padding: 0 8px; border: 1px solid var(--ds-line); border-radius: 6px; background: var(--ds-surface); color: var(--ds-ink); font-size: 13px; }
 .local-dashboard-page .local-window-switch .ins-range-presets.local-chart-window > button { border: 0; border-right: 0; outline: 0; }
-.local-dashboard-page .local-window-switch .ins-range-presets.local-chart-window > button[aria-pressed="true"] { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ui-accent) 45%, var(--line)); }
+.local-dashboard-page .local-window-switch .ins-range-presets.local-chart-window > button[aria-pressed="true"] { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ds-accent) 45%, var(--ds-line)); }
 
 /* Live review 2026-10-25 ("open the full calendar"): a month grid; dots mark days with runs, today is outlined. */
 .local-dashboard-page .local-calendar { width: 264px; padding: 10px; }
 .local-dashboard-page .local-calendar-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
-.local-dashboard-page .local-calendar-head h3 { margin: 0; font-size: 13px; font-weight: 600; color: var(--ink); }
+.local-dashboard-page .local-calendar-head h3 { margin: 0; font-size: 13px; font-weight: 600; color: var(--ds-ink); }
 .local-dashboard-page .local-calendar-head button {
   display: inline-grid; place-items: center; width: 32px; height: 32px; min-height: 32px; padding: 0;
-  border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--ink-2); cursor: pointer;
+  border: 1px solid var(--ds-line); border-radius: 6px; background: var(--ds-surface); color: var(--ds-ink-2); cursor: pointer;
 }
 .local-dashboard-page .local-calendar-head button:disabled { opacity: .4; cursor: default; }
 .local-dashboard-page .local-calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
-.local-dashboard-page .local-calendar-weekday { font-size: 12px; color: var(--ink-3); text-align: center; padding: 4px 0; }
+.local-dashboard-page .local-calendar-weekday { font-size: 12px; color: var(--ds-ink-3); text-align: center; padding: 4px 0; }
 .local-dashboard-page .local-calendar-day {
   position: relative; height: 32px; min-height: 32px; padding: 0; border: 0; border-radius: 6px; background: transparent;
-  font-size: 13px; color: var(--ink); cursor: pointer; font-variant-numeric: tabular-nums;
+  font-size: 13px; color: var(--ds-ink); cursor: pointer; font-variant-numeric: tabular-nums;
 }
-.local-dashboard-page .local-calendar-day:hover:not(:disabled) { background: var(--panel-2); }
-.local-dashboard-page .local-calendar-day:disabled { color: var(--ink-3); opacity: .45; cursor: default; }
+.local-dashboard-page .local-calendar-day:hover:not(:disabled) { background: var(--ds-surface-2); }
+.local-dashboard-page .local-calendar-day:disabled { color: var(--ds-ink-3); opacity: .45; cursor: default; }
 .local-dashboard-page .local-calendar-day[data-served="true"]::after {
   content: ''; position: absolute; left: 50%; bottom: 4px; width: 4px; height: 4px; border-radius: 50%;
-  background: var(--ui-accent); transform: translateX(-50%);
+  background: var(--ds-accent); transform: translateX(-50%);
 }
-.local-dashboard-page .local-calendar-day[data-today="true"] { box-shadow: inset 0 0 0 1px var(--line); font-weight: 600; }
-.local-dashboard-page .local-calendar-day[aria-pressed="true"] { background: var(--ui-accent); color: #fff; }
-.local-dashboard-page .local-calendar-day[aria-pressed="true"]::after { background: #fff; }
-.local-dashboard-page .local-calendar-day:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 1px; }
-.local-dashboard-page .local-calendar-key { margin: 8px 0 0; font-size: 12px; color: var(--ink-3); display: flex; align-items: center; gap: 6px; }
-.local-dashboard-page .local-calendar-key i { width: 6px; height: 6px; border-radius: 50%; background: var(--ui-accent); display: inline-block; }
+.local-dashboard-page .local-calendar-day[data-today="true"] { box-shadow: inset 0 0 0 1px var(--ds-line); font-weight: 600; }
+.local-dashboard-page .local-calendar-day[aria-pressed="true"] { background: var(--ds-accent); color: var(--ds-page); }
+.local-dashboard-page .local-calendar-day[aria-pressed="true"]::after { background: var(--ds-page); }
+.local-dashboard-page .local-calendar-day:focus-visible { outline: 2px solid var(--ds-accent); outline-offset: 1px; }
+.local-dashboard-page .local-calendar-key { margin: 8px 0 0; font-size: 12px; color: var(--ds-ink-3); display: flex; align-items: center; gap: 6px; }
+.local-dashboard-page .local-calendar-key i { width: 6px; height: 6px; border-radius: 50%; background: var(--ds-accent); display: inline-block; }
 .local-dashboard-page .local-day-pop.local-calendar { left: 0; right: auto; }
 /* The calendar fits its seven columns (day cells never overflow) and shades the active window. */
 .local-dashboard-page .local-day-pop.local-calendar { width: 300px; box-sizing: border-box; padding: 12px; }
 .local-dashboard-page .local-calendar-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
 .local-dashboard-page .local-calendar .local-calendar-day { min-width: 0; width: 100%; }
-.local-dashboard-page .local-calendar-day[data-in-window="true"] { background: color-mix(in srgb, var(--ui-accent) 14%, var(--panel)); border-radius: 0; }
+.local-dashboard-page .local-calendar-day[data-in-window="true"] { background: color-mix(in srgb, var(--ds-accent) 14%, var(--ds-surface)); border-radius: 0; }
 .local-dashboard-page .local-calendar-day[data-in-window="true"][data-window-edge="true"] { border-radius: 6px; }
 .local-dashboard-page .local-calendar-day[aria-pressed="true"],
-.local-dashboard-page .local-calendar-day[data-in-window="true"][data-window-edge="true"] { background: var(--ui-accent); color: #fff; }
-.local-dashboard-page .local-calendar-day[data-window-edge="true"]::after { background: #fff; }
+.local-dashboard-page .local-calendar-day[data-in-window="true"][data-window-edge="true"] { background: var(--ds-accent); color: var(--ds-page); }
+.local-dashboard-page .local-calendar-day[data-window-edge="true"]::after { background: var(--ds-page); }
 /* The window pill's button rules also match the calendar's day buttons; these restore the calendar's own look. */
 .local-dashboard-page .local-window-switch .local-window-options .local-calendar button.local-calendar-day {
-  height: 32px; min-height: 32px; padding: 0; border-radius: 6px; background: transparent; color: var(--ink); font-size: 13px; font-weight: 400;
+  height: 32px; min-height: 32px; padding: 0; border-radius: 6px; background: transparent; color: var(--ds-ink); font-size: 13px; font-weight: 400;
   box-shadow: none; display: block; justify-content: initial;
 }
-.local-dashboard-page .local-window-switch .local-window-options .local-calendar button.local-calendar-day:disabled { color: var(--ink-3); }
-.local-dashboard-page .local-window-switch .local-window-options .local-calendar button.local-calendar-day[data-today="true"] { box-shadow: inset 0 0 0 1px var(--line); font-weight: 600; }
+.local-dashboard-page .local-window-switch .local-window-options .local-calendar button.local-calendar-day:disabled { color: var(--ds-ink-3); }
+.local-dashboard-page .local-window-switch .local-window-options .local-calendar button.local-calendar-day[data-today="true"] { box-shadow: inset 0 0 0 1px var(--ds-line); font-weight: 600; }
 .local-dashboard-page .local-window-switch .local-window-options .local-calendar button.local-calendar-day[data-in-window="true"] {
-  background: color-mix(in srgb, var(--ui-accent) 16%, var(--panel)); border-radius: 0;
+  background: color-mix(in srgb, var(--ds-accent) 16%, var(--ds-surface)); border-radius: 0;
 }
 .local-dashboard-page .local-window-switch .local-window-options .local-calendar button.local-calendar-day:is([aria-pressed="true"], [data-window-edge="true"][data-in-window="true"]) {
-  background: var(--ui-accent); color: #fff; border-radius: 6px; font-weight: 600;
+  background: var(--ds-accent); color: var(--ds-page); border-radius: 6px; font-weight: 600;
 }
-.local-dashboard-page .local-window-switch .local-window-options .local-calendar button.local-calendar-day:hover:not(:disabled):not([aria-pressed="true"]):not([data-window-edge="true"]) { background: var(--panel-2); }
+.local-dashboard-page .local-window-switch .local-window-options .local-calendar button.local-calendar-day:hover:not(:disabled):not([aria-pressed="true"]):not([data-window-edge="true"]) { background: var(--ds-surface-2); }
 .local-dashboard-page .local-window-switch .local-window-options .local-calendar-head button { height: 32px; min-height: 32px; width: 32px; padding: 0; justify-content: center; }
 
 /* E2E triage fixes (2026-10-25). */
@@ -801,7 +801,7 @@ main.ev-root .ev-maple-grid { align-items: start; }
 .local-dashboard-page .local-window-switch .local-window-options .local-calendar button.local-calendar-day { height: 40px; min-height: 40px; }
 
 /* ── Live review 2026-10-25 ("all graphs this style"): grouped dotted bars, value above, day below, legend under ── */
-.ins-bars.gdb-plot { display: flex; align-items: stretch; gap: 6px; height: 240px; padding: 0; border-bottom: 1px solid var(--line); margin-bottom: 26px; }
+.ins-bars.gdb-plot { display: flex; align-items: stretch; gap: 6px; height: 240px; padding: 0; border-bottom: 1px solid var(--ds-line); margin-bottom: 26px; }
 .ins-bars.gdb-plot > .ins-bar.gdb-day {
   flex: 1 1 0; min-width: 0; height: 100%; padding: 0; border: 0; background: none; position: relative;
   display: flex; flex-direction: column; justify-content: flex-end; cursor: default; box-shadow: none;
@@ -809,27 +809,27 @@ main.ev-root .ev-maple-grid { align-items: start; }
 .ins-bars.gdb-plot > .ins-bar.gdb-day[data-dim="true"] { opacity: .45; }
 .gdb-group { display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 100%; }
 .gdb-col { flex: 1 1 0; max-width: 28px; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; min-width: 0; }
-.gdb-val { font-family: var(--font-mono); font-weight: 500; font-size: 12px; color: var(--ink); text-align: center; line-height: 1; margin-bottom: 4px; white-space: nowrap; }
+.gdb-val { font-family: var(--ds-font-mono); font-weight: 500; font-size: 12px; color: var(--ds-ink); text-align: center; line-height: 1; margin-bottom: 4px; white-space: nowrap; }
 .gdb-bar.ins-seg {
   display: block; width: 100%; min-height: 0; border-radius: 0; animation: none; background: none !important;
 }
-.gdb-day-label { position: absolute; top: calc(100% + 6px); left: -4px; right: -4px; text-align: center; font-size: 12px; color: var(--ink-3); white-space: nowrap; }
+.gdb-day-label { position: absolute; top: calc(100% + 6px); left: -4px; right: -4px; text-align: center; font-size: 12px; color: var(--ds-ink-3); white-space: nowrap; }
 .gdb-legend { display: flex; flex-wrap: wrap; gap: 16px; margin: 4px 0 0; padding: 0; list-style: none; }
 .gdb-legend .ins-toggle { border: 0; background: none; box-shadow: none; padding: 0 2px; font-size: 13px; min-height: 32px; }
 .gdb-legend .ins-toggle[aria-pressed="false"] { opacity: .45; }
-.ins-token-legend.gdb-legend li { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-2); }
+.ins-token-legend.gdb-legend li { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ds-ink-2); }
 .ins-token-legend.gdb-legend li i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
 .ins-section--slice .ins-readout { min-height: 18px; }
 
 /* Ranked bars that stay upright in a narrow panel (Tier mix, Usage's model charts). */
 @container (max-width: 560px) {
-  .rb-chart.rb-chart--vertical .rb-plot { display: grid; flex-direction: row; align-items: end; border-left: 0; border-bottom: 1px solid var(--line); margin-bottom: calc(2.6em + 10px); gap: 10px; }
+  .rb-chart.rb-chart--vertical .rb-plot { display: grid; flex-direction: row; align-items: end; border-left: 0; border-bottom: 1px solid var(--ds-line); margin-bottom: calc(2.6em + 10px); gap: 10px; }
   .rb-chart.rb-chart--vertical .rb-plot > li { display: flex; flex-direction: column; grid-template-columns: none; grid-template-areas: none; }
   .rb-chart.rb-chart--vertical .rb-name { position: absolute; top: 100%; margin: 8px 0 0; text-align: center; -webkit-line-clamp: 2; }
   .rb-chart.rb-chart--vertical .rb-value { margin: 0 0 6px; text-align: center; }
   .rb-chart.rb-chart--vertical .rb-track { height: 180px; align-items: flex-end; }
   .rb-chart.rb-chart--vertical .rb-bar { width: 100%; height: var(--rb-size, 0); }
-  .rb-chart.rb-chart--vertical .rb-bar[data-pattern="outline"] { width: 100%; height: 14px; border: 1px dashed var(--ink-3); border-bottom: 0; }
+  .rb-chart.rb-chart--vertical .rb-bar[data-pattern="outline"] { width: 100%; height: 14px; border: 1px dashed var(--ds-ink-3); border-bottom: 0; }
 }
 
 .gdb-col { max-width: 40px; } .gdb-group { gap: 4px; padding: 0 2px; }
@@ -841,7 +841,7 @@ main.ev-root .ev-maple-grid { align-items: start; }
 .maple-cell--slim-5 { grid-column: span 5; } .maple-cell--slim-3 { grid-column: span 3; } .maple-cell--slim-4 { grid-column: span 4; }
 @media (max-width: 1100px) { .maple-cell--slim-5, .maple-cell--slim-3, .maple-cell--slim-4 { grid-column: 1 / -1; } }
 .maple-grid > [class*="maple-cell--slim"] > .local-dashboard-panel { padding: 10px 14px; }
-.maple-grid > [class*="maple-cell--slim"] > .local-dashboard-panel > h2 { margin-bottom: 6px; font-family: var(--font-mono); font-size: 12px; font-weight: 400; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-3); }
+.maple-grid > [class*="maple-cell--slim"] > .local-dashboard-panel > h2 { margin-bottom: 6px; font-family: var(--ds-font-mono); font-size: 12px; font-weight: 400; letter-spacing: .04em; text-transform: uppercase; color: var(--ds-ink-3); }
 .maple-grid > [class*="maple-cell--slim"] .local-dashboard-asof { display: none; }
 .local-newest-run { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 0; font-size: 13px; }
 .local-newest-run a { margin-left: auto; font-size: 12px; display: inline-flex; align-items: center; gap: 2px; }
@@ -854,8 +854,8 @@ main.ev-root .ev-maple-grid { align-items: start; }
 .overview-slim-environment details.local-more { margin-top: 4px; padding-top: 4px; border-top: 0; }
 .rb-chart.rb-chart--vertical .rb-value { overflow: visible; text-overflow: clip; white-space: nowrap; }
 /* Delegation Quality: the fifth headline card, in the pass colour (Quality's teal would repeat Savings). */
-:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel[data-component="overview-quality"] { --panel-accent: var(--field-pass); }
-.local-dashboard-panel[data-component="status-environment"] { --panel-accent: var(--field-host); }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel[data-component="overview-quality"] { --panel-accent: var(--ds-field-pass); }
+.local-dashboard-panel[data-component="status-environment"] { --panel-accent: var(--ds-field-host); }
 /* Live review 2026-10-25 ("all bar graphs should have full cards"), on every page since part 15: upright bars fill their
    card, each bar 72% of its column and at most 120px wide (live review 2026-10-26: a three-bar chart draws no slabs). */
 .rb-chart.rb-chart--vertical .rb-plot { grid-template-columns: repeat(var(--rb-count), minmax(0, 1fr)); justify-content: stretch; gap: 24px; }
@@ -883,19 +883,19 @@ main.ev-root .ev-maple-grid { align-items: start; }
 }
 /* Found by the lab e2e run (page-polish): with all 18 fields the table scrolled 36px sideways while the sort headers
    kept their text on one line; they now wrap between words like every other header. */
-.local-dashboard-page th > .local-sort-header:hover, .local-dashboard-page th > .local-sort-header[data-sort-active] { color: var(--ink-1, var(--text-primary)); }
-.local-dashboard-page th > .local-sort-header:focus-visible { outline: 2px solid var(--text-secondary); outline-offset: 2px; border-radius: 4px; }
+.local-dashboard-page th > .local-sort-header:hover, .local-dashboard-page th > .local-sort-header[data-sort-active] { color: var(--ds-ink); }
+.local-dashboard-page th > .local-sort-header:focus-visible { outline: 2px solid var(--ds-ink-2); outline-offset: 2px; border-radius: 4px; }
 .local-dashboard-page .local-recent-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .local-dashboard-page .local-runs-export { display: inline-flex; gap: 8px; }
 .local-dashboard-page .local-runs-export button {
-  min-height: 40px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel);
-  color: var(--ink-2); font: inherit; font-size: 13px; cursor: pointer;
+  min-height: 40px; padding: 0 12px; border: 1px solid var(--ds-line); border-radius: 8px; background: var(--ds-surface);
+  color: var(--ds-ink-2); font: inherit; font-size: 13px; cursor: pointer;
 }
-.local-dashboard-page .local-runs-export button:hover { border-color: var(--ink-3); color: var(--ink-1, var(--text-primary)); }
-.local-dashboard-page .local-runs-export button:focus-visible { outline: 2px solid var(--text-secondary); outline-offset: 2px; }
+.local-dashboard-page .local-runs-export button:hover { border-color: var(--ds-ink-3); color: var(--ds-ink); }
+.local-dashboard-page .local-runs-export button:focus-visible { outline: 2px solid var(--ds-ink-2); outline-offset: 2px; }
 
 /* AC77: the served read time sits just before Refresh in the top bar, muted, never wrapping. */
-.topbar-updated { font-size: 12px; color: var(--ink-3, var(--text-secondary)); white-space: nowrap; margin-right: 4px; font-variant-numeric: tabular-nums; }
+.topbar-updated { font-size: 12px; color: var(--ds-ink-3); white-space: nowrap; margin-right: 4px; font-variant-numeric: tabular-nums; }
 @media (max-width: 480px) { .topbar-updated { display: none; } }
 
 /* AC79: Evidence's scope line under its title. */
@@ -915,18 +915,12 @@ main.ev-root .ev-maple-grid { align-items: start; }
    page-scoped tokens in dashboard-cards.css. */
 :root .app:has(.local-dashboard-page),
 :root .app:has(.ev-root[data-destination="delegation-evidence"]) {
-  /* OMN-21970 (Lakshman 2026-11-03, "01 + 20 do it"): the shell names carry the 01 Obsidian / 20 Daylight values, the
-     same as editorial.css's --ed-* set, so an element styled through either name draws the one look (the earlier warm
-     paper set left #555 icons, a #111 collapsed sidebar and an orange focus ring beside the new look). */
-  --bg: #ffffff; --panel: #fafafa; --panel-2: #f0f0f0; --line: #e5e5e5; --line-2: #ededed;
-  --sidebar: #ffffff; --sidebar-line: #e5e5e5; --sidebar-hover: #f0f0f0;
-  --ink: #0a0a0a; --ink-2: #262626; --ink-3: #525252; --ui-accent: #0a0a0a;
-}
-:root[data-theme="dark"] .app:has(.local-dashboard-page),
-:root[data-theme="dark"] .app:has(.ev-root[data-destination="delegation-evidence"]) {
-  --bg: #0a0a0a; --panel: #141414; --panel-2: #1f1f1f; --line: #262626; --line-2: #1f1f1f;
-  --sidebar: #0a0a0a; --sidebar-line: #262626; --sidebar-hover: #1f1f1f;
-  --ink: #f5f5f5; --ink-2: #d4d4d4; --ink-3: #a3a3a3; --ui-accent: #f5f5f5;
+  /* OMN-21970 (Lakshman 2026-11-03, "01 + 20 do it"): the shell names carry the 01 Obsidian / 20 Daylight values, so an
+     element styled through either name draws the one look. OMN-22168: they alias the design-system tokens, which hold
+     those values for both themes, so no colour literal lives here. */
+  --bg: var(--ds-page); --panel: var(--ds-surface); --panel-2: var(--ds-surface-2); --line: var(--ds-line); --line-2: var(--ds-line-soft);
+  --sidebar: var(--ds-page); --sidebar-line: var(--ds-line); --sidebar-hover: var(--ds-surface-2);
+  --ink: var(--ds-ink); --ink-2: var(--ds-ink-2); --ink-3: var(--ds-ink-3); --ui-accent: var(--ds-accent);
 }
 /* Part 27 AC168: the active item is the neutral raised surface alone; the destination marker light theme already hides
    goes in dark too. */
@@ -952,7 +946,7 @@ main.ev-root .ev-maple-grid { align-items: start; }
 }
 /* The day's total shows on hover or keyboard focus only, as on every other bar chart (live review 2026-10-26). */
 .utc-value { visibility: hidden; }
-.utc-plot > li:is(:hover, :focus-visible) .utc-value { visibility: visible; color: var(--ink); }
+.utc-plot > li:is(:hover, :focus-visible) .utc-value { visibility: visible; color: var(--ds-ink); }
 /* Evidence's pass/fail strip: the same hatch, each part in its field colour, tall enough to read as hatching (scoped to win
    over event-dash's .ev-root .bar-track / .ev-root .ev-qg-bar). */
 main.ev-root .bar-track.ev-qg-bar { height: 14px; background: none; gap: 2px; }
@@ -967,31 +961,31 @@ main.ev-root .bar-track.ev-qg-bar { height: 14px; background: none; gap: 2px; }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel > .local-dashboard-metric { margin-top: auto; }
 /* Part 17: grouped bars drawn as a list (GroupedBars), in the day-chart look; long model names wrap under their column. */
 ul.gdb-plot--list { list-style: none; margin: 0 0 26px; }
-.gdb-plot--list > .ins-bar.gdb-day:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
+.gdb-plot--list > .ins-bar.gdb-day:focus-visible { outline: 2px solid var(--ds-accent); outline-offset: 2px; }
 ul.gdb-plot--names { margin-bottom: 48px; }
 .gdb-plot--names .gdb-day-label { white-space: normal; line-height: 1.25; overflow-wrap: anywhere; }
 /* Part 18 AC124: no card inside a card. A chart inside a panel draws no box of its own; its title row is the Overview
    one (icon, then a neutral title). */
 .local-dashboard-panel .local-chart:not(.ins-card) { border: 0; padding: 0; border-radius: 0; background: none; box-shadow: none; }
 .local-chart-heading { align-items: flex-start; gap: 8px; }
-.local-chart-heading > svg { flex: none; margin-top: 1px; color: var(--panel-accent, var(--ink-2)); }
-.local-chart-heading h3 { font-size: 13px; font-weight: 500; color: var(--ink); }
+.local-chart-heading > svg { flex: none; margin-top: 1px; color: var(--panel-accent, var(--ds-ink-2)); }
+.local-chart-heading h3 { font-size: 13px; font-weight: 500; color: var(--ds-ink); }
 
 /* Part 18 AC124 on Runs: chart titles are neutral, as on Overview (the icon carries the colour); cause names are whole;
    each analysis chart has its own row inside the panel, with no card inside the card. */
-.local-dashboard-page .ins-card .ins-title { color: var(--ink); font-size: 13px; }
+.local-dashboard-page .ins-card .ins-title { color: var(--ds-ink); font-size: 13px; }
 .local-dashboard-page .ins-list-name { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
 .local-dashboard-page--runs .overview-chart-row { grid-template-columns: minmax(0, 1fr); }
 /* The panel keeps its surface like every panel; its charts draw no box of their own, one per row under a hairline. */
-.local-dashboard-page--runs .local-dashboard-panel[data-component="runs-insights"] .ins-card { border: 0; border-top: 1px solid var(--line); border-radius: 0; background: none; box-shadow: none; padding: 16px 0 4px; }
+.local-dashboard-page--runs .local-dashboard-panel[data-component="runs-insights"] .ins-card { border: 0; border-top: 1px solid var(--ds-line); border-radius: 0; background: none; box-shadow: none; padding: 16px 0 4px; }
 .local-run-charts-panel .local-run-charts { grid-template-columns: minmax(0, 1fr); }
 .local-run-charts-slot:empty { display: none; }
 /* "This week": each day's passed and failed runs, hatched in their colours like every bar (part 16 AC97). */
 .local-runs-week-bar { height: 12px; background: none; gap: 2px; border-radius: 0; }
 .local-runs-week-bar > i { border-top: 2px solid currentColor; background: repeating-linear-gradient(135deg, currentColor 0 1.5px, transparent 1.5px 6px) !important; }
-.local-runs-week-bar > i[data-outcome="passed"] { color: var(--ins-pass); }
-.local-runs-week-bar > i[data-outcome="failed"] { color: var(--ins-fail); }
-.local-runs-week-bar > i[data-outcome="unknown"] { color: var(--ins-unknown); }
+.local-runs-week-bar > i[data-outcome="passed"] { color: var(--ds-ok); }
+.local-runs-week-bar > i[data-outcome="failed"] { color: var(--ds-bad); }
+.local-runs-week-bar > i[data-outcome="unknown"] { color: var(--ds-chart-unknown); }
 /* Part 18 AC124: an open page-level "More …" is not a card around cards; its panels sit on the page as Overview's do. */
 .local-dashboard-page details.local-more--page[open] { border-color: transparent; background: none; padding-left: 0; padding-right: 0; }
 .local-dashboard-page details.local-more--page[open] > summary { padding: 0 0 8px; }
@@ -1004,7 +998,7 @@ ul.gdb-plot--names { margin-bottom: 48px; }
 .local-dashboard-page .ins-list-row--plain > .ins-list-seen { grid-column: 1 / -1; }
 /* Part 18 AC128: provider names read as names (one case, the body colour), not as column headers; the merged table
    fits the panel, its long command and model cells wrapping. */
-.local-model-keys tbody th[scope="row"] { text-transform: none; letter-spacing: 0; font-weight: 600; color: var(--ink); background: none; font-size: 13px; }
+.local-model-keys tbody th[scope="row"] { text-transform: none; letter-spacing: 0; font-weight: 600; color: var(--ds-ink); background: none; font-size: 13px; }
 .local-model-keys table { table-layout: auto; width: 100%; }
 .local-model-keys td, .local-model-keys th { white-space: normal; overflow-wrap: normal; }
 /* Identifiers stay whole on desktop (the column takes their width); words wrap at their spaces. */
@@ -1020,9 +1014,9 @@ ul.gdb-plot--names { margin-bottom: 48px; }
   .local-model-keys table { min-width: 0 !important; width: 100%; }
   .local-model-keys thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .local-model-keys tbody { display: grid; gap: 12px; }
-  .local-model-keys tbody tr { display: grid; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+  .local-model-keys tbody tr { display: grid; padding: 12px; border: 1px solid var(--ds-line); border-radius: 12px; background: var(--ds-surface); }
   .local-model-keys tbody :is(td, th[scope="row"]) { display: block; min-width: 0; padding: 7px 0; border: 0; white-space: normal; overflow-wrap: anywhere; }
-  .local-model-keys tbody td::before { content: attr(data-label); display: block; margin-bottom: 3px; font-size: 12px; color: var(--text-secondary); }
+  .local-model-keys tbody td::before { content: attr(data-label); display: block; margin-bottom: 3px; font-size: 12px; color: var(--ds-ink-2); }
 }
 
 /* Review fix (AC109): the tooltip's wrapper takes no place in the card's flow, so a card with details and one without keep
@@ -1069,13 +1063,13 @@ ul.gdb-plot--names { margin-bottom: 48px; }
 /* An upright bar chart under 400px wide runs sideways (name and value above each bar), as the 'auto' charts do under
    560px, so six long model names fit a phone. */
 @container (max-width: 400px) {
-  :is(.local-dashboard-page, .ev-root) .rb-chart.rb-chart--vertical .rb-plot { display: flex; flex-direction: column; align-items: stretch; gap: 10px; max-width: none; margin-bottom: 0; border-bottom: 0; border-left: 1px solid var(--line); }
+  :is(.local-dashboard-page, .ev-root) .rb-chart.rb-chart--vertical .rb-plot { display: flex; flex-direction: column; align-items: stretch; gap: 10px; max-width: none; margin-bottom: 0; border-bottom: 0; border-left: 1px solid var(--ds-line); }
   :is(.local-dashboard-page, .ev-root) .rb-chart.rb-chart--vertical .rb-plot > li { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name value" "track track"; row-gap: 4px; column-gap: 12px; }
   :is(.local-dashboard-page, .ev-root) .rb-chart.rb-chart--vertical .rb-name { position: static; grid-area: name; text-align: left; margin: 0 0 0 8px; -webkit-line-clamp: 1; }
   :is(.local-dashboard-page, .ev-root) .rb-chart.rb-chart--vertical .rb-value { grid-area: value; margin: 0; text-align: right; }
   :is(.local-dashboard-page, .ev-root) .rb-chart.rb-chart--vertical .rb-track { grid-area: track; height: 12px; align-items: stretch; justify-content: flex-start; }
   :is(.local-dashboard-page, .ev-root) .rb-chart.rb-chart--vertical .rb-bar { height: auto; width: var(--rb-size, 0); max-width: none; margin: 0; }
-  :is(.local-dashboard-page, .ev-root) .rb-chart.rb-chart--vertical .rb-bar[data-pattern="outline"] { width: 14px; height: auto; border: 1px dashed var(--ink-3); border-left: 0; }
+  :is(.local-dashboard-page, .ev-root) .rb-chart.rb-chart--vertical .rb-bar[data-pattern="outline"] { width: 14px; height: auto; border: 1px dashed var(--ds-ink-3); border-left: 0; }
 }
 
 /* OMN-21166 part 22 AC144 (onex delegate run 0320afb4, scoped and corrected): Model usage never cuts a model name, in
@@ -1085,7 +1079,7 @@ ul.gdb-plot--names { margin-bottom: 48px; }
 /* Six or fewer models: upright bars whose tops line up, names of any length below their own bar. */
 :is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart .rb-plot { align-items: start; margin-bottom: 0; }
 /* More than six: one row per model at any width, the name on its own line, then the bar and its count with share. */
-:is(.local-dashboard-page, .ev-root) .local-model-usage--rows .rb-chart .rb-plot { display: flex; flex-direction: column; align-items: stretch; gap: 10px; max-width: none; margin-bottom: 0; border-bottom: 0; border-left: 1px solid var(--line); }
+:is(.local-dashboard-page, .ev-root) .local-model-usage--rows .rb-chart .rb-plot { display: flex; flex-direction: column; align-items: stretch; gap: 10px; max-width: none; margin-bottom: 0; border-bottom: 0; border-left: 1px solid var(--ds-line); }
 :is(.local-dashboard-page, .ev-root) .local-model-usage--rows .rb-chart .rb-plot > li { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name name" "track value"; row-gap: 4px; column-gap: 12px; align-items: center; }
 :is(.local-dashboard-page, .ev-root) .local-model-usage--rows .rb-chart .rb-name { grid-area: name; text-align: left; margin: 0 0 0 8px; }
 :is(.local-dashboard-page, .ev-root) .local-model-usage--rows .rb-chart .rb-value { grid-area: value; margin: 0; text-align: right; }
@@ -1100,21 +1094,21 @@ ul.gdb-plot--names { margin-bottom: 48px; }
   grid-template-columns: inherit; grid-template-rows: inherit; grid-template-areas: inherit; row-gap: inherit; column-gap: inherit;
   grid-column: 1 / -1; grid-row: 1 / -1; flex: 1 1 auto; min-width: 0; position: relative; color: inherit; text-decoration: none; border-radius: 4px;
 }
-.rb-chart .rb-plot > li > .rb-link:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 3px; }
+.rb-chart .rb-plot > li > .rb-link:focus-visible { outline: 2px solid var(--ds-accent); outline-offset: 3px; }
 .rb-chart .rb-plot > li:has(> .rb-link):hover .rb-name { text-decoration: underline; }
 
 /* OMN-21166 part 19 AC134: a headline card that opens a page is one link stretched over it (`a.` outranks the card's
    rule that lifts its own links and buttons with position: relative, which left this link 0px tall). */
 :is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel:has(> .local-card-link) { position: relative; cursor: pointer; }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel > a.local-card-link { position: absolute; inset: 0; z-index: 1; border-radius: inherit; }
-:is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel > a.local-card-link:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel > a.local-card-link:focus-visible { outline: 2px solid var(--ds-accent); outline-offset: 2px; }
 /* Its info button is a small visible icon above the link (no longer stretched over the card), and hovering anywhere on
    the card still shows the details, which never catch the click meant for the link. */
 :is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel:has(> .local-card-link) .local-card-info { inset: auto; top: 13px; right: 14px; width: 20px; height: 20px; opacity: 1; z-index: 2; cursor: help; border-radius: 6px; }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel:has(> .local-card-link):hover .local-card-tooltip { visibility: visible; opacity: 1; transform: none; pointer-events: none; }
 
 /* OMN-21166 part 19 AC133: the change against the previous window, a short line under the figure in the card's colour. */
-.local-overview-summary .local-card-change { margin: 2px 0 0; font-size: 12px; font-weight: 500; color: color-mix(in srgb, var(--panel-accent, var(--ink-3)) 80%, var(--ink)); }
+.local-overview-summary .local-card-change { margin: 2px 0 0; font-size: 12px; font-weight: 500; color: color-mix(in srgb, var(--panel-accent, var(--ds-ink-3)) 80%, var(--ds-ink)); }
 
 /* Part 24: the whole linked card reveals its explanation; the old info glyph is absent. The small, transparent
    focus target remains for screen readers and for the existing keyboard path. */
@@ -1124,23 +1118,23 @@ ul.gdb-plot--names { margin-bottom: 48px; }
   opacity: 0; background: transparent; box-shadow: none;
 }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel:has(.local-card-info:focus-visible) {
-  outline: 2px solid var(--panel-accent, var(--ui-accent)); outline-offset: 2px;
+  outline: 2px solid var(--panel-accent, var(--ds-accent)); outline-offset: 2px;
 }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip { pointer-events: none; z-index: 20; transition: none; }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip[data-placement="above"]::after {
   top: auto; bottom: -7px; border-left: 0; border-top: 0;
-  border-right: 1px solid color-mix(in srgb, var(--panel-accent, var(--ink-3)) 55%, var(--line));
-  border-bottom: 1px solid color-mix(in srgb, var(--panel-accent, var(--ink-3)) 55%, var(--line));
+  border-right: 1px solid color-mix(in srgb, var(--panel-accent, var(--ds-ink-3)) 55%, var(--ds-line));
+  border-bottom: 1px solid color-mix(in srgb, var(--panel-accent, var(--ds-ink-3)) 55%, var(--ds-line));
 }
 
 /* The seven-model plot stays upright at every width. A narrow panel scrolls within itself, keeping long names intact
    and the document free of horizontal scroll. The expanded panel gives each bar more space. */
 :is(.local-dashboard-page, .ev-root) .local-model-usage--upright { overflow-x: auto; padding-bottom: 7px; }
 /* Part 27 round 1: 64px columns let seven models fit a half-width panel at 1440 without a scrollbar or a cut name. */
-:is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart { min-width: max(100%, calc(var(--rb-model-count, 7) * 70px)); }
+:is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart { min-width: max(100%, calc(7 /* OMN-22168: --rb-model-count was never set, so this was always 7 */ * 70px)); }
 :is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart.rb-chart--vertical .rb-plot {
   display: grid; grid-template-columns: repeat(var(--rb-count), minmax(64px, 1fr)); gap: 6px;
-  align-items: start; border-left: 0; border-bottom: 1px solid var(--line); margin-bottom: 0;
+  align-items: start; border-left: 0; border-bottom: 1px solid var(--ds-line); margin-bottom: 0;
 }
 :is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart.rb-chart--vertical .rb-plot > li {
   display: flex; flex-direction: column; align-items: stretch; grid-template-areas: none;
@@ -1166,20 +1160,20 @@ ul.gdb-plot--names { margin-bottom: 48px; }
 .local-dashboard-page--overview .local-chart-expand,
 .local-dashboard-page--overview .local-chart-dialog-close {
   display: inline-flex; align-items: center; gap: 5px; min-height: 30px; padding: 4px 8px;
-  border: 1px solid var(--line); border-radius: 7px; background: var(--panel-2); color: var(--ink-2);
+  border: 1px solid var(--ds-line); border-radius: 7px; background: var(--ds-surface-2); color: var(--ds-ink-2);
   font: inherit; font-size: 12px; cursor: pointer;
 }
 .local-dashboard-page--overview .local-chart-expand { position: absolute; top: 12px; right: 14px; }
 .local-dashboard-page--overview :is(.local-chart-expand, .local-chart-dialog-close):is(:hover, :focus-visible) {
-  color: var(--ink); border-color: var(--ui-accent); outline: 2px solid transparent;
+  color: var(--ds-ink); border-color: var(--ds-accent); outline: 2px solid transparent;
 }
 .local-dashboard-page--overview .local-chart-dialog {
   box-sizing: border-box; width: min(1100px, calc(100vw - 32px)); max-width: none;
   max-height: calc(100dvh - 32px); margin: auto; padding: 16px;
-  overflow: auto; border: 1px solid var(--line); border-radius: 12px;
-  background: var(--panel); color: var(--ink); box-shadow: 0 24px 70px rgb(0 0 0 / .35);
+  overflow: auto; border: 1px solid var(--ds-line); border-radius: 12px;
+  background: var(--ds-surface); color: var(--ds-ink); box-shadow: 0 24px 70px color-mix(in srgb, var(--ds-shadow-ink) 35%, transparent);
 }
-.local-dashboard-page--overview .local-chart-dialog::backdrop { background: rgb(0 0 0 / .72); }
+.local-dashboard-page--overview .local-chart-dialog::backdrop { background: color-mix(in srgb, var(--ds-shadow-ink) 72%, transparent); }
 .local-dashboard-page--overview .local-chart-dialog-close { margin: 0 0 12px auto; }
 .local-dashboard-page--overview .local-dashboard-panel--full-chart {
   min-width: 0; width: 100%; height: auto; max-height: none; margin: 0; box-shadow: none;
@@ -1189,13 +1183,13 @@ ul.gdb-plot--names { margin-bottom: 48px; }
 .local-dashboard-page--overview .local-chart-dialog .local-dashboard-panel--full-chart:hover { border: 0; padding: 0; background: transparent; }
 .local-dashboard-page--overview .local-dashboard-panel--full-chart .ins-bars.gdb-plot { height: 300px; }
 .local-dashboard-page--overview .local-dashboard-panel--full-chart .rb-track { height: 260px; }
-.local-dashboard-page--overview .local-dashboard-panel--full-chart .local-model-usage--upright .rb-chart { min-width: max(100%, calc(var(--rb-model-count, 7) * 110px)); }
+.local-dashboard-page--overview .local-dashboard-panel--full-chart .local-model-usage--upright .rb-chart { min-width: max(100%, calc(7 /* OMN-22168: --rb-model-count was never set, so this was always 7 */ * 110px)); }
 .local-dashboard-page--overview .local-dashboard-panel--full-chart .local-model-usage--upright .rb-chart.rb-chart--vertical .rb-track { height: 260px; }
 /* Part 27 round 1: Delegation Evidence's title is the page title of every other page (AC168). */
 main.ev-root[data-destination="delegation-evidence"] .ev-page-head .ev-title { font-size: 28px; font-weight: 500; letter-spacing: -0.015em; }
 @media (max-width: 600px) { main.ev-root[data-destination="delegation-evidence"] .ev-page-head .ev-title { font-size: 24px; } }
 /* Part 27 round 9: Evidence's section labels (Run path) share the mono label style of the seven pages (AC174). */
-main.ev-root[data-destination="delegation-evidence"] .section-label { font-family: var(--font-mono); font-weight: 500; letter-spacing: .04em; }
+main.ev-root[data-destination="delegation-evidence"] .section-label { font-family: var(--ds-font-mono); font-weight: 500; letter-spacing: .04em; }
 
 /* ── Part 28 (revision 5): Paradev and Entire, copied more literally ──────────────────────────────────────────────────
    Lakshman 2026-10-27: monochrome interface, solid flat bars, 8px corners. Colour lives only inside the data (bars,
@@ -1205,26 +1199,23 @@ main.ev-root[data-destination="delegation-evidence"] .section-label { font-famil
    drawn in two colours (OMN-21308) and stays unique by its own glyph. The current page is marked by its lifted item, not
    by its icon. Status pills and alerts keep their colour, and so do tier and per-model icons, which are data identities. */
 .sidebar .dash-marker svg, .sidebar .mvp-nav-item.active .dash-marker svg, main :is(.ev-title-icon, .local-dashboard-page-icon) svg,
-.app svg.field-icon, :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) svg.lucide { color: var(--icon-grey) !important; }
-/* One literal grey per theme for every page: the developer pages keep older text tokens (their tertiary is a warm
-   #6B655E), so var(--ink-3) alone would draw the same icon in two greys across pages (OMN-21308 census). */
-/* The interface grey is the 01+20 ink-3 (Lakshman 2026-11-03; was #555555 / #a8a8a8). */
-:root { --icon-grey: #525252; }
-:root[data-theme="dark"] { --icon-grey: #a3a3a3; }
+.app svg.field-icon, :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) svg.lucide { color: var(--ds-ink-3) !important; }
+
+
 :is(.local-run-pill, .badge, .chain-node, .live-pill, [role="alert"]) svg.lucide { color: inherit !important; }
 /* Specificity (0,4,2) on purpose: it must outrank the page-scoped grey rule above (0,3,2), or tier and model icons turn grey. */
 html .app svg.field-icon.field-icon:is([data-field-icon^="tier-"], [data-semantic-concept^="model:"]) { color: var(--field-ink, currentColor) !important; }
 /* AC177 as amended by part 28a (Lakshman's hybrid choice, which keeps OMN-21308's identities): colour stays on what
    names the data beside it (model names and legend labels, tier icons by their bars, Evidence's money and quality
    figures); interface words are grey: the Workflow subject titles, control titles and every link. */
-.local-dashboard-page .usage-record-controls-title { color: var(--ink-2) !important; }
+.local-dashboard-page .usage-record-controls-title { color: var(--ds-ink-2) !important; }
 /* The title text is grey; its concept icon keeps its own colour (one colour per concept, editorial.css), and the icon's
    paths draw that colour (this rule used to grey the paths too, so the icon drew two colours). */
-.local-dashboard-page .local-run-summary-group > h3, .local-dashboard-page .local-run-summary-group > h3 *:not(svg):not(svg *) { color: var(--ink-3) !important; }
-:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) a:not(.dash-item):not(.local-card-link):not(.rb-link):not(.local-settings-link) { color: var(--ink); text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+.local-dashboard-page .local-run-summary-group > h3, .local-dashboard-page .local-run-summary-group > h3 *:not(svg):not(svg *) { color: var(--ds-ink-3) !important; }
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) a:not(.dash-item):not(.local-card-link):not(.rb-link):not(.local-settings-link) { color: var(--ds-ink); text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
 :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) a:not(.dash-item):not(.local-card-link):not(.rb-link):not(.local-settings-link):hover { text-decoration-color: currentColor; }
-.local-dashboard-page details.local-run-failure > summary { color: var(--ink-2); }
-.local-overview-summary .local-card-change { color: var(--ink-2); }
+.local-dashboard-page details.local-run-failure > summary { color: var(--ds-ink-2); }
+.local-overview-summary .local-card-change { color: var(--ds-ink-2); }
 
 /* AC178: every selected option is the raised surface, primary text and a 1px border; the accent is only the focus ring. */
 .local-dashboard-page .local-window-switch .local-window-options button[aria-checked="true"],
@@ -1233,21 +1224,21 @@ html .app svg.field-icon.field-icon:is([data-field-icon^="tier-"], [data-semanti
 .utc-switch button[aria-pressed="true"],
 .local-settings-choice label:has(input:checked),
 .ins-toggles:not(.gdb-legend) .ins-toggle[aria-pressed="true"] {
-  background: var(--panel-2) !important; color: var(--ink) !important; box-shadow: inset 0 0 0 1px var(--line) !important;
+  background: var(--ds-surface-2) !important; color: var(--ds-ink) !important; box-shadow: inset 0 0 0 1px var(--ds-line) !important;
 }
-.local-runs-week-days > div[data-selected="true"] { border-color: var(--ink-3); box-shadow: inset 0 0 0 1px var(--ink-3); }
+.local-runs-week-days > div[data-selected="true"] { border-color: var(--ds-ink-3); box-shadow: inset 0 0 0 1px var(--ds-ink-3); }
 
 /* AC179: the headline card's details are a neutral popover under the card (placed by CardBasis); no arrow, no tint. */
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip {
-  background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 0.08);
+  background: var(--ds-surface-2); border: 1px solid var(--ds-line); border-radius: 8px; padding: 10px 12px;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--ds-shadow-ink) 8%, transparent);
 }
 /* Codex 2026-10-27 (MSG 2ea675d9): Entire's popover is a framed panel with no prominent shadow; dark keeps a little more. */
-[data-theme="dark"] :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip { box-shadow: 0 2px 10px rgb(0 0 0 / 0.35); }
+[data-theme="dark"] :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip { box-shadow: 0 2px 10px color-mix(in srgb, var(--ds-shadow-ink) 35%, transparent); }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip::after { display: none; }
-:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip .local-dashboard-caption { color: var(--ink-2) !important; }
-:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip .local-dashboard-caption:first-child { color: var(--ink) !important; font-weight: 500; }
-:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip .local-card-spark { color: var(--ink-3); }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip .local-dashboard-caption { color: var(--ds-ink-2) !important; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip .local-dashboard-caption:first-child { color: var(--ds-ink) !important; font-weight: 500; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip .local-card-spark { color: var(--ds-ink-3); }
 
 /* AC180: every bar is a solid flat fill in its series colour; a value that is not served stays a dashed outline. */
 .rb-chart .rb-bar[data-pattern="hatched"], .gdb-bar.ins-seg, .utc-stack i, .ev-qg-bar > .bar-fill,
@@ -1266,18 +1257,18 @@ html .app svg.field-icon.field-icon:is([data-field-icon^="tier-"], [data-semanti
 
 /* AC182: secondary buttons are transparent with a 1px border and secondary text; none is blue. */
 .local-dashboard-page :is(.local-chart-expand, .local-runs-export > button, form.local-dashboard-filters > button[type="submit"], .local-copy, .local-chart-open, .local-run-neighbours > a) {
-  background: transparent !important; border: 1px solid var(--line) !important; color: var(--ink-2) !important;
+  background: transparent !important; border: 1px solid var(--ds-line) !important; color: var(--ds-ink-2) !important;
   border-radius: 6px; text-decoration: none !important; box-shadow: none !important;
 }
 .local-dashboard-page :is(.local-chart-expand, .local-runs-export > button, form.local-dashboard-filters > button[type="submit"], .local-copy, .local-chart-open, .local-run-neighbours > a):hover {
-  background: var(--panel-2) !important; color: var(--ink) !important;
+  background: var(--ds-surface-2) !important; color: var(--ds-ink) !important;
 }
 
 /* AC183: Overview's paired charts share a baseline and legend row; every chart title has the panel divider. */
 .local-dashboard-page--overview .local-dashboard-panel[data-component="overview-insights"]:not(.local-dashboard-panel--full-chart) { display: flex; flex-direction: column; }
 .local-dashboard-page--overview .local-dashboard-panel[data-component="overview-insights"]:not(.local-dashboard-panel--full-chart) > .ins-section { margin-top: auto; }
 /* The divider costs no height: 8px under the title and 8px after it keep the day charts inside AC140's 340px cap. */
-.local-dashboard-panel[data-component="overview-insights"] > h2 { border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 8px; }
+.local-dashboard-panel[data-component="overview-insights"] > h2 { border-bottom: 1px solid var(--ds-line); padding-bottom: 8px; margin-bottom: 8px; }
 
 /* AC184: Delegation Evidence's content lines up with its title (24px on desktop, 16px on phones). */
 @media (min-width: 641px) { main.ev-root[data-destination="delegation-evidence"] .ev-scroll { padding: 12px 24px 24px; } }
@@ -1289,17 +1280,15 @@ html .app svg.field-icon.field-icon:is([data-field-icon^="tier-"], [data-semanti
 /* AC186 (Lakshman 2026-10-27, "current selected page should be highlighted in side bar in both theme"): the raised
    surface alone was nearly the sidebar's own colour (#EFEFEC on #F2F2EF in light). The current page is a lifted, bordered
    item with a 2px ink bar on its left edge and primary text at 500, neutral in both themes and distinct from hover. */
-/* The surface is the shell's own --shell-active-surface (dashboard-cards.css reads it), so every rule and check that
-   reads the variable agrees with what is drawn. */
-.app:has(.local-dashboard-page, .ev-root[data-destination="delegation-evidence"]) { --shell-active-surface: var(--panel); --shell-active-line: var(--line); }
-.app:has(.local-dashboard-page, .ev-root[data-destination="delegation-evidence"]) { --shell-active-surface: var(--ed-chosen); --shell-active-line: transparent; }
+
+
 .app:has(.local-dashboard-page, .ev-root[data-destination="delegation-evidence"]) .sidebar .mvp-nav-item.active,
 .app:has(.local-dashboard-page, .ev-root[data-destination="delegation-evidence"]) .sidebar .mvp-nav-item.active:hover {
-  background: var(--shell-active-surface) !important; color: var(--ink) !important;
+  background: var(--ds-surface-2) !important; color: var(--ds-ink) !important;
   /* Lakshman 2026-11-02 (01 + 20 look): the chosen page is a soft fill only, no edge bar or outline. */
   box-shadow: none !important;
 }
-.app:has(.local-dashboard-page, .ev-root[data-destination="delegation-evidence"]) .sidebar .mvp-nav-item.active .dash-name { color: var(--ink) !important; font-weight: 500; }
+.app:has(.local-dashboard-page, .ev-root[data-destination="delegation-evidence"]) .sidebar .mvp-nav-item.active .dash-name { color: var(--ds-ink) !important; font-weight: 500; }
 /* Codex review 2026-10-27 04:17Z (MSG 01e39e9a): on a phone the stacked header lines its children up at the start
    (part 27), which shrank Usage's and Runs' headline row to 38px with its figures hidden; the row spans the page again. */
 @media (max-width: 600px) {
@@ -1314,7 +1303,7 @@ html .app svg.field-icon.field-icon:is([data-field-icon^="tier-"], [data-semanti
 :is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel > .local-dashboard-metric { margin-top: 6px; }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-caption { margin-top: auto; padding-top: 8px; }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-caption > * {
-  margin: 0; font-size: 12px; line-height: 1.4; font-weight: 400; color: var(--ink-2) !important;
+  margin: 0; font-size: 12px; line-height: 1.4; font-weight: 400; color: var(--ds-ink-2) !important;
 }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-caption > :first-child {
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
@@ -1328,37 +1317,37 @@ html .app svg.field-icon.field-icon:is([data-field-icon^="tier-"], [data-semanti
    the sample drawn as a hollow outline (not covered, never 0). */
 .usage-analysis { display: grid; gap: 12px; }
 .usage-analysis-group { display: inline-flex; gap: 2px; padding: 2px; width: max-content; max-width: 100%; flex-wrap: wrap;
-  border: 1px solid var(--line); border-radius: 6px; background: var(--panel); }
+  border: 1px solid var(--ds-line); border-radius: 6px; background: var(--ds-surface); }
 .usage-analysis-group label { display: inline-flex; align-items: center; min-height: 32px; padding: 0 12px; border-radius: 6px;
-  font-size: 13px; color: var(--ink-2); cursor: pointer; }
+  font-size: 13px; color: var(--ds-ink-2); cursor: pointer; }
 .usage-analysis-group input { position: absolute; opacity: 0; width: 1px; height: 1px; }
-.usage-analysis-group label:has(input:checked) { background: var(--panel-2); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
-.usage-analysis-group label:has(input:focus-visible) { outline: 2px solid var(--ui-accent); outline-offset: 1px; }
+.usage-analysis-group label:has(input:checked) { background: var(--ds-surface-2); color: var(--ds-ink); box-shadow: inset 0 0 0 1px var(--ds-line); }
+.usage-analysis-group label:has(input:focus-visible) { outline: 2px solid var(--ds-accent); outline-offset: 1px; }
 .usage-analysis table th[data-model-name] { color: var(--model-color); }
 .usage-analysis table thead button { all: unset; cursor: pointer; font: inherit; color: inherit; }
-.usage-analysis table thead button:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
+.usage-analysis table thead button:focus-visible { outline: 2px solid var(--ds-accent); outline-offset: 2px; }
 .usage-analysis-spark { display: inline-flex; align-items: flex-end; gap: 2px; height: 20px; width: 98px; }
-.usage-analysis-spark i { flex: 1; min-width: 4px; height: var(--spark-height); background: var(--ink-3); border-radius: 1px; }
-.usage-analysis-spark i[data-covered="false"] { background: transparent; box-shadow: inset 0 0 0 1px var(--line); height: 100%; }
+.usage-analysis-spark i { flex: 1; min-width: 4px; height: var(--spark-height); background: var(--ds-ink-3); border-radius: 1px; }
+.usage-analysis-spark i[data-covered="false"] { background: transparent; box-shadow: inset 0 0 0 1px var(--ds-line); height: 100%; }
 .usage-analysis-spark i[data-covered="true"][data-runs="0"] { height: 1px; }
 /* AC195: cost versus quality, hairline axes, each model point in its identity colour. */
 .usage-analysis-quality { margin: 0; }
 .usage-analysis-quality svg { width: 100%; height: auto; max-height: 260px; display: block; }
-.usage-analysis-axis { stroke: var(--line); stroke-width: 1; }
-.usage-analysis-tick, .usage-analysis-point-name { fill: var(--ink-2); font-size: 12px; font-family: var(--font-mono); }
+.usage-analysis-axis { stroke: var(--ds-line); stroke-width: 1; }
+.usage-analysis-tick, .usage-analysis-point-name { fill: var(--ds-ink-2); font-size: 12px; font-family: var(--ds-font-mono); }
 .usage-analysis-quality circle { fill: var(--point-color); fill-opacity: .85; stroke: var(--point-color); stroke-width: 1.5; }
-.usage-analysis-quality circle:focus-visible { outline: none; stroke: var(--ink); stroke-width: 3; }
+.usage-analysis-quality circle:focus-visible { outline: none; stroke: var(--ds-ink); stroke-width: 3; }
 /* AC196: Runs' totals line under its scope note. */
-.local-runs-totals { margin: 4px 0 8px; color: var(--ink-2); }
-.local-runs-totals [data-total] { color: var(--ink); font-family: var(--font-mono); font-size: 12px; }
+.local-runs-totals { margin: 4px 0 8px; color: var(--ds-ink-2); }
+.local-runs-totals [data-total] { color: var(--ds-ink); font-family: var(--ds-font-mono); font-size: 12px; }
 /* AC197: each step's place on the run's time axis, a hairline track with a solid bar; a step without both times reads
    not recorded instead of a bar. */
-.local-run-waterfall { position: relative; height: 10px; margin: 6px 0 2px; border-radius: 2px; background: var(--line-2); max-width: 520px; }
+.local-run-waterfall { position: relative; height: 10px; margin: 6px 0 2px; border-radius: 2px; background: var(--ds-line-soft); max-width: 520px; }
 .local-run-waterfall [data-waterfall-bar] { position: absolute; top: 0; bottom: 0; left: var(--wf-left); width: var(--wf-width);
-  background: var(--ink-3); border-radius: 2px; }
-.local-dashboard-steps > li[data-outcome="failed"] .local-run-waterfall [data-waterfall-bar] { background: var(--ins-fail, var(--field-fail)); }
+  background: var(--ds-ink-3); border-radius: 2px; }
+.local-dashboard-steps > li[data-outcome="failed"] .local-run-waterfall [data-waterfall-bar] { background: var(--ds-bad); }
 .local-run-waterfall[data-positioned="false"] { height: auto; background: none; }
-.local-run-waterfall-missing { font-size: 12px; color: var(--ink-3); border: 1px dashed var(--line); border-radius: 4px; padding: 1px 6px; }
+.local-run-waterfall-missing { font-size: 12px; color: var(--ds-ink-3); border: 1px dashed var(--ds-line); border-radius: 4px; padding: 1px 6px; }
 /* Chrome review on Lakshman's data: the group-by control stays above the table (the shared filter bar's own ordering does
    not apply here), row names read as names, not column headers, and the table fits the panel without sideways scroll. */
 .usage-analysis > * { order: 0; }
@@ -1366,15 +1355,15 @@ html .app svg.field-icon.field-icon:is([data-field-icon^="tier-"], [data-semanti
 .usage-analysis > .local-dashboard-table-wrap { order: 2; overflow-x: visible; }
 .usage-analysis > .usage-analysis-quality { order: 3; }
 .usage-analysis table { width: 100%; table-layout: auto; }
-.usage-analysis tbody th[scope="row"] { text-transform: none; letter-spacing: normal; font-family: var(--font-mono); font-size: 12px;
+.usage-analysis tbody th[scope="row"] { text-transform: none; letter-spacing: normal; font-family: var(--ds-font-mono); font-size: 12px;
   font-weight: 500; overflow-wrap: anywhere; min-width: 120px; max-width: 240px; }
 .usage-analysis td { white-space: normal; }
 .usage-analysis td[data-cell="spark"] { white-space: nowrap; }
 /* Codex review 2026-10-27 05:56Z (MSGs a9bd908d, 3ab10059). AC197: a measured 0 ms step is an instant marker, not a bar
    widened to be seen. */
-.local-run-waterfall [data-waterfall-bar][data-instant="true"] { width: 0; box-shadow: 0 0 0 1px var(--ink-3); }
+.local-run-waterfall [data-waterfall-bar][data-instant="true"] { width: 0; box-shadow: 0 0 0 1px var(--ds-ink-3); }
 /* AC195: the hovered or focused point's values, read in a line under the chart; empty until a point is chosen. */
-.usage-analysis-readout { min-height: 1.4em; font-family: var(--font-mono); }
+.usage-analysis-readout { min-height: 1.4em; font-family: var(--ds-font-mono); }
 /* Usage analysis on a phone: the section never grows past its card. The table and chart scroll inside the card, the
    group control wraps, and the chart keeps a legible size instead of shrinking its labels. */
 .usage-analysis { grid-template-columns: minmax(0, 1fr); min-width: 0; }
@@ -1406,22 +1395,22 @@ html .app svg.field-icon.field-icon:is([data-field-icon^="tier-"], [data-semanti
 .ev-root .local-dashboard-filters.local-dashboard-tablist,
 .ev-root .local-dashboard-filters.local-dashboard-toggle {
   display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 2px; margin: 0; width: max-content; max-width: 100%;
-  border: 1px solid var(--line); border-radius: 6px; background: var(--panel); align-items: center; order: 0; flex: 0 1 auto;
+  border: 1px solid var(--ds-line); border-radius: 6px; background: var(--ds-surface); align-items: center; order: 0; flex: 0 1 auto;
 }
 /* Above the shared filter part's 40px control height (dashboard-cards.css) and its order: 2 (local-dashboard.css). */
 .local-dashboard-tablist.local-dashboard-filters [role="tab"] { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; min-height: 32px;
-  padding: 0 12px; border-radius: 6px; font-size: 13px; font-weight: 500; color: var(--ink-2); cursor: pointer; }
-.local-dashboard-tablist.local-dashboard-filters [role="tab"][aria-selected="true"] { background: var(--panel-2); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
-.local-dashboard-tablist.local-dashboard-filters [role="tab"]:hover { color: var(--ink); }
-.local-dashboard-tablist.local-dashboard-filters [role="tab"]:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 1px; }
+  padding: 0 12px; border-radius: 6px; font-size: 13px; font-weight: 500; color: var(--ds-ink-2); cursor: pointer; }
+.local-dashboard-tablist.local-dashboard-filters [role="tab"][aria-selected="true"] { background: var(--ds-surface-2); color: var(--ds-ink); box-shadow: inset 0 0 0 1px var(--ds-line); }
+.local-dashboard-tablist.local-dashboard-filters [role="tab"]:hover { color: var(--ds-ink); }
+.local-dashboard-tablist.local-dashboard-filters [role="tab"]:focus-visible { outline: 2px solid var(--ds-accent); outline-offset: 1px; }
 .local-dashboard-tabpanel { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .usage-analysis .local-dashboard-tabpanel > .local-dashboard-table-wrap { overflow-x: auto; max-width: 100%; }
-.local-dashboard-tabpanel:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 4px; border-radius: 4px; }
+.local-dashboard-tabpanel:focus-visible { outline: 2px solid var(--ds-accent); outline-offset: 4px; border-radius: 4px; }
 .local-dashboard-toggle.local-dashboard-filters label { display: inline-flex; align-items: center; min-height: 28px; padding: 0 10px; border-radius: 6px;
-  font-size: 12px; color: var(--ink-2); cursor: pointer; }
+  font-size: 12px; color: var(--ds-ink-2); cursor: pointer; }
 .local-dashboard-toggle.local-dashboard-filters input { position: absolute; opacity: 0; width: 1px; height: 1px; }
-.local-dashboard-toggle.local-dashboard-filters label:has(input:checked) { background: var(--panel-2); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
-.local-dashboard-toggle.local-dashboard-filters label:has(input:focus-visible) { outline: 2px solid var(--ui-accent); outline-offset: 1px; }
+.local-dashboard-toggle.local-dashboard-filters label:has(input:checked) { background: var(--ds-surface-2); color: var(--ds-ink); box-shadow: inset 0 0 0 1px var(--ds-line); }
+.local-dashboard-toggle.local-dashboard-filters label:has(input:focus-visible) { outline: 2px solid var(--ds-accent); outline-offset: 1px; }
 .local-dashboard-toggles { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
 /* AC203: Model by task. Each cell is its figure over its denominator line; a small sample is set in the secondary ink with
    the words "small sample", a pair with no runs reads no runs. The whole cell is the link to its runs. */
@@ -1429,13 +1418,13 @@ html .app svg.field-icon.field-icon:is([data-field-icon^="tier-"], [data-semanti
 .usage-analysis table[data-decision-matrix] { width: 100%; }
 [data-decision-matrix] td { vertical-align: top; min-width: 120px; }
 [data-decision-matrix] td a { display: grid; gap: 2px; color: inherit; text-decoration: none; padding: 4px 6px; margin: -4px -6px; border-radius: 4px; }
-[data-decision-matrix] td a:hover { background: var(--panel-2); }
-[data-decision-matrix] td a:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 1px; }
+[data-decision-matrix] td a:hover { background: var(--ds-surface-2); }
+[data-decision-matrix] td a:focus-visible { outline: 2px solid var(--ds-accent); outline-offset: 1px; }
 [data-decision-matrix] td:not(:has(a)) { display: table-cell; }
-.usage-matrix-figure { display: block; font-family: var(--font-mono); font-size: 14px; font-weight: 500; color: var(--ink); }
-.usage-matrix-basis { display: block; font-size: 12px; color: var(--ink-2); }
-[data-decision-matrix] td[data-small="true"] .usage-matrix-figure { color: var(--ink-2); }
-[data-decision-matrix] td[data-state="no-runs"] { color: var(--ink-2); font-size: 12px; }
+.usage-matrix-figure { display: block; font-family: var(--ds-font-mono); font-size: 14px; font-weight: 500; color: var(--ds-ink); }
+.usage-matrix-basis { display: block; font-size: 12px; color: var(--ds-ink-2); }
+[data-decision-matrix] td[data-small="true"] .usage-matrix-figure { color: var(--ds-ink-2); }
+[data-decision-matrix] td[data-state="no-runs"] { color: var(--ds-ink-2); font-size: 12px; }
 [data-decision-matrix] tbody th[data-model-name] { color: var(--model-color); }
 .usage-analysis .local-dashboard-toggles { order: 0; }
 /* AC204: Quality over time, one row of 14 daily bars per series. An outlined day is before the sample, a dashed one has runs
@@ -1443,23 +1432,23 @@ html .app svg.field-icon.field-icon:is([data-field-icon^="tier-"], [data-semanti
 .usage-trend { margin: 0; display: grid; gap: 10px; min-width: 0; }
 .usage-trend-rows { display: grid; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
 .usage-trend-row { display: grid; grid-template-columns: minmax(96px, 180px) minmax(420px, 1fr); gap: 12px; align-items: end; }
-.usage-trend-name { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); overflow-wrap: anywhere; }
+.usage-trend-name { font-family: var(--ds-font-mono); font-size: 12px; color: var(--ds-ink-2); overflow-wrap: anywhere; }
 .usage-trend-name[data-model-name] { color: var(--model-color); }
 .usage-trend-days { display: grid; grid-template-columns: repeat(14, minmax(0, 1fr)); gap: 3px; list-style: none; margin: 0; padding: 0;
   height: 56px; align-items: end; }
 .usage-trend-axis .usage-trend-days { height: auto; }
 .usage-trend-days > li { height: 100%; display: flex; align-items: flex-end; min-width: 0; }
 .usage-trend-day { display: flex; align-items: flex-end; width: 100%; height: 100%; border-radius: 2px; }
-a.usage-trend-day:hover { background: var(--panel-2); }
-a.usage-trend-day:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 1px; }
-.usage-trend-bar { display: block; width: 100%; height: var(--trend-height, 0); background: var(--model-color, var(--ink-3)); border-radius: 2px 2px 0 0; }
-.usage-trend-bar[data-zero="true"] { height: 3px; background: var(--ins-fail, var(--field-fail)); }
-.usage-trend-day[data-state="not-covered"] .usage-trend-bar { height: 100%; background: transparent; box-shadow: inset 0 0 0 1px var(--line); }
-[data-metric="pass"] .usage-trend-day[data-state="no-verdicts"] .usage-trend-bar { height: 100%; background: transparent; border: 1px dashed var(--line); box-sizing: border-box; }
-.usage-trend-day[data-state="no-runs"] .usage-trend-bar { height: 1px; background: var(--line); }
-.usage-trend-date { font-size: 11px; color: var(--ink-2); white-space: nowrap; font-family: var(--font-mono); }
+a.usage-trend-day:hover { background: var(--ds-surface-2); }
+a.usage-trend-day:focus-visible { outline: 2px solid var(--ds-accent); outline-offset: 1px; }
+.usage-trend-bar { display: block; width: 100%; height: var(--trend-height, 0); background: var(--model-color, var(--ds-ink-3)); border-radius: 2px 2px 0 0; }
+.usage-trend-bar[data-zero="true"] { height: 3px; background: var(--ds-bad); }
+.usage-trend-day[data-state="not-covered"] .usage-trend-bar { height: 100%; background: transparent; box-shadow: inset 0 0 0 1px var(--ds-line); }
+[data-metric="pass"] .usage-trend-day[data-state="no-verdicts"] .usage-trend-bar { height: 100%; background: transparent; border: 1px dashed var(--ds-line); box-sizing: border-box; }
+.usage-trend-day[data-state="no-runs"] .usage-trend-bar { height: 1px; background: var(--ds-line); }
+.usage-trend-date { font-size: 11px; color: var(--ds-ink-2); white-space: nowrap; font-family: var(--ds-font-mono); }
 /* AC206: Runs' routing groups; a reroute is named beside the routed model. */
-[data-routing-table] .local-route-changed { margin-left: 6px; font-size: 11px; padding: 0 6px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink-2); }
+[data-routing-table] .local-route-changed { margin-left: 6px; font-size: 11px; padding: 0 6px; border: 1px solid var(--ds-line); border-radius: 4px; color: var(--ds-ink-2); }
 [data-routing-table] td { white-space: nowrap; }
 
 /* OMN-21166 AC205/AC207: Evidence keeps the two populations and the canonical money equation readable on phones. */
@@ -1467,16 +1456,16 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ui-accent); outline-o
 .ev-triage-panel .note { margin: 0; }
 .ev-triage-rows { list-style: none; display: grid; gap: 0; padding: 0; margin: 0; min-width: 0; }
 .ev-triage-rows li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px;
-  align-items: baseline; min-width: 0; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  align-items: baseline; min-width: 0; padding: 10px 0; border-bottom: 1px solid var(--ds-line); }
 .ev-triage-rows li:last-child { border-bottom: 0; }
 .ev-triage-rows a, .ev-triage-rows li > span:first-child { min-width: 0; overflow-wrap: anywhere; }
-.ev-triage-rows .mono { color: var(--ink-2); text-align: right; white-space: normal; }
+.ev-triage-rows .mono { color: var(--ds-ink-2); text-align: right; white-space: normal; }
 .ev-savings-bridge { display: grid; gap: 14px; min-width: 0; }
 .ev-savings-bridge .note { margin: 0; }
 .ev-savings-equation { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .ev-savings-equation > div { display: grid; gap: 6px; min-width: 0; flex: 1 1 0; }
-.ev-savings-equation strong { font: 600 clamp(18px, 2vw, 26px)/1.2 var(--font-mono); color: var(--ink); overflow-wrap: anywhere; }
-.ev-savings-operator { flex: 0 0 auto; font: 500 22px/1 var(--font-mono); color: var(--ink-2); }
+.ev-savings-equation strong { font: 600 clamp(18px, 2vw, 26px)/1.2 var(--ds-font-mono); color: var(--ds-ink); overflow-wrap: anywhere; }
+.ev-savings-operator { flex: 0 0 auto; font: 500 22px/1 var(--ds-font-mono); color: var(--ds-ink-2); }
 @media (max-width: 600px) {
   .ev-triage-rows li { grid-template-columns: minmax(0, 1fr); }
   .ev-triage-rows .mono { text-align: left; }
@@ -1492,11 +1481,11 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ui-accent); outline-o
 .rb-chart.rb-chart--rows .rb-plot > li .rb-name { position: static; grid-area: name; margin: 0; text-align: left; display: block; overflow: visible; -webkit-line-clamp: unset; overflow-wrap: anywhere; }
 .rb-chart.rb-chart--rows .rb-plot > li .rb-track { grid-area: track; height: 12px; align-items: stretch; justify-content: flex-start; }
 .rb-chart.rb-chart--rows .rb-plot > li .rb-bar { width: var(--rb-size, 0); max-width: none; height: auto; margin: 0; }
-.rb-chart.rb-chart--rows .rb-plot > li .rb-bar[data-pattern="outline"] { width: 14px; height: auto; border: 1px dashed var(--ink-3); border-left: 0; }
+.rb-chart.rb-chart--rows .rb-plot > li .rb-bar[data-pattern="outline"] { width: 14px; height: auto; border: 1px dashed var(--ds-ink-3); border-left: 0; }
 .rb-chart.rb-chart--rows .rb-plot > li .rb-value { grid-area: value; margin: 0; text-align: right; visibility: visible; overflow: visible; text-overflow: clip; white-space: nowrap; }
 
 /* OMN-21970 AC5: the tier legend beside every chart and table that shows models, so colour is never the only label. */
-.tier-legend { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--ink-2); }
+.tier-legend { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--ds-ink-2); }
 .tier-legend li { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .tier-legend i { width: 10px; height: 10px; border-radius: 2px; flex: none; }
 
@@ -1506,7 +1495,7 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ui-accent); outline-o
    figure that is not measured keeps the unavailable colour. The panel class is repeated so these rules outrank the
    redesign's own card rules, which set a neutral border and figure. */
 :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel {
-  --card-accent: var(--panel-accent, var(--field-ink, var(--line)));
+  --card-accent: var(--panel-accent, var(--field-ink, var(--ds-line)));
   border-top: 3px solid var(--card-accent);
   background-image: linear-gradient(180deg, color-mix(in srgb, var(--card-accent) 14%, transparent), transparent 75%);
 }
@@ -1579,10 +1568,10 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ui-accent); outline-o
    semibold with tabular digits, and quieter labels. */
 :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel {
   border-radius: 12px;
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--ink, #000) 8%, transparent);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--ds-ink) 8%, transparent);
 }
 :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel > h2 {
-  font-family: var(--font-sans);
+  font-family: var(--ds-font-sans);
   font-weight: 600;
   letter-spacing: 0.06em;
 }
@@ -1593,7 +1582,7 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ui-accent); outline-o
   background: none;
 }
 :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel > .local-dashboard-metric {
-  font-family: var(--font-sans);
+  font-family: var(--ds-font-sans);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
@@ -1607,10 +1596,10 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ui-accent); outline-o
 .local-dashboard-page .local-dashboard-panel:not(.local-settings-section .local-dashboard-panel),
 .ev-root .panel {
   border-radius: 12px;
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--ink, #000) 6%, transparent), 0 8px 24px -18px color-mix(in srgb, var(--ink, #000) 18%, transparent);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--ds-ink) 6%, transparent), 0 8px 24px -18px color-mix(in srgb, var(--ds-ink) 18%, transparent);
 }
 .local-dashboard-page .local-dashboard-panel > h2,
 .ev-root .panel > :is(h2, h3, .panel-title) {
-  font-family: var(--font-sans);
+  font-family: var(--ds-font-sans);
   font-weight: 600;
 }

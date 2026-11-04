@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Activity, GitBranch, Radio, ShieldCheck } from 'lucide-react';
+import { Activity, GitBranch, Radio, ShieldCheck } from '@/theme/design-system/icons';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { Text } from '@/components/ui/typography';
 import { formatRedactedEventPayload } from '@/utils/redact-event-payload';
@@ -21,12 +21,12 @@ import {
 type StreamState = 'unavailable' | 'connected' | 'error';
 
 const STATE_COLOR: Record<EvidenceFreshnessState | StreamState, string> = {
-  CURRENT: 'var(--status-ok)',
-  STALE: 'var(--status-warn)',
-  DEGRADED: 'var(--status-bad)',
-  unavailable: 'var(--text-tertiary)',
-  connected: 'var(--status-ok)',
-  error: 'var(--status-bad)',
+  CURRENT: 'var(--ds-ok)',
+  STALE: 'var(--ds-warn)',
+  DEGRADED: 'var(--ds-bad)',
+  unavailable: 'var(--ds-ink-3)',
+  connected: 'var(--ds-ok)',
+  error: 'var(--ds-bad)',
 };
 
 const AUTHORITY_COLOR: Record<EvidenceAuthority, 'ok' | 'secondary' | 'tertiary'> = {
@@ -78,10 +78,10 @@ function AuthorityBadge({ authority }: { authority: EvidenceAuthority }) {
       family="mono"
       transform="uppercase"
       style={{
-        border: '1px solid var(--line)',
+        border: '1px solid var(--ds-line)',
         borderRadius: 4,
         padding: '2px 6px',
-        background: 'var(--panel-2)',
+        background: 'var(--ds-surface-2)',
       }}
     >
       {authority}
@@ -96,10 +96,10 @@ function ProjectionFreshnessBanner({ envelopes }: { envelopes: ProjectionEnvelop
   return (
     <div
       style={{
-        border: '1px solid var(--status-warn)',
+        border: '1px solid var(--ds-warn)',
         borderRadius: 6,
         padding: '8px 10px',
-        background: 'var(--panel-2)',
+        background: 'var(--ds-surface-2)',
       }}
     >
       <Text size="sm" color="warn" weight="semibold">
@@ -143,10 +143,10 @@ function StageFlow({ rows }: { rows: EvidenceStageRow[] }) {
                     key={`${stage.swimlane}-${stage.stage_id}`}
                     data-testid="evidence-stage-node"
                     style={{
-                      border: '1px solid var(--line)',
+                      border: '1px solid var(--ds-line)',
                       borderRadius: 6,
                       padding: 10,
-                      background: 'var(--panel-2)',
+                      background: 'var(--ds-surface-2)',
                     }}
                   >
                     <Text as="div" size="sm" weight="bold" color="primary" truncate>
@@ -191,7 +191,7 @@ function CorrelationTrace({ rows }: { rows: EvidenceCorrelationTraceRow[] }) {
   return (
     <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <SectionTitle icon={<Activity size={16} />} title="Correlation trace" />
-      <div style={{ border: '1px solid var(--line)', borderRadius: 6, overflow: 'hidden' }}>
+      <div style={{ border: '1px solid var(--ds-line)', borderRadius: 6, overflow: 'hidden' }}>
         {visibleRows.slice(0, 12).map((row) => (
           <div
             key={row.event_id}
@@ -201,7 +201,7 @@ function CorrelationTrace({ rows }: { rows: EvidenceCorrelationTraceRow[] }) {
               gridTemplateColumns: '72px minmax(120px, 1fr) 110px minmax(160px, 2fr)',
               gap: 10,
               padding: '8px 10px',
-              borderBottom: '1px solid var(--line-2)',
+              borderBottom: '1px solid var(--ds-line-soft)',
               alignItems: 'center',
             }}
           >
@@ -244,10 +244,10 @@ function ReadinessAggregate({ rows }: { rows: EvidenceReadinessRow[] }) {
             key={row.deployment_id}
             data-testid="evidence-readiness-card"
             style={{
-              border: '1px solid var(--line)',
+              border: '1px solid var(--ds-line)',
               borderRadius: 6,
               padding: 10,
-              background: 'var(--panel-2)',
+              background: 'var(--ds-surface-2)',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
@@ -307,13 +307,13 @@ function ObservationalEventStream({ rows }: { rows: EvidenceLiveEventRow[] }) {
         onChange={(event) => setFilter(event.target.value)}
         placeholder="Filter topic, correlation, ticket, lifecycle, severity"
         style={{
-          border: '1px solid var(--line)',
+          border: '1px solid var(--ds-line)',
           borderRadius: 6,
           padding: '8px 10px',
-          background: 'var(--panel)',
+          background: 'var(--ds-surface)',
         }}
       />
-      <div style={{ border: '1px solid var(--line)', borderRadius: 6, overflow: 'hidden', maxHeight: 320, overflowY: 'auto' }}>
+      <div style={{ border: '1px solid var(--ds-line)', borderRadius: 6, overflow: 'hidden', maxHeight: 320, overflowY: 'auto' }}>
         {filteredRows.slice(0, 50).map((row) => (
           <div
             key={row.event_id}
@@ -323,7 +323,7 @@ function ObservationalEventStream({ rows }: { rows: EvidenceLiveEventRow[] }) {
               gridTemplateColumns: '72px minmax(160px, 1fr) 100px minmax(180px, 2fr)',
               gap: 10,
               padding: '8px 10px',
-              borderBottom: '1px solid var(--line-2)',
+              borderBottom: '1px solid var(--ds-line-soft)',
               alignItems: 'center',
             }}
           >

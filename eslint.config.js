@@ -243,4 +243,16 @@ export default [
       '@typescript-eslint/no-require-imports': 'off',
     },
   },
+  // OMN-22168 AC2: every icon comes from src/theme/design-system/icons.ts, the one module that imports lucide-react, so a
+  // glyph is chosen once per concept. tests/design-system/lint-guards.test.ts proves the same over the whole tree.
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/theme/design-system/icons.ts'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        paths: [{ name: 'lucide-react', message: "Import icons from '@/theme/design-system/icons' (OMN-22168 AC2)." }],
+        patterns: [{ group: ['lucide-react/*'], message: "Import icons from '@/theme/design-system/icons' (OMN-22168 AC2)." }],
+      }],
+    },
+  },
 ];

@@ -91,12 +91,12 @@ function humanizeCategory(raw: string): string {
 }
 
 function CheckTypeRow({ row, passThreshold }: { row: QualityGateCheckRow; passThreshold: number }) {
-  const passColor = row.pass_rate >= passThreshold ? 'var(--good)' : 'var(--warn)';
+  const passColor = row.pass_rate >= passThreshold ? 'var(--ds-ok)' : 'var(--ds-warn)';
   const failPct = (1 - row.pass_rate) * 100;
   const passPct = row.pass_rate * 100;
 
   return (
-    <div style={{ padding: '6px 0', borderBottom: '1px solid var(--line-2)' }}>
+    <div style={{ padding: '6px 0', borderBottom: '1px solid var(--ds-line-soft)' }}>
       <div
         style={{
           display: 'grid',
@@ -109,18 +109,18 @@ function CheckTypeRow({ row, passThreshold }: { row: QualityGateCheckRow; passTh
           {CHECK_TYPE_LABEL[row.check_type]}
         </Text>
         {/* Pass/fail stacked bar */}
-        <div style={{ height: 8, borderRadius: 4, background: 'var(--panel-2)', overflow: 'hidden', display: 'flex' }}>
+        <div style={{ height: 8, borderRadius: 4, background: 'var(--ds-surface-2)', overflow: 'hidden', display: 'flex' }}>
           <div
             style={{
               width: `${passPct}%`,
-              background: 'var(--good)',
+              background: 'var(--ds-ok)',
               transition: 'width 0.6s ease-out',
             }}
           />
           <div
             style={{
               width: `${failPct}%`,
-              background: 'var(--error, var(--warn))',
+              background: 'var(--ds-bad, var(--ds-warn))',
               transition: 'width 0.6s ease-out',
             }}
           />
@@ -130,11 +130,11 @@ function CheckTypeRow({ row, passThreshold }: { row: QualityGateCheckRow; passTh
         </Text>
         {/* Inline pass / fail fraction: "N pass / M fail" */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 4, alignItems: 'center' }}>
-          <Text as="span" size="xs" family="mono" tabularNums style={{ color: 'var(--good)' }}>
+          <Text as="span" size="xs" family="mono" tabularNums style={{ color: 'var(--ds-ok)' }}>
             {row.passed}✓
           </Text>
           <Text as="span" size="xs" color="tertiary">/</Text>
-          <Text as="span" size="xs" family="mono" tabularNums style={{ color: 'var(--error, var(--warn))' }}>
+          <Text as="span" size="xs" family="mono" tabularNums style={{ color: 'var(--ds-bad, var(--ds-warn))' }}>
             {row.failed}✗
           </Text>
         </div>
@@ -173,12 +173,12 @@ function FailureCategories({ categories }: { categories: FailureCategoryRow[] })
             {c.count}
           </Text>
           {/* Proportion bar */}
-          <div style={{ height: 6, borderRadius: 3, background: 'var(--panel-2)', overflow: 'hidden' }}>
+          <div style={{ height: 6, borderRadius: 3, background: 'var(--ds-surface-2)', overflow: 'hidden' }}>
             <div
               style={{
                 height: '100%',
                 width: `${Math.max(0, Math.min(100, c.pct_of_failures * 100))}%`,
-                background: 'var(--error, var(--warn))',
+                background: 'var(--ds-bad, var(--ds-warn))',
                 borderRadius: 3,
                 transition: 'width 0.6s ease-out',
               }}
@@ -222,7 +222,7 @@ function RecentChecks({ rows }: { rows: DelegationDecisionRow[] }) {
           gridTemplateColumns: '24px 1fr 1fr 1fr',
           gap: '4px 8px',
           paddingBottom: 4,
-          borderBottom: '1px solid var(--line)',
+          borderBottom: '1px solid var(--ds-line)',
         }}
       >
         <Text as="span" size="xs" color="tertiary">{' '}</Text>
@@ -242,14 +242,14 @@ function RecentChecks({ rows }: { rows: DelegationDecisionRow[] }) {
               gridTemplateColumns: '24px 1fr 1fr 1fr',
               gap: '4px 8px',
               padding: '4px 0',
-              borderBottom: '1px solid var(--line-2)',
+              borderBottom: '1px solid var(--ds-line-soft)',
               alignItems: 'center',
             }}
           >
             <Text
               as="span"
               size="sm"
-              style={{ color: passed ? 'var(--good)' : 'var(--error, var(--warn))' }}
+              style={{ color: passed ? 'var(--ds-ok)' : 'var(--ds-bad, var(--ds-warn))' }}
             >
               {passed ? '✓' : '✗'}
             </Text>
@@ -291,7 +291,7 @@ function RecentChecks({ rows }: { rows: DelegationDecisionRow[] }) {
             marginTop: 6,
             background: 'none',
             border: 'none',
-            color: 'var(--text-link, var(--text-secondary))',
+            color: 'var(--ds-link, var(--ds-ink-2))',
             cursor: 'pointer',
             padding: '2px 0',
           }}
@@ -322,7 +322,7 @@ function TokensToComplianceByModel({ rows }: { rows: TokensToComplianceByModelRo
           gridTemplateColumns: '1fr 80px 80px 60px',
           gap: 8,
           paddingBottom: 4,
-          borderBottom: '1px solid var(--line)',
+          borderBottom: '1px solid var(--ds-line)',
         }}
       >
         {(['Model', 'Avg Tokens', 'Avg Attempts', 'Samples'] as const).map((h, i) => (
@@ -345,7 +345,7 @@ function TokensToComplianceByModel({ rows }: { rows: TokensToComplianceByModelRo
             gridTemplateColumns: '1fr 80px 80px 60px',
             gap: 8,
             padding: '4px 0',
-            borderBottom: '1px solid var(--line-2)',
+            borderBottom: '1px solid var(--ds-line-soft)',
             alignItems: 'center',
           }}
         >
@@ -457,7 +457,7 @@ export default function DelegationQualityGateWidget(props: { config: DelegationQ
                 gridTemplateColumns: 'repeat(2, 1fr)',
                 gap: 12,
                 paddingBottom: 12,
-                borderBottom: '1px solid var(--line)',
+                borderBottom: '1px solid var(--ds-line)',
               }}
             >
               <KPI
@@ -494,20 +494,20 @@ export default function DelegationQualityGateWidget(props: { config: DelegationQ
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 padding: '8px 12px',
-                background: 'color-mix(in srgb, var(--warn) 12%, transparent)',
-                border: '1px solid color-mix(in srgb, var(--warn) 35%, transparent)',
+                background: 'color-mix(in srgb, var(--ds-warn) 12%, transparent)',
+                border: '1px solid color-mix(in srgb, var(--ds-warn) 35%, transparent)',
                 borderRadius: 6,
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Text as="span" size="sm" weight="semibold" style={{ color: 'var(--warn)' }}>
+                <Text as="span" size="sm" weight="semibold" style={{ color: 'var(--ds-warn)' }}>
                   ⚠ Escalations
                 </Text>
                 <Text as="span" size="xs" color="secondary">
                   {projection.escalation_count} delegation{projection.escalation_count !== 1 ? 's' : ''} required human escalation
                 </Text>
               </div>
-              <Text as="span" size="sm" family="mono" tabularNums weight="semibold" style={{ color: 'var(--warn)' }}>
+              <Text as="span" size="sm" family="mono" tabularNums weight="semibold" style={{ color: 'var(--ds-warn)' }}>
                 {(projection.escalation_rate * 100).toFixed(1)}% rate
               </Text>
             </div>
@@ -521,7 +521,7 @@ export default function DelegationQualityGateWidget(props: { config: DelegationQ
                 gridTemplateColumns: '120px 1fr 60px 80px 60px',
                 gap: 8,
                 paddingBottom: 4,
-                borderBottom: '1px solid var(--line)',
+                borderBottom: '1px solid var(--ds-line)',
               }}
             >
               {(['Type', 'Local / Escalated', 'Rate', 'Local / Escalated', 'Total'] as const).map((h, i) => (

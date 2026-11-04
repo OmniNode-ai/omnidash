@@ -5,29 +5,29 @@ export type NodeKind = 'orchestrator' | 'compute' | 'effect' | 'reducer' | 'cmd'
 
 const NODE_COLORS: Record<NodeKind, { bg: string; fg: string; dot: string }> = {
   orchestrator: {
-    bg: 'var(--orchestrator-soft)',
-    fg: 'var(--orchestrator-ink)',
-    dot: 'var(--orchestrator)',
+    bg: 'var(--ds-kind-orchestrator-soft)',
+    fg: 'var(--ds-kind-orchestrator-ink)',
+    dot: 'var(--ds-kind-orchestrator)',
   },
   compute: {
-    bg: 'var(--compute-soft)',
-    fg: 'var(--compute-ink)',
-    dot: 'var(--compute)',
+    bg: 'var(--ds-kind-compute-soft)',
+    fg: 'var(--ds-kind-compute-ink)',
+    dot: 'var(--ds-kind-compute)',
   },
   effect: {
-    bg: 'var(--effect-soft)',
-    fg: 'var(--effect-ink)',
-    dot: 'var(--effect)',
+    bg: 'var(--ds-kind-effect-soft)',
+    fg: 'var(--ds-kind-effect-ink)',
+    dot: 'var(--ds-kind-effect)',
   },
   reducer: {
-    bg: 'var(--reducer-soft)',
-    fg: 'var(--reducer-ink)',
-    dot: 'var(--reducer)',
+    bg: 'var(--ds-kind-reducer-soft)',
+    fg: 'var(--ds-kind-reducer-ink)',
+    dot: 'var(--ds-kind-reducer)',
   },
   cmd: {
-    bg: 'var(--accent-soft)',
-    fg: 'var(--accent-ink)',
-    dot: 'var(--accent)',
+    bg: 'var(--ds-brand-soft)',
+    fg: 'var(--ds-link)',
+    dot: 'var(--ds-brand)',
   },
 };
 

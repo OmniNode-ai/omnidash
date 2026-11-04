@@ -75,11 +75,11 @@ const MODE_LABEL: Record<ExecutionMode, string> = {
 };
 
 const MODE_COLOR: Record<ExecutionMode, string> = {
-  local: 'var(--good)',
-  cloud: 'var(--accent)',
-  delegated: 'var(--orchestrator)',
-  market: 'var(--reducer)',
-  workflow_child: 'var(--effect)',
+  local: 'var(--ds-ok)',
+  cloud: 'var(--ds-brand)',
+  delegated: 'var(--ds-kind-orchestrator)',
+  market: 'var(--ds-kind-reducer)',
+  workflow_child: 'var(--ds-kind-effect)',
 };
 
 function fmtUsd(v: number): string {
@@ -130,7 +130,7 @@ function KPIBar({ overview }: { overview: CostSavingsOverviewProjection }) {
         gridTemplateColumns: 'repeat(4, 1fr)',
         gap: 12,
         padding: '12px 0 16px',
-        borderBottom: '1px solid var(--line)',
+        borderBottom: '1px solid var(--ds-line)',
       }}
     >
       <KPI
@@ -172,7 +172,7 @@ function SplitBar({ localPct }: { localPct: number }) {
   return (
     <div style={{ marginBottom: 16 }}>
       <div
-        style={{ "fontSize": 10, "color": 'var(--ink-3)', "letterSpacing": '0.1em', "textTransform": 'uppercase' as const, marginBottom: 6, "fontWeight": 600 }}
+        style={{ "fontSize": 10, "color": 'var(--ds-ink-3)', "letterSpacing": '0.1em', "textTransform": 'uppercase' as const, marginBottom: 6, "fontWeight": 600 }}
       >
         Delegated token split
       </div>
@@ -180,11 +180,11 @@ function SplitBar({ localPct }: { localPct: number }) {
         <div
           style={{
             width: `${localPct}%`,
-            background: 'var(--good)',
+            background: 'var(--ds-ok)',
             display: 'flex',
             alignItems: 'center',
             paddingLeft: 8,
-            color: '#fff',
+            color: 'var(--ds-on-inverse)',
             "fontSize": 10,
             "fontWeight": 700,
             "letterSpacing": '0.06em',
@@ -197,11 +197,11 @@ function SplitBar({ localPct }: { localPct: number }) {
         <div
           style={{
             width: `${cloudPct}%`,
-            background: 'var(--accent)',
+            background: 'var(--ds-brand)',
             display: 'flex',
             alignItems: 'center',
             paddingLeft: 8,
-            color: '#fff',
+            color: 'var(--ds-on-inverse)',
             "fontSize": 10,
             "fontWeight": 700,
             "letterSpacing": '0.06em',
@@ -282,7 +282,7 @@ const COLUMNS: ColumnDef<CostSavingsRow>[] = [
     mono: true,
     sortValue: (r) => r.baseline_cost_usd,
     render: (row) => (
-      <span style={{ color: 'var(--warn)' }}>{fmtUsd(row.baseline_cost_usd)}</span>
+      <span style={{ color: 'var(--ds-warn)' }}>{fmtUsd(row.baseline_cost_usd)}</span>
     ),
   },
   {
@@ -293,7 +293,7 @@ const COLUMNS: ColumnDef<CostSavingsRow>[] = [
     mono: true,
     sortValue: (r) => r.savings_usd,
     render: (row) => (
-      <span style={{ color: row.savings_usd > 0 ? 'var(--good)' : 'var(--ink-3)' }}>
+      <span style={{ color: row.savings_usd > 0 ? 'var(--ds-ok)' : 'var(--ds-ink-3)' }}>
         {row.savings_usd > 0 ? `+${fmtUsd(row.savings_usd)}` : '—'}
       </span>
     ),
@@ -306,7 +306,7 @@ const COLUMNS: ColumnDef<CostSavingsRow>[] = [
     mono: true,
     sortValue: (r) => r.savings_pct,
     render: (row) => (
-      <span style={{ color: row.savings_pct > 0 ? 'var(--good)' : 'var(--ink-3)' }}>
+      <span style={{ color: row.savings_pct > 0 ? 'var(--ds-ok)' : 'var(--ds-ink-3)' }}>
         {row.savings_pct > 0 ? fmtPct(row.savings_pct) : '—'}
       </span>
     ),
@@ -320,13 +320,13 @@ const COLUMNS: ColumnDef<CostSavingsRow>[] = [
       row.evidence_ref ? (
         <span
           className="mono"
-          style={{ "fontSize": 9, color: 'var(--accent)', cursor: 'help' }}
+          style={{ "fontSize": 9, color: 'var(--ds-brand)', cursor: 'help' }}
           title={row.evidence_ref}
         >
           ref
         </span>
       ) : (
-        <span style={{ "fontSize": 9, "color": 'var(--ink-4)' }}>provisional</span>
+        <span style={{ "fontSize": 9, "color": 'var(--ds-ink-4)' }}>provisional</span>
       ),
   },
 ];
@@ -354,7 +354,7 @@ function RecentRunsSection({ overview }: { overview: CostSavingsOverviewProjecti
           gridTemplateColumns: '76px minmax(72px, 1fr) minmax(120px, 2fr) 64px 80px 64px 72px',
           gap: 8,
           paddingBottom: 4,
-          borderBottom: '1px solid var(--line)',
+          borderBottom: '1px solid var(--ds-line)',
         }}
       >
         {(['Run', 'Task', 'Model', 'Tokens', 'Saved', 'Latency', 'Time'] as const).map((h, i) => (
@@ -376,7 +376,7 @@ function RecentRunsSection({ overview }: { overview: CostSavingsOverviewProjecti
             gridTemplateColumns: '76px minmax(72px, 1fr) minmax(120px, 2fr) 64px 80px 64px 72px',
             gap: 8,
             padding: '5px 0',
-            borderBottom: '1px solid var(--line-2)',
+            borderBottom: '1px solid var(--ds-line-soft)',
             alignItems: 'center',
           }}
         >
@@ -434,11 +434,11 @@ function WarningsStrip({ warnings }: { warnings: string[] }) {
       style={{
         marginTop: 12,
         padding: '8px 12px',
-        background: 'color-mix(in srgb, var(--warn) 10%, transparent)',
-        border: '1px solid color-mix(in srgb, var(--warn) 30%, transparent)',
+        background: 'color-mix(in srgb, var(--ds-warn) 10%, transparent)',
+        border: '1px solid color-mix(in srgb, var(--ds-warn) 30%, transparent)',
         borderRadius: 6,
         "fontSize": 11,
-        color: 'var(--warn)',
+        color: 'var(--ds-warn)',
         "lineHeight": 1.5,
       }}
     >
@@ -462,11 +462,11 @@ function EmptyState() {
         height: '100%',
         minHeight: 160,
         gap: 8,
-        "color": 'var(--ink-3)',
+        "color": 'var(--ds-ink-3)',
       }}
     >
       <div style={{ "fontSize": 13, "fontWeight": 500 }}>No cost savings data available</div>
-      <div style={{ "fontSize": 11, "color": 'var(--ink-4)', textAlign: 'center', maxWidth: 300 }}>
+      <div style={{ "fontSize": 11, "color": 'var(--ds-ink-4)', textAlign: 'center', maxWidth: 300 }}>
         Cost savings overview appears once the projection emitter lands.
         Upstream-blocked until node_dashboard_view_composer is deployed (OMN-10346).
       </div>
@@ -513,7 +513,7 @@ export default function CostSavingsOverviewWidget(props: { config: CostSavingsOv
             <div
               style={{
                 "fontSize": 10,
-                "color": 'var(--ink-3)',
+                "color": 'var(--ds-ink-3)',
                 "letterSpacing": '0.1em',
                 "textTransform": 'uppercase' as const,
                 marginBottom: 6,
@@ -540,7 +540,7 @@ export default function CostSavingsOverviewWidget(props: { config: CostSavingsOv
               style={{
                 marginTop: 8,
                 "fontSize": 10,
-                "color": 'var(--ink-4)',
+                "color": 'var(--ds-ink-4)',
                 fontStyle: 'italic',
               }}
             >

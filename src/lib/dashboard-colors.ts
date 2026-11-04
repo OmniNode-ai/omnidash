@@ -1,14 +1,14 @@
 /** Exact served model identity, preserving case and independent of position or filtering. Presentation only. */
 export function modelColor(model: string): string {
   if (!model.trim() || /^(none|unknown(?: model)?|not recorded)$/i.test(model)) {
-    return 'var(--field-unavailable)';
+    return 'var(--ds-field-unavailable)';
   }
   let hash = 2166136261;
   for (let index = 0; index < model.length; index += 1) {
     hash = Math.imul(hash ^ model.charCodeAt(index), 16777619) >>> 0;
   }
   const hue = (hash % 36000) / 100;
-  return `oklch(var(--model-identity-lightness, 46%) 0.13 ${hue})`;
+  return `oklch(var(--ds-model-lightness) 0.13 ${hue})`;
 }
 
 /** Canonical presentation for the runtime's named tiers; exact IDs are never case-folded. */
@@ -34,7 +34,7 @@ const TIER_COLOR_TOKENS: Readonly<Record<string, string>> = {
 
 export function tierColor(tier: string): string {
   const token = Object.hasOwn(TIER_COLOR_TOKENS, tier) ? TIER_COLOR_TOKENS[tier] : 'tier-none';
-  return `var(--field-${token})`;
+  return `var(--ds-field-${token})`;
 }
 
 /** The served model name a row carries, under whichever field its exposure names it. */

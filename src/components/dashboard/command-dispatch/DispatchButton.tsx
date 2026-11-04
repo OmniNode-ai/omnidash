@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { RotateCw, Square, Check, AlertCircle, Loader } from 'lucide-react';
+import { RotateCw, Square, Check, AlertCircle, Loader } from '@/theme/design-system/icons';
 import type { DispatchRequest } from './useDispatch';
 import { useDispatch } from './useDispatch';
 
@@ -48,8 +48,8 @@ export function DispatchButton({ variant, targetNodeId, correlationId }: Dispatc
     return <RotateCw size={ICON_SIZE} />;
   };
 
-  const baseColor = isStop ? 'var(--bad)' : 'var(--accent)';
-  const stateColor = state === 'success' ? 'var(--good)' : state === 'error' ? 'var(--bad)' : baseColor;
+  const baseColor = isStop ? 'var(--ds-bad)' : 'var(--ds-brand)';
+  const stateColor = state === 'success' ? 'var(--ds-ok)' : state === 'error' ? 'var(--ds-bad)' : baseColor;
   const isDisabled = state === 'loading';
 
   const title = isStop ? 'Stop this trace' : 'Re-run this trace';
@@ -69,8 +69,8 @@ export function DispatchButton({ variant, targetNodeId, correlationId }: Dispatc
         width: 22,
         height: 22,
         borderRadius: 4,
-        border: `1px solid ${isDisabled ? 'var(--line)' : stateColor}`,
-        color: isDisabled ? 'var(--text-tertiary)' : stateColor,
+        border: `1px solid ${isDisabled ? 'var(--ds-line)' : stateColor}`,
+        color: isDisabled ? 'var(--ds-ink-3)' : stateColor,
         cursor: isDisabled ? 'not-allowed' : 'pointer',
         flexShrink: 0,
         transition: 'opacity 0.15s, border-color 0.15s, color 0.15s',

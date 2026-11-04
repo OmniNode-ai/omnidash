@@ -38,7 +38,7 @@ export default function McpToolsWidget({ config: _config }: { config: Record<str
       emptyHint="Tools appear after a successful generation + registration pipeline run"
     >
       {data && data.length > 0 && (
-        <div style={{ border: '1px solid var(--line-2)', borderRadius: 6, overflow: 'hidden' }}>
+        <div style={{ border: '1px solid var(--ds-line-soft)', borderRadius: 6, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
             <colgroup>
               <col style={{ width: '30%' }} />
@@ -59,7 +59,7 @@ export default function McpToolsWidget({ config: _config }: { config: Record<str
             </thead>
             <tbody>
               {data.map((tool) => (
-                <tr key={tool.name} style={{ borderTop: '1px solid var(--line-2)' }}>
+                <tr key={tool.name} style={{ borderTop: '1px solid var(--ds-line-soft)' }}>
                   <td style={tdStyle}>
                     <Text size="lg" weight="semibold" color="primary">{tool.name}</Text>
                   </td>
@@ -82,7 +82,7 @@ export default function McpToolsWidget({ config: _config }: { config: Record<str
                           display: 'inline-block',
                           padding: '2px 8px',
                           borderRadius: 4,
-                          border: '1px solid var(--status-ok)',
+                          border: '1px solid var(--ds-ok)',
                         }}
                       >
                         NEW
@@ -102,8 +102,8 @@ export default function McpToolsWidget({ config: _config }: { config: Record<str
 const thStyle: CSSProperties = {
   textAlign: 'left',
   padding: '0.375rem 0.625rem',
-  background: 'var(--panel-2)',
-  borderBottom: '1px solid var(--line)',
+  background: 'var(--ds-surface-2)',
+  borderBottom: '1px solid var(--ds-line)',
 };
 
 const tdStyle: CSSProperties = {

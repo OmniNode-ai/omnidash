@@ -1,15 +1,16 @@
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
-import { RankedBars } from '@/components/dashboard/RankedBars';
+import { ChartNotRecorded, RankedBars } from '@/theme/design-system/charts';
 import { UsageAnalysis } from './usage-analysis';
 import { DEFAULT_RUNS_VIEW, writeRunsSearch } from '@/navigation/runs-url-state';
 import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
 import { tierColor } from '@/lib/dashboard-colors';
 import { formatDashboardUsd } from '@/lib/dashboard-currency';
 import { sumDashboardUsd } from '@/lib/dashboard-money-total';
-import { GroupedBars } from '@/components/dashboard/GroupedBars';
+import { GroupedBars } from '@/theme/design-system/charts';
 import { aggregateUsageRows, type UsageAggregates } from './insight-aggregates';
 import { tierLabel } from './plain-text';
 import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
+import { EmptyState } from '@/theme/design-system/components';
 
 const USAGE_WINDOW_DAYS = 30;
 
@@ -118,7 +119,7 @@ function CostPerRun({ data, titled }: { data: UsageAggregates; titled: boolean }
     {titled && <h3><ConceptIcon concept="cost-per-run" size={16} />Cost per run</h3>}
     <GroupedBars label="Cost per run by UTC day" groups={shown.map(day => ({
       key: day.day, name: date(day.day), label: text(day),
-      values: [{ key: 'cost', value: value(day), display: value(day) === null ? 'Not measured' : money(day.measuredCostPerCallUsd), color: 'var(--field-cost)', tone: 'cost' }],
+      values: [{ key: 'cost', value: value(day), display: value(day) === null ? 'Not measured' : money(day.measuredCostPerCallUsd), color: 'var(--ds-field-cost)', tone: 'cost' }],
     }))} />
     <figcaption className="local-dashboard-caption">Measured spend divided by calls with measured cost; unmeasured calls are left out.</figcaption>
   </figure>;
@@ -130,15 +131,15 @@ function TokensByModel({ data, titled }: { data: UsageAggregates; titled: boolea
   const words = (value: number | null) => (value === null ? 'Not recorded' : formatFullCount(value));
   return <figure className="local-chart usage-insight" aria-label="Tokens in vs out by model">
     {titled && <h3><ConceptIcon concept="tokens-model" size={16} />Tokens in vs out by model</h3>}
-    {data.models.length === 0 ? <p role="status" className="local-dashboard-empty">No token data available</p> : (
+    {data.models.length === 0 ? <EmptyState>No token data available</EmptyState> : (
       <GroupedBars label="Token counts by model" wrapNames
-        legend={[{ label: 'Tokens in', color: 'var(--field-tokens-in)' }, { label: 'Tokens out', color: 'var(--field-tokens-out)' }]}
+        legend={[{ label: 'Tokens in', color: 'var(--ds-field-tokens-in)' }, { label: 'Tokens out', color: 'var(--ds-field-tokens-out)' }]}
         groups={data.models.map(model => ({
           key: model.model, name: model.model, model: model.model, nameColor: modelColor(model.model),
           label: `${model.model}: ${words(model.inputTokens)} tokens in, ${words(model.outputTokens)} tokens out`,
           values: [
-            { key: 'in', value: model.inputTokens, display: words(model.inputTokens), color: 'var(--field-tokens-in)', tone: 'tokens-in' },
-            { key: 'out', value: model.outputTokens, display: words(model.outputTokens), color: 'var(--field-tokens-out)', tone: 'tokens-out' },
+            { key: 'in', value: model.inputTokens, display: words(model.inputTokens), color: 'var(--ds-field-tokens-in)', tone: 'tokens-in' },
+            { key: 'out', value: model.outputTokens, display: words(model.outputTokens), color: 'var(--ds-field-tokens-out)', tone: 'tokens-out' },
           ],
         }))} />
     )}
@@ -183,7 +184,7 @@ function CostByRoute({ routing, titled }: { routing: RouteRow[]; titled: boolean
   return (
     <section className="local-chart usage-cost-by-route" aria-label="Cost by route">
       {titled && <h3><ConceptIcon concept="cost-route" size={16} />Cost by route</h3>}
-      {routing.length === 0 ? <p className="local-dashboard-caption" role="status">Route cost is not served yet.</p> : <>
+      {routing.length === 0 ? <ChartNotRecorded role="status">Route cost is not served yet.</ChartNotRecorded> : <>
         <RankedBars layout="vertical" label="Cost per route" unit="USD · measured cost per route" order="desc"
           items={routed.map(row => {
             const value = row.cost.usd === null ? null : Number(row.cost.usd);

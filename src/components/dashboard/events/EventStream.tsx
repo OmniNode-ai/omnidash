@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { ArrowUp, Search } from 'lucide-react';
+import { ArrowUp, Search } from '@/theme/design-system/icons';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
@@ -179,12 +179,12 @@ export default function EventStream({ config }: { config: EventStreamConfig }) {
             alignItems: 'center',
             gap: '0.5rem',
             padding: '0.375rem 0.625rem',
-            border: '1px solid var(--line)',
+            border: '1px solid var(--ds-line)',
             borderRadius: 6,
-            background: 'var(--panel-2)',
+            background: 'var(--ds-surface-2)',
           }}
         >
-          <Search size={14} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
+          <Search size={14} style={{ color: 'var(--ds-ink-3)', flexShrink: 0 }} />
           <input
             type="text"
             value={query}
@@ -209,9 +209,9 @@ export default function EventStream({ config }: { config: EventStreamConfig }) {
             style={{
               height: SCROLL_HEIGHT,
               overflowY: 'auto',
-              border: '1px solid var(--line-2)',
+              border: '1px solid var(--ds-line-soft)',
               borderRadius: 6,
-              background: 'var(--panel)',
+              background: 'var(--ds-surface)',
             }}
           >
             <div
@@ -223,8 +223,8 @@ export default function EventStream({ config }: { config: EventStreamConfig }) {
                 gridTemplateColumns: ROW_COLUMNS,
                 gap: '0.5rem',
                 padding: '6px 10px',
-                background: 'var(--panel-2)',
-                borderBottom: '1px solid var(--line)',
+                background: 'var(--ds-surface-2)',
+                borderBottom: '1px solid var(--ds-line)',
               }}
             >
               <Text size="xs" weight="semibold" transform="uppercase" color="secondary" className="text-tracked">Time</Text>
@@ -246,7 +246,7 @@ export default function EventStream({ config }: { config: EventStreamConfig }) {
                     gap: '0.5rem',
                     alignItems: 'center',
                     padding: '6px 10px',
-                    borderBottom: '1px solid var(--line-2)',
+                    borderBottom: '1px solid var(--ds-line-soft)',
                   }}
                 >
                   <Text size="md" family="mono" color="tertiary" tabularNums>
@@ -300,15 +300,15 @@ export default function EventStream({ config }: { config: EventStreamConfig }) {
                 left: '50%',
                 transform: 'translateX(-50%)',
                 padding: '4px 10px',
-                background: 'var(--brand-soft)',
-                color: 'var(--brand-ink)',
-                border: '1px solid var(--brand)',
+                background: 'var(--ds-brand-soft)',
+                color: 'var(--ds-brand-ink)',
+                border: '1px solid var(--ds-brand)',
                 borderRadius: 12,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 4,
-                boxShadow: 'var(--shadow-sm)',
+                boxShadow: 'var(--ds-shadow-sm)',
               }}
             >
               <ArrowUp size={12} />

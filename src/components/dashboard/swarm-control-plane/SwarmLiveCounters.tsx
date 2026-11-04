@@ -17,9 +17,9 @@ function CounterCard({
     <div
       style={{
         padding: '10px 14px',
-        border: '1px solid var(--line)',
+        border: '1px solid var(--ds-line)',
         borderRadius: 8,
-        background: 'var(--panel-1)',
+        background: 'var(--ds-surface)',
         display: 'flex',
         flexDirection: 'column',
         gap: 2,

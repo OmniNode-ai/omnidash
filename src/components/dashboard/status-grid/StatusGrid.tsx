@@ -74,7 +74,7 @@ export function StatusGrid({ title, rows, waitsOn, isLoading, error, fileMode, c
               data-severity={row.severity}
               style={{
                 borderLeft: `4px solid ${role.edge}`,
-                background: 'var(--panel-2)',
+                background: 'var(--ds-surface-2)',
                 borderRadius: 6,
                 padding: '8px 10px',
                 display: 'flex',

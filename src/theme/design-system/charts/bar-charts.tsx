@@ -2,7 +2,8 @@ import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
 import { formatDashboardUsd } from '@/lib/dashboard-currency';
 import { formatDuration } from '@/components/format/duration';
 import { useEffect, useId, useState } from 'react';
-import { ConceptIcon } from '@/components/dashboard/FieldIcon';
+import { ChartEmpty, ChartHeading } from './frame';
+import { SwatchToggles } from './legend';
 import { Link } from 'wouter';
 import { workflowHref } from '@/navigation/workflow-url-state';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
@@ -10,7 +11,8 @@ import * as echarts from 'echarts/core';
 import { BarChart } from 'echarts/charts';
 import { AriaComponent, GridComponent, TooltipComponent } from 'echarts/components';
 import { SVGRenderer } from 'echarts/renderers';
-import { cssColorToHex, useThemeName } from '@/theme';
+import { useThemeName } from '@/theme';
+import { colorToNumber, tokenHex, type TokenName } from '@/theme/design-system/color';
 
 echarts.use([BarChart, GridComponent, TooltipComponent, AriaComponent, SVGRenderer]);
 
@@ -44,15 +46,6 @@ export function dayAxisLabel(day: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(day)
     ? new Date(`${day}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
     : day;
-}
-
-/**
- * A chart's title row in the Overview panel style (part 18 AC124): its icon, then a neutral title; a detail line only
- * when it says what the chart counts. No icon badge and no decorative icon.
- */
-function ChartHeading({ title, detail, concept }: { title: string; detail?: string; concept: string }) {
-  return <div className="local-chart-heading"><ConceptIcon concept={concept} label={title} size={16} />
-    <div><h3>{title}</h3>{detail && <p>{detail}</p>}</div></div>;
 }
 
 function RunInspector({ runs, describe }: { runs: readonly ListedRun[]; describe?: (run: ListedRun) => string }) {
@@ -162,12 +155,9 @@ export function spendByDayGroups(columns: readonly DeclaredChartColumn[], rows: 
   }));
 }
 
-/** A theme colour as the hex a chart library can animate; the token stays the source, the fallback is for tests. */
-function tone(token: string, fallback: number): string {
-  const value = typeof document === 'undefined'
-    ? undefined
-    : getComputedStyle(document.documentElement).getPropertyValue(token).trim();
-  return `#${cssColorToHex(value || undefined, fallback).toString(16).padStart(6, '0')}`;
+/** A theme colour as the hex a chart library can animate; the token stays the source (src/theme/design-system/color.ts). */
+function tone(token: string): string {
+  return tokenHex(token as TokenName);
 }
 
 /**
@@ -179,8 +169,8 @@ function tone(token: string, fallback: number): string {
  */
 function seriesColours(count: number, places: readonly number[] | undefined): string[] {
   // Place 5 is the savings identity colour, the colour of the Savings headline card (OMN-21166 live review 2026-10-25).
-  const palette = [tone('--chart-1', 0x58a6ff), tone('--chart-4', 0xf0703c), tone('--chart-2', 0x3fb9a0), tone('--chart-3', 0xd9b530),
-    tone('--field-savings', 0x014e44)];
+  const palette = [tone('--ds-chart-1'), tone('--ds-chart-4'), tone('--ds-chart-2'), tone('--ds-chart-3'),
+    tone('--ds-field-savings')];
   return Array.from({ length: count }, (_, index) => {
     const place = places?.[index];
     // The default cycle is the four chart colours; the savings colour is only ever asked for by place.
@@ -199,8 +189,8 @@ export function valueAxisLabel(value: number): string {
 
 /** The option for the series that are shown. The chart draws no legend: the legend is the row of buttons above it. */
 function optionFor(group: SpendByDayGroup, shown: ReadonlyArray<{ series: ServedSeries; colour: string }>) {
-  const text = tone('--ink-2', 0x8b949e);
-  const line = tone('--line', 0x30363d);
+  const text = tone('--ds-ink-2');
+  const line = tone('--ds-line');
   // The chart draws its own text; without the page's font it falls back to the browser's serif.
   const fontFamily = typeof document === 'undefined' ? '' : getComputedStyle(document.body).fontFamily;
   return {
@@ -277,22 +267,10 @@ function SpendChartFigure({ group, title, colourPlaces }: { group: SpendByDayGro
       <ChartHeading concept="spend-daily" title="Daily comparison"
         detail={group.series.length > 0 && group.series.every(series => /savings|counterfactual/i.test(series.key))
           ? `Daily values · modelled saving against ${group.baseline}` : `Daily values · ${group.baseline}`} />
-      <div className="local-chart-legend" role="group" aria-label="Series shown">
-        {all.map(({ series, colour }) => (
-          <button
-            type="button"
-            className="local-chart-toggle"
-            aria-pressed={!hidden.has(series.key)}
-            key={series.key}
-            onClick={() => toggle(series.key)}
-          >
-            <span className="local-chart-swatch" data-swatch aria-hidden="true" style={{ backgroundColor: colour }} />
-            {series.name}
-          </button>
-        ))}
-      </div>
+      <SwatchToggles label="Series shown" onToggle={toggle}
+        series={all.map(({ series, colour }) => ({ key: series.key, label: series.name, color: colour, shown: !hidden.has(series.key) }))} />
       {shown.length === 0
-        ? <p className="local-dashboard-empty" role="status">{EVERY_SERIES_HIDDEN}</p>
+        ? <ChartEmpty status>{EVERY_SERIES_HIDDEN}</ChartEmpty>
         : <ReactEChartsCore echarts={echarts} option={{ ...optionFor(group, shown), ...motion.option }} notMerge opts={{ renderer: 'svg' }} className="local-chart-canvas" />}
       <div className="local-chart-inspector"><label htmlFor={dayId}>Inspect day</label>
         <select id={dayId} value={selectedDay === null ? '' : day} onChange={event => setDay(event.target.value)}>
@@ -367,8 +345,8 @@ export function millisecondsAxisLabel(value: number): string {
 }
 
 function timingOption(bars: readonly RunTimingBar[], colours: readonly string[], compact = false) {
-  const text = tone('--ink-2', 0x8b949e);
-  const line = tone('--line', 0x30363d);
+  const text = tone('--ds-ink-2');
+  const line = tone('--ds-line');
   const fontFamily = typeof document === 'undefined' ? '' : getComputedStyle(document.body).fontFamily;
   // The tooltip writes the served text exactly; the label at a bar's end reads it as a duration (OMN-21166 AC55).
   const servedText = (index: number) => `${bars[index]?.served ?? ''} ms`;
@@ -418,7 +396,7 @@ export function RunTimingChart({ timings, title = 'Run timing', compact = false,
   const palette = seriesColours(timings.length, undefined);
   const colours = bars.map((bar, index) => {
     if (!accentToken) return palette[bar.place - 1]!;
-    const accent = cssColorToHex(tone(accentToken, 0xc2410c), 0xc2410c);
+    const accent = colorToNumber(tone(accentToken));
     // Distinct timings retain separate shades within their enclosing card's
     // accent. The first remains the exact accent; no data changes with color.
     const tint = Math.min(.5, index / (bars.length + 1));
@@ -461,9 +439,9 @@ function runLabel(run: ListedRun): string {
 
 /** The colour of a run's status, the same the status pill in its row carries. */
 function statusColour(status: string): string {
-  if (status === 'passed') return tone('--status-ok', 0x3fb950);
-  if (status === 'failed') return tone('--status-bad', 0xf85149);
-  return tone('--ink-3', 0x6e7681);
+  if (status === 'passed') return tone('--ds-ok');
+  if (status === 'failed') return tone('--ds-bad');
+  return tone('--ds-ink-3');
 }
 
 /** A tick of a count axis; the origin carries no label, as on the money axis. */
@@ -474,8 +452,8 @@ export function countAxisLabel(value: number): string {
 
 /** What both run charts share: the page's text colours and font, the runs along the bottom, the value axis. */
 function runChartFrame(runs: readonly ListedRun[], axisLabel: (value: number) => string) {
-  const text = tone('--ink-2', 0x8b949e);
-  const line = tone('--line', 0x30363d);
+  const text = tone('--ds-ink-2');
+  const line = tone('--ds-line');
   const fontFamily = typeof document === 'undefined' ? '' : getComputedStyle(document.body).fontFamily;
   return {
     animationDuration: 250,
@@ -555,16 +533,10 @@ export function RunDurationChart({ runs, onOpen, title = 'Duration per run' }: {
   return (
     <figure className="local-chart local-chart--runs" aria-label={title} data-motion={motion.reduced ? 'reduced' : 'full'}>
       <ChartHeading title={title} concept="duration" />
-      <div className="local-chart-legend" role="group" aria-label="Statuses shown">
-        {statuses.map((status) => (
-          <button type="button" className="local-chart-toggle" aria-pressed={!hidden.has(status)} key={status} onClick={() => toggle(status)}>
-            <span className="local-chart-swatch" data-swatch aria-hidden="true" style={{ backgroundColor: statusColour(status) }} />
-            {status}
-          </button>
-        ))}
-      </div>
+      <SwatchToggles label="Statuses shown" onToggle={toggle}
+        series={statuses.map(status => ({ key: status, label: status, color: statusColour(status), shown: !hidden.has(status) }))} />
       {statuses.every((status) => hidden.has(status))
-        ? <p className="local-dashboard-empty" role="status">{EVERY_SERIES_HIDDEN}</p>
+        ? <ChartEmpty status>{EVERY_SERIES_HIDDEN}</ChartEmpty>
         : <ReactEChartsCore echarts={echarts} option={option} notMerge opts={{ renderer: 'svg' }} className="local-chart-canvas" onEvents={openOnClick(runs, onOpen)} />}
       <RunInspector runs={runs} />
       <figcaption>Duration of each listed run, in the list&apos;s order, in milliseconds as served. A bar opens its run.</figcaption>
@@ -587,7 +559,7 @@ export function RunTokensChart({ runs, onOpen, title = 'Tokens per run' }: { run
   const [hidden, setHidden] = useState<ReadonlySet<string>>(() => new Set());
   // Keep input/output identities consistent with daily charts and run metadata.
   // OMN-21970 AC8: the fallbacks are the light theme's concept colours, so a test without CSS sees the card colours.
-  const colours = [tone('--field-tokens-in', 0x356f87), tone('--field-tokens-out', 0xc10174)];
+  const colours = [tone('--ds-field-tokens-in'), tone('--ds-field-tokens-out')];
   const all = RUN_TOKEN_SERIES.map((series, index) => ({ ...series, colour: colours[index]!, points: runs.map((run) => point(run[series.key])) }));
   if (all.every((series) => series.points.every(({ value }) => value === null))) return null;
   const shown = all.filter((series) => !hidden.has(series.key));
@@ -623,16 +595,10 @@ export function RunTokensChart({ runs, onOpen, title = 'Tokens per run' }: { run
   return (
     <figure className="local-chart local-chart--runs" aria-label={title} data-motion={motion.reduced ? 'reduced' : 'full'}>
       <ChartHeading title={title} concept="tokens" />
-      <div className="local-chart-legend" role="group" aria-label="Series shown">
-        {all.map((series) => (
-          <button type="button" className="local-chart-toggle" data-field-tone={series.key === 'tokensIn' ? 'tokens-in' : 'tokens-out'} aria-pressed={!hidden.has(series.key)} key={series.key} onClick={() => toggle(series.key)}>
-            <span className="local-chart-swatch" data-swatch aria-hidden="true" style={{ backgroundColor: series.colour }} />
-            {series.name}
-          </button>
-        ))}
-      </div>
+      <SwatchToggles label="Series shown" onToggle={toggle}
+        series={all.map(series => ({ key: series.key, label: series.name, color: series.colour, tone: series.key === 'tokensIn' ? 'tokens-in' : 'tokens-out', shown: !hidden.has(series.key) }))} />
       {shown.length === 0
-        ? <p className="local-dashboard-empty" role="status">{EVERY_SERIES_HIDDEN}</p>
+        ? <ChartEmpty status>{EVERY_SERIES_HIDDEN}</ChartEmpty>
         : <ReactEChartsCore echarts={echarts} option={option} notMerge opts={{ renderer: 'svg' }} className="local-chart-canvas" onEvents={openOnClick(runs, onOpen)} />}
       <RunInspector runs={runs} />
       <figcaption>Tokens in and out of each listed run, in the list&apos;s order, as served. A bar opens its run.</figcaption>
@@ -653,7 +619,7 @@ export function RunMetricChart({ runs, onOpen, metric }: {
   const measured = points.some(p => p.value !== null);
   const recordedCount = points.filter(p => p.value !== null).length;
   const allRecordedZero = measured && points.every(p => p.value === null || p.value === 0);
-  const color = tone(cost ? '--run-cost-accent' : '--run-score-accent', cost ? 0xb45309 : 0x047857);
+  const color = tone(cost ? '--ds-field-cost' : '--ds-field-score');
   const valueText = (run: ListedRun) => {
     const served = point(run[metric]).served;
     return `${label}: ${served === null ? 'Not recorded' : cost ? formatDashboardUsd(served) : served}`;

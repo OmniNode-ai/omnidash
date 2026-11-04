@@ -8,6 +8,7 @@
 import { SettingsEmptyState } from '@/components/dashboard/SettingsEmptyState';
 import { readableTime } from '@/components/format/readable-time';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
+import { Fact, FactList } from '@/theme/design-system/components';
 
 const DASHBOARD_SERVICE = 'local-runtime';
 
@@ -75,12 +76,12 @@ export function DashboardAccess({ rows, complete = true }: { rows: readonly Envi
     );
   }
   return (
-    <dl className="local-dashboard-fields">
+    <FactList>
       {/* Part 18 AC129: every field label has its icon, as Local identity's do. */}
-      <div><dt><ConceptIcon concept="local-access" label="Access" />Access</dt><dd>{served(row.access_mode)}</dd></div>
+      <Fact term={<><ConceptIcon concept="local-access" label="Access" />Access</>}>{served(row.access_mode)}</Fact>
       {/* OMN-21166 AC60: "Oct 25, 10:36:18 UTC", the served timestamp kept in the title. */}
-      <div><dt><ConceptIcon concept="age" label="Token minted" />Token minted</dt><dd title={served(row.token_minted_at)}>{readableTime(served(row.token_minted_at)) ?? served(row.token_minted_at)}</dd></div>
-      <div><dt><ConceptIcon concept="credentials" label="Rotate" />Rotate</dt><dd><WithCode text={served(row.rotate_hint)} /></dd></div>
-    </dl>
+      <Fact term={<><ConceptIcon concept="age" label="Token minted" />Token minted</>} valueTitle={served(row.token_minted_at)}>{readableTime(served(row.token_minted_at)) ?? served(row.token_minted_at)}</Fact>
+      <Fact term={<><ConceptIcon concept="credentials" label="Rotate" />Rotate</>}><WithCode text={served(row.rotate_hint)} /></Fact>
+    </FactList>
   );
 }

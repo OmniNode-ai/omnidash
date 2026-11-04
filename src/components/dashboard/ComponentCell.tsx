@@ -75,7 +75,7 @@ export function ComponentCell({
     return (
       <div
         data-testid="grid-item"
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', opacity: 0.5, border: '1px solid var(--line)', borderRadius: 'var(--radius-lg)' }}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', opacity: 0.5, border: '1px solid var(--ds-line)', borderRadius: 'var(--ds-radius)' }}
       >
         <div style={{ display: 'grid', gap: 6, justifyItems: 'center' }}>
           {authorityLabel && (

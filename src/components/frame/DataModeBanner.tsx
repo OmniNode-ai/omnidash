@@ -4,13 +4,13 @@ import { Text } from '@/components/ui/typography';
 const BANNER_CONFIG = {
   file: {
     message: 'Fixture Mode — data shown is for development only',
-    bg: 'var(--status-warn)',
-    color: 'var(--panel)',
+    bg: 'var(--ds-warn)',
+    color: 'var(--ds-surface)',
   },
   sqlite: {
     message: 'Local Data (SQLite) — not connected to live infrastructure',
-    bg: 'var(--brand-soft)',
-    color: 'var(--brand-ink)',
+    bg: 'var(--ds-brand-soft)',
+    color: 'var(--ds-brand-ink)',
   },
 } as const;
 

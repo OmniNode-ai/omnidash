@@ -13,7 +13,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from 'react';
 import { useLocation } from 'wouter';
-import { SlidersHorizontal, ChevronsLeft, ChevronsRight, Copy, Edit, MoreHorizontal, Plus, Trash2 } from 'lucide-react';
+import { SlidersHorizontal, ChevronsLeft, ChevronsRight, Copy, Edit, MoreHorizontal, Plus, Trash2 } from '@/theme/design-system/icons';
 // Grid3x3 removed from import while Instruction Eval nav entry is commented out (OMN-12833 A4).
 import type { AppPage } from '@/store/types';
 import {
@@ -90,11 +90,11 @@ function RenameInput({ initialValue, onCommit, onCancel }: RenameInputProps) {
         if (e.key === 'Escape') onCancel();
       }}
       style={{
-        background: 'var(--sidebar-input)',
-        border: '1px solid var(--brand)',
+        background: 'var(--ds-surface)',
+        border: '1px solid var(--ds-brand)',
         borderRadius: 4,
         outline: 'none',
-        color: 'var(--sidebar-ink)',
+        color: 'var(--ds-ink)',
         font: 'inherit',
         width: '100%',
         padding: '2px 6px',
@@ -338,13 +338,13 @@ export function Sidebar() {
             size="md"
             leading="loose"
             align="center"
-            style={{ padding: '20px 12px', color: 'var(--sidebar-ink-2)' }}
+            style={{ padding: '20px 12px', color: 'var(--ds-ink-3)' }}
           >
             No dashboards yet.
             <br />
             <button
               onClick={handleCreate}
-              style={{ color: 'var(--brand)', textDecoration: 'underline', marginTop: '4px' }}
+              style={{ color: 'var(--ds-brand)', textDecoration: 'underline', marginTop: '4px' }}
             >
               Create your first one →
             </button>

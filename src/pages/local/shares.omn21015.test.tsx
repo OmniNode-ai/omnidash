@@ -25,7 +25,8 @@
 //       the written figure is the only place a sliver of a tier can be read, and rounding says it is none (or all).
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { PassRateMeter, TierShareChart, arcPath, tierShares } from './shares';
+import { PassRateMeter, TierShareChart, tierShares } from './shares';
+import { arcPath } from '@/theme/design-system/charts';
 
 const tier = (name: string, count: number, share: unknown, routed = true) => ({
   cost_tier_name: name, count, tier_routed: routed, pct_of_tier_routed: share,

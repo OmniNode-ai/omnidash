@@ -7,13 +7,13 @@ export const gridContainer = style({
 });
 
 export const gridItem = style({
-  backgroundColor: `hsl(${vars.color.card})`,
-  border: `1px solid hsl(${vars.color.border})`,
+  backgroundColor: `${vars.color.card}`,
+  border: `1px solid ${vars.color.border}`,
   borderRadius: vars.radius.md,
   overflow: 'hidden',
 });
 
 export const gridItemEdit = style({
   cursor: 'move',
-  boxShadow: `0 0 0 2px hsl(${vars.color.primary} / 0.3)`,
+  boxShadow: `0 0 0 2px color-mix(in srgb, ${vars.color.primary} 30%, transparent)`,
 });

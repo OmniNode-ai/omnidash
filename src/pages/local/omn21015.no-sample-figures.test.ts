@@ -22,6 +22,10 @@ const PAGE_SOURCES = [
     .filter((name) => name.endsWith('.tsx') && !name.includes('.test.'))
     .map((name) => `src/pages/local/${name}`),
   'src/components/dashboard/usage/UsageByModelDayWidget.tsx',
+  // OMN-22168 AC3: the page charts moved into the kit, so the kit's chart code is page code for these rules.
+  ...readdirSync(resolve(process.cwd(), 'src/theme/design-system/charts'))
+    .filter((name) => name.endsWith('.tsx') && !name.includes('.test.') && !name.includes('.stories.'))
+    .map((name) => `src/theme/design-system/charts/${name}`),
 ];
 
 /** Text that reads as a figure on its own: digits, with an optional currency sign before and a unit after. */
@@ -41,7 +45,7 @@ const NUMBER_FALLBACKS_READ: ReadonlyArray<{ file: string; code: string; why: st
   { file: 'src/pages/LocalDashboardPage.tsx', code: 'page?.dashboard.refresh_interval_seconds ?? 30', why: 'the same refresh interval, read for the timer; never drawn' },
   { file: 'src/pages/LocalDashboardPage.tsx', code: '(widget?.config as Record<string, unknown> | undefined)?.page_size ?? 25', why: 'rows per page of a table when the page declares none; a layout choice, not a served count' },
   { file: 'src/pages/LocalDashboardPage.tsx', code: 'widget?.width ?? 12', why: 'grid columns a panel spans when the page declares none; layout only' },
-  { file: 'src/pages/local/charts.tsx', code: 'params[0]?.dataIndex ?? 0', why: 'which point the pointer is over in the chart tooltip; an index into the served days, not a value' },
+  { file: 'src/theme/design-system/charts/bar-charts.tsx', code: 'params[0]?.dataIndex ?? 0', why: 'which point the pointer is over in the chart tooltip; an index into the served days, not a value' },
 ];
 
 export interface Finding { rule: 'S1' | 'S2' | 'S3' | 'S4'; file: string; line: number; code: string }

@@ -175,6 +175,82 @@ describe('Phase 4: Widget tests (T11 / OMN-152)', () => {
   }
 });
 
+/**
+ * OMN-22168 AC6: the design system's Storybook page shows every token, icon, chart and component in light and dark.
+ * Failure modes this phase catches:
+ *   a design-system story file is missing, or shows only one theme (no Light or no Dark export, or one not forced to
+ *   its theme by the themes addon's themeOverride);
+ *   a chart or component the kit exports (charts/index.ts, components/index.ts) is not rendered in its story, so a new
+ *   kit export without a story fails here;
+ *   the icon story lists icons by hand instead of walking the registry (CONCEPT_ICONS and every named export), or the
+ *   token story lists tokens by hand instead of reading tokens.css, so a new token or icon would go unshown.
+ */
+const DESIGN_SYSTEM_STORIES = {
+  tokens: 'src/theme/design-system/tokens.stories.tsx',
+  icons: 'src/theme/design-system/icons.stories.tsx',
+  charts: 'src/theme/design-system/charts/charts.stories.tsx',
+  components: 'src/theme/design-system/components/components.stories.tsx',
+} as const;
+
+/** The components a kit index exports: PascalCase value exports, not types, constants or hooks. */
+export function kitComponentExports(indexSource: string): string[] {
+  const names = new Set<string>();
+  for (const match of indexSource.matchAll(/export\s+\{([^}]*)\}\s+from/g)) {
+    const before = indexSource.slice(Math.max(0, match.index - 6), match.index);
+    if (/type\s*$/.test(before) || /^export\s+type/.test(match[0])) continue;
+    for (const raw of match[1].split(',')) {
+      const name = raw.trim().split(/\s+as\s+/).pop()!.trim();
+      if (/^[A-Z][a-z]/.test(name)) names.add(name);
+    }
+  }
+  return [...names].sort();
+}
+
+/** The kit components a story file does not render (no <Name, and for a context no <Name.Provider). */
+export function unrenderedComponents(indexSource: string, storySource: string): string[] {
+  return kitComponentExports(indexSource).filter(name => !new RegExp(`<${name}[\\s/>.]`).test(storySource));
+}
+
+describe('Phase 5: Design system stories (OMN-22168 AC6)', () => {
+  for (const [kind, rel] of Object.entries(DESIGN_SYSTEM_STORIES)) {
+    it(`${kind}: ${rel} exists and shows light and dark`, () => {
+      expect(srcExists(rel), `${rel} missing`).toBe(true);
+      const content = readSrc(rel);
+      expect(content).toMatch(/export\s+const\s+Light\s*[:=]/);
+      expect(content).toMatch(/export\s+const\s+Dark\s*[:=]/);
+      expect(content).toMatch(/themeOverride:\s*'Light'/);
+      expect(content).toMatch(/themeOverride:\s*'Dark'/);
+    });
+  }
+
+  it('every chart the chart kit exports is rendered in its story', () => {
+    expect(srcExists(DESIGN_SYSTEM_STORIES.charts)).toBe(true);
+    expect(unrenderedComponents(readSrc('src/theme/design-system/charts/index.ts'), readSrc(DESIGN_SYSTEM_STORIES.charts))).toEqual([]);
+  });
+
+  it('every component the component kit exports is rendered in its story', () => {
+    expect(srcExists(DESIGN_SYSTEM_STORIES.components)).toBe(true);
+    expect(unrenderedComponents(readSrc('src/theme/design-system/components/index.ts'), readSrc(DESIGN_SYSTEM_STORIES.components))).toEqual([]);
+  });
+
+  it('the icon story walks the registry and the token story reads the token file', () => {
+    expect(srcExists(DESIGN_SYSTEM_STORIES.icons)).toBe(true);
+    const icons = readSrc(DESIGN_SYSTEM_STORIES.icons);
+    expect(icons).toMatch(/CONCEPT_ICONS/);
+    expect(icons).toMatch(/import\s+\*\s+as\s+\w+\s+from\s+'\.\/icons'/);
+    expect(srcExists(DESIGN_SYSTEM_STORIES.tokens)).toBe(true);
+    expect(readSrc(DESIGN_SYSTEM_STORIES.tokens)).toMatch(/from\s+'\.\/tokens\.css\?raw'/);
+  });
+
+  it('control: a kit export missing from its story is caught, a type export is not demanded', () => {
+    const index = "export { Badge, StatusChip } from './Badge';\nexport type { BadgeLook } from './Badge';\nexport { readTab } from './Tabs';";
+    expect(kitComponentExports(index)).toEqual(['Badge', 'StatusChip']);
+    expect(unrenderedComponents(index, '<Badge>x</Badge>')).toEqual(['StatusChip']);
+    expect(unrenderedComponents(index, '<Badge>x</Badge><StatusChip outcome="ok">ok</StatusChip>')).toEqual([]);
+    expect(unrenderedComponents("export { NamedByPanel } from './frame';", '<NamedByPanel.Provider value="x">')).toEqual([]);
+  });
+});
+
 describe('Phase 3: Verification — package.json sanity', () => {
   let pkg = '';
   beforeAll(() => { pkg = readSrc('package.json'); });

@@ -19,7 +19,7 @@ import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
 //     share of calls is the served `call_share`, the row's calls over its tenant's calls that UTC day, formatted as a
 //     percentage. A row with no served share says so; no share is worked out here from the call counts.
 import { useId, useState, type CSSProperties } from 'react';
-import { ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RotateCcw } from '@/theme/design-system/icons';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionSnapshotQuery } from '@/hooks/useProjectionSnapshotQuery';
 import { TOPICS } from '@shared/types/topics';
@@ -42,6 +42,7 @@ export interface UsageByModelDayRow {
 
 import { formatDashboardUsd as formatUsd } from '@/lib/dashboard-currency';
 import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
+import { DataTable, EmptyState } from '@/theme/design-system/components';
 export { formatDashboardUsd as formatUsd } from '@/lib/dashboard-currency';
 
 export const NO_USAGE_ROWS = 'No usage rows yet';
@@ -102,7 +103,7 @@ export function UsageByModelDayTable({ rows, interactive = false }: { rows: read
   const currentPage = Math.min(page, Math.max(0, Math.ceil(filtered.length / 25) - 1));
   const shown = interactive ? filtered.slice(currentPage * 25, (currentPage + 1) * 25) : filtered;
   if (usage.length === 0) {
-    return <p className="local-dashboard-empty" role="status">{NO_USAGE_ROWS}</p>;
+    return <EmptyState>{NO_USAGE_ROWS}</EmptyState>;
   }
   return (
     <div className={interactive ? 'usage-records' : undefined}>
@@ -116,8 +117,7 @@ export function UsageByModelDayTable({ rows, interactive = false }: { rows: read
         </select></label>
         {(activeModel || activeDay) && <button type="button" onClick={() => { setSelectedModel(''); setSelectedDay(''); setPage(0); }}><RotateCcw size={14} aria-hidden="true" />Clear usage filters</button>}
       </div>}
-    <div className="local-dashboard-table-wrap">
-      <table aria-label="Usage by model and day">
+    <DataTable aria-label="Usage by model and day">
         <thead>
           <tr>
             <th>Day</th><th>Model</th><th>Tokens in</th><th>Tokens out</th><th>Cost (measured)</th><th>Unmeasured</th>
@@ -137,8 +137,7 @@ export function UsageByModelDayTable({ rows, interactive = false }: { rows: read
             <td data-label="Share of calls">{callShare(row.call_share)}</td>
           </tr>
         ))}</tbody>
-      </table>
-    </div>
+    </DataTable>
       {interactive && <div className="usage-record-pagination local-dashboard-pager">
         <span role="status">{filtered.length ? `Showing ${currentPage * 25 + 1}–${Math.min((currentPage + 1) * 25, filtered.length)} of ${formatDashboardCount(filtered.length)} records` : 'No records match these filters'}</span>
         {filtered.length > 25 && <div><button type="button" aria-label="Previous usage records" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}><ChevronLeft size={16} aria-hidden="true" />Previous</button>
@@ -202,7 +201,7 @@ export function UsageTokensChart({ rows, days = 14 }: { rows: readonly unknown[]
   const names = [...new Set(shown.flatMap(day => [...byDay.get(day)!.keys()]))];
   const total = (day: string) => [...byDay.get(day)!.values()].reduce((sum, cell) => sum + cell.value, 0);
   const max = Math.max(0, ...shown.map(total));
-  if (shown.length === 0) return <p className="local-dashboard-empty" role="status">{NO_TOKEN_ROWS}</p>;
+  if (shown.length === 0) return <EmptyState>{NO_TOKEN_ROWS}</EmptyState>;
   const short = (day: string) => new Date(`${day}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
   return (
     <figure className="utc-chart" aria-label={`Tokens ${direction} per day by model`}>

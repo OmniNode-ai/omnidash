@@ -202,7 +202,7 @@ export function ContractInspector() {
             style={{
               marginTop: '1rem',
               padding: '0.5rem 1.25rem',
-              background: 'var(--color-primary, #0070f3)',
+              background: 'var(--ds-brand, var(--ds-hue-blue))',
               border: 'none',
               borderRadius: '4px',
               cursor: 'pointer',
@@ -245,7 +245,7 @@ export function ContractInspector() {
         <pre
           data-testid="round-trip-json"
           style={{
-            background: 'var(--color-surface, #f4f4f5)',
+            background: 'var(--ds-surface, var(--ds-surface-2))',
             padding: '1rem',
             borderRadius: '4px',
             overflow: 'auto',
@@ -261,8 +261,8 @@ export function ContractInspector() {
           style={{
             marginTop: '1.5rem',
             padding: '1rem',
-            background: 'var(--color-warning-surface, #fffbeb)',
-            borderLeft: '4px solid var(--color-warning, #f59e0b)',
+            background: 'var(--ds-warn-soft, var(--ds-surface))',
+            borderLeft: '4px solid var(--ds-warn, var(--ds-warn))',
             borderRadius: '2px',
           }}
         >

@@ -15,8 +15,5 @@ export { Leader } from './Leader';
 export { CardHeader } from './CardHeader';
 export type { CardHeaderProps } from './CardHeader';
 
-export { Sparkline } from './Sparkline';
-export type { SparklineProps } from './Sparkline';
-
 export { SortableTable, useSort } from './SortableTable';
 export type { SortableTableProps, ColumnDef } from './SortableTable';

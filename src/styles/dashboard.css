@@ -1,5 +1,5 @@
 /* SOURCE: OmniDash.html:265-439 — verbatim port. Do not hand-edit; re-port if the prototype updates. */
-/* NOTE: var(--accent*) in prototype = var(--brand*) in v2 (globals.css renamed --accent* → --brand*).
+/* NOTE: var(--ds-brand*) in prototype = var(--ds-brand*) in v2 (globals.css renamed --accent* → --brand*).
    Substitutions applied here to preserve visual fidelity. */
 
 /* Dashboard header */
@@ -37,11 +37,11 @@
 .dash-title {
   display: flex; align-items: center; gap: 8px;
   font-size: 22px; font-weight: 600; letter-spacing: -0.015em;
-  cursor: pointer; color: var(--ink);
+  cursor: pointer; color: var(--ds-ink);
   padding: 2px 8px; border-radius: 6px; margin-left: -8px;
   transition: background 0.15s;
 }
-.dash-title:hover { background: var(--panel-2); }
+.dash-title:hover { background: var(--ds-surface-2); }
 .dash-title input {
   font: inherit; letter-spacing: inherit;
   background: transparent; border: none; outline: none; color: inherit;
@@ -49,9 +49,9 @@
 }
 .dash-meta {
   display: flex; align-items: center; gap: 14px;
-  font-size: 12px; color: var(--ink-3);
+  font-size: 12px; color: var(--ds-ink-3);
 }
-.dash-meta .mono { color: var(--ink-2); }
+.dash-meta .mono { color: var(--ds-ink-2); }
 
 .header-actions { display: flex; align-items: center; gap: 8px; }
 
@@ -77,7 +77,7 @@
 .dash-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: var(--row-gap);
+  gap: var(--ds-row-gap);
   align-items: stretch;
   width: 100%;
 }
@@ -112,11 +112,11 @@
 }
 
 .widget {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-line);
+  border-radius: var(--ds-radius);
   overflow: hidden;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--ds-shadow-sm);
   position: relative;
   max-width: 100%;
   transition: box-shadow 0.2s, border-color 0.15s, transform 0.2s, opacity 0.2s;
@@ -128,8 +128,8 @@
 }
 .widget.dragging { opacity: 0.35; }
 .widget.drop-target {
-  border-color: var(--brand);
-  box-shadow: 0 0 0 3px var(--brand-soft), var(--shadow-md);
+  border-color: var(--ds-brand);
+  box-shadow: 0 0 0 3px var(--ds-brand-soft), var(--ds-shadow-md);
 }
 /* Insertion-point bar: a 3px brand-colored strip on the target widget's top
    edge. Communicates "this is where the widget will land" more precisely
@@ -142,17 +142,17 @@
   right: -1px;
   top: -1px;
   height: 3px;
-  background: var(--brand);
-  border-top-left-radius: var(--radius-lg);
-  border-top-right-radius: var(--radius-lg);
+  background: var(--ds-brand);
+  border-top-left-radius: var(--ds-radius);
+  border-top-right-radius: var(--ds-radius);
   z-index: 1;
 }
 .widget-head {
   display: flex; align-items: center; justify-content: space-between;
   gap: 8px;
   min-width: 0;
-  padding: var(--pad-y) var(--pad-x);
-  border-bottom: 1px solid var(--line-2);
+  padding: var(--ds-pad-y) var(--ds-pad-x);
+  border-bottom: 1px solid var(--ds-line-soft);
 }
 .widget-head-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .widget-head-right {
@@ -161,7 +161,7 @@
   flex-shrink: 1;
 }
 .widget-grip {
-  color: var(--ink-3); cursor: grab;
+  color: var(--ds-ink-3); cursor: grab;
   opacity: 0; transition: opacity 0.15s;
   display: grid; place-items: center;
   padding: 2px;
@@ -172,7 +172,7 @@
   font-size: 13px; font-weight: 600;
   letter-spacing: 0.01em;
   text-transform: uppercase;
-  color: var(--ink-2);
+  color: var(--ds-ink-2);
   display: flex; align-items: center; gap: 8px;
   min-width: 0;
   overflow: hidden;
@@ -182,33 +182,33 @@
 .widget-live {
   display: inline-flex; align-items: center; gap: 5px;
   font-size: 12px; font-weight: 500;
-  color: var(--status-ok);
+  color: var(--ds-ok);
   text-transform: uppercase; letter-spacing: 0.08em;
 }
 .widget-live::before {
   content: ""; width: 6px; height: 6px; border-radius: 50%;
-  background: currentColor; box-shadow: 0 0 0 2px oklch(70% 0.15 145 / 0.2);
+  background: currentColor; box-shadow: 0 0 0 2px color-mix(in srgb, var(--ds-shadow-ink) 20%, transparent);
   animation: pulse 2s ease-in-out infinite;
 }
 .widget-kebab {
   width: 26px; height: 26px; border-radius: 5px;
-  display: grid; place-items: center; color: var(--ink-3);
+  display: grid; place-items: center; color: var(--ds-ink-3);
   transition: background 0.15s, color 0.15s;
 }
-.widget-kebab:hover { background: var(--panel-2); color: var(--ink); }
+.widget-kebab:hover { background: var(--ds-surface-2); color: var(--ds-ink); }
 
-.widget-body { padding: 14px var(--pad-x) var(--pad-x); }
+.widget-body { padding: 14px var(--ds-pad-x) var(--ds-pad-x); }
 
-.usage-source-badge-text--ok { color: var(--status-ok); }
-.usage-source-badge-text--warn { color: var(--status-warn); }
+.usage-source-badge-text--ok { color: var(--ds-ok); }
+.usage-source-badge-text--warn { color: var(--ds-warn); }
 
 /* KEBAB MENU */
 .menu {
   position: absolute; z-index: 400;
-  background: var(--panel);
-  border: 1px solid var(--line);
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-line);
   border-radius: 8px;
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--ds-shadow-md);
   min-width: 180px;
   padding: 4px;
   animation: menu-in 0.12s ease-out;
@@ -218,36 +218,36 @@
   display: flex; align-items: center; gap: 10px;
   width: 100%;
   padding: 7px 10px; border-radius: 5px;
-  font-size: 13px; color: var(--ink);
+  font-size: 13px; color: var(--ds-ink);
   text-align: left;
   transition: background 0.1s;
 }
-.menu-item:hover { background: var(--panel-2); }
-.menu-item.danger { color: var(--status-bad); }
-.menu-item.danger:hover { background: oklch(65% 0.18 25 / 0.08); }
-.menu-item .shortcut { margin-left: auto; color: var(--ink-3); font-size: 12px; }
-.menu-sep { height: 1px; background: var(--line); margin: 4px 0; }
+.menu-item:hover { background: var(--ds-surface-2); }
+.menu-item.danger { color: var(--ds-bad); }
+.menu-item.danger:hover { background: color-mix(in srgb, var(--ds-bad) 8%, transparent); }
+.menu-item .shortcut { margin-left: auto; color: var(--ds-ink-3); font-size: 12px; }
+.menu-sep { height: 1px; background: var(--ds-line); margin: 4px 0; }
 
 /* DROP SLOT */
 .drop-slot {
-  border: 1.5px dashed var(--line);
-  border-radius: var(--radius-lg);
+  border: 1.5px dashed var(--ds-line);
+  border-radius: var(--ds-radius);
   min-height: 80px;
   display: grid; place-items: center;
-  color: var(--ink-3);
+  color: var(--ds-ink-3);
   font-size: 12px;
-  font-family: var(--font-mono);
+  font-family: var(--ds-font-mono);
   transition: border-color 0.15s, background 0.15s, min-height 0.2s;
 }
 .drop-slot.active {
-  border-color: var(--brand);
-  background: var(--brand-soft);
-  color: var(--brand-ink);
+  border-color: var(--ds-brand);
+  background: var(--ds-brand-soft);
+  color: var(--ds-brand-ink);
   min-height: 120px;
 }
 .drop-zones {
-  display: grid; grid-template-columns: 1fr 1fr; gap: var(--row-gap);
-  margin-top: var(--row-gap);
+  display: grid; grid-template-columns: 1fr 1fr; gap: var(--ds-row-gap);
+  margin-top: var(--ds-row-gap);
 }
 
 /* Save / Discard move into the modal footer on narrow screens. */

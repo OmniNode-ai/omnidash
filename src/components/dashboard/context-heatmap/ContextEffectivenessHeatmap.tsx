@@ -9,19 +9,19 @@ import type { HeatmapCell, ContextHeatmapConfig, HeatmapSignal } from './context
 
 function signalBg(signal: HeatmapSignal): string {
   switch (signal) {
-    case 'helpful': return 'color-mix(in srgb, var(--color-ok, #22c55e) 20%, transparent)';
-    case 'harmful': return 'color-mix(in srgb, var(--color-bad, #ef4444) 20%, transparent)';
-    case 'neutral': return 'color-mix(in srgb, var(--color-warn, #f59e0b) 15%, transparent)';
-    case 'unknown': return 'var(--panel-2)';
+    case 'helpful': return 'color-mix(in srgb, var(--ds-ok, var(--ds-ok)) 20%, transparent)';
+    case 'harmful': return 'color-mix(in srgb, var(--ds-bad, var(--ds-bad)) 20%, transparent)';
+    case 'neutral': return 'color-mix(in srgb, var(--ds-warn, var(--ds-hue-amber)) 15%, transparent)';
+    case 'unknown': return 'var(--ds-surface-2)';
   }
 }
 
 function signalBorder(signal: HeatmapSignal): string {
   switch (signal) {
-    case 'helpful': return 'color-mix(in srgb, var(--color-ok, #22c55e) 40%, transparent)';
-    case 'harmful': return 'color-mix(in srgb, var(--color-bad, #ef4444) 40%, transparent)';
-    case 'neutral': return 'color-mix(in srgb, var(--color-warn, #f59e0b) 30%, transparent)';
-    case 'unknown': return 'var(--line-2)';
+    case 'helpful': return 'color-mix(in srgb, var(--ds-ok, var(--ds-ok)) 40%, transparent)';
+    case 'harmful': return 'color-mix(in srgb, var(--ds-bad, var(--ds-bad)) 40%, transparent)';
+    case 'neutral': return 'color-mix(in srgb, var(--ds-warn, var(--ds-hue-amber)) 30%, transparent)';
+    case 'unknown': return 'var(--ds-line-soft)';
   }
 }
 
@@ -51,9 +51,9 @@ function MatrixCell({
         style={{
           width: 72,
           height: 52,
-          border: '1px solid var(--line-2)',
+          border: '1px solid var(--ds-line-soft)',
           borderRadius: 6,
-          background: 'var(--panel-1)',
+          background: 'var(--ds-surface)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -74,16 +74,16 @@ function MatrixCell({
       style={{
         width: 72,
         height: 52,
-        border: `1px solid ${isSelected ? 'var(--brand)' : signalBorder(signal)}`,
+        border: `1px solid ${isSelected ? 'var(--ds-brand)' : signalBorder(signal)}`,
         borderRadius: 6,
-        background: isSelected ? 'var(--panel-2)' : signalBg(signal),
+        background: isSelected ? 'var(--ds-surface-2)' : signalBg(signal),
         cursor: 'pointer',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 2,
-        outline: isSelected ? '2px solid var(--brand)' : 'none',
+        outline: isSelected ? '2px solid var(--ds-brand)' : 'none',
         outlineOffset: 1,
       }}
     >
@@ -331,8 +331,8 @@ export default function ContextEffectivenessHeatmap({ config: _config = {} }: { 
             style={{
               padding: '10px 12px',
               borderRadius: 6,
-              border: '1px solid var(--line-2)',
-              background: 'var(--panel-1)',
+              border: '1px solid var(--ds-line-soft)',
+              background: 'var(--ds-surface)',
             }}
           >
             <Text as="div" size="xs" color="tertiary">

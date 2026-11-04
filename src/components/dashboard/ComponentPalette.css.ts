@@ -12,7 +12,7 @@ export const categoryLabel = style({
   fontWeight: 600,
   textTransform: 'uppercase',
   letterSpacing: '0.05em',
-  color: `hsl(${vars.color.muted})`,
+  color: `${vars.color.muted}`,
   padding: '0.5rem 0 0.25rem',
 });
 
@@ -20,13 +20,13 @@ export const componentItem = style({
   padding: '0.5rem',
   marginBottom: '0.375rem',
   borderRadius: vars.radius.sm,
-  border: `1px solid hsl(${vars.color.border})`,
+  border: `1px solid ${vars.color.border}`,
   cursor: 'pointer',
   width: '100%',
   textAlign: 'left',
   background: 'none',
   ':hover': {
-    backgroundColor: `hsl(${vars.color.border})`,
+    backgroundColor: `${vars.color.border}`,
   },
 });
 
@@ -38,12 +38,12 @@ export const componentItemDisabled = style({
 export const componentName = style({
   fontSize: '0.8125rem',
   fontWeight: 500,
-  color: `hsl(${vars.color.foreground})`,
+  color: `${vars.color.foreground}`,
 });
 
 export const componentDescription = style({
   fontSize: '0.6875rem',
-  color: `hsl(${vars.color.muted})`,
+  color: `${vars.color.muted}`,
   marginTop: '0.125rem',
 });
 
@@ -53,7 +53,7 @@ export const badge = style({
   fontWeight: 600,
   padding: '0.125rem 0.375rem',
   borderRadius: vars.radius.sm,
-  backgroundColor: `hsl(${vars.color.destructive} / 0.15)`,
-  color: `hsl(${vars.color.destructive})`,
+  backgroundColor: `color-mix(in srgb, ${vars.color.destructive} 15%, transparent)`,
+  color: `${vars.color.destructive}`,
   marginLeft: '0.5rem',
 });

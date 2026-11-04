@@ -71,10 +71,10 @@ function ResponseCard({
   return (
     <div
       style={{
-        border: '1px solid var(--line)',
+        border: '1px solid var(--ds-line)',
         borderRadius: 8,
         padding: '12px 14px',
-        background: 'var(--panel)',
+        background: 'var(--ds-surface)',
       }}
     >
       {/* Header row: model + task + latency */}
@@ -102,8 +102,8 @@ function ResponseCard({
             display: 'inline-block',
             padding: '1px 5px',
             borderRadius: 3,
-            background: 'var(--panel-2)',
-            border: '1px solid var(--line-2)',
+            background: 'var(--ds-surface-2)',
+            border: '1px solid var(--ds-line-soft)',
           }}
         >
           {row.task_type}
@@ -151,7 +151,7 @@ function HistoryRow({ row }: { row: InferenceResponseRow }) {
         gridTemplateColumns: '100px 80px 1fr',
         gap: 8,
         padding: '5px 0',
-        borderBottom: '1px solid var(--line-2)',
+        borderBottom: '1px solid var(--ds-line-soft)',
         alignItems: 'start',
       }}
     >
@@ -167,8 +167,8 @@ function HistoryRow({ row }: { row: InferenceResponseRow }) {
           display: 'inline-block',
           padding: '1px 4px',
           borderRadius: 3,
-          background: 'var(--panel-2)',
-          border: '1px solid var(--line-2)',
+          background: 'var(--ds-surface-2)',
+          border: '1px solid var(--ds-line-soft)',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
@@ -255,8 +255,8 @@ export default function DelegationModelOutputWidget(props: {
                 display: 'inline-block',
                 padding: '1px 5px',
                 borderRadius: 3,
-                background: 'var(--panel-2)',
-                border: '1px solid var(--line-2)',
+                background: 'var(--ds-surface-2)',
+                border: '1px solid var(--ds-line-soft)',
               }}
             >
               {projection.source_topic}
@@ -284,7 +284,7 @@ export default function DelegationModelOutputWidget(props: {
                   gridTemplateColumns: '100px 80px 1fr',
                   gap: 8,
                   paddingBottom: 4,
-                  borderBottom: '1px solid var(--line)',
+                  borderBottom: '1px solid var(--ds-line)',
                 }}
               >
                 {(['Model', 'Task', 'Preview'] as const).map((h) => (
