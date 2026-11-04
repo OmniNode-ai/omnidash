@@ -221,12 +221,12 @@
     },
     {
       "widget_id": "c8842fde-f13c-5f8d-aaf7-be043addca23",
-      "title": "Runtime status",
+      "title": "Environment",
       "row": 22,
       "col": 0,
       "width": 12,
       "height": 2,
-      "data_source": "overview-status",
+      "data_source": "status-environment",
       "config": {
         "config_kind": "status_grid",
         "widget_type": "status_grid",

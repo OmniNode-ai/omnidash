@@ -798,7 +798,7 @@ export function OverviewDayPicker({ days, value, onChange, now = Date.now() }: {
  * keep naming their baseline and pricing version (OMN-21304 AC4). `pctLine` is the served savings ratio line, read by
  * the card that owns that field.
  */
-export function headlineHoverLines(componentId: string, row: Row, pctLine: string | null, window: OverviewWindow = 'all', summary: Row | null = null): string[] {
+export function headlineHoverLines(componentId: string, row: Row, pctLine: string | null, window: OverviewWindow = 'all', pctRatio: number | null = null): string[] {
   const count = (value: unknown) => (isMissing(value) || !Number.isFinite(Number(value)) ? 'Not recorded' : formatFullCount(String(value)));
   const unknownTokens = row.runs_unknown_tokens;
   const unknownSpend = row.runs_unknown_spend;
@@ -822,35 +822,25 @@ export function headlineHoverLines(componentId: string, row: Row, pctLine: strin
   const lines: Array<string | null> = componentId === 'overview-spend' ? [window === 'all' ? 'What you paid, all time' : `What you paid ${when}`, excluded, basis]
     // Part 29 AC191: the first line is the short drawn caption; the full sentence stays in the page for screen readers.
     : componentId === 'overview-savings' ? [`Modelled vs ${isMissing(row.baseline_model) ? 'the cloud baseline' : unbroken(String(row.baseline_model))}`, `Modelled at ${isMissing(row.baseline_model) ? 'the cloud baseline' : String(row.baseline_model)} prices. The baseline never ran.`, pctLine, excluded, basis]
-      : componentId === 'overview-measured' ? [averageRunLine(summary), `${count(row.runs_measured)} of ${count(row.runs_total)} runs measured`, excluded]
+      : componentId === 'overview-measured' ? [`${count(row.runs_measured)} of ${count(row.runs_total)} runs measured`, excluded]
         : componentId === 'overview-tokens' ? [`${count(row.tokens_in)} in · ${count(row.tokens_out)} out`]
           : [];
   if (Number.isFinite(noRuns) && noRuns > 0) lines.push(`Includes ${noRuns} ${noRuns === 1 ? 'day' : 'days'} with no runs`);
   // OMN-22168 (Lakshman 2026-11-04): Savings leads with the served percentage below its baseline, shown only where the
-  // percentage line itself is (a measured saving against a named, resolved baseline).
-  if (componentId === 'overview-savings' && pctLine !== null) {
-    const ratio = Number(row.savings_pct_of_counterfactual);
-    if (!isMissing(row.savings_pct_of_counterfactual) && Number.isFinite(ratio) && !isMissing(row.baseline_model)) {
-      lines.unshift(`${Math.abs(ratio * 100).toFixed(1)}% ${ratio < 0 ? 'above' : 'below'} ${unbroken(String(row.baseline_model))}`);
-    }
+  // percentage line itself is (a measured saving against a named, resolved baseline). The card passes the served ratio,
+  // read where the percentage line's own field is read.
+  if (componentId === 'overview-savings' && pctLine !== null && pctRatio !== null && Number.isFinite(pctRatio) && !isMissing(row.baseline_model)) {
+    lines.unshift(`${Math.abs(pctRatio * 100).toFixed(1)}% ${pctRatio < 0 ? 'above' : 'below'} ${unbroken(String(row.baseline_model))}`);
   }
   return lines.filter((line): line is string => line !== null);
 }
 
-/** OMN-22168: Agent calls' first line, delegation.summary.v1's served average run time; none when it is not served. */
-function averageRunLine(summary: Row | null): string | null {
-  const ms = summary && !isMissing(summary.avgLatencyMs) ? Number(summary.avgLatencyMs) : NaN;
-  return Number.isFinite(ms) && ms >= 0 ? `Average ${(ms / 1000).toFixed(1)} s per run` : null;
-}
-
-export function MeteringTotalCard({ component, config, rows, window = 'all', now, summary = null }: {
+export function MeteringTotalCard({ component, config, rows, window = 'all', now }: {
   component: LocalPageDocument['components'][number];
   config: MetricCardConfig;
   rows: readonly unknown[];
   window?: OverviewWindow;
   now?: number;
-  /** OMN-22168: delegation.summary.v1's row, for Agent calls' average run time. */
-  summary?: Row | null;
 }) {
   const picked = pickMeteringRow(rows, window, now);
   // OMN-19980 M6/M7: a card that cannot show its figure says why on the card ("Not measured: no all-time row",
@@ -897,7 +887,8 @@ export function MeteringTotalCard({ component, config, rows, window = 'all', now
       {(() => { const change = periodChangeLine(rows, window, config.metric_key, row); return change && <ChangeLine text={change} />; })()}
       {/* OMN-20008 L6: no figure, no line: the percentage shows only beside a measured saving with a named, resolved baseline. */}
       <HeadlineHover label={component.title} lines={headlineHoverLines(component.component_id, row,
-        row.baseline_state === 'unresolved' || isMissing(row[config.metric_key]) || isMissing(row.baseline_model) ? null : pct, window, summary)} />
+        row.baseline_state === 'unresolved' || isMissing(row[config.metric_key]) || isMissing(row.baseline_model) ? null : pct, window,
+        required.includes(pctField) && !isMissing(row[pctField]) && Number.isFinite(Number(row[pctField])) ? Number(row[pctField]) : null)} />
     </>;
   }
   return (
@@ -1980,19 +1971,27 @@ export function ModelUsagePanel({ row }: { row: Row | null }) {
 /**
  * OMN-22168 (Lakshman 2026-11-04, "all 4"): the line under Overview's title. The runtime's state is local-environment.v1's
  * observed_state, never assumed: no row reads not recorded, and any state other than running shows itself and its served
- * reason. The last run is delegation.summary.v1's latestEventAt and the run total its totalDelegations, both as served.
+ * reason. The last run is the newest served decision's time, the run total delegation.model-routing.v1's served
+ * total_delegations, and the median run time the served decisions' durations, as the Runs page reads them.
  */
-export function OverviewStatusStrip({ env, summary, now }: { env: Row | null; summary: Row | null; now: number }) {
+export function OverviewStatusStrip({ env, decisions, routing, now, complete = false }: {
+  env: Row | null; decisions: readonly unknown[]; routing: Row | null; now: number; complete?: boolean;
+}) {
   const observed = env && !isMissing(env.observed_state) ? String(env.observed_state) : null;
   const state = observed === null ? 'unknown' : observed === 'running' ? 'running' : 'attention';
-  const latest = summary && !isMissing(summary.latestEventAt) ? Number(summary.latestEventAt) * 1000 : NaN;
-  const ago = Number.isFinite(latest) && latest <= now ? now - latest : null;
+  const runs = toInsightRuns(decisions);
+  let newest: number | null = null;
+  for (const run of runs) if (Number.isFinite(run.at) && (newest === null || run.at > newest)) newest = run.at;
+  const ago = newest !== null && newest <= now ? now - newest : null;
   const lastRun = ago === null ? 'Last run not recorded'
     : ago < 60_000 ? 'Last run under a minute ago'
       : ago < 3_600_000 ? `Last run ${Math.floor(ago / 60_000)} min ago`
         : ago < 172_800_000 ? `Last run ${Math.floor(ago / 3_600_000)} h ago` : `Last run ${Math.floor(ago / 86_400_000)} days ago`;
-  const total = summary && !isMissing(summary.totalDelegations) && Number.isFinite(Number(summary.totalDelegations))
-    ? `${formatFullCount(String(summary.totalDelegations))} runs` : 'Runs not recorded';
+  const served = routing && !isMissing(routing.total_delegations) ? Number(routing.total_delegations) : NaN;
+  const total = Number.isFinite(served) ? `${formatFullCount(String(served))} runs` : 'Runs not recorded';
+  const latencies = runs.map(run => run.latencyMs).filter((value): value is number => value !== null).sort((a, b) => a - b);
+  const median = latencies.length === 0 ? null : latencies[Math.floor((latencies.length - 1) / 2)]!;
+  const speed = median === null ? null : `Median run ${(median / 1000).toFixed(1)} s${complete ? '' : ` (latest ${formatFullCount(String(runs.length))} runs)`}`;
   const reason = state === 'attention' && env && !isMissing(env.reason) ? String(env.reason) : null;
   return (
     <div className="local-overview-status" role="status" aria-label="Runtime status" data-state={state}>
@@ -2001,73 +2000,78 @@ export function OverviewStatusStrip({ env, summary, now }: { env: Row | null; su
       {reason && <span className="local-overview-status-reason">{reason}</span>}
       <span aria-hidden="true">·</span><span>{lastRun}</span>
       <span aria-hidden="true">·</span><span>{total}</span>
+      {speed && <><span aria-hidden="true">·</span><span>{speed}</span></>}
     </div>
   );
 }
 
 /**
- * OMN-22168: Overview's Work delegated, delegation.summary.v1's served byTaskType ranked by its served count, each a
- * readable task name in its task colour that opens Runs filtered to it. Nothing is counted here.
+ * OMN-22168: Overview's Work delegated, from delegation.model-routing.v1's served rows (one per model and task type,
+ * over every run): each task type's runs are its rows' served counts added up, ranked, each a readable task name in its
+ * task colour that opens Runs filtered to it. A row without a count is left out and its task says so.
  */
-export function TaskMixPanel({ summary }: { summary: Row | null }) {
-  const tasks = summary && Array.isArray(summary.byTaskType) ? asRecords(summary.byTaskType) : [];
-  if (tasks.length === 0) return <EmptyState>No task types served yet</EmptyState>;
+export function TaskMixPanel({ routing }: { routing: Row | null }) {
+  const rows = routing && Array.isArray(routing.rows) ? asRecords(routing.rows) : [];
+  const tasks = new Map<string, { runs: number; unknown: boolean }>();
+  for (const row of rows) {
+    const raw = isMissing(row.task_type) ? '' : String(row.task_type);
+    const entry = tasks.get(raw) ?? { runs: 0, unknown: false };
+    if (isMissing(row.count) || !Number.isFinite(Number(row.count))) entry.unknown = true;
+    else entry.runs += Number(row.count);
+    tasks.set(raw, entry);
+  }
+  if (tasks.size === 0) return <EmptyState>No task types served yet</EmptyState>;
   return (
     <section aria-label="Work delegated" className="local-task-mix">
       <RankedBars label="Runs by task type" unit="Runs" order="desc"
-        items={tasks.map((task, index) => {
-          const raw = isMissing(task.taskType) ? '' : String(task.taskType);
+        items={[...tasks.entries()].map(([raw, task]) => {
           const name = raw === '' ? 'Not recorded' : taskLabel(raw);
-          const runs = isMissing(task.count) || !Number.isFinite(Number(task.count)) ? null : Number(task.count);
           const href = raw === '' ? undefined : `/runs?${writeRunsSearch('', { ...DEFAULT_RUNS_VIEW, task: raw })}`;
-          return { key: `${raw}-${index}`, name, value: runs, basis: 'measured' as const, color: taskColorOf(raw), href,
-            opensLabel: `Opens Runs filtered to ${name}`, display: runs === null ? 'Not recorded' : formatFullCount(String(runs)) };
+          return { key: raw || 'not-recorded', name, value: task.runs, basis: 'measured' as const, color: taskColorOf(raw), href,
+            opensLabel: `Opens Runs filtered to ${name}`,
+            display: `${formatFullCount(String(task.runs))}${task.unknown ? ' (some runs not counted)' : ''}` };
         })} />
     </section>
   );
 }
 
 /**
- * OMN-22168: Overview's Quality vs bar, one delegation.quality-gate.v1 row: the served average score against the served
- * required bar, the served escalation rate and count, and the three failure reasons with the most served failures, in
- * plain words with their served share. A field the row does not serve reads Not recorded.
+ * OMN-22168: Overview's Quality vs bar, one delegation.quality-gate.v1 row: the served average score on a meter with the
+ * served required bar marked, the served escalation rate and count, and the three failure reasons with the most served
+ * failures, in plain words with their served share. A field the row does not serve reads Not recorded.
  */
 export function QualityBarPanel({ row }: { row: Row | null }) {
   if (!row) return <EmptyState>No quality checks served yet</EmptyState>;
-  const fraction = (value: unknown) => (isMissing(value) || !Number.isFinite(Number(value)) ? null : Number(value));
-  const score = fraction(row.avg_actual_score);
-  const bar = fraction(row.avg_required_bar);
-  const rate = fraction(row.escalation_rate);
-  const escalated = fraction(row.escalation_count);
-  const reasons = Array.isArray(row.failure_categories)
-    ? asRecords(row.failure_categories).sort((a, b) => (fraction(b.count) ?? -1) - (fraction(a.count) ?? -1)).slice(0, 3) : null;
-  const width = (value: number | null) => `${Math.max(0, Math.min(1, value ?? 0)) * 100}%`;
+  const served = (value: unknown) => (isMissing(value) || !Number.isFinite(Number(value)) ? null : Number(value));
+  const score = served(row.avg_actual_score);
+  const bar = served(row.avg_required_bar);
+  const rate = served(row.escalation_rate);
+  const escalated = served(row.escalation_count);
+  const reasons = Array.isArray(row.failure_categories) ? asRecords(row.failure_categories)
+    .filter(reason => served(reason.count) !== null)
+    .sort((a, b) => served(b.count)! - served(a.count)!).slice(0, 3) : null;
   return (
     <section aria-label="Quality vs bar" className="local-quality-bar">
-      <div className="local-quality-meter" data-quality-figure="score">
-        <span className="local-quality-label">Average score</span>
-        <span className="local-quality-track" aria-hidden="true">
-          <span className="local-quality-fill" style={{ width: width(score) }} />
-          {bar !== null && <span className="local-quality-mark" style={{ left: width(bar) }} />}
-        </span>
-        <strong>{score === null ? 'Not recorded' : score.toFixed(2)}</strong>
-      </div>
-      <div className="local-quality-facts">
-        <span data-quality-figure="bar">Required bar <strong>{bar === null ? 'Not recorded' : bar.toFixed(2)}</strong></span>
-        <span data-quality-figure="escalation">Escalated <strong>{rate === null ? 'Not recorded' : `${(rate * 100).toFixed(1)}%`}</strong>
-          {escalated !== null && ` · ${formatFullCount(String(escalated))} runs`}</span>
-      </div>
-      <h4 className="local-quality-reasons-title">Top failure reasons</h4>
+      {score !== null && score >= 0 && score <= 1
+        ? <Meter className="local-meter" label="Average quality score" min={0} max={1} now={score} share={score}
+          mark={bar !== null && bar >= 0 && bar <= 1 ? bar : null} value={score.toFixed(2)} />
+        : null}
+      <FactList>
+        <Fact term="Average score" data-quality-figure="score">{score === null ? 'Not recorded' : score.toFixed(2)}</Fact>
+        <Fact term="Required bar" data-quality-figure="bar">{bar === null ? 'Not recorded' : bar.toFixed(2)}</Fact>
+        <Fact term="Escalated" data-quality-figure="escalation">{rate === null ? 'Not recorded'
+          : `${(rate * 100).toFixed(1)}%${escalated === null ? '' : ` · ${formatFullCount(String(escalated))} runs`}`}</Fact>
+      </FactList>
       {reasons === null ? <p className="local-dashboard-caption">Failure reasons not recorded</p>
         : reasons.length === 0 ? <p className="local-dashboard-caption">No failures recorded</p>
-          : <ol className="local-quality-reasons" aria-label="Top failure reasons">{reasons.map((reason, index) => {
-            const plain = escalationReason(reason.category);
-            const share = fraction(reason.pct_of_failures);
-            return <li key={index} title={plain.title}>
-              <span>{plain.text.charAt(0).toUpperCase() + plain.text.slice(1)}</span>
-              <span className="local-quality-share">{share === null ? 'Share not served' : `${(share * 100).toFixed(1)}%`}</span>
-            </li>;
-          })}</ol>}
+          : <RankedBars label="Top failure reasons" unit="Share of failures" order="desc"
+            items={reasons.map((reason, index) => {
+              const plain = escalationReason(reason.category);
+              const share = served(reason.pct_of_failures);
+              const name = plain.text.charAt(0).toUpperCase() + plain.text.slice(1);
+              return { key: `reason-${index}`, name, value: served(reason.count), basis: 'measured' as const, color: 'var(--ds-field-fail)',
+                display: share === null ? 'Share not served' : `${(share * 100).toFixed(1)}%` };
+            })} />}
       <p className="local-dashboard-caption local-recent-footer"><Link href="/delegation-evidence">View delegation evidence <ArrowUpRight size={12} aria-hidden="true" /></Link></p>
     </section>
   );
@@ -2721,7 +2725,7 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns, acti
   if (component.component_id === 'overview-task-mix' || component.component_id === 'overview-quality-bar') {
     const first = rawRowsFor(component, snapshots, 0)[0];
     const row = first && typeof first === 'object' && !Array.isArray(first) ? (first as Row) : null;
-    return component.component_id === 'overview-task-mix' ? <TaskMixPanel summary={row} /> : <QualityBarPanel row={row} />;
+    return component.component_id === 'overview-task-mix' ? <TaskMixPanel routing={row} /> : <QualityBarPanel row={row} />;
   }
   if (component.component_id === 'overview-model-usage') {
     const first = rawRowsFor(component, snapshots, 0)[0];
@@ -3251,9 +3255,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
           })() : component.data_bindings?.[0]?.projection_topic === METERING_SUMMARY_TOPIC ? (() => {
             const config = metricConfigFor(page, component.component_id);
             return config
-              ? <MeteringTotalCard component={component} config={config} rows={rows} window={overviewWindow} now={now}
-                summary={component.component_id === 'overview-measured' ? (() => { const value = rawRowsFor(component, snapshots, 1)[0];
-                  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Row) : null; })() : null} />
+              ? <MeteringTotalCard component={component} config={config} rows={rows} window={overviewWindow} now={now} />
               : <EmptyState status={false}>Not measured</EmptyState>;
           })() : (() => {
             const config = metricConfigFor(page, component.component_id);
@@ -3319,6 +3321,18 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
           <span className="local-dashboard-page-icon" aria-hidden="true"><DestinationIcon page={destination} size={20} /></span>
           <div>
             <h1>{page?.dashboard.name ?? PAGE_TITLES[pageName]}</h1>
+            {/* OMN-22168 (Lakshman 2026-11-04, superseding the 2026-10-25 waiver of an environment line on Overview). */}
+            {pageName === 'overview' && page && (() => {
+              const status = page.components.find(candidate => candidate.component_id === 'status-environment');
+              const usage = page.components.find(candidate => candidate.component_id === 'overview-model-usage');
+              if (!status) return null;
+              const record = (value: unknown) => (value && typeof value === 'object' && !Array.isArray(value) ? (value as Row) : null);
+              // As TableComponent reads it (OMN-21970 AC3): the decisions read is complete when it walked every page.
+              const walk = snapshots.find(snapshot => snapshot.topic === DELEGATION_DECISIONS_TOPIC);
+              return <OverviewStatusStrip env={record(rawRowsFor(status, snapshots, 0)[0])} now={now}
+                complete={walk !== undefined && !walk.failure && walk.truncated !== true} decisions={walk?.rows ?? []}
+                routing={usage ? record(rawRowsFor(usage, snapshots, 0)[0]) : null} />;
+            })()}
           </div>
         </div>
         {/* One toolbar row: the page's own control when it has one, and the runtime mode at the right. */}
@@ -3391,14 +3405,6 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
             <InsightsWindowContext.Provider value={{ window: activityWindow, setWindow: setActivityWindow }}>
             {/* OMN-21166 Maple grid: the KPI strip, then rows of a chart (8 of 12 columns) beside its ranking (4), then
                 the recent runs beside quality. The last run is the first recent run, so it sits under "Additional". */}
-            {/* OMN-22168 (Lakshman 2026-11-04, superseding the 2026-10-25 waiver of an environment line on Overview). */}
-            {(() => {
-              const status = page.components.find(candidate => candidate.component_id === 'overview-status');
-              if (!status) return null;
-              const first = (index: number) => { const value = rawRowsFor(status, snapshots, index)[0];
-                return value && typeof value === 'object' && !Array.isArray(value) ? (value as Row) : null; };
-              return <OverviewStatusStrip env={first(0)} summary={first(1)} now={now} />;
-            })()}
             <div className="local-overview-surface">
               <section className="local-overview-summary" aria-label="Runtime summary" style={{ '--kpi-count': 5 } as CSSProperties}>
                 {renderGroup(overviewGroups.summary)}

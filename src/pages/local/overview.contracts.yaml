@@ -74,15 +74,6 @@
             "captured_at",
             "run_count"
           ]
-        },
-        {
-          "binding_id": "overview-measured-summary",
-          "projection_topic": "onex.snapshot.projection.delegation.summary.v1",
-          "ordering_authority_field": "latest_projection_updated_at",
-          "ordering_direction": "descending",
-          "required_fields": [
-            "avgLatencyMs"
-          ]
         }
       ],
       "supported_empty_state_reasons": [
@@ -235,9 +226,9 @@
       ]
     },
     {
-      "component_id": "overview-status",
-      "component_kind": "table",
-      "title": "Runtime status",
+      "component_id": "status-environment",
+      "component_kind": "status_grid",
+      "title": "Environment",
       "contract_version": {
         "major": 1,
         "minor": 0,
@@ -245,22 +236,15 @@
       },
       "data_bindings": [
         {
-          "binding_id": "overview-status-environment",
+          "binding_id": "status-environment-health",
           "projection_topic": "onex.snapshot.projection.local-environment.v1",
           "ordering_authority_field": "last_seen",
           "ordering_direction": "descending",
           "required_fields": [
-            "observed_state"
-          ]
-        },
-        {
-          "binding_id": "overview-status-summary",
-          "projection_topic": "onex.snapshot.projection.delegation.summary.v1",
-          "ordering_authority_field": "latest_projection_updated_at",
-          "ordering_direction": "descending",
-          "required_fields": [
-            "totalDelegations",
-            "latestEventAt"
+            "mode",
+            "service",
+            "verdict",
+            "verdict_reason"
           ]
         }
       ],
@@ -280,12 +264,12 @@
       },
       "data_bindings": [
         {
-          "binding_id": "overview-task-mix-summary",
-          "projection_topic": "onex.snapshot.projection.delegation.summary.v1",
-          "ordering_authority_field": "latest_projection_updated_at",
+          "binding_id": "overview-task-mix-routing",
+          "projection_topic": "onex.snapshot.projection.delegation.model-routing.v1",
+          "ordering_authority_field": "captured_at",
           "ordering_direction": "descending",
           "required_fields": [
-            "byTaskType"
+            "rows"
           ]
         }
       ],

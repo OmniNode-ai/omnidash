@@ -525,9 +525,8 @@ html body .app svg.field-icon.field-icon[data-field-icon="usage-day"]:not([data-
   border-radius: 14px !important; border: 0 !important;
   background: color-mix(in oklab, var(--ds-destination-accent) 14%, transparent) !important; }
 
-/* OMN-22168 (Lakshman 2026-11-04): Overview's runtime status line, under the title and above the cards. */
-.local-overview-status { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0 0 14px; padding: 9px 14px;
-  border: 1px solid var(--ds-line); border-radius: 12px; background: var(--ds-surface); color: var(--ds-ink-2); font-size: 13px; }
+/* OMN-22168 (Lakshman 2026-11-04): Overview's runtime status line, under the page title. */
+.local-overview-status { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: 6px 0 0; color: var(--ds-ink-2); font-size: 13px; }
 .local-overview-status strong { color: var(--ds-ink); font-weight: 600; }
 .local-overview-status-dot { width: 9px; height: 9px; flex: none; border-radius: 999px; background: var(--ds-ink-3); }
 .local-overview-status[data-state="running"] .local-overview-status-dot { background: var(--ds-hue-green);
@@ -552,5 +551,3 @@ html body .app svg.field-icon.field-icon[data-field-icon="usage-day"]:not([data-
 .local-quality-reasons li:last-child { border-bottom: 0; }
 .local-quality-reasons li > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ds-ink); }
 .local-quality-share { color: var(--ds-ink-2); font-variant-numeric: tabular-nums; }
-/* The status line spans the page's full width, above the cards. */
-.local-dashboard-page .local-overview-status { grid-column: 1 / -1; width: 100%; box-sizing: border-box; }
