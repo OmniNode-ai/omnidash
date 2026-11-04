@@ -18,7 +18,8 @@ import {
   type MeteringWindow,
 } from './insight-aggregates';
 import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
-import { EmptyState, KpiTile } from '@/theme/design-system/components';
+import { DashboardTabs, EmptyState, KpiTile } from '@/theme/design-system/components';
+import { Bot, CircleCheck, Clock3, ListChecks, Timer, TriangleAlert } from '@/theme/design-system/icons';
 
 /**
  * OMN-21166 AC26 (mockup build; rule change R-B, Lakshman 2026-10-18): the Overview's trends and breakdowns, counted
@@ -679,13 +680,35 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
           </div>
         </div>
       )}
-      <p className="local-dashboard-caption ins-sub" data-testid="insights-total">{population}{undated}{view === 'summary' ? null : <> · Row timestamps: {servedSpan}{earlier}{window.kind === 'days' ? '' : ' · Comparisons with the previous window appear for 1, 7, 15 and 30 days'}{window.kind === 'all' || window.kind === 'custom' ? ` · Charts show at most ${MAX_ALL_TIME_DAYS} UTC days; ${count(chartRuns.length)} of ${count(runs.length)} selected runs plotted` : ''}</>}</p>
+      <p className="local-dashboard-caption ins-sub" data-testid="insights-total">{population}{undated}{view === 'summary' ? null : <> · Row timestamps: {servedSpan}{earlier}{window.kind === 'days' || view !== 'all' ? '' : ' · Comparisons with the previous window appear for 1, 7, 15 and 30 days'}{window.kind === 'all' || window.kind === 'custom' ? ` · Charts show at most ${MAX_ALL_TIME_DAYS} UTC days; ${count(chartRuns.length)} of ${count(runs.length)} selected runs plotted` : ''}</>}</p>
       {emptyMessage !== null ? <EmptyState className="ins-empty" aria-label="Insights">{emptyMessage}</EmptyState> : (
         <div className="overview-chart-sections">
           {view === 'all' && <RunWindowKpis runs={runs} decisions={decisions} now={now} days={window.kind === 'days' ? window.days : MAX_ALL_TIME_DAYS} label={windowCaption(window)} comparisonEnabled={window.kind === 'days'} />}
           {view !== 'analysis' && <ChartSection concept="activity" title="Activity over time"><RunsPerDay days={chartDays} /><TokensPerDay days={chartDays} /></ChartSection>}
           {view === 'summary' && <ChartSection concept="quality-outcomes" title="Why runs failed"><FailureCauses runs={runs} limit={3} /></ChartSection>}
-          {view !== 'summary' && <>
+          {/* Lakshman 2026-11-05 ("run page should be fully organised and logically ... visually attractive"): on Runs the six
+              analysis charts are one full-width row of tabs, one big chart at a time, as the run charts above them; each
+              hint counts what that chart draws, never a computed figure. */}
+          {view === 'analysis' && (() => {
+            const plural = (value: number, word: string) => `${formatDashboardCount(value)} ${word}${value === 1 ? '' : 's'}`;
+            const distinct = (pick: (run: InsightRun) => string | null) => new Set(runs.map(pick).filter((value): value is string => value !== null)).size;
+            return <DashboardTabs label="Run analysis" param="insight" tabs={[
+              { id: 'tasks', label: 'Tasks', tone: 'var(--ds-hue-teal)', icon: <ListChecks size={18} />,
+                hint: plural(distinct(run => run.task), 'task type'), panel: () => <TaskMix runs={runs} /> },
+              { id: 'pass-rate', label: 'Pass rate per day', tone: 'var(--ds-hue-green)', icon: <CircleCheck size={18} />,
+                hint: plural(chartDays.length, 'day'), panel: () => <PassRateTrend days={chartDays} /> },
+              { id: 'failures', label: 'Why runs failed', tone: 'var(--ds-hue-red)', icon: <TriangleAlert size={18} />,
+                hint: plural(runs.filter(run => run.status === 'failed').length, 'failed run'),
+                panel: () => <FailureCauses runs={runs} onInspectFailure={onInspectFailure} /> },
+              { id: 'duration', label: 'How long runs take', tone: 'var(--ds-hue-orange)', icon: <Timer size={18} />,
+                hint: `${formatDashboardCount(runs.filter(run => run.latencyMs !== null).length)} timed`, panel: () => <DurationHistogram runs={runs} /> },
+              { id: 'models', label: 'Model scoreboard', tone: 'var(--ds-hue-purple)', icon: <Bot size={18} />,
+                hint: plural(distinct(run => run.model), 'model'), panel: () => <ModelScoreboard runs={runs} /> },
+              { id: 'hours', label: 'When runs happen', tone: 'var(--ds-hue-blue)', icon: <Clock3 size={18} />,
+                hint: 'By UTC hour', panel: () => <ActivityHeatmap runs={runs} days={chartDaysList} window={window} /> },
+            ]} />;
+          })()}
+          {view === 'all' && <>
           {/* Part 18 AC119, AC121: runs by model and by tier are Overview's Model usage and Tier mix, and the outcome donut
               repeats the Runs headline cards, so none is drawn here. */}
           <ChartSection concept="routing-workload" title="Routing and workload"><TaskMix runs={runs} /></ChartSection>
@@ -696,12 +719,11 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
         </div>
       )}
       {view === 'summary' && emptyMessage === null && (
-        <details className="local-more">
-          <summary>More activity</summary>
+        <div className="local-more local-more--open" data-section="More activity">
           <p className="local-dashboard-caption ins-sub">{population}{undated} · Row timestamps: {servedSpan}{earlier}{window.kind === 'days' ? '' : ' · Comparisons with the previous window appear for 1, 7, 15 and 30 days'}{window.kind === 'all' || window.kind === 'custom' ? ` · Charts show at most ${MAX_ALL_TIME_DAYS} UTC days; ${count(chartRuns.length)} of ${count(runs.length)} selected runs plotted` : ''}</p>
           <RunWindowKpis runs={runs} decisions={decisions} now={now} days={window.kind === 'days' ? window.days : MAX_ALL_TIME_DAYS} label={windowCaption(window)} comparisonEnabled={window.kind === 'days'} />
           {more}
-        </details>
+        </div>
       )}
     </div>
   );

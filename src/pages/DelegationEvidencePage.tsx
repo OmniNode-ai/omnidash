@@ -13,7 +13,7 @@ import { formatUsd } from '@/components/dashboard/usage/UsageByModelDayWidget';
 import { isUnavailableField } from '@/components/dashboard/field-identity';
 import { EvPageShell } from '@/components/dashboard/event-dash/EvPageShell';
 import { KpiStrip } from '@/components/dashboard/KpiStrip';
-import { DashboardTabs, Fact, FactList } from '@/theme/design-system/components';
+import { DashboardTabs } from '@/theme/design-system/components';
 import { RankedBars } from '@/theme/design-system/charts';
 import {
   Badge,
@@ -290,8 +290,7 @@ function QualityGate() {
       </div>
       {/* OMN-21166 Maple grid: the headline in view; the checks by type, cost to comply and escalation reasons are one
           click away, so the panel sits beside the selected run without running the length of the page. */}
-      <details className="local-more ev-more">
-      <summary>More quality detail</summary>
+      <div className="local-more ev-more local-more--open" data-section="More quality detail">
       <AcceptanceChecks q={q} />
       <div className="divider" />
       <div className="section-label">Failure categories</div>
@@ -308,7 +307,7 @@ function QualityGate() {
           })}
         </ol>
       )}
-      </details>
+      </div>
     </Panel>
   );
 }
@@ -732,27 +731,6 @@ function moneyBasis(money: HeadlineMoney | null): string {
   return `${baseline} · ${pricing}`;
 }
 
-function EvidenceClaim({ money, unavailable }: { money: HeadlineMoney | null; unavailable: string }) {
-  const saved = money ? servedUsd(money.saved) : unavailable;
-  const count = (value: unknown) => servedCount(value);
-  return (
-    <section className="ev-evidence-claim" aria-label="Evidence claim">
-      <p className="ev-evidence-claim-sentence">
-        {saved === 'Not measured' || saved.startsWith('Not measured:')
-          ? <>Modelled savings: {saved}.</>
-          : <>Savings were {saved}, modelled {moneyBasis(money)}.</>}
-      </p>
-      <FactList look="evidence-derivation" aria-label="Claim derivation">
-        <Fact term="Measured runs">{count(money?.measuredRuns)} measured runs</Fact>
-        <Fact term="No token counts">{count(money?.unknownTokens)} with no token counts</Fact>
-        <Fact term="No spend recorded">{count(money?.unknownSpend)} with no spend recorded</Fact>
-        <Fact term="Actual spend">{money ? servedUsd(money.local) : unavailable}</Fact>
-        <Fact term="Baseline cost (modelled)">{money ? servedUsd(money.cloud) : unavailable}</Fact>
-      </FactList>
-    </section>
-  );
-}
-
 /**
  * A served dollar figure exactly as served (amendment 30b, AC207a): thousands separated, every served decimal kept, none
  * added or rounded away. A number is written in its shortest exact form, so a parsed 4.743332 never prints float noise.
@@ -906,7 +884,8 @@ export function DelegationEvidencePage() {
       scope={evidenceScopeLine(headline.runs, source === 'metering' ? 'measured' : 'served')}
       headRight={headRight}
     >
-      <EvidenceClaim money={headline.money} unavailable={headline.unavailable} />
+      {/* Lakshman 2026-11-05 ("remove"): no claim sentence or derivation row above the cards; the Savings card and
+          the Savings panel carry the same served figures. */}
       {/* OMN-21166 AC63: the four headline figures read as one segmented strip, as on the local pages. */}
       {/* OMN-21166 part 15 AC91: the four headline figures are Overview's cards; their captions are in the tooltips. */}
       <KpiStrip label="Delegation summary" items={[

@@ -1915,13 +1915,12 @@ export function QualityPanel({ row }: { row: Row | null }) {
       <PassRateMeter row={row} />
       <PassRateSparkline part="headline" />
       {/* OMN-21166 part 13: the daily line and the check counts are one click away, not in view on load. */}
-      <details className="local-more">
-        <summary>More quality detail</summary>
+      <div className="local-more local-more--open" data-section="More quality detail">
         <PassRateSparkline part="trend" />
         <FactList>
           {QUALITY_FIELDS.map(([label, field]) => <Fact term={<><FieldIcon label={label} />{label}</>} key={field} data-quality-field={field} data-field-tone={fieldTone(label)} data-field-unavailable={isUnavailableField(row[field])}><Readable value={row[field]} kind={field === 'overall_pass_rate' ? 'percent' : field.startsWith('avg_') ? 'decimal' : 'count'} /></Fact>)}
         </FactList>
-      </details>
+      </div>
       <p className="local-dashboard-caption local-recent-footer"><Link href="/delegation-evidence">View delegation evidence <ArrowUpRight size={12} aria-hidden="true" /></Link></p>
     </section>
   );
@@ -2602,14 +2601,13 @@ export function WorkflowRun({ component, snapshots, requested, onOpen }: Workflo
         </>
       )}
       {/* OMN-21166 part 13: the recorded fields and the stage chart (a repeat of the step durations) are one click away. */}
-      <details className="local-more">
-        <summary>More run details</summary>
+      <div className="local-more local-more--open" data-section="More run details">
         {(() => {
           const decision = decisions.find((row) => row.correlation_id === runId);
           return decision ? <WorkflowDecisionCharts decision={decision} show="comparisons">{null}</WorkflowDecisionCharts> : null;
         })()}
         <WorkflowRecordDetails decision={decisions.find((row) => row.correlation_id === runId)} steps={stepsUnread || foreign ? [] : rows} />
-      </details>
+      </div>
     </div>
   );
 }
@@ -3080,7 +3078,6 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
   const [runChartsSlot, setRunChartsSlot] = useState<HTMLElement | null>(null);
   const [runRoutingSlot, setRunRoutingSlot] = useState<HTMLElement | null>(null);
   // Part 30 AC201: a link to one of Runs' analysis tabs opens "More analysis" on it.
-  const [runsAnalysisOpen] = useState(() => typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('analysis'));
   const [expandedChart, setExpandedChart] = useState<{ componentId: string; title: string; slice?: PanelSlice } | null>(null);
   const chartDialog = useRef<HTMLDialogElement>(null);
   const chartOpener = useRef<HTMLButtonElement>(null);
@@ -3582,8 +3579,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
                 {/* Part 29 AC194, AC195: one Usage analysis panel (group-by table and cost versus quality), full row (AC89). */}
                 {insights && <div className="maple-cell maple-cell--full">{renderComponent(insights, 'all', { key: 'analysis', title: 'Usage analysis', concept: 'usage-analysis' })}</div>}
               </div>
-              <details className="local-overview-secondary local-more local-more--page">
-                <summary>More usage</summary>
+              <div className="local-overview-secondary local-more local-more--page local-more--open" data-section="More usage">
                 <div className="maple-grid">
                   {/* Part 17: each chart its own panel; the day-by-day token list is gone (the table below holds its rows). */}
                   {insights && <div className="maple-cell maple-cell--full">{renderComponent(insights, 'all', { key: 'cost-per-run', title: 'Cost per run', concept: 'cost-per-run' })}</div>}
@@ -3591,7 +3587,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
                   {insights && <div className="maple-cell maple-cell--full">{renderComponent(insights, 'all', { key: 'cost-by-route', title: 'Cost by route', concept: 'cost-route' })}</div>}
                   {byDay && <div className="maple-cell maple-cell--full">{renderComponent(byDay)}</div>}
                 </div>
-              </details>
+              </div>
             </>;
           })() : pageName === 'runs' ? (
             <InsightsWindowContext.Provider value={{ window: activityWindow, setWindow: setActivityWindow }}>
@@ -3601,20 +3597,31 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
                   AC118); Run locally is Overview's, so Runs does not repeat it. */}
               {page.components.filter(component => !RUNS_SECONDARY.has(component.component_id) && component.component_id !== 'overview-run-locally')
                 .map(component => renderComponent(component))}
-              <details className="local-overview-secondary local-more local-more--page" open={runsAnalysisOpen || undefined}>
-                <summary>More analysis</summary>
-                {/* Part 30 AC206: the run charts and analysis in one tab, the routing groups in another, in one panel (OMN-21015 K1). */}
-                <Panel className="local-runs-analysis" aria-label="Analysis views" aria-busy="false">
-                <PanelTitle><ConceptIcon concept="runs-analysis" label="Analysis views" size={16} />Analysis views</PanelTitle>
-                <DashboardTabs label="Runs analysis views" param="analysis" tabs={[
-                  { id: 'charts', label: 'Charts and causes', panel: () => <>
-                    <div className="local-run-charts-slot" ref={setRunChartsSlot} />
-                    {page.components.filter(component => RUNS_SECONDARY.has(component.component_id)).map(component => renderComponent(component))}
-                  </> },
-                  { id: 'routing', label: 'Routing', panel: () => <div className="local-run-routing-slot" ref={setRunRoutingSlot} /> },
-                ]} />
-                </Panel>
-              </details>
+              {/* Lakshman 2026-11-05 ("don't use this instead open all, no hide the contents"; "run page should be fully
+                  organised and logically ... visually attractive"): no "More analysis" fold and no outer frame of two plain
+                  tabs. Under the run list, in order: the run charts (one bar per listed run), the run analysis (across the
+                  runs), then routing (the tier breakdown and the routing groups), each one full-width row of tabs. */}
+              <div className="local-runs-sections">
+                <div className="local-run-charts-slot" ref={setRunChartsSlot} />
+                {(() => {
+                  const insights = page.components.find(component => component.component_id === 'runs-insights');
+                  return insights ? renderComponent(insights) : null;
+                })()}
+                {(() => {
+                  const tiers = page.components.find(component => component.component_id === 'runs-tier-mix');
+                  return (
+                    <Panel className="local-runs-routing-panel" aria-labelledby="runs-routing-title" aria-busy="false">
+                      <PanelTitle id="runs-routing-title"><ConceptIcon concept="runs-analysis" label="Routing" size={16} />Routing</PanelTitle>
+                      <DashboardTabs label="Routing views" param="routing" tabs={[
+                        ...(tiers ? [{ id: 'tiers', label: 'Tier breakdown', tone: 'var(--ds-hue-amber)', icon: <ChartPie size={18} />,
+                          hint: 'Runs by tier and model', panel: () => renderComponent(tiers) }] : []),
+                        { id: 'groups', label: 'Routing groups', tone: 'var(--ds-hue-teal)', icon: <Layers size={18} />,
+                          hint: 'Runs by route', panel: () => <div className="local-run-routing-slot" ref={setRunRoutingSlot} /> },
+                      ]} />
+                    </Panel>
+                  );
+                })()}
+              </div>
             </RunRoutingSlot.Provider>
             </RunChartsSlot.Provider>
             </InsightsWindowContext.Provider>

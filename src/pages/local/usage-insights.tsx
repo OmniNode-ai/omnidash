@@ -167,10 +167,9 @@ export function UsageInsights({ usageRows, decisionRows, routingRows, now = Date
     <h3 className="local-dashboard-caption">Latest {USAGE_WINDOW_DAYS} UTC days · counted from served usage rows</h3>
     <div className="usage-insight-grid"><SpendByModel data={data} /></div>
     {/* OMN-21166 part 13: cost per run, tokens by model and cost by route are one click away. */}
-    <details className="local-more">
-    <summary>More usage</summary>
+    <div className="local-more local-more--open" data-section="More usage">
     <CostPerRun data={data} titled /><TokensByModel data={data} titled /><CostByRoute routing={routing} titled />
-    </details>
+    </div>
   </section>;
 }
 
