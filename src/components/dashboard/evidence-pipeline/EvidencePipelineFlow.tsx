@@ -21,12 +21,12 @@ import {
 type StreamState = 'unavailable' | 'connected' | 'error';
 
 const STATE_COLOR: Record<EvidenceFreshnessState | StreamState, string> = {
-  CURRENT: 'var(--ds-ok)',
+  CURRENT: 'var(--ds-status-ok)',
   STALE: 'var(--ds-warn)',
-  DEGRADED: 'var(--ds-bad)',
+  DEGRADED: 'var(--ds-status-bad)',
   unavailable: 'var(--ds-ink-3)',
-  connected: 'var(--ds-ok)',
-  error: 'var(--ds-bad)',
+  connected: 'var(--ds-status-ok)',
+  error: 'var(--ds-status-bad)',
 };
 
 const AUTHORITY_COLOR: Record<EvidenceAuthority, 'ok' | 'secondary' | 'tertiary'> = {

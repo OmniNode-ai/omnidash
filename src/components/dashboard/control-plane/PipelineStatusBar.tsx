@@ -8,8 +8,8 @@ interface StatusIndicatorProps {
 }
 
 const STATUS_COLORS: Record<ServiceStatus, string> = {
-  up: 'var(--ds-ok)',
-  down: 'var(--ds-bad)',
+  up: 'var(--ds-status-ok)',
+  down: 'var(--ds-status-bad)',
   demo: 'var(--ds-warn)',
   sqlite: 'var(--ds-warn)',
   unknown: 'var(--ds-warn)',

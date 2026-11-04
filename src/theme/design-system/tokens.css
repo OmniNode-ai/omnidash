@@ -163,6 +163,8 @@
   --ds-radius: 12px;
   --ds-radius-control: 8px;
   --ds-radius-tag: 4px;
+  /* Every chart bar's rounded end (Lakshman 2026-11-04: "3px rounded tops, unify all bars"). */
+  --ds-radius-bar: 3px;
   --ds-radius-pill: 999px;
 
   --ds-pad-y: 14px;
@@ -479,6 +481,48 @@
   --ds-kind-reducer-soft: #DBEAFE;
   --ds-kind-reducer-ink: #1E3A8A;
 }
+/* OMN-22168: one token per Workflow control, flow node and Runs chart accent, each holding the value its rule drew
+   before the design system; the generated names had folded several distinct accents into one colour. */
+:root {
+  --ds-accent-control-1: #1D4ED8;
+  --ds-accent-control-2: #047857;
+  --ds-accent-control-3: #7E22CE;
+  --ds-accent-control-4: #0E7490;
+  --ds-accent-control-5: #60A5FA;
+  --ds-accent-control-6: #34D399;
+  --ds-accent-control-7: #C084FC;
+  --ds-accent-control-8: #22D3EE;
+  --ds-accent-flow-1: #60A5FA;
+  --ds-accent-flow-2: #C084FC;
+  --ds-accent-flow-3: #FBBF24;
+  --ds-accent-flow-4: #34D399;
+  --ds-accent-flow-5: #1D4ED8;
+  --ds-accent-flow-6: #7E22CE;
+  --ds-accent-flow-7: #B45309;
+  --ds-accent-panel-1: #147e99;
+  --ds-accent-panel-2: #74cce4;
+}
+/* A run or step outcome: the status colours everywhere, and on the local pages the canonical pass and fail field
+   colours, so an outcome mark there matches the pass and fail figures beside it (field-identity.css scoped the old
+   --status-ok / --status-bad the same way before the design system). */
+:root {
+  --ds-status-ok: var(--ds-ok);
+  --ds-status-bad: var(--ds-bad);
+}
+.local-dashboard-page {
+  --ds-status-ok: var(--ds-field-pass);
+  --ds-status-bad: var(--ds-field-fail);
+}
+/* Runs' cost and score charts: the bars and their panel share one accent each (globals.css held these as
+   --run-cost-accent and --run-score-accent before the design system). */
+:root {
+  --ds-run-cost-accent: #a35d09;
+  --ds-run-score-accent: #14735c;
+}
+[data-theme="dark"] {
+  --ds-run-cost-accent: #f3bf6b;
+  --ds-run-score-accent: #69d4b4;
+}
 [data-destination] {
   --ds-destination-accent: #8C641F;
 }
@@ -573,10 +617,13 @@
   --ds-accent-page-usage: #B45309;
   --ds-accent-page-credentials: #E11D48;
   --ds-accent-page-api-keys: #EA580C;
-  --ds-accent-fact-run-summary-group: #92400E;
+  --ds-accent-fact-run-summary-group: #047857;
+  --ds-accent-fact-run-summary-group-2: #1D4ED8;
+  --ds-accent-fact-run-summary-group-3: #7E22CE;
+  --ds-accent-fact-run-summary-group-4: #92400E;
   --ds-accent-analysis-workflow-analysis-card: #B45309;
-  --ds-accent-workflow-timing-base: #fb923c;
-  --ds-accent-workflow-stages-base: #f472b6;
+  --ds-accent-workflow-timing-base: #c2410c;
+  --ds-accent-workflow-stages-base: #be185d;
   --ds-accent-analysis-workflow-analysis-card--tokens: #0e7490;
   --ds-accent-analysis-workflow-analysis-card--quality: #be123c;
   --ds-accent-analysis-workflow-analysis-card--record: #4338ca;
@@ -608,7 +655,12 @@
   --ds-accent-panel-usage-insights: #D8B4FE;
   --ds-accent-panel-credentials-keys: #FDA4AF;
   --ds-accent-panel-api-keys-local-identity: #FDBA74;
-  --ds-accent-fact-run-summary-group: #FBBF24;
+  --ds-accent-fact-run-summary-group: #34D399;
+  --ds-accent-fact-run-summary-group-2: #60A5FA;
+  --ds-accent-fact-run-summary-group-3: #C084FC;
+  --ds-accent-fact-run-summary-group-4: #FBBF24;
+  --ds-accent-workflow-timing-base: #fb923c;
+  --ds-accent-workflow-stages-base: #f472b6;
   --ds-accent-analysis-workflow-analysis-card--tokens: #22d3ee;
   --ds-accent-analysis-workflow-analysis-card--quality: #fb7185;
   --ds-accent-analysis-workflow-analysis-card--record: #a5b4fc;

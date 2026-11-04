@@ -32,9 +32,9 @@ const STATE_STYLE: Record<string, React.CSSProperties> = {
   on: {
     padding: '2px 8px',
     borderRadius: 4,
-    background: 'color-mix(in oklch, var(--ds-ok) 20%, transparent)',
-    border: '1px solid var(--ds-ok)',
-    color: 'var(--ds-ok)',
+    background: 'color-mix(in oklch, var(--ds-status-ok) 20%, transparent)',
+    border: '1px solid var(--ds-status-ok)',
+    color: 'var(--ds-status-ok)',
     whiteSpace: 'nowrap' as const,
   },
   off: {

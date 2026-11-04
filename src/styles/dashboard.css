@@ -182,7 +182,7 @@
 .widget-live {
   display: inline-flex; align-items: center; gap: 5px;
   font-size: 12px; font-weight: 500;
-  color: var(--ds-ok);
+  color: var(--ds-status-ok);
   text-transform: uppercase; letter-spacing: 0.08em;
 }
 .widget-live::before {
@@ -199,7 +199,7 @@
 
 .widget-body { padding: 14px var(--ds-pad-x) var(--ds-pad-x); }
 
-.usage-source-badge-text--ok { color: var(--ds-ok); }
+.usage-source-badge-text--ok { color: var(--ds-status-ok); }
 .usage-source-badge-text--warn { color: var(--ds-warn); }
 
 /* KEBAB MENU */
@@ -223,7 +223,7 @@
   transition: background 0.1s;
 }
 .menu-item:hover { background: var(--ds-surface-2); }
-.menu-item.danger { color: var(--ds-bad); }
+.menu-item.danger { color: var(--ds-status-bad); }
 .menu-item.danger:hover { background: color-mix(in srgb, var(--ds-bad) 8%, transparent); }
 .menu-item .shortcut { margin-left: auto; color: var(--ds-ink-3); font-size: 12px; }
 .menu-sep { height: 1px; background: var(--ds-line); margin: 4px 0; }

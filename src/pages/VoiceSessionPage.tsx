@@ -84,7 +84,7 @@ function AudioTimeline({
               background: isActive
                 ? 'var(--ds-brand, var(--ds-hue-blue))'
                 : isAgent
-                  ? 'var(--ds-ok)'
+                  ? 'var(--ds-status-ok)'
                   : 'var(--ds-warn)',
               opacity: isActive ? 1 : 0.7,
               cursor: 'pointer',
@@ -129,12 +129,12 @@ function TranscriptPanel({ turns, activeTurnId }: { turns: TranscriptTurn[]; act
                 width: 28,
                 height: 28,
                 borderRadius: '50%',
-                background: isAgent ? 'color-mix(in oklch, var(--ds-ok) 20%, transparent)' : 'color-mix(in oklch, var(--ds-warn) 20%, transparent)',
+                background: isAgent ? 'color-mix(in oklch, var(--ds-status-ok) 20%, transparent)' : 'color-mix(in oklch, var(--ds-warn) 20%, transparent)',
                 flexShrink: 0,
               }}
             >
               {isAgent
-                ? <Mic size={12} style={{ color: 'var(--ds-ok)' }} />
+                ? <Mic size={12} style={{ color: 'var(--ds-status-ok)' }} />
                 : <MicOff size={12} style={{ color: 'var(--ds-warn)' }} />
               }
             </div>
@@ -318,7 +318,7 @@ export function VoiceSessionPage() {
                       <div style={{ marginBottom: 10, display: 'flex', alignItems: 'center', gap: 12 }}>
                         <Heading level={3} size="sm">Audio Timeline</Heading>
                         <Text size="xs" color="tertiary">
-                          <span style={{ color: 'var(--ds-ok)' }}>■</span> agent
+                          <span style={{ color: 'var(--ds-status-ok)' }}>■</span> agent
                           {' '}
                           <span style={{ color: 'var(--ds-warn)' }}>■</span> user
                         </Text>

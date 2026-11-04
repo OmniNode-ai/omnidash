@@ -168,7 +168,7 @@
 }
 
 .local-dashboard-error {
-  color: var(--ds-bad);
+  color: var(--ds-status-bad);
 }
 
 .local-dashboard-table-wrap {
@@ -296,10 +296,10 @@
   background: color-mix(in oklch, var(--ds-ink-3) 45%, transparent);
 }
 .local-dashboard-steps > li:last-child::after { display: none; }
-.local-dashboard-steps > li[data-outcome="succeeded"]::before { background: var(--ds-ok); }
-.local-dashboard-steps > li[data-outcome="failed"]::before { background: var(--ds-bad); }
+.local-dashboard-steps > li[data-outcome="succeeded"]::before { background: var(--ds-status-ok); }
+.local-dashboard-steps > li[data-outcome="failed"]::before { background: var(--ds-status-bad); }
 .local-dashboard-steps > li[data-failing-step="true"]::before {
-  box-shadow: 0 0 0 3px var(--ds-surface), 0 0 0 5px var(--ds-bad);
+  box-shadow: 0 0 0 3px var(--ds-surface), 0 0 0 5px var(--ds-status-bad);
 }
 
 .local-run-step-head {
@@ -367,14 +367,14 @@
 }
 .local-run-pill[data-outcome="succeeded"],
 .local-run-pill[data-outcome="passed"] {
-  border-color: color-mix(in oklch, var(--ds-ok) 45%, transparent);
-  background: color-mix(in oklch, var(--ds-ok) 14%, transparent);
-  color: var(--ds-ok);
+  border-color: color-mix(in oklch, var(--ds-status-ok) 45%, transparent);
+  background: color-mix(in oklch, var(--ds-status-ok) 14%, transparent);
+  color: var(--ds-status-ok);
 }
 .local-run-pill[data-outcome="failed"] {
-  border-color: color-mix(in oklch, var(--ds-bad) 45%, transparent);
-  background: color-mix(in oklch, var(--ds-bad) 14%, transparent);
-  color: var(--ds-bad);
+  border-color: color-mix(in oklch, var(--ds-status-bad) 45%, transparent);
+  background: color-mix(in oklch, var(--ds-status-bad) 14%, transparent);
+  color: var(--ds-status-bad);
 }
 
 /* The run shown: its id in the mono face, and a tag when it is the newest run rather than one asked for. */
@@ -549,7 +549,7 @@
   overflow-wrap: anywhere;
 }
 .local-dashboard-panel[data-component="overview-savings"] .local-dashboard-metric,
-.local-dashboard-panel[data-component="overview-avg-saving-per-call"] .local-dashboard-metric { color: var(--ds-ok); }
+.local-dashboard-panel[data-component="overview-avg-saving-per-call"] .local-dashboard-metric { color: var(--ds-status-ok); }
 .local-dashboard-caption { font-size: 0.8125rem; line-height: 1.45; }
 
 /* Field lists (Last run, Quality, Local identity): a quiet label over its value. */
@@ -602,9 +602,9 @@
 .local-dashboard-error {
   margin: 8px 0 0;
   padding: 10px 12px;
-  border: 1px solid color-mix(in oklch, var(--ds-bad) 45%, transparent);
+  border: 1px solid color-mix(in oklch, var(--ds-status-bad) 45%, transparent);
   border-radius: var(--ds-radius-control);
-  background: color-mix(in oklch, var(--ds-bad) 10%, transparent);
+  background: color-mix(in oklch, var(--ds-status-bad) 10%, transparent);
   font-size: 0.8125rem;
 }
 .local-dashboard-mode { background: var(--ds-surface); }
@@ -787,7 +787,7 @@
   border-radius: 999px;
   background: var(--ds-surface-2);
 }
-.local-meter-fill { display: block; height: 100%; border-radius: 999px; background: var(--ds-ok); }
+.local-meter-fill { display: block; height: 100%; border-radius: 999px; background: var(--ds-status-ok); }
 .local-meter-value { font-family: var(--ds-font-mono); font-size: 1.125rem; font-weight: 500; }
 
 /* No title block at the top of a page (Lakshman, 2026-10-13): the sidebar entry and the breadcrumb already name the
@@ -832,8 +832,8 @@
 }
 .local-copy:hover { border-color: var(--ds-ink-3); color: var(--ds-ink); }
 .local-copy:focus-visible { outline: 2px solid var(--ds-brand-ink); outline-offset: 2px; }
-.local-copy[data-state="copied"] { border-color: color-mix(in oklch, var(--ds-ok) 45%, transparent); color: var(--ds-ok); }
-.local-copy[data-state="failed"] { border-color: color-mix(in oklch, var(--ds-bad) 45%, transparent); color: var(--ds-bad); }
+.local-copy[data-state="copied"] { border-color: color-mix(in oklch, var(--ds-status-ok) 45%, transparent); color: var(--ds-status-ok); }
+.local-copy[data-state="failed"] { border-color: color-mix(in oklch, var(--ds-status-bad) 45%, transparent); color: var(--ds-status-bad); }
 
 .local-dashboard-steps > li:target .local-run-step-head strong { color: var(--ds-link); }
 
@@ -1311,7 +1311,7 @@
 .ins-bar { flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; background: transparent; cursor: pointer; display: flex; flex-direction: column; justify-content: flex-end; gap: 2px; border-radius: 4px; transition: opacity 120ms ease; }
 .ins-bar[data-dim="true"] { opacity: 0.4; }
 .ins-bar:focus-visible { outline: 2px solid var(--ins-accent); outline-offset: 2px; }
-.ins-seg { display: block; width: 100%; border-radius: 4px; }
+.ins-seg { display: block; width: 100%; border-radius: var(--ds-radius-bar) var(--ds-radius-bar) 0 0; }
 .ins-axis { display: flex; justify-content: space-between; font-size: 12px; color: var(--ds-ink-2); }
 .ins-plot { position: relative; height: 120px; }
 .ins-plot svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
@@ -1435,8 +1435,8 @@ figure.local-chart.ins-card { margin: 0; padding: 20px 22px; border-radius: 16px
 .local-runs-week-days strong { font-size: 15px; font-variant-numeric: tabular-nums; }
 .local-runs-week-days small { color: var(--ds-ink-2); font-size: 12px; }
 .local-runs-week-bar { display: flex; height: 7px; overflow: hidden; border-radius: 5px; background: var(--ds-line); }
-.local-runs-week-bar > i[data-outcome="passed"] { background: var(--ds-ok); }
-.local-runs-week-bar > i[data-outcome="failed"] { background: var(--ds-bad); }
+.local-runs-week-bar > i[data-outcome="passed"] { background: var(--ds-field-pass); }
+.local-runs-week-bar > i[data-outcome="failed"] { background: var(--ds-field-fail); }
 .local-runs-week-bar > i[data-outcome="unknown"] { background: var(--ds-chart-unknown); }
 .local-runs-day-filters > div { display: flex; flex-wrap: wrap; gap: 7px; }
 .local-runs-day-filters button { display: inline-flex; align-items: center; min-height: 34px; padding: 4px 9px; border: 1px solid var(--ds-line); border-radius: 999px; background: var(--ds-surface); color: inherit; font: inherit; font-size: 12px; cursor: pointer; }
@@ -1457,7 +1457,7 @@ figure.local-chart.ins-card { margin: 0; padding: 20px 22px; border-radius: 16px
 .local-run-selected dt { color: var(--ds-ink-2); font-size: 12px; }
 .local-run-selected dd { margin: 2px 0 0; overflow-wrap: anywhere; font-size: 13px; }
 .local-selected-quality-meter { position: relative; height: 7px; margin-top: 6px; overflow: hidden; border-radius: 999px; background: var(--ds-line); }
-.local-selected-quality-meter > span { display: block; height: 100%; border-radius: inherit; background: var(--ds-ok); }
+.local-selected-quality-meter > span { display: block; height: 100%; border-radius: inherit; background: var(--ds-field-pass); }
 .local-selected-quality-meter > i { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--ds-ink); }
 .usage-insights { display: grid; gap: 14px; min-width: 0; }
 .usage-insights > h3 { margin: 4px 0 0; font-size: 15px; }
@@ -1816,13 +1816,13 @@ figure.local-chart.usage-insight { min-width: 0; margin: 0; padding: 14px; }
 
 /* Card identity follows its subject; text and result pills keep their own semantics. */
 .local-run-summary-group { --fact-accent: var(--ds-accent-fact-run-summary-group); border-color: var(--ds-line); background: var(--ds-surface); }
-.local-run-summary-group:nth-child(2) { --fact-accent: var(--ds-accent-fact-run-summary-group); }
-.local-run-summary-group:nth-child(3) { --fact-accent: var(--ds-accent-fact-run-summary-group); }
-.local-run-summary-group:nth-child(4) { --fact-accent: var(--ds-accent-fact-run-summary-group); } /* part 27 AC170: #B45309 read 4.45:1 on its tint */
+.local-run-summary-group:nth-child(2) { --fact-accent: var(--ds-accent-fact-run-summary-group-2); }
+.local-run-summary-group:nth-child(3) { --fact-accent: var(--ds-accent-fact-run-summary-group-3); }
+.local-run-summary-group:nth-child(4) { --fact-accent: var(--ds-accent-fact-run-summary-group-4); } /* part 27 AC170: #B45309 read 4.45:1 on its tint */
 [data-theme="dark"] .local-run-summary-group { --fact-accent: var(--ds-accent-fact-run-summary-group); }
-[data-theme="dark"] .local-run-summary-group:nth-child(2) { --fact-accent: var(--ds-accent-fact-run-summary-group); }
-[data-theme="dark"] .local-run-summary-group:nth-child(3) { --fact-accent: var(--ds-accent-fact-run-summary-group); }
-[data-theme="dark"] .local-run-summary-group:nth-child(4) { --fact-accent: var(--ds-accent-fact-run-summary-group); }
+[data-theme="dark"] .local-run-summary-group:nth-child(2) { --fact-accent: var(--ds-accent-fact-run-summary-group-2); }
+[data-theme="dark"] .local-run-summary-group:nth-child(3) { --fact-accent: var(--ds-accent-fact-run-summary-group-3); }
+[data-theme="dark"] .local-run-summary-group:nth-child(4) { --fact-accent: var(--ds-accent-fact-run-summary-group-4); }
 .local-run-summary-group h3 svg { color: var(--fact-accent); background: transparent; padding: 0; border-radius: 0; }
 .local-run-summary-group:hover, .ins-card:hover { border-color: var(--ds-line); box-shadow: none; }
 .ins-card { border-color: var(--ds-line); box-shadow: none; }
@@ -1889,31 +1889,31 @@ figure.local-chart.usage-insight { min-width: 0; margin: 0; padding: 14px; }
 [data-theme="dark"] .workflow-routing-flow > h3 svg { color: var(--ds-hue-blue); }
 .local-dashboard-page--workflow .local-dashboard-filters button,
 .local-dashboard-page--workflow .local-copy,
-.local-dashboard-page--workflow .local-run-neighbours a { --control-accent: var(--ds-accent-control-workflow); transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease, box-shadow 180ms ease; }
-.local-dashboard-page--workflow .local-dashboard-filters button[type="button"] { --control-accent: var(--ds-accent-control-workflow); }
-.local-dashboard-page--workflow .local-copy { --control-accent: var(--ds-accent-control-workflow); }
-.local-dashboard-page--workflow .local-run-neighbours a[data-direction="newer"] { --control-accent: var(--ds-accent-control-workflow); }
+.local-dashboard-page--workflow .local-run-neighbours a { --control-accent: var(--ds-accent-control-1); transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease, box-shadow 180ms ease; }
+.local-dashboard-page--workflow .local-dashboard-filters button[type="button"] { --control-accent: var(--ds-accent-control-2); }
+.local-dashboard-page--workflow .local-copy { --control-accent: var(--ds-accent-control-3); }
+.local-dashboard-page--workflow .local-run-neighbours a[data-direction="newer"] { --control-accent: var(--ds-accent-control-4); }
 .local-dashboard-page--workflow .local-run-neighbours a[data-direction="older"] { --control-accent: var(--ds-accent-control-workflow); }
-[data-theme="dark"] .local-dashboard-page--workflow .local-dashboard-filters button { --control-accent: var(--ds-accent-control-workflow); }
-[data-theme="dark"] .local-dashboard-page--workflow .local-dashboard-filters button[type="button"] { --control-accent: var(--ds-accent-control-workflow); }
-[data-theme="dark"] .local-dashboard-page--workflow .local-copy { --control-accent: var(--ds-accent-control-workflow); }
-[data-theme="dark"] .local-dashboard-page--workflow .local-run-neighbours a[data-direction="newer"] { --control-accent: var(--ds-accent-control-workflow); }
+[data-theme="dark"] .local-dashboard-page--workflow .local-dashboard-filters button { --control-accent: var(--ds-accent-control-5); }
+[data-theme="dark"] .local-dashboard-page--workflow .local-dashboard-filters button[type="button"] { --control-accent: var(--ds-accent-control-6); }
+[data-theme="dark"] .local-dashboard-page--workflow .local-copy { --control-accent: var(--ds-accent-control-7); }
+[data-theme="dark"] .local-dashboard-page--workflow .local-run-neighbours a[data-direction="newer"] { --control-accent: var(--ds-accent-control-8); }
 [data-theme="dark"] .local-dashboard-page--workflow .local-run-neighbours a[data-direction="older"] { --control-accent: var(--ds-accent-control-workflow); }
 .local-dashboard-page--workflow :is(.local-dashboard-filters button, .local-copy, .local-run-neighbours a):is(:hover, :focus-visible) { color: var(--control-accent); border-color: var(--control-accent); background: color-mix(in oklab, var(--control-accent) 8%, var(--ds-surface)); box-shadow: none; }
 .workflow-routing-nodes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 26px; }
-.workflow-flow-node { --flow-accent: var(--ds-accent-flow-workflow-flow-node); position: relative; }
+.workflow-flow-node { --flow-accent: var(--ds-accent-flow-1); position: relative; }
 .workflow-flow-node { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 4px 8px; min-width: 0; padding: 10px; border: 1px solid var(--ds-line); border-radius: 8px; background: var(--ds-surface); }
 .workflow-flow-node > svg { grid-row: span 2; align-self: center; color: var(--flow-accent); }
 .workflow-flow-node > span:not(.workflow-flow-connector) { font-size: 12px; color: var(--ds-ink-2); }
 .workflow-flow-node > strong { font-size: 12px; font-weight: 500; overflow-wrap: anywhere; }
 .workflow-flow-node { transition: border-color 180ms ease, box-shadow 180ms ease; }
 .workflow-flow-node:hover { border-color: var(--ds-line); box-shadow: none; }
-.workflow-flow-node[data-flow-kind="backend"] { --flow-accent: var(--ds-accent-flow-workflow-flow-node); }
-.workflow-flow-node[data-flow-kind="model"] { --flow-accent: var(--ds-accent-flow-workflow-flow-node); }
-.workflow-flow-node[data-flow-kind="outcome"] { --flow-accent: var(--ds-accent-flow-workflow-flow-node); }
-:root:not([data-theme="dark"]) .workflow-flow-node { --flow-accent: var(--ds-accent-flow-workflow-flow-node); }
-:root:not([data-theme="dark"]) .workflow-flow-node[data-flow-kind="backend"] { --flow-accent: var(--ds-accent-flow-workflow-flow-node); }
-:root:not([data-theme="dark"]) .workflow-flow-node[data-flow-kind="model"] { --flow-accent: var(--ds-accent-flow-workflow-flow-node); }
+.workflow-flow-node[data-flow-kind="backend"] { --flow-accent: var(--ds-accent-flow-2); }
+.workflow-flow-node[data-flow-kind="model"] { --flow-accent: var(--ds-accent-flow-3); }
+.workflow-flow-node[data-flow-kind="outcome"] { --flow-accent: var(--ds-accent-flow-4); }
+:root:not([data-theme="dark"]) .workflow-flow-node { --flow-accent: var(--ds-accent-flow-5); }
+:root:not([data-theme="dark"]) .workflow-flow-node[data-flow-kind="backend"] { --flow-accent: var(--ds-accent-flow-6); }
+:root:not([data-theme="dark"]) .workflow-flow-node[data-flow-kind="model"] { --flow-accent: var(--ds-accent-flow-7); }
 :root:not([data-theme="dark"]) .workflow-flow-node[data-flow-kind="outcome"] { --flow-accent: var(--ds-accent-flow-workflow-flow-node); }
 .workflow-flow-connector { position: absolute; left: 100%; top: 50%; width: 26px; height: 2px; background: color-mix(in oklab, var(--flow-accent) 35%, var(--ds-line)); pointer-events: none; }
 
@@ -2035,15 +2035,15 @@ figure.local-chart.usage-insight { min-width: 0; margin: 0; padding: 14px; }
 /* Four compact measures; each row stretches to the tallest card. */
 .local-dashboard-page--runs .local-run-charts { align-items: stretch; }
 .local-dashboard-page--runs .local-run-charts > .local-chart {
-  --panel-accent: var(--ds-accent-panel-runs);
+  --panel-accent: var(--ds-accent-panel-1);
   border-color: var(--ds-line);
   background: var(--ds-surface);
   box-shadow: none;
 }
 .local-dashboard-page--runs .local-run-charts > .local-chart:nth-child(2) { --panel-accent: var(--ds-accent-panel-runs); }
-.local-dashboard-page--runs .local-run-charts > .local-chart--cost { --panel-accent: var(--ds-accent-panel-runs); }
-.local-dashboard-page--runs .local-run-charts > .local-chart--score { --panel-accent: var(--ds-accent-panel-runs); }
-[data-theme="dark"] .local-dashboard-page--runs .local-run-charts > .local-chart:first-child { --panel-accent: var(--ds-accent-panel-runs); }
+.local-dashboard-page--runs .local-run-charts > .local-chart--cost { --panel-accent: var(--ds-run-cost-accent); }
+.local-dashboard-page--runs .local-run-charts > .local-chart--score { --panel-accent: var(--ds-run-score-accent); }
+[data-theme="dark"] .local-dashboard-page--runs .local-run-charts > .local-chart:first-child { --panel-accent: var(--ds-accent-panel-2); }
 [data-theme="dark"] .local-dashboard-page--runs .local-run-charts > .local-chart:nth-child(2) { --panel-accent: var(--ds-accent-panel-runs); }
 .local-dashboard-page--runs .local-run-charts > .local-chart:is(:hover, :focus-within) {
   border-color: var(--ds-line);
@@ -2062,7 +2062,7 @@ figure.local-chart.usage-insight { min-width: 0; margin: 0; padding: 14px; }
 .local-dashboard-page :is(.ins-bars, .ins-plot, .ins-heat) { background: transparent; }
 .local-dashboard-page .ins-bars { padding: 10px 8px 0; border-bottom: 0; }
 .local-dashboard-page .ins-heat { padding: 10px; }
-.local-dashboard-page .ins-seg { border-radius: 2px; }
+.local-dashboard-page .ins-seg { border-radius: var(--ds-radius-bar) var(--ds-radius-bar) 0 0; }
 .local-dashboard-page .ins-title { font-size: 14px; }
 
 /* Neutral figures and colored labels, with the reference's quiet card edges. */
@@ -2082,12 +2082,12 @@ figure.local-chart.usage-insight { min-width: 0; margin: 0; padding: 14px; }
 .local-dashboard-page .ins-range button[data-window][aria-pressed="true"] { background: color-mix(in oklab, var(--range-ink) 18%, var(--ds-surface)); color: var(--range-label); outline: 2px solid var(--range-ink); outline-offset: 1px; }
 .local-dashboard-page .ins-range button[data-window]:focus-visible { outline: 2px solid var(--ds-ink); outline-offset: 3px; }
 :root:not([data-theme="dark"]) .local-dashboard-page .ins-card { --ins-accent-text: color-mix(in oklab, var(--ins-accent) 60%, var(--ds-ink-2)); }
-:root :is(.local-dashboard-page, .ev-root) .local-overview-focus [data-component="overview-quality"] .local-meter-value { color: var(--ds-ok); }
-:root :is(.local-dashboard-page, .ev-root) .local-overview-focus [data-component="overview-quality"] .local-meter-fill { background: var(--ds-ok); }
+:root :is(.local-dashboard-page, .ev-root) .local-overview-focus [data-component="overview-quality"] .local-meter-value { color: var(--ds-field-pass); }
+:root :is(.local-dashboard-page, .ev-root) .local-overview-focus [data-component="overview-quality"] .local-meter-fill { background: var(--ds-field-pass); }
 
 /* Refresh feedback keeps the data readable; diagnostics are available on demand. */
 .local-read-notice { --notice-tone: var(--ds-warn); padding: 12px; margin: 12px 0; border: 1px solid color-mix(in oklab, var(--notice-tone) 35%, var(--ds-line)); border-radius: 10px; background: color-mix(in oklab, var(--notice-tone) 6%, var(--ds-surface)); color: var(--ds-ink); font-size: 12px; line-height: 1.5; }
-.local-read-notice--error { --notice-tone: var(--ds-bad); }
+.local-read-notice--error { --notice-tone: var(--ds-status-bad); }
 .local-read-notice-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .local-read-notice-head > svg { color: var(--notice-tone); flex: none; }
 .local-read-notice-head strong { font-size: 12px; font-weight: 500; flex: 1; min-width: min(100%, 140px); }

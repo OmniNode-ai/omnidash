@@ -26,7 +26,7 @@ const PAGES = ['/overview', '/runs', '/workflow?correlation_id=chart-run-a', '/u
 const INK = { light: 'rgb(10, 10, 10)', dark: 'rgb(245, 245, 245)' } as const;
 // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the editorial look replaced JetBrains Mono, Inter, the grey card line and 8px
 // corners with Geist Mono labels, a Fraunces display face for titles and figures, ink hairlines and square corners.
-// The checks read those from the page's own tokens (--font-mono, --font-sans, --ed-display, --ed-rule), not from
+// The checks read those from the page's own tokens (--ds-font-mono, --ds-font-sans, --ds-font-sans, --ds-line), not from
 // hard-coded families or colours, so a label that leaves the mono face, or a card that takes a coloured edge, still fails.
 const firstFamily = (family: string) => family.split(',')[0]!.trim().replace(/^["']|["']$/g, '');
 async function tokens(page: Page) {
@@ -36,8 +36,8 @@ async function tokens(page: Page) {
     document.body.append(probe);
     const colour = (value: string) => { probe.style.color = value; return getComputedStyle(probe).color; };
     try {
-      return { mono: root.getPropertyValue('--font-mono').trim(), sans: root.getPropertyValue('--font-sans').trim(),
-        display: root.getPropertyValue('--ed-display').trim(), rule: colour('var(--ed-rule)') };
+      return { mono: root.getPropertyValue('--ds-font-mono').trim(), sans: root.getPropertyValue('--ds-font-sans').trim(),
+        display: root.getPropertyValue('--ds-font-sans').trim(), rule: colour('var(--ds-line)') };
     } finally { probe.remove(); }
   });
 }
@@ -71,13 +71,13 @@ for (const theme of ['light', 'dark'] as const) {
     }));
     expect(read.length).toBeGreaterThanOrEqual(5);
     expect(read.filter(card => card.figureFont !== null).length, 'the fixture serves measured figures').toBeGreaterThanOrEqual(1);
-    // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): labels in the --font-mono face (Geist Mono), figures in the display face,
-    // a 1px hairline (--ed-rule) on every card. Lakshman 2026-11-03 ("01 + 20 do it"): the 01 Obsidian and 20 Daylight
+    // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): labels in the --ds-font-mono face (Geist Mono), figures in the display face,
+    // a 1px hairline (--ds-line) on every card. Lakshman 2026-11-03 ("01 + 20 do it"): the 01 Obsidian and 20 Daylight
     // look rounds a card's corners to 12px.
     const face = await tokens(page);
     expect(firstFamily(face.mono), 'control: the mono and text faces differ').not.toBe(firstFamily(face.sans));
     for (const card of read) {
-      expect(firstFamily(card.labelFont), 'AC166 label in the --font-mono face').toBe(firstFamily(face.mono));
+      expect(firstFamily(card.labelFont), 'AC166 label in the --ds-font-mono face').toBe(firstFamily(face.mono));
       expect([card.labelSize, card.labelCase], 'AC166 label 12px uppercase').toEqual(['12px', 'uppercase']);
       if (card.figureFont !== null) {
         expect(firstFamily(card.figureFont), 'AC166 figure in the display face').toBe(firstFamily(face.display));
@@ -103,14 +103,14 @@ for (const theme of ['light', 'dark'] as const) {
     await expect(h1).toHaveCSS('font-size', '46px');
     await expect(h1).toHaveCSS('font-weight', '600');
     // Part 28 AC186: the current page is a lifted, bordered item on the shell's active surface, not the sidebar's own
-    // surface. OMN-21970: the surface is read from --shell-active-surface rather than a hard-coded colour.
+    // surface. OMN-21970: the surface is read from --ds-surface-2 rather than a hard-coded colour.
     const active = page.locator('.sidebar .mvp-nav-item.active');
     const surfaces = await active.evaluate(el => {
       const probe = document.createElement('span'); el.append(probe);
-      try { probe.style.color = 'var(--shell-active-surface)'; return { surface: getComputedStyle(probe).color, own: getComputedStyle(el).backgroundColor,
+      try { probe.style.color = 'var(--ds-surface-2)'; return { surface: getComputedStyle(probe).color, own: getComputedStyle(el).backgroundColor,
         sidebar: getComputedStyle(el.closest('.sidebar')!).backgroundColor }; } finally { probe.remove(); }
     });
-    expect(surfaces.own, 'the active item is drawn on --shell-active-surface').toBe(surfaces.surface);
+    expect(surfaces.own, 'the active item is drawn on --ds-surface-2').toBe(surfaces.surface);
     expect(surfaces.own, 'the active item is not the sidebar surface').not.toBe(surfaces.sidebar);
     await expect(active.locator('.dash-name')).toHaveCSS('color', INK[theme]);
     // Lakshman 2026-10-27: "an omninode product - keep this in one line", at the 12px floor and not cut off.
@@ -274,7 +274,7 @@ for (const theme of ['light', 'dark'] as const) {
     const groups = page.locator('.local-run-summary-groups > .local-run-summary-group');
     await expect(groups).toHaveCount(4);
     // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): a neutral card is now drawn like every other panel, a 1px ink hairline
-    // (--ed-rule) on the panel's paper, so the subject cards are compared with the page's own panel and the rule token.
+    // (--ds-line) on the panel's paper, so the subject cards are compared with the page's own panel and the rule token.
     const panel = await page.locator('main .local-dashboard-panel').first().evaluate(el => [getComputedStyle(el).backgroundColor, getComputedStyle(el).borderTopColor]);
     const face = await tokens(page);
     expect(panel[1], 'panels carry the ink hairline').toBe(face.rule);

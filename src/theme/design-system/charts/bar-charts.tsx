@@ -12,7 +12,7 @@ import { BarChart } from 'echarts/charts';
 import { AriaComponent, GridComponent, TooltipComponent } from 'echarts/components';
 import { SVGRenderer } from 'echarts/renderers';
 import { useThemeName } from '@/theme';
-import { colorToNumber, tokenHex, type TokenName } from '@/theme/design-system/color';
+import { colorToNumber, tokenHex, tokenValue, type TokenName } from '@/theme/design-system/color';
 
 echarts.use([BarChart, GridComponent, TooltipComponent, AriaComponent, SVGRenderer]);
 
@@ -39,6 +39,16 @@ function useChartMotion() {
  */
 export function flatBar(colour: string, borderRadius: readonly number[]) {
   return { color: colour, borderColor: colour, borderWidth: 0, borderRadius: [...borderRadius] };
+}
+
+/**
+ * OMN-22168: every chart bar rounds its end by one token, --ds-radius-bar, so no chart picks its own corners. A column
+ * rounds its top two corners; a horizontal bar rounds its right two. Outside a browser the token's 3px is used.
+ */
+export function barRadius(direction: 'vertical' | 'horizontal' = 'vertical'): number[] {
+  const read = typeof document === 'undefined' ? NaN : parseFloat(tokenValue('--ds-radius-bar'));
+  const r = Number.isFinite(read) ? read : 3;
+  return direction === 'horizontal' ? [0, r, r, 0] : [r, r, 0, 0];
 }
 
 /** A served UTC day (YYYY-MM-DD) as every day axis names it, e.g. Oct 13 (part 28 AC185); any other text is kept. */
@@ -232,7 +242,7 @@ function optionFor(group: SpendByDayGroup, shown: ReadonlyArray<{ series: Served
       type: 'bar',
       data: series.values,
       barMaxWidth: 36,
-      itemStyle: flatBar(colour, [3, 3, 0, 0]),
+      itemStyle: flatBar(colour, barRadius()),
       emphasis: { focus: 'series' },
     })),
   };
@@ -377,7 +387,7 @@ function timingOption(bars: readonly RunTimingBar[], colours: readonly string[],
     series: [{
       type: 'bar',
       barMaxWidth: 18,
-      data: bars.map((bar, index) => ({ value: bar.value, itemStyle: flatBar(colours[index]!, [0, 3, 3, 0]) })),
+      data: bars.map((bar, index) => ({ value: bar.value, itemStyle: flatBar(colours[index]!, barRadius('horizontal')) })),
       label: { show: true, position: 'right', color: text, ...(compact ? { width: 50, overflow: 'break', distance: 4 } : {}), formatter: (param: { dataIndex: number }) => labelText(param.dataIndex) },
     }],
   };
@@ -526,7 +536,7 @@ export function RunDurationChart({ runs, onOpen, title = 'Duration per run' }: {
       barMaxWidth: 28,
       data: runs.map((run, index) => ({
         value: hidden.has(run.status) ? null : points[index]!.value,
-        itemStyle: flatBar(statusColour(run.status), [3, 3, 0, 0]),
+        itemStyle: flatBar(statusColour(run.status), barRadius()),
       })),
     }],
   };
@@ -588,7 +598,7 @@ export function RunTokensChart({ runs, onOpen, title = 'Tokens per run' }: { run
       type: 'bar',
       barMaxWidth: 18,
       data: series.points.map(({ value }) => value),
-      itemStyle: flatBar(series.colour, [3, 3, 0, 0]),
+      itemStyle: flatBar(series.colour, barRadius()),
       emphasis: { focus: 'series' },
     })),
   };
@@ -619,7 +629,7 @@ export function RunMetricChart({ runs, onOpen, metric }: {
   const measured = points.some(p => p.value !== null);
   const recordedCount = points.filter(p => p.value !== null).length;
   const allRecordedZero = measured && points.every(p => p.value === null || p.value === 0);
-  const color = tone(cost ? '--ds-field-cost' : '--ds-field-score');
+  const color = tone(cost ? '--ds-run-cost-accent' : '--ds-run-score-accent');
   const valueText = (run: ListedRun) => {
     const served = point(run[metric]).served;
     return `${label}: ${served === null ? 'Not recorded' : cost ? formatDashboardUsd(served) : served}`;
@@ -635,7 +645,7 @@ export function RunMetricChart({ runs, onOpen, metric }: {
       },
     },
     series: [{ name: label, type: 'bar', barMaxWidth: 28,
-      data: points.map(p => p.value), itemStyle: flatBar(color, [4, 4, 0, 0]),
+      data: points.map(p => p.value), itemStyle: flatBar(color, barRadius()),
       emphasis: { focus: 'self', itemStyle: { opacity: 1 } },
     }],
   };

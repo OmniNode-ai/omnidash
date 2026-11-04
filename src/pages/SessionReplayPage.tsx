@@ -24,7 +24,7 @@ function formatTimestamp(iso: string): string {
 
 function EventTypeTag({ type }: { type: string }) {
   const colors: Record<string, string> = {
-    tool_call: 'var(--ds-ok)',
+    tool_call: 'var(--ds-status-ok)',
     llm_response: 'var(--ds-brand)',
     user_input: 'var(--ds-warn)',
     checkpoint: 'var(--ds-ink-3)',

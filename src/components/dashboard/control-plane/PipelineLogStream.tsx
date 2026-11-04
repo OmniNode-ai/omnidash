@@ -28,8 +28,8 @@ export interface PipelineEvent {
 const TYPE_COLORS: Record<PipelineEvent['type'], string> = {
   request: 'var(--ds-brand)',
   validation: 'var(--ds-warn)',
-  success: 'var(--ds-ok)',
-  error: 'var(--ds-bad)',
+  success: 'var(--ds-status-ok)',
+  error: 'var(--ds-status-bad)',
 };
 
 function formatTime(iso: string): string {

@@ -45,7 +45,7 @@
 .icon-btn .badge {
   position: absolute; top: 6px; right: 7px;
   width: 7px; height: 7px; border-radius: 50%;
-  background: var(--ds-bad); box-shadow: 0 0 0 2px var(--ds-surface);
+  background: var(--ds-status-bad); box-shadow: 0 0 0 2px var(--ds-surface);
 }
 .user-chip {
   display: flex; align-items: center; gap: 10px;

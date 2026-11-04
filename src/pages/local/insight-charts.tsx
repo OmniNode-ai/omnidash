@@ -35,8 +35,8 @@ const RANGES = [
   { days: 90, label: '90 days' },
 ] as const;
 
-const PASS = 'var(--ds-ok)';
-const FAIL = 'var(--ds-bad)';
+const PASS = 'var(--ds-field-pass)';
+const FAIL = 'var(--ds-field-fail)';
 const UNKNOWN = 'var(--ds-chart-unknown)';
 
 const TASK_CONCEPT: Readonly<Record<string, string>> = {
