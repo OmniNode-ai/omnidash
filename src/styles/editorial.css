@@ -810,3 +810,38 @@ html body .local-dashboard-page--overview .ins-toggle {
 html body .local-dashboard-page--overview .ins-toggle[aria-pressed="false"] { opacity: 0.55; background: transparent !important; }
 html body .local-dashboard-page--overview .ins-toggles { gap: 8px !important; }
 html body .local-dashboard-page--overview .local-overview-charts-panel .ins-toggles .ins-toggle { border-radius: 999px !important; }
+
+/* OMN-22168 (Lakshman 2026-11-04, "why all bar graph style different?"). Measured: bar widths 57, 10, 69 and 120px and
+   plot heights 320, 320, 355 and 284px across Runs per day, Tokens per day, Model usage and Tier mix, and no gridlines on
+   any. Now every tabbed bar chart draws in a 300px plot, its bars at most 44px wide and centred in their slot, with the
+   daily trend's top and middle gridlines. */
+html body .local-dashboard-page--overview .local-overview-charts-panel .ins-bars.gdb-plot,
+html body .local-dashboard-page--overview .local-overview-charts-panel .rb-chart.rb-chart--vertical .rb-track { height: 300px !important; }
+@media (max-width: 700px) {
+  html body .local-dashboard-page--overview .local-overview-charts-panel .ins-bars.gdb-plot,
+  html body .local-dashboard-page--overview .local-overview-charts-panel .rb-chart.rb-chart--vertical .rb-track { height: 220px !important; } }
+html body .local-dashboard-page--overview .local-overview-charts-panel .gdb-bar { max-width: 44px; }
+html body .local-dashboard-page--overview .local-overview-charts-panel .gdb-col { align-items: center; }
+html body .local-dashboard-page--overview .local-overview-charts-panel .rb-chart.rb-chart--vertical .rb-bar { width: 72% !important; max-width: 44px !important; margin: 0 auto; }
+/* Gridlines: one at the top of the plot and one at its middle, as on the daily trend. */
+html body .local-dashboard-page--overview .local-overview-charts-panel .ins-bars.gdb-plot,
+html body .local-dashboard-page--overview .local-overview-charts-panel .rb-chart.rb-chart--vertical .rb-track {
+  background-image: linear-gradient(to bottom, var(--ds-line) 1px, transparent 1px), linear-gradient(to bottom, var(--ds-line) 1px, transparent 1px);
+  background-size: 100% 1px, 100% 1px; background-position: 0 0, 0 50%; background-repeat: no-repeat; }
+html body .local-dashboard-page--overview .local-overview-charts-panel .ins-bars.gdb-plot {
+  background-image: linear-gradient(to bottom, var(--ds-line) 1px, transparent 1px), linear-gradient(to bottom, var(--ds-line) 1px, transparent 1px) !important;
+  background-size: 100% 1px, 100% 1px !important; background-position: 0 0, 0 50% !important; background-repeat: no-repeat !important; }
+/* The ranked charts' gridlines run across the whole plot (the top and the middle of the 300px tracks), not per bar. */
+html body .local-dashboard-page--overview .local-overview-charts-panel .rb-chart.rb-chart--vertical .rb-track { background-image: none !important; }
+html body .local-dashboard-page--overview .local-overview-charts-panel .rb-chart.rb-chart--vertical .rb-plot {
+  background-image: linear-gradient(to bottom, var(--ds-line) 1px, transparent 1px), linear-gradient(to bottom, var(--ds-line) 1px, transparent 1px);
+  background-size: 100% 1px, 100% 1px; background-position: 0 0, 0 150px; background-repeat: no-repeat; }
+@media (max-width: 700px) { html body .local-dashboard-page--overview .local-overview-charts-panel .rb-chart.rb-chart--vertical .rb-plot { background-position: 0 0, 0 110px; } }
+/* Every legend on the tabbed charts is the same 28px pill: the static series and tier legends join the toggles. */
+html body .local-dashboard-page--overview .local-overview-charts-panel :is(.ins-token-legend, .tier-legend) {
+  display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 0; padding: 0; list-style: none; }
+html body .local-dashboard-page--overview .local-overview-charts-panel :is(.ins-token-legend, .tier-legend) li {
+  display: inline-flex; align-items: center; gap: 7px; height: 28px; padding: 0 12px; border-radius: 999px;
+  border: 1px solid var(--ds-line); background: var(--ds-surface-2); font-size: 12px; font-weight: 600; color: var(--ds-ink); }
+html body .local-dashboard-page--overview .local-overview-charts-panel :is(.ins-token-legend, .tier-legend) li > i {
+  width: 9px; height: 9px; border-radius: 999px; flex: none; }
