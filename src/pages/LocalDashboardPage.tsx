@@ -3458,7 +3458,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
                   <div className="maple-cell maple-cell--full local-overview-charts">
                     {/* Lakshman 2026-11-04, "give heading to ... bar chart and each tab colourful modern": one titled panel
                         around the tabs; each tab carries its chart's own glyph and colour. */}
-                    <Panel className="local-overview-charts-panel" aria-labelledby="overview-charts-title">
+                    <Panel className="local-overview-charts-panel" aria-labelledby="overview-charts-title" data-width="12">
                       <PanelTitle id="overview-charts-title"><ConceptIcon concept="analysis" label="Activity breakdown" size={14} />Activity breakdown</PanelTitle>
                       <p className="local-dashboard-caption">Runs, tokens, models and tiers over the chosen window. Pick a chart.</p>
                       <DashboardTabs label="Overview charts" param="chart" tabs={[

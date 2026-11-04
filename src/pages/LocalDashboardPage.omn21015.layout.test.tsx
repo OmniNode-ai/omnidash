@@ -65,9 +65,11 @@ const RENDERED_ORDER: Record<PageName, Array<[title: string, width: number]>> = 
   // runs on the panels after it. The original declarative grid is still checked separately by Y4/Y5.
   overview: [
     ['Actual spend', 3], ['Savings', 3], ['Agent calls', 3], ['Tokens processed', 3], ['Delegation Quality', 3],
-    // OMN-22168 (Lakshman 2026-11-04): the daily trend, every metric one line, the full row under the cards.
+    // OMN-22168 (Lakshman 2026-11-04): the daily trend, every metric one line, the full row under the cards; then the four
+    // charts as one titled row of tabs ("these 4 into one ... with tab"), which draws the chosen chart only (Runs per day
+    // first).
     ['Daily trend', 12],
-    ['Runs per day', 12], ['Tokens per day', 12], ['Model usage', 12], ['Tier mix', 12],
+    ['Activity breakdown', 12], ['Runs per day', 12],
   ],
   // Each chart takes the full row; under "More usage" each chart is its own panel, then the model-by-day table (part 17).
   // OMN-21166 part 29 AC194: Usage analysis follows the four charts, full row (AC89).
@@ -84,8 +86,9 @@ const BEFORE: Record<PageName, string[]> = {
   // Live review 2026-10-25: Overview draws the four headline cards, recent runs, quality, runs and tokens per day and
   // tier mix; Environment and the "Additional runtime metrics" panels are not drawn there.
   // OMN-22168 (Lakshman 2026-11-04): the daily trend joins it.
-  overview: ['Actual spend', 'Savings', 'Agent calls', 'Tokens processed', 'Delegation Quality', 'Runs per day', 'Tokens per day', 'Model usage', 'Tier mix',
-    'Daily trend'].sort(),
+  // The four charts are tabs since OMN-22168, so on load the page draws the titled tab row and its first chart.
+  overview: ['Actual spend', 'Savings', 'Agent calls', 'Tokens processed', 'Delegation Quality', 'Daily trend', 'Activity breakdown',
+    'Runs per day'].sort(),
   // OMN-21166 Maple grid: Usage insights is drawn as Spend by model and, under "More usage", one panel per chart (part 17:
   // Cost per run, Tokens by model, Cost by route); the day-by-day token list is gone (the table holds its rows).
   usage: ['Savings per day', 'Savings by model', 'Tokens per day', 'Spend by model', 'Usage analysis', 'Cost per run', 'Tokens by model', 'Cost by route',
