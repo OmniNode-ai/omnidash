@@ -51,12 +51,15 @@ dod_evidence:
         check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/layout/local-page-loader.omn21970-walk.test.ts src/services/event-dash-api.omn21970-walk.test.ts src/pages/RunsKpis.omn21970.test.tsx src/pages/local/usage-analysis.omn21970-captions.test.tsx src/pages/DelegationEvidencePage.omn21970-caption.test.tsx"
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn21970-ac5-ac6-tier-colours"
-    description: "AC5 and AC6: every tier in the served tier set resolves to the product owner's palette hex in light and dark, cheap_frontier and cheap_cloud to their stated family shades, an unknown tier to none, never a hash colour; Model usage and Tier mix give a model and its tier the same colour. The product owner's confirmation of the light cheap_frontier shade is recorded on the ticket, not by this check."
+    description: "AC5 and AC6: every tier in the served tier set resolves to the product owner's palette hex in light and dark, cheap_frontier and cheap_cloud to their stated family shades (light cheap_frontier the darker frontier shade #006541 the product owner chose 2026-11-04), each passing the palette's colour-blind floors in both themes, an unknown tier to none, never a hash colour; Model usage and Tier mix give a model and its tier the same colour. The product owner's confirmation of the light cheap_frontier shade is recorded on the ticket, not by this check."
     source: "manual"
     binds_ac: ["AC5", "AC6"]
     checks:
       - check_type: "test_passes"
-        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/lib/tier-colors.omn21970.test.ts"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/lib/tier-colors.omn21970.test.ts"
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm test -- --run tests/lib/tier-colors.omn21970.test.ts"
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn21970-ac8-card-colours"
     description: "AC8: in both themes the twelve card concepts are twelve colours at least 0.07 apart in OKLab, every pair on one page at least 0.10, each at least 4.5:1 on the card plain and under its tint, Runs wires p95 duration and escalated to their own concepts, and no two cards on a page share an icon."
