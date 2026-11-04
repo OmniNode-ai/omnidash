@@ -49,13 +49,12 @@ for (const theme of ['light', 'dark'] as const) {
         .filter(svg => !svg.closest('.local-run-pill, .badge, .chain-node, .live-pill, [role="alert"]') && !svg.matches('[data-field-icon], [data-semantic-concept^="model:"]') && (svg as SVGElement).getBoundingClientRect().width > 0)
         // OMN-22168 (Lakshman 2026-11-04, chosen over this grey for these controls only): each Runs filter's glyph and the
         // CSV and JSON export glyphs carry their own colour; design-system-dashboard-polish L8 checks them.
-        .filter(svg => !svg.closest('.local-dashboard-filters .ds-dropdown-mark, .local-runs-export button[data-export]'))
-        // OMN-22168 (Lakshman 2026-11-04, "side bar each page should have own color and icons"): each page's sidebar icon
-        // and title icon draw that page's colour; design-system-dashboard-polish L11 checks them.
-        .filter(svg => !svg.matches('svg.destination-icon'))
-        .map(svg => ({ color: getComputedStyle(svg).color, active: !!svg.closest('.mvp-nav-item.active') })));
+        // OMN-22168 (Lakshman 2026-11-04): the Runs filter and export glyphs, and each page's sidebar and title icon, draw
+        // their own colour (design-system-dashboard-polish L8 and L11 check them); they still count as drawn icons.
+        .map(svg => ({ color: getComputedStyle(svg).color, active: !!svg.closest('.mvp-nav-item.active'),
+          exempt: !!svg.closest('.local-dashboard-filters .ds-dropdown-mark, .local-runs-export button[data-export]') || svg.matches('svg.destination-icon') })));
       expect(icons.length, `${path} draws icons`).toBeGreaterThan(3);
-      for (const icon of icons) expect(icon.color, `${path} icon`).toBe(INK3[theme]);
+      for (const icon of icons.filter(item => !item.exempt)) expect(icon.color, `${path} icon`).toBe(INK3[theme]);
       const concepts = await page.evaluate(() => [...document.querySelectorAll('main svg.field-icon[data-field-icon]:not([data-field-icon^="tier-"]):not([data-semantic-concept^="model:"])')]
         .filter(svg => (svg as SVGElement).getBoundingClientRect().width > 0 && !svg.closest('[data-field-unavailable="true"]'))
         .map(svg => { const concept = svg.getAttribute('data-field-icon')!; const probe = document.createElement('i');

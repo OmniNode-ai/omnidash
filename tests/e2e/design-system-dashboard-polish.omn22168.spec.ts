@@ -145,7 +145,9 @@ test('L8: each Runs filter glyph and both export buttons keep their own colour',
     const read = () => page.evaluate(() => {
       const color = (el: Element | null) => (el ? getComputedStyle(el).color : 'missing');
       return {
-        grey: color(document.querySelector('.sidebar .dash-marker svg')),
+        // The interface grey token itself: since L11 the sidebar icons draw their page's colour, not this grey.
+        grey: (() => { const probe = document.createElement('i'); probe.style.color = 'var(--ds-ink-3)'; document.body.append(probe);
+          const value = getComputedStyle(probe).color; probe.remove(); return value; })(),
         filters: [...document.querySelectorAll('.local-dashboard-filters .ds-dropdown-trigger')]
           .map(button => color(button.querySelector('.ds-dropdown-mark svg'))),
         exports: [...document.querySelectorAll('.local-runs-export button[data-export]')]
@@ -200,7 +202,8 @@ test('L10: each Recent runs column header has its own glyph and colour', async (
   for (const theme of ['light', 'dark'] as const) {
     await useTheme(page, theme);
     const heads = await page.locator('.local-runs-wrap table').first().locator('thead th').evaluateAll(cells => {
-      const grey = getComputedStyle(document.querySelector('.sidebar .dash-marker svg')!).color;
+      const probe = document.createElement('i'); probe.style.color = 'var(--ds-ink-3)'; document.body.append(probe);
+      const grey = getComputedStyle(probe).color; probe.remove();
       return cells.filter(cell => getComputedStyle(cell).display !== 'none').map(cell => {
         const icons = [...cell.querySelectorAll('svg')];
         const glyph = icons[0] ? [...icons[0].classList].find(name => name.startsWith('lucide-') && name !== 'lucide-icon') ?? 'unnamed' : 'none';
