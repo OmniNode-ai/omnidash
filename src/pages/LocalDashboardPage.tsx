@@ -1967,7 +1967,7 @@ export function ModelUsagePanel({ row }: { row: Row | null }) {
  * reason. The last run is the newest served decision's time, the run total delegation.model-routing.v1's served
  * total_delegations, and the median run time the served decisions' durations, as the Runs page reads them.
  */
-export function OverviewStatusStrip({ env, decisions, routing, now, window = 'all', metering = null }: {
+export function OverviewStatusStrip({ env, decisions, routing, now, window = 'all', metering = null, complete = false }: {
   env: Row | null; decisions: readonly unknown[]; routing: Row | null; now: number; complete?: boolean;
   /** Lakshman 2026-11-04 ("based on time selected ... make everything dynamic"): the Overview window, and the served
    * metering rows its run count is read from (the row the cards read for that window). */
@@ -1990,11 +1990,15 @@ export function OverviewStatusStrip({ env, decisions, routing, now, window = 'al
   const served = Number.isFinite(windowRuns) ? windowRuns
     : window === 'all' && routing && !isMissing(routing.total_delegations) ? Number(routing.total_delegations) : NaN;
   const total = Number.isFinite(served) ? `${formatFullCount(String(served))} runs` : 'Runs not recorded';
-  // The median run time is the window's runs only.
+  // The median run time is the window's runs only, and it is shown only when the runs read cover the whole window (the
+  // read's oldest run is on or before the window's first day, or the read holds every run): otherwise it would be the
+  // median of the latest runs, not of the window (Lakshman 2026-11-04, "make sure all information written is correct").
   const today = utcDay(now);
   const [from, to] = window === 'all' ? ['', '9999-12-31'] : window === 'today' ? [today, today]
     : window.startsWith('day:') ? [window.slice(4), window.slice(4)] : (window.slice(6).split('..') as [string, string]);
-  const inWindow = runs.filter(run => run.day >= from && run.day <= to);
+  const oldestRead = runs.reduce<string | null>((oldest, run) => (oldest === null || run.day < oldest ? run.day : oldest), null);
+  const covered = complete || (oldestRead !== null && from !== '' && oldestRead < from);
+  const inWindow = covered ? runs.filter(run => run.day >= from && run.day <= to) : [];
   const latencies = inWindow.map(run => run.latencyMs).filter((value): value is number => value !== null).sort((a, b) => a - b);
   const median = latencies.length === 0 ? null : latencies[Math.floor((latencies.length - 1) / 2)]!;
   // Lakshman 2026-11-04 ("colourful and remove 500 latest runs text"): the median reads plainly, without the read's size.
@@ -3493,7 +3497,11 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
                         around the tabs; each tab carries its chart's own glyph and colour. */}
                     <Panel className="local-overview-charts-panel" aria-labelledby="overview-charts-title" data-width="12">
                       <PanelTitle id="overview-charts-title"><ConceptIcon concept="analysis" label="Activity breakdown" size={14} />Activity breakdown</PanelTitle>
-                      <p className="local-dashboard-caption">Runs, tokens, models and tiers over the chosen window. Pick a chart.</p>
+                      {/* Lakshman 2026-11-04 ("make sure all information written is correct"): models and tiers are served all
+                          time only (usage-by-model-day counts provider calls, not runs, so it cannot stand in). */}
+                      <p className="local-dashboard-caption">{overviewWindow === 'all'
+                        ? 'Runs, tokens, models and tiers, all time. Pick a chart.'
+                        : 'Runs and tokens for the chosen window; models and tiers are all time. Pick a chart.'}</p>
                       {/* Lakshman 2026-11-04 ("not happy ... use best design and impress user"): stat tabs. Each tab is a small
                         card with its glyph tile, the chart's name and a served headline (the routing view's run total and
                         its model and tier counts; the window's token total, as the Tokens processed card reads it). */}
@@ -3519,9 +3527,9 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
                         { id: 'tokens', label: 'Tokens per day', tone: 'var(--ds-hue-blue)', icon: <ChartArea size={18} />,
                           hint: tokens !== null ? `${formatDashboardCount(tokens)} tokens` : 'Tokens not recorded', panel: () => slice('tokens', 'Tokens per day', 'tokens-daily') },
                         { id: 'models', label: 'Model usage', tone: 'var(--ds-hue-purple)', icon: <Bot size={18} />,
-                          hint: models !== null ? plural(models, 'model') : 'Models not recorded', panel: () => renderGroup(['overview-model-usage']) },
+                          hint: models !== null ? `${plural(models, 'model')}${overviewWindow === 'all' ? '' : ' · all time'}` : 'Models not recorded', panel: () => renderGroup(['overview-model-usage']) },
                         { id: 'tiers', label: 'Tier mix', tone: 'var(--ds-hue-amber)', icon: <ChartPie size={18} />,
-                          hint: tierRows !== null ? plural(tierRows, 'tier') : 'Tiers not recorded', panel: () => renderGroup(['overview-tier-mix']) },
+                          hint: tierRows !== null ? `${plural(tierRows, 'tier')}${overviewWindow === 'all' ? '' : ' · all time'}` : 'Tiers not recorded', panel: () => renderGroup(['overview-tier-mix']) },
                       ]} />;
                     })()}
                     </Panel>
