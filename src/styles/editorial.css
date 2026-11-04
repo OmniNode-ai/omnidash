@@ -753,3 +753,13 @@ html body .local-dashboard-page [aria-selected="true"] > .local-tab-chip svg.luc
 html body .local-dashboard-page .local-status-chip svg.lucide { color: var(--chip-tone) !important; }
 .local-overview-status[data-state="running"] > strong { color: var(--ds-hue-green); }
 .local-overview-status > span[aria-hidden="true"]:not(.local-overview-status-dot) { display: none; }
+/* Lakshman 2026-11-04 ("why too big?"): compact stat tabs, 56px tall. */
+html body .local-dashboard-page .local-overview-charts-panel .local-dashboard-tablist:has([data-stat]) { gap: 10px !important; }
+html body .local-dashboard-page .local-overview-charts-panel .local-dashboard-tablist [role="tab"][data-stat] {
+  min-height: 56px; padding: 8px 12px; gap: 10px; border-radius: 12px !important; }
+html body .local-dashboard-page .local-overview-charts-panel .local-tab-chip { width: 32px; height: 32px; border-radius: 9px; }
+html body .local-dashboard-page .local-overview-charts-panel .local-tab-chip svg.lucide { width: 16px; height: 16px; }
+html body .local-dashboard-page .local-overview-charts-panel .local-tab-hint { font-size: 16px; line-height: 1.2; }
+html body .local-dashboard-page .local-overview-charts-panel .local-tab-label { font-size: 12px; letter-spacing: 0.04em; }
+html body .local-dashboard-page .local-overview-charts-panel .local-dashboard-tablist [role="tab"][data-stat][aria-selected="true"] {
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--tab-tone) 16%, transparent), 0 8px 18px -14px var(--tab-tone) !important; }
