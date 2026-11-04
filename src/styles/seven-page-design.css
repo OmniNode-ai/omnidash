@@ -983,8 +983,8 @@ ul.gdb-plot--names { margin-bottom: 48px; }
 /* "This week": each day's passed and failed runs, hatched in their colours like every bar (part 16 AC97). */
 .local-runs-week-bar { height: 12px; background: none; gap: 2px; border-radius: 0; }
 .local-runs-week-bar > i { border-top: 2px solid currentColor; background: repeating-linear-gradient(135deg, currentColor 0 1.5px, transparent 1.5px 6px) !important; }
-.local-runs-week-bar > i[data-outcome="passed"] { color: var(--ds-ok); }
-.local-runs-week-bar > i[data-outcome="failed"] { color: var(--ds-bad); }
+.local-runs-week-bar > i[data-outcome="passed"] { color: var(--ds-field-pass); }
+.local-runs-week-bar > i[data-outcome="failed"] { color: var(--ds-field-fail); }
 .local-runs-week-bar > i[data-outcome="unknown"] { color: var(--ds-chart-unknown); }
 /* Part 18 AC124: an open page-level "More …" is not a card around cards; its panels sit on the page as Overview's do. */
 .local-dashboard-page details.local-more--page[open] { border-color: transparent; background: none; padding-left: 0; padding-right: 0; }

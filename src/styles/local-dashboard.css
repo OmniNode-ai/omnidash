@@ -1435,8 +1435,8 @@ figure.local-chart.ins-card { margin: 0; padding: 20px 22px; border-radius: 16px
 .local-runs-week-days strong { font-size: 15px; font-variant-numeric: tabular-nums; }
 .local-runs-week-days small { color: var(--ds-ink-2); font-size: 12px; }
 .local-runs-week-bar { display: flex; height: 7px; overflow: hidden; border-radius: 5px; background: var(--ds-line); }
-.local-runs-week-bar > i[data-outcome="passed"] { background: var(--ds-ok); }
-.local-runs-week-bar > i[data-outcome="failed"] { background: var(--ds-bad); }
+.local-runs-week-bar > i[data-outcome="passed"] { background: var(--ds-field-pass); }
+.local-runs-week-bar > i[data-outcome="failed"] { background: var(--ds-field-fail); }
 .local-runs-week-bar > i[data-outcome="unknown"] { background: var(--ds-chart-unknown); }
 .local-runs-day-filters > div { display: flex; flex-wrap: wrap; gap: 7px; }
 .local-runs-day-filters button { display: inline-flex; align-items: center; min-height: 34px; padding: 4px 9px; border: 1px solid var(--ds-line); border-radius: 999px; background: var(--ds-surface); color: inherit; font: inherit; font-size: 12px; cursor: pointer; }
@@ -1457,7 +1457,7 @@ figure.local-chart.ins-card { margin: 0; padding: 20px 22px; border-radius: 16px
 .local-run-selected dt { color: var(--ds-ink-2); font-size: 12px; }
 .local-run-selected dd { margin: 2px 0 0; overflow-wrap: anywhere; font-size: 13px; }
 .local-selected-quality-meter { position: relative; height: 7px; margin-top: 6px; overflow: hidden; border-radius: 999px; background: var(--ds-line); }
-.local-selected-quality-meter > span { display: block; height: 100%; border-radius: inherit; background: var(--ds-ok); }
+.local-selected-quality-meter > span { display: block; height: 100%; border-radius: inherit; background: var(--ds-field-pass); }
 .local-selected-quality-meter > i { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--ds-ink); }
 .usage-insights { display: grid; gap: 14px; min-width: 0; }
 .usage-insights > h3 { margin: 4px 0 0; font-size: 15px; }
@@ -2082,8 +2082,8 @@ figure.local-chart.usage-insight { min-width: 0; margin: 0; padding: 14px; }
 .local-dashboard-page .ins-range button[data-window][aria-pressed="true"] { background: color-mix(in oklab, var(--range-ink) 18%, var(--ds-surface)); color: var(--range-label); outline: 2px solid var(--range-ink); outline-offset: 1px; }
 .local-dashboard-page .ins-range button[data-window]:focus-visible { outline: 2px solid var(--ds-ink); outline-offset: 3px; }
 :root:not([data-theme="dark"]) .local-dashboard-page .ins-card { --ins-accent-text: color-mix(in oklab, var(--ins-accent) 60%, var(--ds-ink-2)); }
-:root :is(.local-dashboard-page, .ev-root) .local-overview-focus [data-component="overview-quality"] .local-meter-value { color: var(--ds-ok); }
-:root :is(.local-dashboard-page, .ev-root) .local-overview-focus [data-component="overview-quality"] .local-meter-fill { background: var(--ds-ok); }
+:root :is(.local-dashboard-page, .ev-root) .local-overview-focus [data-component="overview-quality"] .local-meter-value { color: var(--ds-field-pass); }
+:root :is(.local-dashboard-page, .ev-root) .local-overview-focus [data-component="overview-quality"] .local-meter-fill { background: var(--ds-field-pass); }
 
 /* Refresh feedback keeps the data readable; diagnostics are available on demand. */
 .local-read-notice { --notice-tone: var(--ds-warn); padding: 12px; margin: 12px 0; border: 1px solid color-mix(in oklab, var(--notice-tone) 35%, var(--ds-line)); border-radius: 10px; background: color-mix(in oklab, var(--notice-tone) 6%, var(--ds-surface)); color: var(--ds-ink); font-size: 12px; line-height: 1.5; }

@@ -26,7 +26,9 @@ export function tokenValue(token: TokenName): string {
 export function colorToNumber(value: string | undefined, fallback?: number): number {
   const missing = () => (fallback !== undefined ? fallback : value === 'var(--ds-chart-unknown)' ? 0 : colorToNumber('var(--ds-chart-unknown)', 0));
   if (!value || typeof document === 'undefined') return missing();
-  const varMatch = /^var\(\s*(--ds-[\w-]+)\s*\)$/.exec(value.trim());
+  // Any custom property resolves, not only --ds-* tokens: a page passes its own accent knob (the Workflow cards'
+  // --workflow-timing-accent), which a --ds-only match left unparsed, so the bars lost their card's colour.
+  const varMatch = /^var\(\s*(--[\w-]+)\s*\)$/.exec(value.trim());
   const css = varMatch ? tokenValue(varMatch[1] as TokenName) : value;
   if (!css) return missing();
   const parsed = parseColor(css);
