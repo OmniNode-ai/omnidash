@@ -27,8 +27,8 @@ test('Overview keeps its declared panels, keeps values and opens the selected da
     'overview-spend', 'overview-savings', 'overview-measured', 'overview-tokens',
     'overview-quality:card', 'overview-insights:runs', 'overview-insights:tokens',
     'overview-model-usage', 'overview-tier-mix',
-    // OMN-22168 (Lakshman 2026-11-04): the daily trend, Work delegated and Quality vs bar.
-    'overview-trend', 'overview-task-mix', 'overview-quality-bar',
+    // OMN-22168 (Lakshman 2026-11-04): the daily trend.
+    'overview-trend',
   ].sort());
   for (const gone of ['overview-recent-runs', 'overview-last-run', 'overview-spend-by-day', 'overview-run-locally',
     'overview-avg-saving-per-call', 'overview-baseline-spend', 'overview-compression', 'overview-cache-hit-rate']) {

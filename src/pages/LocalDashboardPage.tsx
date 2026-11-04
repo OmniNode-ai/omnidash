@@ -30,7 +30,7 @@ import { normaliseRunId, readWorkflowRunId, workflowHref, writeWorkflowRunId } f
 import { RunDurationChart, RunMetricChart, RunTimingChart, RunTokensChart, SpendByDayChart, runTimingBars, UNRESOLVED_BASELINE, type ListedRun } from '@/theme/design-system/charts';
 import { PassRateMeter } from '@/pages/local/shares';
 import { TIER_TONES } from '@/theme/design-system/charts';
-import { InsightsSection, InsightsWindowContext, MeteringActivityInsights, OverviewRunsContext, PassRateSparkline, TaskIcon, taskColorOf, type ActivityWindow } from '@/pages/local/insight-charts';
+import { InsightsSection, InsightsWindowContext, MeteringActivityInsights, OverviewRunsContext, PassRateSparkline, TaskIcon, type ActivityWindow } from '@/pages/local/insight-charts';
 import { UsageInsights } from '@/pages/local/usage-insights';
 import { RoutingAnalysis } from '@/pages/local/usage-analysis';
 import { Badge, ConfirmDialog, DashboardTabs, DataTable, Dropdown, EmptyState, Fact, FactList, Figure, InfoTip, Panel, PanelTitle, StatusChip } from '@/theme/design-system/components';
@@ -39,7 +39,7 @@ import { SinceLastVisit } from '@/pages/local/since-last-visit';
 import { ModelKeys, providerName } from '@/pages/local/model-keys';
 import { EnvironmentPanel, ServiceHealthUnread } from '@/pages/local/environment';
 import { SettingsEmptyState } from '@/components/dashboard/SettingsEmptyState';
-import { escalationReason, failureCauseLabel, failureDetailText, notAvailableYet, plainFailureMessage, taskLabel, tierLabel } from '@/pages/local/plain-text';
+import { failureCauseLabel, failureDetailText, notAvailableYet, plainFailureMessage, taskLabel, tierLabel } from '@/pages/local/plain-text';
 import { RunFilterProvider, causeHref, causeLabelOf, useRunFilter } from '@/pages/local/run-filter';
 import { dailySeries, servedDailyDays, summary as runSummary, toInsightRuns, typedFailureCauseOf } from '@/pages/local/insights';
 import { ChartReadout, Meter, MultiLinePlot, RankedBars, SeriesToggles, useSeriesToggles } from '@/theme/design-system/charts';
@@ -826,12 +826,6 @@ export function headlineHoverLines(componentId: string, row: Row, pctLine: strin
         : componentId === 'overview-tokens' ? [`${count(row.tokens_in)} in · ${count(row.tokens_out)} out`]
           : [];
   if (Number.isFinite(noRuns) && noRuns > 0) lines.push(`Includes ${noRuns} ${noRuns === 1 ? 'day' : 'days'} with no runs`);
-  // OMN-22168 (Lakshman 2026-11-04): Savings leads with its percentage line (OMN-20008 AC5's wording, shown only beside
-  // a measured saving against a named, resolved baseline), so the drawn caption is the percentage below the baseline.
-  if (componentId === 'overview-savings' && pctLine !== null && lines.includes(pctLine)) {
-    lines.splice(lines.indexOf(pctLine), 1);
-    lines.unshift(pctLine);
-  }
   return lines.filter((line): line is string => line !== null);
 }
 
@@ -2004,78 +1998,6 @@ export function OverviewStatusStrip({ env, decisions, routing, now, complete = f
   );
 }
 
-/**
- * OMN-22168: Overview's Work delegated, from delegation.model-routing.v1's served rows (one per model and task type,
- * over every run): each task type's runs are its rows' served counts added up, ranked, each a readable task name in its
- * task colour that opens Runs filtered to it. A row without a count is left out and its task says so.
- */
-export function TaskMixPanel({ routing }: { routing: Row | null }) {
-  const rows = routing && Array.isArray(routing.rows) ? asRecords(routing.rows) : [];
-  const tasks = new Map<string, { runs: number; unknown: boolean }>();
-  for (const row of rows) {
-    const raw = isMissing(row.task_type) ? '' : String(row.task_type);
-    const entry = tasks.get(raw) ?? { runs: 0, unknown: false };
-    if (isMissing(row.count) || !Number.isFinite(Number(row.count))) entry.unknown = true;
-    else entry.runs += Number(row.count);
-    tasks.set(raw, entry);
-  }
-  if (tasks.size === 0) return <EmptyState>No task types served yet</EmptyState>;
-  return (
-    <section aria-label="Work delegated" className="local-task-mix">
-      <RankedBars label="Runs by task type" unit="Runs" order="desc"
-        items={[...tasks.entries()].map(([raw, task]) => {
-          const name = raw === '' ? 'Not recorded' : taskLabel(raw);
-          const href = raw === '' ? undefined : `/runs?${writeRunsSearch('', { ...DEFAULT_RUNS_VIEW, task: raw })}`;
-          return { key: raw || 'not-recorded', name, value: task.runs, basis: 'measured' as const, color: taskColorOf(raw), href,
-            opensLabel: `Opens Runs filtered to ${name}`,
-            display: `${formatFullCount(String(task.runs))}${task.unknown ? ' (some runs not counted)' : ''}` };
-        })} />
-    </section>
-  );
-}
-
-/**
- * OMN-22168: Overview's Quality vs bar, one delegation.quality-gate.v1 row: the served average score on a meter with the
- * served required bar marked, the served escalation rate and count, and the three failure reasons with the most served
- * failures, in plain words with their served share. A field the row does not serve reads Not recorded.
- */
-export function QualityBarPanel({ row }: { row: Row | null }) {
-  if (!row) return <EmptyState>No quality checks served yet</EmptyState>;
-  const served = (value: unknown) => (isMissing(value) || !Number.isFinite(Number(value)) ? null : Number(value));
-  const score = served(row.avg_actual_score);
-  const bar = served(row.avg_required_bar);
-  const rate = served(row.escalation_rate);
-  const escalated = served(row.escalation_count);
-  const reasons = Array.isArray(row.failure_categories) ? asRecords(row.failure_categories)
-    .filter(reason => served(reason.count) !== null)
-    .sort((a, b) => served(b.count)! - served(a.count)!).slice(0, 3) : null;
-  return (
-    <section aria-label="Quality vs bar" className="local-quality-bar">
-      {score !== null && score >= 0 && score <= 1
-        ? <Meter className="local-meter" label="Average quality score" min={0} max={1} now={score} share={score}
-          mark={bar !== null && bar >= 0 && bar <= 1 ? bar : null} value={score.toFixed(2)} />
-        : null}
-      <FactList>
-        <Fact term="Average score" data-quality-figure="score">{score === null ? 'Not recorded' : score.toFixed(2)}</Fact>
-        <Fact term="Required bar" data-quality-figure="bar">{bar === null ? 'Not recorded' : bar.toFixed(2)}</Fact>
-        <Fact term="Escalated" data-quality-figure="escalation">{rate === null ? 'Not recorded'
-          : `${(rate * 100).toFixed(1)}%${escalated === null ? '' : ` · ${formatFullCount(String(escalated))} runs`}`}</Fact>
-      </FactList>
-      {reasons === null ? <p className="local-dashboard-caption">Failure reasons not recorded</p>
-        : reasons.length === 0 ? <p className="local-dashboard-caption">No failures recorded</p>
-          : <RankedBars label="Top failure reasons" unit="Share of failures" order="desc"
-            items={reasons.map((reason, index) => {
-              const plain = escalationReason(reason.category);
-              const share = served(reason.pct_of_failures);
-              const name = plain.text.charAt(0).toUpperCase() + plain.text.slice(1);
-              return { key: `reason-${index}`, name, value: served(reason.count), basis: 'measured' as const, color: 'var(--ds-field-fail)',
-                display: share === null ? 'Share not served' : `${(share * 100).toFixed(1)}%` };
-            })} />}
-      <p className="local-dashboard-caption local-recent-footer"><Link href="/delegation-evidence">View delegation evidence <ArrowUpRight size={12} aria-hidden="true" /></Link></p>
-    </section>
-  );
-}
-
 /** OMN-22168 (Lakshman 2026-11-04, "each should have visually different colour, distinct"): five hues far apart on the
  * wheel, so no two trend lines can be mistaken for each other on one chart, in either theme. */
 const TREND_TONES: Readonly<Record<string, string>> = {
@@ -2802,11 +2724,6 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns, acti
     return <OverviewTrendPanel rows={rawRowsFor(component, snapshots, 0)} window={window} now={now}
       columns={columns} />;
   }
-  if (component.component_id === 'overview-task-mix' || component.component_id === 'overview-quality-bar') {
-    const first = rawRowsFor(component, snapshots, 0)[0];
-    const row = first && typeof first === 'object' && !Array.isArray(first) ? (first as Row) : null;
-    return component.component_id === 'overview-task-mix' ? <TaskMixPanel routing={row} /> : <QualityBarPanel row={row} />;
-  }
   if (component.component_id === 'overview-model-usage') {
     const first = rawRowsFor(component, snapshots, 0)[0];
     return <ModelUsagePanel row={first && typeof first === 'object' && !Array.isArray(first) ? (first as Row) : null} />;
@@ -3024,7 +2941,7 @@ export const PANEL_CONCEPTS: Readonly<Record<string, string>> = {
   'runs-tier-mix': 'tier-mix', 'overview-run-locally': 'local-run',
   'overview-avg-saving-per-call': 'saving-average', 'overview-baseline-spend': 'baseline',
   'overview-quality': 'quality', 'overview-model-usage': 'runs-model', 'overview-tier-mix': 'tier-mix',
-  'overview-task-mix': 'task', 'overview-quality-bar': 'quality-comparison', 'overview-trend': 'activity', 'overview-compression': 'compression',
+  'overview-trend': 'activity', 'overview-compression': 'compression',
   'overview-cache-hit-rate': 'cache', 'overview-spend-by-day': 'spend-daily', 'recent-runs': 'recent',
   'workflow-run-path': 'path', 'usage-by-model-day': 'usage-day', 'usage-tokens-by-day': 'tokens-daily',
   'usage-savings-series': 'savings-daily', 'credentials-keys': 'credentials',
@@ -3347,10 +3264,9 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
     </>;
     const cardLink = pageName === 'overview' && (component.component_id !== 'overview-quality' || slice?.key === 'card')
       ? CARD_LINKS[component.component_id] : undefined;
-    const chartTitle = pageName === 'overview' && (
-      component.component_id === 'overview-insights' && (slice?.key === 'runs' || slice?.key === 'tokens')
-      || component.component_id === 'overview-model-usage' || component.component_id === 'overview-tier-mix'
-    ) ? slice?.title ?? component.title : null;
+    // OMN-22168 (Lakshman 2026-11-04, "remove that"): the four Overview charts are full width in one tabbed row, so the
+    // Expand button (OMN-21166 part 24 AC148) is gone; no chart opens a larger view.
+    const chartTitle: string | null = null;
     return (
       <Panel
         full={fullView}
@@ -3510,13 +3426,17 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
                   {/* Live review 2026-10-25: every bar chart takes the full row. */}
                   {/* Live review 2026-10-25: Model usage, then Tier mix last. */}
                   {/* OMN-21166 part 21 AC139: the four charts in two columns (one under 1100px). */}
-                  <div className="maple-cell maple-cell--half">{slice('runs', 'Runs per day', 'runs-daily')}</div>
-                  <div className="maple-cell maple-cell--half">{slice('tokens', 'Tokens per day', 'tokens-daily')}</div>
-                  <div className="maple-cell maple-cell--half">{renderGroup(['overview-model-usage'])}</div>
-                  <div className="maple-cell maple-cell--half">{renderGroup(['overview-tier-mix'])}</div>
-                  {/* OMN-22168 (Lakshman 2026-11-04): what kind of work is delegated, and quality against its bar. */}
-                  <div className="maple-cell maple-cell--half">{renderGroup(['overview-task-mix'])}</div>
-                  <div className="maple-cell maple-cell--half">{renderGroup(['overview-quality-bar'])}</div>
+                  {/* OMN-22168 (Lakshman 2026-11-04, "these 4 into one bar graph with tab and full size big one"): Runs per
+                      day, Tokens per day, Model usage and Tier mix are one full-width row of tabs, one big chart at a time;
+                      the chosen tab is kept in the address (?chart=). */}
+                  <div className="maple-cell maple-cell--full local-overview-charts">
+                    <DashboardTabs label="Overview charts" param="chart" tabs={[
+                      { id: 'runs', label: 'Runs per day', panel: () => slice('runs', 'Runs per day', 'runs-daily') },
+                      { id: 'tokens', label: 'Tokens per day', panel: () => slice('tokens', 'Tokens per day', 'tokens-daily') },
+                      { id: 'models', label: 'Model usage', panel: () => renderGroup(['overview-model-usage']) },
+                      { id: 'tiers', label: 'Tier mix', panel: () => renderGroup(['overview-tier-mix']) },
+                    ]} />
+                  </div>
                 </>;
               })()}
             </div>

@@ -397,10 +397,7 @@ test('Overview quality and tier-mix panels show served fields only (OMN-20225 AC
   const quality = page.locator('[data-component="overview-quality"][data-slice="card"]');
   await expect(quality.getByRole('heading', { name: 'Delegation Quality', exact: true })).toBeVisible();
   await expect(quality.locator('.local-dashboard-metric')).toHaveText('87.5%');
-  // OMN-22168 (Lakshman 2026-11-04, "all 4"): the score against its bar returns as one meter, in Quality vs bar only.
-  await expect(quality.getByRole('meter')).toHaveCount(0);
-  await expect(page.getByRole('meter')).toHaveCount(1);
-  await expect(page.locator('[data-component="overview-quality-bar"]').getByRole('meter')).toHaveCount(1);
+  await expect(page.getByRole('meter')).toHaveCount(0);
   // Part 29 AC191: the basis is the card's caption, always in the page; no About button to focus.
   await expect(quality.getByText('7 of 8 runs passed the quality gate', { exact: true })).toBeVisible();
   await expect(quality.getByText('1 failed · deterministic checks', { exact: true })).toBeVisible();

@@ -48,11 +48,6 @@ function taskLook(task: string) {
   return { concept, color: `var(--ds-field-${concept})`, icon: <ConceptIcon concept={concept} label={readable(task)} size={14} /> };
 }
 
-/** OMN-22168: a task type's canonical colour, for a chart that draws task types (Overview's Work delegated). */
-export function taskColorOf(task: string): string {
-  return taskLook(task).color;
-}
-
 /** A task type's canonical icon and colour, with its readable name beside it. */
 export function TaskIcon({ task }: { task: string }) {
   const look = taskLook(task);

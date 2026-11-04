@@ -236,63 +236,9 @@
       }
     },
     {
-      "widget_id": "7490d183-a986-5ac4-8111-f3344d8057f8",
-      "title": "Work delegated",
-      "row": 24,
-      "col": 0,
-      "width": 12,
-      "height": 5,
-      "data_source": "overview-task-mix",
-      "config": {
-        "config_kind": "table",
-        "widget_type": "table",
-        "columns": [
-          {
-            "key": "taskType",
-            "header": "Task type"
-          },
-          {
-            "key": "count",
-            "header": "Runs"
-          }
-        ],
-        "page_size": 10,
-        "show_pagination": false
-      }
-    },
-    {
-      "widget_id": "19198b38-b31f-55ed-8a3a-80a33fd69abd",
-      "title": "Quality vs bar",
-      "row": 29,
-      "col": 0,
-      "width": 12,
-      "height": 5,
-      "data_source": "overview-quality-bar",
-      "config": {
-        "config_kind": "table",
-        "widget_type": "table",
-        "columns": [
-          {
-            "key": "avg_actual_score",
-            "header": "Average score"
-          },
-          {
-            "key": "avg_required_bar",
-            "header": "Required bar"
-          },
-          {
-            "key": "escalation_rate",
-            "header": "Escalation rate"
-          }
-        ],
-        "page_size": 10,
-        "show_pagination": false
-      }
-    },
-    {
       "widget_id": "3eed69cb-9958-517d-8c4c-c84cf2e90f90",
       "title": "Daily trend",
-      "row": 34,
+      "row": 24,
       "col": 0,
       "width": 12,
       "height": 4,

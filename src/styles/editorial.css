@@ -535,22 +535,6 @@ html body .app svg.field-icon.field-icon[data-field-icon="usage-day"]:not([data-
 .local-overview-status[data-state="attention"] .local-overview-status-dot { background: var(--ds-hue-amber); }
 .local-overview-status-reason { color: var(--ds-ink-2); }
 
-/* OMN-22168: Overview's Quality vs bar: the served average score on a track with the required bar marked on it. */
-.local-quality-bar { display: grid; gap: 14px; }
-.local-quality-meter { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; font-size: 13px; }
-.local-quality-label { color: var(--ds-ink-2); }
-.local-quality-meter > strong { font-size: 22px; font-weight: 600; color: var(--ds-field-quality-comparison, var(--ds-ink)); font-variant-numeric: tabular-nums; }
-.local-quality-track { position: relative; height: 10px; border-radius: 999px; background: var(--ds-surface-2); }
-.local-quality-fill { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--ds-field-quality-comparison, var(--ds-hue-teal)); }
-.local-quality-mark { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--ds-ink); }
-.local-quality-facts { display: flex; flex-wrap: wrap; gap: 6px 20px; font-size: 13px; color: var(--ds-ink-2); }
-.local-quality-facts strong { color: var(--ds-ink); font-variant-numeric: tabular-nums; }
-.local-quality-reasons-title { margin: 4px 0 0; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ds-ink-3); }
-.local-quality-reasons { list-style: none; margin: 0; padding: 0; display: grid; }
-.local-quality-reasons li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--ds-line); font-size: 13px; }
-.local-quality-reasons li:last-child { border-bottom: 0; }
-.local-quality-reasons li > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ds-ink); }
-.local-quality-share { color: var(--ds-ink-2); font-variant-numeric: tabular-nums; }
 /* The status line is its own row at the foot of the header, so the title and the window control keep one centre line. */
 /* The header is a grid: the status line spans every column on a row of its own. */
 .local-dashboard-page .local-dashboard-header:has(> .local-overview-status) { row-gap: 6px; }
@@ -561,3 +545,12 @@ html body .app svg.field-icon.field-icon[data-field-icon="usage-day"]:not([data-
 .local-dashboard-page .local-trend .ins-plot { height: 300px; }
 @media (max-width: 700px) { .local-dashboard-page .local-trend .ins-plot { height: 220px; } }
 .local-dashboard-page .local-trend .ins-plot path { stroke-width: 3; }
+
+/* OMN-22168 (Lakshman 2026-11-04, "full size big one"): in the tabbed chart row each chart is drawn large, as the old
+   full view drew it; shorter on a phone. */
+.local-dashboard-page--overview .local-overview-charts .ins-bars.gdb-plot { height: 320px; }
+.local-dashboard-page--overview .local-overview-charts .rb-chart.rb-chart--vertical .rb-track { height: 260px; }
+@media (max-width: 700px) {
+  .local-dashboard-page--overview .local-overview-charts .ins-bars.gdb-plot { height: 220px; }
+  .local-dashboard-page--overview .local-overview-charts .rb-chart.rb-chart--vertical .rb-track { height: 180px; }
+}

@@ -48,11 +48,9 @@ const ORDER: Record<PageName, Array<[title: string, width: number]>> = {
     ['Trends and breakdowns', 12],
     ['Model usage', 12],
     ['Tier mix', 12],
-    // OMN-22168 (Lakshman 2026-11-04, "all 4"): the runtime status line under the title (the Environment concept, back
-    // on Overview), then Work delegated and Quality vs bar.
+    // OMN-22168 (Lakshman 2026-11-04): the runtime status line under the title (the Environment concept, back on
+    // Overview), then the daily trend.
     ['Environment', 12],
-    ['Work delegated', 12],
-    ['Quality vs bar', 12],
     ['Daily trend', 12],
   ],
   usage: [
@@ -70,8 +68,6 @@ const RENDERED_ORDER: Record<PageName, Array<[title: string, width: number]>> = 
     // OMN-22168 (Lakshman 2026-11-04): the daily trend, every metric one line, the full row under the cards.
     ['Daily trend', 12],
     ['Runs per day', 12], ['Tokens per day', 12], ['Model usage', 12], ['Tier mix', 12],
-    // OMN-22168: the two panels after Tier mix (the status line sits in the page header, not a panel).
-    ['Work delegated', 12], ['Quality vs bar', 12],
   ],
   // Each chart takes the full row; under "More usage" each chart is its own panel, then the model-by-day table (part 17).
   // OMN-21166 part 29 AC194: Usage analysis follows the four charts, full row (AC89).
@@ -87,9 +83,9 @@ const BEFORE: Record<PageName, string[]> = {
   // OMN-21166 Maple grid: "Activity trends" is drawn as its three slices, each once.
   // Live review 2026-10-25: Overview draws the four headline cards, recent runs, quality, runs and tokens per day and
   // tier mix; Environment and the "Additional runtime metrics" panels are not drawn there.
-  // OMN-22168 (Lakshman 2026-11-04): Work delegated and Quality vs bar join it.
+  // OMN-22168 (Lakshman 2026-11-04): the daily trend joins it.
   overview: ['Actual spend', 'Savings', 'Agent calls', 'Tokens processed', 'Delegation Quality', 'Runs per day', 'Tokens per day', 'Model usage', 'Tier mix',
-    'Work delegated', 'Quality vs bar', 'Daily trend'].sort(),
+    'Daily trend'].sort(),
   // OMN-21166 Maple grid: Usage insights is drawn as Spend by model and, under "More usage", one panel per chart (part 17:
   // Cost per run, Tokens by model, Cost by route); the day-by-day token list is gone (the table holds its rows).
   usage: ['Savings per day', 'Savings by model', 'Tokens per day', 'Spend by model', 'Usage analysis', 'Cost per run', 'Tokens by model', 'Cost by route',

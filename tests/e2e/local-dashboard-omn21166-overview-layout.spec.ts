@@ -23,9 +23,7 @@ const fullRead = Array.from({ length: 500 }, (_, index) => {
 const undatedRow = { ...decision, correlation_id: 'undated-run', created_at: null, written_at: null };
 
 function chartPanels(page: Page) {
-  // OMN-22168 (Lakshman 2026-11-04): Work delegated and Quality vs bar share the half-width row below; these checks are
-  // about the four chart panels, so the two are left out.
-  return page.locator('.maple-cell--half > .local-dashboard-panel:not([data-component="overview-task-mix"]):not([data-component="overview-quality-bar"])');
+  return page.locator('.maple-cell--half > .local-dashboard-panel');
 }
 
 async function boxes(page: Page) {

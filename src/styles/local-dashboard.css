@@ -1626,10 +1626,6 @@ figure.local-chart.usage-insight { min-width: 0; margin: 0; padding: 14px; }
 .local-dashboard-panel[data-component="runs-tier-mix"] { --panel-accent: var(--ds-accent-panel-runs-tier-mix); }
 [data-theme="dark"] .local-dashboard-panel[data-component="overview-tier-mix"] { --panel-accent: var(--ds-accent-panel-overview-tier-mix); }
 [data-theme="dark"] .local-dashboard-panel[data-component="runs-tier-mix"] { --panel-accent: var(--ds-accent-panel-runs-tier-mix); }
-.local-dashboard-panel[data-component="overview-task-mix"] { --panel-accent: var(--ds-accent-panel-overview-task-mix); }
-[data-theme="dark"] .local-dashboard-panel[data-component="overview-task-mix"] { --panel-accent: var(--ds-accent-panel-overview-task-mix); }
-.local-dashboard-panel[data-component="overview-quality-bar"] { --panel-accent: var(--ds-accent-panel-overview-quality-bar); }
-[data-theme="dark"] .local-dashboard-panel[data-component="overview-quality-bar"] { --panel-accent: var(--ds-accent-panel-overview-quality-bar); }
 .local-dashboard-panel[data-component="overview-trend"] { --panel-accent: var(--ds-accent-panel-overview-trend); }
 [data-theme="dark"] .local-dashboard-panel[data-component="overview-trend"] { --panel-accent: var(--ds-accent-panel-overview-trend); }
 .local-dashboard-panel[data-component="overview-recent-runs"] { --panel-accent: var(--ds-accent-panel-overview-recent-runs); }
