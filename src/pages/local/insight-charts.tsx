@@ -595,12 +595,12 @@ export const DECISIONS_READ_LIMIT = 500;
 
 /**
  * OMN-21166 part 21 AC142: the line under an Overview chart, only when the chart does not draw every run. OMN-21970
- * AC3: the latest-500 notice is gone. A read that walked every page draws every run and carries no notice; a walk that
- * could not finish (a failed page, a server that does not page) says how many runs it read and that the rest were not.
+ * AC3: the latest-500 notice is gone. OMN-22168 (Lakshman 2026-11-04, "remove the 500 runs line from Runs per day"): a
+ * read that could not walk every page carries no read-limit line either; only runs with no date, which no chart can
+ * draw, are named.
  */
-export function chartLimitLine(servedCount: number, undatedCount: number, complete = false): string | null {
+export function chartLimitLine(undatedCount: number): string | null {
   const parts: string[] = [];
-  if (!complete && servedCount >= DECISIONS_READ_LIMIT) parts.push(`Showing ${count(servedCount)} runs read; the rest could not be read`);
   if (undatedCount > 0) parts.push(undatedCount === 1 ? '1 run has no date and is not drawn' : `${count(undatedCount)} runs have no date and are not drawn`);
   return parts.length > 0 ? parts.join(' · ') : null;
 }
@@ -641,7 +641,7 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
       ? `${complete ? '' : 'Latest '}${count(servedCount)} served runs · ${windowCaption(window)}`
       : `${count(runs.length)} of the ${served === 'latest' ? `latest ${count(servedCount)} served runs` : `${count(servedCount)} served runs`} · ${windowCaption(window)}`;
   const undated = undatedCount > 0 ? ` · ${count(undatedCount)} undated ${undatedCount === 1 ? 'row' : 'rows'} excluded` : '';
-  const limitLine = chartLimitLine(servedCount, undatedCount, complete);
+  const limitLine = chartLimitLine(undatedCount);
   const earlier = complete ? '' : ' · Earlier activity is not included';
   const emptyMessage = customIncomplete ? 'Choose both UTC dates for this range'
     : customReversed ? 'End date must be on or after the start date'

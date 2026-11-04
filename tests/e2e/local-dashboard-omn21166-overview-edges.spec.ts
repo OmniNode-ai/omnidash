@@ -134,7 +134,10 @@ test('E5 499 runs draw every run with no line; 500 runs say the read limit only 
   await page.route(url => decodeURIComponent(url.pathname).endsWith(`/${decisionsTopic}`), route => route.fulfill({ contentType: 'application/json',
     body: JSON.stringify({ rows: stuck, row_count: stuck.length, data_freshness: 'stale', truncated: true, next_cursor: 'e5-cursor-that-never-moves' }) }));
   await page.reload();
-  await expect(runsPanel(page).getByTestId('insights-total')).toHaveText('Showing 500 runs read; the rest could not be read');
+  // OMN-22168 (Lakshman 2026-11-04, "remove the 500 runs line from Runs per day"): a read that stops at 500 runs draws
+  // them with no read-limit line.
+  await expect(runsPanel(page).locator('.gdb-day').first()).toBeVisible();
+  await expect(runsPanel(page).getByText(/runs read; the rest could not be read/)).toHaveCount(0);
   await invariants(page, '500 runs', { twoColumns: true });
   await shot(page, info, 'e5-500-runs');
 });

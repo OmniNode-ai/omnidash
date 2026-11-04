@@ -83,12 +83,16 @@ describe('OMN-21970: the daily charts draw served per-day totals', () => {
     expect(document.body.textContent).not.toMatch(/Showing the latest/);
   });
 
-  it('D3 positive control: an incomplete read of 500 rows says how many it read and that the rest were not, never "latest 500"', () => {
+  // OMN-22168 (Lakshman 2026-11-04, "remove the 500 runs line from Runs per day"): an incomplete read no longer carries
+  // a read-limit line either; the chart draws the runs it read.
+  it('D3: an incomplete read of 500 rows shows no read-limit line, and never "latest 500"', () => {
     const capped = Array.from({ length: 500 }, (_, index) => ({ ...ROWS[0], written_at: new Date(NOW - index * 60_000).toISOString() }));
     render(<InsightsWindowContext.Provider value="all">
       <InsightsSection decisions={capped} now={NOW} view="runs" servedDays={null} complete={false} />
     </InsightsWindowContext.Provider>);
-    expect(document.body.textContent).toMatch(/Showing 500 runs read; the rest could not be read/);
+    // The chart still draws the runs it read.
+    expect(document.querySelectorAll('.gdb-day').length).toBeGreaterThan(0);
+    expect(document.body.textContent).not.toMatch(/runs read; the rest could not be read/);
     expect(document.body.textContent).not.toMatch(/Showing the latest/);
   });
 
