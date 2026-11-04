@@ -57,7 +57,7 @@ import { overviewRunCount } from '@/lib/dashboard-overview-count';
 
 import { formatDuration } from '@/components/format/duration';
 import { percent as sharePercent } from '@/theme/design-system/charts';
-import { taskLabel } from '@/pages/local/plain-text';
+import { escalationReason, taskLabel } from '@/pages/local/plain-text';
 import { readableTime } from '@/components/format/readable-time';
 import { ModelTiersContext, TierLegend, useModelColor, useModelIdentityStyle } from '@/components/dashboard/model-tiers';
 import { modelTiersFrom } from '@/lib/dashboard-colors';
@@ -113,50 +113,8 @@ export function pricingLabel(version: unknown): string | null {
   return /^\d/.test(text) ? `pricing v${text}` : `pricing ${text}`;
 }
 
-const REASON_MAX = 120;
-
-// OMN-21166 AC52: the gate's typed codes as a reader names them. A code not listed reads as its words in sentence case.
-const REASON_CODE_LABELS: Readonly<Record<string, string>> = {
-  SHAPE_REFUSED: 'Response too short', MALFORMED: 'Malformed output', TASK_MISMATCH: 'Task mismatch',
-  WEAK_OUTPUT: 'Weak output', UNGROUNDED: 'Ungrounded figures', REFUSAL: 'Response refused',
-  SCHEMA_VIOLATION: 'Schema violation',
-};
-const REASON_PHRASES: ReadonlyArray<[RegExp, string]> = [
-  [/\bfinish_reason=length\b/g, 'output limit reached'],
-  [/\bcredential_rejected\b/g, 'key rejected'],
-];
-
-/** A stored credential's id never reaches the page, in the row or in its title (OMN-21166 AC52). */
-function maskCredentialIds(text: string): string {
-  return text.replace(/\bcred_[A-Za-z0-9_]+/g, 'a stored key');
-}
-
-function sentenceCase(code: string): string {
-  const words = code.toLowerCase().split('_').filter(Boolean).join(' ');
-  return words.charAt(0).toUpperCase() + words.slice(1);
-}
-
-/** The reason in plain words: typed codes and snake_case names become words; the served wording is kept otherwise. */
-function plainReasonText(text: string): string {
-  let plain = maskCredentialIds(text)
-    .replace(/\b([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+|[A-Z]{3,}):\s*/g, (_, code: string) => `${REASON_CODE_LABELS[code] ?? sentenceCase(code)}: `);
-  for (const [pattern, phrase] of REASON_PHRASES) plain = plain.replace(pattern, phrase);
-  return plain.replace(/\b([a-z]+(?:_[a-z0-9]+)+)\b/g, name => name.replace(/_/g, ' '));
-}
-
-/**
- * OMN-21166: one escalation reason as the panel shows it. A served reason can be a whole provider error, URLs and
- * response body included; the row shows its first line of text in plain words (AC52), shortened to fit, and the
- * element's title keeps the whole served text with any credential id masked. A missing reason is named, never an
- * empty row.
- */
-export function escalationReason(reason: unknown): { text: string; title: string | undefined } {
-  const served = typeof reason === 'string' ? reason : isUnavailableField(reason) ? '' : String(reason);
-  const text = plainReasonText(served.replace(/\s+/g, ' ').trim());
-  if (text === '') return { text: 'Not recorded', title: undefined };
-  if (text.length <= REASON_MAX) return { text, title: undefined };
-  return { text: `${text.slice(0, REASON_MAX - 1).trimEnd()}…`, title: maskCredentialIds(served) };
-}
+// OMN-22168: escalationReason moved to plain-text so Overview can use it without importing this page (and its styles).
+export { escalationReason } from '@/pages/local/plain-text';
 
 /**
  * OMN-21166 AC53: why a panel has no rows, in plain words with no HTTP status. A runtime that does not serve the data

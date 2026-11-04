@@ -30,7 +30,7 @@ import { normaliseRunId, readWorkflowRunId, workflowHref, writeWorkflowRunId } f
 import { RunDurationChart, RunMetricChart, RunTimingChart, RunTokensChart, SpendByDayChart, runTimingBars, UNRESOLVED_BASELINE, type ListedRun } from '@/theme/design-system/charts';
 import { PassRateMeter } from '@/pages/local/shares';
 import { TIER_TONES } from '@/theme/design-system/charts';
-import { InsightsSection, InsightsWindowContext, MeteringActivityInsights, OverviewRunsContext, PassRateSparkline, TaskIcon, type ActivityWindow } from '@/pages/local/insight-charts';
+import { InsightsSection, InsightsWindowContext, MeteringActivityInsights, OverviewRunsContext, PassRateSparkline, TaskIcon, taskColorOf, type ActivityWindow } from '@/pages/local/insight-charts';
 import { UsageInsights } from '@/pages/local/usage-insights';
 import { RoutingAnalysis } from '@/pages/local/usage-analysis';
 import { Badge, ConfirmDialog, DashboardTabs, DataTable, Dropdown, EmptyState, Fact, FactList, Figure, InfoTip, Panel, PanelTitle, StatusChip } from '@/theme/design-system/components';
@@ -39,7 +39,7 @@ import { SinceLastVisit } from '@/pages/local/since-last-visit';
 import { ModelKeys, providerName } from '@/pages/local/model-keys';
 import { EnvironmentPanel, ServiceHealthUnread } from '@/pages/local/environment';
 import { SettingsEmptyState } from '@/components/dashboard/SettingsEmptyState';
-import { failureCauseLabel, failureDetailText, notAvailableYet, plainFailureMessage, taskLabel, tierLabel } from '@/pages/local/plain-text';
+import { escalationReason, failureCauseLabel, failureDetailText, notAvailableYet, plainFailureMessage, taskLabel, tierLabel } from '@/pages/local/plain-text';
 import { RunFilterProvider, causeHref, causeLabelOf, useRunFilter } from '@/pages/local/run-filter';
 import { dailySeries, servedDailyDays, summary as runSummary, toInsightRuns, typedFailureCauseOf } from '@/pages/local/insights';
 import { Meter, RankedBars } from '@/theme/design-system/charts';
@@ -798,7 +798,7 @@ export function OverviewDayPicker({ days, value, onChange, now = Date.now() }: {
  * keep naming their baseline and pricing version (OMN-21304 AC4). `pctLine` is the served savings ratio line, read by
  * the card that owns that field.
  */
-export function headlineHoverLines(componentId: string, row: Row, pctLine: string | null, window: OverviewWindow = 'all'): string[] {
+export function headlineHoverLines(componentId: string, row: Row, pctLine: string | null, window: OverviewWindow = 'all', summary: Row | null = null): string[] {
   const count = (value: unknown) => (isMissing(value) || !Number.isFinite(Number(value)) ? 'Not recorded' : formatFullCount(String(value)));
   const unknownTokens = row.runs_unknown_tokens;
   const unknownSpend = row.runs_unknown_spend;
@@ -822,19 +822,35 @@ export function headlineHoverLines(componentId: string, row: Row, pctLine: strin
   const lines: Array<string | null> = componentId === 'overview-spend' ? [window === 'all' ? 'What you paid, all time' : `What you paid ${when}`, excluded, basis]
     // Part 29 AC191: the first line is the short drawn caption; the full sentence stays in the page for screen readers.
     : componentId === 'overview-savings' ? [`Modelled vs ${isMissing(row.baseline_model) ? 'the cloud baseline' : unbroken(String(row.baseline_model))}`, `Modelled at ${isMissing(row.baseline_model) ? 'the cloud baseline' : String(row.baseline_model)} prices. The baseline never ran.`, pctLine, excluded, basis]
-      : componentId === 'overview-measured' ? [`${count(row.runs_measured)} of ${count(row.runs_total)} runs measured`, excluded]
+      : componentId === 'overview-measured' ? [averageRunLine(summary), `${count(row.runs_measured)} of ${count(row.runs_total)} runs measured`, excluded]
         : componentId === 'overview-tokens' ? [`${count(row.tokens_in)} in · ${count(row.tokens_out)} out`]
           : [];
   if (Number.isFinite(noRuns) && noRuns > 0) lines.push(`Includes ${noRuns} ${noRuns === 1 ? 'day' : 'days'} with no runs`);
+  // OMN-22168 (Lakshman 2026-11-04): Savings leads with the served percentage below its baseline, shown only where the
+  // percentage line itself is (a measured saving against a named, resolved baseline).
+  if (componentId === 'overview-savings' && pctLine !== null) {
+    const ratio = Number(row.savings_pct_of_counterfactual);
+    if (!isMissing(row.savings_pct_of_counterfactual) && Number.isFinite(ratio) && !isMissing(row.baseline_model)) {
+      lines.unshift(`${Math.abs(ratio * 100).toFixed(1)}% ${ratio < 0 ? 'above' : 'below'} ${unbroken(String(row.baseline_model))}`);
+    }
+  }
   return lines.filter((line): line is string => line !== null);
 }
 
-export function MeteringTotalCard({ component, config, rows, window = 'all', now }: {
+/** OMN-22168: Agent calls' first line, delegation.summary.v1's served average run time; none when it is not served. */
+function averageRunLine(summary: Row | null): string | null {
+  const ms = summary && !isMissing(summary.avgLatencyMs) ? Number(summary.avgLatencyMs) : NaN;
+  return Number.isFinite(ms) && ms >= 0 ? `Average ${(ms / 1000).toFixed(1)} s per run` : null;
+}
+
+export function MeteringTotalCard({ component, config, rows, window = 'all', now, summary = null }: {
   component: LocalPageDocument['components'][number];
   config: MetricCardConfig;
   rows: readonly unknown[];
   window?: OverviewWindow;
   now?: number;
+  /** OMN-22168: delegation.summary.v1's row, for Agent calls' average run time. */
+  summary?: Row | null;
 }) {
   const picked = pickMeteringRow(rows, window, now);
   // OMN-19980 M6/M7: a card that cannot show its figure says why on the card ("Not measured: no all-time row",
@@ -881,7 +897,7 @@ export function MeteringTotalCard({ component, config, rows, window = 'all', now
       {(() => { const change = periodChangeLine(rows, window, config.metric_key, row); return change && <ChangeLine text={change} />; })()}
       {/* OMN-20008 L6: no figure, no line: the percentage shows only beside a measured saving with a named, resolved baseline. */}
       <HeadlineHover label={component.title} lines={headlineHoverLines(component.component_id, row,
-        row.baseline_state === 'unresolved' || isMissing(row[config.metric_key]) || isMissing(row.baseline_model) ? null : pct, window)} />
+        row.baseline_state === 'unresolved' || isMissing(row[config.metric_key]) || isMissing(row.baseline_model) ? null : pct, window, summary)} />
     </>;
   }
   return (
@@ -1962,6 +1978,102 @@ export function ModelUsagePanel({ row }: { row: Row | null }) {
 }
 
 /**
+ * OMN-22168 (Lakshman 2026-11-04, "all 4"): the line under Overview's title. The runtime's state is local-environment.v1's
+ * observed_state, never assumed: no row reads not recorded, and any state other than running shows itself and its served
+ * reason. The last run is delegation.summary.v1's latestEventAt and the run total its totalDelegations, both as served.
+ */
+export function OverviewStatusStrip({ env, summary, now }: { env: Row | null; summary: Row | null; now: number }) {
+  const observed = env && !isMissing(env.observed_state) ? String(env.observed_state) : null;
+  const state = observed === null ? 'unknown' : observed === 'running' ? 'running' : 'attention';
+  const latest = summary && !isMissing(summary.latestEventAt) ? Number(summary.latestEventAt) * 1000 : NaN;
+  const ago = Number.isFinite(latest) && latest <= now ? now - latest : null;
+  const lastRun = ago === null ? 'Last run not recorded'
+    : ago < 60_000 ? 'Last run under a minute ago'
+      : ago < 3_600_000 ? `Last run ${Math.floor(ago / 60_000)} min ago`
+        : ago < 172_800_000 ? `Last run ${Math.floor(ago / 3_600_000)} h ago` : `Last run ${Math.floor(ago / 86_400_000)} days ago`;
+  const total = summary && !isMissing(summary.totalDelegations) && Number.isFinite(Number(summary.totalDelegations))
+    ? `${formatFullCount(String(summary.totalDelegations))} runs` : 'Runs not recorded';
+  const reason = state === 'attention' && env && !isMissing(env.reason) ? String(env.reason) : null;
+  return (
+    <div className="local-overview-status" role="status" aria-label="Runtime status" data-state={state}>
+      <span className="local-overview-status-dot" aria-hidden="true" />
+      <strong>{observed === null ? 'Runtime status not recorded' : `Runtime ${observed}`}</strong>
+      {reason && <span className="local-overview-status-reason">{reason}</span>}
+      <span aria-hidden="true">·</span><span>{lastRun}</span>
+      <span aria-hidden="true">·</span><span>{total}</span>
+    </div>
+  );
+}
+
+/**
+ * OMN-22168: Overview's Work delegated, delegation.summary.v1's served byTaskType ranked by its served count, each a
+ * readable task name in its task colour that opens Runs filtered to it. Nothing is counted here.
+ */
+export function TaskMixPanel({ summary }: { summary: Row | null }) {
+  const tasks = summary && Array.isArray(summary.byTaskType) ? asRecords(summary.byTaskType) : [];
+  if (tasks.length === 0) return <EmptyState>No task types served yet</EmptyState>;
+  return (
+    <section aria-label="Work delegated" className="local-task-mix">
+      <RankedBars label="Runs by task type" unit="Runs" order="desc"
+        items={tasks.map((task, index) => {
+          const raw = isMissing(task.taskType) ? '' : String(task.taskType);
+          const name = raw === '' ? 'Not recorded' : taskLabel(raw);
+          const runs = isMissing(task.count) || !Number.isFinite(Number(task.count)) ? null : Number(task.count);
+          const href = raw === '' ? undefined : `/runs?${writeRunsSearch('', { ...DEFAULT_RUNS_VIEW, task: raw })}`;
+          return { key: `${raw}-${index}`, name, value: runs, basis: 'measured' as const, color: taskColorOf(raw), href,
+            opensLabel: `Opens Runs filtered to ${name}`, display: runs === null ? 'Not recorded' : formatFullCount(String(runs)) };
+        })} />
+    </section>
+  );
+}
+
+/**
+ * OMN-22168: Overview's Quality vs bar, one delegation.quality-gate.v1 row: the served average score against the served
+ * required bar, the served escalation rate and count, and the three failure reasons with the most served failures, in
+ * plain words with their served share. A field the row does not serve reads Not recorded.
+ */
+export function QualityBarPanel({ row }: { row: Row | null }) {
+  if (!row) return <EmptyState>No quality checks served yet</EmptyState>;
+  const fraction = (value: unknown) => (isMissing(value) || !Number.isFinite(Number(value)) ? null : Number(value));
+  const score = fraction(row.avg_actual_score);
+  const bar = fraction(row.avg_required_bar);
+  const rate = fraction(row.escalation_rate);
+  const escalated = fraction(row.escalation_count);
+  const reasons = Array.isArray(row.failure_categories)
+    ? asRecords(row.failure_categories).sort((a, b) => (fraction(b.count) ?? -1) - (fraction(a.count) ?? -1)).slice(0, 3) : null;
+  const width = (value: number | null) => `${Math.max(0, Math.min(1, value ?? 0)) * 100}%`;
+  return (
+    <section aria-label="Quality vs bar" className="local-quality-bar">
+      <div className="local-quality-meter" data-quality-figure="score">
+        <span className="local-quality-label">Average score</span>
+        <span className="local-quality-track" aria-hidden="true">
+          <span className="local-quality-fill" style={{ width: width(score) }} />
+          {bar !== null && <span className="local-quality-mark" style={{ left: width(bar) }} />}
+        </span>
+        <strong>{score === null ? 'Not recorded' : score.toFixed(2)}</strong>
+      </div>
+      <div className="local-quality-facts">
+        <span data-quality-figure="bar">Required bar <strong>{bar === null ? 'Not recorded' : bar.toFixed(2)}</strong></span>
+        <span data-quality-figure="escalation">Escalated <strong>{rate === null ? 'Not recorded' : `${(rate * 100).toFixed(1)}%`}</strong>
+          {escalated !== null && ` · ${formatFullCount(String(escalated))} runs`}</span>
+      </div>
+      <h4 className="local-quality-reasons-title">Top failure reasons</h4>
+      {reasons === null ? <p className="local-dashboard-caption">Failure reasons not recorded</p>
+        : reasons.length === 0 ? <p className="local-dashboard-caption">No failures recorded</p>
+          : <ol className="local-quality-reasons" aria-label="Top failure reasons">{reasons.map((reason, index) => {
+            const plain = escalationReason(reason.category);
+            const share = fraction(reason.pct_of_failures);
+            return <li key={index} title={plain.title}>
+              <span>{plain.text.charAt(0).toUpperCase() + plain.text.slice(1)}</span>
+              <span className="local-quality-share">{share === null ? 'Share not served' : `${(share * 100).toFixed(1)}%`}</span>
+            </li>;
+          })}</ol>}
+      <p className="local-dashboard-caption local-recent-footer"><Link href="/delegation-evidence">View delegation evidence <ArrowUpRight size={12} aria-hidden="true" /></Link></p>
+    </section>
+  );
+}
+
+/**
  * OMN-20225 AC3: the tier mix, from delegation.model-routing.v1's served by_tier (view migration 0045). Each tier's
  * count and share are the view's; runs with no tier are the served not_tier_routed_count, never folded into a tier.
  * OMN-21015 AC2: under each tier, the models the view lists for it (migration 0060), with their served runs, share of
@@ -2606,6 +2718,11 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns, acti
     navigate(causeHref(cause));
     document.querySelector('[data-component="recent-runs"]')?.scrollIntoView?.({ block: 'start' });
   }} />}</>;
+  if (component.component_id === 'overview-task-mix' || component.component_id === 'overview-quality-bar') {
+    const first = rawRowsFor(component, snapshots, 0)[0];
+    const row = first && typeof first === 'object' && !Array.isArray(first) ? (first as Row) : null;
+    return component.component_id === 'overview-task-mix' ? <TaskMixPanel summary={row} /> : <QualityBarPanel row={row} />;
+  }
   if (component.component_id === 'overview-model-usage') {
     const first = rawRowsFor(component, snapshots, 0)[0];
     return <ModelUsagePanel row={first && typeof first === 'object' && !Array.isArray(first) ? (first as Row) : null} />;
@@ -2822,7 +2939,8 @@ export const PANEL_CONCEPTS: Readonly<Record<string, string>> = {
   'overview-insights': 'analysis', 'usage-insights': 'usage-analysis', 'runs-insights': 'analysis',
   'runs-tier-mix': 'tier-mix', 'overview-run-locally': 'local-run',
   'overview-avg-saving-per-call': 'saving-average', 'overview-baseline-spend': 'baseline',
-  'overview-quality': 'quality', 'overview-model-usage': 'runs-model', 'overview-tier-mix': 'tier-mix', 'overview-compression': 'compression',
+  'overview-quality': 'quality', 'overview-model-usage': 'runs-model', 'overview-tier-mix': 'tier-mix',
+  'overview-task-mix': 'task', 'overview-quality-bar': 'quality-comparison', 'overview-compression': 'compression',
   'overview-cache-hit-rate': 'cache', 'overview-spend-by-day': 'spend-daily', 'recent-runs': 'recent',
   'workflow-run-path': 'path', 'usage-by-model-day': 'usage-day', 'usage-tokens-by-day': 'tokens-daily',
   'usage-savings-series': 'savings-daily', 'credentials-keys': 'credentials',
@@ -3133,7 +3251,9 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
           })() : component.data_bindings?.[0]?.projection_topic === METERING_SUMMARY_TOPIC ? (() => {
             const config = metricConfigFor(page, component.component_id);
             return config
-              ? <MeteringTotalCard component={component} config={config} rows={rows} window={overviewWindow} now={now} />
+              ? <MeteringTotalCard component={component} config={config} rows={rows} window={overviewWindow} now={now}
+                summary={component.component_id === 'overview-measured' ? (() => { const value = rawRowsFor(component, snapshots, 1)[0];
+                  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Row) : null; })() : null} />
               : <EmptyState status={false}>Not measured</EmptyState>;
           })() : (() => {
             const config = metricConfigFor(page, component.component_id);
@@ -3271,6 +3391,14 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
             <InsightsWindowContext.Provider value={{ window: activityWindow, setWindow: setActivityWindow }}>
             {/* OMN-21166 Maple grid: the KPI strip, then rows of a chart (8 of 12 columns) beside its ranking (4), then
                 the recent runs beside quality. The last run is the first recent run, so it sits under "Additional". */}
+            {/* OMN-22168 (Lakshman 2026-11-04, superseding the 2026-10-25 waiver of an environment line on Overview). */}
+            {(() => {
+              const status = page.components.find(candidate => candidate.component_id === 'overview-status');
+              if (!status) return null;
+              const first = (index: number) => { const value = rawRowsFor(status, snapshots, index)[0];
+                return value && typeof value === 'object' && !Array.isArray(value) ? (value as Row) : null; };
+              return <OverviewStatusStrip env={first(0)} summary={first(1)} now={now} />;
+            })()}
             <div className="local-overview-surface">
               <section className="local-overview-summary" aria-label="Runtime summary" style={{ '--kpi-count': 5 } as CSSProperties}>
                 {renderGroup(overviewGroups.summary)}
@@ -3298,6 +3426,9 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
                   <div className="maple-cell maple-cell--half">{slice('tokens', 'Tokens per day', 'tokens-daily')}</div>
                   <div className="maple-cell maple-cell--half">{renderGroup(['overview-model-usage'])}</div>
                   <div className="maple-cell maple-cell--half">{renderGroup(['overview-tier-mix'])}</div>
+                  {/* OMN-22168 (Lakshman 2026-11-04): what kind of work is delegated, and quality against its bar. */}
+                  <div className="maple-cell maple-cell--half">{renderGroup(['overview-task-mix'])}</div>
+                  <div className="maple-cell maple-cell--half">{renderGroup(['overview-quality-bar'])}</div>
                 </>;
               })()}
             </div>

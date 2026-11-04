@@ -74,6 +74,15 @@
             "captured_at",
             "run_count"
           ]
+        },
+        {
+          "binding_id": "overview-measured-summary",
+          "projection_topic": "onex.snapshot.projection.delegation.summary.v1",
+          "ordering_authority_field": "latest_projection_updated_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "avgLatencyMs"
+          ]
         }
       ],
       "supported_empty_state_reasons": [
@@ -217,6 +226,93 @@
           "ordering_direction": "descending",
           "required_fields": [
             "by_tier"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "overview-status",
+      "component_kind": "table",
+      "title": "Runtime status",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-status-environment",
+          "projection_topic": "onex.snapshot.projection.local-environment.v1",
+          "ordering_authority_field": "last_seen",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "observed_state"
+          ]
+        },
+        {
+          "binding_id": "overview-status-summary",
+          "projection_topic": "onex.snapshot.projection.delegation.summary.v1",
+          "ordering_authority_field": "latest_projection_updated_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "totalDelegations",
+            "latestEventAt"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "overview-task-mix",
+      "component_kind": "table",
+      "title": "Work delegated",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-task-mix-summary",
+          "projection_topic": "onex.snapshot.projection.delegation.summary.v1",
+          "ordering_authority_field": "latest_projection_updated_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "byTaskType"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "overview-quality-bar",
+      "component_kind": "table",
+      "title": "Quality vs bar",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-quality-bar-gate",
+          "projection_topic": "onex.snapshot.projection.delegation.quality-gate.v1",
+          "ordering_authority_field": "captured_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "avg_actual_score",
+            "avg_required_bar",
+            "failure_categories"
           ]
         }
       ],

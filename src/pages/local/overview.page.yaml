@@ -218,6 +218,76 @@
         "page_size": 25,
         "show_pagination": false
       }
+    },
+    {
+      "widget_id": "c8842fde-f13c-5f8d-aaf7-be043addca23",
+      "title": "Runtime status",
+      "row": 22,
+      "col": 0,
+      "width": 12,
+      "height": 2,
+      "data_source": "overview-status",
+      "config": {
+        "config_kind": "status_grid",
+        "widget_type": "status_grid",
+        "columns": 3,
+        "show_labels": true,
+        "compact": true
+      }
+    },
+    {
+      "widget_id": "7490d183-a986-5ac4-8111-f3344d8057f8",
+      "title": "Work delegated",
+      "row": 24,
+      "col": 0,
+      "width": 12,
+      "height": 5,
+      "data_source": "overview-task-mix",
+      "config": {
+        "config_kind": "table",
+        "widget_type": "table",
+        "columns": [
+          {
+            "key": "taskType",
+            "header": "Task type"
+          },
+          {
+            "key": "count",
+            "header": "Runs"
+          }
+        ],
+        "page_size": 10,
+        "show_pagination": false
+      }
+    },
+    {
+      "widget_id": "19198b38-b31f-55ed-8a3a-80a33fd69abd",
+      "title": "Quality vs bar",
+      "row": 29,
+      "col": 0,
+      "width": 12,
+      "height": 5,
+      "data_source": "overview-quality-bar",
+      "config": {
+        "config_kind": "table",
+        "widget_type": "table",
+        "columns": [
+          {
+            "key": "avg_actual_score",
+            "header": "Average score"
+          },
+          {
+            "key": "avg_required_bar",
+            "header": "Required bar"
+          },
+          {
+            "key": "escalation_rate",
+            "header": "Escalation rate"
+          }
+        ],
+        "page_size": 10,
+        "show_pagination": false
+      }
     }
   ]
 }

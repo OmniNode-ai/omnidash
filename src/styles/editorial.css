@@ -524,3 +524,33 @@ html body .app svg.field-icon.field-icon[data-field-icon="usage-day"]:not([data-
   display: inline-grid !important; place-items: center; flex: none; width: 48px !important; height: 48px !important;
   border-radius: 14px !important; border: 0 !important;
   background: color-mix(in oklab, var(--ds-destination-accent) 14%, transparent) !important; }
+
+/* OMN-22168 (Lakshman 2026-11-04): Overview's runtime status line, under the title and above the cards. */
+.local-overview-status { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0 0 14px; padding: 9px 14px;
+  border: 1px solid var(--ds-line); border-radius: 12px; background: var(--ds-surface); color: var(--ds-ink-2); font-size: 13px; }
+.local-overview-status strong { color: var(--ds-ink); font-weight: 600; }
+.local-overview-status-dot { width: 9px; height: 9px; flex: none; border-radius: 999px; background: var(--ds-ink-3); }
+.local-overview-status[data-state="running"] .local-overview-status-dot { background: var(--ds-hue-green);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--ds-hue-green) 22%, transparent); }
+.local-overview-status[data-state="attention"] { border-color: color-mix(in oklab, var(--ds-hue-amber) 55%, var(--ds-line)); }
+.local-overview-status[data-state="attention"] .local-overview-status-dot { background: var(--ds-hue-amber); }
+.local-overview-status-reason { color: var(--ds-ink-2); }
+
+/* OMN-22168: Overview's Quality vs bar: the served average score on a track with the required bar marked on it. */
+.local-quality-bar { display: grid; gap: 14px; }
+.local-quality-meter { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; font-size: 13px; }
+.local-quality-label { color: var(--ds-ink-2); }
+.local-quality-meter > strong { font-size: 22px; font-weight: 600; color: var(--ds-field-quality-comparison, var(--ds-ink)); font-variant-numeric: tabular-nums; }
+.local-quality-track { position: relative; height: 10px; border-radius: 999px; background: var(--ds-surface-2); }
+.local-quality-fill { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--ds-field-quality-comparison, var(--ds-hue-teal)); }
+.local-quality-mark { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--ds-ink); }
+.local-quality-facts { display: flex; flex-wrap: wrap; gap: 6px 20px; font-size: 13px; color: var(--ds-ink-2); }
+.local-quality-facts strong { color: var(--ds-ink); font-variant-numeric: tabular-nums; }
+.local-quality-reasons-title { margin: 4px 0 0; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ds-ink-3); }
+.local-quality-reasons { list-style: none; margin: 0; padding: 0; display: grid; }
+.local-quality-reasons li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--ds-line); font-size: 13px; }
+.local-quality-reasons li:last-child { border-bottom: 0; }
+.local-quality-reasons li > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ds-ink); }
+.local-quality-share { color: var(--ds-ink-2); font-variant-numeric: tabular-nums; }
+/* The status line spans the page's full width, above the cards. */
+.local-dashboard-page .local-overview-status { grid-column: 1 / -1; width: 100%; box-sizing: border-box; }

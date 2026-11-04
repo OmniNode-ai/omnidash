@@ -81,6 +81,15 @@
             "runs_unknown_tokens",
             "runs_unknown_spend"
           ]
+        },
+        {
+          "binding_id": "overview-measured-summary",
+          "projection_topic": "onex.snapshot.projection.delegation.summary.v1",
+          "ordering_authority_field": "latest_projection_updated_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "avgLatencyMs"
+          ]
         }
       ],
       "supported_empty_state_reasons": [

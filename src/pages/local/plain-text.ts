@@ -1,3 +1,4 @@
+import { isUnavailableField } from '@/components/dashboard/field-identity';
 /**
  * OMN-21166 AC39: the words a user reads when data is missing or a read failed. No exposure, topic, field or typed
  * code reaches the page; those stay in code, contracts and tests. One helper, used by every page and card that shows
@@ -116,4 +117,50 @@ export function tierLabel(name: unknown): string {
 /** OMN-21166: a task type as words ("code generation"); the served key stays the filter and URL value. */
 export function taskLabel(name: unknown): string {
   return String(name).trim().replace(/_+/g, ' ');
+}
+
+// OMN-21166 AC52 (moved here from DelegationEvidencePage by OMN-22168, unchanged): a failure or escalation reason in plain words.
+const REASON_MAX = 120;
+
+// OMN-21166 AC52: the gate's typed codes as a reader names them. A code not listed reads as its words in sentence case.
+const REASON_CODE_LABELS: Readonly<Record<string, string>> = {
+  SHAPE_REFUSED: 'Response too short', MALFORMED: 'Malformed output', TASK_MISMATCH: 'Task mismatch',
+  WEAK_OUTPUT: 'Weak output', UNGROUNDED: 'Ungrounded figures', REFUSAL: 'Response refused',
+  SCHEMA_VIOLATION: 'Schema violation',
+};
+const REASON_PHRASES: ReadonlyArray<[RegExp, string]> = [
+  [/\bfinish_reason=length\b/g, 'output limit reached'],
+  [/\bcredential_rejected\b/g, 'key rejected'],
+];
+
+/** A stored credential's id never reaches the page, in the row or in its title (OMN-21166 AC52). */
+function maskCredentialIds(text: string): string {
+  return text.replace(/\bcred_[A-Za-z0-9_]+/g, 'a stored key');
+}
+
+function sentenceCase(code: string): string {
+  const words = code.toLowerCase().split('_').filter(Boolean).join(' ');
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/** The reason in plain words: typed codes and snake_case names become words; the served wording is kept otherwise. */
+function plainReasonText(text: string): string {
+  let plain = maskCredentialIds(text)
+    .replace(/\b([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+|[A-Z]{3,}):\s*/g, (_, code: string) => `${REASON_CODE_LABELS[code] ?? sentenceCase(code)}: `);
+  for (const [pattern, phrase] of REASON_PHRASES) plain = plain.replace(pattern, phrase);
+  return plain.replace(/\b([a-z]+(?:_[a-z0-9]+)+)\b/g, name => name.replace(/_/g, ' '));
+}
+
+/**
+ * OMN-21166: one escalation reason as the panel shows it. A served reason can be a whole provider error, URLs and
+ * response body included; the row shows its first line of text in plain words (AC52), shortened to fit, and the
+ * element's title keeps the whole served text with any credential id masked. A missing reason is named, never an
+ * empty row.
+ */
+export function escalationReason(reason: unknown): { text: string; title: string | undefined } {
+  const served = typeof reason === 'string' ? reason : isUnavailableField(reason) ? '' : String(reason);
+  const text = plainReasonText(served.replace(/\s+/g, ' ').trim());
+  if (text === '') return { text: 'Not recorded', title: undefined };
+  if (text.length <= REASON_MAX) return { text, title: undefined };
+  return { text: `${text.slice(0, REASON_MAX - 1).trimEnd()}…`, title: maskCredentialIds(served) };
 }
