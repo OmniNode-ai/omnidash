@@ -13,7 +13,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { modelTierColor, modelTiersFrom, tierColor } from './dashboard-colors';
+import { modelTierColor, modelTiersFrom, tierColor } from '@/lib/dashboard-colors';
 
 const PALETTE: Record<string, [light: string, dark: string]> = {
   local: ['#2a78d6', '#3987e5'],
@@ -33,7 +33,7 @@ const CHEAP: Record<string, { family: string; light: string; dark: string; light
   cheap_cloud: { family: 'cloud', light: '#8980fd', dark: '#afa8fd' },
 };
 
-const css = readFileSync(resolve(__dirname, '../theme/design-system/tokens.css'), 'utf8');
+const css = readFileSync(resolve(__dirname, '../../src/theme/design-system/tokens.css'), 'utf8');
 // Every block with this selector, in file order; a later declaration of a token wins, as in the browser.
 const block = (selector: string) => {
   const bodies: string[] = [];

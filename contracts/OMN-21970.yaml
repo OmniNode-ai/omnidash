@@ -56,10 +56,10 @@ dod_evidence:
     binds_ac: ["AC5", "AC6"]
     checks:
       - check_type: "test_passes"
-        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/lib/tier-colors.omn21970.test.ts"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/lib/tier-colors.omn21970.test.ts"
         cwd: "${OMNI_HOME}/omnidash"
       - check_type: "test_passes"
-        check_value: "npm test -- --run src/lib/tier-colors.omn21970.test.ts"
+        check_value: "npm test -- --run tests/lib/tier-colors.omn21970.test.ts"
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn21970-ac8-card-colours"
     description: "AC8: in both themes the twelve card concepts are twelve colours at least 0.07 apart in OKLab, every pair on one page at least 0.10, each at least 4.5:1 on the card plain and under its tint, Runs wires p95 duration and escalated to their own concepts, and no two cards on a page share an icon."
