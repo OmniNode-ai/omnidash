@@ -9,7 +9,7 @@ import { expect, test, type Page } from 'playwright/test';
 const DECISIONS = 'onex.snapshot.projection.delegation.decisions.v1';
 
 const RUNS_HEADERS = [
-  'Run', 'Created', 'Status', 'Cause', 'Model', 'Backend', 'Host', 'Tokens in', 'Tokens out', 'Local cost', 'Modelled saving',
+  'Run', 'Created', 'Status', 'Cause', 'Model', 'Backend', 'Host', 'Tokens in', 'Tokens out', 'Cost', 'Modelled saving',
   'Baseline model', 'Basis', 'Task type', 'Duration', 'Tokens to compliance', 'Route tier', 'Quality score',
 ];
 // OMN-21166 AC86 (Lakshman 2026-10-25): Recent runs is deleted from Overview, so its table-fit case is removed; Runs keeps it.

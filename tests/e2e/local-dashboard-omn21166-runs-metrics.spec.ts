@@ -42,7 +42,7 @@ test('cost and score show precise served values, zero and unknown, and open exac
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/runs');
   await openRunCharts(page);
-  const cost = page.getByRole('figure', { name: 'Local cost per run', exact: true });
+  const cost = page.getByRole('figure', { name: 'Cost per run', exact: true });
   const score = page.getByRole('figure', { name: 'Quality score per run', exact: true });
   for (const chart of [cost, score]) await expect(chart.locator('.local-chart-canvas svg')).toBeVisible();
   await cost.getByLabel('Inspect run').selectOption(runIds[0]);
@@ -84,7 +84,7 @@ test('missing and malformed metric values remain explicit instead of zero charts
   await serveCharts(page, { ...rows, [savings]: [], [decisions]: rows[decisions].map(row => ({ ...row, cost_usd: null, actual_score: [] })) });
   await page.goto('/runs');
   await openRunCharts(page);
-  for (const name of ['Local cost per run', 'Quality score per run']) {
+  for (const name of ['Cost per run', 'Quality score per run']) {
     const chart = page.getByRole('figure', { name, exact: true });
     await expect(chart).toContainText('No recorded values for these runs');
     await expect(chart.locator('.local-chart-canvas')).toHaveCount(0);
@@ -100,7 +100,7 @@ test('metrics follow pagination and keep compact equal cards in both themes and 
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/runs');
   await openRunCharts(page);
-  const cost = page.getByRole('figure', { name: 'Local cost per run', exact: true });
+  const cost = page.getByRole('figure', { name: 'Cost per run', exact: true });
   await expect(cost).toHaveAttribute('data-motion', 'reduced');
   await cost.getByLabel('Inspect run').selectOption('metric-0');
   await page.getByRole('button', { name: 'Next page', exact: true }).click();
@@ -127,7 +127,7 @@ test('measured zero cost has a visible explanation and keeps missing costs separ
   await serveCharts(page, { ...rows, [savings]: [], [decisions]: rows[decisions].map((row, i) => ({ ...row, cost_usd: i === 2 ? null : 0 })) });
   await page.goto('/runs');
   await openRunCharts(page);
-  const chart = page.getByRole('figure', { name: 'Local cost per run', exact: true });
+  const chart = page.getByRole('figure', { name: 'Cost per run', exact: true });
   await expect(chart).toContainText('2 of 3 recorded');
   await expect(chart).toContainText('Recorded costs are $0');
   await expect(chart).toContainText('1 not recorded');

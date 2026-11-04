@@ -635,8 +635,8 @@ export function RunMetricChart({ runs, onOpen, metric }: {
   useThemeName();
   const motion = useChartMotion();
   const cost = metric === 'cost';
-  const title = cost ? 'Local cost per run' : 'Quality score per run';
-  const label = cost ? 'Local cost' : 'Score';
+  const title = cost ? 'Cost per run' : 'Quality score per run';
+  const label = cost ? 'Cost' : 'Score';
   const points = runs.map(run => point(run[metric]));
   const measured = points.some(p => p.value !== null);
   const recordedCount = points.filter(p => p.value !== null).length;

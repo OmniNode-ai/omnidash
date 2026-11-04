@@ -1759,7 +1759,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                 <tr>
                   <th>Run</th>{sortHeader('created', 'Created')}<th>Status</th><th>Cause</th><th>Model</th><th>Backend</th>
                   {showRouting && <><th>Requested model</th><th>Finish reason</th><th>Escalations</th></>}<th>Host</th>
-                  <th>Tokens in</th><th>Tokens out</th>{sortHeader('cost', 'Local cost')}<th>Modelled saving</th><th>Baseline model</th>
+                  <th>Tokens in</th><th>Tokens out</th>{sortHeader('cost', 'Cost')}<th>Modelled saving</th><th>Baseline model</th>
                   <th>Basis</th><th>Task type</th>{sortHeader('duration', 'Duration')}<th>Tokens to compliance</th><th>Route tier</th><th>Quality score</th>
                 </tr>
               </thead>

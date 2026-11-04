@@ -109,7 +109,7 @@ describe('OMN-21015 AC3: savings per run on the Runs list', () => {
   it('R6: the column sits beside the run\'s cost', () => {
     render(<RunsTable now={NOW} sessions={[]} decisions={[run('any', '2026-10-14T05:00:00Z')]} />);
     const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent);
-    expect(headers.indexOf('Modelled saving')).toBe(headers.indexOf('Local cost') + 1);
+    expect(headers.indexOf('Modelled saving')).toBe(headers.indexOf('Cost') + 1);
   });
 
   it('R7: the Runs page declares the served figure and the two labels it shows, on its decisions binding', () => {

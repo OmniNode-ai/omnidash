@@ -36,7 +36,7 @@ describe('sortRuns', () => {
     expect(ids(sortRuns(rows, 'created', 'asc', noSession))).toEqual(['old', 'mid', 'new', 'none']);
   });
 
-  it('cost reads the run\'s session cost first, as the Local cost column shows it', () => {
+  it('cost reads the run\'s session cost first, as the Cost column shows it', () => {
     const rows = [run('a', { cost_usd: '5' }), run('b', { cost_usd: '1' })];
     const sessions = (id: string) => (id === 'b' ? { local_cost_usd: '9' } : undefined);
     expect(ids(sortRuns(rows, 'cost', 'desc', sessions))).toEqual(['b', 'a']);

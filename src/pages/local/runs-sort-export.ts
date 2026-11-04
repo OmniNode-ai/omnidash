@@ -22,7 +22,7 @@ function recordedTime(value: unknown): number | null {
 /**
  * The rows in the chosen order. A run with no recorded value for the column is last in both directions, and runs that
  * tie keep the order they came in. Cost is the run's session cost when served, else its own cost_usd: the same value
- * the Local cost column shows.
+ * the Cost column shows.
  */
 export function sortRuns<T extends Row>(rows: readonly T[], key: RunSortKey, direction: RunSortDirection,
   sessionFor: (runId: string) => Row | undefined): T[] {
