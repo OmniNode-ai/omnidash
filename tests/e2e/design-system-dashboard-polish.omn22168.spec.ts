@@ -113,6 +113,8 @@ test('L6: a per-run chart keeps its value labels apart', async ({ page }) => {
 test('L7: Routing columns adds its three columns and keeps the rest', async ({ page }) => {
   await page.goto('/runs');
   const table = page.locator('.local-runs-wrap table').first();
+  // Wait for the run list to draw before reading its header.
+  await expect(table.locator('tbody tr').first()).toBeVisible();
   const shown = () => table.locator('thead th').evaluateAll(cells => cells
     .filter(cell => getComputedStyle(cell).display !== 'none').map(cell => cell.textContent?.trim()));
   const plain = await shown();
