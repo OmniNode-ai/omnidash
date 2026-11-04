@@ -54,8 +54,9 @@ async function theme(page: Page, value: string) {
     await page.getByRole('button', { name: 'Toggle theme', exact: true }).click();
 }
 
-// OMN-21166 part 11 AC62 (corrected): Inter is the bundled text face, JetBrains Mono the identifier face; Poppins stays on the wordmark.
-test('AC62 bundled Inter and JetBrains Mono typography preserves the Poppins wordmark', async ({ page }) => {
+// OMN-21166 part 11 AC62 (corrected), as restyled by the 01+20 look (Lakshman 2026-11-03): Geist is the bundled text face
+// and Geist Mono the identifier face (were Inter and JetBrains Mono); Poppins stays on the wordmark; nothing is fetched.
+test('AC62 bundled Geist and Geist Mono typography preserves the Poppins wordmark', async ({ page }) => {
   const external: string[] = [];
   page.on('request', request => {
     if (['fonts.googleapis.com', 'fonts.gstatic.com'].includes(new URL(request.url()).hostname)) external.push(request.url());
@@ -63,31 +64,33 @@ test('AC62 bundled Inter and JetBrains Mono typography preserves the Poppins wor
   await page.goto('/overview');
   await expect(page.locator('.local-dashboard-panel').first()).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
-  expect(await page.locator('body').evaluate(el => getComputedStyle(el).fontFamily)).toContain('Inter');
+  expect(await page.locator('body').evaluate(el => getComputedStyle(el).fontFamily)).toContain('Geist Variable');
   // fonts.check() is true only once a face was used; part 13 keeps most identifiers in closed sections, so the mono
   // face may not be fetched on load. load() resolves the bundled faces for the family (none when nothing is bundled).
-  expect(await page.evaluate(async () => (await document.fonts.load('14px Inter')).length)).toBeGreaterThan(0);
-  expect(await page.evaluate(async () => (await document.fonts.load('14px "JetBrains Mono"')).length)).toBeGreaterThan(0);
+  expect(await page.evaluate(async () => (await document.fonts.load('14px "Geist Variable"')).length)).toBeGreaterThan(0);
+  expect(await page.evaluate(async () => (await document.fonts.load('14px "Geist Mono Variable"')).length)).toBeGreaterThan(0);
   expect(await page.locator('.brand-name .primary').evaluate(el => getComputedStyle(el).fontFamily)).toContain('Poppins');
   expect(external).toEqual([]);
 });
 
 test('AC10 sentence case headings and semantic panel icon badges', async ({ page }) => {
   await page.goto('/overview');
-  // OMN-21166 AC63: the five KPI strip labels (OMN-21166 live review 2026-10-25: Delegation Quality is the fifth card) are uppercase by design; every other panel heading stays sentence case.
+  // OMN-21166 AC63: the five KPI strip labels are uppercase by design. The 01+20 look (Lakshman 2026-11-03) makes every
+  // other panel title the same small uppercase mono label, so sentence case is now in the text: the transform does the case.
   const headings = page.locator('.local-dashboard-panel h2');
   await expect(headings.first()).toBeVisible();
   const transforms = await headings.evaluateAll(els => els.map(el => ({
     kpi: !!el.closest('.local-overview-summary'), transform: getComputedStyle(el).textTransform })));
   expect(transforms.filter(item => item.kpi)).toHaveLength(5);
   expect(transforms.filter(item => !item.kpi).length).toBeGreaterThan(0);
-  for (const item of transforms.filter(item => !item.kpi)) expect(item.transform).toBe('none');
-  // The five KPI icons are unbadged glyphs, each naming its own field; since part 28 AC177 they are all grey.
+  for (const item of transforms.filter(item => !item.kpi)) expect(item.transform).toBe('uppercase');
+  // The five KPI icons are unbadged glyphs, each naming its own field; OMN-21970 AC8 (committed 801bf845) gives each its
+  // own concept colour, superseding part 28 AC177's one grey.
   const icons = await page.locator('.local-dashboard-panel h2 svg').evaluateAll(els => els.slice(0, 5).map(el => ({
     color: getComputedStyle(el).color, background: getComputedStyle(el).backgroundColor, field: el.getAttribute('data-field-icon'),
   })));
   expect(icons).toHaveLength(5);
-  expect(new Set(icons.map(icon => icon.color)).size).toBe(1);
+  expect(new Set(icons.map(icon => icon.color)).size).toBe(5);
   expect(new Set(icons.map(icon => icon.field)).size).toBe(5);
   for (const icon of icons) expect(icon.background).toBe('rgba(0, 0, 0, 0)');
 });
@@ -103,7 +106,7 @@ test('AC10 evidence honors the same theme and typography as the frame', async ({
       ctx.fillRect(0, 0, 1, 1);
       return { rgb: Array.from(ctx.getImageData(0, 0, 1, 1).data), font: getComputedStyle(el).fontFamily };
     });
-    expect(surface.font).toContain('Inter');
+    expect(surface.font).toContain('Geist Variable');
     if (value === 'light') expect(surface.rgb[0]).toBeGreaterThan(230);
     else expect(surface.rgb[0]).toBeLessThan(60);
   }

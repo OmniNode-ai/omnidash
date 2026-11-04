@@ -1,5 +1,7 @@
 import { expect, test, type Page } from 'playwright/test';
-import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chartRows, prefix, serveCharts, keepRealClock } from './omn21166-chart-fixtures';
+// This spec dates its rows from the real clock, so the browser keeps it (see FIXTURE_NOW).
+test.beforeEach(({ page }) => keepRealClock(page));
 
 // OMN-21166 part 9 AC47: under Tokens processed, input and output come only from fields the Overview aggregate itself
 // serves for the same row as its total. A direction the aggregate does not serve reads Not measured, and nothing is

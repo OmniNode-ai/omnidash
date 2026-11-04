@@ -913,8 +913,15 @@ main.ev-root .ev-maple-grid { align-items: start; }
    one neutral family in each theme, flat cards on a 1px line, none of it pure black or pure white. Replaces part 15's
    cool dark and part 20's warm paper and shadow. Every ink keeps 4.5:1 (the AC170 walk). The :root prefix outranks the
    page-scoped tokens in dashboard-cards.css. */
-
-
+:root .app:has(.local-dashboard-page),
+:root .app:has(.ev-root[data-destination="delegation-evidence"]) {
+  /* OMN-21970 (Lakshman 2026-11-03, "01 + 20 do it"): the shell names carry the 01 Obsidian / 20 Daylight values, so an
+     element styled through either name draws the one look. OMN-22168: they alias the design-system tokens, which hold
+     those values for both themes, so no colour literal lives here. */
+  --bg: var(--ds-page); --panel: var(--ds-surface); --panel-2: var(--ds-surface-2); --line: var(--ds-line); --line-2: var(--ds-line-soft);
+  --sidebar: var(--ds-page); --sidebar-line: var(--ds-line); --sidebar-hover: var(--ds-surface-2);
+  --ink: var(--ds-ink); --ink-2: var(--ds-ink-2); --ink-3: var(--ds-ink-3); --ui-accent: var(--ds-accent);
+}
 /* Part 27 AC168: the active item is the neutral raised surface alone; the destination marker light theme already hides
    goes in dark too. */
 .app:has(.local-dashboard-page) .sidebar .mvp-nav-item.active::before,
@@ -1202,8 +1209,10 @@ html .app svg.field-icon.field-icon:is([data-field-icon^="tier-"], [data-semanti
    names the data beside it (model names and legend labels, tier icons by their bars, Evidence's money and quality
    figures); interface words are grey: the Workflow subject titles, control titles and every link. */
 .local-dashboard-page .usage-record-controls-title { color: var(--ds-ink-2) !important; }
-.local-dashboard-page .local-run-summary-group > h3, .local-dashboard-page .local-run-summary-group > h3 * { color: var(--ds-ink-3) !important; }
-:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) a:not(.dash-item):not(.local-card-link):not(.rb-link):not(.local-settings-link) { color: var(--ds-ink); text-decoration: underline; text-decoration-color: var(--ds-line); text-underline-offset: 3px; }
+/* The title text is grey; its concept icon keeps its own colour (one colour per concept, editorial.css), and the icon's
+   paths draw that colour (this rule used to grey the paths too, so the icon drew two colours). */
+.local-dashboard-page .local-run-summary-group > h3, .local-dashboard-page .local-run-summary-group > h3 *:not(svg):not(svg *) { color: var(--ds-ink-3) !important; }
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) a:not(.dash-item):not(.local-card-link):not(.rb-link):not(.local-settings-link) { color: var(--ds-ink); text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
 :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) a:not(.dash-item):not(.local-card-link):not(.rb-link):not(.local-settings-link):hover { text-decoration-color: currentColor; }
 .local-dashboard-page details.local-run-failure > summary { color: var(--ds-ink-2); }
 .local-overview-summary .local-card-change { color: var(--ds-ink-2); }
@@ -1490,9 +1499,9 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ds-accent); outline-o
   border-top: 3px solid var(--card-accent);
   background-image: linear-gradient(180deg, color-mix(in srgb, var(--card-accent) 14%, transparent), transparent 75%);
 }
-:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel > .local-dashboard-metric[data-measured="true"],
-:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel > h2 svg {
-  /* The redesign pins every figure to ink with !important; only these summary-card figures take their card colour. */
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel > .local-dashboard-metric[data-measured="true"] {
+  /* The redesign pins every figure to ink with !important; only these summary-card figures take their card colour. Their
+     icons take their concept colour, the same on every page (editorial.css, one colour per concept). */
   color: var(--card-accent) !important;
 }
 
@@ -1533,10 +1542,12 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ds-accent); outline-o
   :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel {
     transition: transform 180ms ease, box-shadow 180ms ease;
   }
+  /* !important: the 01+20 flat-card rule (editorial.css) sets box-shadow: none !important on every panel; this rule's
+     higher specificity then wins only here, on a headline card's hover under normal motion (Codex review of 34cfb67b1). */
   :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel:hover {
     transform: translateY(-3px);
     box-shadow: 0 14px 30px -16px color-mix(in srgb, var(--card-accent) 70%, transparent),
-      0 0 0 1px color-mix(in srgb, var(--card-accent) 40%, transparent);
+      0 0 0 1px color-mix(in srgb, var(--card-accent) 40%, transparent) !important;
   }
 }
 
@@ -1553,7 +1564,7 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ds-accent); outline-o
   }
 }
 
-/* Card styling: a soft resting shadow, the icon in a tinted badge of the card's colour, the figure in IBM Plex Sans
+/* Card styling: a soft resting shadow, the icon in the card's colour, the figure in the sans face
    semibold with tabular digits, and quieter labels. */
 :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel {
   border-radius: 12px;
@@ -1565,10 +1576,10 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ds-accent); outline-o
   letter-spacing: 0.06em;
 }
 :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel > h2 svg {
-  box-sizing: content-box;
-  padding: 4px;
-  border-radius: 7px;
-  background: color-mix(in srgb, var(--card-accent) 16%, transparent);
+  /* Lakshman 2026-11-03 ("box not needed"): the glyph alone, in the card's colour, no tinted square around it. */
+  padding: 0;
+  border-radius: 0;
+  background: none;
 }
 :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel > .local-dashboard-metric {
   font-family: var(--ds-font-sans);

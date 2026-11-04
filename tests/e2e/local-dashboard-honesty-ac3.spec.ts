@@ -1,5 +1,7 @@
 import { expect, test } from 'playwright/test';
-import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chartRows, prefix, serveCharts, keepRealClock } from './omn21166-chart-fixtures';
+// This spec dates its rows from the real clock, so the browser keeps it (see FIXTURE_NOW).
+test.beforeEach(({ page }) => keepRealClock(page));
 
 // OMN-21304 AC3's three falsifier clauses not covered by local-dashboard-honesty.spec.ts, each beside a positive
 // control. The average score and passed-gate cases pin behaviour already on dev and fail on a lab mutant; the

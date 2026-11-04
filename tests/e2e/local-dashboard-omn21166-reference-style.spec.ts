@@ -22,7 +22,8 @@ import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
 test.use({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce', trace: 'on' });
 
 const PAGES = ['/overview', '/runs', '/workflow?correlation_id=chart-run-a', '/usage', '/settings', '/delegation-evidence'];
-const INK = { light: 'rgb(17, 17, 17)', dark: 'rgb(250, 250, 250)' } as const;
+// The 01+20 ink (Lakshman 2026-11-03): #0a0a0a / #f5f5f5 (was #111111 / #fafafa).
+const INK = { light: 'rgb(10, 10, 10)', dark: 'rgb(245, 245, 245)' } as const;
 // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the editorial look replaced JetBrains Mono, Inter, the grey card line and 8px
 // corners with Geist Mono labels, a Fraunces display face for titles and figures, ink hairlines and square corners.
 // The checks read those from the page's own tokens (--font-mono, --font-sans, --ed-display, --ed-rule), not from
@@ -71,7 +72,8 @@ for (const theme of ['light', 'dark'] as const) {
     expect(read.length).toBeGreaterThanOrEqual(5);
     expect(read.filter(card => card.figureFont !== null).length, 'the fixture serves measured figures').toBeGreaterThanOrEqual(1);
     // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): labels in the --font-mono face (Geist Mono), figures in the display face,
-    // a 1px ink hairline (--ed-rule) on every card, square corners.
+    // a 1px hairline (--ed-rule) on every card. Lakshman 2026-11-03 ("01 + 20 do it"): the 01 Obsidian and 20 Daylight
+    // look rounds a card's corners to 12px.
     const face = await tokens(page);
     expect(firstFamily(face.mono), 'control: the mono and text faces differ').not.toBe(firstFamily(face.sans));
     for (const card of read) {
@@ -82,7 +84,7 @@ for (const theme of ['light', 'dark'] as const) {
         expect(card.figureSize, 'AC168 figure 32px').toBe('32px');
       }
       expect([card.edge, card.edgeColor], 'AC167 neutral 1px ink hairline').toEqual(['1px', face.rule]);
-      expect(card.radius, 'OMN-21970 AC9 square corners (was part 28 AC181 8px)').toBe('0px');
+      expect(card.radius, 'OMN-21970 01+20 look: 12px card corners (was AC9 square, part 28 AC181 8px)').toBe('12px');
     }
     // OMN-21970 AC8 (committed 801bf845) supersedes part 28 AC177's one grey: each headline concept has its own icon
     // colour, and an icon is never its label's colour.
@@ -92,13 +94,14 @@ for (const theme of ['light', 'dark'] as const) {
     const title = page.locator('.local-dashboard-panel:not(.local-overview-summary > .local-dashboard-panel) > h2').first();
     expect(firstFamily(await title.evaluate(el => getComputedStyle(el).fontFamily))).toBe(firstFamily(face.mono));
     await expect(title).toHaveCSS('font-weight', '500');
-    expect(firstFamily(await page.locator('.sidebar .sidebar-bottom-title > *').first().evaluate(el => getComputedStyle(el).fontFamily))).toBe(firstFamily(face.mono));
-    // AC168 as restyled by OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the page title in the display face, 800, at the top
-    // of clamp(36px, 4.2vw, 56px) on a 1440px window.
+    // The 01+20 look (Lakshman 2026-11-03): the sidebar's section labels are quiet text in the sans face, not mono tags.
+    expect(firstFamily(await page.locator('.sidebar .sidebar-bottom-title > *').first().evaluate(el => getComputedStyle(el).fontFamily))).toBe(firstFamily(face.sans));
+    // AC168 as restyled by the 01+20 look (Lakshman 2026-11-03): the page title in the display face (Geist) at 600, at the top of
+    // clamp(32px, 3.4vw, 46px) on a 1440px window (was AC9/AC10's serif at 56px).
     const h1 = page.locator('.local-dashboard-header h1');
     expect(firstFamily(await h1.evaluate(el => getComputedStyle(el).fontFamily))).toBe(firstFamily(face.display));
-    await expect(h1).toHaveCSS('font-size', '56px');
-    await expect(h1).toHaveCSS('font-weight', '800');
+    await expect(h1).toHaveCSS('font-size', '46px');
+    await expect(h1).toHaveCSS('font-weight', '600');
     // Part 28 AC186: the current page is a lifted, bordered item on the shell's active surface, not the sidebar's own
     // surface. OMN-21970: the surface is read from --shell-active-surface rather than a hard-coded colour.
     const active = page.locator('.sidebar .mvp-nav-item.active');
@@ -119,8 +122,8 @@ for (const theme of ['light', 'dark'] as const) {
     // AC168 phone sizes and R4: nothing scrolls sideways at 390 or 320.
     for (const width of [390, 320]) {
       await page.setViewportSize({ width, height: 844 });
-      // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the display title's floor is 36px (was 24px).
-      await expect(page.locator('.local-dashboard-header h1')).toHaveCSS('font-size', '36px');
+      // The 01+20 look (Lakshman 2026-11-03): the display title's floor is 32px (was 36px under AC9/AC10, 24px before).
+      await expect(page.locator('.local-dashboard-header h1')).toHaveCSS('font-size', '32px');
       await expect(page.locator('.local-overview-summary .local-dashboard-metric:not([data-measured="false"])').first()).toHaveCSS('font-size', '24px');
       for (const path of PAGES) {
         await page.goto(path);
@@ -303,8 +306,9 @@ test('R9 narrowing to phone width without a reload folds the sidebar so the page
 // OMN-21970 AC10 (Lakshman 2026-11-02, "it should be full page", then "yes best way" for a section menu down the left):
 // each Settings section fills the content column beside the menu, and nothing visible inside it scrolls sideways
 // (the old provider table did: 912/1312). A planted over-wide element must be caught, or the check proves nothing.
-// OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the section title is now the serif display face at 700 (was 500).
-test('R11 each Settings section fills its column, nothing inside it scrolls sideways, and its title is the display face at 700', async ({ page }) => {
+// OMN-21970 AC9/AC10 (Lakshman 2026-11-02) made the section title the display face; the 01+20 look (Lakshman 2026-11-03)
+// sets it in Geist at 600 (was the serif at 700, and 500 before that).
+test('R11 each Settings section fills its column, nothing inside it scrolls sideways, and its title is the display face at 600', async ({ page }) => {
   await openTheme(page, 'dark');
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/settings');
@@ -336,7 +340,7 @@ test('R11 each Settings section fills its column, nothing inside it scrolls side
   expect((await measure()).overflowing.some(entry => entry.startsWith('div. '))).toBe(true);
   await page.locator('#r11-control').evaluate(el => el.remove());
   const heading = page.locator('main section.local-settings-section:not([hidden]) > h2');
-  await expect(heading).toHaveCSS('font-weight', '700');
+  await expect(heading).toHaveCSS('font-weight', '600');
   expect(firstFamily(await heading.evaluate(el => getComputedStyle(el).fontFamily))).toBe(firstFamily((await tokens(page)).display));
 });
 

@@ -1,5 +1,7 @@
 import { expect, test } from 'playwright/test';
-import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chartRows, keepRealClock, narrowTo, prefix, serveCharts } from './omn21166-chart-fixtures';
+// This spec dates its rows from the real clock, so the browser keeps it (see FIXTURE_NOW).
+test.beforeEach(({ page }) => keepRealClock(page));
 
 // Before implementation: no model/tier volume bars or outcome composition;
 // unknown verdicts disappear; latest run is buried below every insight chart.
@@ -36,9 +38,7 @@ test('Overview groups activity, routing and quality charts and keeps latest exec
   expect(Math.max(...heights) - Math.min(...heights)).toBeLessThanOrEqual(1);
   await page.screenshot({ path: info.outputPath('overview-reorganized-desktop.png'), fullPage: true });
   for (const width of [390, 320]) {
-    await page.setViewportSize({ width, height: 844 });
-    const collapse = page.getByRole('button', { name: 'Collapse sidebar', exact: true });
-    if (await collapse.isVisible()) await collapse.click();
+    await narrowTo(page, width, 844);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     await page.goto('/overview');
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);

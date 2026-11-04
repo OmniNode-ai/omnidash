@@ -1,5 +1,7 @@
 import { expect, test } from 'playwright/test';
-import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chartRows, prefix, serveCharts, keepRealClock } from './omn21166-chart-fixtures';
+// This spec dates its rows from the real clock, so the browser keeps it (see FIXTURE_NOW).
+test.beforeEach(({ page }) => keepRealClock(page));
 
 // OMN-21970 (Lakshman 2026-11-03, option a): names read in ink for contrast; the swatch beside each name carries its colour.
 // Remaining AC1/AC2 failure mode found by the actual census: a named tier's

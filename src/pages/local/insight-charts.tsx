@@ -227,7 +227,7 @@ function ModelScoreboard({ runs }: { runs: InsightRun[] }) {
         items={groups.map(group => {
           const judged = group.passed + group.failed;
           const rate = judged ? (group.passed / judged) * 100 : null;
-          return { key: group.key, name: group.key, value: rate, basis: 'measured' as const, color: modelColor(group.key),
+          return { key: group.key, name: group.key, model: group.key, value: rate, basis: 'measured' as const, color: modelColor(group.key),
             display: rate === null ? 'No verdicts' : `${Math.round(rate)}%`, title: `${count(group.runs)} runs · ${verdictCoverage(judged, group.runs)}` };
         })}
         // Each model's verdict coverage in plain text under the bars, so keyboard and touch readers have it too.

@@ -8,7 +8,8 @@ export interface SparkDay { key: string; value: number | null; title: string }
 
 export function BarSparkline({ label, days }: { label: string; days: readonly SparkDay[] }) {
   const peak = Math.max(1, ...days.flatMap(day => (day.value === null ? [] : [day.value])));
-  return <span className="usage-analysis-spark" role="img" aria-label={label}>
+  // The bars are one neutral grey, a shape of the runs per day, not an identity colour.
+  return <span className="usage-analysis-spark" role="img" data-identity-decoration="sparkline" aria-label={label}>
     {days.map(day => <i key={day.key} data-day={day.key} data-covered={day.value === null ? 'false' : 'true'} data-runs={day.value ?? undefined}
       title={day.title} style={day.value === null ? undefined : { '--spark-height': `${(day.value / peak) * 100}%` } as CSSProperties} />)}
   </span>;

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CONCEPT_ICONS } from '@/design-system/icons';
+import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { DestinationIcon } from '@/navigation/destination-icons';
 import { LocalDashboardPage, type LocalDashboardCache } from './LocalDashboardPage';
 
@@ -54,12 +54,12 @@ export function SettingsPage({ navigationCache }: { navigationCache: LocalDashbo
       <nav className="local-settings-menu" aria-label="Settings sections">
         <p className="local-settings-menu-label">Sections</p>
         <ol>{SETTINGS_SECTIONS.map((section, index) => {
-          const Icon = CONCEPT_ICONS[section.icon];
           const active = section.hash === current;
           return <li key={section.id}>
             <a className="local-settings-link" href={`#${section.hash}`} aria-current={active ? 'page' : undefined} data-active={active ? 'true' : undefined}>
               <span className="local-settings-index mono" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
-              {Icon && <Icon size={16} aria-hidden="true" />}<span>{section.title}</span>
+              {/* The section's concept icon from the registry, so it carries the same glyph and colour wherever the concept appears. */}
+              <ConceptIcon concept={section.icon} label={section.title} size={16} /><span>{section.title}</span>
             </a>
           </li>;
         })}</ol>

@@ -1,7 +1,9 @@
 import { test, expect, type Page } from 'playwright/test';
-import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chartRows, prefix, serveCharts, keepRealClock } from './omn21166-chart-fixtures';
 // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the window radios sit in one dropdown; chooseWindow opens it and proves it closed.
 import { chooseWindow } from './overview-window-menu';
+// This spec dates its rows from the real clock, so the browser keeps it (see FIXTURE_NOW).
+test.beforeEach(({ page }) => keepRealClock(page));
 
 // Failure modes: client HTTP hides SQLite backing; reading then falling back masks errors;
 // day rows replace all-time, stale/tied baselines win, missing becomes zero, or the source is unnamed.

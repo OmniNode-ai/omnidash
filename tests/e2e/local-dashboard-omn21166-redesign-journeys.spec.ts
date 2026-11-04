@@ -1,9 +1,11 @@
 import { writeFileSync } from 'node:fs';
 import { expect, test, type Page } from 'playwright/test';
-import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chartRows, prefix, serveCharts, keepRealClock } from './omn21166-chart-fixtures';
 // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the window radios sit in one dropdown; chooseWindow opens it and proves it closed.
 import { chooseWindow } from './overview-window-menu';
 import { withAllTime, withAnalysis, withTrace } from './omn21166-redesign-fixtures';
+// This spec dates its rows from the real clock, so the browser keeps it (see FIXTURE_NOW).
+test.beforeEach(({ page }) => keepRealClock(page));
 
 // OMN-21166 part 29, revision 6 (Lakshman 2026-10-27: "based on delegation data you can redesign all pages and make a best
 // dashboard", benchmarked against 20 platforms; Codex critique MSGs cf609ee2, 02a3961e, c8abbf3f). Journeys, not one

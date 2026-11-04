@@ -1,5 +1,6 @@
 import { expect, test } from 'playwright/test';
 import { evidenceDecisions, evidenceMetering, evidenceQuality, evidenceTopic, serveEvidence } from './omn21166-evidence-fixtures';
+import { narrowTo } from './omn21166-chart-fixtures';
 
 test.use({ viewport: { width: 1440, height: 900 }, trace: 'on' });
 
@@ -75,9 +76,7 @@ test('Missing quality aggregate is a typed empty state; mixed pricing is named',
   await expect(page.locator('[data-panel-title="QUALITY GATE"]')).toContainText('No quality-gate rows');
   await expect(page.getByRole('region', { name: 'Evidence claim' })).toContainText('mixed basis');
   await expect(page.getByRole('region', { name: 'Evidence claim' })).not.toContainText('pricing v3');
-  await page.setViewportSize({ width: 390, height: 844 });
-  const collapse = page.getByRole('button', { name: 'Collapse sidebar', exact: true });
-  if (await collapse.isVisible()) await collapse.click();
+  await narrowTo(page, 390, 844);
   await expect(page.getByRole('region', { name: 'Evidence claim' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   await info.attach('evidence-missing-and-mixed', { body: JSON.stringify({ aggregate: 'absent', allTimeVersion: '3', dailyVersion: '2' }), contentType: 'application/json' });

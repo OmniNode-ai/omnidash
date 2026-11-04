@@ -70,11 +70,13 @@ test('empty or unavailable run figures do not produce fake charts or zeros', asy
   await page.goto('/overview');
   // OMN-21166 AC86: the recent-runs table is gone; unrecorded token counts must still read "not recorded", never 0.
   const tokenDays = page.locator('[data-slice="tokens"] button.gdb-day');
-  await expect(tokenDays.first()).toHaveAccessibleName('Oct 17: not recorded in, not recorded out');
-  for (const label of await tokenDays.evaluateAll(els => els.map(el => el.getAttribute('aria-label') ?? ''))) {
-    expect(label).toMatch(/not recorded in, not recorded out$/);
-    expect(label).not.toMatch(/\b0 (in|out)\b/);
-  }
+  // OMN-21970 AC1 to AC4: the chart now covers every day of the window. The day whose runs recorded no token counts reads
+  // not recorded, never 0; a day with no runs at all is a measured zero (Lakshman 2026-10-25, "say 0").
+  await expect(tokenDays.first()).toBeVisible();
+  const labels = await tokenDays.evaluateAll(els => els.map(el => el.getAttribute('aria-label') ?? ''));
+  expect(labels, 'the run day is drawn').toContain('Oct 17: not recorded in, not recorded out');
+  expect(labels.filter(label => label.startsWith('Oct 17:'))).toEqual(['Oct 17: not recorded in, not recorded out']);
+  for (const label of labels.filter(label => !label.startsWith('Oct 17:'))) expect(label).toMatch(/: 0 in, 0 out$/);
   await serveCharts(page, { ...rows, [prefix + 'delegation.decisions.v1']: [] });
   await page.reload();
   await expect(page.locator('[data-slice="runs"]')).toContainText('No runs yet');

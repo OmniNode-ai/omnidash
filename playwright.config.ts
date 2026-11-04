@@ -20,6 +20,11 @@ export default defineConfig({
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5174',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
+    // OMN-21970 AC9 animates figures and bars on load. Measured on .201 (2026-11-03, Playwright 1.59.1): a spec's
+    // test.use({ reducedMotion }) did not reach the page (matchMedia reported false and figures were read mid count-up),
+    // while this context option does. Specs that check motion switch it on with page.emulateMedia({ reducedMotion:
+    // 'no-preference' }), as the Workflow analysis spec does.
+    contextOptions: { reducedMotion: 'reduce' },
   },
   projects: [
     {

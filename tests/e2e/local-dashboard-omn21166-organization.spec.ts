@@ -1,6 +1,8 @@
-import { revealRunFields } from './omn21166-chart-fixtures';
+import { keepRealClock, narrowTo, revealRunFields } from './omn21166-chart-fixtures';
 import { expect, test } from 'playwright/test';
 import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+// This spec dates its rows from the real clock, so the browser keeps it (see FIXTURE_NOW).
+test.beforeEach(({ page }) => keepRealClock(page));
 
 // Declared failures before code: Workflow has no field grouping, run controls
 // bury the list, evidence renders hundreds of rows, and long pages have no
@@ -56,9 +58,7 @@ for (const route of ['overview', 'runs', 'workflow', 'usage', 'settings', 'deleg
       await expect(page.getByRole('navigation', { name: 'On this page', exact: true })).toHaveCount(0);
     }
     for (const width of [1440, 390, 320]) {
-      await page.setViewportSize({ width, height: 900 });
-      const collapse = page.getByRole('button', { name: 'Collapse sidebar', exact: true });
-      if (width < 768 && await collapse.isVisible()) await collapse.click();
+      await narrowTo(page, width, 900);
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
       const scroller = page.locator(route.startsWith('overview') || ['runs','workflow','usage','settings'].includes(route) ? 'main.local-dashboard-page' : '.ev-scroll');
       await scroller.evaluate(el => { el.scrollTop = 0; });
@@ -85,7 +85,13 @@ test('destination icons and colors match between sidebar and page headers', asyn
     for (const theme of ['light', 'dark']) {
       if ((await page.locator('html').getAttribute('data-theme') === 'dark' ? 'dark' : 'light') !== theme) await page.getByRole('button', { name: 'Toggle theme' }).click();
       // Part 28a: both are the one interface grey (the current page is marked by its lifted item, AC186).
-      expect(await header.evaluate(el => getComputedStyle(el).color)).toBe(await nav.evaluate(el => getComputedStyle(el).color));
+      // The toggle re-renders the header icon, so a colour read straight after the click can land on the replaced node
+      // and read "" (2026-11-03 lab repeats); wait for both icons to settle on one colour.
+      const colour = (el: SVGElement) => getComputedStyle(el).color;
+      await expect.poll(async () => {
+        const [headerColour, navColour] = [await header.evaluate(colour), await nav.evaluate(colour)];
+        return headerColour !== '' && headerColour === navColour ? 'same' : `header ${headerColour || 'unset'}, sidebar ${navColour}`;
+      }, { message: `${route} ${theme}: header and sidebar icons share one colour` }).toBe('same');
     }
   }
 });
@@ -114,7 +120,7 @@ test('Workflow fact cards have distinct semantic Lucide icons and colors', async
     border: getComputedStyle(element).borderTopColor,
   })));
   expect(new Set(identities.map(identity => identity.icon)).size).toBe(4);
-  // Part 28 AC177: the four subject titles and their icons are grey; the subjects stay distinct by icon and title.
-  expect(new Set(identities.map(identity => identity.color)).size).toBe(1);
+  // One colour per concept (Lakshman 2026-11-03): the four subject icons are four concepts, so four colours; the titles stay grey.
+  expect(new Set(identities.map(identity => identity.color)).size).toBe(4);
   expect(new Set(identities.map(identity => identity.border)).size).toBe(1);
 });

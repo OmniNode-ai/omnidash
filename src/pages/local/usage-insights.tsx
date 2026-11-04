@@ -90,7 +90,7 @@ function SpendByModel({ data }: { data: UsageAggregates }) {
       {priced.length === 0 && <p role="status" className="ins-readout">No measured model spend served</p>}
       <RankedBars layout="vertical" label="Measured spend per model" unit={totalUsd === null ? 'USD · measured spend' : `USD · measured spend · ${money(totalUsd)} in all`}
         items={data.models.map(model => ({
-          key: model.model, name: model.model, value: model.measuredCost, basis: 'measured',
+          key: model.model, name: model.model, model: model.model, value: model.measuredCost, basis: 'measured',
           display: model.measuredCost === null ? 'Not measured' : money(model.measuredCostUsd), color: modelColor(model.model),
           // Part 29 AC193: each model opens Runs filtered to it.
           href: `/runs?${writeRunsSearch('', { ...DEFAULT_RUNS_VIEW, model: model.model })}`, opensLabel: `Opens Runs filtered to ${model.model}`,
@@ -135,7 +135,7 @@ function TokensByModel({ data, titled }: { data: UsageAggregates; titled: boolea
       <GroupedBars label="Token counts by model" wrapNames
         legend={[{ label: 'Tokens in', color: 'var(--ds-field-tokens-in)' }, { label: 'Tokens out', color: 'var(--ds-field-tokens-out)' }]}
         groups={data.models.map(model => ({
-          key: model.model, name: model.model, nameColor: modelColor(model.model),
+          key: model.model, name: model.model, model: model.model, nameColor: modelColor(model.model),
           label: `${model.model}: ${words(model.inputTokens)} tokens in, ${words(model.outputTokens)} tokens out`,
           values: [
             { key: 'in', value: model.inputTokens, display: words(model.inputTokens), color: 'var(--ds-field-tokens-in)', tone: 'tokens-in' },
@@ -188,7 +188,7 @@ function CostByRoute({ routing, titled }: { routing: RouteRow[]; titled: boolean
         <RankedBars layout="vertical" label="Cost per route" unit="USD · measured cost per route" order="desc"
           items={routed.map(row => {
             const value = row.cost.usd === null ? null : Number(row.cost.usd);
-            return { key: row.key, name: row.route, basis: 'measured' as const, color: tierColor(row.tier),
+            return { key: row.key, name: row.route, tier: row.tier, basis: 'measured' as const, color: tierColor(row.tier),
               value: value !== null && Number.isFinite(value) ? value : null,
               display: `${row.cost.text} · ${count(row.runs)} runs · ${share(row.share)}` };
           })} />

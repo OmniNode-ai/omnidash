@@ -40,7 +40,8 @@ test('Evidence failure triage separates all-time categories from the latest serv
 
   await triage.getByRole('tab', { name: 'By model' }).click();
   await expect(page).toHaveURL(/triage=model/);
-  await expect(triage).toContainText('3 failed of 4 latest served runs');
+  // OMN-21970 (d0476f95): a complete read names its population without "latest".
+  await expect(triage).toContainText('3 failed of 4 served runs');
   const modelB = triage.locator('[data-triage-row]').filter({ hasText: 'model-b' });
   await expect(modelB).toContainText('2 · 66.7%');
   await expect(modelB.getByRole('link')).toHaveAttribute('href', '/runs?status=failed&model=model-b');
@@ -76,7 +77,8 @@ test('An absent quality aggregate has a typed triage state without losing served
   await expect(triage).toContainText('No quality-gate rows');
   await expect(triage).not.toContainText('0 failed checks');
   await triage.getByRole('tab', { name: 'By model' }).click();
-  await expect(triage).toContainText('3 failed of 4 latest served runs');
+  // OMN-21970 (d0476f95): a complete read names its population without "latest".
+  await expect(triage).toContainText('3 failed of 4 served runs');
   await info.attach('failure-triage-absent-aggregate', { body: JSON.stringify({ aggregateRows: 0, latestServedRuns: 4, latestFailedRuns: 3 }), contentType: 'application/json' });
 });
 

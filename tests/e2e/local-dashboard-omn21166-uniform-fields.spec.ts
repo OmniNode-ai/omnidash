@@ -20,18 +20,23 @@ test('matching fields retain one distinct color across Overview, Workflow and Ev
   // carried by its icon, so the cross-page match is checked on the icon colour and the values must agree in ink.
   await page.goto('/workflow?correlation_id=chart-run-a');
   const icon = (label: string) => color(page.locator(`[data-summary-field="${label}"] dt svg`));
-  // Part 28a: the Model icon is the run's model identity (data, in its colour); a field's label icon is the one interface
-  // grey on every page, and its colour stays on the data (the Tokens per day legend keeps tokens in and out distinct).
+  // One colour per concept on every page (Lakshman 2026-11-03; was part 28a's one grey): the Model icon is the run's model
+  // identity, and each field's label icon draws that field's own colour, so tokens in and out differ here as they do in
+  // the Tokens per day legend.
   const modelColor = await icon('Model');
-  const grey = await icon('Tokens in');
-  expect(await icon('Tokens out')).toBe(grey);
+  const tokensIn = await icon('Tokens in');
+  const tokensOut = await icon('Tokens out');
+  expect(tokensOut).not.toBe(tokensIn);
+  const grey = await page.evaluate(() => { const probe = document.createElement('i'); probe.style.color = 'var(--icon-grey)';
+    document.body.append(probe); const value = getComputedStyle(probe).color; probe.remove(); return value; });
   await page.goto('/overview');
   const daily = page.getByRole('figure', { name: 'Tokens per day', exact: true });
   const legend = await Promise.all([color(daily.locator('.ins-token-legend [data-field-tone="tokens-in"]')), color(daily.locator('.ins-token-legend [data-field-tone="tokens-out"]'))]);
   expect(new Set(legend).size).toBe(2);
-  expect(legend).not.toContain(grey);
-  expect(modelColor).not.toBe(grey);
-  const original = [modelColor, grey, grey];
+  expect(modelColor).not.toBe(tokensIn);
+  expect(modelColor).not.toBe(tokensOut);
+  expect([tokensIn, tokensOut], 'the field icons are not the interface grey').not.toContain(grey);
+  const original = [modelColor, tokensIn, tokensOut];
   await page.goto('/workflow?correlation_id=chart-run-a');
   const inkValues: string[] = [];
   for (const [index, label] of ['Model', 'Tokens in', 'Tokens out'].entries()) {

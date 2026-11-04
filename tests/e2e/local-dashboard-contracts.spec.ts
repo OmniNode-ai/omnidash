@@ -477,7 +477,7 @@ test('local panels follow both themes on every page without losing readable surf
       // OMN-21166 revision 3 (AC160): on Settings the card is the section; its embedded panels are flat inside it.
       const surfaces = await page.locator('.local-dashboard-panel:not(.local-settings-section .local-dashboard-panel), .local-settings-section').evaluateAll((panels) => {
         const expected = document.createElement('div');
-        expected.style.backgroundColor = getComputedStyle(document.querySelector('.app')!).getPropertyValue('--panel').trim();
+        expected.style.backgroundColor = getComputedStyle(document.querySelector('.app')!).getPropertyValue('--ed-paper-3').trim(); // the 01+20 card surface (Lakshman 2026-11-03; was --panel)
         // OMN-21166 AC63/live review: the four KPI tiles are --panel with a 7% tint of their own accent, so they are
         // compared channel by channel (within 20/255 of --panel, and opaque); every other panel is exactly --panel.
         const canvas = document.createElement('canvas').getContext('2d')!;
@@ -489,7 +489,8 @@ test('local panels follow both themes on every page without losing readable surf
           return {
             title: panel.querySelector('h2')?.textContent,
             background: tile ? (a[3] === 255 && a.slice(0, 3).every((v, i) => Math.abs(v - b[i]) <= 20) ? 'panel-tint' : background) : background,
-            expected: tile ? 'panel-tint' : expected.style.backgroundColor,
+            // OMN-21970 AC10 (Lakshman 2026-11-02, "it should be full page"): Settings' sections and panels sit on the page.
+            expected: tile ? 'panel-tint' : panel.closest('.local-dashboard-page--settings') ? 'rgba(0, 0, 0, 0)' : expected.style.backgroundColor,
           };
         });
       });
@@ -497,7 +498,7 @@ test('local panels follow both themes on every page without losing readable surf
       for (const surface of surfaces) expect(surface.background, `${theme} ${name} ${surface.title}`).toBe(surface.expected);
       const nested = await page.locator('.overview-chart-row > figure.local-chart, .local-run-charts > figure.local-chart, .workflow-analysis-card').evaluateAll(cards => cards.map(card => {
         const expected = document.createElement('div');
-        expected.style.backgroundColor = getComputedStyle(document.querySelector('.app')!).getPropertyValue('--panel').trim();
+        expected.style.backgroundColor = getComputedStyle(document.querySelector('.app')!).getPropertyValue('--ed-paper-3').trim(); // the 01+20 card surface (Lakshman 2026-11-03; was --panel)
         const background = getComputedStyle(card).backgroundColor;
         // OMN-21166 live review 2026-10-25: the Maple restyle draws a chart or analysis card flat (transparent) on its
         // panel, whose own --panel surface is checked above; a flat card inside a panel passes, any other colour fails.
@@ -510,7 +511,7 @@ test('local panels follow both themes on every page without losing readable surf
       if (name === 'overview') {
         const flat = await page.locator('.maple-grid figure.local-chart, .maple-grid figure.rb-chart').evaluateAll(figures => figures.map(figure => {
           const expected = document.createElement('div');
-          expected.style.backgroundColor = getComputedStyle(document.querySelector('.app')!).getPropertyValue('--panel').trim();
+          expected.style.backgroundColor = getComputedStyle(document.querySelector('.app')!).getPropertyValue('--ed-paper-3').trim(); // the 01+20 card surface (Lakshman 2026-11-03; was --panel)
           const background = getComputedStyle(figure).backgroundColor;
           return {
             title: figure.getAttribute('aria-label') ?? figure.querySelector('h3')?.textContent,
@@ -625,9 +626,11 @@ test('sidebar surfaces and controls follow the theme in expanded and collapsed l
   for (const theme of ['light', 'dark']) {
     if ((await page.locator('html').getAttribute('data-theme') === 'dark' ? 'dark' : 'light') !== theme) await page.getByRole('button', { name: 'Toggle theme', exact: true }).click();
     await expect(page.locator('body')).toHaveClass(`theme-${theme}`);
-    const background = await token('--sidebar');
-    const foreground = await token('--sidebar-ink');
-    const secondary = await token('--sidebar-ink-2');
+    // The 01+20 look (Lakshman 2026-11-03): the sidebar sits on the page colour with ink text and ink-3 secondary items
+    // (was the --sidebar shell set).
+    const background = await token('--ed-paper');
+    const foreground = await token('--ed-ink');
+    const secondary = await token('--ed-ink-3');
     await expectColor(sidebar, 'background-color', background);
     await expectColor(sidebar, 'color', foreground);
     await expectColor(page.getByTestId('nav-local-runs'), 'color', secondary);
@@ -753,7 +756,7 @@ test('navigation selection, hover and keyboard focus remain distinct in both the
       await page.mouse.move(700, 60);
       await expect(selected).toHaveAttribute('aria-current', 'page');
       await expect(selected).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
-      await expect(selected).toHaveCSS('border-radius', '7px');
+      await expect(selected).toHaveCSS('border-radius', '8px'); // the 01+20 control radius (was 7px)
       const selectedBackground = await selected.evaluate(el => {
         const color = document.createElement('div');
         color.style.backgroundColor = getComputedStyle(el).getPropertyValue('--shell-active-surface').trim();
@@ -827,15 +830,16 @@ test('Runs filters, pagination and table hover use readable themed controls', as
     // sixth select, Task; part 23 AC145 added a seventh, Tier.
     await expect(selects).toHaveCount(7);
     for (const select of await selects.all()) {
-      // OMN-21166 part 28 AC181: the one-row Runs toolbar's selects have the 6px control radius and keep the 40px touch target.
-      await expect(select).toHaveCSS('border-radius', '6px');
+      // OMN-21166 part 28 AC181 as restyled by the 01+20 look: the toolbar's selects have the 8px control radius (was 6px)
+      // and keep the 40px touch target.
+      await expect(select).toHaveCSS('border-radius', '8px');
       await expect(select).toHaveCSS('min-height', '40px');
       await expect(select).toHaveCSS('border-top-style', 'solid');
     }
     const previous = page.getByRole('button', { name: 'Previous page', exact: true });
     await expect(previous).toBeDisabled();
     await expect(previous).toHaveCSS('opacity', '0.45');
-    await expect(previous).toHaveCSS('border-radius', '6px');
+    await expect(previous).toHaveCSS('border-radius', '8px');
     const row = page.locator('.local-dashboard-table-wrap tbody tr').first();
     await page.mouse.move(1000, 70);
     const rest = await row.evaluate(el => getComputedStyle(el).backgroundColor);

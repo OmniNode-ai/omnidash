@@ -999,7 +999,7 @@ export function SavingsByModel({ row }: { row: Row }) {
           const n = saving(model);
           // Part 29 AC193: a named model opens Runs filtered to it, as Overview's model bars do (AC135).
           const href = isMissing(model.model) ? undefined : `/runs?${writeRunsSearch('', { ...DEFAULT_RUNS_VIEW, model: name })}`;
-          return { key: `${name}-${index}`, name, value: n, basis: 'estimated' as const, color: modelColor(name), href,
+          return { key: `${name}-${index}`, name, model: isMissing(model.model) ? undefined : name, value: n, basis: 'estimated' as const, color: modelColor(name), href,
             opensLabel: href ? `Opens Runs filtered to ${name}` : undefined,
             display: n === null ? 'Not measured' : formatUsd(model.savings_usd), title: `${recordedCount(model.runs_measured)} of ${recordedCount(model.runs)} runs measured` };
         })} />
@@ -1013,7 +1013,7 @@ export function SavingsByModel({ row }: { row: Row }) {
           const runs = recordedCount(model.runs);
           return (
             <li key={`${name}-${index}`} data-semantic-concept={`model:${name}`} style={{ '--model-color': modelColor(name) } as CSSProperties}>
-              <span className="local-model-identity" style={modelIdentityStyle(name)}>{name}</span>
+              <span className="local-model-identity" data-semantic-concept={`model:${name}`} style={modelIdentityStyle(name)}>{name}</span>
               <span className="local-savings-bar" aria-hidden="true">{n !== null && max > 0 && <i style={{ width: `${Math.max(1, (n / max) * 100)}%` }} />}</span>
               <strong data-field-tone="savings" data-field-unavailable={n === null}>{n === null ? 'Not measured' : formatUsd(model.savings_usd)}</strong>
               <span>{`${recordedCount(model.runs_measured)} of ${runs} runs measured`}</span>
@@ -1931,7 +1931,7 @@ export function ModelUsagePanel({ row }: { row: Row | null }) {
           const pct = share(model.pct_of_total);
           // Part 19 AC135: a named model opens Runs filtered to it; a model the rows do not name opens nothing.
           const href = isMissing(model.model_name) ? undefined : `/runs?${writeRunsSearch('', { ...DEFAULT_RUNS_VIEW, model: name })}`;
-          return { key: `${name}-${index}`, name, value: runs, basis: 'measured' as const, color: modelColor(name), href, opensLabel: `Opens Runs filtered to ${name}`,
+          return { key: `${name}-${index}`, name, model: isMissing(model.model_name) ? undefined : name, value: runs, basis: 'measured' as const, color: modelColor(name), href, opensLabel: `Opens Runs filtered to ${name}`,
             display: runs === null ? 'Not recorded'
               : `${recordedCount(model.total_count)}${pct === null ? '' : ` · ${pct > 0 && pct * 100 < 0.1 ? '<0.1' : (pct * 100).toFixed(1)}%`}` };
         })} />
@@ -1997,7 +1997,7 @@ export function TierMixPanel({ row, compact = false }: { row: Row | null; compac
             </tr>,
             ...(Array.isArray(tier.models) ? asRecords(tier.models) : []).map((model, modelIndex) => (
               <tr data-tone={tone} style={{ '--tier-color': tierColor(name) } as CSSProperties} key={`${name}-${index}-${String(model.model_name)}-${modelIndex}`} className="local-dashboard-row--nested local-routing-model-row">
-                <td className="local-dashboard-cell-token local-dashboard-cell-name"><span className="local-routing-name local-model-identity" style={modelIdentityStyle(model.model_name)}><FieldIcon tone="model" value={model.model_name} size={14} />{recorded(model.model_name)}</span></td>
+                <td className="local-dashboard-cell-token local-dashboard-cell-name"><span className="local-routing-name local-model-identity" data-semantic-concept={`model:${String(model.model_name)}`} style={modelIdentityStyle(model.model_name)}><FieldIcon tone="model" value={model.model_name} size={14} />{recorded(model.model_name)}</span></td>
                 <td data-column="runs">{recordedCount(model.count)}</td>
                 <td data-column="share" className="local-dashboard-cell-token">{routed ? <Readable value={model.pct_of_tier_routed} kind="percent" /> : <><span aria-hidden="true">—</span><span className="local-visually-hidden">No share: not tier-routed</span></>}</td>
                 <td data-column="cost" data-unavailable={isMissing(model.cost_usd)}>{tierModelCost(model)}</td>
@@ -2807,6 +2807,8 @@ export const PANEL_CONCEPTS: Readonly<Record<string, string>> = {
   'workflow-run-path': 'path', 'usage-by-model-day': 'usage-day', 'usage-tokens-by-day': 'tokens-daily',
   'usage-savings-series': 'savings-daily', 'credentials-keys': 'credentials',
   'api-keys-local-identity': 'local-identity', 'api-keys-access': 'local-access', 'api-keys-cloud': 'cloud-keys',
+  // OMN-21970 AC10: Settings' Pricing and routing panel, the one panel title on the six pages that had no icon.
+  'pricing-baseline': 'baseline',
 };
 /** Compatibility inventory, derived from the shared canonical identity rather than a second icon map. */
 export const PANEL_ICONS: Record<string, LucideIcon> = Object.fromEntries(

@@ -1,5 +1,5 @@
 import { expect, test } from 'playwright/test';
-import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chartRows, narrowTo, prefix, serveCharts } from './omn21166-chart-fixtures';
 
 // Before implementation: oversized unavailable cards must not consume the first
 // screen; routing details must remain keyboard accessible without a wall of rows.
@@ -41,9 +41,7 @@ test('compact Overview preserves missing data, quality, chart access and routing
   await page.goto('/overview');
   for (const theme of ['light', 'dark']) {
     for (const width of [1440, 390, 320]) {
-      await page.setViewportSize({ width, height: 900 });
-      const collapse = page.getByRole('button', { name: 'Collapse sidebar', exact: true });
-      if (width < 768 && await collapse.isVisible()) await collapse.click();
+      await narrowTo(page, width, 900);
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
       // The app scrolls its main element, rather than the browser window.
       await page.getByRole('main').evaluate(el => { el.scrollTop = 0; });

@@ -84,8 +84,9 @@ test('KPI colors follow their semantic identity instead of inherited gray', asyn
     const channels = hex.replace('#', '').match(/../g)!.map(x => parseInt(x, 16));
     const expected = `rgb(${channels.join(', ')})`;
     await expect(card.locator('.k-l')).toHaveCSS('color', expected);
-    // Part 28a AC177a: interface icons are one grey on every page, Event Bus included; the label and value keep the tone.
-    expect(await card.locator('.k-l svg').evaluate(el => getComputedStyle(el).color)).not.toBe(expected);
+    // One colour per concept on every page, Event Bus included (Lakshman 2026-11-03; was part 28a AC177a's grey): the
+    // icon, the label and the value all draw the card's concept colour.
+    expect(await card.locator('.k-l svg').evaluate(el => getComputedStyle(el).color)).toBe(expected);
     await expect(card.locator('.k-v')).toHaveCSS('color', expected);
     colors.push(expected);
   }
@@ -114,8 +115,8 @@ test('headline card icons retain semantic colors beside readable identity-tinted
       expect(ratio, `${theme} heading contrast`).toBeGreaterThanOrEqual(4.5);
       colors.push(color);
     }
-    // Part 28 AC177: the headline icons are grey (one colour); each card keeps its own icon and readable heading.
-    expect(new Set(colors).size).toBe(1);
+    // OMN-21970 AC8 (committed 801bf845) supersedes part 28 AC177's one grey: each headline concept has its own colour; each card keeps its own icon and readable heading.
+    expect(new Set(colors).size).toBe(5);
   }
 });
 
@@ -138,7 +139,8 @@ test('routing categories have separate colors matching their legend in both them
     for (const name of names) {
       const item = chart.locator(`[data-ranked-item^="${name}-"]`);
       const color = await item.locator('.rb-bar').evaluate(el => getComputedStyle(el).color);
-      expect(await item.locator('.rb-name').evaluate(el => getComputedStyle(el).color)).toBe(color);
+      // OMN-21970 option a (Lakshman 2026-11-03): the name is ink and the swatch beside it carries the bar's colour.
+      expect(await item.locator('.rb-name .rb-swatch').evaluate(el => getComputedStyle(el).backgroundColor)).toBe(color);
       colors.push(color);
     }
     expect(new Set(colors).size).toBe(names.length);
