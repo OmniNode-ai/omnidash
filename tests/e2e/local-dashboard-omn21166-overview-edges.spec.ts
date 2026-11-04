@@ -118,7 +118,7 @@ test('E2 exactly one run on one day', async ({ page }, info) => {
   await shot(page, info, 'e2-one-run');
 });
 
-test('E5 499 runs draw every run with no line; 500 runs say the read limit only when the walk could not finish', async ({ page }, info) => {
+test('E5 499 or 500 runs draw with no read-limit line, even when the walk could not finish', async ({ page }, info) => {
   await open(page, { [decisionsTopic]: runs(499) });
   await expect(runsPanel(page).getByTestId('insights-total')).toHaveCount(0);
   await invariants(page, '499 runs', { twoColumns: true });
