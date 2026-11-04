@@ -5,8 +5,8 @@ ticket_id: "OMN-22168"
 title: "Design System Acceptance"
 summary: >-
   Design-system acceptance criteria for OMN-22168, copied from the live ticket on 2026-11-04,
-  with paths under src/theme/design-system after the 2026-11-04 move; AC7 (no served value or
-  behaviour changes) is proven by lab receipts at base and head, and AC6 (the Storybook page) by an
+  with paths under src/theme/design-system after the 2026-11-04 move; AC7 binds the colour-identity regressions
+  and is otherwise proven by lab receipts at base and head, and AC6 (the Storybook page) by an
   npm run build-storybook receipt beside the storybook coverage test, not by a check here.
 is_seam_ticket: false
 interface_change: false
@@ -42,6 +42,10 @@ requirements:
         statement: >-
           pages reference only --ds-* custom properties, so the token file can switch to OmniUI's
           exported tokens (OMN-21848) with no page change
+      - id: "AC7"
+        statement: >-
+          no served value or behaviour changes: the full omnidash vitest and Playwright suites pass on the lab
+          host with the same known failures as before the change
 dod_evidence:
   - id: "dod-omn22168-ac1-one-colour-source"
     description: >-
@@ -108,4 +112,18 @@ dod_evidence:
         check_value: >-
           test -d node_modules || npm ci --no-audit --no-fund; npx vitest run
           tests/design-system/token-seam.test.ts
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn22168-ac7-colour-identity"
+    description: >-
+      AC7, these follow-up regressions only, not the whole criterion: a chart given a page accent knob resolves it
+      to its colour instead of the fallback, and the local pass and fail graphics read the pass and fail field
+      colours, not the generic status colours, each beside a control. The full before-and-after vitest and
+      Playwright comparison is the lab receipt.
+    source: "manual"
+    binds_ac: ["AC7"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          test -d node_modules || npm ci --no-audit --no-fund; npx vitest run
+          tests/design-system/colour-identity.test.ts
         cwd: "${OMNI_HOME}/omnidash"
