@@ -41,6 +41,9 @@ describe('Runs list sort and export', () => {
     render(<RunsTable decisions={DECISIONS} sessions={[]} pageSize={1} now={Date.parse('2026-10-25T12:00:00Z')} />);
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search runs' }), { target: { value: 'local-a' } });
     fireEvent.click(screen.getByRole('button', { name: 'Export JSON' }));
+    // The export asks first (Lakshman 2026-11-04); nothing is written until the reader confirms.
+    expect(exported).toHaveLength(0);
+    fireEvent.click(screen.getByRole('button', { name: 'Download JSON' }));
     const rows = JSON.parse(await readBlob(exported[0]!)) as Array<Record<string, unknown>>;
     expect(rows.map(row => row.correlation_id).sort()).toEqual(['run-a', 'run-b', 'run-d']);
     expect(rows.find(row => row.correlation_id === 'run-a')).toEqual(DECISIONS[0]);
@@ -50,9 +53,26 @@ describe('Runs list sort and export', () => {
     render(<RunsTable decisions={DECISIONS} sessions={[]} now={Date.parse('2026-10-25T12:00:00Z')} />);
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search runs' }), { target: { value: 'cloud-b' } });
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Export CSV' })); });
+    expect(exported).toHaveLength(0);
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Download CSV' })); });
     const lines = (await readBlob(exported[0]!)).split('\r\n');
     expect(lines[0]!.split(',')).toContain('correlation_id');
     expect(lines).toHaveLength(2);
     expect(lines[1]).toContain('run-c');
+  });
+
+  it('W4: an export asks first, and Cancel, Escape or a click outside download nothing', async () => {
+    render(<RunsTable decisions={DECISIONS} sessions={[]} now={Date.parse('2026-10-25T12:00:00Z')} />);
+    for (const leave of ['cancel', 'escape', 'backdrop'] as const) {
+      fireEvent.click(screen.getByRole('button', { name: 'Export CSV' }));
+      const dialog = screen.getByRole('dialog', { name: /^Download \d+ runs? as CSV\?$/ });
+      expect(dialog).toHaveAttribute('aria-modal', 'true');
+      expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus();
+      if (leave === 'cancel') fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+      if (leave === 'escape') fireEvent.keyDown(dialog, { key: 'Escape' });
+      if (leave === 'backdrop') fireEvent.mouseDown(dialog.parentElement!);
+      expect(screen.queryByRole('dialog')).toBeNull();
+    }
+    expect(exported).toHaveLength(0);
   });
 });

@@ -33,7 +33,8 @@ import { TIER_TONES } from '@/theme/design-system/charts';
 import { InsightsSection, InsightsWindowContext, MeteringActivityInsights, OverviewRunsContext, PassRateSparkline, TaskIcon, type ActivityWindow } from '@/pages/local/insight-charts';
 import { UsageInsights } from '@/pages/local/usage-insights';
 import { RoutingAnalysis } from '@/pages/local/usage-analysis';
-import { Badge, DashboardTabs, DataTable, EmptyState, Fact, FactList, Figure, Panel, PanelTitle, StatusChip, Tooltip } from '@/theme/design-system/components';
+import { Badge, ConfirmDialog, DashboardTabs, DataTable, EmptyState, Fact, FactList, Figure, Panel, PanelTitle, StatusChip, Tooltip } from '@/theme/design-system/components';
+import { FileJson, FileSpreadsheet } from '@/theme/design-system/icons';
 import { SinceLastVisit } from '@/pages/local/since-last-visit';
 import { ModelKeys, providerName } from '@/pages/local/model-keys';
 import { EnvironmentPanel, ServiceHealthUnread } from '@/pages/local/environment';
@@ -1636,6 +1637,8 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
     </th>;
   };
   // OMN-21166 AC76: every row the search and filters match, across all pages and in the shown order, as served.
+  // Lakshman 2026-11-04: an export asks first, so a mistaken click downloads nothing.
+  const [pendingExport, setPendingExport] = useState<'csv' | 'json' | null>(null);
   const exportRuns = (format: 'csv' | 'json') => {
     const body = format === 'csv' ? runsToCsv(shown) : runsToJson(shown);
     const blob = new Blob([body], { type: format === 'csv' ? 'text/csv;charset=utf-8' : 'application/json' });
@@ -1749,9 +1752,17 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
             Routing columns
           </label></Tooltip>
           <span className="local-runs-export" role="group" aria-label="Export the matching runs">
-            <button type="button" onClick={() => exportRuns('csv')}>Export CSV</button>
-            <button type="button" onClick={() => exportRuns('json')}>Export JSON</button>
+            <button type="button" data-export="csv" onClick={() => setPendingExport('csv')}><FileSpreadsheet size={15} aria-hidden="true" />Export CSV</button>
+            <button type="button" data-export="json" onClick={() => setPendingExport('json')}><FileJson size={15} aria-hidden="true" />Export JSON</button>
           </span></p>
+          <ConfirmDialog open={pendingExport !== null} tone={pendingExport === 'json' ? 'purple' : 'green'}
+            icon={pendingExport === 'json' ? <FileJson size={16} /> : <FileSpreadsheet size={16} />}
+            title={`Download ${formatDashboardCount(shown.length)} ${shown.length === 1 ? 'run' : 'runs'} as ${pendingExport === 'json' ? 'JSON' : 'CSV'}?`}
+            confirmLabel={`Download ${pendingExport === 'json' ? 'JSON' : 'CSV'}`}
+            onCancel={() => setPendingExport(null)}
+            onConfirm={() => { const format = pendingExport; setPendingExport(null); if (format) exportRuns(format); }}>
+            <p>The file holds the runs that match the current search and filters, every field of each.</p>
+          </ConfirmDialog>
           <DataTable fit className={`local-runs-wrap${showAllFields ? ' local-runs-wrap--all' : ''}${showRouting ? ' local-runs-wrap--routing' : ''}`} id={`${id}-table`}>
               <thead>
                 <tr>

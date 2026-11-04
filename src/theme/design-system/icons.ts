@@ -31,7 +31,7 @@ export {
   ChartGantt, ChartLine, ChartPie, ChartSpline, Check, CheckCheck, ChevronDown, ChevronLeft, ChevronRight, ChevronUp,
   ChevronsLeft, ChevronsRight, ChevronsUp, CircleCheck, CircleDollarSign, CircleDot, CircleEllipsis, CircleHelp,
   CircleX, ClipboardCheck, Clock3, Cloud, Cloudy, CodeXml, Copy, Cpu, Database, DatabaseZap, Divide, DollarSign,
-  Edit, Feather, FileCheck2, FileClock, FileText, Files, Fingerprint, Flag, FlagTriangleRight, FlaskConical,
+  Download, Edit, Feather, FileCheck2, FileClock, FileJson, FileSpreadsheet, FileText, Files, Fingerprint, Flag, FlagTriangleRight, FlaskConical,
   Footprints, Gauge, GitBranch, GitCommitHorizontal, GitFork, GitPullRequest, Globe, GripVertical, HardDrive, Hash,
   HeartPulse, History, Hourglass, House, IdCard, Inbox, Key, KeyRound, Layers, Layers2, LayoutDashboard, LayoutGrid,
   List, ListChecks, Loader, LockKeyhole, LogOut, Logs, Maximize2, Medal, MessageSquareText, MessagesSquare, Mic,
