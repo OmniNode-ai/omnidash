@@ -19,6 +19,10 @@ export interface RankedBarItem {
   display: string;
   basis: RankedBarBasis;
   color: string;
+  /** The served model the bar is, when it is one: its swatch is then that model's identity mark. */
+  model?: string;
+  /** The routing tier the bar is, when it is one: its swatch is then that tier's identity mark. */
+  tier?: string;
   title?: string;
   /** OMN-21166 part 19 AC135: where the bar leads (e.g. Runs filtered to it), and the words its link adds. */
   href?: string;
@@ -74,7 +78,7 @@ export function RankedBars({ label, unit, items, order = 'asc', note, footnote, 
               <span className="rb-bar" data-pattern={item.basis === 'unknown' ? 'outline' : 'hatched'} style={scaled === undefined ? undefined : { '--rb-size': scaled } as CSSProperties} />
             </span>
             {/* OMN-21970 (Lakshman 2026-11-03, option a): the name is ink for contrast; a swatch beside it carries the bar's colour. */}
-            <span className="rb-name" title={item.name}><span className="rb-swatch" aria-hidden="true" />{item.name}</span>
+            <span className="rb-name" title={item.name}><span className="rb-swatch" aria-hidden="true" data-model-id={item.model} data-tier={item.tier} />{item.name}</span>
           </>;
           return (
             // Focusable, so a keyboard reader reveals the value as a pointer does on hover (live review 2026-10-25). A bar

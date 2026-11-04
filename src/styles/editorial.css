@@ -173,7 +173,7 @@ html body :is(.usage-analysis table th[data-model-name], [data-decision-matrix] 
 /* The same for every model name drawn through the model identity style (Delegation Evidence's tables and lists): the
    tier colour moves from the text to its swatch, since tier colours on text measured 3.83 and 4.23:1 there (Codex
    census review 2026-11-03), under the 4.5:1 text floor. */
-html body :is(.local-dashboard-page, .ev-root) .local-model-identity { color: var(--ed-ink) !important; }
+html body :is(.local-dashboard-page, .ev-root) .local-model-identity { color: var(--ds-ink) !important; }
 html body :is(.local-dashboard-page, .ev-root) .local-model-identity::before {
   content: ""; display: inline-block; flex: none; width: 0.7em; height: 0.7em; margin-right: 0.45em; vertical-align: -0.05em;
   border-radius: 2px; background: var(--model-identity-color, currentColor); }
