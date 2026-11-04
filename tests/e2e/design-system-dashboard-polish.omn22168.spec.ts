@@ -10,7 +10,7 @@ import { chartRows, prefix, recentDay, serveCharts } from './omn21166-chart-fixt
  *   L3 the run charts fill the Analysis views tab (a 12-column span made 11 empty grid columns);
  *   L4 a chart tooltip takes the dark theme (the chart library's white box);
  *   L5 an idle Inspect run select is not drawn in the focus colour;
- *   L6 a per-run chart keeps its value labels apart (eight labels stacked into 90px).
+ *   L6 a per-run chart keeps its value labels apart (they stacked 12px apart in a 150px chart).
  */
 const LONG = 'nvidia/nemotron-3-ultra-550b-a55b:free';
 const template = chartRows[prefix + 'delegation.decisions.v1'][0] as Record<string, unknown>;
@@ -39,11 +39,17 @@ async function openAnalysis(page: Page) {
 }
 
 async function useTheme(page: Page, theme: 'light' | 'dark') {
+  // The light theme is the page's default and may carry no data-theme attribute at all.
   const current = await page.locator('html').getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
   if (current !== theme) await page.getByRole('button', { name: 'Toggle theme' }).click();
-  await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+  if (theme === 'dark') await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  else await expect(page.locator('html')).not.toHaveAttribute('data-theme', 'dark');
 }
 
+// The live review saw the line stop short on a 2x display (devicePixelRatio 2, 2026-11-04); a non-scaling stroke's dash
+// is measured in device pixels, so the case renders at that ratio.
+test.describe('on a 2x display', () => {
+test.use({ deviceScaleFactor: 2 });
 test('L1: Pass rate per day draws its line to the last day', async ({ page }, info) => {
   await openAnalysis(page);
   const plot = page.getByRole('figure', { name: 'Pass rate per day', exact: true }).locator('.ins-plot');
@@ -59,9 +65,11 @@ test('L1: Pass rate per day draws its line to the last day', async ({ page }, in
   });
   expect(geometry.dots.length, 'one dot per day with a value').toBe(4);
   const shot = await plot.screenshot({ path: info.outputPath('pass-rate-line.png') });
-  // Along the last segment, between its two dots (clear of each dot's ring), the line's own colour must be drawn.
-  const [from, to] = geometry.dots.slice(-2);
-  const samples = [0.3, 0.5, 0.7].map(t => ({ x: from!.x + (to!.x - from!.x) * t, y: from!.y + (to!.y - from!.y) * t }));
+  // Along every segment, between its two dots (clear of each dot's ring), the line's own colour must be drawn.
+  const samples = geometry.dots.slice(1).flatMap((to, i) => {
+    const from = geometry.dots[i]!;
+    return [0.3, 0.5, 0.7].map(t => ({ x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t }));
+  });
   const drawn = await page.evaluate(async ({ bytes, samples, stroke, width }) => {
     const bitmap = await createImageBitmap(new Blob([new Uint8Array(bytes)], { type: 'image/png' }));
     const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
@@ -77,7 +85,8 @@ test('L1: Pass rate per day draws its line to the last day', async ({ page }, in
       return false;
     });
   }, { bytes: [...shot], samples, stroke: geometry.stroke, width: geometry.width });
-  expect(drawn, `the line is drawn at 30%, 50% and 70% of its last segment (stroke ${geometry.stroke})`).toEqual([true, true, true]);
+  expect(drawn, `the line is drawn at 30%, 50% and 70% of every segment (stroke ${geometry.stroke})`).toEqual(samples.map(() => true));
+});
 });
 
 test('L2: a long model name stays inside its Usage table cell', async ({ page }) => {
@@ -143,7 +152,6 @@ test('L6: a per-run chart keeps its value labels apart', async ({ page }) => {
         .filter(r => r.right - box.left < 70).map(r => r.top).sort((a, b) => a - b);
     });
     expect(labels.length, `${name}: value labels`).toBeGreaterThan(1);
-    expect(labels.length, `${name}: at most five value labels`).toBeLessThanOrEqual(5);
     const gaps = labels.slice(1).map((top, i) => top - labels[i]!);
     expect(Math.min(...gaps), `${name}: labels at least 20px apart`).toBeGreaterThanOrEqual(20);
   }

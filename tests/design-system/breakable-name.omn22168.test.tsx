@@ -11,7 +11,8 @@ import { breakableName } from '@/theme/design-system/charts/RankedBars';
  * one; N3 the Model usage rule lets the browser break anywhere again, which fills each line to the last letter.
  */
 const css = readFileSync(resolve(__dirname, '../../src/styles/seven-page-design.css'), 'utf8');
-const shown = (name: string) => render(<span data-testid="name">{breakableName(name)}</span>).getByTestId('name');
+// Each call reads its own render, so several names in one test never match each other.
+const shown = (name: string) => render(<span>{breakableName(name)}</span>).container.firstElementChild as HTMLElement;
 
 describe('a model name wraps at its joins (OMN-22168)', () => {
   it('N1: the name reads exactly as served', () => {

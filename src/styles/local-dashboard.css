@@ -1082,9 +1082,9 @@
 .local-recent-toolbar input { accent-color: var(--ds-link); width: 15px; height: 15px; }
 .local-recent-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 12px; font-size: 12px; }
 .local-recent-footer a { display: inline-flex; align-items: center; gap: 5px; color: var(--ds-link); text-decoration: none; min-height: 32px; }
-/* Keep both Runs charts and the table header on the first desktop screen. */
+/* The Runs charts sit inside the closed "More analysis" (OMN-21166 AC118), so they no longer share the first screen with
+   the table; at 150px their value labels stacked 12px apart (live review 2026-11-04), so they keep the kit's 210px. */
 @media(min-width:1025px) {
-  .local-dashboard-page--runs .local-chart--runs .local-chart-canvas { height: 150px !important; }
   .local-dashboard-page--runs .local-chart-heading { margin-bottom: 10px; }
   .local-dashboard-page--runs .local-run-charts { margin-bottom: 16px; }
 }

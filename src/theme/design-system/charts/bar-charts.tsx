@@ -488,9 +488,6 @@ function runChartFrame(runs: readonly ListedRun[], axisLabel: (value: number) =>
     },
     yAxis: {
       type: 'value',
-      // Three or so steps: the per-run charts are 150 to 210px tall, where the library's default of five stacked eight
-      // labels into 90px (live review 2026-11-04).
-      splitNumber: 3,
       axisLabel: { color: text, formatter: axisLabel },
       splitLine: { lineStyle: { color: line, type: 'dashed' } },
     },
