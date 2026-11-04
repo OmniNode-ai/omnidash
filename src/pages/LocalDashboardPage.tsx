@@ -2607,13 +2607,11 @@ export function WorkflowRun({ component, snapshots, requested, onOpen }: Workflo
           )}
         </>
       )}
-      {/* OMN-21166 part 13: the recorded fields and the stage chart (a repeat of the step durations) are one click away. */}
-      <div className="local-more local-more--open" data-section="More run details">
-        {(() => {
-          const decision = decisions.find((row) => row.correlation_id === runId);
-          return decision ? <WorkflowDecisionCharts decision={decision} show="comparisons">{null}</WorkflowDecisionCharts> : null;
-        })()}
-        <WorkflowRecordDetails decision={decisions.find((row) => row.correlation_id === runId)} steps={stepsUnread || foreign ? [] : rows} />
+      {/* Lakshman 2026-11-05 ("remove duplicates" on Workflow): the token and score comparisons repeated the Tokens and Run
+          outcome fields above, and the stage chart repeated the Run timeline's step durations (their own comments said so),
+          so they are gone; the recorded fields, shown nowhere else, stay. */}
+      <div className="local-more local-more--open" data-section="Recorded run details">
+        <WorkflowRecordDetails decision={decisions.find((row) => row.correlation_id === runId)} steps={[]} />
       </div>
     </div>
   );
@@ -3579,21 +3577,45 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
             return <>
               <div className="maple-grid">
                 {/* Live review 2026-10-25: the model charts sit side by side as vertical dotted bars between the day charts. */}
-                {savings && <div className="maple-cell maple-cell--full">{renderComponent(savings)}</div>}
-                {savings && <div className="maple-cell maple-cell--full">{renderComponent(savings, 'all', { key: 'by-model', title: 'Savings by model', concept: 'savings' })}</div>}
-                {insights && <div className="maple-cell maple-cell--full">{renderComponent(insights, 'all', { key: 'spend', title: 'Spend by model', concept: 'spend-model' })}</div>}
-                {tokens && <div className="maple-cell maple-cell--full">{renderComponent(tokens)}</div>}
+                {/* Lakshman 2026-11-05 ("all bar graph should be switched via tabs ... not in overview, check in Runs, Workflow,
+                    Usage, Settings"): Usage's seven bar charts are two full-width rows of tabs, one chart at a time, grouped
+                    by what they measure; the choice is kept in the address (?money=, ?tokens=). Each hint says what its chart
+                    measures; no figure is computed for a hint. */}
+                {(savings || insights) && <div className="maple-cell maple-cell--full">
+                  <Panel className="local-chart-tabs-panel" aria-labelledby="usage-money-title" aria-busy="false" data-width="12">
+                    <PanelTitle id="usage-money-title"><ConceptIcon concept="savings" label="Savings and spend" size={16} />Savings and spend</PanelTitle>
+                    <DashboardTabs label="Savings and spend charts" param="money" tabs={[
+                      ...(savings ? [
+                        { id: 'savings-daily', label: 'Savings per day', tone: 'var(--ds-field-savings-daily)', icon: <ConceptIcon concept="savings-daily" size={18} />,
+                          hint: 'Modelled, daily', panel: () => renderComponent(savings) },
+                        { id: 'savings-model', label: 'Savings by model', tone: 'var(--ds-field-savings)', icon: <ConceptIcon concept="savings" size={18} />,
+                          hint: 'Modelled, by model', panel: () => renderComponent(savings, 'all', { key: 'by-model', title: 'Savings by model', concept: 'savings' }) },
+                      ] : []),
+                      ...(insights ? [
+                        { id: 'spend-model', label: 'Spend by model', tone: 'var(--ds-field-spend-model)', icon: <ConceptIcon concept="spend-model" size={18} />,
+                          hint: 'Measured spend', panel: () => renderComponent(insights, 'all', { key: 'spend', title: 'Spend by model', concept: 'spend-model' }) },
+                        { id: 'cost-run', label: 'Cost per run', tone: 'var(--ds-field-cost-per-run)', icon: <ConceptIcon concept="cost-per-run" size={18} />,
+                          hint: 'Per UTC day', panel: () => renderComponent(insights, 'all', { key: 'cost-per-run', title: 'Cost per run', concept: 'cost-per-run' }) },
+                        { id: 'cost-route', label: 'Cost by route', tone: 'var(--ds-field-cost-route)', icon: <ConceptIcon concept="cost-route" size={18} />,
+                          hint: 'Measured, by route', panel: () => renderComponent(insights, 'all', { key: 'cost-by-route', title: 'Cost by route', concept: 'cost-route' }) },
+                      ] : []),
+                    ]} />
+                  </Panel>
+                </div>}
+                {(tokens || insights) && <div className="maple-cell maple-cell--full">
+                  <Panel className="local-chart-tabs-panel" aria-labelledby="usage-tokens-title" aria-busy="false" data-width="12">
+                    <PanelTitle id="usage-tokens-title"><ConceptIcon concept="tokens" label="Tokens" size={16} />Tokens</PanelTitle>
+                    <DashboardTabs label="Token charts" param="tokens" tabs={[
+                      ...(tokens ? [{ id: 'tokens-daily', label: 'Tokens per day', tone: 'var(--ds-field-tokens-daily)', icon: <ConceptIcon concept="tokens-daily" size={18} />,
+                        hint: 'In and out, by model', panel: () => renderComponent(tokens) }] : []),
+                      ...(insights ? [{ id: 'tokens-model', label: 'Tokens by model', tone: 'var(--ds-field-tokens-model)', icon: <ConceptIcon concept="tokens-model" size={18} />,
+                        hint: 'In and out, all days', panel: () => renderComponent(insights, 'all', { key: 'tokens-by-model', title: 'Tokens by model', concept: 'tokens-model' }) }] : []),
+                    ]} />
+                  </Panel>
+                </div>}
                 {/* Part 29 AC194, AC195: one Usage analysis panel (group-by table and cost versus quality), full row (AC89). */}
                 {insights && <div className="maple-cell maple-cell--full">{renderComponent(insights, 'all', { key: 'analysis', title: 'Usage analysis', concept: 'usage-analysis' })}</div>}
-              </div>
-              <div className="local-overview-secondary local-more local-more--page local-more--open" data-section="More usage">
-                <div className="maple-grid">
-                  {/* Part 17: each chart its own panel; the day-by-day token list is gone (the table below holds its rows). */}
-                  {insights && <div className="maple-cell maple-cell--full">{renderComponent(insights, 'all', { key: 'cost-per-run', title: 'Cost per run', concept: 'cost-per-run' })}</div>}
-                  {insights && <div className="maple-cell maple-cell--full">{renderComponent(insights, 'all', { key: 'tokens-by-model', title: 'Tokens by model', concept: 'tokens-model' })}</div>}
-                  {insights && <div className="maple-cell maple-cell--full">{renderComponent(insights, 'all', { key: 'cost-by-route', title: 'Cost by route', concept: 'cost-route' })}</div>}
-                  {byDay && <div className="maple-cell maple-cell--full">{renderComponent(byDay)}</div>}
-                </div>
+                {byDay && <div className="maple-cell maple-cell--full">{renderComponent(byDay)}</div>}
               </div>
             </>;
           })() : pageName === 'runs' ? (

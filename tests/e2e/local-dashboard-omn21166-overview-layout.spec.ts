@@ -1,6 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import { expect, test, type Page } from 'playwright/test';
 import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chooseChartTab } from './chart-tabs';
 
 // OMN-21166 part 21 (Lakshman 2026-10-26: "overview page is very bad why?"): a grid of shorter charts and plain cards.
 // Failure modes declared before code:
@@ -22,20 +23,34 @@ const fullRead = Array.from({ length: 500 }, (_, index) => {
 });
 const undatedRow = { ...decision, correlation_id: 'undated-run', created_at: null, written_at: null };
 
+// OMN-22168 (Lakshman 2026-11-04, "these 4 into one ... with tab and full size big one"): the four charts are one row of
+// tabs and one chart is drawn at a time, so every check below runs on each chart's tab in turn.
 function chartPanels(page: Page) {
-  return page.locator('.maple-cell--half > .local-dashboard-panel');
+  return page.locator('.local-overview-charts-panel .local-dashboard-tabpanel');
 }
 
+/** Each chart's tab chosen in turn: its title, the box it is drawn in, and the height of its plot. */
 async function boxes(page: Page) {
-  return chartPanels(page).evaluateAll(panels => panels.map(panel => {
-    const box = panel.getBoundingClientRect();
-    return { title: panel.querySelector('h2')?.textContent?.trim() ?? '', top: Math.round(box.top), left: Math.round(box.left), width: Math.round(box.width), height: Math.round(box.height) };
-  }));
+  const placed = [];
+  for (const title of TITLES) {
+    await chooseChartTab(page, title);
+    const box = await chartPanels(page).evaluate(panel => {
+      const r = panel.getBoundingClientRect();
+      const frame = panel.closest('.local-overview-charts-panel')!.getBoundingClientRect();
+      const plot = panel.querySelector('.ins-bars.gdb-plot, .rb-chart--vertical .rb-track');
+      return { top: Math.round(r.top), left: Math.round(r.left), width: Math.round(r.width), frameLeft: Math.round(frame.left),
+        frameRight: Math.round(frame.right), right: Math.round(r.right), plot: plot ? Math.round(plot.getBoundingClientRect().height) : 0 };
+    });
+    placed.push({ title, ...box });
+  }
+  await chooseChartTab(page, TITLES[0]!);
+  return placed;
 }
 
 /** For each day of a grouped chart, the share of the day's slot its bar columns span. */
-function daySpans(page: Page, title: string) {
-  return chartPanels(page).filter({ has: page.getByRole('heading', { name: title, exact: true }) }).locator('.gdb-day').evaluateAll(days => days.map(day => {
+async function daySpans(page: Page, title: string) {
+  await chooseChartTab(page, title);
+  return chartPanels(page).locator('.gdb-day').evaluateAll(days => days.map(day => {
     const slot = day.getBoundingClientRect();
     const cols = [...day.querySelectorAll('.gdb-col')].map(col => col.getBoundingClientRect());
     if (cols.length === 0) return 0;
@@ -43,23 +58,24 @@ function daySpans(page: Page, title: string) {
   }));
 }
 
-test('AC139 AC140 AC143: the four Overview charts sit two to a row, short, with bars that fill their days', async ({ page }, info) => {
+// AC139/AC140 laid the four charts two to a row with 200px plots; OMN-22168 makes them four tabs of one full-width panel
+// ("full size big one"), every plot one height. The bars-fill-their-days rule (AC143) and its control are unchanged.
+test('AC139 AC140 AC143: the four Overview charts are full-width tabs of one height, with bars that fill their days', async ({ page }, info) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await serveCharts(page);
   await page.goto('/overview');
-  await expect(chartPanels(page)).toHaveCount(4);
+  await expect(page.locator('.local-overview-charts-panel').getByRole('tab')).toHaveCount(4);
   const placed = await boxes(page);
   expect(placed.map(box => box.title)).toEqual(TITLES);
-  for (const [a, b] of [[0, 1], [2, 3]]) {
-    expect(placed[a]!.top, `${TITLES[a]} and ${TITLES[b]} share a row`).toBe(placed[b]!.top);
-    expect(Math.abs(placed[a]!.width - placed[b]!.width), 'equal widths').toBeLessThanOrEqual(1);
-    expect(placed[b]!.left).toBeGreaterThan(placed[a]!.left);
+  for (const box of placed) {
+    expect(Math.abs(box.top - placed[0]!.top), `${box.title} drawn in the same place`).toBeLessThanOrEqual(1);
+    expect(box.left - box.frameLeft, `${box.title} starts inside its panel`).toBeGreaterThanOrEqual(0);
+    expect(box.frameRight - box.right, `${box.title} ends inside its panel`).toBeGreaterThanOrEqual(0);
+    expect(box.width, `${box.title} takes the panel's width`).toBe(placed[0]!.width);
+    expect(box.plot, `${box.title} draws a plot`).toBeGreaterThan(0);
   }
-  expect(placed[2]!.top).toBeGreaterThan(placed[0]!.top);
-  for (const box of placed) expect(box.height, `${box.title} panel height`).toBeLessThanOrEqual(340);
-  const plots = await chartPanels(page).locator('.ins-bars.gdb-plot, .rb-chart--vertical .rb-track').evaluateAll(els => els.map(el => el.getBoundingClientRect().height));
-  expect(plots.length).toBeGreaterThanOrEqual(4);
-  for (const height of plots) expect(height, 'plot height').toBeLessThanOrEqual(200);
+  const plots = placed.map(box => box.plot);
+  expect(new Set(plots).size, 'every chart plot is one height').toBe(1);
   for (const title of ['Runs per day', 'Tokens per day']) {
     const spans = await daySpans(page, title);
     expect(spans.length, `${title} draws its days`).toBeGreaterThan(0);
@@ -69,7 +85,7 @@ test('AC139 AC140 AC143: the four Overview charts sit two to a row, short, with 
   await page.addStyleTag({ content: '.local-dashboard-page--overview .gdb-group { padding: 0 30% !important; }' });
   expect(Math.min(...await daySpans(page, 'Runs per day')), 'control: narrow bars are caught').toBeLessThan(0.6);
   await page.reload();
-  await expect(chartPanels(page)).toHaveCount(4);
+  await expect(page.locator('.local-overview-charts-panel').getByRole('tab')).toHaveCount(4);
   // Values stay behind hover and focus, and focus shows them (onex review run 30fe3cac: check both halves). On Overview
   // the numbers show in the readout on the legend row, not above each bar (a 30-day bar is too narrow for them).
   const readout = page.getByTestId('runs-per-day-readout');
@@ -86,7 +102,7 @@ test('AC139 AC140 AC143: the four Overview charts sit two to a row, short, with 
   writeFileSync(info.outputPath('overview-layout.json'), JSON.stringify({ placed, plots }, null, 2));
 });
 
-test('AC143 AC139: thirty days of runs in a half-width chart keep wide bars and labels inside the panel', async ({ page }) => {
+test('AC143 AC139: thirty days of runs keep wide bars and labels inside the panel on every chart tab', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const month = Array.from({ length: 300 }, (_, index) => {
     const at = new Date(Date.UTC(2026, 9, 26) - (index % 30) * 86_400_000 + 3_600_000).toISOString();
@@ -98,7 +114,11 @@ test('AC143 AC139: thirty days of runs in a half-width chart keep wide bars and 
   for (const title of ['Runs per day', 'Tokens per day']) {
     expect(Math.min(...await daySpans(page, title)), `${title}: bars span at least 60% of a day`).toBeGreaterThanOrEqual(0.6);
   }
-  const overflow = await chartPanels(page).evaluateAll(panels => panels.map(panel => panel.scrollWidth - panel.clientWidth));
+  const overflow = [];
+  for (const title of TITLES) {
+    await chooseChartTab(page, title);
+    overflow.push(await chartPanels(page).evaluate(panel => panel.scrollWidth - panel.clientWidth));
+  }
   expect(overflow, 'nothing passes a panel edge').toEqual([0, 0, 0, 0]);
 });
 
@@ -107,10 +127,10 @@ test('AC139: under 1100px each chart takes the full width, and 390px never scrol
     await page.setViewportSize({ width, height: 900 });
     await serveCharts(page);
     await page.goto('/overview');
-    await expect(chartPanels(page)).toHaveCount(4);
+    await expect(page.locator('.local-overview-charts-panel').getByRole('tab')).toHaveCount(4);
     const placed = await boxes(page);
-    for (let index = 1; index < placed.length; index++) expect(placed[index]!.top, `${width}px: one chart per row`).toBeGreaterThan(placed[index - 1]!.top);
     expect(new Set(placed.map(box => box.width)).size, `${width}px: equal full widths`).toBe(1);
+    for (const box of placed) expect(box.frameRight - box.right, `${width}px: ${box.title} inside its panel`).toBeGreaterThanOrEqual(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), `${width}px: no sideways scroll`).toBe(true);
     await page.screenshot({ path: info.outputPath(`overview-${width}.png`), fullPage: true });
   }
@@ -148,7 +168,8 @@ for (const theme of ['light', 'dark'] as const) {
 
 test('AC142: the line under Runs per day appears only when the chart does not draw every run', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  const runsPanel = () => chartPanels(page).filter({ has: page.getByRole('heading', { name: 'Runs per day', exact: true }) });
+  // OMN-22168: Runs per day is the tab Overview opens on; its chart is found by its component.
+  const runsPanel = () => page.locator('[data-component="overview-insights"][data-slice="runs"]');
   // Three dated runs: every run is drawn, so no line.
   await serveCharts(page);
   await page.goto('/overview');
