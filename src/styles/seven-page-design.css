@@ -315,7 +315,7 @@ main.ev-root[data-destination="delegation-evidence"] .kv [data-field-tone="model
 .local-card-basis-tip { position: absolute; top: 12px; right: 12px; z-index: 5; }
 .local-card-info {
   display: inline-grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%;
-  background: transparent; color: var(--ds-ink-3); cursor: help;
+  background: transparent; color: var(--ds-ink-3); cursor: pointer;
 }
 .local-card-info:is(:hover, :focus-visible) { background: var(--ds-surface-2); color: var(--ds-ink); outline: none; }
 .local-card-info:focus-visible { box-shadow: 0 0 0 2px var(--ds-accent); }

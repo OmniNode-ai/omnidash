@@ -33,7 +33,7 @@ import { TIER_TONES } from '@/theme/design-system/charts';
 import { InsightsSection, InsightsWindowContext, MeteringActivityInsights, OverviewRunsContext, PassRateSparkline, TaskIcon, type ActivityWindow } from '@/pages/local/insight-charts';
 import { UsageInsights } from '@/pages/local/usage-insights';
 import { RoutingAnalysis } from '@/pages/local/usage-analysis';
-import { Badge, ConfirmDialog, DashboardTabs, DataTable, EmptyState, Fact, FactList, Figure, Panel, PanelTitle, StatusChip, Tooltip } from '@/theme/design-system/components';
+import { Badge, ConfirmDialog, DashboardTabs, DataTable, EmptyState, Fact, FactList, Figure, InfoTip, Panel, PanelTitle, StatusChip } from '@/theme/design-system/components';
 import { FileJson, FileSpreadsheet } from '@/theme/design-system/icons';
 import { SinceLastVisit } from '@/pages/local/since-last-visit';
 import { ModelKeys, providerName } from '@/pages/local/model-keys';
@@ -1742,15 +1742,16 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
           <div className={`local-runs-list-detail${selectedRun ? ' local-runs-list-detail--selected' : ''}`}>
             <div className="local-runs-table-column">
           <h3 className="local-visually-hidden" data-page-heading tabIndex={-1}>Run list</h3>
-          {/* Lakshman 2026-11-04: each view switch says on hover (and keyboard focus) what it adds to the table. */}
-          <p className="local-dashboard-caption local-recent-toolbar"><Tooltip side="bottom" text={RUN_FIELDS_TIP}><label>
+          {/* Lakshman 2026-11-04: each view switch has an info icon beside it that says, on hover or keyboard focus, what
+              the switch adds to the table. */}
+          <p className="local-dashboard-caption local-recent-toolbar"><span className="local-recent-switch"><label>
             <input type="checkbox" checked={showAllFields} onChange={event => setShowAllFields(event.target.checked)} aria-controls={`${id}-table`} />
             Show all run fields
-          </label></Tooltip>
-          <Tooltip side="bottom" text={ROUTING_COLUMNS_TIP}><label>
+          </label><InfoTip side="bottom" label="About Show all run fields" text={RUN_FIELDS_TIP} /></span>
+          <span className="local-recent-switch"><label>
             <input type="checkbox" checked={showRouting} onChange={event => setShowRouting(event.target.checked)} aria-controls={`${id}-table`} />
             Routing columns
-          </label></Tooltip>
+          </label><InfoTip side="bottom" label="About Routing columns" text={ROUTING_COLUMNS_TIP} /></span>
           <span className="local-runs-export" role="group" aria-label="Export the matching runs">
             <button type="button" data-export="csv" onClick={() => setPendingExport('csv')}><FileSpreadsheet size={15} aria-hidden="true" />Export CSV</button>
             <button type="button" data-export="json" onClick={() => setPendingExport('json')}><FileJson size={15} aria-hidden="true" />Export JSON</button>

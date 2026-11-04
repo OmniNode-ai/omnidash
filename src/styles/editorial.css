@@ -423,3 +423,7 @@ html body .app svg.field-icon.field-icon[data-field-icon="usage-day"]:not([data-
 @media (prefers-reduced-motion: reduce) {
   .local-dashboard-page--runs [data-component="recent-runs"] :is(input, select, button, tr, input::before) { transition: none !important; }
 }
+/* Each view switch with its info icon (Lakshman 2026-11-04: "tooltip icon ... so that people will hover it"). */
+.local-dashboard-page--runs [data-component="recent-runs"] .local-recent-switch { display: inline-flex; align-items: center; gap: 2px; }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-recent-switch .ds-infotip { width: 22px; height: 22px; color: var(--ds-ink-3); }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-recent-switch .ds-infotip:hover { color: var(--ds-hue-blue); }
