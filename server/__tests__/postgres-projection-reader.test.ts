@@ -574,3 +574,59 @@ describe('PostgresProjectionReader no longer folds model-routing or quality-gate
     expect(client.query.mock.calls.filter(([sql]) => !/set_config|SET LOCAL|app\.tenant/i.test(String(sql)))).toEqual([]);
   });
 });
+
+// OMN-19787 AC-3: the acceptance-eval panel reads every class of the latest eval run from delegation_eval_results, and
+// the read is tenant-scoped: the app.tenant_id setting is placed on the connection and the SQL filters on it, so a read
+// with no tenant set returns no other tenant's rows.
+describe('PostgresProjectionReader acceptance-eval (OMN-19787 AC-3)', () => {
+  const TOPIC = 'onex.snapshot.projection.delegation.acceptance-eval.v1';
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('reads the latest eval run from delegation_eval_results, tenant-scoped', async () => {
+    const reader = new PostgresProjectionReader({ connectionString: 'postgresql://test:test@localhost:5432/test' });
+    const evalRows = [
+      { eval_run_id: 'run-b', task_class: 'code_review', stratum: 'all', arm: 'recorded', false_pass_count: 85,
+        accepted_n: 114, false_pass_upper_bound: 0.81, false_pass_line_verdict: 'missed' },
+      { eval_run_id: 'run-b', task_class: 'test', stratum: 'all', arm: 'recorded', false_pass_count: 13,
+        accepted_n: 115, false_pass_upper_bound: 0.17, false_pass_line_verdict: 'refused' },
+    ];
+    const client = {
+      query: vi.fn().mockImplementation((sql: string) =>
+        Promise.resolve({ rows: String(sql).includes('delegation_eval_results') ? evalRows : [] })),
+      release: vi.fn(),
+    };
+    getMockPool().connect.mockResolvedValue(client);
+
+    const result = await runWithTenantContext({ tenantId: 'tenant-xyz', subject: null }, () =>
+      reader.readProjection(TOPIC),
+    );
+
+    expect(result.rows).toEqual(evalRows);
+    expect(client.query).toHaveBeenCalledWith("SELECT set_config('app.tenant_id', $1, false)", ['tenant-xyz']);
+    const evalSql = (client.query.mock.calls as [string][]).map(([sql]) => String(sql))
+      .filter((sql) => sql.includes('FROM delegation_eval_results'));
+    expect(evalSql).toHaveLength(1);
+    // The latest run only: the run is chosen by observed_at, newest first.
+    expect(evalSql[0]).toMatch(/ORDER BY observed_at DESC/);
+    // Tenant-scoped in the SQL itself, not only by row-level security.
+    expect(evalSql[0]).toContain("current_setting('app.tenant_id', true)");
+    expect(client.release).toHaveBeenCalled();
+  });
+
+  it('answers no rows when delegation_eval_results is not provisioned', async () => {
+    const reader = new PostgresProjectionReader({ connectionString: 'postgresql://test:test@localhost:5432/test' });
+    const missing = Object.assign(new Error('relation "delegation_eval_results" does not exist'), { code: '42P01' });
+    const client = { query: vi.fn().mockRejectedValue(missing), release: vi.fn() };
+    getMockPool().connect.mockResolvedValue(client);
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    const result = await reader.readProjection(TOPIC);
+
+    expect(result.rows).toEqual([]);
+    expect(client.release).toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
+});

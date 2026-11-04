@@ -13,6 +13,7 @@ import {
   fetchDelegationSummary,
   fetchDelegationModelRouting,
   fetchDelegationQualityGate,
+  fetchDelegationAcceptanceEval,
   fetchCostSavingsOverview,
   fetchMeteringSummary,
   fetchDelegationSavings,
@@ -26,6 +27,7 @@ import {
   type DelegationSummaryRow,
   type ModelRoutingRow,
   type QualityGateRow,
+  type AcceptanceEvalRow,
   type CostSavingsOverviewRow,
   type SavingsRow,
   type TokenUsageRow,
@@ -51,6 +53,10 @@ export const useDelegationModelRouting = (): UseQueryResult<ProjectionResult<Mod
 
 export const useDelegationQualityGate = (): UseQueryResult<ProjectionResult<QualityGateRow>> =>
   useQuery({ queryKey: ['ev', 'delegation', 'quality-gate'], queryFn: fetchDelegationQualityGate, refetchInterval: POLL_MS });
+
+// OMN-19787 AC-3: the acceptance-eval exposure, read tenant-scoped through readProjection like every other panel.
+export const useDelegationAcceptanceEval = (): UseQueryResult<ProjectionResult<AcceptanceEvalRow>> =>
+  useQuery({ queryKey: ['ev', 'delegation', 'acceptance-eval'], queryFn: fetchDelegationAcceptanceEval, refetchInterval: POLL_MS });
 
 export const useCostSavingsOverview = (): UseQueryResult<ProjectionResult<CostSavingsOverviewRow>> =>
   useQuery({ queryKey: ['ev', 'cost', 'savings-overview'], queryFn: fetchCostSavingsOverview, refetchInterval: POLL_MS });

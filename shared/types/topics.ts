@@ -115,6 +115,12 @@ export const TOPICS = {
    */
   delegationTokenUsage: 'onex.snapshot.projection.delegation.token-usage.v1',
   /**
+   * Delegation acceptance-eval panel (OMN-19787 AC-3) — per task class of the latest eval run: accepted n, false passes
+   * and their decision bound, the range-line verdict, then false refusals. Backed by delegation_eval_results, written
+   * by omnimarket node_projection_delegation_eval and served tenant-scoped.
+   */
+  delegationAcceptanceEval: 'onex.snapshot.projection.delegation.acceptance-eval.v1',
+  /**
    * Dependency health findings widget — findings from dep-health-sweep projected
    * into dep_health_findings table (OMN-11043). Backed by
    * onex.evt.omnimarket.dep-health-sweep-completed.v1 events via
