@@ -2,7 +2,7 @@
 import { render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RunsTable } from '@/pages/LocalDashboardPage';
-import { chooseDropdown, dropdownValue, dropdownOptions } from '@/test-utils/dropdown';
+import { chooseDropdown, dropdownValue, dropdownOptions } from '../test-utils/dropdown';
 
 // The URL-synced table draws the Runs activity chart; jsdom has no canvas, so the chart is stubbed as the other
 // Runs tests stub it, and only the table is under test here.

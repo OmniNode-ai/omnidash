@@ -3,7 +3,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { LastRunCard, NoRunsYet, RecentRunsTable, RunSummary, RunsTable } from './LocalDashboardPage';
 import { causeHref } from './local/run-filter';
-import { chooseDropdown, dropdownValue, dropdownOptions } from '@/test-utils/dropdown';
+import { chooseDropdown, dropdownValue, dropdownOptions } from '../../tests/test-utils/dropdown';
 
 // Shapes are the lakshman-lane reads of 2026-10-02 11:34Z: a decisions row and the savings session that shares its id.
 const NOW = Date.parse('2026-10-02T10:12:00Z');

@@ -17,7 +17,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('echarts-for-react/lib/core', () => ({ default: () => <div data-testid="served-chart" /> }));
 
 import { RunsTable } from './LocalDashboardPage';
-import { chooseDropdown, dropdownValue } from '@/test-utils/dropdown';
+import { chooseDropdown, dropdownValue } from '../../tests/test-utils/dropdown';
 
 const NOW = Date.parse('2026-10-04T07:00:00Z');
 function decision(id: string, minute: number, extra: Record<string, unknown> = {}): Record<string, unknown> {

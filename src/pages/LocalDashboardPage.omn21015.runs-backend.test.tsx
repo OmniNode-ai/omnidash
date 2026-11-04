@@ -5,7 +5,7 @@ import { Router } from 'wouter';
 import { memoryLocation } from 'wouter/memory-location';
 import { RunsTable } from './LocalDashboardPage';
 import { DEFAULT_RUNS_VIEW, readRunsSearch, writeRunsSearch } from '@/navigation/runs-url-state';
-import { chooseDropdown, dropdownOptions, dropdownValue, dropdownText } from '@/test-utils/dropdown';
+import { chooseDropdown, dropdownOptions, dropdownValue, dropdownText } from '../../tests/test-utils/dropdown';
 
 // OMN-21015 AC8 (requirement RU-1): the Runs list filters by backend as well as by status, cause, model and window.
 // The backend is the served `backend_id` of delegation.decisions.v1; nothing here is derived from it.

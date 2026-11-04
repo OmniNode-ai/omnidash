@@ -33,7 +33,7 @@ vi.mock('echarts-for-react/lib/core', () => ({
 }));
 
 import { RunsTable } from './LocalDashboardPage';
-import { chooseDropdown } from '@/test-utils/dropdown';
+import { chooseDropdown } from '../../tests/test-utils/dropdown';
 
 const NOW = Date.parse('2026-10-04T07:00:00Z');
 function decision(id: string | null, minute: number, extra: Record<string, unknown> = {}): Record<string, unknown> {
