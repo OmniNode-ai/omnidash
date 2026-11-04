@@ -1311,7 +1311,7 @@
 .ins-bar { flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; background: transparent; cursor: pointer; display: flex; flex-direction: column; justify-content: flex-end; gap: 2px; border-radius: 4px; transition: opacity 120ms ease; }
 .ins-bar[data-dim="true"] { opacity: 0.4; }
 .ins-bar:focus-visible { outline: 2px solid var(--ins-accent); outline-offset: 2px; }
-.ins-seg { display: block; width: 100%; border-radius: 4px; }
+.ins-seg { display: block; width: 100%; border-radius: var(--ds-radius-bar) var(--ds-radius-bar) 0 0; }
 .ins-axis { display: flex; justify-content: space-between; font-size: 12px; color: var(--ds-ink-2); }
 .ins-plot { position: relative; height: 120px; }
 .ins-plot svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
@@ -2062,7 +2062,7 @@ figure.local-chart.usage-insight { min-width: 0; margin: 0; padding: 14px; }
 .local-dashboard-page :is(.ins-bars, .ins-plot, .ins-heat) { background: transparent; }
 .local-dashboard-page .ins-bars { padding: 10px 8px 0; border-bottom: 0; }
 .local-dashboard-page .ins-heat { padding: 10px; }
-.local-dashboard-page .ins-seg { border-radius: 2px; }
+.local-dashboard-page .ins-seg { border-radius: var(--ds-radius-bar) var(--ds-radius-bar) 0 0; }
 .local-dashboard-page .ins-title { font-size: 14px; }
 
 /* Neutral figures and colored labels, with the reference's quiet card edges. */

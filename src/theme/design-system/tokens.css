@@ -163,6 +163,8 @@
   --ds-radius: 12px;
   --ds-radius-control: 8px;
   --ds-radius-tag: 4px;
+  /* Every chart bar's rounded end (Lakshman 2026-11-04: "3px rounded tops, unify all bars"). */
+  --ds-radius-bar: 3px;
   --ds-radius-pill: 999px;
 
   --ds-pad-y: 14px;
