@@ -24,7 +24,9 @@ test('Runs retains all eighteen columns without splitting header words', async (
     });
   }));
   expect(splitWords).toEqual([]);
-  expect(await page.locator('[data-component="recent-runs"] .local-dashboard-table-wrap--fit').evaluate(el => el.scrollWidth - el.clientWidth)).toBe(0);
+  // Lakshman 2026-11-04: with every field shown the table scrolls sideways inside its panel (no word is split to fit);
+  // the page itself never scrolls sideways.
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
   await page.screenshot({ path: info.outputPath('runs-readable-headers.png'), fullPage: true });
 });
 

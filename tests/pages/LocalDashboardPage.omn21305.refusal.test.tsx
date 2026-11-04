@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RunsTable } from '@/pages/LocalDashboardPage';
+import { chooseDropdown, dropdownValue, dropdownOptions } from '@/test-utils/dropdown';
 
 // The URL-synced table draws the Runs activity chart; jsdom has no canvas, so the chart is stubbed as the other
 // Runs tests stub it, and only the table is under test here.
@@ -66,7 +67,7 @@ describe('OMN-21305 AC3: a run refused before dispatch shows on Runs under statu
   it('R1, R2: /runs?status=failed lists the refused run by its correlation id, linked into its run', () => {
     window.history.replaceState(null, '', '/runs?status=failed');
     render(<RunsTable now={NOW} decisions={[refusedRow, passedRow]} sessions={[]} syncUrl />);
-    expect(screen.getByLabelText('Status')).toHaveValue('failed');
+    expect(dropdownValue('Status')).toBe('failed');
     expect(listed()).toEqual([REFUSED_ID]);
     const row = screen.getByRole('row', { name: new RegExp(`^${REFUSED_ID}`) });
     expect(within(row).getByRole('link', { name: REFUSED_ID })).toHaveAttribute(
@@ -78,7 +79,7 @@ describe('OMN-21305 AC3: a run refused before dispatch shows on Runs under statu
 
   it('R3: the cause reads Refused before dispatch, never the raw code, the detail, its error code or Not recorded', () => {
     render(<RunsTable now={NOW} decisions={[refusedRow, passedRow]} sessions={[]} />);
-    fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'failed' } });
+    chooseDropdown('Status', 'failed');
     const row = screen.getByRole('row', { name: new RegExp(`^${REFUSED_ID}`) });
     const cause = within(row).getAllByRole('cell')[headers().indexOf('Cause')]!;
     expect(within(cause).getByText('Refused before dispatch')).toBeInTheDocument();
@@ -90,16 +91,16 @@ describe('OMN-21305 AC3: a run refused before dispatch shows on Runs under statu
 
   it('R4: the cause filter offers the refusal cause and keeps only the refused run', () => {
     render(<RunsTable now={NOW} decisions={[refusedRow, passedRow]} sessions={[]} />);
-    const options = within(screen.getByLabelText('Cause')).getAllByRole('option').map((option) => option.getAttribute('value'));
+    const options = dropdownOptions('Cause');
     expect(options).toContain('refused_before_dispatch');
-    fireEvent.change(screen.getByLabelText('Cause'), { target: { value: 'refused_before_dispatch' } });
+    chooseDropdown('Cause', 'refused_before_dispatch');
     expect(listed()).toEqual([REFUSED_ID]);
   });
 
   it('control: without the refused row, /runs?status=failed lists no run', () => {
     window.history.replaceState(null, '', '/runs?status=failed');
     render(<RunsTable now={NOW} decisions={[passedRow]} sessions={[]} syncUrl />);
-    expect(screen.getByLabelText('Status')).toHaveValue('failed');
+    expect(dropdownValue('Status')).toBe('failed');
     expect(screen.queryByRole('row', { name: new RegExp(`^${REFUSED_ID}`) })).not.toBeInTheDocument();
   });
 });

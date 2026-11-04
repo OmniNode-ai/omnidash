@@ -1,5 +1,6 @@
 import { expect, test, type Page } from 'playwright/test';
 import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { expectFilter, expectFilterText } from './filter-dropdowns';
 
 // AC39 (TI24): no user-visible text on the six core pages or Delegation Evidence
 // names an internal exposure, topic, table, column or typed code. Failure modes
@@ -61,9 +62,8 @@ const scenarios: Record<string, (page: Page) => Promise<void>> = {
 test('typed failure labels preserve the exact served cause filter and selected run', async ({ page }, info) => {
   await serveCharts(page, { ...chartRows, [prefix + 'delegation.decisions.v1']: refusalRows });
   await page.goto('/runs?status=failed&cause=refused_before_dispatch');
-  const cause = page.getByLabel('Cause', { exact: true });
-  await expect(cause).toHaveValue('refused_before_dispatch');
-  await expect(cause.locator('option:checked')).toHaveText('Refused before dispatch');
+  await expectFilter(page, 'Cause', 'refused_before_dispatch');
+  await expectFilterText(page, 'Cause', 'Refused before dispatch');
   const row = page.locator('.local-runs-wrap tbody tr');
   await expect(row).toHaveCount(1);
   await expect(row.locator('[data-failure-cause="refused_before_dispatch"]')).toHaveText('Refused before dispatch');

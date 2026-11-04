@@ -2,6 +2,7 @@ import { revealRunFields } from './omn21166-chart-fixtures';
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { expect, test, type Page } from 'playwright/test';
+import { pickFilter, expectFilter } from './filter-dropdowns';
 
 // OMN-19981 AC4: no page renders 0 for an unmeasured figure, and the default page renders at 1440x900 with no panel
 // cut off. The fixtures are the served shapes read from the lakshman lane on 2026-10-02, including one unmeasured run
@@ -590,11 +591,11 @@ test('manual Refresh rereads local exposures and preserves the Runs filter', asy
   await expect(savingsCard.getByText('$1.22', { exact: true })).toBeVisible();
   await page.getByTestId('nav-local-runs').click();
   await expect(page.getByText('Runs 1–2 of 2')).toBeVisible();
-  await page.getByLabel('Status', { exact: true }).selectOption('passed');
+  await pickFilter(page, 'Status', 'passed');
   const before = reads;
   await page.getByRole('button', { name: 'Refresh', exact: true }).click();
   await expect.poll(() => reads, { timeout: 3000 }).toBeGreaterThan(before);
-  await expect(page.getByLabel('Status', { exact: true })).toHaveValue('passed');
+  await expectFilter(page, 'Status', 'passed');
   await expect(page.getByText('Runs 1–2 of 2')).toBeVisible();
 });
 
@@ -697,8 +698,8 @@ test('Runs URL preserves filters and pagination through reload and Back/Forward'
   await serveFixtures(page, { ...fixtures, [DECISIONS]: many });
   await page.goto(`/runs?status=failed&model=${encodeURIComponent(model)}&page=2`);
   await expect(page.getByText('Runs 26–34 of 34')).toBeVisible();
-  await expect(page.getByLabel('Status', { exact: true })).toHaveValue('failed');
-  await expect(page.getByLabel('Model', { exact: true })).toHaveValue(model);
+  await expectFilter(page, 'Status', 'failed');
+  await expectFilter(page, 'Model', model);
   await page.reload();
   await expect(page.getByText('Runs 26–34 of 34')).toBeVisible();
   await page.getByTestId('nav-local-overview').click();
@@ -708,14 +709,14 @@ test('Runs URL preserves filters and pagination through reload and Back/Forward'
   await page.getByRole('button', { name: 'Previous page', exact: true }).click();
   await expect(page.getByText('Runs 1–25 of 34')).toBeVisible();
   expect(new URL(page.url()).searchParams.has('page')).toBe(false);
-  await page.getByLabel('Status', { exact: true }).selectOption('passed');
+  await pickFilter(page, 'Status', 'passed');
   await expect(page.getByText('Runs 1–25 of 26')).toBeVisible();
   expect(new URL(page.url()).searchParams.get('status')).toBe('passed');
   await page.goBack();
-  await expect(page.getByLabel('Status', { exact: true })).toHaveValue('failed');
+  await expectFilter(page, 'Status', 'failed');
   await expect(page.getByText('Runs 1–25 of 34')).toBeVisible();
   await page.goForward();
-  await expect(page.getByLabel('Status', { exact: true })).toHaveValue('passed');
+  await expectFilter(page, 'Status', 'passed');
   await expect(page.getByText('Runs 1–25 of 26')).toBeVisible();
 });
 
@@ -723,15 +724,15 @@ test('bad URL values stay usable, absent models are explicit and unknown pages r
   await serveFixtures(page);
   await page.goto('/runs?status=bad&window=yesterday&page=-3');
   await expect(page.getByText('Runs 1–2 of 2')).toBeVisible();
-  await expect(page.getByLabel('Status', { exact: true })).toHaveValue('all');
-  await expect(page.getByLabel('Window', { exact: true })).toHaveValue('all');
+  await expectFilter(page, 'Status', 'all');
+  await expectFilter(page, 'Window', 'all');
   await expect(page).toHaveURL(/\/runs$/);
   await page.goto('/runs?page=9999');
   await expect(page.getByText('Runs 1–2 of 2')).toBeVisible();
   await expect(page).toHaveURL(/\/runs$/);
   await page.goto('/runs?model=absent-model&cause=absent-cause');
-  await expect(page.getByLabel('Model', { exact: true })).toHaveValue('absent-model');
-  await expect(page.getByLabel('Cause', { exact: true })).toHaveValue('absent-cause');
+  await expectFilter(page, 'Model', 'absent-model');
+  await expectFilter(page, 'Cause', 'absent-cause');
   await expect(page.getByText('No runs match these filters')).toBeVisible();
   await page.goto('/no-such-page');
   await expect(page.getByRole('heading', { name: 'Page not found' })).toBeVisible();
@@ -825,14 +826,14 @@ test('Runs filters, pagination and table hover use readable themed controls', as
   for (const theme of ['dark', 'light']) {
     if ((await page.locator('html').getAttribute('data-theme') === 'dark' ? 'dark' : 'light') !== theme) await page.getByRole('button', { name: 'Toggle theme' }).click();
     await expect(page.locator('body')).toHaveClass(`theme-${theme}`);
-    const selects = page.locator('.local-dashboard-filters select');
+    // OMN-22168 (Lakshman 2026-11-04): the seven filters are the kit Dropdown, each a pill with its own glyph.
+    const selects = page.locator('.local-dashboard-filters .ds-dropdown-trigger');
     // Status, Cause, Model, Window, and since OMN-21015 AC8 Backend. OMN-21166 Maple grid: the task chips became a
-    // sixth select, Task; part 23 AC145 added a seventh, Tier.
+    // sixth filter, Task; part 23 AC145 added a seventh, Tier.
     await expect(selects).toHaveCount(7);
     for (const select of await selects.all()) {
-      // OMN-21166 part 28 AC181 as restyled by the 01+20 look: the toolbar's selects have the 8px control radius (was 6px)
-      // and keep the 40px touch target.
-      await expect(select).toHaveCSS('border-radius', '8px');
+      // OMN-21166 part 28 AC181: the toolbar's filters keep the 40px touch target; since OMN-22168 they are pills.
+      await expect(select).toHaveCSS('border-radius', '999px');
       await expect(select).toHaveCSS('min-height', '40px');
       await expect(select).toHaveCSS('border-top-style', 'solid');
     }

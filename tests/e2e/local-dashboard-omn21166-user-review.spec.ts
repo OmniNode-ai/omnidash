@@ -1,5 +1,6 @@
 import { expect, test } from 'playwright/test';
 import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { pickFilter } from './filter-dropdowns';
 
 // Failure modes declared before implementation: searching the wrong fields or
 // source, a stale page hiding matches, lost query on reload, filters not composing,
@@ -17,7 +18,7 @@ test('run search composes with filters, survives reload and clears without stale
   await expect(page).toHaveURL(/q=CHART-RUN-B/);
   await page.reload();
   await expect(search).toHaveValue('CHART-RUN-B');
-  await page.getByLabel('Status', { exact: true }).selectOption('passed');
+  await pickFilter(page, 'Status', 'passed');
   await expect(page.getByRole('status').filter({ hasText: 'No runs match' })).toBeVisible();
   await page.getByRole('button', { name: 'Clear filters', exact: true }).click();
   await expect(search).toHaveValue('');

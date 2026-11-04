@@ -2,6 +2,7 @@ import { expect, test } from 'playwright/test';
 import { chartRows, prefix, serveCharts, keepRealClock } from './omn21166-chart-fixtures';
 // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the window radios sit in one dropdown; chooseWindow opens it and proves it closed.
 import { chooseWindow, openWindows } from './overview-window-menu';
+import { expectFilterOption, pickFilter } from './filter-dropdowns';
 // This spec dates its rows from the real clock, so the browser keeps it (see FIXTURE_NOW).
 test.beforeEach(({ page }) => keepRealClock(page));
 
@@ -125,14 +126,13 @@ test('AC27 Runs filters by UTC day and task, then shows the selected run without
   await expect(week.getByRole('status')).toContainText('2 runs · 1 passed · 1 failed');
   await expect(page).toHaveURL(new RegExp(`day=${utcDay(0)}`));
   await expect(page.getByRole('row', { name: /run-today-unmeasured/ })).toBeVisible();
-  const task = page.getByLabel('Task', { exact: true });
-  await expect(task.locator('option', { hasText: 'code generation' })).toHaveText('code generation (1)');
+  await expectFilterOption(page, 'Task', 'code generation', 'code generation (1)');
   await page.getByRole('button', { name: 'Clear filters', exact: true }).click();
   await expect(page).not.toHaveURL(/day=/);
   await expect(page.getByRole('row', { name: /run-prev-pass/ })).toBeVisible();
 
-  await expect(task.locator('option', { hasText: 'code generation' })).toHaveText('code generation (2)');
-  await task.selectOption('code_generation');
+  await expectFilterOption(page, 'Task', 'code generation', 'code generation (2)');
+  await pickFilter(page, 'Task', 'code_generation');
   await expect(page.getByRole('row', { name: /run-today-fail/ })).toBeVisible();
   await expect(page.getByRole('row', { name: /run-yesterday/ })).toHaveCount(0);
   await task.selectOption('all');

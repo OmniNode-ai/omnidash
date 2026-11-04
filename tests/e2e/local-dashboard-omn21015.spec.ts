@@ -2,6 +2,7 @@ import { revealRunFields } from './omn21166-chart-fixtures';
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { expect, test, type Page, type Locator } from 'playwright/test';
+import { expectFilter } from './filter-dropdowns';
 
 // OMN-21015 AC4, series half: on the Usage page the drawn height of each model's bar in "Tokens by model" is its served
 // token count against the largest served count in the chart. OMN-21166 part 17 AC114: the chart is hatched grouped bars
@@ -496,7 +497,7 @@ test('OMN-21015: on Runs a backend in a row filters the list, the charts and the
   await page.getByRole('button', { name: 'Show only runs of backend byok-gemini' }).focus();
   await page.keyboard.press('Enter');
   await expect(page.locator('.local-dashboard-table-wrap tbody tr')).toHaveCount(1);
-  await expect(page.getByLabel('Backend', { exact: true })).toHaveValue('byok-gemini');
+  await expectFilter(page, 'Backend', 'byok-gemini');
   await expect(page).toHaveURL(/[?&]backend=byok-gemini/);
   expect(await settledBars(page, 'Duration per run')).toHaveLength(1);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

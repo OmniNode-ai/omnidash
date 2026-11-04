@@ -206,6 +206,8 @@ async function collect(page: Page): Promise<Reading[]> {
       // OMN-21166 part 12 AC73: the "About <card>" info button sits inside a field-toned card but is a control, not that
       // field's icon; it is recorded as an action (its Lucide shape and paint are still compared with the canonical icon).
       if (svg.closest('button.local-card-info') && icon === 'info') { kind = 'action'; concept = 'action:info'; }
+      // OMN-22168 (2026-11-04): the kit's InfoTip is the same kind of control, beside the Runs view switches.
+      if (svg.closest('button.ds-infotip') && icon === 'info') { kind = 'action'; concept = 'action:info'; }
       // Exact affordance icons plus a control are the action allowlist. A Bot,
       // Award, Model etc. inside a clickable semantic row is NOT an action.
       const control = svg.closest('button,a,summary,[role="button"]');
@@ -215,7 +217,9 @@ async function collect(page: Page): Promise<Reading[]> {
         // OMN-21166 live review 2026-10-25: the Overview window control's calendar button (Pick a UTC day).
         'calendar-days',
         // OMN-21166 part 24 AC148: each Overview graph's labelled "Expand" button opens its larger view.
-        'maximize2', 'maximize-2']);
+        'maximize2', 'maximize-2',
+        // OMN-22168 (Lakshman 2026-11-04): the Runs export buttons' file glyphs and each filter dropdown's own glyph.
+        'file-spreadsheet', 'file-braces', 'list-checks', 'circle-check', 'triangle-alert', 'bot', 'layers', 'server']);
       if (!concept && control && label && actionIcons.has(icon)) { kind = 'action'; concept = `action:${icon}`; }
       if (!concept && icon === 'check' && control && /^copy/i.test(label)) { kind = 'action'; concept = 'action:copy-confirmation'; }
       if (!concept && icon === 'scan-line' && svg.classList.contains('local-chart-inspect-icon')) {

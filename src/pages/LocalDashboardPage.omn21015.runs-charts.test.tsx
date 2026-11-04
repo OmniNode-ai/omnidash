@@ -33,6 +33,7 @@ vi.mock('echarts-for-react/lib/core', () => ({
 }));
 
 import { RunsTable } from './LocalDashboardPage';
+import { chooseDropdown } from '@/test-utils/dropdown';
 
 const NOW = Date.parse('2026-10-04T07:00:00Z');
 function decision(id: string | null, minute: number, extra: Record<string, unknown> = {}): Record<string, unknown> {
@@ -81,7 +82,7 @@ describe('OMN-21015: the Runs page draws the runs it lists', () => {
 
   it('R2: a run the filters leave out is not drawn', () => {
     open(RUNS);
-    fireEvent.change(screen.getByLabelText('Backend'), { target: { value: 'byok' } });
+    chooseDropdown('Backend', 'byok');
     expect(rowIds().map((id) => id.slice(0, 8))).toEqual(['bbbbbbbb']);
     expect(durations()).toEqual([4925]);
     expect(tokens()).toEqual([['Tokens in', [262]], ['Tokens out', [7]]]);
@@ -177,7 +178,7 @@ describe('OMN-21015: the Runs page draws the runs it lists', () => {
 
   it('R9: when no run matches the filters there is no chart', () => {
     open(RUNS);
-    fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'Not recorded' } });
+    chooseDropdown('Status', 'Not recorded');
     expect(screen.getByRole('status').textContent).toBe('No runs match these filters');
     expect(screen.queryByRole('figure')).toBeNull();
   });

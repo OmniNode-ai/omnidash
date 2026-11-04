@@ -5,6 +5,7 @@ import { Router } from 'wouter';
 import { memoryLocation } from 'wouter/memory-location';
 import { RunsTable } from './LocalDashboardPage';
 import { DEFAULT_RUNS_VIEW, readRunsSearch, writeRunsSearch } from '@/navigation/runs-url-state';
+import { chooseDropdown, dropdownOptions, dropdownValue, dropdownText } from '@/test-utils/dropdown';
 
 // OMN-21015 AC8 (requirement RU-1): the Runs list filters by backend as well as by status, cause, model and window.
 // The backend is the served `backend_id` of delegation.decisions.v1; nothing here is derived from it.
@@ -48,13 +49,13 @@ function listedRuns(): string[] {
 describe('RunsTable filters by backend (OMN-21015 AC8, RU-1)', () => {
   it('offers each served backend once, and the unserved one by its typed name', () => {
     render(<RunsTable now={NOW} decisions={decisions} sessions={[]} />);
-    const options = [...(screen.getByLabelText('Backend') as HTMLSelectElement).options].map((option) => option.value);
+    const options = dropdownOptions('Backend');
     expect(options).toEqual(['all', 'Not recorded', 'byok-gemini', 'local-qwen-coder']);
   });
 
   it('lists no row of another backend once one is chosen', () => {
     render(<RunsTable now={NOW} decisions={decisions} sessions={[]} />);
-    fireEvent.change(screen.getByLabelText('Backend'), { target: { value: 'local-qwen-coder' } });
+    chooseDropdown('Backend', 'local-qwen-coder');
     const rows = listedRuns();
     expect(rows).toHaveLength(2);
     expect(rows.every((text) => text.includes('run-local-'))).toBe(true);
@@ -63,7 +64,7 @@ describe('RunsTable filters by backend (OMN-21015 AC8, RU-1)', () => {
 
   it('finds the run whose backend was not served under Not recorded, and only there', () => {
     render(<RunsTable now={NOW} decisions={decisions} sessions={[]} />);
-    fireEvent.change(screen.getByLabelText('Backend'), { target: { value: 'Not recorded' } });
+    chooseDropdown('Backend', 'Not recorded');
     const rows = listedRuns();
     expect(rows).toHaveLength(1);
     expect(rows[0]).toContain('run-unserved');
@@ -71,8 +72,8 @@ describe('RunsTable filters by backend (OMN-21015 AC8, RU-1)', () => {
 
   it('narrows together with the model filter', () => {
     render(<RunsTable now={NOW} decisions={decisions} sessions={[]} />);
-    fireEvent.change(screen.getByLabelText('Backend'), { target: { value: 'local-qwen-coder' } });
-    fireEvent.change(screen.getByLabelText('Model'), { target: { value: 'qwen3-coder' } });
+    chooseDropdown('Backend', 'local-qwen-coder');
+    chooseDropdown('Model', 'qwen3-coder');
     const rows = listedRuns();
     expect(rows).toHaveLength(1);
     expect(rows[0]).toContain('run-local-2');
@@ -83,13 +84,13 @@ describe('RunsTable filters by backend (OMN-21015 AC8, RU-1)', () => {
     render(<RunsTable now={NOW} decisions={[...many, decisions[1]!]} sessions={[]} pageSize={2} />);
     fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
     expect(screen.getByText(/^Runs 3–4 of 6$/)).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('Backend'), { target: { value: 'local-qwen-coder' } });
+    chooseDropdown('Backend', 'local-qwen-coder');
     expect(screen.getByText(/^Runs 1–2 of 5$/)).toBeInTheDocument();
   });
 
   it('says so when no run has the chosen backend', () => {
     render(<RunsTable now={NOW} decisions={[decisions[0]!]} sessions={[]} />);
-    fireEvent.change(screen.getByLabelText('Backend'), { target: { value: 'Not recorded' } });
+    chooseDropdown('Backend', 'Not recorded');
     expect(screen.getByText('No runs match these filters')).toBeInTheDocument();
   });
 });
@@ -152,15 +153,14 @@ describe('Runs address and table agree (OMN-21015 AC8)', () => {
 
   it('names a backend the data does not have instead of showing an empty choice', () => {
     atAddress('/runs?backend=retired-backend', decisions);
-    const select = screen.getByLabelText('Backend') as HTMLSelectElement;
-    expect(select.value).toBe('retired-backend');
-    expect(select.selectedOptions[0]?.textContent).toBe('retired-backend (not in current data)');
+    expect(dropdownValue('Backend')).toBe('retired-backend');
+    expect(dropdownText('Backend')).toBe('retired-backend (not in current data)');
     expect(screen.getByText('No runs match these filters')).toBeInTheDocument();
   });
 
   it('puts the chosen backend in the address', () => {
     const history = atAddress('/runs', decisions);
-    fireEvent.change(screen.getByLabelText('Backend'), { target: { value: 'local-qwen-coder' } });
+    chooseDropdown('Backend', 'local-qwen-coder');
     expect(history?.at(-1)).toBe('/runs?backend=local-qwen-coder');
   });
 });

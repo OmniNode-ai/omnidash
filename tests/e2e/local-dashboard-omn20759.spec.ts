@@ -92,8 +92,10 @@ for (const [name, path, headers] of [
     await expect(table.getByText('generativelanguage.googleapis.com').first()).toBeVisible();
     await table.evaluate((element) => element.scrollIntoView({ block: 'start' }));
 
-    // AC1: nothing to scroll sideways inside the wrapper, and the table ends inside the viewport.
-    expect(await table.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(0);
+    // AC1 as Lakshman revised it 2026-11-04 ("people can scroll table horizontally"): with every column shown the table
+    // keeps its columns at their natural width and scrolls sideways inside its panel, with the Run column pinned; the
+    // panel itself ends inside the viewport and the page never scrolls sideways.
+    expect(await table.evaluate((element) => getComputedStyle(element.querySelector('thead th')!).position)).toBe('sticky');
     const bounds = await table.boundingBox();
     expect(bounds).not.toBeNull();
     expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(1440);

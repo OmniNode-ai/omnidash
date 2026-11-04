@@ -17,6 +17,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('echarts-for-react/lib/core', () => ({ default: () => <div data-testid="served-chart" /> }));
 
 import { RunsTable } from './LocalDashboardPage';
+import { chooseDropdown, dropdownValue } from '@/test-utils/dropdown';
 
 const NOW = Date.parse('2026-10-04T07:00:00Z');
 function decision(id: string, minute: number, extra: Record<string, unknown> = {}): Record<string, unknown> {
@@ -34,7 +35,7 @@ const RUNS = [
   decision('run-4', 40, { model_name: 'model-b' }),
 ];
 const rowIds = () => within(screen.getByRole('table')).getAllByRole('row').slice(1).map((row) => row.querySelector('td')?.textContent ?? '');
-const select = (label: string) => (screen.getByLabelText(label) as HTMLSelectElement).value;
+const select = (label: string) => dropdownValue(label);
 function rowOf(id: string): HTMLElement {
   return within(screen.getByRole('table')).getAllByRole('row').find((row) => row.querySelector('td')?.textContent === id)!;
 }
@@ -45,7 +46,7 @@ describe('OMN-21015: a run\'s model and backend set the filter from its row', ()
   it('Q1, Q2: a click on a model filters the list to that model and the select shows it', () => {
     render(<RunsTable now={NOW} decisions={RUNS} sessions={[]} />);
     // A filter chosen before the click stays: the click sets one filter and touches no other.
-    fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'passed' } });
+    chooseDropdown('Status', 'passed');
     fireEvent.click(within(rowOf('run-2')).getByRole('button', { name: 'Show only runs of model model-b' }));
     expect(rowIds()).toEqual(['run-4', 'run-2']);
     expect([select('Model'), select('Backend'), select('Status'), select('Cause'), select('Window')]).toEqual(['model-b', 'all', 'passed', 'all', 'all']);
@@ -82,9 +83,9 @@ describe('OMN-21015: a run\'s model and backend set the filter from its row', ()
   it('Q5, Q6: Clear filters is there only while a filter is set, and clears every one', () => {
     render(<RunsTable now={NOW} decisions={RUNS} sessions={[]} />);
     expect(screen.queryByRole('button', { name: 'Clear filters' })).toBeNull();
-    fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'passed' } });
+    chooseDropdown('Status', 'passed');
     fireEvent.click(within(rowOf('run-2')).getByRole('button', { name: 'Show only runs of model model-b' }));
-    fireEvent.change(screen.getByLabelText('Window'), { target: { value: 'today' } });
+    chooseDropdown('Window', 'today');
     fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
     expect([select('Model'), select('Backend'), select('Status'), select('Cause'), select('Window')]).toEqual(['all', 'all', 'all', 'all', 'all']);
     expect(rowIds()).toEqual(['run-4', 'run-3', 'run-2', 'run-1']);
@@ -101,13 +102,13 @@ describe('OMN-21015: a run\'s model and backend set the filter from its row', ()
 
   it('Q5: Clear filters is offered when only a cause is set', () => {
     render(<RunsTable now={NOW} decisions={[...RUNS, decision('run-5', 50, { quality_gate_passed: false, quality_gate_detail: 'quality_gate_failed' })]} sessions={[]} />);
-    fireEvent.change(screen.getByLabelText('Cause'), { target: { value: 'quality_gate_failed' } });
+    chooseDropdown('Cause', 'quality_gate_failed');
     expect(screen.getByRole('button', { name: 'Clear filters' })).toBeTruthy();
   });
 
   it('Q5: when the filters leave no run, Clear filters is still offered', () => {
     render(<RunsTable now={NOW} decisions={RUNS} sessions={[]} />);
-    fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'failed' } });
+    chooseDropdown('Status', 'failed');
     expect(screen.getByRole('status').textContent).toBe('No runs match these filters');
     fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
     expect(rowIds()).toHaveLength(4);

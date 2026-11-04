@@ -1,5 +1,6 @@
 import { expect, test, type Page } from 'playwright/test';
 import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { pickFilter, expectFilter, expectFilterText } from './filter-dropdowns';
 
 const DECISIONS = prefix + 'delegation.decisions.v1';
 const CORRELATION_ID = 'omn19919-ac8-keyless-refusal';
@@ -37,10 +38,9 @@ test('AC8: a refused run is visible on Runs with its cause and correlation link'
   await assertRunLink(page);
   await expect(row.locator('[data-failure-cause="' + RAW_CAUSE + '"]')).toHaveText(CAUSE_LABEL);
 
-  const cause = page.getByLabel('Cause', { exact: true });
-  await cause.selectOption(RAW_CAUSE);
-  await expect(cause).toHaveValue(RAW_CAUSE);
-  await expect(cause.locator('option:checked')).toHaveText(CAUSE_LABEL);
+  await pickFilter(page, 'Cause', RAW_CAUSE);
+  await expectFilter(page, 'Cause', RAW_CAUSE);
+  await expectFilterText(page, 'Cause', CAUSE_LABEL);
   await expect.poll(() => new URL(page.url()).searchParams.get('status')).toBe('failed');
   await expect.poll(() => new URL(page.url()).searchParams.get('cause')).toBe(RAW_CAUSE);
 

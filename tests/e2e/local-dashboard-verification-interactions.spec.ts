@@ -1,6 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import { expect, test } from 'playwright/test';
 import { chartRows, prefix, runIds, serveCharts } from './omn21166-chart-fixtures';
+import { pickFilter } from './filter-dropdowns';
 
 // Failure modes: Usage range/reset is disconnected; paging/refresh substitutes
 // another run at the same index; missing ids become navigable; touch disclosure
@@ -59,7 +60,7 @@ test('filtering the selected run off the chart clears it without selecting anoth
   const selector = chart.getByLabel('Inspect run', { exact: true });
   await selector.selectOption(runIds[1]);
   await expect(chart.getByRole('link', { name: 'Open run', exact: true })).toHaveAttribute('href', /correlation_id=chart-run-b$/);
-  await page.getByLabel('Model', { exact: true }).selectOption('model-a');
+  await pickFilter(page, 'Model', 'model-a');
   await expect(selector.getByRole('option')).toHaveCount(3);
   await expect(selector).toHaveValue('');
   await expect(chart.getByRole('link', { name: 'Open run', exact: true })).toHaveCount(0);

@@ -5,14 +5,34 @@
  * button; in the list ArrowUp/ArrowDown, Home/End and a typed letter move, Enter or Space choose, Escape leaves. Choosing
  * closes the list and returns focus to the button; Escape and a click outside close it without a change.
  */
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { Check, ChevronDown } from '@/theme/design-system/icons';
 import './dropdown.css';
 
-export interface DropdownOption { value: string; label: string; /** The full name for assistive tech, when the label is short. */ name?: string }
+export interface DropdownOption {
+  value: string; label: string;
+  /** The full name for assistive tech, when the label is short. */
+  name?: string;
+  /** A glyph from the icon registry shown before the label (OMN-22168, Lakshman 2026-11-04: "colourful ... lucide icons"). */
+  icon?: ReactNode;
+  /** A colour token (var(--ds-...)) for the option's glyph, or for a dot when it has no glyph. */
+  tone?: string;
+}
 
-export function Dropdown({ label, value, options, onChange, id }: {
+/** The option's leading mark: its glyph in its tone, else a dot in its tone, else nothing. */
+function OptionMark({ option }: { option: DropdownOption }) {
+  if (!option.icon && !option.tone) return null;
+  return <span className="ds-dropdown-mark" aria-hidden="true" style={option.tone ? { '--mark': option.tone } as CSSProperties : undefined}>
+    {option.icon ?? <span className="ds-dropdown-dot" />}
+  </span>;
+}
+
+export function Dropdown({ label, value, options, onChange, id, icon, tone }: {
   label: string; value: string; options: readonly DropdownOption[]; onChange: (value: string) => void; id?: string;
+  /** The trigger's own glyph, naming what the dropdown chooses; shown until a chosen option brings its own mark. */
+  icon?: ReactNode;
+  /** The trigger glyph's colour token. */
+  tone?: string;
 }) {
   const [open, setOpen] = useState(false);
   const chosen = Math.max(0, options.findIndex(option => option.value === value));
@@ -73,7 +93,10 @@ export function Dropdown({ label, value, options, onChange, id }: {
     <div className="ds-dropdown" ref={root}>
       <button ref={trigger} id={base} type="button" className="ds-dropdown-trigger" aria-haspopup="listbox" aria-expanded={open}
         aria-controls={open ? `${base}-list` : undefined} aria-label={`${label}: ${current?.name ?? current?.label ?? ''}`}
+        data-value={current?.value} data-dropdown={label}
         onClick={() => (open ? setOpen(false) : show())} onKeyDown={onTriggerKey}>
+        {current && (current.icon || current.tone) ? <OptionMark option={current} />
+          : icon ? <span className="ds-dropdown-mark" aria-hidden="true" style={tone ? { '--mark': tone } as CSSProperties : undefined}>{icon}</span> : null}
         <span className="ds-dropdown-value">{current?.label}</span>
         <ChevronDown size={16} aria-hidden="true" />
       </button>
@@ -81,10 +104,11 @@ export function Dropdown({ label, value, options, onChange, id }: {
         <ul ref={list} id={`${base}-list`} role="listbox" aria-label={label} tabIndex={-1} className="ds-dropdown-list" data-align={alignEnd ? 'end' : undefined}
           aria-activedescendant={`${base}-option-${active}`} onKeyDown={onListKey}>
           {options.map((option, index) => (
-            <li key={option.value} id={`${base}-option-${index}`} data-index={index} role="option" aria-selected={index === chosen}
-              aria-label={option.name ?? option.label} data-active={index === active}
+            <li key={option.value} id={`${base}-option-${index}`} data-index={index} data-value={option.value} role="option"
+              aria-selected={index === chosen} aria-label={option.name ?? option.label} data-active={index === active}
               onMouseEnter={() => setActive(index)} onClick={() => choose(index)}>
-              <span>{option.label}</span>
+              <OptionMark option={option} />
+              <span className="ds-dropdown-label">{option.label}</span>
               {index === chosen && <Check size={16} aria-hidden="true" data-tick />}
             </li>
           ))}

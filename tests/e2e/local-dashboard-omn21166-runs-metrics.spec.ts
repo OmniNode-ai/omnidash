@@ -1,5 +1,6 @@
 import { expect, test, type Page } from 'playwright/test';
 import { chartRows, prefix, runIds, serveCharts } from './omn21166-chart-fixtures';
+import { pickFilter } from './filter-dropdowns';
 
 // Before implementation: catch wrong source/identity, zero replaced by missing,
 // absent/malformed data rendered as zero, stale filter/page selection, overflow,
@@ -57,7 +58,7 @@ test('cost and score show precise served values, zero and unknown, and open exac
     await expect(chart.getByRole('status')).toContainText('Not recorded');
   }
   await cost.getByLabel('Inspect run').selectOption(runIds[1]);
-  await page.getByRole('combobox', { name: 'Status', exact: true }).selectOption('passed');
+  await pickFilter(page, 'Status', 'passed');
   await expect(cost.getByLabel('Inspect run')).toHaveValue('');
   await expect(cost.getByLabel('Inspect run').locator('option')).toHaveCount(3);
   await score.getByLabel('Inspect run').selectOption(runIds[0]);

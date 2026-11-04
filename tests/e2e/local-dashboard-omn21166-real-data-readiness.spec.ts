@@ -1,5 +1,6 @@
 import { expect, test } from 'playwright/test';
 import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { pickFilter, expectFilter } from './filter-dropdowns';
 
 // Declared before implementation: the catalogue is awaited before the existing
 // five-second projection deadline starts. A stalled catalogue must stop loading,
@@ -41,18 +42,18 @@ test('catalogue refresh failure is visible while last good data and filters rema
   await serveCharts(page);
   await page.goto('/runs');
   await expect(page.locator('a[href*="correlation_id=chart-run-b"]').first()).toBeVisible();
-  await page.getByLabel('Status', { exact: true }).selectOption('failed');
+  await pickFilter(page, 'Status', 'failed');
   await page.route('**/projections', route => route.fulfill({ status: 503, body: 'unavailable' }));
   await page.getByRole('button', { name: 'Refresh', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('The data could not be read (HTTP 503');
   await expect(page.getByRole('alert')).toContainText('Showing saved data.');
-  await expect(page.getByLabel('Status', { exact: true })).toHaveValue('failed');
+  await expectFilter(page, 'Status', 'failed');
   await expect(page.locator('a[href*="correlation_id=chart-run-b"]').first()).toBeVisible();
   await expect(page.getByText('Loading runtime exposures…', { exact: true })).toHaveCount(0);
   await page.screenshot({ path: info.outputPath('refresh-retains-records.png'), fullPage: true });
   await serveCharts(page, { ...chartRows, [prefix + 'delegation.decisions.v1']: chartRows[prefix + 'delegation.decisions.v1'] });
   await page.getByRole('button', { name: 'Refresh', exact: true }).click();
   await expect(page.getByRole('alert')).toHaveCount(0);
-  await expect(page.getByLabel('Status', { exact: true })).toHaveValue('failed');
+  await expectFilter(page, 'Status', 'failed');
   await expect(page.locator('a[href*="correlation_id=chart-run-b"]').first()).toBeVisible();
 });

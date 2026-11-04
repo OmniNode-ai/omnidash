@@ -33,8 +33,8 @@ import { TIER_TONES } from '@/theme/design-system/charts';
 import { InsightsSection, InsightsWindowContext, MeteringActivityInsights, OverviewRunsContext, PassRateSparkline, TaskIcon, type ActivityWindow } from '@/pages/local/insight-charts';
 import { UsageInsights } from '@/pages/local/usage-insights';
 import { RoutingAnalysis } from '@/pages/local/usage-analysis';
-import { Badge, ConfirmDialog, DashboardTabs, DataTable, EmptyState, Fact, FactList, Figure, InfoTip, Panel, PanelTitle, StatusChip } from '@/theme/design-system/components';
-import { FileJson, FileSpreadsheet } from '@/theme/design-system/icons';
+import { Badge, ConfirmDialog, DashboardTabs, DataTable, Dropdown, EmptyState, Fact, FactList, Figure, InfoTip, Panel, PanelTitle, StatusChip } from '@/theme/design-system/components';
+import { Bot, CircleCheck, FileJson, FileSpreadsheet, Layers, ListChecks, Server, TriangleAlert } from '@/theme/design-system/icons';
 import { SinceLastVisit } from '@/pages/local/since-last-visit';
 import { ModelKeys, providerName } from '@/pages/local/model-keys';
 import { EnvironmentPanel, ServiceHealthUnread } from '@/pages/local/environment';
@@ -1541,6 +1541,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
   const [showAllFields, setShowAllFields] = useState(false);
   // Part 30 AC206: the routing fields as columns beside model, backend and tier.
   const [showRouting, setShowRouting] = useState(false);
+  const modelColorOf = useModelColor();
   const search = useSearch();
   const [, navigate] = useLocation();
   const [localView, setLocalView] = useState<RunsViewState>(DEFAULT_RUNS_VIEW);
@@ -1673,61 +1674,56 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
         <input id={`${id}-search`} type="search" value={query} placeholder="Search runs…" title="Search by run ID, model, task, backend or failure"
           autoComplete="off" spellCheck={false} onChange={event => updateView({ query: event.target.value, page: 1 }, true)} />
       </div>
+      {/* OMN-22168 (Lakshman 2026-11-04, "dropdown should be modern and colourful, use lucide icons too"): each filter is
+          the kit Dropdown with its own glyph and colour; options carry the status, tier and model colours and task icons. */}
       <div className="local-dashboard-filters">
         <div className="local-filter-field">
-        <label htmlFor={`${id}-task`} className="local-visually-hidden">Task</label>
-        <select id={`${id}-task`} value={task} onChange={event => updateView({ task: event.target.value, page: 1 })}>
-          <option value="all">All tasks</option>
-          {tasks.map(name => <option key={name} value={name}>{`${taskLabel(name)} (${formatDashboardCount(taskFacetRuns.filter(run => recorded(run.task_type) === name).length)})`}</option>)}
-        </select>
+        <Dropdown id={`${id}-task`} label="Task" value={task} icon={<ListChecks size={15} />} tone="var(--ds-hue-purple)"
+          onChange={value => updateView({ task: value, page: 1 })}
+          options={[{ value: 'all', label: 'All tasks' }, ...tasks.map(name => ({ value: name,
+            label: `${taskLabel(name)} (${formatDashboardCount(taskFacetRuns.filter(run => recorded(run.task_type) === name).length)})`,
+            icon: <TaskIcon task={name} /> }))]} />
         </div>
         <div className="local-filter-field">
-        <label htmlFor={`${id}-status`} className="local-visually-hidden">Status</label>
-        <select id={`${id}-status`} value={status} onChange={filter('status')}>
-          <option value="all">All statuses</option>
-          <option value="passed">passed</option>
-          <option value="failed">failed</option>
-          <option value="Not recorded">Not recorded</option>
-        </select>
+        <Dropdown id={`${id}-status`} label="Status" value={status} icon={<CircleCheck size={15} />} tone="var(--ds-hue-green)"
+          onChange={value => filter('status')({ target: { value } })}
+          options={[{ value: 'all', label: 'All statuses' },
+            { value: 'passed', label: 'passed', tone: 'var(--ds-field-pass)' },
+            { value: 'failed', label: 'failed', tone: 'var(--ds-field-fail)' },
+            { value: 'Not recorded', label: 'Not recorded', tone: 'var(--ds-ink-3)' }]} />
         </div>
         <div className="local-filter-field">
-        <label htmlFor={`${id}-cause`} className="local-visually-hidden">Cause</label>
-        <select id={`${id}-cause`} value={cause} onChange={filter('cause')}>
-          <option value="all">All causes</option>
-          {cause !== 'all' && !causes.includes(cause) && <option value={cause}>{failureCauseLabel(cause)} (not in current data)</option>}
-          {causes.map((name) => <option key={name} value={name}>{failureCauseLabel(name)}</option>)}
-        </select>
+        <Dropdown id={`${id}-cause`} label="Cause" value={cause} icon={<TriangleAlert size={15} />} tone="var(--ds-hue-amber)"
+          onChange={value => filter('cause')({ target: { value } })}
+          options={[{ value: 'all', label: 'All causes' },
+            ...(cause !== 'all' && !causes.includes(cause) ? [{ value: cause, label: `${failureCauseLabel(cause)} (not in current data)` }] : []),
+            ...causes.map(name => ({ value: name, label: failureCauseLabel(name), tone: 'var(--ds-hue-amber)' }))]} />
         </div>
         <div className="local-filter-field">
-        <label htmlFor={`${id}-model`} className="local-visually-hidden">Model</label>
-        <select id={`${id}-model`} value={model} onChange={filter('model')}>
-          <option value="all">All models</option>
-          {model !== 'all' && !models.includes(model) && <option value={model}>{model} (not in current data)</option>}
-          {models.map((name) => <option key={name} value={name}>{name}</option>)}
-        </select>
+        <Dropdown id={`${id}-model`} label="Model" value={model} icon={<Bot size={15} />} tone="var(--ds-hue-blue)"
+          onChange={value => filter('model')({ target: { value } })}
+          options={[{ value: 'all', label: 'All models' },
+            ...(model !== 'all' && !models.includes(model) ? [{ value: model, label: `${model} (not in current data)` }] : []),
+            ...models.map(name => ({ value: name, label: name, tone: modelColorOf(name) }))]} />
         </div>
         <div className="local-filter-field">
-        <label htmlFor={`${id}-tier`} className="local-visually-hidden">Tier</label>
-        <select id={`${id}-tier`} value={tier} onChange={filter('tier')}>
-          <option value="all">All tiers</option>
-          {tier !== 'all' && !tiers.includes(tier) && <option value={tier}>{tierLabel(tier)} (not in current data)</option>}
-          {tiers.map((name) => <option key={name} value={name}>{tierLabel(name)}</option>)}
-        </select>
+        <Dropdown id={`${id}-tier`} label="Tier" value={tier} icon={<Layers size={15} />} tone="var(--ds-hue-teal)"
+          onChange={value => filter('tier')({ target: { value } })}
+          options={[{ value: 'all', label: 'All tiers' },
+            ...(tier !== 'all' && !tiers.includes(tier) ? [{ value: tier, label: `${tierLabel(tier)} (not in current data)` }] : []),
+            ...tiers.map(name => ({ value: name, label: tierLabel(name), tone: tierColor(name) }))]} />
         </div>
         <div className="local-filter-field">
-        <label htmlFor={`${id}-backend`} className="local-visually-hidden">Backend</label>
-        <select id={`${id}-backend`} value={backend} onChange={filter('backend')}>
-          <option value="all">All backends</option>
-          {backend !== 'all' && !backends.includes(backend) && <option value={backend}>{backend} (not in current data)</option>}
-          {backends.map((name) => <option key={name} value={name}>{name}</option>)}
-        </select>
+        <Dropdown id={`${id}-backend`} label="Backend" value={backend} icon={<Server size={15} />} tone="var(--ds-hue-orange)"
+          onChange={value => filter('backend')({ target: { value } })}
+          options={[{ value: 'all', label: 'All backends' },
+            ...(backend !== 'all' && !backends.includes(backend) ? [{ value: backend, label: `${backend} (not in current data)` }] : []),
+            ...backends.map(name => ({ value: name, label: name, icon: <Server size={15} />, tone: 'var(--ds-hue-orange)' }))]} />
         </div>
         <div className="local-filter-field">
-        <label htmlFor={`${id}-window`} className="local-visually-hidden">Window</label>
-        <select id={`${id}-window`} value={span} onChange={filter('span')}>
-          <option value="all">All time</option>
-          <option value="today">Today (UTC)</option>
-        </select>
+        <Dropdown id={`${id}-window`} label="Window" value={span} icon={<CalendarDays size={15} />} tone="var(--ds-hue-pink)"
+          onChange={value => filter('span')({ target: { value } })}
+          options={[{ value: 'all', label: 'All time' }, { value: 'today', label: 'Today (UTC)', icon: <CalendarDays size={15} />, tone: 'var(--ds-hue-pink)' }]} />
         </div>
         {filtered && (
           <button type="button" className="local-filter-clear" onClick={() => { setSelectedRunId(null); updateView({ ...DEFAULT_RUNS_VIEW, query: '', day: '', task: 'all', tier: 'all' }); }}>Clear filters</button>
@@ -1745,11 +1741,11 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
           {/* Lakshman 2026-11-04: each view switch has an info icon beside it that says, on hover or keyboard focus, what
               the switch adds to the table. */}
           <p className="local-dashboard-caption local-recent-toolbar"><span className="local-recent-switch"><label>
-            <input type="checkbox" checked={showAllFields} onChange={event => setShowAllFields(event.target.checked)} aria-controls={`${id}-table`} />
+            <input type="checkbox" data-identity-decoration="switch" checked={showAllFields} onChange={event => setShowAllFields(event.target.checked)} aria-controls={`${id}-table`} />
             Show all run fields
           </label><InfoTip side="bottom" label="About Show all run fields" text={RUN_FIELDS_TIP} /></span>
           <span className="local-recent-switch"><label>
-            <input type="checkbox" checked={showRouting} onChange={event => setShowRouting(event.target.checked)} aria-controls={`${id}-table`} />
+            <input type="checkbox" data-identity-decoration="switch" checked={showRouting} onChange={event => setShowRouting(event.target.checked)} aria-controls={`${id}-table`} />
             Routing columns
           </label><InfoTip side="bottom" label="About Routing columns" text={ROUTING_COLUMNS_TIP} /></span>
           <span className="local-runs-export" role="group" aria-label="Export the matching runs">

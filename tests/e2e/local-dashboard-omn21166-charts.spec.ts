@@ -1,5 +1,6 @@
 import { expect, test, type Page } from 'playwright/test';
 import { chartRows, prefix, runIds, serveCharts, USAGE_DAY } from './omn21166-chart-fixtures';
+import { pickFilter } from './filter-dropdowns';
 
 // Failure modes declared before implementation: wrong bar after hiding/zoom;
 // stale selection after filters; missing value becomes zero; unknown day filled;
@@ -52,7 +53,7 @@ test('chart selected run is cleared after filtering rather than opening a differ
   const chart = page.getByRole('figure', { name: 'Tokens per run', exact: true });
   await chart.getByLabel('Inspect run').selectOption(runIds[1]);
   await expect(chart.getByRole('link', { name: 'Open run', exact: true })).toHaveAttribute('href', /chart-run-b/);
-  await page.getByRole('combobox', { name: 'Status', exact: true }).selectOption('passed');
+  await pickFilter(page, 'Status', 'passed');
   await expect(chart.getByLabel('Inspect run')).toHaveValue('');
   await expect(chart.getByRole('link', { name: 'Open run', exact: true })).toHaveCount(0);
   await expect(page.locator('[data-component="recent-runs"] table')).not.toContainText('chart-run-b');
@@ -147,7 +148,7 @@ test('reduced motion disables chart engine animation, single point omits meaning
   await openRunCharts(page);
   await expect(page.locator('.local-chart-canvas').first().locator('svg')).toBeVisible();
   await expect(page.locator('.local-chart').first()).toHaveAttribute('data-motion', 'reduced');
-  await page.getByRole('combobox', { name: 'Status', exact: true }).selectOption('failed');
+  await pickFilter(page, 'Status', 'failed');
   await expect(page.getByRole('figure', { name: 'Duration per run' }).getByLabel('First point')).toHaveCount(0);
 });
 
