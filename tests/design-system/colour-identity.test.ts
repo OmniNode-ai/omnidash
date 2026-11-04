@@ -44,10 +44,16 @@ function passFailRules(css: string): string[] {
     '.local-selected-quality-meter > span',
     '.local-overview-focus [data-component="overview',
   ];
+  // Only the rules that colour the mark: the same selectors also carry layout rules (sizes, grids) that read no
+  // outcome colour at all, and those say nothing about which colour the mark draws.
   return [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
     .filter(([, selector]) => graphics.some(g => selector.includes(g)))
+    .filter(([, , body]) => OUTCOME_COLOUR.test(body))
     .map(([, selector, body]) => `${selector.trim()} { ${body.trim()} }`);
 }
+
+/** A read of an outcome colour: the pass and fail field colours, or the generic status colours. */
+const OUTCOME_COLOUR = /var\(--ds-(field-pass|field-fail|ok|bad)\)/;
 
 describe('OMN-22168 AC7: local pass and fail graphics draw the pass and fail field colours', () => {
   const sheets = ['src/styles/local-dashboard.css', 'src/styles/seven-page-design.css'];
