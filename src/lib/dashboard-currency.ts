@@ -1,4 +1,4 @@
-/** Display USD only. Decimal text avoids rounding and binary floating point cent loss.
+/** Display USD only, every served digit (OMN-22168). Decimal text avoids rounding and binary floating point cent loss.
  * Raw projection values and chart geometry never pass through this formatter.
  */
 export function formatDashboardUsd(value: unknown): string {
@@ -12,13 +12,11 @@ export function formatDashboardUsd(value: unknown): string {
   const nonzero = /[1-9]/.test(digits);
   if (!nonzero) return '$0.00';
   const point = integer.length + Number(match[3] ?? 0);
-  // Finite scientific notation can still have an enormous negative exponent.
-  if (point <= -2) return nonzero ? `${match[1] === '-' ? '-' : ''}$0.01` : '$0.00';
   const expanded = point < 0 ? '0'.repeat(-point) + digits : digits;
   const split = Math.max(0, point);
   const whole = (expanded.slice(0, split).padEnd(split, '0') || '0').replace(/^0+(?=\d)/, '');
-  let cents = expanded.slice(split, split + 2).padEnd(2, '0');
-  if (whole === '0' && cents === '00' && nonzero) cents = '01';
+  // OMN-22168 (Lakshman 2026-11-04, "show full don't cut"): every served digit, trailing zeros trimmed, at least two.
+  const decimals = expanded.slice(split).replace(/0+$/, '').padEnd(2, '0');
   const sign = match[1] === '-' && nonzero ? '-' : '';
-  return `${sign}$${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}.${cents}`;
+  return `${sign}$${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}.${decimals}`;
 }

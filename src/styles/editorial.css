@@ -765,3 +765,6 @@ html body .local-dashboard-page .local-overview-charts-panel .local-dashboard-ta
   box-shadow: 0 0 0 2px color-mix(in oklab, var(--tab-tone) 16%, transparent), 0 8px 18px -14px var(--tab-tone) !important; }
 /* Lakshman 2026-11-04 ("text cuts?"): room between the stat tabs and the chart's caption. */
 html body .local-dashboard-page .local-overview-charts-panel .local-dashboard-tabpanel { padding-top: 14px; }
+/* An empty unit line takes no space (Overview's Model usage and Tier mix, Lakshman 2026-11-04 "remove"). */
+.rb-head:not(:has(> :not(.rb-unit:empty))) { display: none; }
+.rb-unit:empty { display: none; }

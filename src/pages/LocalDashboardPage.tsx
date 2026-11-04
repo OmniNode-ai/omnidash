@@ -1944,7 +1944,8 @@ export function ModelUsagePanel({ row }: { row: Row | null }) {
   return (
     // AC144: all served models keep upright bars; long names wrap and the plot scrolls inside its panel when narrow.
     <section aria-label="Model usage" className="local-model-usage local-model-usage--upright">
-      <RankedBars label="Runs by model" unit="Runs" order="desc" layout="vertical" many="scroll"
+      {/* Lakshman 2026-11-04 ("remove"): no "Runs" unit line above the bars. */}
+      <RankedBars label="Runs by model" unit="" order="desc" layout="vertical" many="scroll"
         items={models.map((model, index) => {
           const name = isMissing(model.model_name) ? 'Not recorded' : String(model.model_name);
           const runs = share(model.total_count);
@@ -2135,7 +2136,7 @@ export function TierMixPanel({ row, compact = false }: { row: Row | null; compac
     const share = (value: unknown) => (isMissing(value) || !Number.isFinite(Number(value)) ? null : Number(value));
     return (
       <section aria-label="Tier mix">
-        <RankedBars label="Runs by tier" unit="Share of tier-routed runs" order="desc" layout="vertical"
+        <RankedBars label="Runs by tier" unit={compact ? '' : 'Share of tier-routed runs'} order="desc" layout="vertical"
           items={tiers.filter(tier => tier.cost_tier_name !== 'not_tier_routed').map((tier, index) => {
             const name = String(tier.cost_tier_name);
             const pct = share(tier.pct_of_tier_routed);
