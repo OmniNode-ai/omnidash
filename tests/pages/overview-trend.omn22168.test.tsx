@@ -8,6 +8,9 @@
  *   T3 the Overview window limits the days drawn, as the other charts do;
  *   T4 a day served by two rows (a baseline change) is a gap, never one of the two values;  T5 no day rows shows an
  *   empty state, and an all-time row is never drawn as a day.
+ * Lakshman 2026-11-05 ("this look congested and bad"): the lines are smoothed and one is in focus. Failure modes:
+ *   T6 a smoothed curve never rises above or dips below the two days it joins (no invented peaks), and never bridges a
+ *   gap;  T7 a served day with no served neighbour is still drawn (a dot), never lost.
  */
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { Router } from 'wouter';
@@ -33,6 +36,7 @@ function draw(rows: readonly unknown[], window: 'all' | `range:${string}` = 'all
   const { hook, searchHook } = memoryLocation({ path: '/overview' });
   return render(<Router hook={hook} searchHook={searchHook}><OverviewTrendPanel rows={rows} columns={COLUMNS} window={window} now={NOW} /></Router>);
 }
+const lines = () => [...document.querySelectorAll('figure.local-chart svg path[data-line]')].map(path => path.getAttribute('d') ?? '');
 const points = () => [...document.querySelectorAll('figure.local-chart .ins-hit')].map(point => point.getAttribute('aria-label'));
 
 describe('Overview trend', () => {
@@ -42,7 +46,7 @@ describe('Overview trend', () => {
       'Nov 1: 120 runs, 50,000 tokens in, $0.01 spend', 'Nov 2: 300 runs, 120,000 tokens in, $0.05 spend',
       'Nov 3: not recorded', 'Nov 4: 1,234 runs, 900,000 tokens in, $0.12 spend']);
     // Three lines, each with a break at Nov 3 (two segments: "M .. L .." then "M ..").
-    const paths = [...document.querySelectorAll('figure.local-chart svg path')].map(path => path.getAttribute('d') ?? '');
+    const paths = lines();
     expect(paths).toHaveLength(3);
     for (const d of paths) expect(d.match(/M/g)).toHaveLength(2);
   });
@@ -53,9 +57,9 @@ describe('Overview trend', () => {
     fireEvent.click(within(legend).getByRole('button', { name: 'Runs' }));
     fireEvent.click(within(legend).getByRole('button', { name: 'Tokens in' }));
     expect(points()[3]).toBe('Nov 4: $0.12 spend');
-    expect(document.querySelectorAll('figure.local-chart svg path')).toHaveLength(1);
+    expect(lines()).toHaveLength(1);
     fireEvent.click(within(legend).getByRole('button', { name: 'Spend' }));
-    expect(document.querySelectorAll('figure.local-chart svg path')).toHaveLength(1);
+    expect(lines()).toHaveLength(1);
     fireEvent.click(within(legend).getByRole('button', { name: 'Runs' }));
     fireEvent.focus(document.querySelectorAll('figure.local-chart .ins-hit')[3]!);
     expect(screen.getByRole('figure', { name: 'Daily trend' }).textContent).toContain('Nov 4 · 1.23K runs · $0.12 spend');
@@ -75,5 +79,32 @@ describe('Overview trend', () => {
     draw([ROWS[3]]);
     expect(screen.getByText('No day rows served yet')).toBeTruthy();
     expect(document.querySelector('figure.local-chart')).toBeNull();
+  });
+
+  it('T6: a smoothed curve stays between the two days it joins and never bridges a gap', () => {
+    const zigzag = ['2026-10-25', '2026-10-26', '2026-10-27', '2026-10-28', '2026-10-29', '2026-10-30']
+      .map((date, index) => day(date, [10, 900, 20, 880, 15, 700][index]!, 1, 0.01));
+    draw([...zigzag, day('2026-11-01', 5, 1, 0.01), day('2026-11-02', 50, 1, 0.01)]);
+    const [runs] = lines();
+    expect(runs!.match(/M/g)).toHaveLength(2);
+    expect(runs).toMatch(/C/);
+    for (const part of runs!.split('M').filter(Boolean)) {
+      const numbers = part.replace(/[LC]/g, ' ').trim().split(/[\s,]+/).map(Number);
+      const ys = numbers.filter((_, index) => index % 2 === 1);
+      // Each cubic segment is start, control, control, end: both controls lie within the start and end heights.
+      for (let at = 0; at + 3 < ys.length; at += 3) {
+        const [from, c1, c2, to] = ys.slice(at, at + 4) as [number, number, number, number];
+        for (const control of [c1, c2]) {
+          expect(control).toBeGreaterThanOrEqual(Math.min(from, to) - 0.05);
+          expect(control).toBeLessThanOrEqual(Math.max(from, to) + 0.05);
+        }
+      }
+    }
+  });
+
+  it('T7: a served day with no served neighbour is drawn as a dot', () => {
+    draw([day('2026-10-20', 2, 1, 0.01), day('2026-11-03', 5, 1, 0.01), day('2026-11-04', 8, 1, 0.01)]);
+    const dots = [...document.querySelectorAll('figure.local-chart .ins-lone[data-line="runs"]')];
+    expect(dots).toHaveLength(1);
   });
 });

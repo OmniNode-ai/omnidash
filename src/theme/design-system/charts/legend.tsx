@@ -19,11 +19,20 @@ export function useSeriesToggles<K extends string>(keys: readonly K[]) {
 
 export interface ToggleSeries { key: string; label: string; color: string; tone?: string; shown: boolean }
 
-export function SeriesToggles({ label, series, onToggle }: { label: string; series: readonly ToggleSeries[]; onToggle: (key: string) => void }) {
+export function SeriesToggles({ label, series, onToggle, onPreview, focus }: {
+  label: string; series: readonly ToggleSeries[]; onToggle: (key: string) => void;
+  /** Optional: the series a pointer or focus rests on (null when it leaves), so the chart can bring that line forward. */
+  onPreview?: (key: string | null) => void;
+  /** Optional: the series the chart draws in front. */
+  focus?: string | null;
+}) {
   return (
-    <div className="ins-toggles gdb-legend" role="group" aria-label={label}>
+    <div className="ins-toggles gdb-legend" role="group" aria-label={label} onMouseLeave={onPreview ? () => onPreview(null) : undefined}>
       {series.map(entry => (
         <button key={entry.key} type="button" className="ins-toggle" data-field-tone={entry.tone} aria-pressed={entry.shown}
+          data-front={focus === undefined ? undefined : String(focus === entry.key)}
+          onMouseEnter={onPreview ? () => onPreview(entry.key) : undefined} onFocus={onPreview ? () => onPreview(entry.key) : undefined}
+          onBlur={onPreview ? () => onPreview(null) : undefined}
           onClick={() => onToggle(entry.key)} style={{ '--ins-swatch': entry.color } as CSSProperties}>{entry.label}</button>
       ))}
     </div>

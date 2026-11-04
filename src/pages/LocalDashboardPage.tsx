@@ -2051,6 +2051,7 @@ export function OverviewTrendPanel({ rows, columns, window, now }: {
   rows: readonly unknown[]; columns: readonly DeclaredColumn[]; window: OverviewWindow; now: number;
 }) {
   const [hover, setHover] = useState<number | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
   const slug = (header: string) => header.toLowerCase().replace(/[^a-z0-9]+/g, '-');
   const { shown, toggle } = useSeriesToggles(columns.map(column => slug(column.header)));
   const byDay = new Map<string, Row[]>();
@@ -2077,14 +2078,19 @@ export function OverviewTrendPanel({ rows, columns, window, now }: {
   const dayText = (day: string, compact: boolean) => (byDay.has(day) ? twice(day) ? 'not recorded (two rows for this day)'
     : visible.map(column => say(valueOf(day, column), column, compact)).join(', ') : 'not recorded');
   const active = hover === null ? undefined : days[hover];
+  // Lakshman 2026-11-05 ("this look congested and bad"): one line is in front (the legend chip under the pointer, else
+  // the first line shown), bold with a soft fill; the rest are thinner behind it. Every line and value is still drawn.
+  const front = lines.some(line => line.key === preview) ? preview : lines[0]?.key ?? null;
   return (
     <figure className="local-chart local-trend" aria-label="Daily trend">
-      <p className="local-dashboard-caption">Runs, tokens in and out, spend and savings for each UTC day.</p>
-      <SeriesToggles label="Trend lines" onToggle={key => toggle(key)}
+      <p className="local-dashboard-caption">{visible.length === 1
+        ? `${visible[0]!.header} per UTC day, on its real scale. Hover a day for its numbers.`
+        : 'Each UTC day, every line against its own busiest day. Point at a chip to bring its line forward; show one line for its real scale.'}</p>
+      <SeriesToggles label="Trend lines" onToggle={key => toggle(key)} onPreview={setPreview} focus={front}
         series={columns.map(column => ({ key: slug(column.header), label: column.header, color: TREND_TONES[column.header] ?? 'var(--ds-ink-2)',
           shown: shown[slug(column.header)] ?? true }))} />
       <ChartReadout active={active !== undefined}
-        text={active !== undefined ? <>{label(active)} · {dayText(active, true).replaceAll(', ', ' · ')}</> : 'Hover or focus a day to read its numbers'} />
+        text={active !== undefined ? <>{label(active)} · {dayText(active, true).replaceAll(', ', ' · ')}</> : ''} />
       {/* OMN-22168 ("do all", item 5): one line shown is drawn on its real scale, with its top value and 0 marked. */}
       {(() => {
         const single = visible.length === 1 ? visible[0]! : null;
@@ -2093,16 +2099,16 @@ export function OverviewTrendPanel({ rows, columns, window, now }: {
         // Lakshman 2026-11-04 ("polish"): a scale at the left (the real values for one line; the share of each line's own
         // busiest day for several), gridlines behind the lines, and a date every few days below.
         const real = single && top !== null;
-        const scale = real ? [top, top / 2, 0].map(value => (single!.format === 'currency' ? formatUsd(value) : formatDashboardCount(Math.round(value))))
-          : ['100%', '50%', '0'];
+        const scale = real ? [top, top / 2, 0].map(value => (single!.format === 'currency' ? formatUsd(value) : formatDashboardCount(Math.round(value)))) : [];
         const step = Math.max(1, Math.ceil(days.length / 6));
         const ticks = days.map((day, index) => ({ day, index })).filter(({ index }) => index % step === 0 || index === days.length - 1)
           .filter(({ index }, position, all) => index === days.length - 1 || all[position + 1] === undefined || all[position + 1]!.index - index >= step / 2);
-        return <div className="local-trend-scaled local-trend-scaled--axis">
-          <div className="local-trend-yaxis" aria-hidden="true" title={real ? undefined : 'Share of each line\'s busiest day'}>
-            {scale.map((text, index) => <span key={index}>{text}</span>)}</div>
+        // Several lines have no shared scale, so only one line shown gets its values at the left.
+        return <div className={`local-trend-scaled${real ? ' local-trend-scaled--axis' : ''}`}>
+          {real && <div className="local-trend-yaxis" aria-hidden="true">
+            {scale.map((text, index) => <span key={index}>{text}</span>)}</div>}
           <div className="local-trend-plot">
-            <MultiLinePlot label="Daily trend" lines={lines} keys={days} hover={hover} onHover={setHover}
+            <MultiLinePlot label="Daily trend" lines={lines} keys={days} hover={hover} onHover={setHover} focus={front}
               labels={days.map(day => `${label(day)}: ${dayText(day, false)}`)} />
             <div className="local-trend-ticks" aria-hidden="true">
               {ticks.map(({ day, index }) => <span key={day} style={{ left: `${days.length > 1 ? (index / (days.length - 1)) * 100 : 50}%` }}>{label(day)}</span>)}
@@ -2110,9 +2116,6 @@ export function OverviewTrendPanel({ rows, columns, window, now }: {
           </div>
         </div>;
       })()}
-      <p className="local-dashboard-caption">{visible.length === 1
-        ? `${visible[0]!.header} per UTC day, on its real scale.`
-        : 'Each line is scaled to its own busiest day, so lines of different units fit one chart. Hide the others to read one on its real scale.'}</p>
     </figure>
   );
 }
