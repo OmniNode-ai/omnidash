@@ -1776,7 +1776,7 @@ figure.local-chart.usage-insight { min-width: 0; margin: 0; padding: 14px; }
 .local-dashboard-page--workflow .local-dashboard-filters { display: flex; flex-direction: row; align-items: center; gap: 8px; margin-bottom: 14px; }
 .local-dashboard-page--workflow .local-dashboard-filters label { flex: none; }
 .local-dashboard-page--workflow .local-dashboard-filters input { flex: 1 1 260px; max-width: 540px; }
-.local-dashboard-page--runs .local-chart--runs .local-chart-canvas { height: 128px !important; }
+/* The Runs charts keep the kit's 210px: at 128px their value labels stacked 12.6px apart (live review 2026-11-04). */
 .local-dashboard-page--runs .local-run-charts { margin-bottom: 14px; }
 .local-dashboard-page--runs .local-chart-heading { margin-bottom: 10px; }
 .local-dashboard-page--runs .local-chart-inspector { margin-top: 8px; }

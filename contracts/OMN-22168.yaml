@@ -89,10 +89,10 @@ dod_evidence:
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn22168-ac3-charts-draw-whole"
     description: >-
-      AC3, the 2026-11-04 live review of every page only, not the whole criterion: the kit's line draws to its last
-      day, its tooltips take the dark theme, the run charts fill their tab and keep their value labels apart, a long
-      model name stays inside its table cell, an idle inspector select is not drawn in the focus colour, and a model
-      name wraps at its joins, each measured on the page.
+      AC3, the 2026-11-04 live review of every page only, not the whole criterion: the kit's tooltips take the dark
+      theme, the run charts fill their tab and keep their value labels apart, a long model name stays inside its
+      table cell, an idle inspector select is not drawn in the focus colour, each measured on the page, and a model
+      name wraps at its joins.
     source: "manual"
     binds_ac: ["AC3"]
     checks:

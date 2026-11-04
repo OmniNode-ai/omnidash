@@ -3,14 +3,14 @@ import { chartRows, prefix, recentDay, serveCharts } from './omn21166-chart-fixt
 
 /**
  * OMN-22168: the chart and table defects a live review of every page found on 2026-11-04, each measured on the page as
- * a reader sees it. Every case fails on dev 27eeafb0 and passes with the fix.
- *   L1 Pass rate per day draws its line all the way to the last day (it stopped part-way: a stroke dash measured with
- *      pathLength under vector-effect: non-scaling-stroke);
+ * a reader sees it. Every case fails on dev 27eeafb0 and passes with the fix. The pass-rate line that stopped short of its
+ * last day (fixed in the same change) is not here: headless Chromium drew dev's line whole even at devicePixelRatio 2, so
+ * no case could be shown to fail on it; src/styles/motion.omn21970.test.tsx M4 holds the draw mechanism instead.
  *   L2 a long model name stays inside its Usage table cell (white-space: nowrap beat the wrap rule);
  *   L3 the run charts fill the Analysis views tab (a 12-column span made 11 empty grid columns);
  *   L4 a chart tooltip takes the dark theme (the chart library's white box);
  *   L5 an idle Inspect run select is not drawn in the focus colour;
- *   L6 a per-run chart keeps its value labels apart (they stacked 12px apart in a 150px chart).
+ *   L6 a per-run chart keeps its value labels apart (12.6px apart in the 128px Runs override; 24px at the kit's 210px).
  */
 const LONG = 'nvidia/nemotron-3-ultra-550b-a55b:free';
 const template = chartRows[prefix + 'delegation.decisions.v1'][0] as Record<string, unknown>;
@@ -26,12 +26,6 @@ const rows = { ...chartRows, [prefix + 'delegation.decisions.v1']: runs };
 test.use({ viewport: { width: 1440, height: 900 } });
 test.beforeEach(async ({ page }) => { await serveCharts(page, rows); });
 
-async function settle(page: Page) {
-  await page.evaluate(() => Promise.all(document.getAnimations()
-    .filter(animation => animation.effect?.getTiming().iterations !== Infinity)
-    .map(animation => animation.finished.catch(() => undefined))));
-}
-
 async function openAnalysis(page: Page) {
   await page.goto('/runs');
   await page.getByText('More analysis', { exact: true }).click();
@@ -45,49 +39,6 @@ async function useTheme(page: Page, theme: 'light' | 'dark') {
   if (theme === 'dark') await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   else await expect(page.locator('html')).not.toHaveAttribute('data-theme', 'dark');
 }
-
-// The live review saw the line stop short on a 2x display (devicePixelRatio 2, 2026-11-04); a non-scaling stroke's dash
-// is measured in device pixels, so the case renders at that ratio.
-test.describe('on a 2x display', () => {
-test.use({ deviceScaleFactor: 2 });
-test('L1: Pass rate per day draws its line to the last day', async ({ page }, info) => {
-  await openAnalysis(page);
-  const plot = page.getByRole('figure', { name: 'Pass rate per day', exact: true }).locator('.ins-plot');
-  await plot.scrollIntoViewIfNeeded();
-  await settle(page);
-  const geometry = await plot.evaluate(el => {
-    const box = el.getBoundingClientRect();
-    const dots = [...el.querySelectorAll('.ins-dot')].map(dot => {
-      const r = dot.getBoundingClientRect();
-      return { x: r.left + r.width / 2 - box.left, y: r.top + r.height / 2 - box.top };
-    });
-    return { dots, stroke: getComputedStyle(el.querySelector('path')!).stroke, width: box.width, height: box.height };
-  });
-  expect(geometry.dots.length, 'one dot per day with a value').toBe(4);
-  const shot = await plot.screenshot({ path: info.outputPath('pass-rate-line.png') });
-  // Along every segment, between its two dots (clear of each dot's ring), the line's own colour must be drawn.
-  const samples = geometry.dots.slice(1).flatMap((to, i) => {
-    const from = geometry.dots[i]!;
-    return [0.3, 0.5, 0.7].map(t => ({ x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t }));
-  });
-  const drawn = await page.evaluate(async ({ bytes, samples, stroke, width }) => {
-    const bitmap = await createImageBitmap(new Blob([new Uint8Array(bytes)], { type: 'image/png' }));
-    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
-    const context = canvas.getContext('2d')!;
-    context.drawImage(bitmap, 0, 0);
-    const scale = bitmap.width / width;
-    const [r, g, b] = stroke.match(/\d+/g)!.map(Number);
-    return samples.map(({ x, y }) => {
-      for (let dy = -4; dy <= 4; dy += 1) {
-        const [pr, pg, pb] = context.getImageData(Math.round(x * scale), Math.round((y + dy) * scale), 1, 1).data;
-        if (Math.abs(pr! - r!) + Math.abs(pg! - g!) + Math.abs(pb! - b!) < 60) return true;
-      }
-      return false;
-    });
-  }, { bytes: [...shot], samples, stroke: geometry.stroke, width: geometry.width });
-  expect(drawn, `the line is drawn at 30%, 50% and 70% of every segment (stroke ${geometry.stroke})`).toEqual(samples.map(() => true));
-});
-});
 
 test('L2: a long model name stays inside its Usage table cell', async ({ page }) => {
   await page.goto('/usage');
