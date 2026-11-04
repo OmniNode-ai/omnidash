@@ -11,6 +11,8 @@ import { chartRows, prefix, recentDay, serveCharts } from './omn21166-chart-fixt
  *   L4 a chart tooltip takes the dark theme (the chart library's white box);
  *   L5 an idle Inspect run select is not drawn in the focus colour;
  *   L6 a per-run chart keeps its value labels apart (12.6px apart in the 128px Runs override; 24px at the kit's 210px).
+ *   L7 Routing columns adds its three columns to the run list and keeps the others (position rules hid them and swapped
+ *      Local cost, Task type and Duration for six other columns).
  */
 const LONG = 'nvidia/nemotron-3-ultra-550b-a55b:free';
 const template = chartRows[prefix + 'delegation.decisions.v1'][0] as Record<string, unknown>;
@@ -106,4 +108,21 @@ test('L6: a per-run chart keeps its value labels apart', async ({ page }) => {
     const gaps = labels.slice(1).map((top, i) => top - labels[i]!);
     expect(Math.min(...gaps), `${name}: labels at least 20px apart`).toBeGreaterThanOrEqual(20);
   }
+});
+
+test('L7: Routing columns adds its three columns and keeps the rest', async ({ page }) => {
+  await page.goto('/runs');
+  const table = page.locator('.local-runs-wrap table').first();
+  const shown = () => table.locator('thead th').evaluateAll(cells => cells
+    .filter(cell => getComputedStyle(cell).display !== 'none').map(cell => cell.textContent?.trim()));
+  const plain = await shown();
+  expect(plain).toEqual(expect.arrayContaining(['Model', 'Local cost', 'Task type', 'Duration']));
+  await page.getByLabel('Routing columns', { exact: true }).check();
+  const routing = await shown();
+  const added = ['Requested model', 'Finish reason', 'Escalations'];
+  expect(routing.filter(name => !added.includes(name!)), 'the plain columns stay as they were').toEqual(plain);
+  expect(routing, 'the routing columns show').toEqual(expect.arrayContaining(added));
+  const firstRow = await table.locator('tbody tr').first().locator('td, th').evaluateAll(cells => cells
+    .filter(cell => getComputedStyle(cell).display !== 'none').length);
+  expect(firstRow, 'every shown header has its cell').toBe(routing.length);
 });

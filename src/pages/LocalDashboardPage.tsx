@@ -1754,7 +1754,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
             <button type="button" onClick={() => exportRuns('csv')}>Export CSV</button>
             <button type="button" onClick={() => exportRuns('json')}>Export JSON</button>
           </span></p>
-          <DataTable fit className={`local-runs-wrap${showAllFields ? ' local-runs-wrap--all' : ''}`} id={`${id}-table`}>
+          <DataTable fit className={`local-runs-wrap${showAllFields ? ' local-runs-wrap--all' : ''}${showRouting ? ' local-runs-wrap--routing' : ''}`} id={`${id}-table`}>
               <thead>
                 <tr>
                   <th>Run</th>{sortHeader('created', 'Created')}<th>Status</th><th>Cause</th><th>Model</th><th>Backend</th>
