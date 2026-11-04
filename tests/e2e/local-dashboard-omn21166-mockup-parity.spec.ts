@@ -135,7 +135,7 @@ test('AC27 Runs filters by UTC day and task, then shows the selected run without
   await pickFilter(page, 'Task', 'code_generation');
   await expect(page.getByRole('row', { name: /run-today-fail/ })).toBeVisible();
   await expect(page.getByRole('row', { name: /run-yesterday/ })).toHaveCount(0);
-  await task.selectOption('all');
+  await pickFilter(page, 'Task', 'all');
   await expect(page.getByRole('row', { name: /run-yesterday/ })).toBeVisible();
 
   await page.getByRole('row', { name: /run-today-unmeasured/ }).click();

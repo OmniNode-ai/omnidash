@@ -89,8 +89,9 @@ describe('RunsTable filters by backend (OMN-21015 AC8, RU-1)', () => {
   });
 
   it('says so when no run has the chosen backend', () => {
-    render(<RunsTable now={NOW} decisions={[decisions[0]!]} sessions={[]} />);
-    chooseDropdown('Backend', 'Not recorded');
+    // The dropdown offers only backends the data has, so the address chooses one the single run does not have.
+    const { hook, searchHook } = memoryLocation({ path: '/runs?backend=Not%20recorded' });
+    render(<Router hook={hook} searchHook={searchHook}><RunsTable now={NOW} decisions={[decisions[0]!]} sessions={[]} syncUrl /></Router>);
     expect(screen.getByText('No runs match these filters')).toBeInTheDocument();
   });
 });

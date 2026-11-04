@@ -13,6 +13,8 @@ import { chartRows, prefix, recentDay, serveCharts } from './omn21166-chart-fixt
  *   L6 a per-run chart keeps its value labels apart (12.6px apart in the 128px Runs override; 24px at the kit's 210px).
  *   L7 Routing columns adds its three columns to the run list and keeps the others (position rules hid them and swapped
  *      Cost, Task type and Duration for six other columns).
+ *   L8 the Runs filter glyphs and the two export buttons carry their own colours in both themes (Lakshman 2026-11-04 chose
+ *      colour for these controls over the 10-27 one grey; the page's grey-icon rule had painted them all grey).
  */
 const LONG = 'nvidia/nemotron-3-ultra-550b-a55b:free';
 const template = chartRows[prefix + 'delegation.decisions.v1'][0] as Record<string, unknown>;
@@ -127,4 +129,32 @@ test('L7: Routing columns adds its three columns and keeps the rest', async ({ p
   const firstRow = await table.locator('tbody tr').first().locator('td, th').evaluateAll(cells => cells
     .filter(cell => getComputedStyle(cell).display !== 'none').length);
   expect(firstRow, 'every shown header has its cell').toBe(routing.length);
+});
+
+test('L8: each Runs filter glyph and both export buttons keep their own colour', async ({ page }) => {
+  await page.goto('/runs');
+  await expect(page.locator('.local-runs-wrap tbody tr').first()).toBeVisible();
+  for (const theme of ['light', 'dark'] as const) {
+    await useTheme(page, theme);
+    const read = () => page.evaluate(() => {
+      const color = (el: Element | null) => (el ? getComputedStyle(el).color : 'missing');
+      return {
+        grey: color(document.querySelector('.sidebar .dash-marker svg')),
+        filters: [...document.querySelectorAll('.local-dashboard-filters .ds-dropdown-trigger')]
+          .map(button => color(button.querySelector('.ds-dropdown-mark svg'))),
+        exports: [...document.querySelectorAll('.local-runs-export button[data-export]')]
+          .map(button => ({ text: color(button), icon: color(button.querySelector('svg')) })),
+      };
+    });
+    const seen = await read();
+    expect(seen.filters, `${theme}: seven filter glyphs`).toHaveLength(7);
+    expect(seen.filters.filter(paint => paint === seen.grey || paint === 'missing'), `${theme}: no filter glyph is the interface grey`).toEqual([]);
+    expect(new Set(seen.filters).size, `${theme}: each filter its own colour`).toBe(7);
+    expect(seen.exports, `${theme}: CSV and JSON`).toHaveLength(2);
+    for (const { text, icon } of seen.exports) {
+      expect(icon, `${theme}: an export glyph is not the interface grey`).not.toBe(seen.grey);
+      expect(text, `${theme}: an export's word matches its glyph`).toBe(icon);
+    }
+    expect(seen.exports[0]!.icon, `${theme}: CSV and JSON differ`).not.toBe(seen.exports[1]!.icon);
+  }
 });

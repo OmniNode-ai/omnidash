@@ -96,7 +96,7 @@ describe('OMN-21015: a run\'s model and backend set the filter from its row', ()
     ['Status', 'passed'], ['Model', 'model-b'], ['Backend', 'byok'], ['Window', 'today'],
   ])('Q5: Clear filters is offered when only %s is set', (label, value) => {
     render(<RunsTable now={NOW} decisions={RUNS} sessions={[]} />);
-    fireEvent.change(screen.getByLabelText(label), { target: { value } });
+    chooseDropdown(label, value);
     expect(screen.getByRole('button', { name: 'Clear filters' })).toBeTruthy();
   });
 

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from 'playwright/test';
 import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
-import { expectFilter, expectFilterText } from './filter-dropdowns';
+import { expectFilter, expectFilterText, filterTrigger, pickFilter } from './filter-dropdowns';
 
 // AC39 (TI24): no user-visible text on the six core pages or Delegation Evidence
 // names an internal exposure, topic, table, column or typed code. Failure modes
@@ -75,17 +75,19 @@ test('typed failure labels preserve the exact served cause filter and selected r
   // A typed enum may also be the served failure detail; titles must read
   // the same precise label, including the ordinary-word timeout enum.
   for (const [code, label] of Object.entries(causeLabels)) {
-    await cause.selectOption(code);
+    await pickFilter(page, 'Cause', code);
     const causeCell = page.locator('.local-runs-wrap tbody [data-failure-cause]');
     await expect(causeCell).toHaveText(label);
     await expect.soft(causeCell).toHaveAttribute('title', label);
   }
-  await cause.selectOption('MALFORMED');
+  await pickFilter(page, 'Cause', 'MALFORMED');
   const legacyCause = page.locator('.local-runs-wrap tbody [data-failure-cause="MALFORMED"]');
   await expect(legacyCause).toHaveText('Malformed output');
   await expect.soft(legacyCause).toHaveAttribute('title', 'Malformed output: invalid syntax');
-  await cause.selectOption('refused_before_dispatch');
-  const labels = await cause.locator('option').allTextContents();
+  await pickFilter(page, 'Cause', 'refused_before_dispatch');
+  await filterTrigger(page, 'Cause').click();
+  const labels = await page.getByRole('listbox', { name: 'Cause', exact: true }).locator('[role="option"] .ds-dropdown-label').allTextContents();
+  await page.keyboard.press('Escape');
   for (const label of Object.values(causeLabels)) expect(labels).toContain(label);
   const leaks = await page.locator('[title], [aria-label]').evaluateAll(elements => elements.flatMap(el =>
     ['title', 'aria-label'].flatMap(name => {
