@@ -1461,6 +1461,11 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ds-accent); outline-o
 .ev-triage-rows li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px;
   align-items: baseline; min-width: 0; padding: 10px 0; border-bottom: 1px solid var(--ds-line); }
 .ev-triage-rows li:last-child { border-bottom: 0; }
+/* OMN-22168 (Lakshman 2026-11-04): each row's share of the failures as a thin bar under it, in the failure colour. */
+.ev-triage-rows .ev-triage-share { grid-column: 1 / -1; position: relative; height: 4px; margin-top: -2px; overflow: hidden;
+  border-radius: 999px; background: var(--ds-surface-2); }
+.ev-triage-rows .ev-triage-share::before { content: ''; position: absolute; inset: 0 auto 0 0; width: var(--share, 0%);
+  border-radius: inherit; background: var(--ds-bad); }
 .ev-triage-rows a, .ev-triage-rows li > span:first-child { min-width: 0; overflow-wrap: anywhere; }
 .ev-triage-rows .mono { color: var(--ds-ink-2); text-align: right; white-space: normal; }
 .ev-savings-bridge { display: grid; gap: 14px; min-width: 0; }

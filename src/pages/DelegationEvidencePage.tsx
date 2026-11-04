@@ -8,7 +8,7 @@ import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
  * projection returns no rows / is degraded renders an explicit honest state.
  */
 
-import { type ReactNode } from 'react';
+import { type ReactNode, type CSSProperties } from 'react';
 import { formatUsd } from '@/components/dashboard/usage/UsageByModelDayWidget';
 import { isUnavailableField } from '@/components/dashboard/field-identity';
 import { EvPageShell } from '@/components/dashboard/event-dash/EvPageShell';
@@ -438,11 +438,16 @@ export function TriageRows({ rows, denominator, kind }: {
 }) {
   if (rows.length === 0) return <p className="note">No failures in this population.</p>;
   return <ol className="ev-triage-rows" aria-label={`Failures by ${kind}`}>
-    {rows.map(row => <li data-triage-row key={`${kind}-${row.id ?? row.name}`}>
-      <a href={row.href} title={row.title} aria-label={`View failed runs for ${row.name}`}>{row.name}</a>
-      <span className="mono">{row.count === null ? 'Not served' : formatDashboardCount(row.count)} · {row.count === null || denominator === null || denominator === 0
-        ? 'Share not served' : sharePercent(row.count / denominator)}</span>
-    </li>)}
+    {rows.map(row => {
+      const share = row.count === null || denominator === null || denominator === 0 ? null : row.count / denominator;
+      return <li data-triage-row key={`${kind}-${row.id ?? row.name}`}>
+        <a href={row.href} title={row.title} aria-label={`View failed runs for ${row.name}`}>{row.name}</a>
+        <span className="mono">{row.count === null ? 'Not served' : formatDashboardCount(row.count)} · {share === null ? 'Share not served' : sharePercent(share)}</span>
+        {/* OMN-22168 (Lakshman 2026-11-04, "make it modern"): the share drawn as a bar; none where the share is not served. */}
+        {share !== null && <span className="ev-triage-share" aria-hidden="true" data-identity-decoration="share-bar"
+          style={{ '--share': `${Number((share * 100).toFixed(3))}%` } as CSSProperties} />}
+      </li>;
+    })}
   </ol>;
 }
 
