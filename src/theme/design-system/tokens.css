@@ -527,20 +527,25 @@
 [data-destination] {
   --ds-destination-accent: #8C641F;
 }
+/* OMN-22168 (Lakshman 2026-11-04, "side bar each page should have own color"): the six sidebar pages each take a
+   design-system hue, so the colour follows the theme and no two pages share one. */
+[data-destination="local-overview"] {
+  --ds-destination-accent: var(--ds-hue-blue);
+}
 [data-destination="local-runs"] {
-  --ds-destination-accent: #4D7686;
+  --ds-destination-accent: var(--ds-hue-teal);
 }
 [data-destination="local-workflow"] {
-  --ds-destination-accent: #58724C;
+  --ds-destination-accent: var(--ds-hue-purple);
 }
 [data-destination="local-usage"] {
-  --ds-destination-accent: #70742F;
+  --ds-destination-accent: var(--ds-hue-orange);
 }
 [data-destination="local-settings"] {
-  --ds-destination-accent: #876A45;
+  --ds-destination-accent: var(--ds-hue-pink);
 }
 [data-destination="delegation-evidence"] {
-  --ds-destination-accent: #477B73;
+  --ds-destination-accent: var(--ds-hue-green);
 }
 [data-destination="experiments"] {
   --ds-destination-accent: #885B87;
@@ -557,20 +562,24 @@
 [data-theme="dark"] [data-destination] {
   --ds-destination-accent: #D2AE6D;
 }
+/* OMN-22168: the six sidebar pages keep their hue in dark (each --ds-hue-* has its own dark value). */
+[data-theme="dark"] [data-destination="local-overview"] {
+  --ds-destination-accent: var(--ds-hue-blue);
+}
 [data-theme="dark"] [data-destination="local-runs"] {
-  --ds-destination-accent: #91B8C3;
+  --ds-destination-accent: var(--ds-hue-teal);
 }
 [data-theme="dark"] [data-destination="local-workflow"] {
-  --ds-destination-accent: #A3BB8D;
+  --ds-destination-accent: var(--ds-hue-purple);
 }
 [data-theme="dark"] [data-destination="local-usage"] {
-  --ds-destination-accent: #C5C382;
+  --ds-destination-accent: var(--ds-hue-orange);
 }
 [data-theme="dark"] [data-destination="local-settings"] {
-  --ds-destination-accent: #D6BA92;
+  --ds-destination-accent: var(--ds-hue-pink);
 }
 [data-theme="dark"] [data-destination="delegation-evidence"] {
-  --ds-destination-accent: #94BFB3;
+  --ds-destination-accent: var(--ds-hue-green);
 }
 [data-theme="dark"] [data-destination="experiments"] {
   --ds-destination-accent: #BE9EC3;

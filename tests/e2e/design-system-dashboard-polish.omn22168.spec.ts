@@ -19,6 +19,8 @@ import { chartRows, prefix, recentDay, serveCharts } from './omn21166-chart-fixt
  *      so names don't break"; the 64px columns broke thinkingmachines mid-word). The plot scrolls inside its panel.
  *   L10 every Recent runs column header has its own glyph and its own colour (Lakshman 2026-11-04, "all should be in
  *      different color and different icons"), each its concept's canonical glyph and colour, never the interface grey.
+ *   L11 each sidebar page has its own colour, and the page title's icon is that page's glyph in that colour, drawn big
+ *      (Lakshman 2026-11-04, "side bar each page should have own color and icons ... icons should be Big in actual page").
  */
 const LONG = 'nvidia/nemotron-3-ultra-550b-a55b:free';
 const template = chartRows[prefix + 'delegation.decisions.v1'][0] as Record<string, unknown>;
@@ -212,5 +214,40 @@ test('L10: each Recent runs column header has its own glyph and colour', async (
     expect(sharedGlyph.map(head => `${head.name}: ${head.glyph}`), `${theme}: no two headers share a glyph`).toEqual([]);
     const sharedColour = heads.filter(head => heads.some(other => other !== head && other.color === head.color));
     expect(sharedColour.map(head => `${head.name}: ${head.color}`), `${theme}: no two headers share a colour`).toEqual([]);
+  }
+});
+
+const DESTINATIONS = [['/overview', 'local-overview'], ['/runs', 'local-runs'], ['/workflow', 'local-workflow'],
+  ['/usage', 'local-usage'], ['/settings', 'local-settings'], ['/delegation-evidence', 'delegation-evidence']] as const;
+test('L11: each sidebar page has its own colour, and its title icon is big in that colour', async ({ page }) => {
+  await page.goto('/overview');
+  await expect(page.locator('main h1')).toBeVisible();
+  for (const theme of ['light', 'dark'] as const) {
+    await useTheme(page, theme);
+    const seen: Record<string, { glyph: string; color: string }> = {};
+    for (const [path, destination] of DESTINATIONS) {
+      await page.goto(path);
+      await expect(page.locator('main h1')).toBeVisible();
+      const read = await page.evaluate(destination => {
+        const glyph = (svg: Element | null) => (svg ? [...svg.classList].find(name => name.startsWith('lucide-') && name !== 'lucide-icon') ?? '' : 'none');
+        const nav = document.querySelector(`.sidebar a[data-destination="${destination}"] svg`);
+        const head = document.querySelector('main :is(.local-dashboard-page-icon, .ev-title-icon) svg');
+        const h1 = document.querySelector('main h1');
+        return {
+          nav: { glyph: glyph(nav), color: nav ? getComputedStyle(nav).color : 'none' },
+          head: { glyph: glyph(head), color: head ? getComputedStyle(head).color : 'none', size: head ? head.getBoundingClientRect().width : 0 },
+          h1: h1 ? parseFloat(getComputedStyle(h1).fontSize) : 0,
+        };
+      }, destination);
+      expect(read.head, `${theme} ${path}: the title icon is the sidebar's glyph and colour`).toMatchObject(read.nav);
+      expect(read.head.size, `${theme} ${path}: the title icon is big (at least half the title's size)`).toBeGreaterThanOrEqual(read.h1 / 2);
+      seen[destination] = read.nav;
+    }
+    const colours = Object.values(seen).map(item => item.color);
+    expect(new Set(colours).size, `${theme}: six pages, six colours ${JSON.stringify(seen)}`).toBe(6);
+    // The interface grey of each theme (OMN-21308 part 28a) is what the sidebar drew before.
+    const grey = await page.evaluate(() => { const probe = document.createElement('i'); probe.style.color = 'var(--ds-ink-3)'; document.body.append(probe);
+      const value = getComputedStyle(probe).color; probe.remove(); return value; });
+    expect(colours.filter(colour => colour === grey), `${theme}: no page icon is the interface grey`).toEqual([]);
   }
 });

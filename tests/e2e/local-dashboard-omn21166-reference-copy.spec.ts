@@ -50,6 +50,9 @@ for (const theme of ['light', 'dark'] as const) {
         // OMN-22168 (Lakshman 2026-11-04, chosen over this grey for these controls only): each Runs filter's glyph and the
         // CSV and JSON export glyphs carry their own colour; design-system-dashboard-polish L8 checks them.
         .filter(svg => !svg.closest('.local-dashboard-filters .ds-dropdown-mark, .local-runs-export button[data-export]'))
+        // OMN-22168 (Lakshman 2026-11-04, "side bar each page should have own color and icons"): each page's sidebar icon
+        // and title icon draw that page's colour; design-system-dashboard-polish L11 checks them.
+        .filter(svg => !svg.matches('svg.destination-icon'))
         .map(svg => ({ color: getComputedStyle(svg).color, active: !!svg.closest('.mvp-nav-item.active') })));
       expect(icons.length, `${path} draws icons`).toBeGreaterThan(3);
       for (const icon of icons) expect(icon.color, `${path} icon`).toBe(INK3[theme]);
