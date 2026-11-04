@@ -23,8 +23,15 @@ test('Overview keeps its declared panels, keeps values and opens the selected da
   await page.goto('/overview');
   // OMN-21166 live review 2026-10-25: the Overview is five headline cards, Runs per day, Tokens per day, Model usage and Tier mix.
   await expect(page.locator('button.gdb-day').first()).toBeVisible();
-  expect(await page.locator('.local-dashboard-panel[data-component]').evaluateAll(elements =>
-    elements.map(el => `${el.getAttribute('data-component')}${el.getAttribute('data-slice') ? ':' + el.getAttribute('data-slice') : ''}`).sort())).toEqual([
+  // OMN-22168: the four charts are tabs, one panel drawn at a time, so the declared panels are collected over every tab.
+  const declared = new Set<string>();
+  for (const tab of ['Runs per day', 'Tokens per day', 'Model usage', 'Tier mix']) {
+    await chooseChartTab(page, tab);
+    for (const id of await page.locator('.local-dashboard-panel[data-component]').evaluateAll(elements =>
+      elements.map(el => `${el.getAttribute('data-component')}${el.getAttribute('data-slice') ? ':' + el.getAttribute('data-slice') : ''}`))) declared.add(id);
+  }
+  await chooseChartTab(page, 'Runs per day');
+  expect([...declared].sort()).toEqual([
     'overview-spend', 'overview-savings', 'overview-measured', 'overview-tokens',
     'overview-quality:card', 'overview-insights:runs', 'overview-insights:tokens',
     'overview-model-usage', 'overview-tier-mix',
@@ -85,6 +92,7 @@ test('empty or unavailable run figures do not produce fake charts or zeros', asy
   await serveCharts(page, { ...rows, [prefix + 'delegation.decisions.v1']: [] });
   await page.reload();
   await expect(page.locator('[data-slice="runs"]')).toContainText('No runs yet');
+  await chooseChartTab(page, 'Tokens per day');
   await expect(page.locator('[data-slice="tokens"]')).toContainText('No runs yet');
   await expect(page.locator('button.gdb-day')).toHaveCount(0);
   await page.screenshot({ path: info.outputPath('overview-empty.png'), fullPage: true });

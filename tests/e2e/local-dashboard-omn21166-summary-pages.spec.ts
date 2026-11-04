@@ -1,6 +1,7 @@
 import { expect, test } from 'playwright/test';
 import { chartRows, prefix, serveCharts, keepRealClock } from './omn21166-chart-fixtures';
 import { expectFilter } from './filter-dropdowns';
+import { chooseChartTab } from './chart-tabs';
 // This spec dates its rows from the real clock, so the browser keeps it (see FIXTURE_NOW).
 test.beforeEach(({ page }) => keepRealClock(page));
 
@@ -23,14 +24,19 @@ test('Overview is a compact summary with exact day links and no detailed tables'
   // Live review 2026-10-25: Why runs failed, More activity, Recent runs, Last run and Additional runtime metrics are
   // deleted from Overview (AC86, Lakshman 2026-10-25); the figures in view are Runs per day, Tokens per day and Runs by
   // tier (Model usage is a ranked-bars cell that shows its empty state on these fixtures, which serve no by_model).
-  // OMN-22168 (Lakshman 2026-11-04): the Daily trend joins them.
-  await expect(page.locator('main figure:visible')).toHaveCount(4);
+  // OMN-22168 (Lakshman 2026-11-04): the Daily trend joins them, and the four charts are one row of tabs, so the page
+  // opens on two figures (the trend and the chosen tab's chart) and each tab draws its own.
+  await expect(page.locator('main figure:visible')).toHaveCount(2);
   await expect(page.getByRole('figure', { name: 'Daily trend', exact: true })).toBeVisible();
   await expect(page.getByRole('figure', { name: 'Runs per day', exact: true })).toBeVisible();
   await expect(page.getByRole('figure', { name: 'Why runs failed', exact: true })).toHaveCount(0);
+  await chooseChartTab(page, 'Tokens per day');
   await expect(page.getByRole('figure', { name: 'Tokens per day', exact: true })).toBeVisible();
+  await chooseChartTab(page, 'Model usage');
   await expect(page.locator('[data-component="overview-model-usage"]')).toBeVisible();
+  await chooseChartTab(page, 'Tier mix');
   await expect(page.getByRole('figure', { name: 'Runs by tier', exact: true })).toBeVisible();
+  await chooseChartTab(page, 'Runs per day');
   // OMN-21166 AC86 (Lakshman 2026-10-25): Additional runtime metrics, Recent runs, its field table and Last run are deleted.
   await expect(page.locator('details.local-overview-secondary')).toHaveCount(0);
   await expect(page.locator('[data-component="overview-recent-runs"]')).toHaveCount(0);
@@ -55,7 +61,9 @@ test('Runs owns deep analysis and failure drilldown still filters exact records'
   for (const name of ['Runs by model', 'Runs by tier', 'Run outcomes']) {
     await expect(page.getByRole('figure', { name, exact: true })).toHaveCount(0);
   }
+  // OMN-22168: Run analysis is a row of tabs; each chart is drawn when its tab (named as the chart) is chosen.
   for (const name of ['Tasks', 'Pass rate per day', 'Why runs failed', 'How long runs take', 'Model scoreboard', 'When runs happen']) {
+    await chooseChartTab(page, name);
     await expect(page.getByRole('figure', { name, exact: true })).toBeVisible();
   }
   await page.getByRole('figure', { name: 'Why runs failed', exact: true }).getByRole('button', { name: 'Show runs failed by Failure reason unavailable', exact: true }).click(); // an unmapped raw code reads as unavailable (daa30c81); the filter still carries SUMMARY_FAILURE

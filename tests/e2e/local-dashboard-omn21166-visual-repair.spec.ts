@@ -1,5 +1,6 @@
 import { expect, test } from 'playwright/test';
 import { chartRows, narrowTo, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chooseChartTab } from './chart-tabs';
 
 // Before implementation: oversized unavailable cards must not consume the first
 // screen; routing details must remain keyboard accessible without a wall of rows.
@@ -25,6 +26,8 @@ test('compact Overview preserves missing data, quality, chart access and routing
   await expect(page.getByRole('figure', { name: 'Runs per day', exact: true })).toBeInViewport();
   // OMN-21166 Maple grid: Overview's tier mix is ranked bars with a keyboard link to the routing breakdown; the routing
   // table is Runs' routing breakdown, shown directly under "More analysis".
+  // OMN-22168: Overview's four charts are a row of tabs; this chart's tab is chosen first.
+  await chooseChartTab(page, 'Tier mix');
   const tier = page.locator('[data-component="overview-tier-mix"]');
   await expect(tier.getByRole('link', { name: 'Local: 6 · 75.0%, measured. Opens Runs filtered to Local', exact: true })).toBeVisible();
   // Part 15 AC96: the "View routing breakdown" link is removed; the breakdown stays on Runs.

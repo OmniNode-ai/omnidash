@@ -1,6 +1,7 @@
 import { expect, test, type Page } from 'playwright/test';
 import { serveCharts } from './omn21166-chart-fixtures';
 import { withAllTime } from './omn21166-redesign-fixtures';
+import { chooseChartTab } from './chart-tabs';
 
 // OMN-21166 part 28, revision 5 (Lakshman 2026-10-27: "take help of codex and paradev and entire style copy it"; he chose
 // a monochrome interface, solid flat bars and 8px corners). Failure modes declared before the code:
@@ -156,12 +157,18 @@ test('AC180 every bar is a solid flat fill, never a hatch', async ({ page }) => 
   }
 });
 
-test('AC183 Overview pairs share a baseline and every chart title has the panel divider', async ({ page }) => {
+// OMN-22168: the pair is two tabs of one panel now, so "share a baseline" means the two day charts put their bars on the
+// same baseline when each is chosen: switching tabs does not move the chart.
+test('AC183 the two day charts share a baseline and every chart title has the panel divider', async ({ page }) => {
   await openTheme(page, 'dark');
   await settle(page, '/overview');
-  const pair = page.locator('.local-dashboard-panel[data-component="overview-insights"]');
-  await expect(pair).toHaveCount(2);
-  const bottoms = await pair.locator('.ins-bars').evaluateAll(els => els.map(el => el.getBoundingClientRect().bottom));
+  const bottoms: number[] = [];
+  for (const tab of ['Runs per day', 'Tokens per day']) {
+    await chooseChartTab(page, tab);
+    const panel = page.locator('.local-dashboard-panel[data-component="overview-insights"]');
+    await expect(panel).toHaveCount(1);
+    bottoms.push(await panel.locator('.ins-bars').first().evaluate(el => el.getBoundingClientRect().bottom));
+  }
   expect(Math.abs(bottoms[0]! - bottoms[1]!)).toBeLessThanOrEqual(1);
   // The 01+20 look (Lakshman 2026-11-03): a panel title is a small mono label with no rule under it (was a 1px divider).
   const titles = await page.locator('.local-dashboard-page--overview .local-dashboard-panel:not(.local-overview-summary > *) > h2').all();

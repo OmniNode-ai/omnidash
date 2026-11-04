@@ -1,6 +1,7 @@
 import { expect, test, type Page } from 'playwright/test';
 import { chartRows, prefix, runIds, serveCharts } from './omn21166-chart-fixtures';
 import { pickFilter } from './filter-dropdowns';
+import { chooseChartTab } from './chart-tabs';
 
 // Before implementation: catch wrong source/identity, zero replaced by missing,
 // absent/malformed data rendered as zero, stale filter/page selection, overflow,
@@ -18,8 +19,10 @@ test.use({ viewport: { width: 1440, height: 900 }, trace: 'on' });
 
 // OMN-21166 part 18 AC118: Runs' four run charts and "This week" sit first inside the page's one closed "More analysis"
 // (the "More run charts" disclosure is merged into it).
+// OMN-22168 (Lakshman 2026-11-05): no fold; the run charts panel is in view, one chart tab at a time.
 async function openRunCharts(page: Page) {
-  await expect(page.locator('details.local-more').filter({ has: page.locator('article.local-run-charts-panel') })).toHaveAttribute('open', '');
+  await expect(page.locator('details.local-more')).toHaveCount(0);
+  await expect(page.locator('article.local-run-charts-panel')).toBeVisible();
   await expect(page.getByText('More run charts', { exact: true })).toHaveCount(0);
 }
 
@@ -29,7 +32,8 @@ test('fractional median duration retains milliseconds instead of the integer cou
   // OMN-21166 AC86 (Lakshman 2026-10-25): "More activity" and its Median duration card are deleted from Overview; AC55's
   // one duration formatter (whole milliseconds, exact median in the title) is checked on Runs' analysis below.
   await page.goto('/runs');
-  // OMN-21166 part 13: Runs' analysis sits under the page-level "More analysis".
+  // OMN-22168: Run analysis is a row of tabs; the duration distribution is How long runs take.
+  await chooseChartTab(page, 'How long runs take');
   await expect(page.getByText('Median 512 ms', { exact: true })).toBeVisible();
   await expect(page.locator('article[data-kpi-card="Median duration"] .local-dashboard-metric')).toHaveAttribute('title', '511.5 ms');
   await expect(page.getByText('Not measured ms', { exact: true })).toHaveCount(0);

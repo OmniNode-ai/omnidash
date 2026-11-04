@@ -70,7 +70,7 @@ test('a short phone viewport reaches the whole chart without scrolling the page 
   await page.setViewportSize({ width: 390, height: 360 });
   await serveCharts(page, rows);
   await page.goto('/overview');
-  await expect(page.getByRole('button', { name: /^Expand / })).toHaveCount(0);
+  await expect(page.locator('.local-chart-expand')).toHaveCount(0);
   await chooseChartTab(page, 'Model usage');
   const model = page.locator('[data-component="overview-model-usage"] .local-model-usage');
   await expect(model).toBeVisible();
@@ -85,7 +85,7 @@ test(`each Overview chart tab draws its whole chart at ${width}px in ${theme} th
   await page.addInitScript(value => localStorage.setItem('omnidash.theme.v1', value), theme);
   await serveCharts(page, rows);
   await page.goto('/overview');
-  await expect(page.getByRole('button', { name: /^Expand / })).toHaveCount(0);
+  await expect(page.locator('.local-chart-expand')).toHaveCount(0);
   const frame = page.locator('.local-overview-charts-panel');
   for (const title of ['Runs per day', 'Tokens per day', 'Model usage', 'Tier mix']) {
     await chooseChartTab(page, title);

@@ -3,6 +3,7 @@ import { chartRows, prefix, serveCharts, keepRealClock } from './omn21166-chart-
 // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the window radios sit in one dropdown; chooseWindow opens it and proves it closed.
 import { chooseWindow, openWindows } from './overview-window-menu';
 import { expectFilterOption, pickFilter } from './filter-dropdowns';
+import { chooseChartTab } from './chart-tabs';
 // This spec dates its rows from the real clock, so the browser keeps it (see FIXTURE_NOW).
 test.beforeEach(({ page }) => keepRealClock(page));
 
@@ -85,6 +86,8 @@ test('AC26 Overview applies the selected window to cards and charts and never in
   // OMN-21166 part 13: the duration histogram moved to Runs' analysis, under its closed "More analysis". It reads every
   // served run (the Overview window does not apply there); one of them (run-yesterday, 7,780 ms) is 5 to 10 seconds.
   await page.goto('/runs');
+  // OMN-22168: Run analysis is a row of tabs; How long runs take is chosen first.
+  await chooseChartTab(page, 'How long runs take');
   const duration = page.getByRole('figure', { name: 'How long runs take', exact: true });
   const fiveToTenSeconds = duration.getByRole('button', { name: '5 seconds to 10 seconds: 1 run' }); // "1 run" since part 21's edge-case check
   await fiveToTenSeconds.focus();

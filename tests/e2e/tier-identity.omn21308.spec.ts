@@ -1,5 +1,6 @@
 import { expect, test } from 'playwright/test';
 import { chartRows, prefix, serveCharts, keepRealClock } from './omn21166-chart-fixtures';
+import { chooseChartTab } from './chart-tabs';
 // This spec dates its rows from the real clock, so the browser keeps it (see FIXTURE_NOW).
 test.beforeEach(({ page }) => keepRealClock(page));
 
@@ -25,6 +26,8 @@ for (const selectedTheme of ['light', 'dark']) {
     // OMN-21166 Maple grid / AC64: Overview's run counts are the ranked "Runs by tier" bars (the mark is the bar's
     // colour and the name beside it); the tier icon is in Runs' routing breakdown table, under "More analysis". The
     // donut, the share swatch and the share bar are gone. The same tier must read in the same colour on both pages.
+    // OMN-22168: Overview's four charts are a row of tabs; Tier mix is chosen first.
+    await chooseChartTab(page, 'Tier mix');
     const counts = page.getByRole('figure', { name: 'Runs by tier', exact: true });
     await expect(counts).toBeVisible();
     const evidence: Record<string, { icon: string; count: string; countName: string }> = {};

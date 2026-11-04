@@ -60,9 +60,10 @@ test('L2: a long model name stays inside its Usage table cell', async ({ page })
   expect(overflow.filter(cell => cell.extra > 0), 'no name runs past its cell').toEqual([]);
 });
 
-test('L3: the run charts fill the Analysis views tab', async ({ page }) => {
+// OMN-22168: the "Analysis views" frame is gone; the run charts are their own panel of tabs, and a chart fills its tab.
+test('L3: a run chart fills its tab', async ({ page }) => {
   await openAnalysis(page);
-  const widths = await page.locator('.local-runs-analysis .local-dashboard-tabpanel').first().evaluate(tab => ({
+  const widths = await page.locator('.local-run-charts-panel .local-dashboard-tabpanel').first().evaluate(tab => ({
     tab: tab.getBoundingClientRect().width,
     children: [...tab.children].filter(child => child.getBoundingClientRect().height > 0).map(child => child.getBoundingClientRect().width),
   }));
@@ -106,6 +107,8 @@ test('L5: an idle Inspect run select is not drawn in the focus colour', async ({
 test('L6: a per-run chart keeps its value labels apart', async ({ page }) => {
   await openAnalysis(page);
   for (const name of ['Duration per run', 'Tokens per run']) {
+    // OMN-22168: the run charts are tabs; each is chosen in turn.
+    await chooseChartTab(page, name);
     const chart = page.getByRole('figure', { name, exact: true }).locator('.local-chart-canvas');
     await chart.scrollIntoViewIfNeeded();
     const labels = await chart.evaluate(el => {

@@ -1,6 +1,7 @@
 import { expect, test, type Page } from 'playwright/test';
 import { chartRows, prefix, runIds, serveCharts, USAGE_DAY } from './omn21166-chart-fixtures';
 import { pickFilter } from './filter-dropdowns';
+import { chooseChartTab } from './chart-tabs';
 
 // Failure modes declared before implementation: wrong bar after hiding/zoom;
 // stale selection after filters; missing value becomes zero; unknown day filled;
@@ -21,6 +22,7 @@ test('single-token chart axis never marks valid fractional tick coordinates as m
   }] });
   await page.goto('/runs');
   await openRunCharts(page);
+  await chooseChartTab(page, 'Tokens per run');
   const chart = page.getByRole('figure', { name: 'Tokens per run', exact: true });
   await expect(chart.locator('.local-chart-canvas svg')).toBeVisible();
   await expect(chart.locator('svg text').filter({ hasText: 'Not measured' })).toHaveCount(0);
@@ -50,6 +52,7 @@ test('a chart has no range slider; the selected run and the table are unchanged'
 test('chart selected run is cleared after filtering rather than opening a different index', async ({ page }) => {
   await page.goto('/runs');
   await openRunCharts(page);
+  await chooseChartTab(page, 'Tokens per run');
   const chart = page.getByRole('figure', { name: 'Tokens per run', exact: true });
   await chart.getByLabel('Inspect run').selectOption(runIds[1]);
   await expect(chart.getByRole('link', { name: 'Open run', exact: true })).toHaveAttribute('href', /chart-run-b/);
@@ -63,6 +66,7 @@ test('an actual bar opens its exact run after a series is hidden', async ({ page
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/runs');
   await openRunCharts(page);
+  await chooseChartTab(page, 'Tokens per run');
   const chart = page.getByRole('figure', { name: 'Tokens per run', exact: true });
   await chart.getByRole('button', { name: 'Tokens in', exact: true }).click();
   const color = await chart.getByRole('button', { name: 'Tokens out', exact: true }).locator('[data-swatch]').evaluate(el => getComputedStyle(el).backgroundColor);
@@ -98,6 +102,8 @@ test('tier shares read directly from the routing table and preserve served denom
   // the same served shares directly. Both keep the served denominator. Tier names read "Local"/"Cloud" (OMN-21166
   // readable tier names, tierLabel).
   await page.goto('/overview');
+  // OMN-22168: Overview's four charts are a row of tabs; Tier mix is chosen first.
+  await chooseChartTab(page, 'Tier mix');
   const overview = page.getByRole('region', { name: 'Tier mix', exact: true });
   await expect(overview.getByRole('link', { name: 'Local: 6 · 75.0%, measured. Opens Runs filtered to Local', exact: true })).toBeVisible();
   await expect(overview.getByRole('link', { name: 'Cloud: 2 · 25.0%, measured. Opens Runs filtered to Cloud', exact: true })).toBeVisible();

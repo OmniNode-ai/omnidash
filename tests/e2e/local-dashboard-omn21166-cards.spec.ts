@@ -1,5 +1,6 @@
 import { expect, test } from 'playwright/test';
 import { serveCharts } from './omn21166-chart-fixtures';
+import { chooseChartTab } from './chart-tabs';
 
 // Failure modes: flat disconnected card styles, missing content/header separation,
 // and standalone-card decoration leaking into compact grouped summary cells.
@@ -19,6 +20,8 @@ for (const route of ['overview', 'event-bus']) {
     else expect(await card.evaluate(el => getComputedStyle(el).boxShadow)).not.toBe('none');
     // A headline card is only its title and figure, with the neutral 1px edge since part 27 AC167. The 01+20 look
     // (Lakshman 2026-11-03) draws no rule under any panel title, on Overview or Evidence (was 1px).
+    // OMN-22168: Overview's charts are tabs; Tier mix is chosen before its panel title is read.
+    if (route === 'overview') await chooseChartTab(page, 'Tier mix');
     const header = page.locator(route === 'overview' ? '.maple-grid [data-component="overview-tier-mix"] h2' : '.ev-root .panel-h').first();
     // Event Bus is a developer page outside the six pages the 01+20 look covers; its panel header keeps its rule.
     expect(await header.evaluate(el => getComputedStyle(el).borderBottomWidth)).toBe(route === 'event-bus' ? '1px' : '0px');

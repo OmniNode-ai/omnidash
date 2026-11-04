@@ -90,7 +90,8 @@ test('AC158 Environment is the System status section of Settings, and not on Ove
   await expect(page.locator('article[data-component="status-environment"]')).toHaveCount(1);
   const envArticle = statusSection.locator('article[data-component="status-environment"]');
   await expect(envArticle.locator('.local-environment-line')).toBeVisible();
-  await expect(envArticle.locator('details.local-more')).not.toHaveAttribute('open');
+  // OMN-22168 (Lakshman 2026-11-05, "open all, no hide the contents"): the environment details are open content.
+  await expect(envArticle.locator('details.local-more')).toHaveCount(0);
 });
 
 test('AC159 alert banner shows formatted time after opening details', async ({ page }) => {
@@ -101,7 +102,8 @@ test('AC159 alert banner shows formatted time after opening details', async ({ p
   // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the banner is in System status, opened by its address.
   await gotoSettings(page, 'System status');
   const envArticle = page.locator('article[data-component="status-environment"]');
-  await expect(envArticle.locator('details.local-more')).toHaveAttribute('open');
+  // OMN-22168: no fold to open; the banner's details are in view.
+  await expect(envArticle.locator('details.local-more')).toHaveCount(0);
   await expect(envArticle).toContainText('since Oct 26, 18:01:59 UTC');
   await expect(envArticle).not.toContainText('2026-10-26T18:01:59');
 });

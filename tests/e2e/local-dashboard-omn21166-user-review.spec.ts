@@ -1,6 +1,7 @@
 import { expect, test } from 'playwright/test';
 import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
 import { pickFilter } from './filter-dropdowns';
+import { chooseChartTab } from './chart-tabs';
 
 // Failure modes declared before implementation: searching the wrong fields or
 // source, a stale page hiding matches, lost query on reload, filters not composing,
@@ -100,6 +101,8 @@ test('run chart captions identify the listed records without claiming an obsolet
     await page.goto(route);
     // OMN-21166 part 18 AC118: Runs keeps its run charts inside its one closed "More analysis".
     for (const name of ['Duration per run', 'Tokens per run']) {
+      // OMN-22168: the run charts are tabs; each is chosen in turn.
+      await chooseChartTab(page, name);
       const chart = page.getByRole('figure', { name, exact: true });
       await expect(chart).toBeVisible();
       // OMN-21166 part 18 AC124: the filler subtitle "Explore the listed runs" is removed from the per-run charts.

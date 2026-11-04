@@ -1,5 +1,6 @@
 import { expect, test } from 'playwright/test';
 import { chartRows, keepRealClock, narrowTo, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chooseChartTab } from './chart-tabs';
 // This spec dates its rows from the real clock, so the browser keeps it (see FIXTURE_NOW).
 test.beforeEach(({ page }) => keepRealClock(page));
 
@@ -18,7 +19,8 @@ test('Overview groups activity, routing and quality charts and keeps latest exec
   // "Detailed activity analysis" fold are gone from it); Runs' analysis holds the task mix, quality and performance charts (part 18: the model, tier and outcome breakdowns are removed).
   await page.goto('/overview');
   const perDay = page.locator('[data-component="overview-insights"][data-slice="runs"]');
-  await expect(perDay.getByRole('heading', { name: 'Runs per day', exact: true })).toBeVisible();
+  // OMN-22168: inside its tab the chart's heading is hidden (the tab names it); the Runs per day tab is the one chosen.
+  await expect(page.getByRole('tab', { name: 'Runs per day', exact: true })).toHaveAttribute('aria-selected', 'true');
   await expect(perDay.getByRole('button', { name: /: 3 runs, / })).toBeVisible();
   await page.goto('/runs');
   // OMN-21166 part 13: the analysis sits under Runs' closed page-level "More analysis".
@@ -50,9 +52,13 @@ test('Overview has no invented composition when decision rows are empty', async 
   await page.goto('/overview');
   // OMN-21166 Maple grid: the insights component is panels of charts; each says so, none invents data.
   // OMN-21166 AC86 (Lakshman 2026-10-25): Why runs failed is deleted from Overview, so two panels remain (runs, tokens).
-  const panels = page.locator('[data-component="overview-insights"]');
-  await expect(panels).toHaveCount(2);
-  for (const panel of await panels.all()) await expect(panel).toContainText('No runs yet');
+  // OMN-22168: the two run charts are tabs, one drawn at a time; each says so in turn.
+  for (const tab of ['Runs per day', 'Tokens per day']) {
+    await chooseChartTab(page, tab);
+    const panels = page.locator('[data-component="overview-insights"]');
+    await expect(panels).toHaveCount(1);
+    await expect(panels).toContainText('No runs yet');
+  }
   await expect(page.getByRole('figure', { name: 'Run outcomes', exact: true })).toHaveCount(0);
   await expect(page.getByRole('figure', { name: 'Runs by model', exact: true })).toHaveCount(0);
 });

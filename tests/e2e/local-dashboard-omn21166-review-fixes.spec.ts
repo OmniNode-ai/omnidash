@@ -1,5 +1,6 @@
 import { expect, test } from 'playwright/test';
 import { chartRows, keepRealClock, narrowTo, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chooseChartTab } from './chart-tabs';
 // This spec dates its rows from the real clock, so the browser keeps it (see FIXTURE_NOW).
 test.beforeEach(({ page }) => keepRealClock(page));
 
@@ -24,7 +25,10 @@ test('review fixes: exact median and keyboard/touch hourly inspection', async ({
   await page.waitForLoadState('networkidle');
   // Part 15 AC91: the Runs headline card is also titled "Runs", so the page title is asked for by its level.
   await expect(page.getByRole('heading', { level: 1, name: 'Runs', exact: true })).toBeVisible();
+  // OMN-22168: Run analysis is a row of tabs; each chart is chosen before it is read.
+  await chooseChartTab(page, 'How long runs take');
   await expect(page.getByRole('figure', { name: 'How long runs take', exact: true })).toContainText('Median 960 ms');
+  await chooseChartTab(page, 'When runs happen');
   const heat = page.getByRole('group', { name: /Runs by UTC hour for all served UTC dates/ });
   const cells = heat.getByRole('button');
   await expect(cells).toHaveCount(168);

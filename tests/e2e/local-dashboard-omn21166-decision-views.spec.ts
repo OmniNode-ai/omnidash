@@ -36,7 +36,8 @@ test('AC201 AC202 Usage analysis tabs keep their place in the address, move by k
   const analysis = page.locator('[data-usage-analysis]');
   const tabs = analysisTabs(page);
   // D3, AC202: four views, each under the sample label.
-  await expect(tabs.getByRole('tab')).toHaveText(['Groups', 'Model by task', 'Quality over time', 'Cost versus quality']);
+  // OMN-22168: the views are stat tabs; each tab's label is read apart from its hint.
+  await expect(tabs.getByRole('tab').locator('.local-tab-label')).toHaveText(['Groups', 'Model by task', 'Quality over time', 'Cost versus quality']);
   for (const name of ['Groups', 'Model by task', 'Quality over time', 'Cost versus quality']) {
     await tab(tabs, name).click();
     await expect(tab(tabs, name)).toHaveAttribute('aria-selected', 'true');
@@ -165,10 +166,10 @@ test('AC204 more than five series keeps the five largest by runs, Not recorded i
 
 test('AC206 Runs routing view groups requested to routed model with Not recorded stated as not recorded, and the table gains routing columns', async ({ page }, info) => {
   await serveCharts(page, withRev7);
-  await settle(page, '/runs?analysis=routing');
-  // D1: the Routing tab in the address opens More analysis on it.
-  const more = page.locator('details.local-more--page');
-  await expect(more).toHaveAttribute('open', '');
+  // D1, OMN-22168: Routing is its own panel; the address names its Routing groups tab (no fold to open).
+  await settle(page, '/runs?routing=groups');
+  await expect(page.locator('details.local-more--page')).toHaveCount(0);
+  await expect(page.getByRole('tab', { name: 'Routing groups', exact: true })).toHaveAttribute('aria-selected', 'true');
   const routing = page.locator('table[data-routing-table]');
   await expect(routing).toBeVisible();
   const route = (requested: string, routed: string) => routing.locator(`tbody tr[data-requested="${requested}"][data-routed="${routed}"]`);

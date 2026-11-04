@@ -259,8 +259,10 @@ test('OMN-21166: the Overview first screen holds exact legacy tiles and the acti
   console.log('FIRST-SCREEN-GEOMETRY', JSON.stringify(await page.locator('.local-dashboard-header, .maple-cell, .ins-bars').evaluateAll(nodes => nodes.map(el => { const r=el.getBoundingClientRect();return {element:el.className,field:el.getAttribute('data-field'),y:r.y,height:r.height,width:r.width,columns:getComputedStyle(el).gridTemplateColumns}; }))));
   const activity = [];
   for (const title of ['Runs per day', 'Tokens per day']) {
-    // OMN-22168: Overview's four charts are a row of tabs, one drawn at a time; each is chosen in turn.
+    // OMN-22168: Overview's four charts are a row of tabs, one drawn at a time; each is chosen in turn. Choosing a tab
+    // scrolls it into view, so the page is put back at the top: the check below is about the page as it opens.
     await chooseChartTab(page, title);
+    await page.evaluate(() => { window.scrollTo(0, 0); for (const node of document.querySelectorAll('*')) if (node.scrollTop) node.scrollTop = 0; });
     const drawing = await placed(page, page.getByRole('figure', { name: title, exact: true }).locator('.ins-bars'));
     expect(drawing.window).toEqual([1440, 900]);
     expect(drawing.scrolled).toBe(0);
@@ -272,6 +274,7 @@ test('OMN-21166: the Overview first screen holds exact legacy tiles and the acti
   // OMN-21166 AC64: the tier mix is ranked bars (figure "Runs by tier"). OMN-22168 (Lakshman 2026-11-04, "these 4 into
   // one ... with tab and full size"): it is the Tier mix tab of the same panel, drawn where the activity charts are.
   await chooseChartTab(page, 'Tier mix');
+  await page.evaluate(() => { window.scrollTo(0, 0); for (const node of document.querySelectorAll('*')) if (node.scrollTop) node.scrollTop = 0; });
   const tiers = await placed(page, page.getByRole('figure', { name: 'Runs by tier', exact: true }));
   expect(tiers.height).toBeGreaterThan(120);
   expect(tiers.right).toBeLessThanOrEqual(1440);
@@ -456,11 +459,15 @@ test('OMN-21015: on Runs the listed runs are drawn below the list, and a bar ope
 
   // Runs is list first; inspect chart positions after returning to the top.
   await page.locator('.local-dashboard-page').evaluate(el => { el.scrollTop = 0; });
+  // OMN-22168: the run charts are tabs, so each is chosen in turn and both are drawn in the same place under the list.
+  await chooseChartTab(page, 'Duration per run');
   const left = await placed(page, 'figure[aria-label="Duration per run"]');
+  await chooseChartTab(page, 'Tokens per run');
   const right = await placed(page, 'figure[aria-label="Tokens per run"]');
+  await chooseChartTab(page, 'Duration per run');
   const list = await placed(page, '.local-dashboard-table-wrap thead');
   expect(left.scrolled).toBe(0);
-  expect(right.top).toBeGreaterThanOrEqual(left.bottom);
+  expect(Math.abs(right.top-left.top)).toBeLessThan(2);
   expect(Math.abs(right.left-left.left)).toBeLessThan(2);
   expect(left.top).toBeGreaterThanOrEqual(list.bottom);
   expect(list.bottom).toBeLessThanOrEqual(900);
