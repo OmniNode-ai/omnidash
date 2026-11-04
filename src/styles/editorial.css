@@ -555,3 +555,9 @@ html body .app svg.field-icon.field-icon[data-field-icon="usage-day"]:not([data-
 /* The header is a grid: the status line spans every column on a row of its own. */
 .local-dashboard-page .local-dashboard-header:has(> .local-overview-status) { row-gap: 6px; }
 .local-dashboard-page .local-dashboard-header > .local-overview-status { grid-column: 1 / -1; order: 99; margin: 0; }
+
+/* OMN-22168 (Lakshman 2026-11-04, "line chart should be big"): the daily trend's plot is tall enough to read five lines
+   apart, and shorter on a phone so the page still fits. */
+.local-dashboard-page .local-trend .ins-plot { height: 300px; }
+@media (max-width: 700px) { .local-dashboard-page .local-trend .ins-plot { height: 220px; } }
+.local-dashboard-page .local-trend .ins-plot path { stroke-width: 3; }
