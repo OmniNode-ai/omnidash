@@ -1630,11 +1630,11 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
   // Lakshman 2026-11-04, "all should be in different color and different icons": each column header carries its
   // concept's own glyph in that concept's colour (the same pair the concept draws on every other page).
   const headIcon = (concept: string, label: string) => <ConceptIcon concept={concept} label={label} size={13} />;
-  const plainHeader = (concept: string, label: string) => <th><span className="local-runs-head">{headIcon(concept, label)}{label}</span></th>;
+  const plainHeader = (concept: string, label: string) => <th data-column={concept}><span className="local-runs-head">{headIcon(concept, label)}{label}</span></th>;
   const sortHeader = (key: RunSortKey, label: string, concept: string) => {
     const active = view.sort === key;
     const direction = active ? view.dir ?? 'desc' : null;
-    return <th aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}>
+    return <th data-column={concept} aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}>
       <button type="button" className="local-sort-header" data-sort-active={active ? '' : undefined}
         onClick={() => updateView({ sort: key, dir: active && direction === 'desc' ? 'asc' : 'desc', page: 1 })}>
         {headIcon(concept, label)}{label}<span aria-hidden="true">{direction === 'asc' ? ' ↑' : direction === 'desc' ? ' ↓' : ''}</span>

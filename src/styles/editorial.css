@@ -506,3 +506,8 @@ html body .app svg.field-icon.field-icon[data-field-icon="usage-day"]:not([data-
 .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap thead :is(.local-runs-head, .local-sort-header) {
   display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap thead .field-icon { flex: none; }
+/* The last default column, Duration, needs 120px for its glyph, word and sort arrow, or the table runs past its panel
+   at 1440 (contracts: Runs fits with nothing to scroll sideways); the other columns give up a few pixels. */
+@media (min-width: 1025px) {
+  .local-dashboard-page--runs .local-dashboard-table-wrap--fit th[data-column="duration"] { width: 120px !important; }
+}
