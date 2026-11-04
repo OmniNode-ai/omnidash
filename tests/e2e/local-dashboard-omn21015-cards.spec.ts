@@ -52,12 +52,20 @@ test(`organized cards across all seven MVP pages in ${theme}`, async ({ page }, 
         background: getComputedStyle(el).backgroundColor,
         image: getComputedStyle(el).backgroundImage,
         headline: el.closest('.local-overview-summary') !== null,
+        // A chart inside a tab is framed by the panel around the tabs, so it draws no frame of its own.
+        nested: el.parentElement?.closest('.local-dashboard-panel, .ev-root .panel') !== null,
       })));
-      // OMN-21166 part 27 AC167: every card, headline cards included, keeps the single subtle 1px border in one colour;
-      // a headline card's identity colour is on its icon (checked in the reference-style spec), not on an edge.
-      expect(accents.every(card => card.width === 1), 'Cards use a single subtle border').toBe(true);
-      expect(new Set(accents.map(card => card.color)).size, 'Every card border is the one line colour').toBe(settings ? 0 : 1);
-      expect(accents.every(card => card.image === 'none'), 'Cards use flat surfaces, without decorative gradients').toBe(true);
+      const framed = accents.filter(card => !card.nested);
+      const plain = framed.filter(card => !card.headline);
+      const headlines = framed.filter(card => card.headline);
+      // OMN-21166 part 27 AC167 kept: every framed card has a single 1px border.
+      expect(framed.every(card => card.width === 1), 'Cards use a single subtle border').toBe(true);
+      // OMN-22168 (Lakshman 2026-11-05, "make each cards different color and distinct", superseding AC167's one border
+      // colour and flat surface for the headline cards only): each headline card's border is its own accent, so no two
+      // agree; every other card keeps the one line colour and a flat surface.
+      expect(new Set(plain.map(card => card.color)).size, 'Every other card border is the one line colour').toBe(settings || plain.length === 0 ? 0 : 1);
+      expect(plain.every(card => card.image === 'none'), 'Other cards use flat surfaces, without decorative gradients').toBe(true);
+      expect(new Set(headlines.map(card => card.color)).size, 'Each headline card wears its own border colour').toBe(headlines.length);
       const nestedSurfaces = page.locator('.local-run-summary-group, .workflow-analysis-card, .workflow-flow-node, .local-chart.ins-card, .usage-insight');
       const nestedStyles = await nestedSurfaces.evaluateAll(elements => elements.map(el => ({
         image: getComputedStyle(el).backgroundImage,
@@ -74,7 +82,7 @@ test(`organized cards across all seven MVP pages in ${theme}`, async ({ page }, 
         // keeps its two direction figures in view.
         expect(accents.filter(card => card.headline).length, 'Five headline cards').toBe(5);
         await expect(page.locator('[data-component="overview-tokens"] .local-token-direction')).toHaveCount(2);
-        await expect(page.locator('[data-component="overview-spend"] .local-dashboard-metric')).toHaveText('$3.59');
+        await expect(page.locator('[data-component="overview-spend"] .local-dashboard-metric')).toHaveText('$3.5923');
       }
       // Complex content gets its own row; metric headlines may stay compact.
       const spaciousLayouts = page.locator('.local-overview-focus, .local-run-charts, .workflow-analysis-grid, .workflow-record-grid, .usage-insight-grid, .ev-selected-run-layout, .ev-align-start');

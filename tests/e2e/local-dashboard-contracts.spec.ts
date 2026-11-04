@@ -241,16 +241,16 @@ test('Overview is the default page and fits 1440x900 with no unmeasured 0 (AC4)'
 
   // D1: Savings follows cost.savings-overview.v1, never a metering row.
   const savings = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Savings', exact: true }) });
-  // D1: legacy1.2252, never the conflicting metering1.2184.
-  await expect(savings.getByText('$1.22', { exact: true })).toBeVisible();
-  await expect(savings.getByText('$1.21', { exact: true })).toHaveCount(0);
+  // D1: legacy 1.2252, never the conflicting metering 1.2184 (OMN-22168: every served digit is shown).
+  await expect(savings.getByText('$1.2252', { exact: true })).toBeVisible();
+  await expect(savings.getByText('$1.2184', { exact: true })).toHaveCount(0);
   // OMN-21166 (card basis in a tooltip): the basis line is in the card's tooltip, shown on keyboard focus of the card.
   // Part 29 AC191: the basis is the card's caption, always in the page; no About button to focus.
   await expect(savings.getByText('Modelled · vs cloud baseline', { exact: true })).toBeVisible();
   await expect(savings.getByText('$0.40', { exact: true })).toHaveCount(0);
   // D1: all four headline tiles follow the same legacy all row.
   const headline = (title: string) => page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: title, exact: true }) });
-  await expect(headline('Actual spend').getByText('$0.01', { exact: true })).toBeVisible();
+  await expect(headline('Actual spend').getByText('$0.00686', { exact: true })).toBeVisible();
   await expect(headline('Agent calls').getByText('49', { exact: true })).toBeVisible();
   await expect(headline('Agent calls').getByText('46', { exact: true })).toHaveCount(0);
   // Part 29 AC191: the basis is the card's caption, always in the page; no About button to focus.
@@ -284,7 +284,7 @@ test('Runs lists every decision with typed unmeasured values at 1440x900 (AC4)',
   for (const header of ['Baseline cost', 'Savings']) {
     await expect(page.getByRole('columnheader', { name: header, exact: true }), header).toHaveCount(0);
   }
-  await expect(unmeasured.getByText('$0.01', { exact: true })).toBeVisible();
+  await expect(unmeasured.getByText('$0.0004', { exact: true })).toBeVisible();
   await expect(unmeasured.getByText('Baseline unresolved')).toHaveCount(0);
   await expect(page.getByText('Runs 1–2 of 2')).toBeVisible();
   // OMN-21166 AC63: the Runs summary strip shows the served Failed count; both runs passed, so its 0 is a measured

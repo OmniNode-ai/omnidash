@@ -13,8 +13,8 @@ test('Evidence savings labels retain exact decimal strings across the headline a
   await page.goto('/delegation-evidence');
   // Live review 2026-10-26: the three money figures are hatched ranked bars; each bar's value is its label on hover.
   const bar = (key: string) => page.locator(`[data-panel-title="SAVINGS vs CLOUD BASELINE"] [data-ranked-item="${key}"] .rb-value`);
-  await expect(bar('baseline')).toHaveText('$9,999,999,999.99');
-  await expect(bar('cost')).toHaveText('$0.01');
+  await expect(bar('baseline')).toHaveText('$9,999,999,999.99999999');
+  await expect(bar('cost')).toHaveText('$0.00999999');
   await expect(page.locator('.ev-savings-hero .big')).toHaveText('$9,999,999,999.99');
   await expect(bar('savings')).toHaveText('$9,999,999,999.99');
   await page.screenshot({ path: info.outputPath('evidence-exact-currency.png') });

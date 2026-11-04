@@ -1,5 +1,6 @@
 import { expect, test } from 'playwright/test';
 import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chooseChartTab } from './chart-tabs';
 
 // Failure modes: plots use a different row/order than the ten-row table, unknowns
 // become zero, selection opens the wrong run, quality remains hidden/duplicates,
@@ -71,6 +72,8 @@ test('empty or unavailable run figures do not produce fake charts or zeros', asy
   await serveCharts(page, { ...rows, [prefix + 'delegation.decisions.v1']: decisions.map(r => ({ ...r, latency_ms: null, tokens_input: null, tokens_output: null })) });
   await page.goto('/overview');
   // OMN-21166 AC86: the recent-runs table is gone; unrecorded token counts must still read "not recorded", never 0.
+  // OMN-22168: Overview's four charts are a row of tabs; Tokens per day is chosen first.
+  await chooseChartTab(page, 'Tokens per day');
   const tokenDays = page.locator('[data-slice="tokens"] button.gdb-day');
   // OMN-21970 AC1 to AC4: the chart now covers every day of the window. The day whose runs recorded no token counts reads
   // not recorded, never 0; a day with no runs at all is a measured zero (Lakshman 2026-10-25, "say 0").

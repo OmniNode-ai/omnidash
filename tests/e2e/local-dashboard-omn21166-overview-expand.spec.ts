@@ -1,7 +1,9 @@
 import { expect, test } from 'playwright/test';
 import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chooseChartTab } from './chart-tabs';
 
 // Part 24: the current page has visible info icons, a seven-model row chart, and no expand controls.
+// OMN-22168: the charts are tabs and the Expand control is removed; the checks below hold on the tabs.
 // These browser checks are the red-first proof for those observed failures and their keyboard/viewport risks.
 const names = [
   'Qwen3.8-27B', 'gemini-3.5-flash-lite', 'nvidia/nemotron-3-ultra-550b-a55b:free',
@@ -44,7 +46,9 @@ for (const [width, height] of [[1440, 900], [390, 844]] as const) {
         expect(bounds.right, `card ${index + 1} caption inside the viewport`).toBeLessThanOrEqual(bounds.width);
       }
     }
-    const model = page.locator('.maple-cell--half > [data-component="overview-model-usage"]');
+    // OMN-22168: Overview's four charts are a row of tabs; Model usage is chosen first.
+    await chooseChartTab(page, 'Model usage');
+    const model = page.locator('[data-component="overview-model-usage"]');
     await expect(model.locator('.rb-chart--vertical [data-ranked-item]')).toHaveCount(7);
     for (const name of names) await expect(model.locator('.rb-name', { hasText: name })).toHaveCount(1);
     const plot = await model.locator('.rb-plot').evaluate(el => ({ display: getComputedStyle(el).display, scrollWidth: el.scrollWidth, clientWidth: el.clientWidth }));
@@ -58,43 +62,50 @@ for (const [width, height] of [[1440, 900], [390, 844]] as const) {
   });
 }
 
-test('a short phone viewport scrolls the full chart without scrolling the page sideways', async ({ page }) => {
+// OMN-22168 (Lakshman 2026-11-04, "remove that" on the Expand control; "these 4 into one ... with tab and full size"):
+// there is no full-view dialog any more. Each chart is its own full-width tab, so the properties the dialog was there for
+// are held on the tab itself: the whole chart is reachable without the page scrolling sideways, the ranked charts keep
+// their upright bars, and keyboard focus reaches the tab.
+test('a short phone viewport reaches the whole chart without scrolling the page sideways', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 360 });
   await serveCharts(page, rows);
   await page.goto('/overview');
-  await page.getByRole('button', { name: 'Expand Model usage' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Model usage full view' });
-  const size = await dialog.evaluate(el => ({ content: el.scrollHeight, viewport: el.clientHeight }));
-  expect(size.content).toBeGreaterThan(size.viewport);
+  await expect(page.getByRole('button', { name: /^Expand / })).toHaveCount(0);
+  await chooseChartTab(page, 'Model usage');
+  const model = page.locator('[data-component="overview-model-usage"] .local-model-usage');
+  await expect(model).toBeVisible();
+  const scroll = await model.evaluate(el => ({ content: el.scrollWidth, viewport: el.clientWidth }));
+  expect(scroll.content).toBeGreaterThanOrEqual(scroll.viewport);
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
 });
 
 for (const [width, height, theme] of [[1440, 900, 'dark'], [1440, 900, 'light'], [390, 844, 'dark'], [390, 844, 'light']] as const) {
-test(`each Overview graph opens a scrollable full view at ${width}px in ${theme} theme`, async ({ page }, info) => {
+test(`each Overview chart tab draws its whole chart at ${width}px in ${theme} theme`, async ({ page }, info) => {
   await page.setViewportSize({ width, height });
   await page.addInitScript(value => localStorage.setItem('omnidash.theme.v1', value), theme);
   await serveCharts(page, rows);
   await page.goto('/overview');
+  await expect(page.getByRole('button', { name: /^Expand / })).toHaveCount(0);
+  const frame = page.locator('.local-overview-charts-panel');
   for (const title of ['Runs per day', 'Tokens per day', 'Model usage', 'Tier mix']) {
-    const panel = page.locator('.maple-cell--half > .local-dashboard-panel', { has: page.getByRole('heading', { name: title, exact: true }) });
-    const opener = panel.getByRole('button', { name: `Expand ${title}` });
-    await opener.click();
-    const dialog = page.getByRole('dialog', { name: `${title} full view` });
-    await expect(dialog).toBeVisible();
-    await expect(dialog.locator('.rb-chart--vertical')).toHaveCount(title === 'Model usage' || title === 'Tier mix' ? 1 : 0);
+    await chooseChartTab(page, title);
+    const drawn = frame.locator('.local-dashboard-tabpanel');
+    await expect(drawn).toHaveCount(1);
+    await expect(drawn.locator('.rb-chart--vertical')).toHaveCount(title === 'Model usage' || title === 'Tier mix' ? 1 : 0);
     if (title === 'Model usage') {
-      await expect(dialog.locator('.local-model-usage .rb-chart--vertical [data-ranked-item]')).toHaveCount(7);
-      expect(await dialog.locator('.local-model-usage .rb-plot').evaluate(el => getComputedStyle(el).display)).toBe('grid');
+      await expect(drawn.locator('.local-model-usage .rb-chart--vertical [data-ranked-item]')).toHaveCount(7);
+      expect(await drawn.locator('.local-model-usage .rb-plot').evaluate(el => getComputedStyle(el).display)).toBe('grid');
     }
-    const content = await dialog.evaluate(el => ({ overflowY: getComputedStyle(el).overflowY, maxHeight: el.getBoundingClientRect().height, viewport: innerHeight }));
-    expect(content.overflowY).toMatch(/auto|scroll/);
-    expect(content.maxHeight).toBeLessThanOrEqual(content.viewport);
-    await page.keyboard.press('Tab');
-    expect(await page.evaluate(() => Boolean(document.activeElement?.closest('dialog[open]')))).toBe(true);
-    await page.screenshot({ path: info.outputPath(`overview-full-${title.replaceAll(' ', '-')}-${width}-${theme}.png`) });
-    await page.keyboard.press('Escape');
-    await expect(dialog).not.toBeVisible();
-    await expect(opener).toBeFocused();
+    const fit = await drawn.evaluate(el => {
+      const box = el.getBoundingClientRect(); const outer = el.closest('.local-overview-charts-panel')!.getBoundingClientRect();
+      return { inside: box.left >= outer.left - 1 && box.right <= outer.right + 1, sideways: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+    });
+    expect(fit.inside, `${title} inside its panel`).toBe(true);
+    expect(fit.sideways, `${title}: no sideways page scroll`).toBeLessThanOrEqual(0);
+    const tab = frame.getByRole('tab', { name: title, exact: true });
+    await tab.focus();
+    await expect(tab).toBeFocused();
+    await page.screenshot({ path: info.outputPath(`overview-tab-${title.replaceAll(' ', '-')}-${width}-${theme}.png`) });
   }
 });
 }

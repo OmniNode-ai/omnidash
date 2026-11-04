@@ -100,7 +100,8 @@ test('Savings bridge shows the canonical all-time metering row exactly as served
   await expect(bridge).toContainText('pricing v3');
   await expect(bridge).toContainText('exactly as served');
   await expect(bridge).not.toContainText('9999');
-  await expect(page.getByRole('region', { name: 'Evidence claim' })).toContainText('Savings were $4.74');
+  // OMN-22168: the claim sentence ("Savings were ...") is removed; the bridge above carries the served $4.743332.
+  await expect(page.getByRole('region', { name: 'Evidence claim' })).toHaveCount(0);
   await info.attach('canonical-savings-bridge', { body: JSON.stringify({ canonical, decisionSavingsPoison: '9999.9999' }), contentType: 'application/json' });
   await bridge.scrollIntoViewIfNeeded();
   await page.screenshot({ path: info.outputPath('savings-bridge-desktop.png') });

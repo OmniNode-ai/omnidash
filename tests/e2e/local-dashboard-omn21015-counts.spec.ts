@@ -1,5 +1,6 @@
 import { expect, test } from 'playwright/test';
 import { chartRows, narrowTo, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chooseChartTab } from './chart-tabs';
 test.use({ viewport: { width: 1440, height: 900 }, trace: 'on', reducedMotion: 'reduce' });
 // Real UI failures: raw headline/count table values, compacted directions, equal colors,
 // clipped full integers, a missing input silently zeroed, lost paging and source values changed.
@@ -117,7 +118,7 @@ test('Evidence savings discloses unavailable unpriced coverage without borrowing
   });
   await page.goto('/delegation-evidence');
   const panel=page.locator('[data-panel-title="SAVINGS vs CLOUD BASELINE"]');
-  await expect(panel.locator('.big')).toHaveText('$1,074.21');
+  await expect(panel.locator('.big')).toHaveText('$1,074.2157');
   await expect(panel).toContainText('Unpriced runs not recorded');
   await expect(panel).not.toContainText('999');
   await page.screenshot({path:info.outputPath('evidence-unpriced-coverage.png'),fullPage:true});
@@ -134,6 +135,8 @@ for (const theme of ['light','dark'] as const) {
     await expect(page.locator('body')).toHaveClass(new RegExp(`\\btheme-${theme}\\b`));
     // OMN-21166 part 13 + AC64: Runs' analysis is under the page's closed "More analysis", and the model scoreboard
     // rings are ranked bars ("Pass rate by model") whose name is written in the model's colour.
+    // OMN-22168: Run analysis is a row of tabs; the pass rate by model is the Model scoreboard tab.
+    await chooseChartTab(page, 'Model scoreboard');
     const model = page.getByRole('figure',{name:'Pass rate by model',exact:true}).locator('[data-ranked-item]').filter({has:page.getByText('model-a',{exact:true})});
     await expect(model).toBeVisible();
     const color = await model.locator('.rb-name .rb-swatch').evaluate(el => getComputedStyle(el).backgroundColor);

@@ -117,7 +117,9 @@ test('AC139: under 1100px each chart takes the full width, and 390px never scrol
 });
 
 for (const theme of ['light', 'dark'] as const) {
-  test(`AC141 AC167: headline cards use the plain card surface and the neutral 1px edge in ${theme}`, async ({ page }, info) => {
+  // OMN-22168 (Lakshman 2026-11-05, "make each cards different color and distinct") supersedes AC141's plain surface and
+  // AC167's one neutral edge colour for the headline cards: each wears its own accent wash and edge; the 1px edge stays.
+  test(`headline cards each wear their own accent, on a 1px edge, in ${theme}`, async ({ page }, info) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.emulateMedia({ colorScheme: theme });
     await page.addInitScript(value => localStorage.setItem('omnidash.theme.v1', value), theme);
@@ -129,16 +131,16 @@ for (const theme of ['light', 'dark'] as const) {
       await page.goto(path);
       const headline = page.locator('.local-overview-summary > .local-dashboard-panel');
       await expect(headline.first()).toBeVisible();
-      const plain = await page.locator('main .local-dashboard-panel:not(.local-overview-summary > .local-dashboard-panel), main.ev-root .panel').first()
-        .evaluate(el => getComputedStyle(el).backgroundColor);
       // The edge is the card's top border (the cards spec reads the same property).
-      const cards = await headline.evaluateAll(els => els.map(el => ({ fill: getComputedStyle(el).backgroundColor,
-        edge: getComputedStyle(el).borderTopWidth, edgeColor: getComputedStyle(el).borderTopColor })));
+      const cards = await headline.evaluateAll(els => els.map(el => ({ wash: getComputedStyle(el).backgroundImage,
+        edge: getComputedStyle(el).borderTopWidth, edgeColor: getComputedStyle(el).borderTopColor,
+        accent: getComputedStyle(el).getPropertyValue('--panel-accent').trim() })));
       for (const card of cards) {
-        expect(card.fill, `${path}: no tinted fill`).toBe(plain);
-        expect(card.edge, `${path}: the neutral 1px edge`).toBe('1px');
+        expect(card.wash, `${path}: the card wears its accent wash`).toContain('gradient');
+        expect(card.edge, `${path}: the 1px edge`).toBe('1px');
+        expect(card.accent, `${path}: the card names its accent`).not.toBe('');
       }
-      expect(new Set(cards.map(card => card.edgeColor)).size, `${path}: one neutral edge colour`).toBe(1);
+      expect(new Set(cards.map(card => card.edgeColor)).size, `${path}: no two headline cards share an edge colour`).toBe(cards.length);
       if (path === '/overview') await page.screenshot({ path: info.outputPath(`overview-cards-${theme}.png`) });
     }
   });

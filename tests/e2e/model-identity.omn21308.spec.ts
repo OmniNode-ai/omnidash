@@ -1,5 +1,6 @@
 import { expect, test, type Page } from 'playwright/test';
 import { chartRows, prefix, serveCharts, keepRealClock } from './omn21166-chart-fixtures';
+import { chooseChartTab } from './chart-tabs';
 // This spec dates its rows from the real clock, so the browser keeps it (see FIXTURE_NOW).
 test.beforeEach(({ page }) => keepRealClock(page));
 
@@ -134,6 +135,8 @@ for (const selectedTheme of ['light', 'dark']) {
     // OMN-21166 part 18 AC120: the routing table is shown directly; there is no nested disclosure to open.
     await expect(page.locator('[data-component="runs-tier-mix"] details')).toHaveCount(0);
     const colors: Record<string, { ring: string; name: string; routing: string }> = {};
+    // OMN-22168: Run analysis is a row of tabs; the pass rate by model is the Model scoreboard tab.
+    await chooseChartTab(page, 'Model scoreboard');
     for (const name of names) {
       const mark = page.getByRole('figure', { name: 'Pass rate by model', exact: true }).locator(`li[data-ranked-item="${name}"]`);
       await expect(mark).toHaveCount(1);

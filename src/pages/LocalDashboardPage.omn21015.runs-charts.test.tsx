@@ -158,8 +158,8 @@ describe('OMN-21015: the Runs page draws the runs it lists', () => {
 
   it('R7: hiding a token series leaves the other series as it was', () => {
     open(RUNS);
-    const figure = screen.getByRole('figure', { name: 'Tokens per run' });
     const colourOfOut = chart('Tokens per run').option.series[1].itemStyle.color;
+    const figure = screen.getByRole('figure', { name: 'Tokens per run' });
     fireEvent.click(within(figure).getByRole('button', { name: 'Tokens in' }));
     expect(tokens(['Tokens out'])).toEqual([['Tokens out', [400, 7, 13]]]);
     expect(chart('Tokens per run', ['Tokens out']).option.series[0].itemStyle.color).toBe(colourOfOut);
@@ -188,6 +188,8 @@ describe('OMN-21015: the Runs page draws the runs it lists', () => {
   it('R9: when no listed run carries a duration, that chart is not drawn and the tokens chart is', () => {
     open([decision('aaaaaaaa-0000-4000-8000-000000000001', 10, { latency_ms: null })]);
     expect(screen.queryByRole('figure', { name: 'Duration per run' })).toBeNull();
+    // OMN-22168: the run charts are tabs; the tokens chart is drawn once its tab is chosen.
+    fireEvent.click(screen.getByRole('tab', { name: 'Tokens per run' }));
     expect(screen.getByRole('figure', { name: 'Tokens per run' })).toBeTruthy();
   });
 
@@ -197,7 +199,11 @@ describe('OMN-21015: the Runs page draws the runs it lists', () => {
       for (const series of chart(name).option.series) expect('stack' in series).toBe(false);
     }
     // 700 + 4925 + 1200, its mean, 250 + 262 + 90 and 13 + 7 + 400: none appears in either figure.
-    const written = [...screen.getAllByRole('figure')].map((figure) => figure.textContent).join(' ');
+    // OMN-22168: one run chart is drawn at a time, so each tab's figure is read in turn.
+    const written = (['Duration per run', 'Tokens per run'] as const).map((name) => {
+      chart(name);
+      return screen.getByRole('figure', { name }).textContent ?? '';
+    }).join(' ');
     expect(written).not.toMatch(/6825|2275|602|420|[Tt]otal|[Aa]verage|[Mm]ean/);
     const drawn = [...durations(), ...tokens().flatMap(([, data]: [string, number[]]) => data)];
     for (const sum of [6825, 2275, 602, 420]) expect(drawn).not.toContain(sum);

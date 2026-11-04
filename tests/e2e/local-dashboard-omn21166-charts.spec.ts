@@ -8,9 +8,10 @@ import { pickFilter } from './filter-dropdowns';
 test.use({ viewport: { width: 1440, height: 900 }, trace: 'on', actionTimeout: 5000 });
 test.beforeEach(async ({ page }) => { await serveCharts(page); });
 
-// OMN-21166 part 18 AC118: Runs' four run charts and "This week" sit first inside the page's one closed "More analysis".
+// OMN-22168 (Lakshman 2026-11-05): Runs' run charts are in view with no fold, one tab at a time.
 async function openRunCharts(page: Page) {
-  await expect(page.locator('details.local-more').filter({ has: page.locator('article.local-run-charts-panel') })).toHaveAttribute('open', '');
+  await expect(page.locator('details.local-more')).toHaveCount(0);
+  await expect(page.locator('article.local-run-charts-panel')).toBeVisible();
 }
 
 test('single-token chart axis never marks valid fractional tick coordinates as missing data', async ({ page }, info) => {

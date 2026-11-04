@@ -1,5 +1,6 @@
 import { expect, test, type Page } from 'playwright/test';
 import { chartRows, prefix, recentDay, serveCharts } from './omn21166-chart-fixtures';
+import { chooseChartTab } from './chart-tabs';
 
 /**
  * OMN-22168: the chart and table defects a live review of every page found on 2026-11-04, each measured on the page as
@@ -38,6 +39,8 @@ test.beforeEach(async ({ page }) => { await serveCharts(page, rows); });
 
 async function openAnalysis(page: Page) {
   await page.goto('/runs');
+  // OMN-22168: Run analysis is a row of tabs; Pass rate per day is chosen first.
+  await chooseChartTab(page, 'Pass rate per day');
   await expect(page.getByRole('figure', { name: 'Pass rate per day', exact: true })).toBeVisible();
 }
 
@@ -177,6 +180,7 @@ for (const width of [1440, 390] as const) {
       by_model: WORDY.map((model_name, index) => ({ model_name, total_count: 16 - index * 2, pct_of_total: (16 - index * 2) / 70 })) };
     await serveCharts(page, { ...rows, [routingKey]: [routing] });
     await page.goto('/overview');
+    await chooseChartTab(page, 'Model usage');
     const names = page.locator('[aria-label="Model usage"] .rb-name');
     await expect(names).toHaveCount(WORDY.length);
     // Each part between joins is its own text node; one drawn on two lines was broken inside a word.
