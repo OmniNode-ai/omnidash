@@ -609,6 +609,83 @@ html body .app svg.field-icon.field-icon[data-field-icon="usage-day"]:not([data-
   position: relative; background: var(--tab-tone) !important; border-color: var(--tab-tone) !important;
   color: var(--ds-on-accent) !important; font-weight: 700;
   box-shadow: 0 6px 16px -8px var(--tab-tone) !important; }
-.local-overview-charts-panel .local-dashboard-tablist [role="tab"][data-toned][aria-selected="true"] svg { color: var(--ds-on-accent) !important; }
 .local-overview-charts-panel .local-dashboard-tablist [role="tab"][data-toned][aria-selected="true"]::after {
   content: ''; position: absolute; left: 18px; right: 18px; bottom: -8px; height: 3px; border-radius: 3px; background: var(--tab-tone); }
+/* Lakshman 2026-11-04 ("very bad" on the filled tab): the chart tabs are one segmented control. A rounded track holds the
+   four tabs; the chosen tab is a raised segment (surface, ink text, shadow) with a 3px underline in its tone; the others
+   are quiet text on the track. Glyphs keep their concept colours. Later rules here replace the earlier tab looks. */
+.local-dashboard-page .local-overview-charts-panel .local-dashboard-tablist {
+  display: inline-flex !important; width: fit-content; max-width: 100%; flex-wrap: wrap; gap: 4px !important; padding: 4px !important;
+  border: 1px solid var(--ds-line) !important; border-radius: 14px !important; background: var(--ds-surface-2) !important; }
+.local-dashboard-page .local-overview-charts-panel .local-dashboard-tablist [role="tab"][data-toned] {
+  min-height: 40px; padding: 0 16px; gap: 8px; border: 0 !important; border-radius: 10px !important;
+  background: transparent !important; color: var(--ds-ink-2) !important; font-weight: 500; box-shadow: none !important; }
+@media (hover: hover) {
+  .local-dashboard-page .local-overview-charts-panel .local-dashboard-tablist [role="tab"][data-toned]:hover {
+    background: color-mix(in oklab, var(--ds-surface) 70%, transparent) !important; color: var(--ds-ink) !important; } }
+.local-dashboard-page .local-overview-charts-panel .local-dashboard-tablist [role="tab"][data-toned][aria-selected="true"] {
+  background: var(--ds-surface) !important; color: var(--ds-ink) !important; font-weight: 600;
+  box-shadow: var(--ds-shadow-sm, 0 1px 2px var(--ds-scrim)), inset 0 -3px 0 var(--tab-tone) !important; }
+.local-dashboard-page .local-overview-charts-panel .local-dashboard-tablist [role="tab"][data-toned][aria-selected="true"]::after { content: none; }
+/* The segmented track and the raised segment, stated with enough weight to win over the earlier tab looks. */
+html body .local-dashboard-page .local-overview-charts-panel .local-dashboard-tablist { background: var(--ds-surface-2) !important; }
+html body .local-dashboard-page .local-overview-charts-panel .local-dashboard-tablist [role="tab"][data-toned][aria-selected="true"] {
+  background: var(--ds-surface) !important;
+  box-shadow: 0 1px 3px color-mix(in oklab, var(--ds-ink) 18%, transparent), inset 0 -3px 0 var(--tab-tone) !important; }
+
+/* OMN-22168 (Lakshman 2026-11-04, "make colourful"): each Overview window has its own tone; every option shows its dot,
+   the chosen option is tinted in its tone with its tick in that tone, and the trigger shows the chosen window's dot. */
+.local-window-menu [data-window="all"] { --win-tone: var(--ds-hue-blue); }
+.local-window-menu [data-window="today"] { --win-tone: var(--ds-hue-amber); }
+.local-window-menu [data-window="last-7"] { --win-tone: var(--ds-hue-green); }
+.local-window-menu [data-window="last-15"] { --win-tone: var(--ds-hue-teal); }
+.local-window-menu [data-window="last-30"] { --win-tone: var(--ds-hue-purple); }
+.local-window-menu [data-window="last-90"] { --win-tone: var(--ds-hue-pink); }
+.local-window-menu .local-window-list [role="radio"] { display: flex; align-items: center; gap: 10px; border-radius: 10px; }
+.local-window-menu .local-window-list [role="radio"]::before,
+.local-window-menu .local-window-trigger[data-window]::before {
+  content: ''; width: 10px; height: 10px; flex: none; border-radius: 999px; background: var(--win-tone, var(--ds-ink-3));
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--win-tone, var(--ds-ink-3)) 22%, transparent); }
+.local-window-menu .local-window-list [role="radio"] > span { flex: 1; text-align: left; }
+@media (hover: hover) {
+  .local-window-menu .local-window-list [role="radio"]:hover { background: color-mix(in oklab, var(--win-tone) 12%, transparent) !important; color: var(--ds-ink) !important; } }
+.local-window-menu .local-window-list [role="radio"][aria-checked="true"] {
+  background: color-mix(in oklab, var(--win-tone) 18%, transparent) !important; color: var(--ds-ink) !important; font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--win-tone); }
+.local-window-menu .local-window-list [role="radio"][aria-checked="true"] svg { color: var(--win-tone) !important; }
+.local-window-menu .local-window-trigger[data-window] { display: inline-flex; align-items: center; gap: 10px;
+  border-color: color-mix(in oklab, var(--win-tone) 45%, var(--ds-line)) !important; }
+html body .local-window-menu .local-window-list [role="radio"][aria-checked="true"] {
+  background: color-mix(in oklab, var(--win-tone) 18%, transparent) !important; box-shadow: inset 3px 0 0 var(--win-tone) !important; }
+
+/* OMN-22168 (Lakshman 2026-11-04, "selected ... fully grey and use slider to change tab"): the chosen tab is a fully
+   filled grey pill that slides between tabs; its underline takes the chosen tab's tone. Other pages' tabs have no slider. */
+.local-dashboard-tab-slider { display: none; }
+html body .local-dashboard-page .local-overview-charts-panel .local-dashboard-tablist { position: relative; isolation: isolate; }
+html body .local-dashboard-page .local-overview-charts-panel .local-dashboard-tab-slider {
+  display: block; position: absolute; left: 0; top: 0; z-index: 0; border-radius: 10px; pointer-events: none;
+  background: color-mix(in oklab, var(--ds-ink) 13%, var(--ds-surface));
+  box-shadow: 0 1px 3px color-mix(in oklab, var(--ds-ink) 18%, transparent), inset 0 -3px 0 var(--slider-tone, var(--ds-ink-3));
+  transition: transform 250ms cubic-bezier(.2, .8, .2, 1), width 250ms cubic-bezier(.2, .8, .2, 1); }
+@media (prefers-reduced-motion: reduce) { html body .local-dashboard-page .local-overview-charts-panel .local-dashboard-tab-slider { transition: none; } }
+html body .local-dashboard-page .local-overview-charts-panel .local-dashboard-tablist [role="tab"][data-toned] { position: relative; z-index: 1; }
+html body .local-dashboard-page .local-overview-charts-panel .local-dashboard-tablist [role="tab"][data-toned][aria-selected="true"] {
+  background: transparent !important; box-shadow: none !important; color: var(--ds-ink) !important; font-weight: 600; }
+/* The slider's underline follows the chosen tab's tone. */
+.local-overview-charts-panel .local-dashboard-tablist:has([data-tab="runs"][aria-selected="true"]) { --slider-tone: var(--ds-hue-green); }
+.local-overview-charts-panel .local-dashboard-tablist:has([data-tab="tokens"][aria-selected="true"]) { --slider-tone: var(--ds-hue-blue); }
+.local-overview-charts-panel .local-dashboard-tablist:has([data-tab="models"][aria-selected="true"]) { --slider-tone: var(--ds-hue-purple); }
+.local-overview-charts-panel .local-dashboard-tablist:has([data-tab="tiers"][aria-selected="true"]) { --slider-tone: var(--ds-hue-amber); }
+/* Lakshman 2026-11-04, "no dots ... use icons and calendar also colourful": the window glyphs replace the dots; each
+   glyph takes its window's tone, and the calendar button has its own tone (teal). */
+html body .local-window-menu .local-window-list [role="radio"]::before,
+html body .local-window-menu .local-window-trigger[data-window]::before { content: none !important; display: none !important; }
+html body .local-window-menu svg.local-window-icon { color: var(--win-tone, var(--ds-ink-3)) !important; flex: none; }
+html body .local-dashboard-page .local-day-picker .local-day-button {
+  --day-tone: var(--ds-hue-teal);
+  border-color: color-mix(in oklab, var(--day-tone) 45%, var(--ds-line)) !important;
+  background: color-mix(in oklab, var(--day-tone) 10%, transparent) !important; }
+html body .local-dashboard-page .local-day-picker .local-day-button svg { color: var(--day-tone) !important; }
+html body .local-dashboard-page .local-day-picker .local-day-button[aria-pressed="true"] { background: color-mix(in oklab, var(--day-tone) 22%, transparent) !important; }
+/* Specificity (0,4,3) on purpose: above the page-scoped grey icon rule (0,3,2). */
+html body .local-dashboard-page .local-window-menu svg.lucide.local-window-icon { color: var(--win-tone, var(--ds-ink-3)) !important; }

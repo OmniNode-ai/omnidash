@@ -1,4 +1,4 @@
-import { useId, useRef, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
+import { useId, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { useLocation, useSearch } from 'wouter';
 
 /**
@@ -57,8 +57,26 @@ export function DashboardTabs({ label, param, tabs }: { label: string; param: st
     buttons.current[next]?.focus();
   };
   const panel = tabs.find(tab => tab.id === active)!;
+  // OMN-22168 (Lakshman 2026-11-04, "use slider to change tab"): one pill behind the tabs slides to the chosen tab; it is
+  // decoration (aria-hidden), measured from the chosen button so it follows wrapping and resizing.
+  const [slider, setSlider] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
+  const activeIndex = ids.indexOf(active);
+  useLayoutEffect(() => {
+    const measure = () => {
+      const button = buttons.current[activeIndex];
+      setSlider(button ? { left: button.offsetLeft, top: button.offsetTop, width: button.offsetWidth, height: button.offsetHeight } : null);
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(measure);
+    const list = buttons.current[0]?.parentElement;
+    if (list) observer.observe(list);
+    return () => observer.disconnect();
+  }, [activeIndex]);
   return <div className="local-dashboard-tabs" data-tabs={param}>
     <div className="local-dashboard-filters local-dashboard-tablist" role="tablist" aria-label={label}>
+      {slider && <span className="local-dashboard-tab-slider" aria-hidden="true" data-tab-slider={active}
+        style={{ transform: `translate(${slider.left}px, ${slider.top}px)`, width: slider.width, height: slider.height }} />}
       {tabs.map((tab, index) => <button key={tab.id} ref={element => { buttons.current[index] = element; }} type="button" role="tab"
         id={`${base}-${tab.id}-tab`} aria-controls={`${base}-${tab.id}-panel`} aria-selected={tab.id === active}
         tabIndex={tab.id === active ? 0 : -1} data-tab={tab.id} onClick={() => select(tab.id)} onKeyDown={event => onKeyDown(event, index)}
