@@ -343,7 +343,7 @@ export default function DelegationMetrics2D({ config }: { config: Record<string,
                   title={`${passed} handled locally`}
                   style={{
                     width: `${(passed / gateTotal) * 100}%`,
-                    background: 'var(--ds-ok)',
+                    background: 'var(--ds-status-ok)',
                     transition: 'width 0.5s ease-out',
                   }}
                 />
@@ -352,7 +352,7 @@ export default function DelegationMetrics2D({ config }: { config: Record<string,
                     title={`${failed} escalated to cloud`}
                     style={{
                       width: `${(failed / gateTotal) * 100}%`,
-                      background: 'var(--ds-bad)',
+                      background: 'var(--ds-status-bad)',
                       transition: 'width 0.5s ease-out',
                     }}
                   />

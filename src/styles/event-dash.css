@@ -98,8 +98,8 @@
 .ev-root .kpi .k-l { font-size: 12px; letter-spacing: .8px; text-transform: uppercase; color: var(--ds-ink-3); display: flex; align-items: center; gap: 7px; }
 .ev-root .kpi .k-v { font-family: var(--ds-font-sans); font-size: 30px; font-weight: 600; letter-spacing: -.5px; margin-top: 9px; line-height: 1; }
 .ev-root .kpi .k-sub { font-size: 12px; color: var(--ds-ink-2); margin-top: 7px; font-family: var(--ds-font-mono); }
-.ev-root .ev-outcome-pass { color: var(--ds-ok); }
-.ev-root .ev-outcome-fail { color: var(--ds-bad); }
+.ev-root .ev-outcome-pass { color: var(--ds-status-ok); }
+.ev-root .ev-outcome-fail { color: var(--ds-status-bad); }
 .ev-root .kpi .k-accent { color: var(--ds-brand); }
 
 /* badges */

@@ -32,8 +32,8 @@
    is retuned per theme. Not in the OmniDash.html prototype yet, but
    needed for the Delete Dashboard confirm flow. */
 .btn.danger {
-  background: var(--ds-bad);
-  border-color: var(--ds-bad);
+  background: var(--ds-status-bad);
+  border-color: var(--ds-status-bad);
   color: var(--ds-bad);
 }
 .btn.danger:hover { background: var(--ds-bad); border-color: var(--ds-bad); }

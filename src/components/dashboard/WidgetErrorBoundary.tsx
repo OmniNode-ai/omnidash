@@ -40,7 +40,7 @@ export class WidgetErrorBoundary extends Component<Props, State> {
           justifyContent: 'center',
           gap: 12,
           padding: '2rem',
-          border: '1px solid var(--ds-bad)',
+          border: '1px solid var(--ds-status-bad)',
           borderRadius: 'var(--ds-radius)',
           background: 'var(--ds-surface)',
           minHeight: 120,
@@ -59,7 +59,7 @@ export class WidgetErrorBoundary extends Component<Props, State> {
             style={{
               marginTop: 4,
               padding: '4px 12px',
-              border: '1px solid var(--ds-bad)',
+              border: '1px solid var(--ds-status-bad)',
               borderRadius: 4,
               background: 'transparent',
               color: 'var(--ds-bad)',

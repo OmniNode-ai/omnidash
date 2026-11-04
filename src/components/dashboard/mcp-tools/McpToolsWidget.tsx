@@ -82,7 +82,7 @@ export default function McpToolsWidget({ config: _config }: { config: Record<str
                           display: 'inline-block',
                           padding: '2px 8px',
                           borderRadius: 4,
-                          border: '1px solid var(--ds-ok)',
+                          border: '1px solid var(--ds-status-ok)',
                         }}
                       >
                         NEW

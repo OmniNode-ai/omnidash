@@ -21,10 +21,10 @@ export interface SeverityRole {
 }
 
 export const SEVERITY_ROLES: Record<StatusGridSeverity, SeverityRole> = {
-  critical: { label: 'Critical', iconName: 'octagon-x', Icon: OctagonX, edge: 'var(--ds-bad)', textColor: 'bad' },
+  critical: { label: 'Critical', iconName: 'octagon-x', Icon: OctagonX, edge: 'var(--ds-status-bad)', textColor: 'bad' },
   attention: { label: 'Attention', iconName: 'triangle-alert', Icon: TriangleAlert, edge: 'var(--ds-warn)', textColor: 'warn' },
   unknown: { label: 'Unknown', iconName: 'circle-help', Icon: CircleHelp, edge: 'var(--ds-ink-3)', textColor: 'secondary' },
-  nominal: { label: 'Nominal', iconName: 'check-circle', Icon: CircleCheck, edge: 'var(--ds-ok)', textColor: 'ok' },
+  nominal: { label: 'Nominal', iconName: 'check-circle', Icon: CircleCheck, edge: 'var(--ds-status-ok)', textColor: 'ok' },
 };
 
 /** Worst first, the order a reader scans for trouble. */

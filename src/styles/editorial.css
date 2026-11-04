@@ -76,7 +76,7 @@ html body main.ev-root[data-destination="delegation-evidence"] :is(.ev-headline,
 html body .local-dashboard-page.local-dashboard-page--settings .local-settings-section article.local-dashboard-panel { border: 0 !important; }
 /* In light, a passed run's pill takes a light fill so its green text keeps 4.5:1; the text colour (--field-pass) is unchanged. */
 :root:not([data-theme="dark"]) .local-dashboard-page .local-run-pill:is([data-outcome="passed"], [data-outcome="succeeded"]) {
-  background: color-mix(in oklch, var(--ds-ok) 8%, transparent); }
+  background: color-mix(in oklch, var(--ds-status-ok) 8%, transparent); }
 /* Overview's window: one button that opens a ticked list (OMN-21970 AC9). */
 .local-window-menu { position: relative; }
 html body .local-dashboard-page .local-window-trigger { display: inline-flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 180px;

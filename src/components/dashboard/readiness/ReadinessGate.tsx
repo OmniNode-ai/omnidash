@@ -48,9 +48,9 @@ export function applyFreshnessDowngrade(
 }
 
 const STATUS_COLORS: Record<DimensionStatus, string> = {
-  PASS: 'var(--ds-ok)',
+  PASS: 'var(--ds-status-ok)',
   WARN: 'var(--ds-warn)',
-  FAIL: 'var(--ds-bad)',
+  FAIL: 'var(--ds-status-bad)',
 };
 
 const STATUS_TEXT_COLOR: Record<DimensionStatus, 'ok' | 'warn' | 'bad'> = {

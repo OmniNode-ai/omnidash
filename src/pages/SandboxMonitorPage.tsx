@@ -34,7 +34,7 @@ function VerdictBadge({ verdict }: { verdict: 'allow' | 'deny' }) {
         padding: '2px 8px',
         borderRadius: 4,
         background: verdict === 'allow'
-          ? 'color-mix(in oklch, var(--ds-ok) 20%, transparent)'
+          ? 'color-mix(in oklch, var(--ds-status-ok) 20%, transparent)'
           : 'color-mix(in oklch, var(--ds-bad, var(--ds-hue-red)) 20%, transparent)',
         border: `1px solid ${verdict === 'allow' ? 'var(--ds-ok)' : 'var(--ds-bad, var(--ds-bad))'}`,
         color: verdict === 'allow' ? 'var(--ds-ok)' : 'var(--ds-bad, var(--ds-bad))',
@@ -115,7 +115,7 @@ export function SandboxMonitorPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
           {([
             { label: 'Total Decisions', value: String(total), color: undefined as string | undefined },
-            { label: 'Allowed', value: String(allowCount), color: 'var(--ds-ok)' as string | undefined },
+            { label: 'Allowed', value: String(allowCount), color: 'var(--ds-status-ok)' as string | undefined },
             { label: 'Denied', value: String(denyCount), color: 'var(--ds-bad, var(--ds-hue-red))' as string | undefined },
           ]).map(({ label, value, color }) => (
             <div

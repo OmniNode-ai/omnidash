@@ -167,7 +167,7 @@
    separate summary box since liveValidate already highlights fields. */
 .modal-body .text-danger,
 .modal-body .rjsf-errors {
-  color: var(--ds-bad);
+  color: var(--ds-status-bad);
   font-size: 12px;
   margin-top: 4px;
 }
