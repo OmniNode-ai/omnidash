@@ -147,7 +147,7 @@ describe('OMN-21015 AC7: the Overview page', () => {
     expect(panel().querySelector('.local-dashboard-metric')?.textContent).toBe('Not measured: daily totals unavailable (UTC)');
     expect(panel().textContent).not.toMatch(ANY_LINE);
     chooseWindow('all');
-    expect(panel().querySelector('.local-dashboard-metric')?.textContent).toBe('$0.01');
+    expect(panel().querySelector('.local-dashboard-metric')?.textContent).toBe('$0.0089');
     expect(panel().textContent).not.toMatch(ANY_LINE);
   });
 
