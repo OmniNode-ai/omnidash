@@ -10,12 +10,13 @@ test.beforeEach(({ page }) => keepRealClock(page));
 // delegate draft timed out (run d5cad0e0). Failure modes, each checked on every case below:
 //   E1  the page scrolls sideways, or a chart panel or headline card cuts its content off;
 //   E2  day labels, model names or bar values overlap or leave their column;
-//   E3  at 1100px and wider the pairs leave their rows or a panel grows past 340px; under 1100px a chart stays half width;
+//   E3  OMN-22168 (Lakshman 2026-11-04, "these 4 into one ... with tab and full size"): the four charts are one row of
+//       tabs; a chart does not take the panel's full width, or a tab is missing (was: two per row, 340px at most);
 //   E4  a chart prints NaN, undefined, null or Infinity, or draws a bar for a run or count that is not there;
 //   E5  the limit line shows when every run is drawn, or is missing at 500 runs or for undated runs;
 //   E6  the readout keeps a day after focus leaves the chart;
-//   E7  part 24 AC144: a model name is cut, a model is left out, or a model bar turns horizontal;
-//       only the Model usage row may pass 340px.
+//   E7  part 24 AC144: a model name is cut, a model is left out, or a model bar turns horizontal.
+// Every check runs on each of the four tabs in turn.
 test.use({ reducedMotion: 'reduce', trace: 'on' });
 // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): cards and panels now rise in and figures count up unless reduced motion is
 // asked for. On the lab (Playwright 1.59.1, Chromium 147) test.use({ reducedMotion }) reached the page as false while
@@ -40,70 +41,85 @@ const routing = (byModel: unknown[], tiers: unknown[], notTier = 0) => [{ total_
   by_tier: { total_tasks: 4000, tier_routed_total: 4000 - notTier, not_tier_routed_count: notTier, tiers } }];
 const twelveModels = LONG_MODELS.map((name, index) => ({ model_name: name, total_count: [4000, 1200, 800, 333, 120, 60, 25, 9, 4, 3, 2, 1][index], pct_of_total: 0.08 }));
 
-function panels(page: Page) {
-  return page.locator('.maple-cell--half > .local-dashboard-panel');
+const TABS = ['runs', 'tokens', 'models', 'tiers'] as const;
+type ChartTab = typeof TABS[number];
+const chartsPanel = (page: Page) => page.locator('.local-overview-charts-panel');
+const tabPanel = (page: Page) => chartsPanel(page).locator('.local-dashboard-tabpanel');
+/** Chooses one chart's tab (only the chosen chart is drawn) and returns the panel that draws it. */
+async function showTab(page: Page, id: ChartTab) {
+  const tab = chartsPanel(page).locator(`[role="tab"][data-tab="${id}"]`);
+  if (await tab.getAttribute('aria-selected') !== 'true') await tab.click();
+  await expect(tab).toHaveAttribute('aria-selected', 'true');
+  return tabPanel(page);
 }
 
-/** E1-E4 on whatever Overview shows now. */
-async function invariants(page: Page, label: string, opts: { twoColumns: boolean; manyModels?: boolean }) {
-  await expect(panels(page), `${label}: four chart panels`).toHaveCount(4);
-  const report = await page.evaluate(() => {
-    const overlaps = (boxes: DOMRect[]) => boxes.some((a, i) => boxes.slice(i + 1).some(b => a.left < b.right - 2 && b.left < a.right - 2 && a.top < b.bottom && b.top < a.bottom));
-    const visible = (el: Element) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden' && (el.textContent ?? '').trim() !== ''; };
-    const chartPanels = [...document.querySelectorAll('.maple-cell--half > .local-dashboard-panel')] as HTMLElement[];
-    const cards = [...document.querySelectorAll('.local-overview-summary > .local-dashboard-panel')] as HTMLElement[];
-    return {
-      sideways: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-      cutOff: [...chartPanels, ...cards].map(el => ({ name: el.querySelector('h2')?.textContent?.trim() ?? '', extra: el.scrollWidth - el.clientWidth })).filter(x => x.extra > 0),
-      boxes: chartPanels.map(el => { const r = el.getBoundingClientRect(); return { title: el.querySelector('h2')?.textContent?.trim() ?? '', top: Math.round(r.top), left: Math.round(r.left), width: Math.round(r.width), height: Math.round(r.height) }; }),
-      labelOverlap: chartPanels.filter(el => overlaps([...el.querySelectorAll('.gdb-day-label')].filter(visible).map(x => x.getBoundingClientRect()))).map(el => el.querySelector('h2')?.textContent),
-      nameOverlap: chartPanels.filter(el => overlaps([...el.querySelectorAll('.rb-name')].filter(visible).map(x => x.getBoundingClientRect()))).map(el => el.querySelector('h2')?.textContent),
-      valueOut: chartPanels.flatMap(el => [...el.querySelectorAll('[data-ranked-item]')].flatMap(item => {
-        const box = item.getBoundingClientRect();
-        return [...item.querySelectorAll('.rb-value, .rb-name')].filter(visible).filter(v => { const r = v.getBoundingClientRect(); return r.left < box.left - 1 || r.right > box.right + 1; })
-          .map(v => (v.textContent ?? '').trim());
-      })),
-      badText: chartPanels.flatMap(el => (el.innerText.match(/\b(NaN|undefined|null|Infinity)\b/g) ?? [])),
-      cutNames: [...document.querySelectorAll<HTMLElement>('.local-model-usage .rb-name')].filter(el => el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1
-        || getComputedStyle(el).textOverflow === 'ellipsis' || getComputedStyle(el).webkitLineClamp !== 'none').map(el => el.textContent),
-    };
-  });
-  expect(report.sideways, `${label}: no sideways scroll`).toBeLessThanOrEqual(0);
-  expect(report.cutOff, `${label}: nothing cut off`).toEqual([]);
-  expect(report.labelOverlap, `${label}: day labels never overlap`).toEqual([]);
-  expect(report.nameOverlap, `${label}: model and tier names never overlap`).toEqual([]);
-  expect(report.valueOut, `${label}: names and values stay in their column`).toEqual([]);
-  expect(report.badText, `${label}: no NaN/undefined/null/Infinity`).toEqual([]);
-  expect(report.cutNames, `${label}: no model name is cut`).toEqual([]);
-  const [a, b, c, d] = report.boxes;
-  if (opts.twoColumns) {
-    expect(a!.top === b!.top && c!.top === d!.top, `${label}: two charts per row`).toBe(true);
-    // AC144: long upright model names may grow only the Model usage row (Model usage and Tier mix).
-    for (const box of opts.manyModels ? [a!, b!] : report.boxes) expect(box.height, `${label}: ${box.title} at most 340px`).toBeLessThanOrEqual(340);
-    expect(c!.height, `${label}: Model usage and Tier mix share a height`).toBe(d!.height);
-  } else {
-    expect(a!.top < b!.top && b!.top < c!.top && c!.top < d!.top, `${label}: one chart per row`).toBe(true);
-    expect(new Set(report.boxes.map(box => box.width)).size, `${label}: full width`).toBe(1);
+/** E1-E4 and E7 on every chart tab Overview shows now, the chosen tab first; the chosen tab is chosen again after. */
+async function invariants(page: Page, label: string, opts: { twoColumns?: boolean; manyModels?: boolean } = {}) {
+  // The layout options of the two-per-row grid no longer change what is checked: every tab is one full-width chart.
+  void opts;
+  await expect(chartsPanel(page).getByRole('tab'), `${label}: four chart tabs`).toHaveCount(4);
+  const chosen = (await chartsPanel(page).locator('[role="tab"][aria-selected="true"]').getAttribute('data-tab')) as ChartTab;
+  const reports = [];
+  for (const id of [chosen, ...TABS.filter(tab => tab !== chosen)]) {
+    await showTab(page, id);
+    const at = `${label} (${id})`;
+    const report = await page.evaluate(() => {
+      const overlaps = (boxes: DOMRect[]) => boxes.some((a, i) => boxes.slice(i + 1).some(b => a.left < b.right - 2 && b.left < a.right - 2 && a.top < b.bottom && b.top < a.bottom));
+      const visible = (el: Element) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden' && (el.textContent ?? '').trim() !== ''; };
+      const frame = document.querySelector('.local-overview-charts-panel') as HTMLElement;
+      const chartPanels = [...document.querySelectorAll('.local-overview-charts-panel .local-dashboard-tabpanel')] as HTMLElement[];
+      const cards = [...document.querySelectorAll('.local-overview-summary > .local-dashboard-panel')] as HTMLElement[];
+      const style = getComputedStyle(frame);
+      const inner = frame.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+      return {
+        drawn: chartPanels.length,
+        sideways: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        cutOff: [...chartPanels, ...cards].map(el => ({ name: el.querySelector('h2')?.textContent?.trim() ?? '', extra: el.scrollWidth - el.clientWidth })).filter(x => x.extra > 0),
+        notFull: chartPanels.filter(el => el.getBoundingClientRect().width < inner - 2).map(el => Math.round(el.getBoundingClientRect().width) + ' of ' + Math.round(inner)),
+        labelOverlap: chartPanels.filter(el => overlaps([...el.querySelectorAll('.gdb-day-label')].filter(visible).map(x => x.getBoundingClientRect()))).map(el => el.querySelector('h2')?.textContent),
+        nameOverlap: chartPanels.filter(el => overlaps([...el.querySelectorAll('.rb-name')].filter(visible).map(x => x.getBoundingClientRect()))).map(el => el.querySelector('h2')?.textContent),
+        valueOut: chartPanels.flatMap(el => [...el.querySelectorAll('[data-ranked-item]')].flatMap(item => {
+          const box = item.getBoundingClientRect();
+          return [...item.querySelectorAll('.rb-value, .rb-name')].filter(visible).filter(v => { const r = v.getBoundingClientRect(); return r.left < box.left - 1 || r.right > box.right + 1; })
+            .map(v => (v.textContent ?? '').trim());
+        })),
+        badText: chartPanels.flatMap(el => (el.innerText.match(/\b(NaN|undefined|null|Infinity)\b/g) ?? [])),
+        cutNames: [...document.querySelectorAll<HTMLElement>('.local-model-usage .rb-name')].filter(el => el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1
+          || getComputedStyle(el).textOverflow === 'ellipsis' || getComputedStyle(el).webkitLineClamp !== 'none').map(el => el.textContent),
+      };
+    });
+    expect(report.drawn, `${at}: one chart drawn at a time`).toBe(1);
+    expect(report.sideways, `${at}: no sideways scroll`).toBeLessThanOrEqual(0);
+    expect(report.cutOff, `${at}: nothing cut off`).toEqual([]);
+    expect(report.notFull, `${at}: the chart takes the panel's full width`).toEqual([]);
+    expect(report.labelOverlap, `${at}: day labels never overlap`).toEqual([]);
+    expect(report.nameOverlap, `${at}: model and tier names never overlap`).toEqual([]);
+    expect(report.valueOut, `${at}: names and values stay in their column`).toEqual([]);
+    expect(report.badText, `${at}: no NaN/undefined/null/Infinity`).toEqual([]);
+    expect(report.cutNames, `${at}: no model name is cut`).toEqual([]);
+    reports.push(report);
   }
-  return report;
+  await showTab(page, chosen);
+  return reports[0]!;
 }
 
 async function open(page: Page, rows: Record<string, unknown[]>, width = 1440, height = 900) {
   await page.setViewportSize({ width, height });
   await serveCharts(page, { ...chartRows, ...rows });
   await page.goto('/overview');
-  await expect(panels(page)).toHaveCount(4);
+  await expect(chartsPanel(page).getByRole('tab')).toHaveCount(4);
 }
-const runsPanel = (page: Page) => panels(page).nth(0);
-const tokensPanel = (page: Page) => panels(page).nth(1);
+// Runs per day is the tab Overview opens on; the other charts are chosen first.
+const runsPanel = (page: Page) => tabPanel(page);
+const tokensPanel = (page: Page) => showTab(page, 'tokens');
 async function shot(page: Page, info: { outputPath: (name: string) => string }, name: string) {
   await page.screenshot({ path: info.outputPath(`${name}.png`), fullPage: true });
 }
 
 test('E1 no runs and no routing: empty states, no bars, no line', async ({ page }, info) => {
   await open(page, { [decisionsTopic]: [], [routingTopic]: routing([], []) });
-  await expect(page.locator('.maple-cell--half .gdb-bar')).toHaveCount(0);
-  await expect(page.locator('.maple-cell--half .rb-bar')).toHaveCount(0);
+  for (const id of TABS) await expect((await showTab(page, id)).locator('.gdb-bar, .rb-bar'), id).toHaveCount(0);
+  await showTab(page, 'runs');
   await expect(page.getByTestId('insights-total')).toHaveCount(0);
   await invariants(page, 'no runs', { twoColumns: true });
   await shot(page, info, 'e1-no-runs');
@@ -168,17 +184,17 @@ test('E2 huge token counts stay inside their chart', async ({ page }, info) => {
 
 test('E4 every token count not recorded: no token bar, and the day says not recorded', async ({ page }, info) => {
   await open(page, { [decisionsTopic]: runs(20, () => ({ tokens_input: null, tokens_output: null })) });
-  await expect(tokensPanel(page).locator('.gdb-bar')).toHaveCount(0);
-  await expect(tokensPanel(page).locator('.gdb-day').first()).toHaveAccessibleName(/not recorded in, not recorded out/);
+  await expect((await tokensPanel(page)).locator('.gdb-bar')).toHaveCount(0);
+  await expect((await tokensPanel(page)).locator('.gdb-day').first()).toHaveAccessibleName(/not recorded in, not recorded out/);
   await invariants(page, 'tokens not recorded', { twoColumns: true });
   await shot(page, info, 'e4-tokens-not-recorded');
 });
 
-test('E2 twelve models with long names fit the half-width Model usage chart', async ({ page }, info) => {
+test('E2 twelve models with long names fit the Model usage chart', async ({ page }, info) => {
   await open(page, { [decisionsTopic]: runs(300), [routingTopic]: routing(twelveModels, [{ cost_tier_name: 'local', count: 3000, tier_routed: true, pct_of_tier_routed: 0.75 },
     { cost_tier_name: 'cheap_cloud', count: 900, tier_routed: true, pct_of_tier_routed: 0.225 }, { cost_tier_name: 'frontier', count: 100, tier_routed: true, pct_of_tier_routed: 0.025 }]) });
-  await expect(panels(page).nth(2).locator('.local-model-usage--upright .rb-chart--vertical [data-ranked-item]')).toHaveCount(12);
-  for (const name of LONG_MODELS) await expect(panels(page).nth(2).locator('.rb-name', { hasText: name })).toHaveCount(1);
+  await expect((await showTab(page, 'models')).locator('.local-model-usage--upright .rb-chart--vertical [data-ranked-item]')).toHaveCount(12);
+  for (const name of LONG_MODELS) await expect(tabPanel(page).locator('.rb-name', { hasText: name })).toHaveCount(1);
   await invariants(page, 'twelve models', { twoColumns: true, manyModels: true });
   await shot(page, info, 'e2-twelve-models');
   // Control: names clamped to one line must be caught as cut.
@@ -190,7 +206,7 @@ test('E2 twelve models with long names fit the half-width Model usage chart', as
 
 test('E4 only not-tier-routed runs: Tier mix gives no share', async ({ page }, info) => {
   await open(page, { [routingTopic]: routing([{ model_name: 'model-a', total_count: 10, pct_of_total: 1 }], [{ cost_tier_name: 'not_tier_routed', count: 10, tier_routed: false, pct_of_tier_routed: null }], 10) });
-  await expect(panels(page).nth(3).locator('.rb-bar[data-pattern="hatched"]')).toHaveCount(0);
+  await expect((await showTab(page, 'tiers')).locator('.rb-bar[data-pattern="hatched"]')).toHaveCount(0);
   await invariants(page, 'not tier-routed only', { twoColumns: true });
   await shot(page, info, 'e4-not-tier-routed');
 });
@@ -211,14 +227,15 @@ test('E1 every read refused: messages in the panels, layout intact', async ({ pa
   await serveCharts(page);
   await page.route('**/projection/**', route => route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: 'tenant_conflict' }) }));
   await page.goto('/overview');
-  await expect(panels(page)).toHaveCount(4);
-  await expect(page.locator('.maple-cell--half .gdb-bar, .maple-cell--half .rb-bar')).toHaveCount(0);
+  await expect(chartsPanel(page).getByRole('tab')).toHaveCount(4);
+  for (const id of TABS) await expect((await showTab(page, id)).locator('.gdb-bar, .rb-bar'), id).toHaveCount(0);
+  await showTab(page, 'runs');
   await invariants(page, 'refused', { twoColumns: true });
   await shot(page, info, 'e1-refused');
 });
 
 for (const [width, height, two] of [[1920, 1080, true], [1100, 900, true], [1099, 900, false], [768, 1024, false], [320, 640, false]] as const) {
-  test(`E3 ${width}px wide: ${two ? 'two charts per row' : 'one chart per row'}, nothing cut off`, async ({ page }, info) => {
+  test(`E3 ${width}px wide: each chart tab full width, nothing cut off`, async ({ page }, info) => {
     await open(page, { [decisionsTopic]: runs(300), [routingTopic]: routing(twelveModels, [{ cost_tier_name: 'local', count: 3000, tier_routed: true, pct_of_tier_routed: 0.75 },
       { cost_tier_name: 'cheap_cloud', count: 1000, tier_routed: true, pct_of_tier_routed: 0.25 }]) }, width, height);
     await invariants(page, `${width}px`, { twoColumns: two, manyModels: true });
@@ -229,7 +246,7 @@ for (const [width, height, two] of [[1920, 1080, true], [1100, 900, true], [1099
 for (const width of [1440, 320] as const) {
   test(`E2 six long model names stay upright and fit at ${width}px`, async ({ page }, info) => {
     await open(page, { [decisionsTopic]: runs(60), [routingTopic]: routing(twelveModels.slice(0, 6), []) }, width, width === 320 ? 640 : 900);
-    await expect(panels(page).nth(2).locator('.local-model-usage--upright [data-ranked-item]')).toHaveCount(6);
+    await expect((await showTab(page, 'models')).locator('.local-model-usage--upright [data-ranked-item]')).toHaveCount(6);
     // Part 22 AC144 as amended (Lakshman 2026-10-26, "Grow whenever names need it"): these long names wrap to several
     // lines under upright bars, so the Model usage row may grow; names stay whole and Runs/Tokens keep 340px.
     await invariants(page, `six models ${width}px`, { twoColumns: width >= 1100, manyModels: true });
@@ -270,7 +287,7 @@ test('controls: the checks catch overlapping labels, a cut-off panel and NaN', a
   await open(page, { [decisionsTopic]: runs(300) });
   await page.addStyleTag({ content: '.local-dashboard-page--overview .gdb-day-label { left: -40px !important; right: auto !important; transform: none !important; }' });
   await page.evaluate(() => {
-    const panel = document.querySelector('.maple-cell--half > .local-dashboard-panel')!;
+    const panel = document.querySelector('.local-overview-charts-panel .local-dashboard-tabpanel')!;
     const wide = document.createElement('div'); wide.style.width = '4000px'; wide.textContent = 'NaN'; panel.append(wide);
   });
   let failures: string[] = [];

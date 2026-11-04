@@ -61,7 +61,6 @@ test('OMN-21015: on Usage a bar is as tall as its share of the largest served to
   await page.goto('/usage');
   // OMN-21166 Maple grid: the per-model token bars (the series this test measures) are under the page's closed
   // "More usage"; the page itself shows the stacked "Tokens per day" chart.
-  await page.locator('summary').filter({ hasText: /^More usage$/ }).click();
 
   const geminiIn = await drawnHeight(page, 'gemini-3.5-flash-lite', 'in');
   const geminiOut = await drawnHeight(page, 'gemini-3.5-flash-lite', 'out');
@@ -402,11 +401,11 @@ const listedRuns = [
 
 /** The bars of one figure, left to right, once two reads in a row agree (the chart grows its bars in). */
 async function settledBars(page: Page, name: string) {
-  // OMN-21166 part 18 AC118: Runs keeps its run charts inside its one closed "More analysis"; open it before reading them.
-  const more = page.locator('summary').filter({ hasText: /^More analysis$/ });
-  await more.waitFor();
-  if (await more.locator('xpath=..').getAttribute('open') === null) await more.click();
+  // OMN-22168 (Lakshman 2026-11-05): no fold; the run charts are tabs, one drawn at a time, so choose the chart's tab.
   const figure = page.getByRole('figure', { name });
+  if (!(await figure.isVisible()) && await page.getByRole('tab', { name, exact: true }).count()) {
+    await page.getByRole('tab', { name, exact: true }).click();
+  }
   await expect(figure).toBeVisible();
   await figure.scrollIntoViewIfNeeded();
   const read = () => figure.locator('.local-chart-canvas svg').evaluate((svg) => [...svg.querySelectorAll('path')]

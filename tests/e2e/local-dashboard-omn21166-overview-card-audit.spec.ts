@@ -4,9 +4,9 @@ import { serveCharts } from './omn21166-chart-fixtures';
 // Failure modes before edits: chart numbers use unrelated/neutral colors,
 // daily/run token charts disagree, and missing measurements look measured.
 test.use({ viewport: { width: 1440, height: 900 }, trace: 'on' });
-// OMN-21166 part 18 AC118: Runs keeps its analysis and its run charts under the page's one closed "More analysis".
+// OMN-22168 (Lakshman 2026-11-05): nothing is folded away, so Runs' analysis and run charts are in view with no fold.
 async function openRunsDetail(page: Page) {
-  await page.locator('summary').filter({ hasText: /^More analysis$/ }).click();
+  await expect(page.locator('details.local-more')).toHaveCount(0);
 }
 
 test('Overview chart values retain field identities and token legends agree', async ({ page }, info) => {
@@ -50,7 +50,6 @@ test('Overview expanded cards preserve missing values and fit a phone', async ({
   await page.goto('/runs');
   // OMN-21166 part 13: the routing breakdown is inside Runs' closed "More analysis"; part 18 AC120: its table is shown
   // directly, with no nested "Full routing breakdown" disclosure.
-  await page.locator('summary').filter({ hasText: /^More analysis$/ }).click();
   await expect(page.getByText('Full routing breakdown', { exact: true })).toHaveCount(0);
   const tier = page.getByRole('region', { name: 'Tier mix', exact: true });
   await expect(tier.locator('dl > [data-field-tone]')).toHaveCount(3);

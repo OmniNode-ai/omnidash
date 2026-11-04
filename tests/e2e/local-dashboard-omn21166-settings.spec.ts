@@ -101,7 +101,6 @@ test('AC159 alert banner shows formatted time after opening details', async ({ p
   // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the banner is in System status, opened by its address.
   await gotoSettings(page, 'System status');
   const envArticle = page.locator('article[data-component="status-environment"]');
-  await envArticle.getByText('Environment details').click();
   await expect(envArticle.locator('details.local-more')).toHaveAttribute('open');
   await expect(envArticle).toContainText('since Oct 26, 18:01:59 UTC');
   await expect(envArticle).not.toContainText('2026-10-26T18:01:59');

@@ -21,7 +21,6 @@ for (const theme of ['light', 'dark']) {
     const byModel = page.locator('[data-component="usage-savings-series"][data-slice="by-model"]');
     const figure = savings.getByRole('figure', { name: 'Savings per day vs baseline-a', exact: true });
     const table = savings.getByRole('table', { name: 'Savings per day vs baseline-a', exact: true });
-    await savings.getByText('Savings by day as a table', { exact: true }).press('Enter');
     await expect(table.locator('tbody tr')).toHaveCount(8);
     await expect(table).toContainText('$3.59');
     await savings.getByLabel('Inspect day', { exact: true }).selectOption('0');
@@ -81,7 +80,6 @@ test('each baseline keeps its own savings chart beside its daily ledger', async 
     const figure = panel.getByRole('figure', { name: `Savings per day vs ${baseline}`, exact: true });
     // OMN-21166 part 13: each baseline's own day table is under its own "Savings by day as a table", below its own chart.
     const block = panel.locator('.local-usage-savings').filter({ has: page.getByRole('figure', { name: `Savings per day vs ${baseline}`, exact: true }) });
-    await block.getByText('Savings by day as a table', { exact: true }).press('Enter');
     const table = block.getByRole('table', { name: `Savings per day vs ${baseline}`, exact: true });
     await expect(table.locator('tbody tr')).toHaveCount(2);
     await expect(panel.getByRole('table', { name: `Savings per day vs ${baseline}`, exact: true })).toHaveCount(1);

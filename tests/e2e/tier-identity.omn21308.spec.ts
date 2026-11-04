@@ -37,7 +37,6 @@ for (const selectedTheme of ['light', 'dark']) {
     }
     await page.goto('/runs');
     await expect(page.locator('body')).toHaveClass(new RegExp(`theme-${selectedTheme}`));
-    await page.getByText('More analysis', { exact: true }).click();
     const mix = page.locator('[data-component="runs-tier-mix"]');
     await expect(mix.locator('details')).toHaveCount(0); // the table is shown directly, with no nested disclosure
     for (const tier of ['local', 'cloud']) {

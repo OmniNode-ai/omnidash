@@ -64,7 +64,6 @@ test('OMN-21015 AC2: Overview lists each model under its tier with its served ru
   // OMN-21166 Maple grid / part 13: Overview's Tier mix is ranked bars (tier shares only); the models under each tier,
   // with their runs, share and cost, are Runs' routing breakdown table, under its closed "More analysis".
   await page.goto('/runs');
-  await page.locator('summary').filter({ hasText: /^More analysis$/ }).click();
 
   const panel = page.getByRole('region', { name: 'Tier mix' });
   await expect(panel).toBeVisible();

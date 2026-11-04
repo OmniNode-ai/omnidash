@@ -53,7 +53,6 @@ for (const scenario of COVERAGE_SCENARIOS) {
     await serveCharts(page, { ...chartRows, [DECISIONS]: decisions(scenario.verdicts) });
     await page.goto('/runs');
     // OMN-21166 part 13: the page-level "More analysis" replaces the "Show run analysis" fold on Runs.
-    await page.getByText('More analysis', { exact: true }).click();
     const tasks = page.getByRole('list', { name: 'Tasks' }).getByRole('listitem');
     await expect(tasks).toHaveCount(1);
     await expect(tasks).toContainText(scenario.coverage, MISSING);

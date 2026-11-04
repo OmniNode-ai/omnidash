@@ -68,7 +68,6 @@ test('returning to Runs keeps recent real responses visible while refreshing', a
     expect(tenantFixtureMatched).toBe(true);
     await page.getByRole('link', { name: 'Usage', exact: true }).click();
     // OMN-21166 Maple grid: the by-day table sits under the page's closed "More usage" disclosure; open it first.
-    await page.getByText('More usage', { exact: true }).press('Enter');
     await expect(page.getByRole('heading', { name: 'Usage by model and day', exact: true })).toBeVisible();
     await page.getByRole('link', { name: 'Runs', exact: true }).click();
     await expect(page.getByRole('link', { name: 'chart-run-a', exact: true }).first()).toBeVisible({ timeout: 1000 });
@@ -93,7 +92,6 @@ test('without an explicit tenant returning to Runs refuses cross-navigation cach
     await expect(page.getByRole('link', { name: 'chart-run-a', exact: true })).toBeVisible();
     await page.getByRole('link', { name: 'Usage', exact: true }).click();
     // OMN-21166 Maple grid: the by-day table sits under the page's closed "More usage" disclosure; open it first.
-    await page.getByText('More usage', { exact: true }).press('Enter');
     await expect(page.getByRole('heading', { name: 'Usage by model and day', exact: true })).toBeVisible();
     await page.getByRole('link', { name: 'Runs', exact: true }).click();
     // Prove a new read is actually waiting, then prove the previous response

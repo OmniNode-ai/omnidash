@@ -76,12 +76,13 @@ describe('LocalDashboardPage live data (F25)', () => {
   it('re-reads its exposures every refresh interval and shows the new rows', async () => {
     render(<LocalDashboardPage pageName="runs" />);
     await settle();
-    expect(screen.getByText('run-1')).toBeInTheDocument();
+    // OMN-22168: a run's id is also a chart axis label now that the duration chart draws first; the list's link is the row.
+    expect(screen.getByRole('link', { name: 'run-1' })).toBeInTheDocument();
     const first = harness.reads.length;
     harness.answer = (topic) => Promise.resolve(topic === DECISIONS ? [decisionRow('run-2'), decisionRow('run-1')] : [{ sessions: [] }]);
     await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
     expect(harness.reads.length).toBeGreaterThan(first);
-    expect(screen.getByText('run-2')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'run-2' })).toBeInTheDocument();
   });
 
   it('reads each exposure once on a first load under StrictMode (the dev server\'s double mount)', async () => {
@@ -89,7 +90,7 @@ describe('LocalDashboardPage live data (F25)', () => {
     await settle();
     expect(harness.reads.filter((topic) => topic === DECISIONS)).toHaveLength(1);
     expect(harness.reads.filter((topic) => topic === SAVINGS)).toHaveLength(1);
-    expect(screen.getByText('run-1')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'run-1' })).toBeInTheDocument();
   });
 
   it('keeps the last good rows on screen while a re-read is in flight', async () => {

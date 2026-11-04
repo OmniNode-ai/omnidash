@@ -639,7 +639,6 @@ test('AC4 Usage token-direction graphics match canonical fields in both themes',
   }] });
   await page.goto('/usage');
   // OMN-21166 part 13: "Tokens in vs out by model" is under the closed "More usage" section.
-  await page.getByText('More usage', { exact: true }).press('Enter');
   const figure = page.getByRole('figure', { name: 'Tokens in vs out by model', exact: true });
   // Part 17 AC114: the model's pair is one focusable list item (hatched grouped bars) whose name carries both counts.
   await expect(figure.getByRole('listitem', { name: /model-a: 100 tokens in, 20 tokens out/ })).toHaveCount(1);

@@ -46,7 +46,6 @@ test('AC2 Without a tier uses RouteOff, distinct from tier-routed runs in both t
   // OMN-21166 AC86 (Lakshman 2026-10-25): Run locally and its "Without a tier" count are deleted from Overview and Runs
   // does not repeat them. The same identity is checked where it remains: "Not tier-routed" in Runs' tier mix, under "More analysis".
   await page.goto('/runs');
-  await page.getByText('More analysis', { exact: true }).press('Enter');
   const untiered = page.locator('[data-component="runs-tier-mix"] div[data-field-tone="unrouted"]');
   await expect(untiered).toContainText('Not tier-routed');
   const routed = page.locator('[data-component="runs-tier-mix"] div[data-field-tone="routing"]');

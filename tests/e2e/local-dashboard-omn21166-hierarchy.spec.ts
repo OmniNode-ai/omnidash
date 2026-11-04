@@ -23,7 +23,6 @@ test('missing spend is a compact notice, while measured charts and run identity 
   await serveCharts(page);
   await page.goto('/usage');
   // The served day rows: a measured value is drawn, a day whose value is not served reads Not measured, never $0.
-  await page.getByText('Savings by day as a table', { exact: true }).press('Enter');
   const days = page.getByRole('table', { name: /Savings per day/ });
   await expect(days.getByRole('row').filter({ hasText: '2026-10-01' }).getByRole('cell').nth(1)).toHaveText('$0.01');
   await expect(days.getByRole('row').filter({ hasText: '2026-10-03' }).getByRole('cell').nth(1)).toHaveText('Not measured');

@@ -57,6 +57,8 @@ function open(decisions: unknown[], pageSize = 25) {
 }
 /** The option the figure with this name was last handed. The duration figure is drawn first, the tokens figure second. */
 function chart(name: 'Duration per run' | 'Tokens per run', tokenNames = ['Tokens in', 'Tokens out']): Handed {
+  // OMN-22168: the run charts are tabs, one drawn at a time, so a reader chooses the chart's tab first.
+  if (!screen.queryByRole('figure', { name })) fireEvent.click(screen.getByRole('tab', { name }));
   expect(screen.getByRole('figure', { name })).toBeTruthy();
   const handed = harness.handed as Handed[];
   const mine = handed.filter(({ option }) => name === 'Duration per run'

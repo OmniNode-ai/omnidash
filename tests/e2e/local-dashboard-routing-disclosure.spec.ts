@@ -4,13 +4,15 @@ import { serveCharts } from './omn21166-chart-fixtures';
 
 // Failure modes: a decorative icon duplicates the disclosure marker; removing
 // that icon also breaks mouse/keyboard toggling or hides the native open state.
+// OMN-22168: Runs' page-level disclosure is gone (nothing is folded away), so the Runs case now fails if any page-level
+// fold returns or the routing tier table is not in view without one.
 // OMN-21166 part 18 AC120: the nested "Full routing breakdown" disclosure is removed (Runs shows the routing table
 // directly), so the native-marker checks run on the one disclosure Runs keeps, its page-level "More analysis".
 test.use({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce', trace: 'on' });
 
 for (const route of ['/overview', '/runs']) {
   test(route === '/overview' ? 'Overview carries no routing disclosure or breakdown link'
-    : `routing disclosure uses its native marker and remains operable on ${route}`, async ({ page }, info) => {
+    : `${route} shows the routing breakdown with no page-level disclosure`, async ({ page }, info) => {
     await serveCharts(page);
     await page.goto(route);
     // Neither page has the "Full routing breakdown" disclosure any more.
@@ -24,26 +26,13 @@ for (const route of ['/overview', '/runs']) {
       writeFileSync(info.outputPath('receipt.json'), JSON.stringify({ route, fullRoutingBreakdownDisclosure: 0 }, null, 2));
       return;
     }
-    // OMN-21166 part 18 AC118: Runs keeps the routing breakdown inside its one closed page-level "More analysis".
-    const summary = page.locator('summary').filter({ hasText: /^More analysis$/ });
-    const details = page.locator('details.local-more--page').filter({ has: summary });
-    await expect(summary).toHaveCount(1);
-    await expect(details).toHaveCount(1);
-    await expect(details).not.toHaveAttribute('open');
-    await summary.click();
-    await expect(details).toHaveAttribute('open', '');
-    await summary.click();
-    await expect(details).not.toHaveAttribute('open');
-    await summary.press('Enter');
-    await expect(details).toHaveAttribute('open', '');
-    await summary.press('Enter');
-    await expect(details).not.toHaveAttribute('open');
-    await summary.press('Space');
-    await expect(details).toHaveAttribute('open', '');
-    await expect(summary.locator('svg')).toHaveCount(0);
-    // The routing table is in view with the disclosure open, with no second disclosure to open first.
-    await expect(details.getByRole('region', { name: 'Tier mix', exact: true }).getByRole('table')).toBeVisible();
+    // OMN-22168 (Lakshman 2026-11-05, "don't use this instead open all, no hide the contents"): Runs has no page-level
+    // disclosure any more; the routing breakdown is its own panel, its tier table in view without opening anything.
+    await expect(page.locator('details.local-more--page')).toHaveCount(0);
+    await expect(page.locator('summary').filter({ hasText: /^More analysis$/ })).toHaveCount(0);
+    const routing = page.getByRole('article', { name: 'Routing', exact: true });
+    await expect(routing.getByRole('region', { name: 'Tier mix', exact: true }).getByRole('table')).toBeVisible();
     await page.screenshot({ path: info.outputPath('routing-disclosure.png'), fullPage: true });
-    writeFileSync(info.outputPath('receipt.json'), JSON.stringify({ route, decorativeIcons: await summary.locator('svg').count(), mouse: true, enter: true, space: true, nativeOpenState: true }, null, 2));
+    writeFileSync(info.outputPath('receipt.json'), JSON.stringify({ route, pageDisclosures: 0, tierTableInView: true }, null, 2));
   });
 }

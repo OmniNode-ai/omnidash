@@ -298,7 +298,6 @@ test('Runs lists every decision with typed unmeasured values at 1440x900 (AC4)',
   await expectNoPanelCutOff(page);
   // OMN-21166 part 18 AC121: the "Run outcomes" donut and its legend (Passed/Failed/Not recorded) are removed from Runs'
   // "More analysis"; the Runs, Pass rate and Failed cards above hold the same figures.
-  await page.getByText('More analysis', { exact: true }).press('Enter');
   await expect(page.locator('.overview-outcome-legend button')).toHaveCount(0);
   await expect(page.getByRole('figure', { name: 'Run outcomes', exact: true })).toHaveCount(0);
 
@@ -330,8 +329,6 @@ test('Usage shows measured cost beside unmeasured runs, never 0 for unmeasured, 
   await expect(page.getByRole('heading', { level: 1, name: 'Usage' })).toBeVisible();
   // OMN-21166 part 13: the usage-by-model-day records are under "More usage", and the savings day table under "Savings
   // by day as a table".
-  await page.getByText('More usage', { exact: true }).press('Enter');
-  await page.getByText('Savings by day as a table', { exact: true }).press('Enter');
   // Part 29 AC194: Usage analysis also lists models; these rows are the usage-by-model-day records.
   const records = page.getByRole('table', { name: 'Usage by model and day' });
   const mixed = records.getByRole('row').filter({ hasText: 'Qwen3.8-27B' });
@@ -414,7 +411,6 @@ test('Overview quality and tier-mix panels show served fields only (OMN-20225 AC
   await page.screenshot({ path: screenshotPath('local-dashboard-overview-panels-1440x900.png'), fullPage: false });
   // The raw served shares and the not-tier-routed count stay in Runs' routing breakdown, under "More analysis".
   await page.goto('/runs');
-  await page.getByText('More analysis', { exact: true }).press('Enter');
   const routing = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Routing breakdown', exact: true }) });
   // OMN-21166 part 18 AC120: the table is shown directly; the nested "Full routing breakdown" disclosure is removed.
   await expect(routing.locator('summary').filter({ hasText: 'Full routing breakdown' })).toHaveCount(0);

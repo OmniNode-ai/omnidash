@@ -20,7 +20,6 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     expect(rankedFonts.length).toBeGreaterThan(0);
     expect(rankedFonts.filter(row => row.size < 12)).toEqual([]);
     await page.goto('/runs');
-    await page.getByText('More analysis', { exact: true }).press('Enter');
     const area = page.getByRole('region', { name: 'Tier mix', exact: true });
     // OMN-21166 part 18 AC120: the routing breakdown has no pinnable tier bars, focus label or nested disclosure; its
     // table is shown directly, so the 12px floor is read on the table's and the totals' visible text.

@@ -10,7 +10,6 @@ test.beforeEach(async ({ page }) => { await serveCharts(page); });
 
 // OMN-21166 part 18 AC118: Runs' four run charts and "This week" sit first inside the page's one closed "More analysis".
 async function openRunCharts(page: Page) {
-  await page.getByText('More analysis', { exact: true }).press('Enter');
   await expect(page.locator('details.local-more').filter({ has: page.locator('article.local-run-charts-panel') })).toHaveAttribute('open', '');
 }
 
@@ -103,7 +102,6 @@ test('tier shares read directly from the routing table and preserve served denom
   await expect(overview.getByRole('link', { name: 'Cloud: 2 · 25.0%, measured. Opens Runs filtered to Cloud', exact: true })).toBeVisible();
   await expect(overview).toContainText('2 not tier-routed');
   await page.goto('/runs');
-  await page.getByText('More analysis', { exact: true }).press('Enter');
   const area = page.getByRole('region', { name: 'Tier mix', exact: true });
   await expect(area.getByRole('button', { name: 'Inspect Local', exact: true })).toHaveCount(0);
   await expect(area.getByRole('button', { name: 'Clear tier selection' })).toHaveCount(0);
@@ -122,7 +120,6 @@ test('usage model bars do not change figures, table or other model colors', asyn
   // OMN-21166 Maple grid: the page's Tokens per day is a stacked chart that prints each served count in the day's label;
   // part 17 AC114: "Tokens by model" (under "More usage") is hatched grouped bars, two per model, values on hover or focus.
   await expect(page.locator(`[data-component="usage-tokens-by-day"]:not([data-slice]) li[data-token-day="${USAGE_DAY}"]`)).toHaveAttribute('aria-label', /model-a: 162/);
-  await page.getByText('More usage', { exact: true }).press('Enter');
   const figure = page.getByRole('figure', { name: 'Tokens in vs out by model', exact: true });
   const modelA = figure.locator('li.gdb-day[aria-label^="model-a:"]');
   const modelB = figure.locator('li.gdb-day[aria-label^="model-b:"]');
@@ -171,12 +168,10 @@ test.describe('touch chart controls', () => {
     // OMN-21166 part 18 AC120 / part 17 AC114: Runs' routing breakdown table shows the tier shares directly (no pinnable
     // bars); Usage's "Tokens by model" groups take focus and name every value.
     await page.goto('/runs');
-    await page.getByText('More analysis', { exact: true }).tap();
     const area = page.getByRole('region', { name: 'Tier mix', exact: true });
     await expect(area.getByRole('button', { name: 'Inspect Cloud', exact: true })).toHaveCount(0);
     await expect(area.getByRole('row').filter({ hasText: 'Cloud' }).locator('td[data-column="share"]')).toHaveText('25.0%');
     await page.getByRole('link',{name:'Usage',exact:true}).tap();
-    await page.getByText('More usage', { exact: true }).tap();
     const group = page.getByRole('figure', { name: 'Tokens in vs out by model', exact: true }).locator('li.gdb-day[aria-label^="model-b:"]');
     await group.tap();
     await expect(group).toHaveAttribute('aria-label', /Not recorded tokens out/);

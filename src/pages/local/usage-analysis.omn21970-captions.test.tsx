@@ -7,7 +7,7 @@
 //   L2  Runs' This week line says "runs in the latest returned rows" after a complete read
 //   L3  an incomplete read stops saying its rows are only the latest ones
 //   L4  Runs' totals call runs with a recorded cost "measured", which Overview uses for runs with tokens and a cost
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { RoutingAnalysis, RunsTotals, UsageAnalysis } from './usage-analysis';
 import { RunsTable } from '@/pages/LocalDashboardPage';
@@ -40,11 +40,14 @@ describe('OMN-21970: captions after a complete read', () => {
   });
 
   it('L2: Runs This week names the served runs after a complete read, and the latest returned rows otherwise', () => {
+    // OMN-22168: This week is a tab of the run charts, so a reader chooses it first.
     const complete = render(<RunsTable now={NOW} decisions={rows} sessions={[]} truncated={false} />);
+    fireEvent.click(screen.getByRole('tab', { name: 'This week' }));
     expect(text()).toMatch(/runs served this week · by created day \(UTC\)/);
     expect(text()).not.toMatch(/in the latest returned rows/);
     complete.unmount();
     render(<RunsTable now={NOW} decisions={rows} sessions={[]} truncated />);
+    fireEvent.click(screen.getByRole('tab', { name: 'This week' }));
     expect(text()).toMatch(/runs in the latest returned rows · by created day \(UTC\)/);
   });
 });

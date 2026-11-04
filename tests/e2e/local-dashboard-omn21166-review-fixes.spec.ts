@@ -21,7 +21,6 @@ test('review fixes: exact median and keyboard/touch hourly inspection', async ({
   // medians and the UTC-hour heatmap) is Runs', under "More analysis". Runs draws the latest seven served UTC days,
   // so the 168 cells no longer need the Overview presets.
   await page.goto('/runs');
-  await page.getByText('More analysis', { exact: true }).press('Enter');
   await page.waitForLoadState('networkidle');
   // Part 15 AC91: the Runs headline card is also titled "Runs", so the page title is asked for by its level.
   await expect(page.getByRole('heading', { level: 1, name: 'Runs', exact: true })).toBeVisible();

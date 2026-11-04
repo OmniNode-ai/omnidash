@@ -134,7 +134,6 @@ for (const theme of ['light','dark'] as const) {
     await expect(page.locator('body')).toHaveClass(new RegExp(`\\btheme-${theme}\\b`));
     // OMN-21166 part 13 + AC64: Runs' analysis is under the page's closed "More analysis", and the model scoreboard
     // rings are ranked bars ("Pass rate by model") whose name is written in the model's colour.
-    await page.locator('summary').filter({hasText:/^More analysis$/}).click();
     const model = page.getByRole('figure',{name:'Pass rate by model',exact:true}).locator('[data-ranked-item]').filter({has:page.getByText('model-a',{exact:true})});
     await expect(model).toBeVisible();
     const color = await model.locator('.rb-name .rb-swatch').evaluate(el => getComputedStyle(el).backgroundColor);

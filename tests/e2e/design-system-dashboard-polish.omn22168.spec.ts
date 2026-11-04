@@ -38,7 +38,6 @@ test.beforeEach(async ({ page }) => { await serveCharts(page, rows); });
 
 async function openAnalysis(page: Page) {
   await page.goto('/runs');
-  await page.getByText('More analysis', { exact: true }).click();
   await expect(page.getByRole('figure', { name: 'Pass rate per day', exact: true })).toBeVisible();
 }
 

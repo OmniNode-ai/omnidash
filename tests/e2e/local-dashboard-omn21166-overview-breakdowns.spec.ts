@@ -22,7 +22,6 @@ test('Overview groups activity, routing and quality charts and keeps latest exec
   await expect(perDay.getByRole('button', { name: /: 3 runs, / })).toBeVisible();
   await page.goto('/runs');
   // OMN-21166 part 13: the analysis sits under Runs' closed page-level "More analysis".
-  await page.locator('summary').filter({ hasText: /^More analysis$/ }).click();
   // OMN-21166 part 18 AC119/AC121: "Runs by model", "Runs by tier" and the "Run outcomes" donut are removed from Runs
   // (Overview's Model usage and Tier mix, and the Runs headline cards, show the same figures); the task mix remains.
   await expect(page.getByRole('figure', { name: 'Runs by model', exact: true })).toHaveCount(0);
@@ -43,7 +42,6 @@ test('Overview groups activity, routing and quality charts and keeps latest exec
     await page.goto('/overview');
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     await page.goto('/runs');
-    await page.locator('summary').filter({ hasText: /^More analysis$/ }).click();
   }
 });
 

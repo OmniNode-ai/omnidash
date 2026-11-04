@@ -99,7 +99,6 @@ test('run chart captions identify the listed records without claiming an obsolet
   for (const route of ['/runs']) {
     await page.goto(route);
     // OMN-21166 part 18 AC118: Runs keeps its run charts inside its one closed "More analysis".
-    await page.locator('summary').filter({ hasText: /^More analysis$/ }).click();
     for (const name of ['Duration per run', 'Tokens per run']) {
       const chart = page.getByRole('figure', { name, exact: true });
       await expect(chart).toBeVisible();

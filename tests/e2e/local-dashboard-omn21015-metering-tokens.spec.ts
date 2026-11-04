@@ -93,7 +93,6 @@ test('served model/day rows retain their own series rather than being replaced b
   const detail = page.locator('[data-component="usage-tokens-by-day"][data-slice="detail"]');
   await expect(panel.getByRole('figure', { name: 'Tokens in per day by model' })).toBeVisible();
   await expect(panel.getByRole('figure', { name: 'Daily metering token totals' })).toHaveCount(0);
-  await page.locator('summary').filter({ hasText: /^More usage$/ }).click();
   await expect(detail).toHaveCount(0);
   await expect(page.getByRole('figure', { name: 'Tokens by model and day' })).toHaveCount(0);
   const byModel = page.getByRole('figure', { name: 'Tokens in vs out by model', exact: true });

@@ -43,7 +43,6 @@ test('Quality breakdown ranks served failures and distinguishes zero from an uns
   await page.goto('/delegation-evidence');
   const quality = page.locator('[data-panel-title="QUALITY GATE"]');
   await expect(quality).toContainText('All quality checks served');
-  await quality.getByText('More quality detail').click();
   await expect(quality.getByRole('list', { name: 'Checks by type' })).toContainText('score vs required bar');
   await expect(quality.getByText('Median tokens to comply')).toBeVisible();
   await expect(quality.locator('.kv > div', { hasText: 'Median tokens to comply' }).locator('.v')).toHaveText('0');
@@ -56,7 +55,6 @@ test('Quality breakdown ranks served failures and distinguishes zero from an uns
     failure_categories: undefined, escalation_rate: undefined,
   }] });
   await page.getByRole('button', { name: 'Refresh', exact: true }).click();
-  await quality.getByText('More quality detail').click();
   await expect(quality).toContainText('Not served');
   await expect(quality.locator('.kv > div', { hasText: 'Median tokens to comply' }).locator('.v')).toHaveText('Not served');
   await expect(quality.getByRole('list', { name: 'Checks by type' })).toHaveCount(0);

@@ -32,7 +32,6 @@ test.beforeEach(async ({ page }) => { await serveCharts(page, baseRows); });
 test('Workflow exposes available backend decision fields compactly', async ({ page }, info) => {
   await page.goto('/workflow?correlation_id=chart-run-a');
   // OMN-21166 part 13: Recorded run details sit under the closed "More run details".
-  await page.getByText('More run details', { exact: true }).press('Enter');
   const details = page.getByRole('region', { name: 'Recorded run details', exact: true });
   for (const value of ['served-routed-model', 'served-answering-backend', 'served-score-source', 'served-writer']) {
     await expect(details).toContainText(value);
@@ -48,7 +47,6 @@ test('Workflow exposes available backend decision fields compactly', async ({ pa
 test('Workflow charts and recorded details read the selected run without inventing values', async ({ page }, info) => {
   await page.goto('/workflow?correlation_id=chart-run-a');
   // OMN-21166 part 13: Token flow, Quality score comparison and Recorded run details are under "More run details".
-  await page.getByText('More run details', { exact: true }).press('Enter');
   const tokens = page.getByRole('figure', { name: 'Token flow', exact: true });
   await expect(tokens).toBeVisible();
   await expect(tokens).toContainText('Input tokens');

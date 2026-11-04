@@ -11,11 +11,10 @@ const usage = Array.from({ length: 28 }, (_, index) => ({
   measured_cost_usd: index === 1 ? null : '0.00000000', unmeasured_call_count: index === 1 ? 1 : 0,
   call_count: 1, call_share: '0.5', cost_tier_name: index % 2 ? 'cloud' : 'local',
 }));
-// OMN-21166 part 13: the usage-by-model-day records and the per-model token bars sit under the page-level "More usage"
-// section (part 17: the per-day token detail is removed).
+// OMN-22168 (Lakshman 2026-11-05, "don't use this instead open all, no hide the contents"): the usage-by-model-day
+// records and the per-model token bars are in view; no "More usage" fold hides them.
 async function openMoreUsage(page: Page) {
-  await page.getByText('More usage', { exact: true }).press('Enter');
-  await expect(page.locator('details.local-more').filter({ hasText: 'More usage' }).first()).toHaveAttribute('open', '');
+  await expect(page.locator('details.local-more')).toHaveCount(0);
 }
 test.beforeEach(async ({ page }) => { await serveCharts(page, { ...chartRows, [prefix + 'usage-by-model-day.v1']: usage }); });
 

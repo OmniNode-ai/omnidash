@@ -19,7 +19,6 @@ test.use({ viewport: { width: 1440, height: 900 }, trace: 'on' });
 // OMN-21166 part 18 AC118: Runs' four run charts and "This week" sit first inside the page's one closed "More analysis"
 // (the "More run charts" disclosure is merged into it).
 async function openRunCharts(page: Page) {
-  await page.getByText('More analysis', { exact: true }).press('Enter');
   await expect(page.locator('details.local-more').filter({ has: page.locator('article.local-run-charts-panel') })).toHaveAttribute('open', '');
   await expect(page.getByText('More run charts', { exact: true })).toHaveCount(0);
 }
@@ -31,7 +30,6 @@ test('fractional median duration retains milliseconds instead of the integer cou
   // one duration formatter (whole milliseconds, exact median in the title) is checked on Runs' analysis below.
   await page.goto('/runs');
   // OMN-21166 part 13: Runs' analysis sits under the page-level "More analysis".
-  await page.getByText('More analysis', { exact: true }).press('Enter');
   await expect(page.getByText('Median 512 ms', { exact: true })).toBeVisible();
   await expect(page.locator('article[data-kpi-card="Median duration"] .local-dashboard-metric')).toHaveAttribute('title', '511.5 ms');
   await expect(page.getByText('Not measured ms', { exact: true })).toHaveCount(0);

@@ -101,7 +101,6 @@ for (const selectedTheme of ['light', 'dark']) {
     await serveCharts(page, rows);
     await page.goto('/usage');
     await theme(page, selectedTheme);
-    await page.getByText('More usage', { exact: true }).press('Enter');
     const before = await usageColors(page, names);
     rows[USAGE] = [...rows[USAGE]].reverse();
     await page.getByRole('button', { name: 'Refresh', exact: true }).click();
@@ -121,7 +120,6 @@ for (const selectedTheme of ['light', 'dark']) {
     await serveCharts(page, fixture(names, name => (name === 'model-a' ? 'claude' : 'local')));
     await page.goto('/usage');
     await theme(page, selectedTheme);
-    await page.getByText('More usage', { exact: true }).press('Enter');
     const colors = await usageColors(page, names);
     expect(colors['Model-A'], 'distinct served model identities need distinct measured colors').not.toBe(colors['model-a']);
     await info.attach('model-colors', { body: JSON.stringify({ theme: selectedTheme, colors }), contentType: 'application/json' });
@@ -133,7 +131,6 @@ for (const selectedTheme of ['light', 'dark']) {
     // OMN-21166 part 13 + AC64: the routing table and the pass-rate-by-model bars (the old scoreboard rings) are on Runs, under "More analysis".
     await page.goto('/runs');
     await theme(page, selectedTheme);
-    await page.getByText('More analysis', { exact: true }).press('Enter');
     // OMN-21166 part 18 AC120: the routing table is shown directly; there is no nested disclosure to open.
     await expect(page.locator('[data-component="runs-tier-mix"] details')).toHaveCount(0);
     const colors: Record<string, { ring: string; name: string; routing: string }> = {};

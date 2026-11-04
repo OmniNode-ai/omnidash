@@ -30,7 +30,6 @@ test('compact Overview preserves missing data, quality, chart access and routing
   // Part 15 AC96: the "View routing breakdown" link is removed; the breakdown stays on Runs.
   await expect(tier.getByRole('link', { name: /View routing breakdown/ })).toHaveCount(0);
   await page.goto('/runs');
-  await page.getByText('More analysis', { exact: true }).press('Enter');
   const routing = page.locator('[data-component="runs-tier-mix"]');
   // OMN-21166 part 18 AC120: the routing table is shown directly under "More analysis"; the nested "Full routing
   // breakdown" disclosure is removed.
