@@ -62,9 +62,9 @@ for (const theme of ['light', 'dark']) {
       const probe = document.createElement('span'); root.append(probe);
       try {
         return Object.fromEntries(['pass', 'fail', 'baseline', 'cost', 'savings'].map(token => {
-          const declared = getComputedStyle(root).getPropertyValue(`--field-${token}`).trim();
+          const declared = getComputedStyle(root).getPropertyValue(`--ds-field-${token}`).trim();
           if (!declared || !CSS.supports('color', declared)) throw new Error(`Missing canonical ${token} colour: ${declared}`);
-          probe.style.color = `var(--field-${token})`;
+          probe.style.color = `var(--ds-field-${token})`;
           return [token, getComputedStyle(probe).color];
         }));
       } finally { probe.remove(); }

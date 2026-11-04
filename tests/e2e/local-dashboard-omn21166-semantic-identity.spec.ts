@@ -16,7 +16,7 @@ test('different semantic fields have distinct theme-aware colors', async ({ page
   const tones = ['pass','fail','count','score','threshold','model','age','identity','duration','cost','savings','backend','host','tokens-in','tokens-out','tokens','basis','task','tier','queue','execution','completion','calls','tenant','session','baseline','saving-average','compression','cache','quality','events','generation','transport','delegations'];
   for (const theme of ['light','dark']) {
     if ((await page.locator('html').getAttribute('data-theme') === 'dark' ? 'dark' : 'light') !== theme) await page.getByRole('button', { name: 'Toggle theme' }).click();
-    const colors = await page.locator('html').evaluate((el, names) => names.map(name => getComputedStyle(el).getPropertyValue('--field-' + name).trim()), tones);
+    const colors = await page.locator('html').evaluate((el, names) => names.map(name => getComputedStyle(el).getPropertyValue('--ds-field-' + name).trim()), tones);
     expect(colors.every(Boolean)).toBe(true);
     expect(new Set(colors.map(c => c.toLowerCase())).size).toBe(tones.length);
   }
@@ -80,7 +80,7 @@ test('KPI colors follow their semantic identity instead of inherited gray', asyn
   const colors: string[] = [];
   for (const card of await page.locator('.kpi').all()) {
     const tone = await card.getAttribute('data-field-tone');
-    const hex = await card.evaluate((el, name) => getComputedStyle(el).getPropertyValue('--field-' + name).trim(), tone);
+    const hex = await card.evaluate((el, name) => getComputedStyle(el).getPropertyValue('--ds-field-' + name).trim(), tone);
     const channels = hex.replace('#', '').match(/../g)!.map(x => parseInt(x, 16));
     const expected = `rgb(${channels.join(', ')})`;
     await expect(card.locator('.k-l')).toHaveCSS('color', expected);
@@ -153,7 +153,7 @@ test('checks, score, run ID and model occupy distinct hue families', async ({ pa
   for (const theme of ['light','dark']) {
     if ((await page.locator('html').getAttribute('data-theme') === 'dark' ? 'dark' : 'light') !== theme) await page.getByRole('button', { name: 'Toggle theme' }).click();
     const hues = await page.locator('html').evaluate(el => ['count','score','identity','model'].map(name => {
-      const hex = getComputedStyle(el).getPropertyValue('--field-' + name).trim();
+      const hex = getComputedStyle(el).getPropertyValue('--ds-field-' + name).trim();
       const [r,g,b] = hex.slice(1).match(/../g)!.map(x => parseInt(x, 16) / 255);
       const max = Math.max(r,g,b), min = Math.min(r,g,b), d = max-min;
       return ((max === r ? (g-b)/d : max === g ? (b-r)/d+2 : (r-g)/d+4)*60+360)%360;

@@ -168,8 +168,8 @@ async function collect(page: Page): Promise<Reading[]> {
       return { renderedForeground: rgbString(front), contrast: (values[0]! + .05) / (values[1]! + .05), contrastThreshold: threshold };
     };
     const fieldColor = (tone: string) => {
-      if (!getComputedStyle(body).getPropertyValue(`--field-${tone}`).trim()) return undefined;
-      const probe = document.createElement('span'); probe.style.color = `var(--field-${tone})`;
+      if (!getComputedStyle(body).getPropertyValue(`--ds-field-${tone}`).trim()) return undefined;
+      const probe = document.createElement('span'); probe.style.color = `var(--ds-field-${tone})`;
       body.append(probe); const color = rgbString(rgba(getComputedStyle(probe).color)); probe.remove();
       return color;
     };
@@ -597,7 +597,7 @@ test('AC4 collector rejects conflicting non-icon field graphic colours', async (
   // OMN-21166 part 17 AC114: "Tokens in vs out by model" is hatched grouped bars (GroupedBars): a list item per model, a
   // column per direction, a bar (.gdb-bar.ins-seg) in the direction's colour. The control plants that markup; both bars
   // carry the tokens-in tone because the control only needs one mismatching paint.
-  await page.setContent(`<style>:root { --field-tokens-in: #075985; }
+  await page.setContent(`<style>:root { --ds-field-tokens-in: #075985; }
     ul.gdb-plot { list-style:none;margin:0;padding:0; } .gdb-group { display:flex;gap:3px; } .gdb-col { display:block; }
     .gdb-bar.ins-seg { display:block;width:100px;height:8px;color:#075985;background:#075985; }</style>
     <main><figure aria-label="Tokens in vs out by model"><ul class="ins-bars gdb-plot gdb-plot--list" aria-label="Token counts by model">

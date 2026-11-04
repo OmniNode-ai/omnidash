@@ -30,7 +30,7 @@ for (const dark of [false, true]) {
     await page.evaluate(darkTheme => document.documentElement.setAttribute('data-theme', darkTheme ? 'dark' : 'light'), dark);
     const environment = page.locator('article[data-component="status-environment"]');
     await expect(environment).toBeVisible();
-    const host = await colours(environment, '--field-host');
+    const host = await colours(environment, '--ds-field-host');
     await page.screenshot({ path: info.outputPath('environment.png'), fullPage: true });
     // The current page declares no Cloud keys widget. Exercise its retained CSS
     // selector with an explicit temporary style control, never a product widget.
@@ -45,7 +45,7 @@ for (const dark of [false, true]) {
       try {
         probe.style.color = 'var(--panel-accent)';
         const accent = getComputedStyle(probe).color;
-        probe.style.color = 'var(--field-cloud-keys)';
+        probe.style.color = 'var(--ds-field-cloud-keys)';
         return { accent, canonical: getComputedStyle(probe).color, boundary: 'temporary legacy selector style control' };
       } finally { panel.remove(); }
     });
@@ -70,11 +70,11 @@ for (const dark of [false, true]) {
       panel.append(probe);
       const read = (token: string) => { probe.style.color = `var(${token})`; return getComputedStyle(probe).color; };
       try {
-        const host = read('--field-host');
-        const cloudKeys = read('--field-cloud-keys');
-        panel.style.setProperty('--panel-accent', 'var(--field-host)', 'important');
+        const host = read('--ds-field-host');
+        const cloudKeys = read('--ds-field-cloud-keys');
+        panel.style.setProperty('--panel-accent', 'var(--ds-field-host)', 'important');
         const positive = read('--panel-accent') === host && host !== cloudKeys;
-        panel.style.setProperty('--panel-accent', 'var(--field-cloud-keys)', 'important');
+        panel.style.setProperty('--panel-accent', 'var(--ds-field-cloud-keys)', 'important');
         const plantedCollision = read('--panel-accent') === cloudKeys;
         return { positive, plantedCollision };
       } finally {

@@ -53,7 +53,7 @@ for (const theme of ['light', 'dark'] as const) {
       const concepts = await page.evaluate(() => [...document.querySelectorAll('main svg.field-icon[data-field-icon]:not([data-field-icon^="tier-"]):not([data-semantic-concept^="model:"])')]
         .filter(svg => (svg as SVGElement).getBoundingClientRect().width > 0 && !svg.closest('[data-field-unavailable="true"]'))
         .map(svg => { const concept = svg.getAttribute('data-field-icon')!; const probe = document.createElement('i');
-          probe.style.color = `var(--field-${concept})`; document.body.append(probe); const want = getComputedStyle(probe).color; probe.remove();
+          probe.style.color = `var(--ds-field-${concept})`; document.body.append(probe); const want = getComputedStyle(probe).color; probe.remove();
           return { concept, color: getComputedStyle(svg).color, want }; }));
       for (const icon of concepts) expect(icon.color, `${path} ${icon.concept} icon draws its concept colour`).toBe(icon.want);
       // Hybrid: a model under its bar keeps that bar's colour (OMN-21308 AC3), on the swatch beside its ink name since
