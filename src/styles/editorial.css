@@ -768,3 +768,45 @@ html body .local-dashboard-page .local-overview-charts-panel .local-dashboard-ta
 /* An empty unit line takes no space (Overview's Model usage and Tier mix, Lakshman 2026-11-04 "remove"). */
 .rb-head:not(:has(> :not(.rb-unit:empty))) { display: none; }
 .rb-unit:empty { display: none; }
+
+/* OMN-22168 (Lakshman 2026-11-04, "improve UI/UX of overview and make it uniform"): one rhythm for the whole page,
+   measured before: section gaps 17/19/16px, paddings 14x18x12 and 14x16, heading tracking 0.72 and 1.44px, heading glyphs
+   14 and 15px, chips at radius 8 and 999 with heights 32 and 25, the stat labels in a second font. Now: 16px between
+   sections, 16px inside every card and panel, one heading style, 15px heading glyphs, one pill chip (28px). */
+html body .local-dashboard-page--overview { --ov-gap: 16px; --ov-pad: 16px; --ov-track: 0.1em; }
+html body .local-dashboard-page--overview .local-dashboard-header { margin-bottom: var(--ov-gap) !important; }
+html body .local-dashboard-page--overview .local-overview-surface { margin-bottom: 0 !important; }
+html body .local-dashboard-page--overview .local-overview-summary { gap: 12px !important; }
+html body .local-dashboard-page--overview .maple-grid { gap: var(--ov-gap) !important; row-gap: var(--ov-gap) !important; }
+html body .local-dashboard-page--overview .local-overview-summary > article,
+html body .local-dashboard-page--overview .maple-cell > article.local-dashboard-panel { padding: var(--ov-pad) !important; border-radius: 14px !important; }
+/* One heading style: the panel headings and the card headings share font, size, weight and tracking. */
+html body .local-dashboard-page--overview :is(.local-overview-summary article, .maple-cell > article.local-dashboard-panel) > h2,
+html body .local-dashboard-page--overview .local-overview-charts-panel > .local-dashboard-panel-title {
+  font-size: 12px !important; font-weight: 600 !important; letter-spacing: var(--ov-track) !important; text-transform: uppercase !important;
+  gap: 8px !important; align-items: center; }
+html body .local-dashboard-page--overview :is(.local-overview-summary article, .maple-cell > article.local-dashboard-panel) > h2 svg,
+html body .local-dashboard-page--overview .local-overview-charts-panel > .local-dashboard-panel-title svg { width: 15px !important; height: 15px !important; }
+html body .local-dashboard-page--overview .local-tab-label { font-family: inherit; letter-spacing: var(--ov-track); }
+/* One chip: the trend's legend toggles and the status line's facts are 28px pills. */
+html body .local-dashboard-page--overview .local-trend .ins-toggle {
+  min-height: 28px; height: 28px; padding: 0 12px !important; border-radius: 999px !important; font-size: 12px; font-weight: 600;
+  border: 1px solid color-mix(in oklab, var(--ins-swatch) 35%, var(--ds-line)) !important;
+  background: color-mix(in oklab, var(--ins-swatch) 12%, transparent) !important; }
+html body .local-dashboard-page--overview .local-trend .ins-toggle[aria-pressed="false"] { opacity: 0.55; background: transparent !important; }
+html body .local-dashboard-page--overview .local-status-chip { min-height: 28px; padding: 0 12px; }
+html body .local-dashboard-page--overview .local-trend .ins-toggles { gap: 8px !important; margin: 4px 0 8px; }
+/* Captions sit 6px under their heading and read in the secondary ink everywhere. */
+html body .local-dashboard-page--overview :is(.maple-cell > article.local-dashboard-panel, .local-overview-charts-panel) .local-dashboard-caption {
+  color: var(--ds-ink-2) !important; margin-top: 2px; }
+/* The cards had a 1px frame around their row (a box around boxes) and the page grid an 18px gap: no frame, 16px rows. */
+html body .local-dashboard-page--overview .local-overview-surface { border: 0 !important; background: transparent !important; box-shadow: none !important; }
+html body .local-dashboard-page--overview .local-dashboard-grid { row-gap: var(--ov-gap) !important; }
+/* Every legend toggle on Overview is the same 28px pill (the day charts' Passed / Failed, Tokens in / out, the trend). */
+html body .local-dashboard-page--overview .ins-toggle {
+  min-height: 28px; height: 28px; padding: 0 12px !important; border-radius: 999px !important; font-size: 12px; font-weight: 600;
+  border: 1px solid color-mix(in oklab, var(--ins-swatch) 35%, var(--ds-line)) !important;
+  background: color-mix(in oklab, var(--ins-swatch) 12%, transparent) !important; }
+html body .local-dashboard-page--overview .ins-toggle[aria-pressed="false"] { opacity: 0.55; background: transparent !important; }
+html body .local-dashboard-page--overview .ins-toggles { gap: 8px !important; }
+html body .local-dashboard-page--overview .local-overview-charts-panel .ins-toggles .ins-toggle { border-radius: 999px !important; }
