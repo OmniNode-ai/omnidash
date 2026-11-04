@@ -10,7 +10,7 @@ import {
   type Group, type GroupBy, type Totals, type TrendDay, type TrendSeriesBy,
 } from './decision-analysis';
 import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
-import { BarSparkline, CostQualityScatter } from '@/theme/design-system/charts';
+import { BarSparkline, CostQualityScatter, breakableName } from '@/theme/design-system/charts';
 
 /**
  * OMN-21166 part 29 (revision 6) AC194 and AC195: Usage analysis, read from the latest N served decisions (Langfuse's
@@ -86,7 +86,7 @@ function GroupsView({ decisionRows }: { decisionRows: readonly unknown[] }) {
         <tbody>{sorted.map(group => <tr key={group.name}>
           <th scope="row" data-model-name={by === 'model' && group.name !== NOT_RECORDED ? '' : undefined}
             data-semantic-concept={by === 'model' && group.name !== NOT_RECORDED ? `model:${group.name}` : undefined}
-            style={by === 'model' && group.name !== NOT_RECORDED ? { '--model-color': modelColor(group.name) } as CSSProperties : undefined}>{group.name}</th>
+            style={by === 'model' && group.name !== NOT_RECORDED ? { '--model-color': modelColor(group.name) } as CSSProperties : undefined}>{breakableName(group.name)}</th>
           {/* data-label names each value when a phone stacks the rows as cards (Codex MSG 753d170c). */}
           <td data-cell="runs" data-label="Runs">{group.runs}</td>
           <td data-cell="spend" data-label="Spend">{money(group.spend, group.spendMeasured, group.runs)}</td>

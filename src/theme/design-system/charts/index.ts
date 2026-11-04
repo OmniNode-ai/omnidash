@@ -26,7 +26,7 @@ export type { ScatterPoint } from './CostQualityScatter';
 export { BarTrack, ComparisonTrack, Meter } from './Meter';
 export { SHARES_OVER_WHOLE, TIER_TONES, TierMix, arcPath, percent } from './TierMix';
 export type { TierSegment, TierShares } from './TierMix';
-export { RankedBars } from './RankedBars';
+export { RankedBars, breakableName } from './RankedBars';
 export type { RankedBarBasis, RankedBarItem } from './RankedBars';
 export { GroupedBars } from './GroupedBars';
 export type { GroupedBarGroup, GroupedBarValue } from './GroupedBars';

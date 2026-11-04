@@ -427,3 +427,50 @@ html body .app svg.field-icon.field-icon[data-field-icon="usage-day"]:not([data-
 .local-dashboard-page--runs [data-component="recent-runs"] .local-recent-switch { display: inline-flex; align-items: center; gap: 2px; }
 .local-dashboard-page--runs [data-component="recent-runs"] .local-recent-switch .ds-infotip { width: 22px; height: 22px; color: var(--ds-ink-3); }
 .local-dashboard-page--runs [data-component="recent-runs"] .local-recent-switch .ds-infotip:hover { color: var(--ds-hue-blue); }
+
+/* ============================================================================
+   OMN-22168 (Lakshman 2026-11-04, "verify each page one by one and everything and make it modern"): the Recent runs
+   treatment, applied to every local page and Delegation Evidence through the shared classes. Tokens only.
+   - every table: small-caps header, a hover row, 12px corners;
+   - every filter select: a soft pill, active when set;
+   - the quiet controls (filter-row buttons, Copy, the run neighbour links, chart Expand): one 32px quiet button.
+   ============================================================================ */
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-dashboard-table-wrap { border-radius: 12px !important; }
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) table thead th {
+  font-size: 11px !important; font-weight: 600 !important; text-transform: uppercase !important; letter-spacing: 0.06em !important;
+}
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) table tbody tr { transition: background-color 100ms ease; }
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) table tbody tr:hover { background: color-mix(in oklab, var(--ds-surface-2) 70%, transparent); }
+
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-dashboard-filters select {
+  min-height: 32px; border-radius: 999px !important; border: 1px solid var(--ds-line); background-color: transparent;
+  color: var(--ds-ink-2); padding-left: 12px; cursor: pointer; transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
+}
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-dashboard-filters select:hover {
+  border-color: var(--ds-line-strong); color: var(--ds-ink); background-color: var(--ds-surface-2);
+}
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-dashboard-filters .local-filter-field:has(option:checked:not(:first-child)) > select {
+  border-color: color-mix(in oklab, var(--ds-hue-blue) 55%, var(--ds-line)); color: var(--ds-ink);
+  background-color: color-mix(in oklab, var(--ds-hue-blue) 12%, transparent);
+}
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-dashboard-filters input:not([type="checkbox"]):not([type="radio"]) {
+  min-height: 34px; border-radius: 10px !important; border: 1px solid var(--ds-line); background-color: var(--ds-surface-2);
+}
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-dashboard-filters input:not([type="checkbox"]):not([type="radio"]):focus-visible {
+  outline: none; border-color: var(--ds-hue-blue); box-shadow: 0 0 0 3px color-mix(in oklab, var(--ds-hue-blue) 22%, transparent);
+}
+
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) :is(.local-dashboard-filters > button, .local-copy, .local-run-neighbours a, .local-chart-expand) {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; border-radius: 8px !important;
+  border: 1px solid var(--ds-line); background: transparent; color: var(--ds-ink-2); font-size: 12.5px; font-weight: 500;
+  text-decoration: none; cursor: pointer; transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) :is(.local-dashboard-filters > button, .local-copy, .local-run-neighbours a, .local-chart-expand):hover {
+  background: var(--ds-surface-2); color: var(--ds-ink); border-color: var(--ds-line-strong);
+}
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) :is(.local-dashboard-filters > button, .local-copy, .local-run-neighbours a, .local-chart-expand):focus-visible {
+  outline: 2px solid var(--ds-hue-blue); outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) :is(table tbody tr, .local-dashboard-filters select, .local-copy, .local-chart-expand) { transition: none !important; }
+}
