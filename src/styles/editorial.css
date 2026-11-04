@@ -940,3 +940,7 @@ html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-e
   content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: var(--panel-accent, var(--ds-line)); opacity: 0.9; }
 html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-overview-summary > article.local-dashboard-panel.local-dashboard-panel > h2 svg {
   color: var(--panel-accent, currentColor) !important; }
+/* The 16px card padding grew the summary cards from 148px to 154px (measured), past the 150px a compact card may take
+   (OMN-21166 hierarchy). The figure's top margin and the card's gaps give back those 6px, so cards are 148px again. */
+html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-overview-summary > article.local-dashboard-panel.local-dashboard-panel { row-gap: 5px !important; }
+html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-overview-summary > article.local-dashboard-panel.local-dashboard-panel > .local-dashboard-metric { margin-top: 2px !important; }
