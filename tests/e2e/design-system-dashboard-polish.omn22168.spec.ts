@@ -15,6 +15,8 @@ import { chartRows, prefix, recentDay, serveCharts } from './omn21166-chart-fixt
  *      Cost, Task type and Duration for six other columns).
  *   L8 the Runs filter glyphs and the two export buttons carry their own colours in both themes (Lakshman 2026-11-04 chose
  *      colour for these controls over the 10-27 one grey; the page's grey-icon rule had painted them all grey).
+ *   L9 Overview's Model usage breaks a model name only at its joins (Lakshman 2026-11-04, "widen the model usage columns
+ *      so names don't break"; the 64px columns broke thinkingmachines mid-word). The plot scrolls inside its panel.
  */
 const LONG = 'nvidia/nemotron-3-ultra-550b-a55b:free';
 const template = chartRows[prefix + 'delegation.decisions.v1'][0] as Record<string, unknown>;
@@ -158,3 +160,30 @@ test('L8: each Runs filter glyph and both export buttons keep their own colour',
     expect(seen.exports[0]!.icon, `${theme}: CSV and JSON differ`).not.toBe(seen.exports[1]!.icon);
   }
 });
+
+// The served names of the live review, the longest one-word parts first.
+const WORDY = ['thinkingmachines/inkling:free', 'nvidia/nemotron-3-ultra-550b-a55b:free', 'poolside/laguna-xs-2.1:free',
+  'apodex/apodex-1.1-mini:free', 'google/gemma-4-31b-it:free', 'gemini-3.5-flash-lite', 'Qwen3.8-27B'];
+for (const width of [1440, 390] as const) {
+  test(`L9: Model usage breaks a model name only at its joins at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const routingKey = prefix + 'delegation.model-routing.v1';
+    const routing = { ...(chartRows[routingKey][0] as Record<string, unknown>), total_delegations: 70,
+      by_model: WORDY.map((model_name, index) => ({ model_name, total_count: 16 - index * 2, pct_of_total: (16 - index * 2) / 70 })) };
+    await serveCharts(page, { ...rows, [routingKey]: [routing] });
+    await page.goto('/overview');
+    const names = page.locator('[aria-label="Model usage"] .rb-name');
+    await expect(names).toHaveCount(WORDY.length);
+    // Each part between joins is its own text node; one drawn on two lines was broken inside a word.
+    const broken = await names.evaluateAll(elements => elements.flatMap(name => [...name.childNodes]
+      .filter(node => node.nodeType === Node.TEXT_NODE && (node.textContent ?? '').trim())
+      .flatMap(node => {
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        const lines = new Set([...range.getClientRects()].filter(rect => rect.width > 0).map(rect => Math.round(rect.top)));
+        return lines.size > 1 ? [`${name.textContent}: "${node.textContent}" on ${lines.size} lines`] : [];
+      })));
+    expect(broken).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth), 'the page never scrolls sideways').toBeLessThanOrEqual(0);
+  });
+}

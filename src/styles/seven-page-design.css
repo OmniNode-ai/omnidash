@@ -1133,11 +1133,14 @@ ul.gdb-plot--names { margin-bottom: 48px; }
 /* Part 27 round 1: 64px columns let seven models fit a half-width panel at 1440 without a scrollbar or a cut name. */
 :is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart { min-width: max(100%, calc(7 /* OMN-22168: --rb-model-count was never set, so this was always 7 */ * 70px)); }
 :is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart.rb-chart--vertical .rb-plot {
-  display: grid; grid-template-columns: repeat(var(--rb-count), minmax(64px, 1fr)); gap: 6px;
+  /* Lakshman 2026-11-04, "widen the model usage columns so names don't break": a column is at least as wide as its
+     name's longest part between joins (96px at the least), so a name wraps only at a slash, colon, hyphen or underscore;
+     more models than fit scroll inside the panel. */
+  display: grid; grid-template-columns: repeat(var(--rb-count), minmax(min-content, 1fr)); gap: 6px;
   align-items: start; border-left: 0; border-bottom: 1px solid var(--ds-line); margin-bottom: 0;
 }
 :is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart.rb-chart--vertical .rb-plot > li {
-  display: flex; flex-direction: column; align-items: stretch; grid-template-areas: none;
+  min-width: 96px; display: flex; flex-direction: column; align-items: stretch; grid-template-areas: none;
 }
 :is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart.rb-chart--vertical .rb-track {
   height: 115px; align-items: flex-end; justify-content: center;
@@ -1146,8 +1149,8 @@ ul.gdb-plot--names { margin-bottom: 48px; }
   height: var(--rb-size, 0); width: 72%; max-width: 120px; margin: 0 auto;
 }
 :is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart.rb-chart--vertical .rb-name {
-  /* Names break at their own hyphens first, and inside a part only when that part is wider than the column. */
-  position: static; margin: 8px 0 0; text-align: center; overflow-wrap: break-word; word-break: normal; hyphens: manual; -webkit-line-clamp: unset;
+  /* Names break only at their joins: the column is never narrower than a part. */
+  position: static; margin: 8px 0 0; text-align: center; overflow-wrap: normal; word-break: normal; hyphens: manual; -webkit-line-clamp: unset;
 }
 :is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart.rb-chart--vertical .rb-value {
   grid-area: auto; margin: 0 0 6px; text-align: center;
