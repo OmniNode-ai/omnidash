@@ -1,9 +1,9 @@
 // @vitest-environment node
 /**
- * OMN-22168 AC2: every icon resolves through src/design-system/icons.ts by concept, and nothing outside it imports
+ * OMN-22168 AC2: every icon resolves through src/theme/design-system/icons.ts by concept, and nothing outside it imports
  * lucide-react. Failure modes this catches:
  *   1. a page or component imports an icon straight from lucide-react (static, dynamic or a deep path);
- *   2. a file inside src/design-system other than icons.ts does the same;
+ *   2. a file inside src/theme/design-system other than icons.ts does the same;
  *   3. the ESLint rule that should refuse it is missing, so the editor stops warning;
  *   4. the scanner itself goes blind (the planted controls fail first).
  */
@@ -18,8 +18,8 @@ describe('OMN-22168 AC2: one source for icons', () => {
     expect(lucideImports('src/pages/Planted.tsx', text)).toHaveLength(3);
   });
 
-  it('control: a planted import inside src/design-system outside icons.ts is caught', () => {
-    expect(lucideImports('src/design-system/components/Card.tsx', "import { X } from 'lucide-react';")).toHaveLength(1);
+  it('control: a planted import inside src/theme/design-system outside icons.ts is caught', () => {
+    expect(lucideImports('src/theme/design-system/components/Card.tsx', "import { X } from 'lucide-react';")).toHaveLength(1);
   });
 
   it('control: icons.ts itself may import, and a comment naming the package is not an import', () => {
@@ -39,6 +39,6 @@ describe('OMN-22168 AC2: one source for icons', () => {
   it('ESLint refuses a lucide-react import everywhere but icons.ts', () => {
     const config = read('eslint.config.js');
     expect(config).toMatch(/no-restricted-imports[\s\S]*lucide-react/);
-    expect(config).toContain('src/design-system/icons.ts');
+    expect(config).toContain('src/theme/design-system/icons.ts');
   });
 });

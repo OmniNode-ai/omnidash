@@ -1,13 +1,13 @@
 import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
 import { useId, useState, type CSSProperties, type ReactNode } from 'react';
-import { ComparisonTrack, RunTimingChart } from '@/design-system/charts';
+import { ComparisonTrack, RunTimingChart } from '@/theme/design-system/charts';
 import { ConceptIcon, FieldIcon } from '@/components/dashboard/FieldIcon';
 import { fieldTone, isUnavailableField } from '@/components/dashboard/field-identity';
 import { formatUsd } from '@/components/dashboard/usage/UsageByModelDayWidget';
 import type { BoundProjectionSnapshot } from '@/layout/local-page-loader';
 import { plainFailureMessage } from './plain-text';
 import { useModelIdentityStyle } from '@/components/dashboard/model-tiers';
-import { EmptyState, Fact, FactList } from '@/design-system/components';
+import { EmptyState, Fact, FactList } from '@/theme/design-system/components';
 
 type Run = Record<string, unknown>;
 const recorded = (value: unknown) => value === null || value === undefined || value === '' ? 'Not recorded' : String(value);

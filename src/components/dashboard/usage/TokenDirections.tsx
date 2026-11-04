@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp } from '@/design-system/icons';
+import { ArrowDown, ArrowUp } from '@/theme/design-system/icons';
 import { formatFullCount, wholeCount } from '@/lib/dashboard-count';
 
 /** One display for exact directional counts; labels are available on focus and hover. */

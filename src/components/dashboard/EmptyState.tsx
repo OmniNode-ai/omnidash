@@ -5,7 +5,7 @@
 //     (LayoutGrid, Plus) already present in other components.
 //   - onAdd in v2 enters edit mode (which reveals the widget library) since v2 has no
 //     separate libOpen state.
-import { LayoutGrid, Plus } from '@/design-system/icons';
+import { LayoutGrid, Plus } from '@/theme/design-system/icons';
 import { Text } from '@/components/ui/typography';
 
 interface EmptyStateProps {

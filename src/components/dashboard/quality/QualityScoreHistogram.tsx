@@ -12,7 +12,7 @@ import { ComponentWrapper } from '../ComponentWrapper';
 import { Text } from '@/components/ui/typography';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
-import { useTokenColors } from '@/design-system/useTokenColors';
+import { useTokenColors } from '@/theme/design-system/useTokenColors';
 
 interface QualityDistributionBucket {
   bucket: string;

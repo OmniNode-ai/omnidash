@@ -32,7 +32,7 @@ function TokenRow({ token }: { token: string }) {
 
 function Tokens() {
   return <>
-    <p className="local-dashboard-caption">{TOKENS.length} tokens from src/design-system/tokens.css</p>
+    <p className="local-dashboard-caption">{TOKENS.length} tokens from src/theme/design-system/tokens.css</p>
     {Object.entries(GROUPS).map(([group, tokens]) => (
       <StorySection key={group} title={`${group} (${tokens.length})`}>
         {tokens.map(token => <TokenRow key={token} token={token} />)}

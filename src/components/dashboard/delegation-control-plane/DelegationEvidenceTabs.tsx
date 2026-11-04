@@ -1,4 +1,4 @@
-import { Activity, Archive, BarChart2, CircleDollarSign, Database, FileCheck2, GitCommitHorizontal, LayoutDashboard, Network, Receipt } from '@/design-system/icons';
+import { Activity, Archive, BarChart2, CircleDollarSign, Database, FileCheck2, GitCommitHorizontal, LayoutDashboard, Network, Receipt } from '@/theme/design-system/icons';
 import { useEffect, useState, type ComponentType } from 'react';
 import { Text } from '@/components/ui/typography';
 import { DelegationPanelFrame } from './DelegationPanelFrame';

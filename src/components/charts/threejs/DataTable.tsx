@@ -1,4 +1,4 @@
-import { ChevronUp, ChevronDown, Search } from '@/design-system/icons';
+import { ChevronUp, ChevronDown, Search } from '@/theme/design-system/icons';
 import { Text } from '@/components/ui/typography';
 import type { DataTableColumnConfig, EmptyStateConfig } from '@shared/types/chart-config';
 import type { IDataTableAdapter } from '@shared/types/chart-adapter-table';

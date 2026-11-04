@@ -1,6 +1,6 @@
 // @vitest-environment node
 /**
- * OMN-22168 AC3: every page chart is drawn by the kit in src/design-system/charts; no page or component outside it draws
+ * OMN-22168 AC3: every page chart is drawn by the kit in src/theme/design-system/charts; no page or component outside it draws
  * a chart of its own or imports a chart library. Failure modes this catches:
  *   1. a page draws an SVG plot, a meter or the kit's bar marks itself (a second, drifting copy of a kit chart);
  *   2. a page imports ECharts (or another chart library) instead of using the kit's charts;
@@ -49,7 +49,7 @@ describe('OMN-22168 AC3: one chart kit', () => {
       .map(name => name.trim().split(/\s+as\s+/).pop()!).filter(name => /^[A-Z][a-z]/.test(name));
     expect(exported.length).toBeGreaterThan(10);
     const users = sourceFiles().filter(path => !path.startsWith(CHART_KIT) && /\.tsx?$/.test(path) && !/\.(test|stories)\./.test(path))
-      .map(path => stripComments(path, read(path))).filter(code => code.includes("'@/design-system/charts'"));
+      .map(path => stripComments(path, read(path))).filter(code => code.includes("'@/theme/design-system/charts'"));
     const unused = exported.filter(name => !users.some(code => new RegExp(`\\b${name}\\b`).test(code)));
     expect(unused, 'kit exports no page imports').toEqual([]);
   });

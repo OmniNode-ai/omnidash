@@ -28,7 +28,7 @@ describe('OMN-22168 AC5: pages read only --ds-* tokens', () => {
     expect([...componentKnobs()].filter(k => k.startsWith('--ds-'))).toEqual([]);
   });
 
-  it('no file outside src/design-system reads a non --ds-* property it does not set', () => {
+  it('no file outside src/theme/design-system reads a non --ds-* property it does not set', () => {
     const allowed = componentKnobs();
     const hits = scanAll((path, text) => foreignProperties(path, text, allowed));
     expect(hits, summarise(hits)).toEqual([]);

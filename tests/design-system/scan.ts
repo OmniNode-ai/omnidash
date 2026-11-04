@@ -10,9 +10,9 @@ export const ROOT = join(__dirname, '..', '..');
 export const SRC = join(ROOT, 'src');
 
 /** The one file allowed to hold a raw colour (AC1). */
-export const TOKENS_FILE = 'src/design-system/tokens.css';
+export const TOKENS_FILE = 'src/theme/design-system/tokens.css';
 /** The one file allowed to import lucide-react (AC2). */
-export const ICONS_FILE = 'src/design-system/icons.ts';
+export const ICONS_FILE = 'src/theme/design-system/icons.ts';
 
 /** Test and story files hold fixtures, not drawn styles; generated types are not hand-written. No production file is exempt. */
 export function isExempt(path: string): boolean {
@@ -82,7 +82,7 @@ export function lucideImports(path: string, text: string): Hit[] {
 }
 
 /**
- * AC5: outside src/design-system, every custom property a file reads is a --ds-* token, or one the same file sets for
+ * AC5: outside src/theme/design-system, every custom property a file reads is a --ds-* token, or one the same file sets for
  * itself (a component-local value such as a bar's --rb-size), so the token source can switch with no page change.
  */
 /**
@@ -96,7 +96,7 @@ export function componentKnobs(): Set<string> {
   knobs = new Set();
   for (const path of sourceFiles()) {
     // The kit's own components set knobs too (RankedBars sets --rb-size, --rb-count, --rb-color), so they are read here:
-    // excluding src/design-system/ hid every knob of a chart the moment it moved into the kit. --ds-* names never count.
+    // excluding src/theme/design-system/ hid every knob of a chart the moment it moved into the kit. --ds-* names never count.
     if (!/\.tsx?$/.test(path) || isExempt(path)) continue;
     const code = stripComments(path, read(path));
     for (const m of code.matchAll(/['"](--[a-zA-Z0-9-_]+)['"]\s*[:\]]/g)) if (!m[1]!.startsWith('--ds-')) knobs.add(m[1]!);
@@ -106,7 +106,7 @@ export function componentKnobs(): Set<string> {
 }
 
 export function foreignProperties(path: string, text: string, allowed: Set<string> = new Set()): Hit[] {
-  if (path.startsWith('src/design-system/') || isExempt(path)) return [];
+  if (path.startsWith('src/theme/design-system/') || isExempt(path)) return [];
   const code = stripComments(path, text);
   const own = new Set<string>(allowed);
   for (const m of code.matchAll(/(--[a-zA-Z0-9-_]+)\s*:/g)) own.add(m[1]!);
@@ -133,7 +133,7 @@ export function summarise(hits: Hit[], limit = 25): string {
 }
 
 /** AC3: the one chart kit. Every chart a page draws comes from here. */
-export const CHART_KIT = 'src/design-system/charts/';
+export const CHART_KIT = 'src/theme/design-system/charts/';
 
 /**
  * AC4: the pages the component kit serves: the six local pages (their page component and page-local modules), the
@@ -148,9 +148,9 @@ export function isKitPage(path: string): boolean {
 /** The classes only a kit component writes; a page writing one itself holds a page-local copy. Grows as AC4 moves each. */
 const KIT_COMPONENT_CLASS = /(['"`\s])(local-dashboard-empty|local-dashboard-fields|local-provider-facts(?:--inline)?|local-routing-counts|local-provider-figures|ev-evidence-derivation|local-run-pill|local-dashboard-badge|local-provider-badge|local-run-chip|local-since-visit-chip|local-dashboard-panel(?:-title|--full-chart)?|local-dashboard-metric|ins-kpi|local-dashboard-table-wrap(?:--fit)?)(?=['"`\s$])/g;
 
-/** AC4: a page-local copy of a kit component (its class written outside src/design-system). */
+/** AC4: a page-local copy of a kit component (its class written outside src/theme/design-system). */
 export function pageLocalCopies(path: string, text: string): Hit[] {
-  if (!/\.tsx?$/.test(path) || path.startsWith('src/design-system/') || isExempt(path) || !isKitPage(path)) return [];
+  if (!/\.tsx?$/.test(path) || path.startsWith('src/theme/design-system/') || isExempt(path) || !isKitPage(path)) return [];
   const hits: Hit[] = [];
   stripComments(path, text).split('\n').forEach((line, i) => {
     for (const m of line.matchAll(KIT_COMPONENT_CLASS)) hits.push({ path, line: i + 1, text: m[2]! });

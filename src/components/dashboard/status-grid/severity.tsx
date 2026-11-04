@@ -7,7 +7,7 @@
  * Core names `question-diamond` for unknown; lucide-react has no such icon, so
  * `circle-help` stands in. It is still distinct from the other three.
  */
-import { CircleCheck, CircleHelp, OctagonX, TriangleAlert, type LucideIcon } from '@/design-system/icons';
+import { CircleCheck, CircleHelp, OctagonX, TriangleAlert, type LucideIcon } from '@/theme/design-system/icons';
 import type { StatusGridSeverity } from '@shared/types/component-manifest';
 
 export interface SeverityRole {

@@ -1,5 +1,5 @@
 import { useState, type ComponentType } from 'react';
-import { Activity, BarChart2, CircleDollarSign, GitBranch, LayoutDashboard, List } from '@/design-system/icons';
+import { Activity, BarChart2, CircleDollarSign, GitBranch, LayoutDashboard, List } from '@/theme/design-system/icons';
 import { Text } from '@/components/ui/typography';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useSwarmSnapshot } from './useSwarmSnapshot';

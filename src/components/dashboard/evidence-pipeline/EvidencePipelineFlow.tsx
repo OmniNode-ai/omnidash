@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Activity, GitBranch, Radio, ShieldCheck } from '@/design-system/icons';
+import { Activity, GitBranch, Radio, ShieldCheck } from '@/theme/design-system/icons';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { Text } from '@/components/ui/typography';
 import { formatRedactedEventPayload } from '@/utils/redact-event-payload';

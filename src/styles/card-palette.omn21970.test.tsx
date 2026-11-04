@@ -17,10 +17,10 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { CONCEPT_ICONS } from '@/design-system/icons';
+import { CONCEPT_ICONS } from '@/theme/design-system/icons';
 import { PANEL_CONCEPTS, RunsKpis, UsageKpis } from '@/pages/LocalDashboardPage';
 
-const css = readFileSync(resolve(__dirname, '../design-system/tokens.css'), 'utf8');
+const css = readFileSync(resolve(__dirname, '../theme/design-system/tokens.css'), 'utf8');
 const blocks = (selector: string) => {
   const bodies: string[] = [];
   for (let start = css.indexOf(`${selector} {`); start >= 0; start = css.indexOf(`${selector} {`, start + 1)) {

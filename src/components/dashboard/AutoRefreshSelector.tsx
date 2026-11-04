@@ -15,7 +15,7 @@
 // actual refetch timer — but kept aligned by resetting whenever the
 // selected interval changes.
 import { Fragment, useEffect, useState } from 'react';
-import { RefreshCw, ChevronDown } from '@/design-system/icons';
+import { RefreshCw, ChevronDown } from '@/theme/design-system/icons';
 import {
   PositionedMenu,
   MenuItem,

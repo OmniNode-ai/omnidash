@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Play, Pause, SkipBack, SkipForward, RotateCcw } from '@/design-system/icons';
+import { Play, Pause, SkipBack, SkipForward, RotateCcw } from '@/theme/design-system/icons';
 import { Text, Heading } from '@/components/ui/typography';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';

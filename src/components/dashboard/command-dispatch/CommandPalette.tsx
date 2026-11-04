@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, X, Send, Loader, Check, AlertCircle } from '@/design-system/icons';
+import { Search, X, Send, Loader, Check, AlertCircle } from '@/theme/design-system/icons';
 import { Text } from '@/components/ui/typography';
 import { useDispatch } from './useDispatch';
 

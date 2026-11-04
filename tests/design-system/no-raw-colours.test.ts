@@ -1,9 +1,9 @@
 // @vitest-environment node
 /**
- * OMN-22168 AC1: every colour omnidash draws is defined once in src/design-system/tokens.css, for light and dark, and
+ * OMN-22168 AC1: every colour omnidash draws is defined once in src/theme/design-system/tokens.css, for light and dark, and
  * no other .ts, .tsx or .css under src holds a raw colour literal. Failure modes this catches:
  *   1. a page or component writes a hex, rgb(), hsl() or oklch() colour instead of a token;
- *   2. a second token file appears inside src/design-system beside tokens.css;
+ *   2. a second token file appears inside src/theme/design-system beside tokens.css;
  *   3. the scanner itself goes blind (the planted controls below fail first).
  */
 import { existsSync } from 'node:fs';
@@ -27,8 +27,8 @@ describe('OMN-22168 AC1: one source for colour', () => {
     expect(colourLiterals('src/pages/Planted.tsx', '<path stroke="white" />')).toHaveLength(1);
   });
 
-  it('control: a literal inside src/design-system but outside tokens.css is caught', () => {
-    expect(colourLiterals('src/design-system/components/Card.css', '.x { color: #fff; }')).toHaveLength(1);
+  it('control: a literal inside src/theme/design-system but outside tokens.css is caught', () => {
+    expect(colourLiterals('src/theme/design-system/components/Card.css', '.x { color: #fff; }')).toHaveLength(1);
   });
 
   it('control: comments, anchors and var() reads are not colours', () => {

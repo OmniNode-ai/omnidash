@@ -1,6 +1,6 @@
 /**
  * OMN-22168: the design tokens resolved to "#rrggbb" for the current theme, for charts that hand colours to SVG
- * attributes, canvas or three.js. The values come from src/design-system/tokens.css and update on a theme change.
+ * attributes, canvas or three.js. The values come from src/theme/design-system/tokens.css and update on a theme change.
  * (This replaces src/theme/useThemeColors.ts, which read the old --primary/--chart-* names.)
  */
 import { useMemo } from 'react';

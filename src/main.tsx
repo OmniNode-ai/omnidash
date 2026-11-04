@@ -5,7 +5,7 @@ import { RegistryProvider } from './registry/RegistryProvider';
 import { App } from './App';
 import manifestJson from './registry/component-registry.json';
 import type { RegistryManifest } from './registry/types';
-import './design-system/tokens.css';
+import './theme/design-system/tokens.css';
 import './styles/globals.css';
 
 const manifest = manifestJson as RegistryManifest;

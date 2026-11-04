@@ -12,7 +12,7 @@ import { BarChart } from 'echarts/charts';
 import { AriaComponent, GridComponent, TooltipComponent } from 'echarts/components';
 import { SVGRenderer } from 'echarts/renderers';
 import { useThemeName } from '@/theme';
-import { colorToNumber, tokenHex, type TokenName } from '@/design-system/color';
+import { colorToNumber, tokenHex, type TokenName } from '@/theme/design-system/color';
 
 echarts.use([BarChart, GridComponent, TooltipComponent, AriaComponent, SVGRenderer]);
 
@@ -155,7 +155,7 @@ export function spendByDayGroups(columns: readonly DeclaredChartColumn[], rows: 
   }));
 }
 
-/** A theme colour as the hex a chart library can animate; the token stays the source (src/design-system/color.ts). */
+/** A theme colour as the hex a chart library can animate; the token stays the source (src/theme/design-system/color.ts). */
 function tone(token: string): string {
   return tokenHex(token as TokenName);
 }

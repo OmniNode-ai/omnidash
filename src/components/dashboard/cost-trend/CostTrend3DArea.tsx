@@ -26,8 +26,8 @@ import { useFrameStore } from '@/store/store';
 import { useThemeName } from '@/theme';
 import { Text } from '@/components/ui/typography';
 import { zonedComponents } from '@/lib/zonedComponents';
-import { useSceneColours, type SceneColours } from '@/design-system/charts/scene-skin';
-import { tokenNumber } from '@/design-system/color';
+import { useSceneColours, type SceneColours } from '@/theme/design-system/charts/scene-skin';
+import { tokenNumber } from '@/theme/design-system/color';
 
 interface CostDataPoint {
   bucket_time: string;

@@ -13,8 +13,8 @@ import { formatUsd } from '@/components/dashboard/usage/UsageByModelDayWidget';
 import { isUnavailableField } from '@/components/dashboard/field-identity';
 import { EvPageShell } from '@/components/dashboard/event-dash/EvPageShell';
 import { KpiStrip } from '@/components/dashboard/KpiStrip';
-import { DashboardTabs, Fact, FactList } from '@/design-system/components';
-import { RankedBars } from '@/design-system/charts';
+import { DashboardTabs, Fact, FactList } from '@/theme/design-system/components';
+import { RankedBars } from '@/theme/design-system/charts';
 import {
   Badge,
   CodeBlock,
@@ -56,7 +56,7 @@ import {
 import { overviewRunCount } from '@/lib/dashboard-overview-count';
 
 import { formatDuration } from '@/components/format/duration';
-import { percent as sharePercent } from '@/design-system/charts';
+import { percent as sharePercent } from '@/theme/design-system/charts';
 import { taskLabel } from '@/pages/local/plain-text';
 import { readableTime } from '@/components/format/readable-time';
 import { ModelTiersContext, TierLegend, useModelColor, useModelIdentityStyle } from '@/components/dashboard/model-tiers';

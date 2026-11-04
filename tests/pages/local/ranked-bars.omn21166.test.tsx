@@ -10,7 +10,7 @@
 //   B6  a measured zero is drawn as not served, or a not-served item as a measured zero.
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { RankedBars, type RankedBarItem } from '@/design-system/charts';
+import { RankedBars, type RankedBarItem } from '@/theme/design-system/charts';
 
 const item = (name: string, value: number | null, basis: RankedBarItem['basis'] = 'measured'): RankedBarItem => ({
   key: name, name, value, basis, display: value === null ? 'Not measured' : `$${value.toFixed(2)}`, color: '#888',

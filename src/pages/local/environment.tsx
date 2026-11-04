@@ -12,7 +12,7 @@ import { SettingsEmptyState } from '@/components/dashboard/SettingsEmptyState';
 import { AlertBanner } from '@/components/dashboard/alert-banner/AlertBanner';
 import { StatusGrid } from '@/components/dashboard/status-grid/StatusGrid';
 import { validateStatusGridRow, type AlertBannerRow, type StatusGridRow, type StatusGridSeverity } from '@shared/types/component-manifest';
-import { EmptyState, Fact, FactList } from '@/design-system/components';
+import { EmptyState, Fact, FactList } from '@/theme/design-system/components';
 
 export const ENVIRONMENT_TOPIC = 'onex.snapshot.projection.local-environment.v1';
 

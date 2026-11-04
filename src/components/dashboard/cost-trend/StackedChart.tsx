@@ -17,8 +17,8 @@ import * as THREE from 'three';
 
 import { useTimezone } from '@/hooks/useTimezone';
 import { Text } from '@/components/ui/typography';
-import { useTokenColors } from '@/design-system/useTokenColors';
-import { colorToNumber, tokenNumber } from '@/design-system/color';
+import { useTokenColors } from '@/theme/design-system/useTokenColors';
+import { colorToNumber, tokenNumber } from '@/theme/design-system/color';
 
 // ---------- Types ----------
 

@@ -1,4 +1,4 @@
-import { CONCEPT_ICONS } from '@/design-system/icons';
+import { CONCEPT_ICONS } from '@/theme/design-system/icons';
 import { fieldTone, isUnavailableField } from './field-identity';
 import { tierColor } from '@/lib/dashboard-colors';
 import type { CSSProperties } from 'react';

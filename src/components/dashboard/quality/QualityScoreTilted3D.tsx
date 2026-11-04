@@ -21,7 +21,7 @@ import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { useThemeName } from '@/theme';
 import { Text, Heading } from '@/components/ui/typography';
-import { tokenNumber } from '@/design-system/color';
+import { tokenNumber } from '@/theme/design-system/color';
 
 export interface QualityDistributionBucket {
   bucket: string;

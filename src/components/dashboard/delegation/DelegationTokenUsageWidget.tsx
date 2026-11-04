@@ -9,7 +9,7 @@ import { KPI } from '@/components/primitives';
 import { useDelegationRunContextOptional } from '@/components/dashboard/delegation-control-plane/DelegationRunContext';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 import { formatUsd, usdFractionDigits } from '@/lib/currency';
-import { useTokenColors } from '@/design-system/useTokenColors';
+import { useTokenColors } from '@/theme/design-system/useTokenColors';
 
 // ── Projection types (from llm_call_metrics SQLite table, OMN-10623) ─
 

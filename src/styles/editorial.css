@@ -7,7 +7,7 @@
  * tokens, so a chart means the same thing it did. Loaded after the page styles so it is the last word on look, never on
  * content. Every page rule names the local pages or Delegation Evidence (main.ev-root[data-destination=
  * "delegation-evidence"]) only, so the other advanced pages that share the event-dash shell keep their own look.
- * OMN-22168: every value here is a --ds-* token from src/design-system/tokens.css; this file holds no colour of its own.
+ * OMN-22168: every value here is a --ds-* token from src/theme/design-system/tokens.css; this file holds no colour of its own.
  */
 
 

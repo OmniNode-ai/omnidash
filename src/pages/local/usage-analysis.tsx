@@ -2,7 +2,7 @@ import { useMemo, useState, type CSSProperties } from 'react';
 import { Link } from 'wouter';
 
 import { formatUsd } from '@/lib/currency';
-import { DashboardTabs, DashboardToggle, DataTable, EmptyState, Panel, PanelTitle } from '@/design-system/components';
+import { DashboardTabs, DashboardToggle, DataTable, EmptyState, Panel, PanelTitle } from '@/theme/design-system/components';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { DEFAULT_RUNS_VIEW, writeRunsSearch, type RunsViewState } from '@/navigation/runs-url-state';
 import {
@@ -10,7 +10,7 @@ import {
   type Group, type GroupBy, type Totals, type TrendDay, type TrendSeriesBy,
 } from './decision-analysis';
 import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
-import { BarSparkline, CostQualityScatter } from '@/design-system/charts';
+import { BarSparkline, CostQualityScatter } from '@/theme/design-system/charts';
 
 /**
  * OMN-21166 part 29 (revision 6) AC194 and AC195: Usage analysis, read from the latest N served decisions (Langfuse's

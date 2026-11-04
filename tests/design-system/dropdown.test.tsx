@@ -12,7 +12,7 @@
  */
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Dropdown } from '@/design-system/components';
+import { Dropdown } from '@/theme/design-system/components';
 
 afterEach(cleanup);
 

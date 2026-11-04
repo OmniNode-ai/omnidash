@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * OMN-22168 AC4: the one component kit in src/design-system/components, one test per component. Written before each
+ * OMN-22168 AC4: the one component kit in src/theme/design-system/components, one test per component. Written before each
  * component moves into the kit, so each case is red until the kit exports it. Failure modes, per component:
  *
  * Tabs (DashboardTabs, moved from src/components/dashboard)
@@ -55,7 +55,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { Router } from 'wouter';
 import { memoryLocation } from 'wouter/memory-location';
-import { Badge, Card, DashboardTabs, DataTable, DashboardToggle, EmptyState, Fact, FactList, Figure, KpiTile, Panel, PanelTitle, readTab, StatusChip, writeTab } from '@/design-system/components';
+import { Badge, Card, DashboardTabs, DataTable, DashboardToggle, EmptyState, Fact, FactList, Figure, KpiTile, Panel, PanelTitle, readTab, StatusChip, writeTab } from '@/theme/design-system/components';
 import { pageLocalCopies, scanAll, summarise } from './scan';
 
 afterEach(cleanup);
@@ -147,7 +147,7 @@ describe('Empty state', () => {
   it('E4: control: a page writing the empty-state class itself is caught', () => {
     expect(pageLocalCopies('src/pages/local/Planted.tsx', '<p className="local-dashboard-empty" role="status">x</p>')).toHaveLength(1);
     expect(pageLocalCopies('src/pages/local/Planted.tsx', "<p className={error ? 'local-dashboard-error' : 'local-dashboard-empty'}>x</p>")).toHaveLength(1);
-    expect(pageLocalCopies('src/design-system/components/EmptyState.tsx', 'className="local-dashboard-empty"')).toEqual([]);
+    expect(pageLocalCopies('src/theme/design-system/components/EmptyState.tsx', 'className="local-dashboard-empty"')).toEqual([]);
   });
 
   it('E4: no local page or Delegation Evidence writes a kit component\'s class itself', () => {

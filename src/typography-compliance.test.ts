@@ -51,8 +51,8 @@ describe('Phase 0: ADR', () => {
 
 describe('Phase 1: Token declarations', () => {
   let css = '';
-  // OMN-22168: the type scale lives in src/design-system/tokens.css under --ds-* names; the values are unchanged.
-  beforeAll(() => { css = readSrc('src/design-system/tokens.css'); });
+  // OMN-22168: the type scale lives in src/theme/design-system/tokens.css under --ds-* names; the values are unchanged.
+  beforeAll(() => { css = readSrc('src/theme/design-system/tokens.css'); });
 
   const tokens: Array<[string, string]> = [
     // The three 12 px floor assertions live in tests/styles/type-tokens.omn21306.test.ts so the hosted
@@ -199,7 +199,7 @@ describe('Phase 3: Storybook', () => {
   it('.storybook/preview.tsx exists + imports tokens.css and globals.css + sets data-theme', () => {
     expect(srcExists('.storybook/preview.tsx')).toBe(true);
     const preview = readSrc('.storybook/preview.tsx');
-    expect(preview).toContain('../src/design-system/tokens.css');
+    expect(preview).toContain('../src/theme/design-system/tokens.css');
     expect(preview).toContain('../src/styles/globals.css');
     expect(preview).toContain('data-theme');
   });

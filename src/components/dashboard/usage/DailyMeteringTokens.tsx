@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight } from '@/design-system/icons';
+import { ChevronLeft, ChevronRight } from '@/theme/design-system/icons';
 import { formatFullCount } from '@/lib/dashboard-count';
 import type { DailyMeteringTokenData } from '@/lib/daily-metering-tokens';
 import { TokenDirections } from './TokenDirections';
-import { EmptyState } from '@/design-system/components';
+import { EmptyState } from '@/theme/design-system/components';
 
 const dayLabel = (day: string) => new Date(`${day}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 

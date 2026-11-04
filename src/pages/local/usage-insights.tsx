@@ -1,16 +1,16 @@
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
-import { ChartNotRecorded, RankedBars } from '@/design-system/charts';
+import { ChartNotRecorded, RankedBars } from '@/theme/design-system/charts';
 import { UsageAnalysis } from './usage-analysis';
 import { DEFAULT_RUNS_VIEW, writeRunsSearch } from '@/navigation/runs-url-state';
 import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
 import { tierColor } from '@/lib/dashboard-colors';
 import { formatDashboardUsd } from '@/lib/dashboard-currency';
 import { sumDashboardUsd } from '@/lib/dashboard-money-total';
-import { GroupedBars } from '@/design-system/charts';
+import { GroupedBars } from '@/theme/design-system/charts';
 import { aggregateUsageRows, type UsageAggregates } from './insight-aggregates';
 import { tierLabel } from './plain-text';
 import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
-import { EmptyState } from '@/design-system/components';
+import { EmptyState } from '@/theme/design-system/components';
 
 const USAGE_WINDOW_DAYS = 30;
 

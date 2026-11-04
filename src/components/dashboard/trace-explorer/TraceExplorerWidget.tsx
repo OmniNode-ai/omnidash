@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Pause, Play, Search, X } from '@/design-system/icons';
+import { Pause, Play, Search, X } from '@/theme/design-system/icons';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { Text } from '@/components/ui/typography';
 import { useProjectionSnapshotQuery } from '@/hooks/useProjectionSnapshotQuery';

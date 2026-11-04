@@ -12,7 +12,7 @@ import { Text } from '@/components/ui/typography';
 import type { DelegationSummary } from './DelegationMetrics3D';
 import { useDelegationRunContextOptional } from '@/components/dashboard/delegation-control-plane/DelegationRunContext';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
-import { useTokenColors } from '@/design-system/useTokenColors';
+import { useTokenColors } from '@/theme/design-system/useTokenColors';
 
 // avgLatencyMs is not in every projection snapshot (the file-source
 // fixture omits it); treat it and the per-model breakdown as optional so

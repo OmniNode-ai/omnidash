@@ -186,10 +186,10 @@ describe('Phase 4: Widget tests (T11 / OMN-152)', () => {
  *   token story lists tokens by hand instead of reading tokens.css, so a new token or icon would go unshown.
  */
 const DESIGN_SYSTEM_STORIES = {
-  tokens: 'src/design-system/tokens.stories.tsx',
-  icons: 'src/design-system/icons.stories.tsx',
-  charts: 'src/design-system/charts/charts.stories.tsx',
-  components: 'src/design-system/components/components.stories.tsx',
+  tokens: 'src/theme/design-system/tokens.stories.tsx',
+  icons: 'src/theme/design-system/icons.stories.tsx',
+  charts: 'src/theme/design-system/charts/charts.stories.tsx',
+  components: 'src/theme/design-system/components/components.stories.tsx',
 } as const;
 
 /** The components a kit index exports: PascalCase value exports, not types, constants or hooks. */
@@ -225,12 +225,12 @@ describe('Phase 5: Design system stories (OMN-22168 AC6)', () => {
 
   it('every chart the chart kit exports is rendered in its story', () => {
     expect(srcExists(DESIGN_SYSTEM_STORIES.charts)).toBe(true);
-    expect(unrenderedComponents(readSrc('src/design-system/charts/index.ts'), readSrc(DESIGN_SYSTEM_STORIES.charts))).toEqual([]);
+    expect(unrenderedComponents(readSrc('src/theme/design-system/charts/index.ts'), readSrc(DESIGN_SYSTEM_STORIES.charts))).toEqual([]);
   });
 
   it('every component the component kit exports is rendered in its story', () => {
     expect(srcExists(DESIGN_SYSTEM_STORIES.components)).toBe(true);
-    expect(unrenderedComponents(readSrc('src/design-system/components/index.ts'), readSrc(DESIGN_SYSTEM_STORIES.components))).toEqual([]);
+    expect(unrenderedComponents(readSrc('src/theme/design-system/components/index.ts'), readSrc(DESIGN_SYSTEM_STORIES.components))).toEqual([]);
   });
 
   it('the icon story walks the registry and the token story reads the token file', () => {

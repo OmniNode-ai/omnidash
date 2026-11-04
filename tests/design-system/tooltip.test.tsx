@@ -9,7 +9,7 @@
  */
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { InfoTip, Tooltip } from '@/design-system/components';
+import { InfoTip, Tooltip } from '@/theme/design-system/components';
 
 afterEach(cleanup);
 

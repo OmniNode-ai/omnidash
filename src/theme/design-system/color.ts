@@ -1,6 +1,6 @@
 /**
  * OMN-22168: resolve design tokens to concrete colours for the places a var() string cannot go: three.js materials,
- * canvas 2D, and code that mixes or measures colours. Everything here reads src/design-system/tokens.css at call time,
+ * canvas 2D, and code that mixes or measures colours. Everything here reads src/theme/design-system/tokens.css at call time,
  * so a theme switch is picked up on the next read; nothing here holds a colour of its own.
  */
 import { useEffect, useState } from 'react';

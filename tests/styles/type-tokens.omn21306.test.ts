@@ -7,7 +7,7 @@ const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\-]
 
 describe('Phase 1: 12 px token floor', () => {
   let css = '';
-  beforeAll(() => { css = readFileSync(resolve(__dirname, '../../src/design-system/tokens.css'), 'utf-8'); });
+  beforeAll(() => { css = readFileSync(resolve(__dirname, '../../src/theme/design-system/tokens.css'), 'utf-8'); });
 
   const tokens: Array<[string, string]> = [
     ['--ds-text-xs', '0.75rem'], ['--ds-text-sm', '0.75rem'], ['--ds-text-md', '0.75rem'],

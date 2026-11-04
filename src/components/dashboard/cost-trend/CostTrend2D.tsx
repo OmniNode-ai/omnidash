@@ -9,7 +9,7 @@ import { useFrameStore } from '@/store/store';
 import { Text } from '@/components/ui/typography';
 import { zonedComponents } from '@/lib/zonedComponents';
 import { StackedChart, type StackedSlice, type ChartType } from './StackedChart';
-import { useTokenColors } from '@/design-system/useTokenColors';
+import { useTokenColors } from '@/theme/design-system/useTokenColors';
 
 export interface CostDataPoint {
   bucket_time: string;

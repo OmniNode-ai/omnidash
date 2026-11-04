@@ -4,7 +4,7 @@
  * is computed: a value the row leaves empty is left out, and no row at all says so.
  */
 import { readableTime } from '@/components/format/readable-time';
-import { EmptyState, Fact, FactList } from '@/design-system/components';
+import { EmptyState, Fact, FactList } from '@/theme/design-system/components';
 
 const text = (value: unknown) => (value === null || value === undefined ? '' : String(value).trim());
 

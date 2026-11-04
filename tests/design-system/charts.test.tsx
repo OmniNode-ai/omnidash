@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * OMN-22168 AC3: one chart kit in src/design-system/charts, imported by every page chart. Written before the kit.
+ * OMN-22168 AC3: one chart kit in src/theme/design-system/charts, imported by every page chart. Written before the kit.
  * Each case names the failure it catches; every chart's not-recorded and empty states are covered, not only its data.
  *
  *   K1  a value that is not served is drawn as a 0 bar, a 0 point or a 0 label, instead of no mark;
@@ -24,7 +24,7 @@ import {
   BarSparkline, BarTrack, ChartCard, ChartEmpty, ChartNotRecorded, ChartReadout, CostQualityScatter, DayColumns, dayTicks,
   EVERY_SERIES_HIDDEN, GroupedBars, Histogram, HourHeatmap, LinePlot, linePath, Meter, NamedByPanel, RankedBars,
   SeriesLegend, SeriesToggles, SpendByDayChart, TierMix, useSeriesToggles,
-} from '@/design-system/charts';
+} from '@/theme/design-system/charts';
 
 afterEach(cleanup);
 

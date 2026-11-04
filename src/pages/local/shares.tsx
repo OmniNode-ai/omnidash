@@ -1,4 +1,4 @@
-import { Meter, TierMix, percent, type TierSegment, type TierShares } from '@/design-system/charts';
+import { Meter, TierMix, percent, type TierSegment, type TierShares } from '@/theme/design-system/charts';
 import { tierLabel } from './plain-text';
 
 type Row = Record<string, unknown>;

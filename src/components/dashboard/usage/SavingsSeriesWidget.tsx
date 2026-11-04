@@ -12,7 +12,7 @@ import { useProjectionSnapshotQuery } from '@/hooks/useProjectionSnapshotQuery';
 import { TOPICS } from '@shared/types/topics';
 import { formatUsd } from './UsageByModelDayWidget';
 import { useState } from 'react';
-import { DataTable, EmptyState } from '@/design-system/components';
+import { DataTable, EmptyState } from '@/theme/design-system/components';
 
 /** The subset of metering-summary.v1 columns the series renders. */
 export interface MeteringSummaryRow {

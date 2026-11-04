@@ -8,7 +8,7 @@ import { resolve } from 'node:path';
 if (typeof document !== 'undefined' && !document.head.querySelector('style[data-ds-tokens]')) {
   const tokens = document.createElement('style');
   tokens.setAttribute('data-ds-tokens', '');
-  tokens.textContent = readFileSync(resolve(__dirname, '../design-system/tokens.css'), 'utf8');
+  tokens.textContent = readFileSync(resolve(__dirname, '../theme/design-system/tokens.css'), 'utf8');
   document.head.appendChild(tokens);
 }
 

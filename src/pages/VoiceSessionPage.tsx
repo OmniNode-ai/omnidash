@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Mic, MicOff } from '@/design-system/icons';
+import { Mic, MicOff } from '@/theme/design-system/icons';
 import { Text, Heading } from '@/components/ui/typography';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';

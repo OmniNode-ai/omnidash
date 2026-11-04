@@ -8,7 +8,7 @@ import type { CSSProperties, ReactNode } from 'react';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { CardBasis } from '@/components/dashboard/CardBasis';
 import { CountUpText } from '@/components/dashboard/CountUpText';
-import { Card, Figure } from '@/design-system/components';
+import { Card, Figure } from '@/theme/design-system/components';
 
 /** A figure's served value per UTC day (oldest first), and how to write one value. */
 export interface KpiTrend {

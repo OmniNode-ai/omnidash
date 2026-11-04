@@ -9,12 +9,12 @@
  * that changes it.
  */
 import { useEffect, useState, type ReactNode } from 'react';
-import { ChevronRight } from '@/design-system/icons';
+import { ChevronRight } from '@/theme/design-system/icons';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { SettingsEmptyState } from '@/components/dashboard/SettingsEmptyState';
 import { readableTime } from '@/components/format/readable-time';
 import { ModelKeysError, listModelKeys, type ModelProviderId, type ModelProviderRow } from '@/services/models-api';
-import { Badge, DataTable, EmptyState, Fact, FactList } from '@/design-system/components';
+import { Badge, DataTable, EmptyState, Fact, FactList } from '@/theme/design-system/components';
 
 /** A served key reference row from tenant-credentials.v1: its name, fingerprint prefix and times. Never a value. */
 export type CredentialKeyRow = Record<string, unknown>;

@@ -1,4 +1,4 @@
-import { Activity, BadgeCheck, Blocks, ChartColumn, FlaskConical, Gauge, LayoutDashboard, Radio, Settings, Workflow, type LucideIcon } from '@/design-system/icons';
+import { Activity, BadgeCheck, Blocks, ChartColumn, FlaskConical, Gauge, LayoutDashboard, Radio, Settings, Workflow, type LucideIcon } from '@/theme/design-system/icons';
 import type { AppPage } from '@/store/types';
 import { PAGE_LABELS } from './page-routes';
 import '@/styles/destination-identity.css';

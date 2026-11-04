@@ -37,7 +37,7 @@ export function ThemeProvider({ children, defaultTheme = 'dark', persistPreferen
   }, []);
 
   useEffect(() => {
-    // OMN-22168: one token source, src/design-system/tokens.css, switched by `[data-theme="dark"]` on <html>.
+    // OMN-22168: one token source, src/theme/design-system/tokens.css, switched by `[data-theme="dark"]` on <html>.
     // The `.theme-dark` / `.theme-light` body classes stay for older selectors and tests that read them.
     const html = document.documentElement;
     const body = document.body;

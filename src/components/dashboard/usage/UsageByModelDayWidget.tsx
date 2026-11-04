@@ -19,7 +19,7 @@ import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
 //     share of calls is the served `call_share`, the row's calls over its tenant's calls that UTC day, formatted as a
 //     percentage. A row with no served share says so; no share is worked out here from the call counts.
 import { useId, useState, type CSSProperties } from 'react';
-import { ChevronLeft, ChevronRight, RotateCcw } from '@/design-system/icons';
+import { ChevronLeft, ChevronRight, RotateCcw } from '@/theme/design-system/icons';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionSnapshotQuery } from '@/hooks/useProjectionSnapshotQuery';
 import { TOPICS } from '@shared/types/topics';
@@ -42,7 +42,7 @@ export interface UsageByModelDayRow {
 
 import { formatDashboardUsd as formatUsd } from '@/lib/dashboard-currency';
 import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
-import { DataTable, EmptyState } from '@/design-system/components';
+import { DataTable, EmptyState } from '@/theme/design-system/components';
 export { formatDashboardUsd as formatUsd } from '@/lib/dashboard-currency';
 
 export const NO_USAGE_ROWS = 'No usage rows yet';

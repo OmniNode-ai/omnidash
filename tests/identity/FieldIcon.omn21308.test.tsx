@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import * as Fields from '@/components/dashboard/FieldIcon';
-import * as Icons from '@/design-system/icons';
+import * as Icons from '@/theme/design-system/icons';
 import { fieldTone } from '@/components/dashboard/field-identity';
 import { WorkflowRoutingFlow } from '@/pages/local/workflow-analysis';
 import * as Destinations from '@/navigation/destination-icons';
@@ -22,9 +22,9 @@ const shape = (svg: Element) => svg.innerHTML;
 
 // This is a declared-CSS inventory, not a claim about computed browser colour.
 // The browser census separately catches specificity, inherited ink and inline overrides.
-// OMN-22168: the colour values live in src/design-system/tokens.css; the selector rules that pick them stay with the
+// OMN-22168: the colour values live in src/theme/design-system/tokens.css; the selector rules that pick them stay with the
 // identity stylesheets. The inventory reads both, values first.
-const tokensCss = readFileSync('src/design-system/tokens.css', 'utf8');
+const tokensCss = readFileSync('src/theme/design-system/tokens.css', 'utf8');
 const fieldCss = tokensCss + '\n' + readFileSync('src/styles/field-identity.css', 'utf8');
 const destinationCss = tokensCss + '\n' + readFileSync('src/styles/destination-identity.css', 'utf8');
 
@@ -42,8 +42,8 @@ function sourceRegistryKeys(file: string, exportedName: string): string[] {
     return literal[1] ?? literal[2] ?? literal[3]!;
   });
 }
-// OMN-22168 AC2: the concept registry moved from FieldIcon.tsx to src/design-system/icons.ts as CONCEPT_ICONS.
-const parsedFieldKeys = sourceRegistryKeys('src/design-system/icons.ts', 'CONCEPT_ICONS');
+// OMN-22168 AC2: the concept registry moved from FieldIcon.tsx to src/theme/design-system/icons.ts as CONCEPT_ICONS.
+const parsedFieldKeys = sourceRegistryKeys('src/theme/design-system/icons.ts', 'CONCEPT_ICONS');
 const parsedDestinationKeys = sourceRegistryKeys('src/navigation/destination-icons.tsx', 'DESTINATION_ICONS');
 const fieldKeys = Object.keys(Icons.CONCEPT_ICONS);
 const destinationKeys = Destinations.DESTINATION_ICONS ? Object.keys(Destinations.DESTINATION_ICONS) : parsedDestinationKeys;

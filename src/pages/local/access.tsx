@@ -8,7 +8,7 @@
 import { SettingsEmptyState } from '@/components/dashboard/SettingsEmptyState';
 import { readableTime } from '@/components/format/readable-time';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
-import { Fact, FactList } from '@/design-system/components';
+import { Fact, FactList } from '@/theme/design-system/components';
 
 const DASHBOARD_SERVICE = 'local-runtime';
 

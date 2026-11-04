@@ -26,7 +26,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { PassRateMeter, TierShareChart, tierShares } from './shares';
-import { arcPath } from '@/design-system/charts';
+import { arcPath } from '@/theme/design-system/charts';
 
 const tier = (name: string, count: number, share: unknown, routed = true) => ({
   cost_tier_name: name, count, tier_routed: routed, pct_of_tier_routed: share,

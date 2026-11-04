@@ -6,7 +6,7 @@ import { Text } from '@/components/ui/typography';
 
 import { useDelegationRunContextOptional } from '@/components/dashboard/delegation-control-plane/DelegationRunContext';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
-import { useTokenColors } from '@/design-system/useTokenColors';
+import { useTokenColors } from '@/theme/design-system/useTokenColors';
 
 // ── Projection types (from delegation_events SQLite table, OMN-10623) ─
 

@@ -1,6 +1,6 @@
 import { createGlobalThemeContract } from '@vanilla-extract/css';
 
-// OMN-22168: the TypeScript face of src/design-system/tokens.css. The legacy Header, AgentChatPanel and dashboard
+// OMN-22168: the TypeScript face of src/theme/design-system/tokens.css. The legacy Header, AgentChatPanel and dashboard
 // .css.ts files read tokens through this contract; it names --ds-* properties only and holds no values.
 export const vars = createGlobalThemeContract({
   color: {

@@ -22,7 +22,7 @@ import type {
   IDoughnutChartAdapter,
   DoughnutChartAdapterProps,
 } from '@shared/types/chart-adapter-doughnut';
-import { useTokenColors } from '@/design-system/useTokenColors';
+import { useTokenColors } from '@/theme/design-system/useTokenColors';
 
 function toFiniteNumber(v: unknown): number | null {
   if (typeof v === 'number') return Number.isFinite(v) ? v : null;

@@ -6,7 +6,7 @@
  * closes the list and returns focus to the button; Escape and a click outside close it without a change.
  */
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
-import { Check, ChevronDown } from '@/design-system/icons';
+import { Check, ChevronDown } from '@/theme/design-system/icons';
 import './dropdown.css';
 
 export interface DropdownOption { value: string; label: string; /** The full name for assistive tech, when the label is short. */ name?: string }

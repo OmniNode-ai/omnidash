@@ -1,4 +1,4 @@
-import { GitCommitHorizontal } from '@/design-system/icons';
+import { GitCommitHorizontal } from '@/theme/design-system/icons';
 import { Text } from '@/components/ui/typography';
 import { fmtDate, fmtTokens, fmtUsd, shortId } from './format';
 import { HonestyStateBadge } from './HonestyStateBadge';

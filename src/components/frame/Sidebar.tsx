@@ -13,7 +13,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from 'react';
 import { useLocation } from 'wouter';
-import { SlidersHorizontal, ChevronsLeft, ChevronsRight, Copy, Edit, MoreHorizontal, Plus, Trash2 } from '@/design-system/icons';
+import { SlidersHorizontal, ChevronsLeft, ChevronsRight, Copy, Edit, MoreHorizontal, Plus, Trash2 } from '@/theme/design-system/icons';
 // Grid3x3 removed from import while Instruction Eval nav entry is commented out (OMN-12833 A4).
 import type { AppPage } from '@/store/types';
 import {

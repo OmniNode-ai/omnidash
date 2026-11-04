@@ -1,6 +1,6 @@
 import type { Preview } from '@storybook/react-vite';
 import { withThemeByDataAttribute } from '@storybook/addon-themes';
-import '../src/design-system/tokens.css';
+import '../src/theme/design-system/tokens.css';
 import '../src/styles/globals.css';
 
 // Per OMN-103 (plan amendment to OMN-100 Task 3): the dashboard

@@ -15,7 +15,7 @@ import { formatDuration } from '@/components/format/duration';
  */
 
 import { Fragment, useId, useState, type CSSProperties, type ReactNode } from 'react';
-import { ChevronRight } from '@/design-system/icons';
+import { ChevronRight } from '@/theme/design-system/icons';
 import { isTenantNotConfiguredReason } from '@/data-source/projection-tenant';
 import { TenantNotConfiguredState } from '../TenantNotConfiguredState';
 import { ConceptIcon, FieldIcon } from '../FieldIcon';

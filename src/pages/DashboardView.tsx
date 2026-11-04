@@ -15,7 +15,7 @@
 //   - OMN-47: CSS ported verbatim to src/styles/dashboard.css + buttons.css; TSX rewritten to use prototype class names.
 
 import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react';
-import { Check, ChevronDown, LogOut, Pencil, Plus, X } from '@/design-system/icons';
+import { Check, ChevronDown, LogOut, Pencil, Plus, X } from '@/theme/design-system/icons';
 import { Text } from '@/components/ui/typography';
 import { useFrameStore } from '@/store/store';
 import { useRegistry } from '@/registry/RegistryProvider';

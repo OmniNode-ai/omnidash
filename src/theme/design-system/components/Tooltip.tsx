@@ -4,7 +4,7 @@
  * figure or heading whose meaning needs a sentence; the sentence lives here instead of as helper text on the page.
  */
 import { cloneElement, isValidElement, useId, useState, type KeyboardEvent, type ReactElement, type ReactNode } from 'react';
-import { Info } from '@/design-system/icons';
+import { Info } from '@/theme/design-system/icons';
 import './tooltip.css';
 
 export function Tooltip({ text, children, side = 'top' }: { text: ReactNode; children: ReactElement; side?: 'top' | 'bottom' }) {
