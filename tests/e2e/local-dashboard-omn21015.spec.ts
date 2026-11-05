@@ -177,7 +177,8 @@ const metering = [
 // keyboard legend this test held lives on the Daily trend's chips, the same kit control (SeriesToggles).
 test('OMN-21015: a trend legend hides and shows a line from the keyboard; Runs per day draws one bar per day', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await serve(page, { [DECISIONS]: firstScreenRuns });
+  // The Daily trend draws metering-summary.v1's day rows; two served days give it lines to hide and show.
+  await serve(page, { [DECISIONS]: firstScreenRuns, [METERING]: metering });
   await page.goto('/');
 
   const runsChart = page.getByRole('figure', { name: 'Runs per day', exact: true });
@@ -187,8 +188,10 @@ test('OMN-21015: a trend legend hides and shows a line from the keyboard; Runs p
   await expect(runsChart.locator('.gdb-col[data-series="passed"], .gdb-col[data-series="failed"]')).toHaveCount(0);
 
   const trend = page.getByRole('figure', { name: 'Daily trend', exact: true });
-  const toggles = trend.getByRole('group', { name: 'Trend lines' }).getByRole('button');
-  await expect(toggles.first()).toBeVisible();
+  // Spend and Savings sit side by side in the legend, and the two served days carry both (no token counts).
+  const group = trend.getByRole('group', { name: 'Trend lines' });
+  const toggles = group.getByRole('button').filter({ hasText: /^(Spend|Savings)$/ });
+  await expect(toggles).toHaveText(['Spend', 'Savings']);
   const first = await toggles.nth(0).textContent();
   const second = await toggles.nth(1).textContent();
   /** The lines the drawing holds, by key. */
