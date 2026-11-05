@@ -1709,7 +1709,7 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ds-accent); outline-o
 .local-dashboard-page table[data-routing-table] th:nth-child(8) { width: 140px; }
 .local-dashboard-page table[data-routing-table] :is(td[data-cell="tier"], td[data-cell="backend"], td[data-cell="finish"], td[data-cell="pass"]) { white-space: nowrap; }
 .local-dashboard-page table[data-routing-table] thead .local-table-head { white-space: normal; overflow-wrap: normal; word-break: normal; }
-/* Pass-rate bands (src/lib/pass-band.ts): each rate is a solid pill in its band's colour with the ink that reads on it,
+/* Pass-rate bands (src/pages/local/plain-text.ts): each rate is a solid pill in its band's colour with the ink that reads on it,
    so the five bands are told apart at a glance in either theme; the key under the routing table shows the same pills. */
 .local-dashboard-page span[data-pass-band] { display: inline-block; padding: 1px 8px; border-radius: 999px; font-weight: 600; font-size: 12px; line-height: 20px; white-space: nowrap; }
 .local-dashboard-page td[data-pass-band] > .local-pass-pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-weight: 600; font-size: 12px; line-height: 20px; white-space: nowrap; }

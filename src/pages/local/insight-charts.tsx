@@ -4,7 +4,7 @@ import { formatDashboardUsd } from '@/lib/dashboard-currency';
 import { formatDuration } from '@/components/format/duration';
 import { createContext, useContext, useId, useState, type CSSProperties, type ReactNode } from 'react';
 import { millisecondsAxisLabel } from '@/theme/design-system/charts/bar-charts';
-import { passBand } from '@/lib/pass-band';
+import { passBand } from '@/pages/local/plain-text';
 import { BarTrack, ChartCard, ChartEmpty, ChartReadout, CumulativeColumns, DayColumns, Histogram, HourHeatmap, LinePlot, NamedByPanel, RankedBars, SeriesLegend, SeriesToggles, SpendColumns, dayTicks } from '@/theme/design-system/charts';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { causeHref, useSharedRunFilter } from './run-filter';

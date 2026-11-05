@@ -5,7 +5,7 @@ import { formatUsd } from '@/lib/currency';
 import { DashboardTabs, DashboardToggle, DataTable, EmptyState, Panel, PanelTitle } from '@/theme/design-system/components';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { tierLabel } from '@/pages/local/plain-text';
-import { PASS_BANDS, passBand } from '@/lib/pass-band';
+import { PASS_BANDS, passBand } from '@/pages/local/plain-text';
 import { DEFAULT_RUNS_VIEW, writeRunsSearch, type RunsViewState } from '@/navigation/runs-url-state';
 import {
   coverageOf, groupDecisions, matrixOf, NOT_RECORDED, OTHER, qualityTrend, routesOf, SMALL_SAMPLE, SPARK_DAYS, totalsOf,

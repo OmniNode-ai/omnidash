@@ -15,7 +15,7 @@
 /* 1. Semantic tokens, light (design 20). Light is the default: the app marks dark with html[data-theme="dark"]. */
 :root {
   color-scheme: light;
-  /* Pass-rate bands (src/lib/pass-band.ts): solid pills in five clearly different colours, red, orange, yellow, lime,
+  /* Pass-rate bands (src/pages/local/plain-text.ts): solid pills in five clearly different colours, red, orange, yellow, lime,
      green (Lakshman 2026-11-05, "visually unique color"), each with the ink that reads at 4.5:1 or more on it. */
   --ds-pass-band-1: #dc2626; --ds-pass-band-1-ink: #ffffff;
   --ds-pass-band-2: #f97316; --ds-pass-band-2-ink: #1c1917;
