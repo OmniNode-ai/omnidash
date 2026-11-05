@@ -32,21 +32,25 @@ function cellUnder(header: string): HTMLElement {
   return within(row).getAllByRole('cell')[index]!;
 }
 
+// Runs writes its day above the first run of each day and the clock on the row (Lakshman 2026-11-05, run table item 11);
+// Recent runs writes the whole time. Either way the exact served text is the element's datetime and title.
+const readTime = (time: Element | null | undefined) => time?.querySelector('.local-run-clock')
+  ? [...time.querySelectorAll('.local-run-day, .local-run-clock')].map(part => part.textContent).join(' ') : time?.textContent;
 describe.each([
-  ['Recent runs', RecentRunsTable, 'Time'],
-  ['Runs', RunsTable, 'Created'],
-] as const)('OMN-21166 R-A: %s writes times and ids for reading', (_name, Table, TIME) => {
-  it('R1, R2: a UTC time reads "Oct 16, 22:11:37 UTC" and keeps the served text on the element', () => {
+  ['Recent runs', RecentRunsTable, 'Time', 'Oct 16, 22:11:37 UTC', 'Oct 16, 22:11:37 +05:30'],
+  ['Runs', RunsTable, 'Time', 'Oct 16 22:11', 'Oct 16 22:11 +05:30'],
+] as const)('OMN-21166 R-A: %s writes times and ids for reading', (_name, Table, TIME, UTC_TEXT, OFFSET_TEXT) => {
+  it('R1, R2: a UTC time reads for a person and keeps the served text on the element', () => {
     render(<Table now={NOW} decisions={[decision(RUN_ID, SERVED_TIME)]} sessions={[]} />);
     const time = cellUnder(TIME).querySelector('time');
-    expect(time?.textContent).toBe('Oct 16, 22:11:37 UTC');
+    expect(readTime(time)).toBe(UTC_TEXT);
     expect(time?.getAttribute('datetime')).toBe(SERVED_TIME);
     expect(time?.getAttribute('title')).toBe(SERVED_TIME);
   });
 
   it('R3: another offset is kept, not converted', () => {
     render(<Table now={NOW} decisions={[decision(RUN_ID, '2026-10-16T22:11:37+05:30')]} sessions={[]} />);
-    expect(cellUnder(TIME).querySelector('time')?.textContent).toBe('Oct 16, 22:11:37 +05:30');
+    expect(readTime(cellUnder(TIME).querySelector('time'))).toBe(OFFSET_TEXT);
   });
 
   it('R4: a time in another form is shown as served', () => {

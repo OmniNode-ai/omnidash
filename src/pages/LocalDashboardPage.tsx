@@ -1212,8 +1212,9 @@ function CostCell({ session, run }: { session: Row | undefined; run: Row }) {
   const text = costOf(session, run);
   const value = isMissing(session?.local_cost_usd) ? run.cost_usd : session?.local_cost_usd;
   const local = String(run.cost_tier_name ?? '').toLowerCase() === 'local';
+  // The short form drops the served zero's empty cents ("$0.00" to "$0"); the figure is still the served one.
   return !isMissing(value) && Number(value) === 0 && local
-    ? <span className="local-cost-free" title={`${text}, local route`}>$0</span> : <>{text}</>;
+    ? <span className="local-cost-free" title={`${text}, local route`}>{text.replace(/\.0+$/, '')}</span> : <>{text}</>;
 }
 
 /** A plain decimal as the store serves it: optional minus, digits, optional fraction. No exponent, no grouping. */
@@ -1225,15 +1226,9 @@ const SERVED_DECIMAL = /^(-?)(\d+)(?:\.(\d+))?$/;
  * measured zero is a zero. Decimal text is formatted with every served digit (OMN-22168, replacing the earlier two-decimal policy)
  * without changing the source value; anything that is not a plain decimal is not shown as a figure.
  */
-export function runModelledCell(run: Row): string {
-  return runSavingText(run, true);
-}
-
-/**
- * The same served saving, with its baseline named after it (withBaseline) or not, for a table that names one shared
- * baseline in its header (Lakshman 2026-11-05, run table item 1).
- */
-export function runSavingText(run: Row, withBaseline: boolean): string {
+export function runModelledCell(run: Row, withBaseline = true): string {
+  // withBaseline false: the table names one shared baseline in its Saving header's tooltip, so each cell shows the
+  // figure alone (Lakshman 2026-11-05, run table item 1, and "instead of column vs claude-sonnet-5-5 add into tooltip").
   const figure = run.modelled_savings_usd;
   const notMeasured = run.savings_measurement === 'unknown_tokens' ? 'Not measured: tokens not recorded'
     : run.savings_measurement === 'unknown_spend' ? 'Not measured: cost not recorded'
@@ -1525,10 +1520,6 @@ function isFixture(decision: Row): boolean {
 }
 
 /**
- * A Runs row's cause (OMN-19919 AC5): the cause the filter and the Overview list use, and the served failure detail it
- * came from, readable on the row (its title, and "Read failure details") whenever it says more than the cause.
- */
-/**
  * OMN-21166 part 10 AC58: a passed run has no failure cause; its cell reads a dash with an accessible "No failure",
  * never the word "None". The cause filter keeps its "None" option, which names the served value.
  */
@@ -1548,7 +1539,8 @@ function RunTimeCell({ value, showDay }: { value: unknown; showDay: boolean }) {
   if (readable === null || clock === undefined) return <>{readable ?? text}</>;
   const [day, rest] = readable.split(', ') as [string, string];
   const zone = rest.split(' ').slice(1).join(' ');
-  return <time className="local-cell-time local-run-time" dateTime={text} title={readable}>
+  // OMN-21166 R-A: the exact served text is the element's datetime and title.
+  return <time className="local-cell-time local-run-time" dateTime={text} title={text}>
     {showDay && <span className="local-run-day">{day}</span>}
     <span className="local-run-clock">{zone === 'UTC' ? clock : `${clock} ${zone}`}</span>
   </time>;
@@ -1569,15 +1561,25 @@ function QuietUnlessUnusual({ value, usual, usualText }: { value: unknown; usual
   return usual(text) ? <span className="local-run-quiet" title={usualText}>—</span> : <span className="local-run-unusual">{text}</span>;
 }
 
-function RunCause({ run }: { run: Row }) {
+
+/**
+ * Lakshman 2026-11-05 ("instead of extra text when user hover to failed he can see the reason"): a failed run's status
+ * pill shows its cause and the whole failure detail in a tooltip, on hover and on keyboard focus. The cause stays on the
+ * row for assistive tech and the cause filter (visually hidden, with the whole detail as its title), so nothing served
+ * is dropped (OMN-19919 AC5, OMN-21166 AC27 P3).
+ */
+function FailedStatus({ run }: { run: Row }) {
   const rawCause = causeOf(run);
-  if (rawCause === 'none') return <NoFailure />;
   const cause = displayCauseOf(run);
   const detail = failureDetailText(failureDetailOf(run) ?? cause);
-  if (detail === cause && cause.length <= 120) return <span className="local-runs-cause" data-failure-cause={rawCause} title={cause}>{cause}</span>;
+  const tip = <span className="local-run-failure-tip"><strong>{cause}</strong>{detail !== cause && <span>{detail}</span>}</span>;
   return <>
-    {detail !== cause && <span className="local-runs-cause" data-failure-cause={rawCause} title={detail}>{cause}</span>}
-    <details className="local-run-failure"><summary>Read failure details</summary><p className="local-runs-cause" title={detail === cause ? detail : undefined}>{detail}</p></details>
+    <span className="local-runs-tip" data-field-tone="failures">
+      <Tooltip side="bottom" text={tip}>
+        <span className="local-run-status-trigger" tabIndex={0}><OutcomePill value={statusOf(run)} /></span>
+      </Tooltip>
+    </span>
+    <span className="local-visually-hidden"><span className="local-runs-cause" data-failure-cause={rawCause} title={detail}>{cause}</span></span>
   </>;
 }
 
@@ -1685,7 +1687,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
   const headIcon = (concept: string, label: string) => <ConceptIcon concept={concept} label={label} size={13} />;
   // Lakshman 2026-11-05 ("in all columns add a tooltip so that when we hover it should tell about that column"): each header
   // explains its column on hover and on keyboard focus (the kit Tooltip), from RUN_COLUMN_TIPS.
-  const plainHeader = (concept: string, label: string) => <th data-column={concept}>
+  const plainHeader = (concept: string, label: string, extra = false) => <th data-column={concept} data-extra={extra ? '' : undefined}>
     <span className="local-runs-tip" data-field-tone={concept}><Tooltip text={RUN_COLUMN_TIPS[concept] ?? label} side="bottom"><span className="local-runs-head" tabIndex={0}>{headIcon(concept, label)}{label}</span></Tooltip></span>
   </th>;
   const sortHeader = (key: RunSortKey, label: string, concept: string) => {
@@ -1695,7 +1697,9 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
       <span className="local-runs-tip" data-field-tone={concept}><Tooltip text={RUN_COLUMN_TIPS[concept] ?? label} side="bottom">
       <button type="button" className="local-sort-header" data-sort-active={active ? '' : undefined}
         onClick={() => updateView({ sort: key, dir: active && direction === 'desc' ? 'asc' : 'desc', page: 1 })}>
-        {headIcon(concept, label)}{label}<span aria-hidden="true">{direction === 'asc' ? ' ↑' : direction === 'desc' ? ' ↓' : ''}</span>
+        {headIcon(concept, label)}{label}{/* Only a sorted column draws its arrow: an empty one still took the button's gap, so the label sat 6px
+          short of its column's right-aligned figures (Lakshman 2026-11-05, "alignment of column and data is bad"). */}
+        {direction && <span aria-hidden="true">{direction === 'asc' ? ' ↑' : ' ↓'}</span>}
       </button>
       </Tooltip></span>
     </th>;
@@ -1825,9 +1829,9 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
           </ConfirmDialog>
           {/* Lakshman 2026-11-05 ("do all 12"): the run list opens on eight columns (run, time, status with its cause, model,
               tokens, cost, saving, duration); "Show all run fields" adds backend, host, task type, route tier and quality score,
-              and "Routing columns" adds finish reason and escalations, shown only when unusual. Columns are drawn when shown,
-              not hidden by position. Requested model, baseline, basis and tokens to compliance moved into the cells they
-              repeated; every field stays in the selected run, the export and Workflow. */}
+              and "Routing columns" adds finish reason and escalations, shown only when unusual. OMN-21166 AC27 P2: every
+              field stays in the page in either view; the all-fields columns (data-extra) are drawn always and hidden by the
+              layout until the switch is on, and that view also lists baseline model, basis and tokens to compliance. */}
           {(() => {
             const baselineOf = (run: Row) => (isMissing(run.savings_baseline_model) ? bySession.get(String(run.correlation_id))?.baseline_model : run.savings_baseline_model);
             const baselines = new Set(page.map(baselineOf).filter(value => !isMissing(value)).map(String));
@@ -1837,21 +1841,22 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
               <thead>
                 <tr>
                   {plainHeader('identity', 'Run')}{sortHeader('created', 'Time', 'age')}{plainHeader('run-outcome', 'Status')}
-                  {plainHeader('model', 'Model')}{showAllFields && plainHeader('backend', 'Backend')}
+                  {plainHeader('model', 'Model')}{plainHeader('backend', 'Backend', true)}
                   {showRouting && <>{plainHeader('completion', 'Finish reason')}{plainHeader('escalated', 'Escalations')}</>}
-                  {showAllFields && plainHeader('host', 'Host')}
+                  {plainHeader('host', 'Host', true)}
                   {plainHeader('tokens', 'Tokens')}{sortHeader('cost', 'Cost', 'cost')}
-                  {/* The shared baseline is a second, quieter line under "Saving", so the header keeps to its column. */}
+                  {/* The shared baseline is named in the header's tooltip and accessible name, not on the page. */}
                   <th data-column="savings" aria-label={sharedBaseline ? `Saving vs ${sharedBaseline}` : undefined}>
-                    <span className="local-runs-tip" data-field-tone="savings"><Tooltip text={RUN_COLUMN_TIPS.savings!} side="bottom">
-                      <span className="local-runs-head-stack" tabIndex={0}>
-                        <span className="local-runs-head">{headIcon('savings', 'Saving')}Saving</span>
-                        {sharedBaseline && <span className="local-runs-head-sub">vs {sharedBaseline}</span>}
-                      </span>
+                    <span className="local-runs-tip" data-field-tone="savings"><Tooltip side="bottom" text={sharedBaseline
+                      ? `Modelled saving vs ${sharedBaseline}: what the run's tokens would cost at ${sharedBaseline}'s prices, less what the run cost. ${sharedBaseline} never ran.`
+                      : RUN_COLUMN_TIPS.savings!}>
+                      <span className="local-runs-head" tabIndex={0}>{headIcon('savings', 'Saving')}Saving</span>
                     </Tooltip></span>
                   </th>
+                  {plainHeader('baseline', 'Baseline model', true)}{plainHeader('basis', 'Basis', true)}
                   {sortHeader('duration', 'Duration', 'duration')}
-                  {showAllFields && <>{plainHeader('task', 'Task type')}{plainHeader('tier', 'Route tier')}{plainHeader('score', 'Quality score')}</>}
+                  {plainHeader('task', 'Task type', true)}{plainHeader('tokens-completion', 'Tokens to compliance', true)}
+                  {plainHeader('tier', 'Route tier', true)}{plainHeader('score', 'Quality score', true)}
                 </tr>
               </thead>
               <tbody>{page.map((run, index) => {
@@ -1861,7 +1866,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                 const requested = isMissing(run.requested_model) ? null : String(run.requested_model);
                 const answered = modelOrUnknown(run.model_name);
                 const basis = session?.usage_source;
-                const saving = runSavingText(run, sharedBaseline === null);
+                const saving = runModelledCell(run, sharedBaseline === null);
                 const score = Number(run.actual_score);
                 return <tr key={String(run.correlation_id ?? index)} tabIndex={0} aria-selected={selectedRunId !== null && selectedRunId === run.correlation_id}
                   data-day-start={byDay && showDay ? '' : undefined}
@@ -1873,8 +1878,8 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                     {isFixture(run) && <Badge>fixture</Badge>}
                   </td>
                   <td className="local-dashboard-cell-token local-dashboard-cell-time"><RunTimeCell value={run.created_at} showDay={showDay} /></td>
-                  {/* Item 10: the status, and under it, only on a run that failed, its cause and failure details. */}
-                  <td className="local-run-status-cell"><OutcomePill value={statusOf(run)} />{causeOf(run) !== 'none' && <RunCause run={run} />}</td>
+                  {/* Item 10: the status; on a run that failed, its cause and failure detail are the pill's tooltip. */}
+                  <td className="local-run-status-cell">{causeOf(run) !== 'none' ? <FailedStatus run={run} /> : <OutcomePill value={statusOf(run)} />}</td>
                   {/* A run's model sets that filter, as the selects above do. Item 3: a run answered by another model than it
                       asked for names the requested one before it. */}
                   <td className="local-dashboard-cell-token">
@@ -1883,16 +1888,16 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                       {breakableName(answered)}
                     </button>
                   </td>
-                  {showAllFields && <td className="local-dashboard-cell-token">
+                  <td className="local-dashboard-cell-token" data-extra="">
                     <button type="button" className="local-cell-filter" aria-label={`Show only runs of backend ${recorded(run.backend_id)}`} onClick={() => updateView({ backend: recorded(run.backend_id), page: 1 })}>
                       {recorded(run.backend_id)}
                     </button>
-                  </td>}
+                  </td>
                   {showRouting && <>
                     <td data-cell="finish-reason"><QuietUnlessUnusual value={run.finish_reason} usual={text => text === 'stop'} usualText="Finished normally (stop)" /></td>
                     <td data-cell="escalations" data-num=""><QuietUnlessUnusual value={run.escalation_count} usual={text => Number(text) === 0} usualText="No escalation" /></td>
                   </>}
-                  {showAllFields && <td className="local-dashboard-cell-token">{recorded(run.host)}</td>}
+                  <td className="local-dashboard-cell-token" data-extra="">{recorded(run.host)}</td>
                   {/* Item 4: tokens in and out in one cell; their total is the two added, so it is not a column of its own. */}
                   <td data-num="" title={`${recordedTokens(run.tokens_input)} tokens in, ${recordedTokens(run.tokens_output)} tokens out`}>
                     {isMissing(run.tokens_input) && isMissing(run.tokens_output) ? 'Not recorded'
@@ -1902,13 +1907,14 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                   {/* Items 1 and 2: the baseline is named once in the header when the rows share it; a basis other than
                       measured is a tag beside the figure. */}
                   <td data-num="" data-wrap={saving.startsWith('Not measured') ? '' : undefined}>{saving}{!isMissing(basis) && String(basis) !== 'measured' && !saving.startsWith('Not measured') && <span className="local-run-tag">{String(basis)}</span>}</td>
+                  <td className="local-dashboard-cell-token" data-extra="">{recorded(baselineOf(run))}</td>
+                  <td data-extra="">{recorded(basis)}</td>
                   <td data-num="" title={exactMs(run.latency_ms)}>{duration(run.latency_ms)}</td>
-                  {showAllFields && <>
-                    <td>{isMissing(run.task_type) ? recorded(run.task_type) : <span className="local-task-cell"><TaskIcon task={String(run.task_type)} />{taskLabel(run.task_type)}</span>}</td>
-                    <td>{tierOf(run)}</td>
-                    {/* Item 7: one form for every score, two decimals; the served value is in the title. */}
-                    <td data-num="" title={recorded(run.actual_score)}>{isMissing(run.actual_score) || !Number.isFinite(score) ? recorded(run.actual_score) : score.toFixed(2)}</td>
-                  </>}
+                  <td data-extra="">{isMissing(run.task_type) ? recorded(run.task_type) : <span className="local-task-cell"><TaskIcon task={String(run.task_type)} />{taskLabel(run.task_type)}</span>}</td>
+                  <td data-extra="" data-num="">{recordedTokens(run.tokens_to_compliance)}</td>
+                  <td data-extra="">{tierOf(run)}</td>
+                  {/* Item 7: one form for every score, two decimals; the served value is in the title. */}
+                  <td data-extra="" data-num="" title={recorded(run.actual_score)}>{isMissing(run.actual_score) || !Number.isFinite(score) ? recorded(run.actual_score) : score.toFixed(2)}</td>
                 </tr>;
               })}</tbody>
           </DataTable>;

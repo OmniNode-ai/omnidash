@@ -1034,9 +1034,6 @@ html body .local-dashboard-page .local-runs-wrap .local-run-model { overflow-wra
 /* All fields: the pinned Run column keeps room for its short id, and a failed run's cause stays under its status. */
 .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap:is(.local-runs-wrap--all, .local-runs-wrap--routing) :is(thead th, tbody td):first-child { min-width: 136px; }
 .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap:is(.local-runs-wrap--all, .local-runs-wrap--routing) .local-run-status-cell .local-runs-cause { display: block; }
-/* The Saving header's shared baseline: its own line, sentence case, smaller and quieter, wrapping inside the column. */
-html body .local-dashboard-page .local-runs-wrap th .local-runs-head-sub { display: block; margin-top: 2px; font-size: 11px; font-weight: 400;
-  letter-spacing: 0; text-transform: none; color: var(--ds-ink-3); white-space: normal; overflow-wrap: anywhere; }
 /* Column header tooltips: they open below their header, start at its left edge (so the Run column's stays on the page),
    and the first and last keep inside the table; the plain header label takes keyboard focus to show its tooltip. */
 html body .local-dashboard-page .local-runs-wrap thead .ds-tooltip-anchor { display: inline-flex; }
@@ -1051,7 +1048,7 @@ html body .local-dashboard-page .local-runs-wrap thead th:is([data-column="token
 html body .local-dashboard-page .local-runs-wrap thead .local-runs-tip { display: inline-flex; max-width: 100%; }
 /* Lakshman 2026-11-05 ("not heavy hover cards"): a light card: a faint tint of the column's colour, a 2px top edge in it,
    a hairline border, no shadow, normal-weight text. */
-html body .local-dashboard-page .local-runs-wrap thead .local-runs-tip .ds-tooltip {
+html body .local-dashboard-page .local-runs-wrap .local-runs-tip .ds-tooltip {
   background: color-mix(in oklab, var(--field-ink, var(--ds-ink-3)) 7%, var(--ds-surface)); color: var(--ds-ink-2);
   border: 1px solid color-mix(in oklab, var(--field-ink, var(--ds-ink-3)) 28%, var(--ds-line)); border-top: 2px solid var(--field-ink, var(--ds-ink-3));
   box-shadow: none; font-weight: 400; padding: 6px 10px; }
@@ -1066,7 +1063,18 @@ html body .local-dashboard-page .local-runs-wrap thead th:is([data-column="token
   .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap thead th:first-child { z-index: 2; background: var(--ds-surface-2) !important; }
 }
 /* A column tooltip's arrow continues its coloured top edge. */
-html body .local-dashboard-page .local-runs-wrap thead .local-runs-tip .ds-tooltip[data-side="bottom"]::before { top: -6px; border-top: 2px solid var(--field-ink, var(--ds-ink-3)); border-left: 2px solid var(--field-ink, var(--ds-ink-3)); }
-/* Saving's label and its baseline line are one hover target, so the tooltip opens below both. */
-html body .local-dashboard-page .local-runs-wrap thead .local-runs-head-stack { display: inline-flex; flex-direction: column; align-items: flex-end; }
-html body .local-dashboard-page .local-runs-wrap thead .local-runs-head-stack:focus-visible { outline: 2px solid var(--ds-ink); outline-offset: 2px; border-radius: 4px; }
+html body .local-dashboard-page .local-runs-wrap .local-runs-tip .ds-tooltip[data-side="bottom"]::before { top: -6px; border-top: 2px solid var(--field-ink, var(--ds-ink-3)); border-left: 2px solid var(--field-ink, var(--ds-ink-3)); }
+/* OMN-21166 AC27 P2: the all-fields columns stay in the page and are hidden by the layout until "Show all run fields". */
+html body .local-dashboard-page .local-runs-wrap:not(.local-runs-wrap--all) :is(th, td)[data-extra] { display: none; }
+/* A failed run's status pill opens its cause (bold) and the whole failure detail below it; the pill takes focus. */
+html body .local-dashboard-page .local-run-status-trigger { display: inline-flex; border-radius: 999px; cursor: default; }
+html body .local-dashboard-page .local-run-status-trigger:focus-visible { outline: 2px solid var(--ds-ink); outline-offset: 2px; }
+html body .local-dashboard-page .local-runs-wrap .local-runs-tip .ds-tooltip .local-run-failure-tip { display: flex; flex-direction: column; gap: 4px; }
+html body .local-dashboard-page .local-runs-wrap .local-runs-tip .ds-tooltip .local-run-failure-tip strong { font-weight: 600; color: var(--ds-ink); }
+html body .local-dashboard-page .local-runs-wrap tbody .local-runs-tip .ds-tooltip { text-transform: none; letter-spacing: 0; white-space: normal; text-align: left; }
+html body .local-dashboard-page .local-runs-wrap tbody .local-runs-tip { display: inline-flex; }
+/* Lakshman 2026-11-05 ("alignment of column and data is bad, fix that and verify for all"):
+   - the run id keeps its whole short form in every view (the fit table's 7ch cap cut it to "1c1f6…" with all fields);
+   - a task type's glyph starts at its column's edge, as its header glyph does (its 22px chip inset it 4px). */
+html body .local-dashboard-page .local-runs-wrap td.local-dashboard-cell-token a { max-width: none; }
+html body .local-dashboard-page .local-runs-wrap td .local-task-icon { width: auto; height: auto; background: none; justify-content: flex-start; }

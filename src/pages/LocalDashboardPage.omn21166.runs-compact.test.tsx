@@ -32,11 +32,12 @@ describe('OMN-21166 AC27: Runs opens compact, all fields one switch away', () =>
     const toggle = screen.getByRole('checkbox', { name: 'Show all run fields' });
     expect(toggle).not.toBeChecked();
     expect(wrap()).not.toHaveClass('local-runs-wrap--all');
-    expect(within(wrap()).getAllByRole('columnheader')).toHaveLength(18);
+    // 16 columns since 2026-11-05: the cause moved onto Status and tokens in and out share one cell.
+    expect(within(wrap()).getAllByRole('columnheader')).toHaveLength(16);
     fireEvent.click(toggle);
     expect(toggle).toBeChecked();
     expect(wrap()).toHaveClass('local-runs-wrap--all');
-    expect(within(wrap()).getAllByRole('columnheader')).toHaveLength(18);
+    expect(within(wrap()).getAllByRole('columnheader')).toHaveLength(16);
   });
 
   // OMN-19919 AC5: the cause shown is the label the detail leads with (the cause the filter and the Overview list use);
@@ -46,7 +47,9 @@ describe('OMN-21166 AC27: Runs opens compact, all fields one switch away', () =>
     const cause = screen.getByTitle(READABLE_CAUSE);
     expect(cause).toHaveClass('local-runs-cause');
     expect(cause.textContent).toBe('Malformed output');
-    expect(screen.getByText('Read failure details').closest('details')?.textContent).toBe(`Read failure details${READABLE_CAUSE}`);
+    // The whole detail opens from the failed pill, on hover and keyboard focus (Lakshman 2026-11-05).
+    fireEvent.focus(cause.closest('td')!.querySelector('.local-run-status-trigger')!);
+    expect(screen.getByRole('tooltip').textContent).toBe(`Malformed output${READABLE_CAUSE}`);
   });
 
   it('P4: a task type carries its own icon; a missing one reads Not recorded with no icon', () => {
