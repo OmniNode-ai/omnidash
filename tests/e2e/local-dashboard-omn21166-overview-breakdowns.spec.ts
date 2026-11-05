@@ -21,9 +21,9 @@ test('Overview groups activity, routing and quality charts and keeps latest exec
   const perDay = page.locator('[data-component="overview-insights"][data-slice="runs"]');
   // OMN-22168: inside its tab the chart's heading is hidden (the tab names it); the Runs per day tab is the one chosen.
   await expect(page.getByRole('tab', { name: 'Runs per day', exact: true })).toHaveAttribute('aria-selected', 'true');
-  // OMN-22168 (Lakshman 2026-11-04, "don't show anything if we don't have"): a run with no verdict is not drawn or
-  // counted on Runs per day, so today's three rows (one passed, one failed, one with no verdict) read 2 runs.
-  await expect(perDay.getByRole('button', { name: /: 2 runs, 1 passed, 1 failed$/ })).toBeVisible();
+  // OMN-22168 (Lakshman 2026-11-05, "one Runs bar per day"): a day counts every run, so today's three rows (one passed,
+  // one failed, one with no verdict) read 3 runs, with the verdicts read beside them.
+  await expect(perDay.getByRole('button', { name: /: 3 runs, 1 passed, 1 failed$/ })).toBeVisible();
   await page.goto('/runs');
   // OMN-21166 part 13: the analysis sits under Runs' closed page-level "More analysis".
   // OMN-21166 part 18 AC119/AC121: "Runs by model", "Runs by tier" and the "Run outcomes" donut are removed from Runs

@@ -173,22 +173,28 @@ const metering = [
   meteringDay('2026-10-12', '0.120000', '0.520000', '0.400000'),
 ];
 
-test('OMN-21015: the Runs per day legend hides and shows a series from the keyboard', async ({ page }) => {
+// OMN-22168 (Lakshman 2026-11-05, "one Runs bar per day"): Runs per day is one bar per day with no series legend; the
+// keyboard legend this test held lives on the Daily trend's chips, the same kit control (SeriesToggles).
+test('OMN-21015: a trend legend hides and shows a line from the keyboard; Runs per day draws one bar per day', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await serve(page, { [DECISIONS]: firstScreenRuns });
   await page.goto('/');
 
-  const figure = page.getByRole('figure', { name: 'Runs per day', exact: true });
-  await expect(figure).toBeVisible();
-  const toggles = figure.getByRole('group', { name: 'Series' }).getByRole('button');
-  await expect(toggles).toHaveText(['Passed', 'Failed']);
+  const runsChart = page.getByRole('figure', { name: 'Runs per day', exact: true });
+  await expect(runsChart).toBeVisible();
+  await expect(runsChart.getByRole('group', { name: 'Series' })).toHaveCount(0);
+  await expect.poll(() => runsChart.locator('.gdb-col[data-series="runs"] .gdb-bar').count()).toBeGreaterThan(0);
+  await expect(runsChart.locator('.gdb-col[data-series="passed"], .gdb-col[data-series="failed"]')).toHaveCount(0);
 
-  /** How many bars the drawing holds for each series, in legend order. */
-  const drawn = () => figure.evaluate((element) => ['passed', 'failed'].map(
-    (key) => element.querySelectorAll(`.gdb-col[data-series="${key}"] .gdb-bar`).length));
-
-  // One passed day and one failed day: one bar per series.
-  await expect.poll(drawn).toEqual([1, 1]);
+  const trend = page.getByRole('figure', { name: 'Daily trend', exact: true });
+  const toggles = trend.getByRole('group', { name: 'Trend lines' }).getByRole('button');
+  await expect(toggles.first()).toBeVisible();
+  const first = await toggles.nth(0).textContent();
+  const second = await toggles.nth(1).textContent();
+  /** The lines the drawing holds, by key. */
+  const drawn = () => trend.evaluate(element => [...element.querySelectorAll('path.od-draw[data-line]')].map(path => path.getAttribute('data-line')));
+  const slug = (text: string | null) => (text ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  await expect.poll(drawn).toContain(slug(second));
 
   // Reach the second toggle with Tab from the first, then press Enter.
   await toggles.nth(0).focus();
@@ -196,13 +202,14 @@ test('OMN-21015: the Runs per day legend hides and shows a series from the keybo
   await expect(toggles.nth(1)).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(toggles.nth(1)).toHaveAttribute('aria-pressed', 'false');
-  await expect.poll(drawn).toEqual([1, 0]);
+  await expect.poll(drawn).not.toContain(slug(second));
+  await expect.poll(drawn).toContain(slug(first));
   await page.screenshot({ path: screenshotPath('local-dashboard-omn21015-runs-legend-hidden-1440x900.png'), fullPage: false });
 
   // Space brings it back.
   await page.keyboard.press('Space');
   await expect(toggles.nth(1)).toHaveAttribute('aria-pressed', 'true');
-  await expect.poll(drawn).toEqual([1, 1]);
+  await expect.poll(drawn).toContain(slug(second));
 });
 
 // OMN-21015 stage 5: the charts are on the first screen. At 1440x900, with the page as it opens and nothing scrolled,
