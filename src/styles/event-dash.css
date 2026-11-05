@@ -508,3 +508,23 @@ html body main.ev-root .ev-table-paging.local-dashboard-pager button { display: 
 /* The header label in its column's colour with its glyph 6px from it, as in every table (editorial.css scopes this to
    real tables, and this list is drawn with grids). */
 html body main.ev-root .dt-head .local-table-head { display: inline-flex; align-items: center; gap: 6px; color: var(--field-ink, inherit); white-space: nowrap; }
+/* Ranked cause lists (Lakshman 2026-11-05, "full platform uniform"): names in the page's sans text, two lines at most with
+   the whole text on hover, a name column wide enough to read; the rows past the first few behind a styled disclosure. */
+html body main.ev-root .ev-quality-categories > li { display: grid; grid-template-columns: minmax(0, 1fr) 96px auto; gap: 10px; align-items: center; }
+html body main.ev-root .ev-quality-name { font-family: var(--ds-font-sans); font-size: 12.5px; line-height: 1.35; color: var(--ds-ink);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+html body main.ev-root .ev-triage-rows a { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+html body main.ev-root .ev-more-rows > summary { list-style: none; display: inline-flex; align-items: center; gap: 8px; margin: 10px 0 6px; padding: 6px 12px;
+  border: 1px solid var(--ds-line); border-radius: 999px; font-size: 13px; color: var(--ds-ink-2); cursor: pointer; }
+html body main.ev-root .ev-more-rows > summary::-webkit-details-marker { display: none; }
+html body main.ev-root .ev-more-rows > summary::before { content: "›"; font-size: 15px; line-height: 1; transition: transform 0.2s; }
+html body main.ev-root .ev-more-rows[open] > summary::before { transform: rotate(90deg); }
+html body main.ev-root .ev-more-rows > summary:hover { background: var(--ds-surface-2); color: var(--ds-ink); }
+html body main.ev-root .ev-more-rows > summary:focus-visible { outline: 2px solid var(--ds-hue-blue); outline-offset: 2px; }
+/* Evidence, as the other pages (OMN-22168): the savings bridge's figures in their field colours; a fact's value wraps
+   between words first (it broke "modelled" mid-word), a long id still wraps where it must. */
+html body main.ev-root .ev-savings-equation > div[data-field-tone] > strong { color: var(--field-ink) !important; }
+html body main.ev-root .kv .v { overflow-wrap: break-word !important; word-break: normal !important; }
+html body main.ev-root .kv .v.accent, html body main.ev-root .kv .v .mono { overflow-wrap: anywhere !important; }
+/* The run table's muted zero cost, on Evidence too (its rule is scoped to .local-dashboard-page, which main.ev-root is not inside). */
+html body main.ev-root .local-cost-free { color: var(--ds-ink-3); }

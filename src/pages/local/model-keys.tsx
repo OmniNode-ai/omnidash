@@ -269,14 +269,17 @@ export function ModelKeys({ client = LIVE_CLIENT, keys = [], empty }: { client?:
   return (
     <section className="local-model-keys" aria-label="Model providers">
       <FactList look="provider-figures">
-        <Fact term="Passed their last test"><strong>{rows.filter(row => row.last_test?.status === 'passed').length}</strong><small>{`of ${rows.length} providers`}</small></Fact>
-        <Fact term="Set up"><strong>{rows.filter(row => row.set_up).length}</strong><small>{`of ${rows.length} providers`}</small></Fact>
-        <Fact term="Keys in use"><strong>{keys.length}</strong><small>{keys.length === 1 ? 'key' : 'keys'}</small></Fact>
-        <Fact term="Models listed"><strong>{rows.reduce((sum, row) => sum + row.models.length, 0)}</strong><small>across providers</small></Fact>
+        {/* Overview's headline cards (Lakshman 2026-11-05, "full platform uniform"): each figure in its concept colour. */}
+        <Fact data-field-tone="pass" term={<><ConceptIcon concept="pass" label="Passed their last test" size={14} />Passed their last test</>}><strong>{rows.filter(row => row.last_test?.status === 'passed').length}</strong><small>{`of ${rows.length} providers`}</small></Fact>
+        <Fact data-field-tone="contract" term={<><ConceptIcon concept="contract" label="Set up" size={14} />Set up</>}><strong>{rows.filter(row => row.set_up).length}</strong><small>{`of ${rows.length} providers`}</small></Fact>
+        <Fact data-field-tone="cloud-keys" term={<><ConceptIcon concept="cloud-keys" label="Keys in use" size={14} />Keys in use</>}><strong>{keys.length}</strong><small>{keys.length === 1 ? 'key' : 'keys'}</small></Fact>
+        <Fact data-field-tone="model" term={<><ConceptIcon concept="model" label="Models listed" size={14} />Models listed</>}><strong>{rows.reduce((sum, row) => sum + row.models.length, 0)}</strong><small>across providers</small></Fact>
       </FactList>
       <div className="local-provider-list">
         <div className="local-provider-head-band" aria-hidden="true">
-          <span>Provider</span><span>Status</span><span>Models</span><span>Key</span><span>Last test</span><span />
+          {/* Headers as every table writes them: glyph and colour per column (Lakshman 2026-11-05). */}
+          {([['backend', 'Provider'], ['run-outcome', 'Status'], ['model', 'Models'], ['cloud-keys', 'Key'], ['age', 'Last test']] as const).map(([concept, label]) =>
+            <span key={label} className="local-table-head" data-field-tone={concept}><ConceptIcon concept={concept} label={label} size={13} />{label}</span>)}<span />
         </div>
         {rows.map((row) => <ProviderCard key={String(row.provider)} row={row} keys={keysOf(String(row.provider))} />)}
         {unlisted.map(provider => <ProviderCard key={`unlisted-${provider}`} listed={false} keys={keysOf(provider)}

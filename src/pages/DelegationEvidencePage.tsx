@@ -208,7 +208,10 @@ function SelectedRun({ correlationId, decision }: { correlationId: string | null
           { k: 'Latency', v: fmtLatency(row.latency_ms) },
           { k: 'Tokens in', v: row.tokens_input == null ? 'Not recorded' : formatFullCount(row.tokens_input) },
           { k: 'Tokens out', v: row.tokens_output == null ? 'Not recorded' : formatFullCount(row.tokens_output) },
-          { k: 'Cost', v: recordedMoney(row.cost_usd) },
+          // A measured zero is the run table's muted "$0", the served text its title (OMN-22168, "full platform uniform").
+          { k: 'Cost', v: recordedMoney(row.cost_usd) === formatUsd(0)
+            ? <span className="local-cost-free" title={recordedMoney(row.cost_usd)}>{recordedMoney(row.cost_usd).replace(/\.0+$/, '')}</span>
+            : recordedMoney(row.cost_usd) },
           // OMN-21166 AC37: the run's one modelled saving, the figure Runs shows (delegation.decisions.v1), not the
           // event's legacy cost_savings_usd, which is 0 for a run the savings writer never priced.
           { k: 'Savings (modelled)', v: decisionModelledSaving(decision) },
@@ -296,17 +299,24 @@ function QualityGate() {
       <div className="divider" />
       <div className="section-label">Failure categories</div>
       {categories === null ? <p className="note">Not served</p> : categories.length === 0 ? <p className="note">0 failure categories</p> : (
-        <ol className="ev-quality-categories" aria-label="Failure categories ranked">
-          {categories.map((category, index) => {
-            const reason = escalationReason(category.category);
-            const count = servedNumber(category.count);
-            return <li data-quality-category key={`${String(category.category)}-${index}`}>
-              <span className="mono" title={reason.title}>{reason.text}</span>
-              <span className="ev-quality-track"><span style={{ width: count !== null && largestCategory > 0 ? `${count / largestCategory * 100}%` : '0%' }} /></span>
-              <span className="mono">{count === null ? 'Not served' : formatDashboardCount(count)}</span>
-            </li>;
-          })}
-        </ol>
+        // OMN-22168 (Lakshman 2026-11-05, "full platform uniform"): every served category stays ranked, the top five in view
+        // and the rest one click away (the panel had run 14,197px down the page), each name in the page's sans text, two
+        // lines at most, its whole text on hover.
+        <>{[categories.slice(0, CATEGORY_PREVIEW), categories.slice(CATEGORY_PREVIEW)].map((part, partIndex) => {
+          if (part.length === 0) return null;
+          const list = <ol className="ev-quality-categories" aria-label={partIndex === 0 ? 'Failure categories ranked' : 'More failure categories'}>
+            {part.map((category, index) => {
+              const reason = escalationReason(category.category);
+              const count = servedNumber(category.count);
+              return <li data-quality-category key={`${String(category.category)}-${index}`}>
+                <span className="ev-quality-name" title={reason.title}>{reason.text}</span>
+                <span className="ev-quality-track"><span style={{ width: count !== null && largestCategory > 0 ? `${count / largestCategory * 100}%` : '0%' }} /></span>
+                <span className="mono">{count === null ? 'Not served' : formatDashboardCount(count)}</span>
+              </li>;
+            })}
+          </ol>;
+          return partIndex === 0 ? <div key="top">{list}</div> : <details key="rest" className="ev-more-rows"><summary>{`Show all ${formatDashboardCount(categories.length)} categories`}</summary>{list}</details>;
+        })}</>
       )}
       </div>
     </Panel>
@@ -387,6 +397,10 @@ function triageName(value: unknown, kind: 'model' | 'task'): string {
   return String(value);
 }
 
+/** How many ranked rows a list shows before the rest fold away (OMN-22168, Lakshman 2026-11-05). */
+const CATEGORY_PREVIEW = 5;
+const TRIAGE_PREVIEW = 8;
+
 export function TriageRows({ rows, denominator, kind }: {
   /** `id` is the served value the row stands for (unique); `name` is how it reads, which two rows can share once
    * shortened, so the key is the id. `title` is the full value, shown on hover. */
@@ -395,8 +409,9 @@ export function TriageRows({ rows, denominator, kind }: {
   kind: 'category' | 'check' | 'model' | 'task';
 }) {
   if (rows.length === 0) return <p className="note">No failures in this population.</p>;
-  return <ol className="ev-triage-rows" aria-label={`Failures by ${kind}`}>
-    {rows.map(row => {
+  // The top rows in view and the rest one click away (the category list ran 74 rows, 4,113px), each still ranked and linked.
+  const draw = (part: typeof rows, label: string) => <ol className="ev-triage-rows" aria-label={label}>
+    {part.map(row => {
       const share = row.count === null || denominator === null || denominator === 0 ? null : row.count / denominator;
       return <li data-triage-row key={`${kind}-${row.id ?? row.name}`}>
         <a href={row.href} title={row.title} aria-label={`View failed runs for ${row.name}`}>{row.name}</a>
@@ -407,6 +422,11 @@ export function TriageRows({ rows, denominator, kind }: {
       </li>;
     })}
   </ol>;
+  return <>
+    {draw(rows.slice(0, TRIAGE_PREVIEW), `Failures by ${kind}`)}
+    {rows.length > TRIAGE_PREVIEW && <details className="ev-more-rows"><summary>{`Show all ${formatDashboardCount(rows.length)} ${kind === 'category' ? 'categories' : kind === 'check' ? 'check types' : `${kind}s`}`}</summary>
+      {draw(rows.slice(TRIAGE_PREVIEW), `More failures by ${kind}`)}</details>}
+  </>;
 }
 
 /** AC205/AC205a: quality categories describe all-time checks; model and task groups describe only the served sample. */
@@ -777,11 +797,12 @@ function SavingsBridge({ rows, loading }: { rows: readonly unknown[] | undefined
     <section className="ev-savings-bridge" aria-label="Savings bridge">
       <p className="note">{moneyBasis(money)}</p>
       <div className="ev-savings-equation">
-        <div><span className="section-label">Baseline cost (modelled)</span><strong>{money ? exactUsd(money.cloud) : canonical.unavailable}</strong></div>
+        {/* Each figure in its field's colour, as Overview's headline figures (OMN-22168). */}
+        <div data-field-tone="baseline"><span className="section-label">Baseline cost (modelled)</span><strong>{money ? exactUsd(money.cloud) : canonical.unavailable}</strong></div>
         <span className="ev-savings-operator" aria-label="minus">−</span>
-        <div><span className="section-label">Actual spend</span><strong>{money ? exactUsd(money.local) : canonical.unavailable}</strong></div>
+        <div data-field-tone="cost"><span className="section-label">Actual spend</span><strong>{money ? exactUsd(money.local) : canonical.unavailable}</strong></div>
         <span className="ev-savings-operator" aria-label="equals">=</span>
-        <div><span className="section-label">Saving (modelled)</span><strong>{money ? exactUsd(money.saved) : canonical.unavailable}</strong></div>
+        <div data-field-tone="savings"><span className="section-label">Saving (modelled)</span><strong>{money ? exactUsd(money.saved) : canonical.unavailable}</strong></div>
       </div>
       <p className="note">Each figure is shown exactly as served, so baseline cost minus actual spend equals the saving; headline cards round to cents.</p>
     </section>
