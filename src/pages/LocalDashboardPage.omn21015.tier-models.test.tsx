@@ -49,13 +49,17 @@ describe('OMN-21015 AC2: the Tier mix lists each model under its tier', () => {
   it('T3: a model cost is the served sum; an unpriced group says Not measured with its run count, never $0', () => {
     render(<TierMixPanel row={ROW} />);
     expect(cells('gemini')[3]).toBe('$0.009');
-    expect(cells('qwen-a')[3]).toBe('$0.00');
+    // A measured zero reads "$0", muted, with the served "$0.00" as its title (Lakshman 2026-11-05).
+    expect(cells('qwen-a')[3]).toBe('$0');
+    expect(within(screen.getByRole('row', { name: /^qwen-a/ })).getByText('$0')).toHaveAttribute('title', '$0.00');
     expect(cells('qwen-b')[3]).toBe('Not measured (1 run)');
   });
 
   it('T4: a tier row shows no cost of its own, since none is served for it', () => {
     render(<TierMixPanel row={ROW} />);
-    expect(cells('Local')[3]).toBe('');
+    // The cell holds a quiet dash and, for assistive tech, says cost is per model: never a figure.
+    expect(cells('Local')[3]).toBe('—Cost is shown per model');
+    expect(cells('Local')[3]).not.toMatch(/\d|\$/);
   });
 
   it('T6: a model served with a cost but no unmeasured count never reads as fully measured', () => {

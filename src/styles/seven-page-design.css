@@ -1461,7 +1461,10 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ds-accent); outline-o
 .usage-trend-date { font-size: 11px; color: var(--ds-ink-2); white-space: nowrap; font-family: var(--ds-font-mono); }
 /* AC206: Runs' routing groups; a reroute is named beside the routed model. */
 [data-routing-table] .local-route-changed { margin-left: 6px; font-size: 11px; padding: 0 6px; border: 1px solid var(--ds-line); border-radius: 4px; color: var(--ds-ink-2); }
-[data-routing-table] td { white-space: nowrap; }
+/* Routing groups fits its panel (it ran 110px past it at 1440, cutting off Pass rate): names wrap at their joins, the
+   Rerouted mark goes under a name when there is no room beside it, figures keep one line. */
+[data-routing-table] td { white-space: normal; }
+[data-routing-table] td:is([data-cell="escalations"], [data-cell="runs"], [data-cell="pass"]) { white-space: nowrap; }
 
 /* OMN-21166 AC205/AC207: Evidence keeps the two populations and the canonical money equation readable on phones. */
 .ev-triage-panel { min-width: 0; display: grid; gap: 10px; }

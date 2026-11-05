@@ -1158,3 +1158,29 @@ html body .local-dashboard-page .local-dashboard-tablist:has([data-stat]) { alig
    not sit at the slot's left edge (checked in Chrome on Model usage and Tier mix). */
 html body .local-dashboard-page--overview .local-overview-charts-panel .rb-chart.rb-chart--vertical .rb-slot { width: 72%; max-width: 44px; margin: 0 auto; }
 html body .local-dashboard-page--overview .local-overview-charts-panel .rb-chart.rb-chart--vertical .rb-slot .rb-bar:not([data-pattern="outline"]) { width: 100% !important; max-width: none !important; margin: 0 !important; }
+/* Lakshman 2026-11-05 ("in run page check all and make it standardized and perfect, modern"): every headline card's
+   label keeps room for two lines, so a label that wraps (Median duration, in a sixth of the row) does not leave its
+   figure 11px lower than the rest; all six figures start on one line. */
+html body .local-dashboard-page .local-kpi-cards .local-overview-summary > article > h2 { min-height: calc(2 * 17px); align-items: flex-start; }
+/* Every table header on the local pages written as the run table's: the column's glyph, 6px, then the label, both in
+   the column's concept colour (data-field-tone). */
+html body .local-dashboard-page table thead .local-table-head { display: inline-flex; align-items: center; gap: 6px; color: var(--field-ink, inherit); }
+/* A tier's model rows: the identity swatch sits on the name's line. */
+html body .local-dashboard-page .local-routing-model-row .local-routing-name { display: inline-flex; align-items: center; gap: 6px; }
+/* Tier breakdown (Lakshman 2026-11-05, "make it best"): standard column widths, a tier's row as its group's heading, its
+   models indented under it, and each share as a filled meter beside its percent. */
+html body .local-dashboard-page section[aria-label="Tier mix"] table { table-layout: fixed; width: 100%; }
+html body .local-dashboard-page section[aria-label="Tier mix"] thead th:nth-child(1) { width: 44%; }
+html body .local-dashboard-page section[aria-label="Tier mix"] thead th:nth-child(2) { width: 12%; }
+html body .local-dashboard-page section[aria-label="Tier mix"] thead th:nth-child(3) { width: 28%; }
+html body .local-dashboard-page section[aria-label="Tier mix"] thead th:nth-child(4) { width: 16%; }
+html body .local-dashboard-page section[aria-label="Tier mix"] :is(th, td) { text-align: left !important; }
+html body .local-dashboard-page .local-routing-tier-row td { font-weight: 600; color: var(--ds-ink); border-top: 1px solid var(--ds-line); background: color-mix(in oklab, var(--tier-color, var(--ds-ink-3)) 7%, var(--ds-surface)); }
+html body .local-dashboard-page .local-routing-model-row td:first-child { padding-left: 40px !important; }
+html body .local-dashboard-page .local-routing-model-row td { color: var(--ds-ink-2); }
+html body .local-dashboard-page .local-share-cell { display: inline-flex; align-items: center; gap: 10px; width: 100%; }
+html body .local-dashboard-page .local-share-meter { flex: 0 0 96px; height: 6px; border-radius: 999px; background: var(--ds-line); overflow: hidden; }
+html body .local-dashboard-page .local-share-meter > i { display: block; height: 100%; border-radius: inherit; background: var(--tier-color, var(--ds-ink-3)); }
+/* The tier totals under the table: set apart from it, figures in the figure weight. */
+html body .local-dashboard-page section[aria-label="Tier mix"] > :is(dl, .local-dashboard-fields) { margin-top: 16px; display: flex; gap: 40px; flex-wrap: wrap; }
+html body .local-dashboard-page section[aria-label="Tier mix"] > :is(dl, .local-dashboard-fields) dd { font-size: 18px; font-weight: 600; color: var(--ds-ink); margin: 2px 0 0; }

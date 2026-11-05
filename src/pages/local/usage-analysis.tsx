@@ -4,6 +4,7 @@ import { Link } from 'wouter';
 import { formatUsd } from '@/lib/currency';
 import { DashboardTabs, DashboardToggle, DataTable, EmptyState, Panel, PanelTitle } from '@/theme/design-system/components';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
+import { tierLabel } from '@/pages/local/plain-text';
 import { DEFAULT_RUNS_VIEW, writeRunsSearch, type RunsViewState } from '@/navigation/runs-url-state';
 import {
   coverageOf, groupDecisions, matrixOf, NOT_RECORDED, OTHER, qualityTrend, routesOf, SMALL_SAMPLE, SPARK_DAYS, totalsOf,
@@ -282,6 +283,12 @@ export function RunsTotals({ rows, sample, complete = false }: { rows: readonly 
   </p>;
 }
 
+/** The routing table's columns: the concept each header's glyph and colour come from, and its label. */
+const ROUTING_HEADERS: ReadonlyArray<readonly [string, string]> = [
+  ['routing-model', 'Requested model'], ['model', 'Routed model'], ['tier', 'Tier'], ['backend', 'Backend'],
+  ['completion', 'Finish reason'], ['escalated', 'Escalations'], ['delegations', 'Runs'], ['run-outcome', 'Pass rate'],
+];
+
 /**
  * Part 30 AC206: Runs' routing groups, from the returned runs: what each run asked for, the model it ran on, its tier,
  * backend, how it stopped and how often it escalated, with runs and pass rate per group. A field a run did not record is
@@ -297,15 +304,17 @@ export function RoutingAnalysis({ rows, complete = false }: { rows: readonly unk
       Not recorded means the run did not record that field; it is not a dispatch failure.
     </p>
     <DataTable data-routing-table aria-label="Runs by route">
-        <thead><tr><th scope="col">Requested model</th><th scope="col">Routed model</th><th scope="col">Tier</th><th scope="col">Backend</th>
-          <th scope="col">Finish reason</th><th scope="col">Escalations</th><th scope="col">Runs</th><th scope="col">Pass rate</th></tr></thead>
+        {/* Headers as the run table writes them: each in its column's colour, with its glyph (Lakshman 2026-11-05). */}
+        <thead><tr>{ROUTING_HEADERS.map(([concept, label]) => <th scope="col" key={label}>
+          <span className="local-table-head" data-field-tone={concept}><ConceptIcon concept={concept} label={label} size={13} />{label}</span></th>)}</tr></thead>
         <tbody>{routes.map(route => {
           const rerouted = route.requested !== NOT_RECORDED && route.routed !== NOT_RECORDED && route.requested !== route.routed;
           return <tr key={[route.requested, route.routed, route.tier, route.backend, route.finish, route.escalations].join('|')}
             data-requested={route.requested} data-routed={route.routed}>
-            <td data-cell="requested">{route.requested}</td>
-            <td data-cell="routed">{route.routed}{rerouted && <span className="local-route-changed">Rerouted</span>}</td>
-            <td data-cell="tier">{route.tier}</td>
+            <td data-cell="requested">{breakableName(route.requested)}</td>
+            <td data-cell="routed">{breakableName(route.routed)}{rerouted && <span className="local-route-changed">Rerouted</span>}</td>
+            {/* The tier in words, as the tier table names it ("Cheap frontier", not cheap_frontier); the key stays the group. */}
+            <td data-cell="tier">{tierLabel(route.tier)}</td>
             <td data-cell="backend">{route.backend}</td>
             <td data-cell="finish">{route.finish}</td>
             <td data-cell="escalations">{route.escalations}</td>

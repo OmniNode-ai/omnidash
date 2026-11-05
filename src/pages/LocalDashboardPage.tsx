@@ -2044,6 +2044,26 @@ export function QualityPanel({ row }: { row: Row | null }) {
  * null and says how many runs were not measured, never $0; a priced group with some unpriced runs says so beside it.
  * A model served without its unmeasured count is never read as fully measured: the count is unknown, not zero.
  */
+/**
+ * Lakshman 2026-11-05 ("make it best", the tier breakdown): a tier-routed share as a meter, its fill the served share of
+ * a full track, with the served percent beside it (Readable, which keeps the served value in its title).
+ */
+function ShareMeter({ value }: { value: unknown }) {
+  const share = Number(value);
+  const width = isMissing(value) || !Number.isFinite(share) ? null : Math.min(Math.max(share, 0), 1);
+  return <span className="local-share-cell">
+    {width !== null && <span className="local-share-meter" aria-hidden="true"><i style={{ width: `${width * 100}%` }} /></span>}
+    <Readable value={value} kind="percent" />
+  </span>;
+}
+
+/** A model's cost in the tier table, in the run table's short muted form when it is a measured zero ("$0"). */
+function TierModelCostCell({ model }: { model: Row }) {
+  const text = tierModelCost(model);
+  return !isMissing(model.cost_usd) && Number(model.cost_usd) === 0 && /^\$0\.0+$/.test(text)
+    ? <span className="local-cost-free" title={text}>{text.replace(/\.0+$/, '')}</span> : <>{text}</>;
+}
+
 function tierModelCost(model: Row): string {
   const unmeasured = isMissing(model.unmeasured_cost_count) ? null : Number(model.unmeasured_cost_count);
   const runs = (n: number) => `${formatDashboardCount(n)} run${n === 1 ? '' : 's'}`;
@@ -2331,7 +2351,9 @@ export function TierMixPanel({ row, compact = false }: { row: Row | null; compac
     <section aria-label="Tier mix">
       {/* Part 18 AC120: the table, shown directly; the meter bars repeated its shares (Overview's Tier mix draws them). */}
       <DataTable fit>
-          <thead><tr><th><span><FieldIcon label="Tier" size={13} />Tier</span></th><th><span><ConceptIcon concept="delegations" label="Runs" size={13} />Runs</span></th><th><span><ConceptIcon concept="routing" label="Share of tier-routed" size={13} />Share of tier-routed</span></th><th><span><FieldIcon label="Cost" size={13} />Cost</span></th></tr></thead>
+          {/* Lakshman 2026-11-05 ("in run page check all and make it standardized"): headers as the run table writes them,
+              each in its column's colour with its glyph 6px from the label. */}
+          <thead><tr><th><span className="local-table-head" data-field-tone="tier"><FieldIcon label="Tier" size={13} />Tier</span></th><th><span className="local-table-head" data-field-tone="delegations"><ConceptIcon concept="delegations" label="Runs" size={13} />Runs</span></th><th><span className="local-table-head" data-field-tone="routing"><ConceptIcon concept="routing" label="Share of tier-routed" size={13} />Share of tier-routed</span></th><th><span className="local-table-head" data-field-tone="cost"><FieldIcon label="Cost" size={13} />Cost</span></th></tr></thead>
           <tbody>{tiers.flatMap((tier, index) => {
             const name = String(tier.cost_tier_name);
             const concept = tierConcept(name) ?? 'tier-other';
@@ -2345,15 +2367,16 @@ export function TierMixPanel({ row, compact = false }: { row: Row | null; compac
                   sideways scroll. Costs wrap at their spaces. */}
               <td className="local-dashboard-cell-token local-dashboard-cell-name"><span className="local-routing-name"><ConceptIcon concept={concept} label={tierLabel(name)} value={name} size={16} />{isMissing(tier.cost_tier_name) ? recorded(tier.cost_tier_name) : tierLabel(name)}</span></td>
               <td data-column="runs">{recordedCount(tier.count)}</td>
-              <td data-column="share" className="local-dashboard-cell-token">{routed ? <Readable value={tier.pct_of_tier_routed} kind="percent" /> : <><span aria-hidden="true">—</span><span className="local-visually-hidden">No share: not tier-routed</span></>}</td>
-              <td />
+              <td data-column="share" className="local-dashboard-cell-token">{routed ? <ShareMeter value={tier.pct_of_tier_routed} /> : <><span aria-hidden="true">—</span><span className="local-visually-hidden">No share: not tier-routed</span></>}</td>
+              {/* Cost is served per model, so a tier's row names none (its models' rows below do). */}
+              <td data-column="cost"><span className="local-run-quiet" aria-hidden="true">—</span><span className="local-visually-hidden">Cost is shown per model</span></td>
             </tr>,
             ...(Array.isArray(tier.models) ? asRecords(tier.models) : []).map((model, modelIndex) => (
               <tr data-tone={tone} style={{ '--tier-color': tierColor(name) } as CSSProperties} key={`${name}-${index}-${String(model.model_name)}-${modelIndex}`} className="local-dashboard-row--nested local-routing-model-row">
                 <td className="local-dashboard-cell-token local-dashboard-cell-name"><span className="local-routing-name local-model-identity" data-semantic-concept={`model:${String(model.model_name)}`} style={modelIdentityStyle(model.model_name)}><FieldIcon tone="model" value={model.model_name} size={14} />{recorded(model.model_name)}</span></td>
                 <td data-column="runs">{recordedCount(model.count)}</td>
-                <td data-column="share" className="local-dashboard-cell-token">{routed ? <Readable value={model.pct_of_tier_routed} kind="percent" /> : <><span aria-hidden="true">—</span><span className="local-visually-hidden">No share: not tier-routed</span></>}</td>
-                <td data-column="cost" data-unavailable={isMissing(model.cost_usd)}>{tierModelCost(model)}</td>
+                <td data-column="share" className="local-dashboard-cell-token">{routed ? <ShareMeter value={model.pct_of_tier_routed} /> : <><span aria-hidden="true">—</span><span className="local-visually-hidden">No share: not tier-routed</span></>}</td>
+                <td data-column="cost" data-unavailable={isMissing(model.cost_usd)}><TierModelCostCell model={model} /></td>
               </tr>
             )),
           ];})}</tbody>
