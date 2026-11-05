@@ -9,3 +9,12 @@ export async function chooseChartTab(page: Page, name: string) {
   if (await tab.getAttribute('aria-selected') !== 'true') await tab.click();
   await expect(tab).toHaveAttribute('aria-selected', 'true');
 }
+
+/** Chooses a chart's tab and returns its panel. Inside a tab the chart's own heading is hidden (the tab names it), so a
+ * test reads the chart through the tab panel the tab labels, not through a heading. */
+export async function chartTabPanel(page: Page, name: string) {
+  await chooseChartTab(page, name);
+  const panel = page.getByRole('tabpanel', { name, exact: true }).first();
+  await expect(panel).toBeVisible();
+  return panel;
+}

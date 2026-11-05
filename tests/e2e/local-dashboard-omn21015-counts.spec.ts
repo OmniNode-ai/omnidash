@@ -140,7 +140,7 @@ for (const theme of ['light','dark'] as const) {
     const model = page.getByRole('figure',{name:'Pass rate by model',exact:true}).locator('[data-ranked-item]').filter({has:page.getByText('model-a',{exact:true})});
     await expect(model).toBeVisible();
     const color = await model.locator('.rb-name .rb-swatch').evaluate(el => getComputedStyle(el).backgroundColor);
-    await page.goto('/usage');
+    await page.goto('/usage?money=spend-model'); // OMN-22168: Usage's charts are tabs, one drawn at a time; the address names the tab to open.
     // OMN-21166 AC64: Usage's spend donut and legend buttons are ranked bars ("Measured spend per model"); the
     // stacked "Tokens per day" chart's legend swatch carries the same model colour.
     const spend = page.getByRole('figure',{name:'Measured spend per model',exact:true}).locator('[data-ranked-item]').filter({has:page.getByText('model-a',{exact:true})});

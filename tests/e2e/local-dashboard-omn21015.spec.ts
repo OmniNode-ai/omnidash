@@ -59,7 +59,7 @@ test('OMN-21015: on Usage a bar is as tall as its share of the largest served to
   // OMN-21970 AC9 added a grow-in to every bar; this measures geometry, so it reads the bars without motion.
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await serve(page);
-  await page.goto('/usage');
+  await page.goto('/usage?tokens=tokens-model'); // OMN-22168: Usage's charts are tabs, one drawn at a time; the address names the tab to open.
   // OMN-21166 Maple grid: the per-model token bars (the series this test measures) are under the page's closed
   // "More usage"; the page itself shows the stacked "Tokens per day" chart.
 
@@ -460,11 +460,13 @@ test('OMN-21015: on Runs the listed runs are drawn below the list, and a bar ope
   // Runs is list first; inspect chart positions after returning to the top.
   await page.locator('.local-dashboard-page').evaluate(el => { el.scrollTop = 0; });
   // OMN-22168: the run charts are tabs, so each is chosen in turn and both are drawn in the same place under the list.
-  await chooseChartTab(page, 'Duration per run');
+  // Choosing a tab scrolls it into view, so the page is put back at the top before each chart is measured.
+  const top = () => page.locator('.local-dashboard-page').evaluate(el => { el.scrollTop = 0; });
+  await chooseChartTab(page, 'Duration per run'); await top();
   const left = await placed(page, 'figure[aria-label="Duration per run"]');
-  await chooseChartTab(page, 'Tokens per run');
+  await chooseChartTab(page, 'Tokens per run'); await top();
   const right = await placed(page, 'figure[aria-label="Tokens per run"]');
-  await chooseChartTab(page, 'Duration per run');
+  await chooseChartTab(page, 'Duration per run'); await top();
   const list = await placed(page, '.local-dashboard-table-wrap thead');
   expect(left.scrolled).toBe(0);
   expect(Math.abs(right.top-left.top)).toBeLessThan(2);

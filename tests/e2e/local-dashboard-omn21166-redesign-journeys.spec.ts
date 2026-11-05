@@ -82,7 +82,7 @@ test('AC191 headline cards carry a short caption under the figure instead of a h
 
 test('AC193 a model on Usage opens Runs filtered to it, the filter survives a reload, and a no-run day is a zero result', async ({ page }, info) => {
   await serveCharts(page, withAllTime);
-  await settle(page, '/usage');
+  await settle(page, '/usage?money=spend-model'); // OMN-22168: Usage's charts are tabs, one drawn at a time; the address names the tab to open.
   const link = page.locator('main a.rb-link[aria-label*="Opens Runs filtered to"]').first();
   await expect(link, 'a Usage model links to Runs').toBeVisible();
   const label = await link.getAttribute('aria-label');

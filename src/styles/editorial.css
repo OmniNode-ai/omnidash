@@ -783,7 +783,8 @@ html body .local-dashboard-page--overview :is(.local-overview-summary article, .
 html body .local-dashboard-page--overview .local-overview-charts-panel > .local-dashboard-panel-title {
   font-size: 12px !important; font-weight: 500 !important; letter-spacing: var(--ov-track) !important; text-transform: uppercase !important;
   gap: 8px !important; align-items: center; }
-html body .local-dashboard-page--overview :is(.local-overview-summary article, .maple-cell > article.local-dashboard-panel) > h2 svg,
+/* Panel title glyphs are 15px; the summary cards' label glyphs stay 14px (OMN-21166 part 11/AC63). */
+html body .local-dashboard-page--overview .maple-cell > article.local-dashboard-panel > h2 svg,
 html body .local-dashboard-page--overview .local-overview-charts-panel > .local-dashboard-panel-title svg { width: 15px !important; height: 15px !important; }
 html body .local-dashboard-page--overview .local-tab-label { font-family: var(--ds-font-mono); letter-spacing: var(--ov-track); }
 /* One chip: the trend's legend toggles and the status line's facts are 28px pills. */
@@ -834,7 +835,7 @@ html body .local-dashboard-page--overview .local-overview-charts-panel :is(.ins-
   display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 0; padding: 0; list-style: none; }
 html body .local-dashboard-page--overview .local-overview-charts-panel :is(.ins-token-legend, .tier-legend) li {
   display: inline-flex; align-items: center; gap: 7px; height: 28px; padding: 0 12px; border-radius: 999px;
-  border: 1px solid var(--ds-line); background: var(--ds-surface-2); font-size: 12px; font-weight: 600; color: var(--ds-ink); }
+  border: 1px solid var(--ds-line); background: var(--ds-surface-2); font-size: 12px; font-weight: 600; color: var(--field-ink, var(--ds-ink)); }
 html body .local-dashboard-page--overview .local-overview-charts-panel :is(.ins-token-legend, .tier-legend) li > i {
   width: 9px; height: 9px; border-radius: 999px; flex: none; }
 
@@ -903,10 +904,11 @@ html body .local-dashboard-page article[data-component="runs-insights"] .local-d
    page: panel padding 16 (Overview), 14x16 and 14x18 (Runs, Workflow, Usage, Evidence), 18x20 borderless (Settings); legend
    chips 28px pills (Overview), 32px radius-8 buttons (Runs), 19px plain text (Usage, Evidence).
    - Every top-level panel and card: --ds-pad-y / --ds-pad-x, --ds-radius, a 1px --ds-line border on --ds-surface. A panel
-     inside a panel (a tab's chart) keeps no frame of its own.
+     inside a panel (a tab's chart), or inside a Settings section (whose panel group is the one card, AC160), keeps no
+     frame of its own.
    - Evidence's panels pad their head and body from the same tokens.
    - Every legend, chip and series toggle: a --ds-chip-h pill. */
-html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) article.local-dashboard-panel:not(article article, .local-dashboard-tabpanel article) {
+html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) article.local-dashboard-panel:not(article article, .local-dashboard-tabpanel article, .local-settings-section article) {
   padding: var(--ds-pad-y) var(--ds-pad-x) !important; border-radius: var(--ds-radius) !important;
   border: 1px solid var(--ds-line) !important; background: var(--ds-surface) !important; }
 html body main.ev-root .panel { border-radius: var(--ds-radius) !important; }
@@ -922,7 +924,9 @@ html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-e
   display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 0; padding: 0; list-style: none; }
 html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) :is(.ins-token-legend, .tier-legend, .gdb-legend) li {
   display: inline-flex; align-items: center; gap: 7px; height: var(--ds-chip-h); padding: 0 12px; border-radius: var(--ds-radius-pill);
-  border: 1px solid var(--ds-line); background: var(--ds-surface-2); color: var(--ds-ink); }
+  border: 1px solid var(--ds-line); background: var(--ds-surface-2); color: var(--field-ink, var(--ds-ink)); }
+/* A legend item reads in its field's ink (the readable shade of the field colour), as the same field's toggle does on
+   every other chart, so one field is one colour across Overview, Runs and Usage. */
 html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) :is(.ins-token-legend, .tier-legend, .gdb-legend) li > i { width: 9px; height: 9px; border-radius: var(--ds-radius-pill); flex: none; }
 
 /* OMN-22168 (Lakshman 2026-11-05, "make each cards different color and distinct", "use everything logically"): every
@@ -935,11 +939,17 @@ html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-e
   position: relative; overflow: hidden;
   background: linear-gradient(155deg, color-mix(in oklab, var(--panel-accent, var(--ds-line)) 13%, var(--ds-surface)) 0%,
     var(--ds-surface) 62%) !important;
+  /* The gradient shorthand leaves background-color transparent; the card keeps an opaque surface under its tint. */
+  background-color: var(--ds-surface) !important;
   border-color: color-mix(in oklab, var(--panel-accent, var(--ds-line)) 38%, var(--ds-line)) !important; }
 html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-overview-summary > article.local-dashboard-panel.local-dashboard-panel::before {
   content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: var(--panel-accent, var(--ds-line)); opacity: 0.9; }
 html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-overview-summary > article.local-dashboard-panel.local-dashboard-panel > h2 svg {
   color: var(--panel-accent, currentColor) !important; }
+/* Delegation Quality's edge is the pass green (AC82), but its icon keeps the site-wide quality identity (one concept, one
+   colour on every page; the AC4 census). */
+html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-overview-summary > article.local-dashboard-panel.local-dashboard-panel[data-component="overview-quality"] > h2 svg {
+  color: var(--ds-field-quality) !important; }
 /* The 16px card padding grew the summary cards from 148px to 154px (measured), past the 150px a compact card may take
    (OMN-21166 hierarchy). The figure's top margin and the card's gaps give back those 6px, so cards are 148px again. */
 html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-overview-summary > article.local-dashboard-panel.local-dashboard-panel { row-gap: 5px !important; }

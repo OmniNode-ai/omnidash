@@ -1,4 +1,5 @@
 import { expect, test, type Page } from 'playwright/test';
+import { chooseChartTab } from './chart-tabs';
 import { chartRows, prefix, serveCharts, recentDay } from './omn21166-chart-fixtures';
 
 // Failure modes before implementation: long tables bury records; filters hide
@@ -58,6 +59,9 @@ test('phone Usage records retain every labelled value and the model legend ident
   const swatch = await page.locator('.utc-legend li').filter({ hasText: 'model-alpha' }).locator('i').evaluate(element => getComputedStyle(element).backgroundColor);
   const segment = page.locator('.utc-stack i[data-token-model="model-alpha"]').first();
   expect(await segment.evaluate(element => getComputedStyle(element).color)).toBe(swatch);
+  // OMN-22168: Tokens per day and Tokens by model are tabs of Usage's "Tokens" panel; the legend above is read on the
+  // first, the pair's name on the second.
+  await chooseChartTab(page, 'Tokens by model');
   const name = page.getByRole('figure', { name: 'Tokens in vs out by model', exact: true }).locator('li.gdb-day[aria-label^="model-alpha:"] .gdb-day-label');
   // OMN-21970 option a (Lakshman 2026-11-03): the name reads in ink; the swatch beside it carries the model's colour.
   expect(await name.locator('.gdb-swatch').evaluate(element => getComputedStyle(element).backgroundColor)).toBe(swatch);

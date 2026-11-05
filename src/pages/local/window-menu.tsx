@@ -13,7 +13,8 @@ const WINDOW_ICONS: Readonly<Record<string, LucideIcon>> = {
 };
 function WindowIcon({ value }: { value: string | undefined }) {
   const Icon = value ? WINDOW_ICONS[value] : undefined;
-  return Icon ? <Icon className="local-window-icon" size={16} aria-hidden="true" /> : null;
+  // Each window is its own concept (one icon, one tone), named for the identity census.
+  return Icon ? <Icon className="local-window-icon" size={16} aria-hidden="true" data-semantic-concept={`window:${value}`} /> : null;
 }
 
 export interface WindowMenuOption { value: string; label: string; name: string; checked: boolean; onSelect: () => void }

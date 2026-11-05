@@ -91,6 +91,8 @@ test('empty or unavailable run figures do not produce fake charts or zeros', asy
   for (const label of labels.filter(label => !label.startsWith('Oct 17:'))) expect(label).toMatch(/: 0 in, 0 out$/);
   await serveCharts(page, { ...rows, [prefix + 'delegation.decisions.v1']: [] });
   await page.reload();
+  // The reload keeps the chosen tab (it is in the address), so Runs per day is chosen again.
+  await chooseChartTab(page, 'Runs per day');
   await expect(page.locator('[data-slice="runs"]')).toContainText('No runs yet');
   await chooseChartTab(page, 'Tokens per day');
   await expect(page.locator('[data-slice="tokens"]')).toContainText('No runs yet');

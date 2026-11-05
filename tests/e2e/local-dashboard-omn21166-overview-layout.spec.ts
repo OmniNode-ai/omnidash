@@ -38,7 +38,8 @@ async function boxes(page: Page) {
       const r = panel.getBoundingClientRect();
       const frame = panel.closest('.local-overview-charts-panel')!.getBoundingClientRect();
       const plot = panel.querySelector('.ins-bars.gdb-plot, .rb-chart--vertical .rb-track');
-      return { top: Math.round(r.top), left: Math.round(r.left), width: Math.round(r.width), frameLeft: Math.round(frame.left),
+      // Page coordinates: choosing a tab can scroll it into view, which moves every viewport box by the scroll.
+      return { top: Math.round(r.top + window.scrollY), left: Math.round(r.left), width: Math.round(r.width), frameLeft: Math.round(frame.left),
         frameRight: Math.round(frame.right), right: Math.round(r.right), plot: plot ? Math.round(plot.getBoundingClientRect().height) : 0 };
     });
     placed.push({ title, ...box });

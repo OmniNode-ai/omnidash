@@ -123,10 +123,11 @@ test('tier shares read directly from the routing table and preserve served denom
 });
 
 test('usage model bars do not change figures, table or other model colors', async ({ page }) => {
-  await page.goto('/usage');
+  await page.goto('/usage'); // OMN-22168: Usage's charts are tabs, one drawn at a time; the address names the tab to open.
   // OMN-21166 Maple grid: the page's Tokens per day is a stacked chart that prints each served count in the day's label;
   // part 17 AC114: "Tokens by model" (under "More usage") is hatched grouped bars, two per model, values on hover or focus.
   await expect(page.locator(`[data-component="usage-tokens-by-day"]:not([data-slice]) li[data-token-day="${USAGE_DAY}"]`)).toHaveAttribute('aria-label', /model-a: 162/);
+  await chooseChartTab(page, 'Tokens by model');
   const figure = page.getByRole('figure', { name: 'Tokens in vs out by model', exact: true });
   const modelA = figure.locator('li.gdb-day[aria-label^="model-a:"]');
   const modelB = figure.locator('li.gdb-day[aria-label^="model-b:"]');
@@ -179,6 +180,9 @@ test.describe('touch chart controls', () => {
     await expect(area.getByRole('button', { name: 'Inspect Cloud', exact: true })).toHaveCount(0);
     await expect(area.getByRole('row').filter({ hasText: 'Cloud' }).locator('td[data-column="share"]')).toHaveText('25.0%');
     await page.getByRole('link',{name:'Usage',exact:true}).tap();
+    // OMN-22168: Tokens by model is a tab of Usage's "Tokens" panel; a touch reader taps the tab first.
+    await page.getByRole('tab', { name: 'Tokens by model', exact: true }).tap();
+    await expect(page.getByRole('tab', { name: 'Tokens by model', exact: true })).toHaveAttribute('aria-selected', 'true');
     const group = page.getByRole('figure', { name: 'Tokens in vs out by model', exact: true }).locator('li.gdb-day[aria-label^="model-b:"]');
     await group.tap();
     await expect(group).toHaveAttribute('aria-label', /Not recorded tokens out/);

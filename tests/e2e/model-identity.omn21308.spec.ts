@@ -51,18 +51,16 @@ async function theme(page: Page, requested: string) {
 
 async function usageColors(page: Page, names: string[]) {
   // OMN-21166 Maple grid + AC64: Spend by model is ranked bars (no donut or legend buttons) and the page's Tokens per day
-  // is a stacked chart; "Tokens by model" (hatched grouped bars, the model's name under its pair in the model's colour) is
-  // under "More usage" (part 17: the highlight buttons and per-day bars are removed). One model keeps one colour in all.
+  // is a stacked chart; "Tokens by model" is hatched grouped bars, the model's name under its pair in the model's colour
+  // (part 17: the highlight buttons and per-day bars are removed). One model keeps one colour in all.
+  // OMN-22168: the three charts are tabs (Spend by model in "Savings and spend"; Tokens per day and Tokens by model in
+  // "Tokens"), one drawn at a time, so each model's colour is read on each tab in turn and compared.
+  await chooseChartTab(page, 'Spend by model');
   const spend = page.getByRole('figure', { name: 'Spend by model', exact: true });
-  const chart = page.getByRole('figure', { name: 'Tokens in per day by model', exact: true });
-  const tokens = page.getByRole('figure', { name: 'Tokens in vs out by model', exact: true });
   await expect(spend.locator('li[data-ranked-item]')).toHaveCount(names.length);
-  await expect(chart.getByRole('list', { name: 'Models', exact: true }).getByRole('listitem')).toHaveCount(names.length);
-  await expect(tokens.locator('li.gdb-day')).toHaveCount(names.length);
   await expect(page.getByRole('group', { name: 'Model highlight' })).toHaveCount(0); // part 17 AC116: removed with the detail panel
   const result: Record<string, string> = {};
   for (const name of names) {
-    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const item = spend.locator(`li[data-ranked-item="${name}"]`);
     const color = await item.locator('.rb-name .rb-swatch').evaluate(el => getComputedStyle(el).backgroundColor);
     expect(color, `${name}: real ranked-bar colour`).not.toBe('rgba(0, 0, 0, 0)');
@@ -76,6 +74,14 @@ async function usageColors(page: Page, names: string[]) {
       expect(await bar.evaluate(el => getComputedStyle(el).color), `bar for ${name}`).toBe(color);
       expect(await bar.getAttribute('style'), `bar size for ${name}`).toContain('--rb-size');
     }
+    result[name] = color;
+  }
+  await chooseChartTab(page, 'Tokens per day');
+  const chart = page.getByRole('figure', { name: 'Tokens in per day by model', exact: true });
+  await expect(chart.getByRole('list', { name: 'Models', exact: true }).getByRole('listitem')).toHaveCount(names.length);
+  for (const name of names) {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const color = result[name];
     const chartLegend = chart.getByRole('list', { name: 'Models', exact: true }).getByRole('listitem').filter({ hasText: new RegExp(`^${escaped}$`) });
     await expect(chartLegend).toHaveCount(1);
     expect(await chartLegend.locator('i').evaluate(el => getComputedStyle(el).backgroundColor), `${name}: token chart legend`).toBe(color);
@@ -84,11 +90,16 @@ async function usageColors(page: Page, names: string[]) {
     // background-image), so the model colour is the segment's text colour and its top edge, not its background-color.
     expect(await segment.evaluate(el => getComputedStyle(el).color), `${name}: token chart segment`).toBe(color);
     expect(await segment.evaluate(el => getComputedStyle(el).borderTopColor), `${name}: token chart segment edge`).toBe(color);
+  }
+  await chooseChartTab(page, 'Tokens by model');
+  const tokens = page.getByRole('figure', { name: 'Tokens in vs out by model', exact: true });
+  await expect(tokens.locator('li.gdb-day')).toHaveCount(names.length);
+  for (const name of names) {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     // Part 17 AC114: the model's name under its pair of bars is in the model's colour.
     const pairName = tokens.locator('li.gdb-day').filter({ has: page.locator('.gdb-day-label', { hasText: new RegExp(`^${escaped}$`) }) }).locator('.gdb-day-label');
     await expect(pairName).toHaveCount(1);
-    expect(await pairName.locator('.gdb-swatch').evaluate(el => getComputedStyle(el).backgroundColor), `${name}: Tokens by model name swatch`).toBe(color);
-    result[name] = color;
+    expect(await pairName.locator('.gdb-swatch').evaluate(el => getComputedStyle(el).backgroundColor), `${name}: Tokens by model name swatch`).toBe(result[name]);
   }
   return result;
 }

@@ -75,8 +75,12 @@ test('Activity window presets have distinct identities and a selected outline in
       await openWindows(page);
       await expect(button).toHaveAttribute('aria-checked', 'true');
       await expect(group.locator('[role="radio"][aria-checked="true"]')).toHaveCount(1);
-      await expect(button.locator('svg')).toHaveCount(1);
-      await expect(group.locator('[role="radio"][aria-checked="false"] svg')).toHaveCount(0);
+      // OMN-22168 (Lakshman 2026-11-04, "make colourful"): every option shows its own window icon; only the chosen one
+      // adds the tick.
+      await expect(button.locator('svg.local-window-icon')).toHaveCount(1);
+      await expect(button.locator('svg.lucide-check')).toHaveCount(1);
+      await expect(group.locator('[role="radio"][aria-checked="false"] svg.lucide-check')).toHaveCount(0);
+      for (const other of await group.locator('[role="radio"][aria-checked="false"]').all()) await expect(other.locator('svg.local-window-icon')).toHaveCount(1);
       // OMN-21166 live review 2026-10-25: the segments fade their fill on selection; measure after the fade has finished
       // (a mid-fade sample read a light fill under grey text on the dark theme, a false 3.9:1).
       await group.evaluate(el => Promise.all(el.getAnimations({ subtree: true }).map(animation => animation.finished)));

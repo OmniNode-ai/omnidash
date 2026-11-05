@@ -1,7 +1,7 @@
 import { expect, test, type Page } from 'playwright/test';
 import { serveCharts } from './omn21166-chart-fixtures';
 import { withAllTime } from './omn21166-redesign-fixtures';
-import { chooseChartTab } from './chart-tabs';
+import { chartTabPanel, chooseChartTab } from './chart-tabs';
 
 // OMN-21166 part 28, revision 5 (Lakshman 2026-10-27: "take help of codex and paradev and entire style copy it"; he chose
 // a monochrome interface, solid flat bars and 8px corners). Failure modes declared before the code:
@@ -47,13 +47,16 @@ for (const theme of ['light', 'dark'] as const) {
       const icons = await page.evaluate(() => [...document.querySelectorAll('.sidebar .dash-marker svg, main svg.lucide')]
         // OMN-21970 (Lakshman 2026-11-03, one colour per concept): an icon that names a concept draws its own colour on
         // every page (checked below); every icon that names none is the interface grey.
-        .filter(svg => !svg.closest('.local-run-pill, .badge, .chain-node, .live-pill, [role="alert"]') && !svg.matches('[data-field-icon], [data-semantic-concept^="model:"]') && (svg as SVGElement).getBoundingClientRect().width > 0)
+        .filter(svg => !svg.closest('.local-run-pill, .badge, .chain-node, .live-pill, [role="alert"]') && !svg.matches('[data-field-icon], [data-semantic-concept]') && (svg as SVGElement).getBoundingClientRect().width > 0)
+        // OMN-22168 (Lakshman 2026-11-04/05, "make colourful"; "each unique thing has different and unique colors"): an icon
+        // that names a concept (data-semantic-concept: a window, a header status) draws its own colour, and each chart tab's
+        // glyph draws its chart's tone; they are not interface icons.
         // OMN-22168 (Lakshman 2026-11-04, chosen over this grey for these controls only): each Runs filter's glyph and the
         // CSV and JSON export glyphs carry their own colour; design-system-dashboard-polish L8 checks them.
         // OMN-22168 (Lakshman 2026-11-04): the Runs filter and export glyphs, and each page's sidebar and title icon, draw
         // their own colour (design-system-dashboard-polish L8 and L11 check them); they still count as drawn icons.
         .map(svg => ({ color: getComputedStyle(svg).color, active: !!svg.closest('.mvp-nav-item.active'),
-          exempt: !!svg.closest('.local-dashboard-filters .ds-dropdown-mark, .local-runs-export button[data-export]') || svg.matches('svg.destination-icon') })));
+          exempt: !!svg.closest('.local-dashboard-filters .ds-dropdown-mark, .local-runs-export button[data-export], .local-dashboard-tablist [role="tab"][data-toned]') || svg.matches('svg.destination-icon') })));
       expect(icons.length, `${path} draws icons`).toBeGreaterThan(3);
       for (const icon of icons.filter(item => !item.exempt)) expect(icon.color, `${path} icon`).toBe(INK3[theme]);
       const concepts = await page.evaluate(() => [...document.querySelectorAll('main svg.field-icon[data-field-icon]:not([data-field-icon^="tier-"]):not([data-semantic-concept^="model:"])')]
@@ -83,12 +86,16 @@ for (const theme of ['light', 'dark'] as const) {
     await page.locator('.local-window-trigger').click();
     const selected = page.locator('.local-window-list [role="radio"][aria-checked="true"]').first();
     const unselected = page.locator('.local-window-list [role="radio"][aria-checked="false"]').first();
-    await expect(selected.locator('svg')).toHaveCount(1);
-    await expect(unselected.locator('svg')).toHaveCount(0);
-    await expect(selected).toHaveCSS('background-color', RAISED[theme]);
+    // OMN-22168 (Lakshman 2026-11-04, "make colourful"; supersedes the neutral chosen option): each option shows its own
+    // window icon and the chosen one is tinted in its window's tone with a tick; its text stays in ink.
+    await expect(selected.locator('svg.local-window-icon')).toHaveCount(1);
+    await expect(selected.locator('svg.lucide-check')).toHaveCount(1);
+    await expect(unselected.locator('svg.lucide-check')).toHaveCount(0);
     await expect(selected).toHaveCSS('color', INK[theme]);
+    const selectedFill = await selected.evaluate(el => getComputedStyle(el).backgroundColor);
+    expect(selectedFill).not.toBe('rgba(0, 0, 0, 0)');
     // Control: the unselected option is told apart from the selected one.
-    expect(await unselected.evaluate(el => getComputedStyle(el).backgroundColor)).not.toBe(RAISED[theme]);
+    expect(await unselected.evaluate(el => getComputedStyle(el).backgroundColor)).not.toBe(selectedFill);
     await page.keyboard.press('Escape');
     await expect(page.locator('main article.local-dashboard-panel').first()).toHaveCSS('border-radius', '12px');
     const expand = page.locator('.local-chart-expand').first();
@@ -167,7 +174,8 @@ test('AC183 the two day charts share a baseline and every chart title has the pa
     await chooseChartTab(page, tab);
     const panel = page.locator('.local-dashboard-panel[data-component="overview-insights"]');
     await expect(panel).toHaveCount(1);
-    bottoms.push(await panel.locator('.ins-bars').first().evaluate(el => el.getBoundingClientRect().bottom));
+    // Page coordinates: choosing a tab can scroll it into view.
+    bottoms.push(await panel.locator('.ins-bars').first().evaluate(el => el.getBoundingClientRect().bottom + window.scrollY));
   }
   expect(Math.abs(bottoms[0]! - bottoms[1]!)).toBeLessThanOrEqual(1);
   // The 01+20 look (Lakshman 2026-11-03): a panel title is a small mono label with no rule under it (was a 1px divider).
@@ -192,7 +200,8 @@ test('AC184 Delegation Evidence content lines up with its title on desktop and p
 test('AC185 Usage Savings per day names its days like every other day axis', async ({ page }) => {
   await openTheme(page, 'dark');
   await settle(page, '/usage');
-  const savings = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Savings per day' }) });
+  // OMN-22168: Savings per day is a tab of "Savings and spend"; its own heading is hidden inside the tab, which names it.
+  const savings = await chartTabPanel(page, 'Savings per day');
   const labels = savings.locator('figure svg text');
   await expect(labels.first()).toBeVisible();
   const texts = (await labels.allTextContents()).map(text => text.trim()).filter(Boolean);

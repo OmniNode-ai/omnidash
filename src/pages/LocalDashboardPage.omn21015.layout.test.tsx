@@ -73,9 +73,12 @@ const RENDERED_ORDER: Record<PageName, Array<[title: string, width: number]>> = 
   ],
   // Each chart takes the full row; under "More usage" each chart is its own panel, then the model-by-day table (part 17).
   // OMN-21166 part 29 AC194: Usage analysis follows the four charts, full row (AC89).
+  // OMN-22168 (Lakshman 2026-11-05, "all bar graph should be switched via tabs"): Usage's seven charts are two titled rows
+  // of tabs, "Savings and spend" and "Tokens", each drawing its chosen chart only (Savings per day and Tokens per day
+  // first); Usage analysis and the model-by-day table follow.
   usage: [
-    ['Savings per day', 12], ['Savings by model', 12], ['Spend by model', 12], ['Tokens per day', 12], ['Usage analysis', 12],
-    ['Cost per run', 12], ['Tokens by model', 12], ['Cost by route', 12], ['Usage by model and day', 12],
+    ['Savings and spend', 12], ['Savings per day', 12], ['Tokens', 12], ['Tokens per day', 12], ['Usage analysis', 12],
+    ['Usage by model and day', 12],
   ],
 };
 const HEADLINE_STRIP = new Set(['Actual spend', 'Savings', 'Agent calls', 'Tokens processed', 'Delegation Quality']);
@@ -91,8 +94,8 @@ const BEFORE: Record<PageName, string[]> = {
     'Runs per day'].sort(),
   // OMN-21166 Maple grid: Usage insights is drawn as Spend by model and, under "More usage", one panel per chart (part 17:
   // Cost per run, Tokens by model, Cost by route); the day-by-day token list is gone (the table holds its rows).
-  usage: ['Savings per day', 'Savings by model', 'Tokens per day', 'Spend by model', 'Usage analysis', 'Cost per run', 'Tokens by model', 'Cost by route',
-    'Usage by model and day'].sort(),
+  // OMN-22168: on load the two tab rows draw their first charts; the other five are drawn when their tab is chosen.
+  usage: ['Savings and spend', 'Savings per day', 'Tokens', 'Tokens per day', 'Usage analysis', 'Usage by model and day'].sort(),
 };
 
 async function panels(pageName: PageName): Promise<Array<[string, number]>> {
@@ -152,6 +155,19 @@ describe.each(['overview', 'usage'] as const)('OMN-21015: %s puts its charts fir
       col += widget.width;
       tallest = Math.max(tallest, widget.height);
     }
+  });
+});
+
+// OMN-22168 Y2 on Usage: with one chart drawn per tab row, "no chart dropped, doubled or renamed" is the tab names.
+describe('OMN-22168: every Usage chart is one tab', () => {
+  it('Y2: the two tab rows name the seven charts, each once', async () => {
+    const { container } = render(<LocalDashboardPage pageName="usage" />);
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    const tabs = (label: string) => [...container.querySelectorAll(`[role="tablist"][aria-label="${label}"] [role="tab"]`)]
+      .map(tab => tab.getAttribute('aria-label') ?? tab.textContent ?? '');
+    expect(tabs('Savings and spend charts')).toEqual(['Savings per day', 'Savings by model', 'Spend by model', 'Cost per run', 'Cost by route']);
+    expect(tabs('Token charts')).toEqual(['Tokens per day', 'Tokens by model']);
   });
 });
 

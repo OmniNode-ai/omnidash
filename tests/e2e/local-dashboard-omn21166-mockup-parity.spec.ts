@@ -112,9 +112,12 @@ test('AC27 Runs filters by UTC day and task, then shows the selected run without
   // charts"), below the run list.
   const week = page.getByRole('group', { name: 'This week' });
   const listTop = await page.getByRole('heading', { name: 'Run list', exact: true }).evaluate(element => element.getBoundingClientRect().top);
-  const weekHeading = page.getByRole('heading', { name: 'This week', exact: true });
-  expect(await weekHeading.count()).toBe(1);
-  const weekTop = await weekHeading.evaluate(element => element.getBoundingClientRect().top);
+  // OMN-22168: This week is a tab of the run charts panel; the tab names it (the chart's own heading is hidden inside it).
+  await chooseChartTab(page, 'This week');
+  await page.locator('.local-dashboard-page').evaluate(el => { el.scrollTop = 0; });
+  const weekPanel = page.getByRole('tabpanel', { name: 'This week', exact: true });
+  await expect(weekPanel).toHaveCount(1);
+  const weekTop = await weekPanel.evaluate(element => element.getBoundingClientRect().top);
   const filtersTop = await page.locator('.local-runs-search').evaluate(element => element.getBoundingClientRect().top);
   const listBox = await page.locator('.local-runs-wrap').boundingBox();
   expect(listBox).not.toBeNull();
@@ -122,7 +125,7 @@ test('AC27 Runs filters by UTC day and task, then shows the selected run without
   expect(weekTop).toBeGreaterThanOrEqual(listBox!.y + listBox!.height - 1);
   // OMN-21166 part 13: the "Days" chip row is gone; a UTC day in the address still filters the list and the week status
   // names it, and the task chips are the Task select (its option counts follow the other filters).
-  await page.goto(`/runs?day=${utcDay(0)}`);
+  await page.goto(`/runs?day=${utcDay(0)}&runchart=week`);
   await expect(week.getByRole('status')).toContainText('2 runs · 1 passed · 1 failed');
   await expect(page).toHaveURL(new RegExp(`day=${utcDay(0)}`));
   await expect(page.getByRole('row', { name: /run-today-unmeasured/ })).toBeVisible();
@@ -204,6 +207,8 @@ test('AC27 selection moves to the first listed run when paging hides the selecte
 test('AC29 Usage exposes measured model spend, per-call cost, tokens, and honest unavailable route savings', async ({ page }, info) => {
   await serveCharts(page, fixtureRows());
   await page.goto('/usage');
+  // OMN-22168: Usage's charts are tabs, one drawn at a time; each is chosen before it is read.
+  await chooseChartTab(page, 'Spend by model');
   const spend = page.getByRole('figure', { name: 'Spend by model', exact: true });
   // OMN-21166 AC64: spend by model is ranked bars (figure "Measured spend per model"); a bar is a list item named by its
   // model and measured value, a model with no measured spend is "Not measured" (never $0.00), and the count of
@@ -218,6 +223,7 @@ test('AC29 Usage exposes measured model spend, per-call cost, tokens, and honest
   // OMN-21166 part 13: cost per run, tokens by model, cost by route and the per-day table are under "More usage"; part 17
   // AC112: each chart is its own panel (Cost per run, Tokens by model, Cost by route), the first two hatched grouped bars
   // whose values show on hover or focus and are named in the group's accessible name.
+  await chooseChartTab(page, 'Cost per run');
   const perCall = page.getByRole('figure', { name: 'Cost per run', exact: true });
   await expect(perCall).toContainText('$0.50');
   const allUnmeasuredDay = perCall.getByRole('listitem', { name: new RegExp(`${utcDay(-2)}.*measured cost per call Not measured.*2 unmeasured calls`) });
@@ -225,6 +231,7 @@ test('AC29 Usage exposes measured model spend, per-call cost, tokens, and honest
   await expect(allUnmeasuredDay).toHaveAttribute('aria-label', /measured cost per call Not measured/);
   // Part 17 AC113: a day with no measured call draws no bar.
   await expect(allUnmeasuredDay.locator('.gdb-bar')).toHaveCount(0);
+  await chooseChartTab(page, 'Tokens by model');
   const tokens = page.getByRole('figure', { name: 'Tokens in vs out by model', exact: true });
   await expect(tokens.getByRole('listitem', { name: /model-a/ })).toBeVisible();
   await expect(tokens.getByRole('listitem', { name: 'model-a: 80 tokens in, 20 tokens out', exact: true })).toBeVisible();
@@ -233,6 +240,7 @@ test('AC29 Usage exposes measured model spend, per-call cost, tokens, and honest
   await expect(modelB).toBeVisible();
   await expect(modelB.locator('.gdb-col[data-series="in"] .gdb-bar')).toHaveCount(0);
   await expect(page.getByRole('table', { name: 'Usage by model and day', exact: true })).toContainText('model-b');
+  await chooseChartTab(page, 'Cost by route');
   const route = page.getByRole('region', { name: 'Cost by route', exact: true });
   await expect(route).toContainText('$0.50');
   await expect(route.locator('[data-ranked-item]').first()).toHaveAttribute('aria-label', /^Local: \$0\.50 · 2 runs · 66\.7%, measured$/);

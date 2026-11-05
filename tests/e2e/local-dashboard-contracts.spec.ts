@@ -1,4 +1,5 @@
 import { revealRunFields } from './omn21166-chart-fixtures';
+import { chartTabPanel, chooseChartTab } from './chart-tabs';
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { expect, test, type Page } from 'playwright/test';
@@ -340,7 +341,8 @@ test('Usage shows measured cost beside unmeasured runs, never 0 for unmeasured, 
   await expect(page.getByText(/9\.25/)).toHaveCount(0);
   await expect(page.getByText('$0', { exact: true })).toHaveCount(0);
   await expect(page.getByText('0', { exact: true })).toHaveCount(0);
-  const savings = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Savings per day' }) });
+  // OMN-22168: Savings per day is a tab of "Savings and spend"; its own heading is hidden inside the tab, which names it.
+  const savings = await chartTabPanel(page, 'Savings per day');
   const series = savings.getByRole('table', { name: 'Savings per day vs claude-sonnet-5-5' });
   const day = series.getByRole('row').filter({ hasText: '2026-10-02' });
   for (const value of ['2026-10-02', '$0.40', '46']) await expect(day.getByText(value, { exact: true })).toBeVisible();
@@ -400,7 +402,8 @@ test('Overview quality and tier-mix panels show served fields only (OMN-20225 AC
   await expect(quality.getByText('1 failed · deterministic checks', { exact: true })).toBeVisible();
   // OMN-21166 Maple grid/AC64: Overview's Tier mix is ranked bars that print each served share and count, with the
   // not-tier-routed count; the table with the raw served shares (title 0.7143) is Runs' routing breakdown, below.
-  const tierMix = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Tier mix', exact: true }) });
+  // OMN-22168: Tier mix is the fourth tab of Overview's chart panel; the tab names it, its own heading is hidden.
+  const tierMix = await chartTabPanel(page, 'Tier mix');
   await expect(tierMix.getByRole('link', { name: 'Local: 5 · 71.4%, measured. Opens Runs filtered to Local', exact: true })).toBeVisible();
   await expect(tierMix.getByRole('link', { name: 'Cheap cloud: 2 · 28.6%, measured. Opens Runs filtered to Cheap cloud', exact: true })).toBeVisible();
   await expect(tierMix.getByText('7 tier-routed · 2 not tier-routed · 9 runs', { exact: true })).toBeVisible();
@@ -551,6 +554,8 @@ test('Overview and Runs scroll to their last row while the header stays reachabl
   await page.mouse.move(1100, 650);
   await page.mouse.wheel(0, 4000);
   await expect.poll(() => scrollPage.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  // OMN-22168: Tier mix is a tab of Overview's chart panel, drawn when chosen.
+  await chooseChartTab(page, 'Tier mix');
   const lastOverviewPanel = page.locator('[data-component="overview-tier-mix"]');
   await lastOverviewPanel.scrollIntoViewIfNeeded();
   await expect.poll(async () => { const box = await lastOverviewPanel.boundingBox(); return box!.y + box!.height; }).toBeLessThanOrEqual(900);
@@ -584,7 +589,8 @@ test('manual Refresh rereads local exposures and preserves the Runs filter', asy
   await page.goto('/');
   // D1: refresh rereads the legacy Overview total independently of metering.
   const savingsCard = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Savings', exact: true }) });
-  await expect(savingsCard.getByText('$1.22', { exact: true })).toBeVisible();
+  // OMN-22168: money shows every served digit, so the legacy total 1.2252 reads $1.2252.
+  await expect(savingsCard.getByText('$1.2252', { exact: true })).toBeVisible();
   await page.getByTestId('nav-local-runs').click();
   await expect(page.getByText('Runs 1–2 of 2')).toBeVisible();
   await pickFilter(page, 'Status', 'passed');

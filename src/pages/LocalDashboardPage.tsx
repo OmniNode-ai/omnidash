@@ -2028,9 +2028,9 @@ export function OverviewStatusStrip({ env, decisions, routing, now, window = 'al
       <strong><Link href="/settings#system" className="local-overview-status-link">{observed === null ? 'Runtime status not recorded' : `Runtime ${observed}`}</Link></strong>
       {reason && <span className="local-overview-status-reason">{reason}</span>}
       {/* Lakshman 2026-11-04 ("colourful"): each fact is a chip with its own glyph and tone. */}
-      <span className="local-status-chip" data-tone="blue"><Clock3 size={14} aria-hidden="true" />{lastRun}</span>
-      <span className="local-status-chip" data-tone="purple"><Rows3 size={14} aria-hidden="true" />{total}</span>
-      {speed && <span className="local-status-chip" data-tone="amber"><Timer size={14} aria-hidden="true" />{speed}</span>}
+      <span className="local-status-chip" data-tone="blue"><Clock3 size={14} aria-hidden="true" data-semantic-concept="status:last-run" />{lastRun}</span>
+      <span className="local-status-chip" data-tone="purple"><Rows3 size={14} aria-hidden="true" data-semantic-concept="status:runs-read" />{total}</span>
+      {speed && <span className="local-status-chip" data-tone="amber"><Timer size={14} aria-hidden="true" data-semantic-concept="status:median-run" />{speed}</span>}
     </div>
   );
 }
@@ -2110,7 +2110,7 @@ export function OverviewTrendPanel({ rows, columns, window, now }: {
         : 'Each UTC day, every line against its own busiest day. Point at a chip to bring its line forward; show one line for its real scale.'}</p>
       <SeriesToggles label="Trend lines" onToggle={key => toggle(key)} onPreview={setPreview} focus={front}
         series={columns.map(column => ({ key: slug(column.header), label: column.header, color: TREND_TONES[column.header] ?? 'var(--ds-ink-2)',
-          shown: shown[slug(column.header)] ?? true }))} />
+          tone: TREND_FIELDS[column.header], shown: shown[slug(column.header)] ?? true }))} />
       <ChartReadout active={active !== undefined}
         // Lakshman 2026-11-05 ("this also should be colorful"): each value in the readout wears its own line's colour.
         text={active !== undefined ? <>{label(active)}{byDay.has(active) && !twice(active)

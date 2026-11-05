@@ -66,9 +66,13 @@ test('Runs owns deep analysis and failure drilldown still filters exact records'
     await chooseChartTab(page, name);
     await expect(page.getByRole('figure', { name, exact: true })).toBeVisible();
   }
+  // The loop ends on the last tab; the drilldown is on Why runs failed, so it is chosen again.
+  await chooseChartTab(page, 'Why runs failed');
   await page.getByRole('figure', { name: 'Why runs failed', exact: true }).getByRole('button', { name: 'Show runs failed by Failure reason unavailable', exact: true }).click(); // an unmapped raw code reads as unavailable (daa30c81); the filter still carries SUMMARY_FAILURE
   // OMN-19919 AC7: a cause opens Runs on status=failed and that cause (the cause filter), not a free-text search.
-  await expect(page).toHaveURL(/\/runs\?status=failed&cause=SUMMARY_FAILURE$/);
+  // The address may also keep the chosen analysis tab (?insight=); the filter is status=failed and that cause, no search.
+  await expect.poll(() => { const url = new URL(page.url()); return [url.pathname, url.searchParams.get('status'), url.searchParams.get('cause'), url.searchParams.get('q')]; })
+    .toEqual(['/runs', 'failed', 'SUMMARY_FAILURE', null]);
   await expectFilter(page, 'Cause', 'SUMMARY_FAILURE');
   await expect(page.getByRole('searchbox', { name: 'Search runs' })).toHaveValue('');
   await expect(page.locator('[data-component="recent-runs"] tbody tr')).toHaveCount(10);
