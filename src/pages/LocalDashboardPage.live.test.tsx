@@ -281,7 +281,11 @@ describe('Partial pages (FR-3, CR-2, CR-3, AK-3, F24)', () => {
     await settle();
     const row = screen.getByRole('row', { name: /Qwen3.8-27B/ });
     // OMN-21166: token counts are grouped for reading (1620 reads 1,620); the value is the served one.
-    for (const value of ['2026-10-02', '1,620', '520', '$0.00', 'none', '10']) expect(within(row).getByText(value)).toBeInTheDocument();
+    for (const value of ['2026-10-02', '1,620', '520', '10']) expect(within(row).getByText(value)).toBeInTheDocument();
+    // OMN-22168 (Lakshman 2026-11-05): a measured zero is the short "$0" titled with the served "$0.00"; no unmeasured
+    // calls is a quiet dash titled so.
+    expect(within(row).getByTitle('$0.00')).toHaveTextContent('$0');
+    expect(within(row).getByTitle('No unmeasured calls')).toHaveTextContent('—');
     const unmeasured = screen.getByRole('row', { name: /served-model/ });
     expect(within(unmeasured).getByText('Not measured')).toBeInTheDocument();
     expect(within(unmeasured).getByText('1 unmeasured')).toBeInTheDocument();

@@ -1756,9 +1756,9 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ds-accent); outline-o
 .local-dashboard-page table[aria-label="Usage by model and day"] .local-share-meter { flex-basis: 48px; }
 /* Savings per day: day, saving and runs in fixed shares. */
 .local-dashboard-page table.local-savings-days, .local-dashboard-page .local-savings-days table { table-layout: fixed; width: 100%; }
-.local-dashboard-page .local-savings-days thead th:nth-child(1) { width: 25%; }
-.local-dashboard-page .local-savings-days thead th:nth-child(2) { width: 50%; }
-.local-dashboard-page .local-savings-days thead th:nth-child(3) { width: 25%; }
+.local-dashboard-page .local-savings-days thead th:nth-child(1) { width: 160px; }
+.local-dashboard-page .local-savings-days thead th:nth-child(2) { width: auto; }
+.local-dashboard-page .local-savings-days thead th:nth-child(3) { width: 120px; }
 /* Model by task: model names as the run table writes them (no capitals, wrapping at their joins in a wider column). */
 .local-dashboard-page table[data-decision-matrix] tbody th[scope="row"] { text-transform: none; letter-spacing: 0; font-weight: 400; font-size: 13px; color: var(--ds-ink); min-width: 200px; }
 .local-dashboard-page table[data-decision-matrix] thead th:first-child { width: 200px; }
@@ -1774,4 +1774,20 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ds-accent); outline-o
 @media (max-width: 640px) {
   .local-dashboard-page table[aria-label="Usage by model and day"] td[data-label="Day"] > .local-visually-hidden {
     position: static !important; width: auto; height: auto; margin: 0; overflow: visible; clip: auto; white-space: normal; }
+}
+
+/* Savings per day, modern (Lakshman 2026-11-05): figures in tabular digits, each saving with a filled bar against the
+   series' biggest day, a soft row hover, and the Runs table's pager (range, then the two buttons). */
+.local-dashboard-page .local-savings-days tbody td { font-variant-numeric: tabular-nums; }
+.local-dashboard-page .local-savings-days tbody tr { transition: background 0.12s; }
+.local-dashboard-page .local-savings-days tbody tr:hover > td { background: color-mix(in srgb, var(--ds-field-savings) 6%, transparent); }
+.local-dashboard-page .local-savings-cell { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.local-dashboard-page .local-savings-value { flex: 0 0 104px; font-weight: 500; }
+.local-dashboard-page .local-savings-meter { flex: 1 1 auto; margin-right: 32px; height: 8px; border-radius: 999px; background: var(--ds-line); overflow: hidden; }
+.local-dashboard-page .local-savings-meter > i { display: block; height: 100%; min-width: 2px; border-radius: inherit; background: var(--ds-field-savings); }
+.local-dashboard-page .local-savings-days .local-savings-pagination { justify-content: flex-end; margin: 0; padding: 10px 12px; border-top: 1px solid var(--ds-line); }
+.local-dashboard-page .local-savings-pagination > [role="status"] { margin-right: auto; color: var(--ds-ink-2); font-variant-numeric: tabular-nums; }
+.local-dashboard-page .local-savings-pagination button { display: inline-flex; align-items: center; gap: 4px; min-height: 30px; padding: 4px 10px; font-size: 13px; }
+@media (max-width: 640px) {
+  .local-dashboard-page .local-savings-value { flex-basis: auto; }
 }
