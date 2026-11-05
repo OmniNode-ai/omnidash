@@ -1794,9 +1794,6 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ds-accent); outline-o
    Runs"): Overview's segmented switch, the readout line above the plot, a 300px plot (220px on a phone) with the top and
    middle gridlines, each day's track and stack at most 44px wide and centred in its slot, the other days dimmed while
    one is read, and the day labels under the baseline. */
-.local-dashboard-page .utc-switch.local-dashboard-toggle { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--ds-line); border-radius: 6px; background: var(--ds-surface); overflow: visible; }
-.local-dashboard-page .utc-switch.local-dashboard-toggle button { min-height: 28px; height: auto; padding: 0 10px; border: 0 !important; border-radius: 6px; font-size: 12px; color: var(--ds-ink-2); background: transparent; }
-.local-dashboard-page .utc-switch.local-dashboard-toggle button:hover { color: var(--ds-ink); }
 .local-dashboard-page .utc-chart .ins-readout { min-height: 20px; margin: 4px 0 0; font-variant-numeric: tabular-nums; }
 .local-dashboard-page .utc-chart .ins-readout .ins-readout-sep { margin: 0 6px; color: var(--ds-ink-3); }
 .local-dashboard-page .utc-readout-swatch { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 999px; vertical-align: 1px; }
@@ -1850,3 +1847,66 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ds-accent); outline-o
    keep clear of the chips under them. */
 .local-dashboard-page ul.gdb-plot--list .gdb-val { display: none; }
 .local-dashboard-page ul.gdb-plot--names { margin-bottom: 58px; }
+
+/* Tokens in / Tokens out, a modern pill switch (Lakshman 2026-11-05, "modern tab"): two equal options on a soft track, a
+   thumb that slides to the chosen one, tinted in its field colour (cyan in, pink out, as the cards and the readout). */
+.local-dashboard-page .utc-switch.utc-direction { --utc-tone: var(--ds-field-tokens-in); position: relative; display: inline-grid;
+  grid-template-columns: 1fr 1fr; gap: 0; padding: 4px; width: max-content; max-width: 100%; border: 1px solid var(--ds-line) !important;
+  border-radius: 999px !important; background: var(--ds-surface-2) !important; overflow: visible !important; }
+.local-dashboard-page .utc-switch.utc-direction[data-direction="out"] { --utc-tone: var(--ds-field-tokens-out); }
+.local-dashboard-page .utc-direction-thumb { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc(50% - 4px);
+  border-radius: 999px; border: 1px solid color-mix(in oklab, var(--utc-tone) 60%, transparent);
+  background: color-mix(in oklab, var(--utc-tone) 18%, var(--ds-surface));
+  box-shadow: 0 6px 16px -8px var(--utc-tone);
+  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.28s, border-color 0.28s; pointer-events: none; }
+.local-dashboard-page .utc-switch.utc-direction[data-direction="out"] .utc-direction-thumb { transform: translateX(100%); }
+.local-dashboard-page .utc-switch.utc-direction button { position: relative; z-index: 1; display: inline-flex; align-items: center;
+  justify-content: center; gap: 8px; min-height: 34px; height: auto; padding: 0 18px; border: 0 !important; border-radius: 999px;
+  background: transparent !important; box-shadow: none !important; font-size: 13px; font-weight: 600; color: var(--ds-ink-2) !important;
+  cursor: pointer; transition: color 0.2s; white-space: nowrap; }
+.local-dashboard-page .utc-switch.utc-direction button + button { border-left: 0 !important; }
+.local-dashboard-page .utc-switch.utc-direction button[aria-pressed="true"] { color: var(--ds-ink) !important; }
+.local-dashboard-page .utc-switch.utc-direction button[aria-pressed="false"] .field-icon { opacity: 0.6; }
+.local-dashboard-page .utc-switch.utc-direction button:hover { color: var(--ds-ink) !important; }
+.local-dashboard-page .utc-switch.utc-direction button:focus-visible { outline: 2px solid var(--utc-tone); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .local-dashboard-page .utc-direction-thumb { transition: none; } }
+
+/* Every small toggle on the local pages (Group by, Matrix metric and columns, Trend metric and series) is the same pill
+   switch as Tokens in / Tokens out (Lakshman 2026-11-05, "all tab modern"): a soft pill track, 34px options, and a
+   tinted thumb (the panel's accent, else the brand blue) that slides to the chosen one. */
+/* Above editorial.css's panel rule, which gives every .local-dashboard-filters a panel's 12px corners and surface. */
+html body .local-dashboard-page .local-dashboard-filters.local-dashboard-toggle[role="radiogroup"],
+html body .ev-root .local-dashboard-filters.local-dashboard-toggle[role="radiogroup"] { position: relative; gap: 0 !important; padding: 4px !important;
+  border: 1px solid var(--ds-line) !important; border-radius: 999px !important; background: var(--ds-surface-2) !important; }
+.local-dashboard-toggle.local-dashboard-filters label { position: relative; z-index: 1; min-height: 34px !important; padding: 0 16px !important;
+  border-radius: 999px !important; font-size: 13px !important; font-weight: 600; color: var(--ds-ink-2) !important;
+  background: transparent !important; box-shadow: none !important; transition: color 0.2s; white-space: nowrap; }
+.local-dashboard-toggle.local-dashboard-filters label:hover,
+.local-dashboard-toggle.local-dashboard-filters label:has(input:checked) { color: var(--ds-ink) !important; }
+.local-dashboard-toggle.local-dashboard-filters label:has(input:focus-visible) { outline: 2px solid var(--ds-accent); outline-offset: 2px; }
+.local-dashboard-toggle .local-toggle-thumb { position: absolute; top: 0; left: 0; z-index: 0; border-radius: 999px; pointer-events: none;
+  --toggle-tone: var(--panel-accent, var(--ds-brand));
+  border: 1px solid color-mix(in oklab, var(--toggle-tone) 60%, transparent);
+  background: color-mix(in oklab, var(--toggle-tone) 18%, var(--ds-surface));
+  box-shadow: 0 6px 16px -8px var(--toggle-tone);
+  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), width 0.28s cubic-bezier(0.2, 0.8, 0.2, 1); }
+@media (prefers-reduced-motion: reduce) { .local-dashboard-toggle .local-toggle-thumb { transition: none; } }
+
+/* Usage analysis Groups, as the Runs table reads (Lakshman 2026-11-05, "fix ... same as overview or runs"): the name
+   column in the table's own sans text on the row's surface (no darker band, no monospace), and every header on one
+   line, the columns re-balanced so the headers fit (measured in Chrome at 1440). */
+html body .local-dashboard-page .usage-analysis table[data-analysis-table] tbody th[scope="row"] { font-family: var(--ds-font-sans) !important;
+  font-size: 13px !important; font-weight: 500 !important; background: var(--ds-surface) !important; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] thead .local-table-head { white-space: nowrap; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="name"] { width: 170px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="runs"] { width: 82px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="spend"] { width: 188px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="pass"] { width: 148px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th:is([data-col="p50"], [data-col="p95"]) { width: 128px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="last"] { width: 138px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="spark"] { width: 142px; }
+/* Model by task reads as the Groups table and the run table: sans model names on the row's surface (still opaque, so the
+   name stays readable when the matrix scrolls under it) and the same sans pass pills. */
+html body .local-dashboard-page [data-decision-matrix] tbody th[scope="row"] { font-family: var(--ds-font-sans) !important;
+  font-size: 13px !important; font-weight: 500 !important; background: var(--ds-surface) !important; }
+html body .local-dashboard-page [data-decision-matrix] .usage-matrix-figure { font-family: var(--ds-font-sans) !important; font-variant-numeric: tabular-nums; }

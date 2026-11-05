@@ -225,9 +225,14 @@ export function UsageTokensChart({ rows, days = 14 }: { rows: readonly unknown[]
   return (
     <figure className="utc-chart" aria-label={`Tokens ${direction} per day by model`}>
       <div className="utc-tools">
-        <div className="utc-switch local-dashboard-toggle" role="group" aria-label="Direction">
-          <button type="button" aria-pressed={direction === 'in'} onClick={() => setDirection('in')}>Tokens in</button>
-          <button type="button" aria-pressed={direction === 'out'} onClick={() => setDirection('out')}>Tokens out</button>
+        {/* Lakshman 2026-11-05 ("modern tab"): a pill switch whose thumb slides to the chosen direction, tinted in that
+            direction's field colour (the cards' and the readout's), each option with its card's arrow. */}
+        <div className="utc-switch utc-direction" role="group" aria-label="Direction" data-direction={direction}>
+          <span className="utc-direction-thumb" aria-hidden="true" />
+          <button type="button" aria-pressed={direction === 'in'} onClick={() => setDirection('in')}>
+            <ConceptIcon concept="tokens-in" label="Tokens in" size={14} />Tokens in</button>
+          <button type="button" aria-pressed={direction === 'out'} onClick={() => setDirection('out')}>
+            <ConceptIcon concept="tokens-out" label="Tokens out" size={14} />Tokens out</button>
         </div>
       </div>
       {(() => {

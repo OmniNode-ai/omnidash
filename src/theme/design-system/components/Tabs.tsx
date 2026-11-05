@@ -106,8 +106,28 @@ export function DashboardToggle<T extends string>({ label, options, value, onCha
   label: string; options: ReadonlyArray<ToggleOption<T>>; value: T; onChange: (value: T) => void;
 }) {
   const name = useId();
+  // OMN-22168 (Lakshman 2026-11-05, "all tab modern and same as overview or runs"): a pill track whose thumb slides to
+  // the chosen option, as the Tokens in / Tokens out switch and the stat tabs' slider do; the thumb is decoration
+  // (aria-hidden), measured from the chosen option so it follows wrapping and resizing.
+  const labels = useRef<Array<HTMLLabelElement | null>>([]);
+  const chosen = options.findIndex(option => option.value === value);
+  const [thumb, setThumb] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
+  useLayoutEffect(() => {
+    const measure = () => {
+      const option = labels.current[chosen];
+      setThumb(option ? { left: option.offsetLeft, top: option.offsetTop, width: option.offsetWidth, height: option.offsetHeight } : null);
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(measure);
+    const group = labels.current[0]?.parentElement;
+    if (group) observer.observe(group);
+    return () => observer.disconnect();
+  }, [chosen, options.length]);
   return <div className="local-dashboard-filters local-dashboard-toggle" role="radiogroup" aria-label={label}>
-    {options.map(option => <label key={option.value}>
+    {thumb && <span className="local-toggle-thumb" aria-hidden="true"
+      style={{ transform: `translate(${thumb.left}px, ${thumb.top}px)`, width: thumb.width, height: thumb.height }} />}
+    {options.map((option, index) => <label key={option.value} ref={element => { labels.current[index] = element; }}>
       <input type="radio" name={name} value={option.value} checked={value === option.value} onChange={() => onChange(option.value)} />
       {option.label}
     </label>)}

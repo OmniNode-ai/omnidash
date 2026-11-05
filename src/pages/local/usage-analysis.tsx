@@ -87,7 +87,7 @@ function GroupsView({ decisionRows }: { decisionRows: readonly unknown[] }) {
     <DataTable data-analysis-table aria-label={`Usage by ${label.toLowerCase()}`}>
         <thead><tr>{header('name', label)}{header('runs', 'Runs')}{header('spend', 'Spend')}
           {header('pass', 'Pass rate')}{header('p50', 'p50 latency')}{header('p95', 'p95 latency')}
-          {header('last', 'Last run')}<th scope="col" data-col="spark"><span className="local-table-head" data-field-tone="runs-daily"><ConceptIcon concept="runs-daily" label="Runs per day" size={13} />{`Runs per day (${SPARK_DAYS} days)`}</span></th></tr></thead>
+          {header('last', 'Last run')}<th scope="col" data-col="spark" title={`Runs per day, latest ${SPARK_DAYS} days`}><span className="local-table-head" data-field-tone="runs-daily"><ConceptIcon concept="runs-daily" label="Runs per day" size={13} />Runs per day<span className="local-visually-hidden">{` (${SPARK_DAYS} days)`}</span></span></th></tr></thead>
         <tbody>{sorted.map(group => <tr key={group.name}>
           <th scope="row" data-model-name={by === 'model' && group.name !== NOT_RECORDED ? '' : undefined}
             data-semantic-concept={by === 'model' && group.name !== NOT_RECORDED ? `model:${group.name}` : undefined}
@@ -146,7 +146,9 @@ function DecisionMatrix({ decisionRows }: { decisionRows: readonly unknown[] }) 
   const matrix = useMemo(() => matrixOf(decisionRows, 'model', columnsBy), [decisionRows, columnsBy]);
   const columnLabel = MATRIX_COLUMNS.find(option => option.value === columnsBy)!.label;
   // The column's name in the header and, on a phone where rows stack as cards, beside each value (Codex MSG 753d170c).
-  const columnName = (column: string) => (columnsBy === 'task' && column !== NOT_RECORDED ? column.replace(/_+/g, ' ') : column);
+  // A tier column is named in words, as every other tier on the pages is ("Cheap cloud", not cheap_cloud).
+  const columnName = (column: string) => (column === NOT_RECORDED ? column
+    : columnsBy === 'task' ? column.replace(/_+/g, ' ') : columnsBy === 'tier' ? tierLabel(column) : column);
   return <>
     <div className="local-dashboard-toggles">
       <DashboardToggle label="Matrix metric" options={MATRIX_METRICS} value={metric} onChange={setMetric} />
