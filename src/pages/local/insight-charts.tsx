@@ -3,7 +3,9 @@ import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
 import { formatDashboardUsd } from '@/lib/dashboard-currency';
 import { formatDuration } from '@/components/format/duration';
 import { createContext, useContext, useId, useState, type CSSProperties, type ReactNode } from 'react';
-import { BarTrack, ChartCard, ChartEmpty, ChartReadout, CumulativeColumns, DayColumns, Histogram, HourHeatmap, LinePlot, NamedByPanel, RankedBars, SeriesLegend, SpendColumns, dayTicks } from '@/theme/design-system/charts';
+import { millisecondsAxisLabel } from '@/theme/design-system/charts/bar-charts';
+import { passBand } from '@/pages/local/plain-text';
+import { BarTrack, ChartCard, ChartEmpty, ChartReadout, CumulativeColumns, DayColumns, Histogram, HourHeatmap, LinePlot, NamedByPanel, RankedBars, SeriesLegend, SeriesToggles, SpendColumns, dayTicks } from '@/theme/design-system/charts';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { causeHref, useSharedRunFilter } from './run-filter';
 import { failureCauseLabel } from './plain-text';
@@ -38,8 +40,6 @@ const RANGES = [
 
 const PASS = 'var(--ds-field-pass)';
 const FAIL = 'var(--ds-field-fail)';
-/** Runs per day's one bar: the day's served run total, in the chart's own concept colour. */
-const RUNS = 'var(--ds-field-runs-daily)';
 
 const TASK_CONCEPT: Readonly<Record<string, string>> = {
   document: 'task-document', code_generation: 'task-code-generation', research: 'task-research',
@@ -88,10 +88,9 @@ function runsWord(value: number): string {
 }
 
 function dayCounts(day: InsightDay): string {
-  // OMN-22168 (Lakshman 2026-11-05, "Fix Runs per day", "no verdict not needed"): a day is every run it served, so Runs
-  // per day agrees with the Daily trend and the headline; the passed and failed runs read are named beside it when any.
-  const verdicts = day.passed + day.failed;
-  return verdicts > 0 ? `${runsWord(day.runs)}, ${count(day.passed)} passed, ${count(day.failed)} failed` : runsWord(day.runs);
+  // OMN-22168 (Lakshman 2026-11-04, "don't show anything if we don't have"; 2026-11-05, "passed and failed only"): a run
+  // without a verdict is not drawn or named.
+  return [runsWord(day.passed + day.failed), `${count(day.passed)} passed`, `${count(day.failed)} failed`].join(', ');
 }
 
 /** A short label above a token bar ("2.9K", "206K"); the exact count is in the day's readout and accessible name. */
@@ -100,6 +99,11 @@ function shortCount(value: number | null): string {
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(value >= 10_000_000 ? 0 : 1)}M`;
   if (value >= 1_000) return `${(value / 1_000).toFixed(value >= 100_000 ? 0 : 1)}K`;
   return String(value);
+}
+
+/** A readout's separator: the same text (" · ") in its own span, so it can take room on either side in the quiet ink. */
+function Sep() {
+  return <span className="ins-readout-sep">{' · '}</span>;
 }
 
 function RunsPerDay({ days }: { days: InsightDay[] }) {
@@ -111,21 +115,35 @@ function RunsPerDay({ days }: { days: InsightDay[] }) {
   const onRuns = location === '/runs';
   const openDay = (key: string) => navigate(`/runs?${writeRunsSearch(onRuns ? search : '', { ...(onRuns ? readRunsSearch(search) : DEFAULT_RUNS_VIEW), day: key, page: 1 })}`);
   const opensId = useId();
-  // One bar per day, its served run total (Lakshman 2026-11-05: one Runs bar per day); the verdicts read are in the readout.
-  const max = Math.max(1, ...days.map(day => day.runs));
+  // Lakshman 2026-11-05 ("in bar graph passed and failed only"): each day draws its passed and failed runs read. Each
+  // series can be hidden; the last one shown stays on.
+  const [show, setShow] = useState({ passed: true, failed: true });
+  const max = Math.max(1, ...days.flatMap(day => [show.passed ? day.passed : 0, show.failed ? day.failed : 0]));
   const active = hover === null ? null : days[hover]!;
   const ticks = dayTicks(days, onRuns ? 14 : 8);
+  const toggle = (key: 'passed' | 'failed') => setShow(current => {
+    const other = key === 'passed' ? 'failed' : 'passed';
+    return current[key] && !current[other] ? current : { ...current, [key]: !current[key] };
+  });
   return (
     <ChartCard title="Runs per day" concept="runs-daily" delay={0}>
       <ChartReadout testId="runs-per-day-readout" active={active !== null}
-        text={active ? <>{dayLabel(active.day)} · <span data-field-tone="count">{count(active.runs)} runs</span>{active.passed + active.failed > 0 ? <> · <span data-field-tone="pass">{count(active.passed)} passed</span> · <span data-field-tone="fail">{count(active.failed)} failed</span></> : null}</> : ''} />
+        text={active ? <>{dayLabel(active.day)}<Sep /><span data-field-tone="count">{count(active.passed + active.failed)} runs</span><Sep /><span data-field-tone="pass">{count(active.passed)} passed</span><Sep /><span data-field-tone="fail">{count(active.failed)} failed</span></> : ''} />
       <DayColumns label="Runs per day" days={days.map((day, index) => ({
         key: day.day,
         ariaLabel: `${dayLabel(day.day)}: ${dayCounts(day)}`,
         tick: ticks.has(index),
-        values: [{ key: 'runs', value: day.runs, color: RUNS, label: count(day.runs) }],
+        values: [
+          // A day with no verdict read keeps its passed and failed slots empty (no bar, never a 0).
+          ...(show.passed ? [{ key: 'passed', value: day.passed + day.failed > 0 ? day.passed : null, color: PASS, label: count(day.passed) }] : []),
+          ...(show.failed ? [{ key: 'failed', value: day.passed + day.failed > 0 ? day.failed : null, color: FAIL, label: count(day.failed) }] : []),
+        ],
       }))} max={max} hover={hover} onHover={setHover} onOpen={openDay} describedBy={opensId} dayLabel={dayLabel} />
       <span id={opensId} hidden>Opens Runs for this day</span>
+      <SeriesToggles label="Series" onToggle={key => toggle(key as 'passed' | 'failed')} series={[
+        { key: 'passed', label: 'Passed', color: PASS, tone: 'pass', shown: show.passed },
+        { key: 'failed', label: 'Failed', color: FAIL, tone: 'fail', shown: show.failed },
+      ]} />
     </ChartCard>
   );
 }
@@ -172,18 +190,30 @@ function ActivityHeatmap({ runs, days, window }: { runs: InsightRun[]; days: rea
 function TaskMix({ runs }: { runs: InsightRun[] }) {
   const groups = countBy(runs, 'task');
   const max = Math.max(1, ...groups.map(group => group.runs));
+  // Lakshman 2026-11-05 ("fix all", on the Tasks list): a list in columns, like a table. Each value has its own column
+  // under a heading (runs, pass rate, verdicts), all reading from the left, so a long value never pushes a bar; the bar
+  // is the task's share of the listed runs in a full track.
   return (
     <ChartCard title="Tasks" concept="task" note="Runs and pass rate" delay={180}>
-      <ul className="ins-list" aria-label="Tasks">
+      <div className="ins-task-head local-dashboard-caption" aria-hidden="true">
+        <span /><span>Task</span><span>Share of runs</span><span>Runs</span><span>Pass rate</span><span>Verdicts</span>
+      </div>
+      <ul className="ins-list ins-task-list" aria-label="Tasks">
         {groups.map((group, index) => {
           const look = taskLook(group.key);
           const judged = group.passed + group.failed;
+          const name = group.key === NOT_RECORDED ? NOT_RECORDED : readable(group.key);
+          const pass = judged ? `${Math.round((group.passed / judged) * 100)}%` : 'No verdicts';
           return (
-            <li key={group.key} className="ins-list-row" style={{ '--ins-swatch': look.color } as CSSProperties}>
+            <li key={group.key} className="ins-list-row ins-task-row" style={{ '--ins-swatch': look.color } as CSSProperties}
+              aria-label={`${name}: ${count(group.runs)} runs, pass rate ${pass}, ${verdictCoverage(judged, group.runs)}`}>
               <span className="ins-chip-icon" aria-hidden="true">{look.icon}</span>
-              <span className="ins-list-name">{group.key === NOT_RECORDED ? NOT_RECORDED : readable(group.key)}</span>
+              <span className="ins-list-name">{name}</span>
               <BarTrack share={group.runs / max} delay={index * 60} />
-              <span className="ins-list-value"><span data-field-tone="count">{count(group.runs)}</span> · <span data-field-tone="pass" data-field-unavailable={!judged}>{judged ? `${Math.round((group.passed / judged) * 100)}%` : 'no verdicts'}</span> · <span className="ins-list-coverage" data-field-tone="basis">{verdictCoverage(judged, group.runs)}</span></span>
+              <span className="ins-task-cell" data-field-tone="count">{count(group.runs)}</span>
+              <span className="ins-task-cell" data-field-unavailable={!judged} data-pass-band={passBand(group.passed, judged)}>{pass}</span>
+              {/* The unit is written ("3 of 4 runs"), as OMN-21166 honesty AC3 reads it. */}
+              <span className="ins-task-cell ins-list-coverage" data-field-tone="basis" title={verdictCoverage(judged, group.runs)}>{`${count(judged)} of ${count(group.runs)} runs`}</span>
             </li>
           );
         })}
@@ -203,7 +233,8 @@ function DurationHistogram({ runs }: { runs: InsightRun[] }) {
       <ChartReadout active={hover !== null} text={hover === null ? (median === null ? 'No durations recorded' : <>Median <span data-field-tone="duration">{duration(median)}</span></>) : <><span data-field-tone="duration">{name(hover)}</span> · <span data-field-tone="count">{count(buckets[hover]!)} runs</span></>} />
       <Histogram label="Duration buckets" hover={hover} onHover={setHover} color="var(--ds-field-duration)"
         buckets={buckets.map((runsInBucket, index) => ({ key: String(index), ariaLabel: `${name(index)}: ${runsWord(runsInBucket)}`, value: runsInBucket }))} />
-      <div className="ins-axis"><span>{duration(edges[0]!)}</span><span>{duration(edges[edges.length - 2]!)}+</span></div>
+      {/* The axis ends name whole units, as the chart axes do ("1 min+", not "1 min 0 s+"). */}
+      <div className="ins-axis"><span>{duration(edges[0]!)}</span><span>{millisecondsAxisLabel(edges[edges.length - 2]!)}+</span></div>
     </ChartCard>
   );
 }
@@ -214,7 +245,8 @@ function ModelScoreboard({ runs }: { runs: InsightRun[] }) {
   const groups = countBy(runs, 'model');
   return (
     <ChartCard title="Model scoreboard" concept="quality-model" delay={300}>
-      <RankedBars label="Pass rate by model" unit="Pass rate of runs with a verdict · higher is better" order="desc" layout="vertical"
+      {/* A pass rate is a share, so each bar fills its slot against 100% (Lakshman 2026-11-05). */}
+      <RankedBars label="Pass rate by model" unit="Pass rate of runs with a verdict · higher is better" order="desc" layout="vertical" ceiling={100}
         items={groups.map(group => {
           const judged = group.passed + group.failed;
           const rate = judged ? (group.passed / judged) * 100 : null;
@@ -289,7 +321,7 @@ function TokensPerDay({ days }: { days: InsightDay[] }) {
   const ticks = dayTicks(days, location === '/runs' ? 14 : 8);
   return (
     <ChartCard title="Tokens per day" concept="tokens-daily" delay={420}>
-      <ChartReadout active={active !== null} text={active ? <>{dayLabel(active.day)} · <span data-field-tone="tokens-in" data-field-unavailable={active.tokensIn === null}>{side(active.tokensIn, active.tokensInUnmeasured, 'in')}</span>, <span data-field-tone="tokens-out" data-field-unavailable={active.tokensOut === null}>{side(active.tokensOut, active.tokensOutUnmeasured, 'out')}</span></> : ''} />
+      <ChartReadout active={active !== null} text={active ? <>{dayLabel(active.day)}<Sep /><span data-field-tone="tokens-in" data-field-unavailable={active.tokensIn === null}>{side(active.tokensIn, active.tokensInUnmeasured, 'in')}</span>, <span data-field-tone="tokens-out" data-field-unavailable={active.tokensOut === null}>{side(active.tokensOut, active.tokensOutUnmeasured, 'out')}</span></> : ''} />
       <DayColumns label="Tokens per day" days={days.map((day, index) => ({
         key: day.day,
         ariaLabel: label(day),

@@ -23,7 +23,8 @@ function run(id: string, at: string, extra: Record<string, unknown> = {}): Recor
 
 function savingCell(rowName: RegExp): string {
   const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent);
-  const column = headers.indexOf('Modelled saving');
+  // The column reads "Saving" (Lakshman 2026-11-05); a baseline shared by every row is named in its accessible name.
+  const column = headers.indexOf('Saving');
   expect(column, `headers: ${headers.join(' | ')}`).toBeGreaterThanOrEqual(0);
   return within(screen.getByRole('row', { name: rowName })).getAllByRole('cell')[column]!.textContent ?? '';
 }
@@ -33,7 +34,18 @@ describe('OMN-21015 AC3: savings per run on the Runs list', () => {
     render(<RunsTable now={NOW} sessions={[]} decisions={[run('measured-run', '2026-10-14T05:00:00Z', {
       modelled_savings_usd: '0.012345', savings_baseline_model: 'claude-sonnet-5-5', savings_measurement: 'measured',
     })]} />);
-    expect(savingCell(/measured-run/)).toBe('$0.012345 vs claude-sonnet-5-5');
+    expect(savingCell(/measured-run/)).toBe('$0.012345');
+    expect(screen.getByRole('columnheader', { name: 'Saving vs claude-sonnet-5-5' })).toBeTruthy();
+  });
+
+  it('R13: runs priced against different baselines each name their own, and the header names none', () => {
+    render(<RunsTable now={NOW} sessions={[]} decisions={[
+      run('sonnet-run', '2026-10-14T05:00:00Z', { modelled_savings_usd: '0.5', savings_baseline_model: 'claude-sonnet-5-5', savings_measurement: 'measured' }),
+      run('opus-run', '2026-10-14T04:00:00Z', { modelled_savings_usd: '1.25', savings_baseline_model: 'claude-opus-5-5', savings_measurement: 'measured' }),
+    ]} />);
+    expect(savingCell(/sonnet-run/)).toBe('$0.50 vs claude-sonnet-5-5');
+    expect(savingCell(/opus-run/)).toBe('$1.25 vs claude-opus-5-5');
+    expect(screen.queryByRole('columnheader', { name: /Saving vs/ })).toBeNull();
   });
 
   it('R2: a run whose tokens were not recorded says so, and shows no number', () => {
@@ -81,7 +93,7 @@ describe('OMN-21015 AC3: savings per run on the Runs list', () => {
     render(<RunsTable now={NOW} sessions={[]} decisions={[run('zero', '2026-10-14T05:00:00Z', {
       modelled_savings_usd: '0', savings_baseline_model: 'claude-sonnet-5-5', savings_measurement: 'measured',
     })]} />);
-    expect(savingCell(/zero/)).toBe('$0.00 vs claude-sonnet-5-5');
+    expect(savingCell(/zero/)).toBe('$0.00');
   });
 
   it('R8: the served decimal is shown with every served digit (OMN-22168), never through a binary float', () => {
@@ -89,14 +101,14 @@ describe('OMN-21015 AC3: savings per run on the Runs list', () => {
     render(<RunsTable now={NOW} sessions={[]} decisions={[run('precise', '2026-10-14T05:00:00Z', {
       modelled_savings_usd: '123456789.123456789', savings_baseline_model: 'claude-sonnet-5-5', savings_measurement: 'measured',
     })]} />);
-    expect(savingCell(/precise/)).toBe('$123,456,789.123456789 vs claude-sonnet-5-5');
+    expect(savingCell(/precise/)).toBe('$123,456,789.123456789');
   });
 
   it('R9: a negative saving (the run cost more than its baseline) keeps its sign before the dollar', () => {
     render(<RunsTable now={NOW} sessions={[]} decisions={[run('dearer', '2026-10-14T05:00:00Z', {
       modelled_savings_usd: '-0.5', savings_baseline_model: 'claude-sonnet-5-5', savings_measurement: 'measured',
     })]} />);
-    expect(savingCell(/dearer/)).toBe('-$0.50 vs claude-sonnet-5-5');
+    expect(savingCell(/dearer/)).toBe('-$0.50');
   });
 
   it('R10: a served value that is not a decimal is not shown as a figure', () => {
@@ -109,7 +121,7 @@ describe('OMN-21015 AC3: savings per run on the Runs list', () => {
   it('R6: the column sits beside the run\'s cost', () => {
     render(<RunsTable now={NOW} sessions={[]} decisions={[run('any', '2026-10-14T05:00:00Z')]} />);
     const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent);
-    expect(headers.indexOf('Modelled saving')).toBe(headers.indexOf('Cost') + 1);
+    expect(headers.indexOf('Saving')).toBe(headers.indexOf('Cost') + 1);
   });
 
   it('R7: the Runs page declares the served figure and the two labels it shows, on its decisions binding', () => {

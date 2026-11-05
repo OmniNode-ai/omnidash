@@ -26,8 +26,9 @@ test('required field and control inventory stays available on every current page
       buttons: [...document.querySelectorAll<HTMLButtonElement>('.main button')].map(el => el.getAttribute('aria-label') ?? el.textContent?.trim()).filter(Boolean),
     }));
   }
-  expect((pages.runs as { fields: string[] }).fields).toContain('Modelled saving');
-  expect((pages.runs as { fields: string[] }).fields).toHaveLength(18);
+  // OMN-22168 (2026-11-05): 16 run fields, the saving column reads "Saving".
+  expect((pages.runs as { fields: string[] }).fields).toContain('Saving');
+  expect((pages.runs as { fields: string[] }).fields).toHaveLength(16);
   writeFileSync(info.outputPath('required-inventory.json'), JSON.stringify({
     ...sourceIdentity(),
     mode: 'served fixtures, no live runtime claim', pages,

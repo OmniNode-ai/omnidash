@@ -288,7 +288,7 @@ describe('Baseline model label (F20, OMN-19980 AC2b)', () => {
     expect(cells[headers.indexOf('Baseline model')]?.textContent).toBe('Not recorded');
     // OMN-21015 AC3: the per-run saving comes only from the decisions row's own served figure; this row serves none, so
     // the cell is typed, and the session's savings_usd (0.000844) is still never shown.
-    expect(cells[headers.indexOf('Modelled saving')]?.textContent).toBe('Not measured');
+    expect(cells[headers.indexOf('Saving')]?.textContent).toBe('Not measured');
     expect(headers).not.toContain('Baseline cost');
     expect(headers).not.toContain('Savings');
     expect(within(row).queryByText('0.000844')).not.toBeInTheDocument();
@@ -331,15 +331,18 @@ describe('OMN-19919 AC5, AC6: Runs lists failed runs with their typed cause', ()
     render(<RunsTable now={NOW} decisions={decisions} sessions={[]} />);
     chooseDropdown('Status', 'failed');
     expect(listed()).toEqual(['run-typed', 'run-terminal', 'run-empty', 'run-legacy']);
-    expect(cell('run-typed', 'Created').textContent).toBe('Oct 2, 10:05:00 UTC');
-    expect(cell('run-typed', 'Status').textContent).toBe('failed');
-    const typedCause = cell('run-typed', 'Cause');
-    expect(within(typedCause).getByText('Provider error')).toHaveAttribute('title', 'provider returned 503: upstream unavailable');
-    expect(within(typedCause).getByText('Read failure details')).toBeInTheDocument();
-    expect(typedCause).toHaveTextContent('provider returned 503: upstream unavailable');
+    expect(cell('run-typed', 'Time').querySelector('time')?.getAttribute('datetime')).toBe('2026-10-02T10:05:00Z');
+    expect(cell('run-typed', 'Time').querySelector('.local-run-clock')?.textContent).toBe('10:05');
+    // Lakshman 2026-11-05: the cause stays on the Status cell, with the whole detail as its title and in the failed
+    // pill's tooltip (on hover and on keyboard focus).
+    const typed = cell('run-typed', 'Status');
+    expect(typed.querySelector('.local-run-pill')?.textContent).toBe('failed');
+    expect(within(typed).getByText('Provider error')).toHaveAttribute('title', 'provider returned 503: upstream unavailable');
+    fireEvent.focus(typed.querySelector('.local-run-status-trigger')!);
+    expect(within(typed).getByRole('tooltip')).toHaveTextContent('provider returned 503: upstream unavailable');
     for (const id of ['run-terminal', 'run-empty']) {
-      expect(cell(id, 'Status').textContent, id).toBe('failed');
-      expect(cell(id, 'Cause').textContent, id).toBe('Not recorded');
+      expect(cell(id, 'Status').querySelector('.local-run-pill')?.textContent, id).toBe('failed');
+      expect(cell(id, 'Status').querySelector('.local-runs-cause')?.textContent, id).toBe('Not recorded');
     }
     chooseDropdown('Status', 'Not recorded');
     expect(listed()).toEqual(['run-unjudged']);
@@ -369,9 +372,10 @@ describe('OMN-19919 AC5, AC6: Runs lists failed runs with their typed cause', ()
 
   it('U7: with no typed cause served the cause is the detail\'s label, the full detail still readable', () => {
     render(<RunsTable now={NOW} decisions={decisions} sessions={[]} />);
-    const legacy = cell('run-legacy', 'Cause');
+    const legacy = cell('run-legacy', 'Status');
     expect(within(legacy).getByText('Malformed output')).toHaveAttribute('title', 'Malformed output: invalid syntax');
-    expect(legacy).toHaveTextContent('Malformed output: invalid syntax');
+    fireEvent.focus(legacy.querySelector('.local-run-status-trigger')!);
+    expect(within(legacy).getByRole('tooltip')).toHaveTextContent('Malformed output: invalid syntax');
     fireEvent.change(screen.getByLabelText('Search runs'), { target: { value: 'invalid syntax' } });
     expect(listed()).toEqual(['run-legacy']);
   });
@@ -401,7 +405,7 @@ describe('OMN-19919: a whitespace-only typed cause falls back like a missing one
     const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent?.trim());
     for (const id of ['run-ws-null', 'run-ws-empty', 'run-ws-tab']) {
       const row = screen.getByRole('row', { name: new RegExp(`^${id}`) });
-      expect(within(row).getAllByRole('cell')[headers.indexOf('Cause')]!.textContent, id).toBe('Not recorded');
+      expect(within(row).getAllByRole('cell')[headers.indexOf('Status')]!.querySelector('.local-runs-cause')?.textContent, id).toBe('Not recorded');
     }
     const options = dropdownOptions('Cause');
     expect(options).toEqual(['all', 'Not recorded']);

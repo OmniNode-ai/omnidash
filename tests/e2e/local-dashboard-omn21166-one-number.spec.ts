@@ -104,5 +104,8 @@ test('a run shows one modelled saving on Delegation Evidence and on Runs', async
   await expect(evidenceSaving.locator('.v')).toContainText('$0.012345');
 
   await page.goto('/runs');
-  await expect(page.locator('table').first()).toContainText('$0.012345 vs claude-sonnet-5-5');
+  // The rows share one baseline, so the Saving header names it (accessible name and tooltip) and the cell shows the figure.
+  const runs = page.locator('[data-component="recent-runs"] table');
+  await expect(runs.getByRole('columnheader', { name: 'Saving vs claude-sonnet-5-5' })).toHaveCount(1);
+  await expect(runs.locator('tbody')).toContainText('$0.012345');
 });

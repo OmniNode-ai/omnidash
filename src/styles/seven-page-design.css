@@ -126,17 +126,17 @@ main.ev-root .ev-acceptance-checks > li > :first-child, main.ev-root .ev-accepta
 /* Usage › Savings by model (AC66): one row per served model, bar against the largest saving. */
 .local-dashboard-page .local-savings-by-model { margin-top: 20px; }
 .local-dashboard-page .local-savings-by-model > h3 { display: flex; align-items: center; gap: 8px; }
-.local-dashboard-page .local-savings-by-model details ul { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 8px; }
-.local-dashboard-page .local-savings-by-model details ul > li {
+.local-dashboard-page .local-savings-by-model :is(details, .local-more) ul { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 8px; }
+.local-dashboard-page .local-savings-by-model :is(details, .local-more) ul > li {
   display: grid; grid-template-columns: minmax(0, 2fr) minmax(80px, 2fr) 96px minmax(0, 1.2fr) minmax(0, 1fr);
   gap: 10px; align-items: center; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ds-ink-2);
 }
-.local-dashboard-page .local-savings-by-model details ul > li > :first-child { overflow-wrap: anywhere; }
+.local-dashboard-page .local-savings-by-model :is(details, .local-more) ul > li > :first-child { overflow-wrap: anywhere; }
 .local-dashboard-page .local-savings-by-model strong { color: var(--ds-ink); font-weight: 600; text-align: right; }
 .local-dashboard-page .local-savings-bar { height: 6px; border-radius: 3px; background: var(--ds-line-soft); overflow: hidden; }
 .local-dashboard-page .local-savings-bar > i { display: block; height: 100%; background: var(--model-color, var(--ds-field-savings)); }
 @media (max-width: 760px) {
-  .local-dashboard-page .local-savings-by-model details ul > li { grid-template-columns: minmax(0, 1fr) auto; }
+  .local-dashboard-page .local-savings-by-model :is(details, .local-more) ul > li { grid-template-columns: minmax(0, 1fr) auto; }
   .local-dashboard-page .local-savings-bar { grid-column: 1 / -1; }
 }
 
@@ -1060,6 +1060,12 @@ ul.gdb-plot--names { margin-bottom: 48px; }
 @container (max-width: 420px) {
   .local-dashboard-page--overview .gdb-day:not(:first-child):not(:last-child) .gdb-day-label { visibility: hidden; }
 }
+/* Lakshman 2026-11-05 ("Nov 5 should be in middle"): on a chart wider than a phone the first and last day's labels are
+   centred on their day like every other; a day there is wide enough to hold its label, so it stays inside the panel.
+   Under 420px they keep to the chart's edges. */
+@container (min-width: 421px) {
+  .local-dashboard-page--overview .gdb-day:is(:first-child, :last-child) .gdb-day-label { left: 50%; right: auto; transform: translateX(-50%); text-align: center; }
+}
 /* An upright bar chart under 400px wide runs sideways (name and value above each bar), as the 'auto' charts do under
    560px, so six long model names fit a phone. */
 @container (max-width: 400px) {
@@ -1455,7 +1461,10 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ds-accent); outline-o
 .usage-trend-date { font-size: 11px; color: var(--ds-ink-2); white-space: nowrap; font-family: var(--ds-font-mono); }
 /* AC206: Runs' routing groups; a reroute is named beside the routed model. */
 [data-routing-table] .local-route-changed { margin-left: 6px; font-size: 11px; padding: 0 6px; border: 1px solid var(--ds-line); border-radius: 4px; color: var(--ds-ink-2); }
-[data-routing-table] td { white-space: nowrap; }
+/* Routing groups fits its panel (it ran 110px past it at 1440, cutting off Pass rate): names wrap at their joins, the
+   Rerouted mark goes under a name when there is no room beside it, figures keep one line. */
+[data-routing-table] td { white-space: normal; }
+[data-routing-table] td:is([data-cell="escalations"], [data-cell="runs"], [data-cell="pass"]) { white-space: nowrap; }
 
 /* OMN-21166 AC205/AC207: Evidence keeps the two populations and the canonical money equation readable on phones. */
 .ev-triage-panel { min-width: 0; display: grid; gap: 10px; }
@@ -1619,3 +1628,99 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ds-accent); outline-o
   font-family: var(--ds-font-sans);
   font-weight: 600;
 }
+/* Lakshman 2026-11-05 ("all bargraph should fill like this"): a share chart (RankedBars with a ceiling) draws each bar
+   inside a grey slot that stands for the whole, so 50% fills half of it. Count and money charts have no slot.
+   Upright, the slot is the bar's column at full height; sideways (a chart under 560px, or an upright one on a local page
+   under 400px, where the kit lays bars in rows), the slot is the bar's row at full width. */
+.rb-chart--filled .rb-slot { display: flex; align-items: flex-end; box-sizing: border-box; width: 100%; height: 100%;
+  background: var(--ds-line); border-radius: var(--ds-radius-bar) var(--ds-radius-bar) 0 0; overflow: hidden; }
+.rb-chart--filled .rb-slot .rb-bar:not([data-pattern="outline"]) { width: 100% !important; max-width: none !important; margin: 0 !important; height: var(--rb-size, 0) !important; }
+.rb-chart--filled.rb-chart--vertical .rb-slot { width: 72%; max-width: 120px; margin: 0 auto; }
+@container (max-width: 560px) {
+  .rb-chart--filled:not(.rb-chart--vertical) .rb-slot { width: 100%; align-items: stretch; border-radius: 0 var(--ds-radius-bar) var(--ds-radius-bar) 0; }
+  .rb-chart--filled:not(.rb-chart--vertical) .rb-slot .rb-bar:not([data-pattern="outline"]) { width: var(--rb-size, 0) !important; height: auto !important; border-radius: 0 var(--ds-radius-bar) var(--ds-radius-bar) 0; }
+}
+@container (max-width: 400px) {
+  :is(.local-dashboard-page, .ev-root) .rb-chart--filled.rb-chart--vertical .rb-slot { width: 100%; max-width: none; margin: 0; align-items: stretch; border-radius: 0 var(--ds-radius-bar) var(--ds-radius-bar) 0; }
+  :is(.local-dashboard-page, .ev-root) .rb-chart--filled.rb-chart--vertical .rb-slot .rb-bar:not([data-pattern="outline"]) { width: var(--rb-size, 0) !important; height: auto !important; border-radius: 0 var(--ds-radius-bar) var(--ds-radius-bar) 0; }
+}
+/* A share chart labels every bar with its percentage, as in the reference (the other ranked charts reveal on hover). */
+.rb-chart--share .rb-plot > li > .rb-value, .rb-chart--share .rb-plot > li > .rb-link > .rb-value { visibility: visible; font-weight: 600; }
+
+/* Lakshman 2026-11-05 ("use all places this type of bargraph like water filled"): every bar on the local pages stands in
+   a track in the line colour that runs the plot's full height (a column) or length (a horizontal bar), as the ranked
+   bars' slots and the canvas charts' backgrounds do. A column's track is as wide as its bar. */
+/* The track is the column's own background (a pseudo-element would read as a second, unnamed mark to the identity
+   census): the column's width elsewhere, a 44px centred strip on Overview, where the bar is capped at 44px. */
+:is(.local-dashboard-page, .ev-root) .gdb-col { background: var(--ds-line); border-radius: var(--ds-radius-bar) var(--ds-radius-bar) 0 0; }
+.local-dashboard-page--overview .local-overview-charts-panel .gdb-col { background: linear-gradient(var(--ds-line), var(--ds-line)) center / min(44px, 100%) 100% no-repeat; border-radius: 0; }
+:is(.local-dashboard-page, .ev-root) :is(.ins-track, .workflow-comparison-track, .local-tier-bar-track) { background: var(--ds-line) !important; }
+:is(.local-dashboard-page, .ev-root) .ins-money-day-bars { background: var(--ds-line); border-radius: var(--ds-radius-bar) var(--ds-radius-bar) 0 0; }
+/* With tracks drawn (Lakshman 2026-11-05) each row's own auto value column showed: tracks began and ended at different
+   points row to row. Every row of a list keeps the same columns: the value column is a fixed 260px and wraps inside. */
+.local-dashboard-page .ins-list-row { grid-template-columns: 26px minmax(110px, 1fr) minmax(0, 1fr) 260px; }
+.local-dashboard-page .ins-list-row.ins-list-row--plain { grid-template-columns: minmax(10rem, 0.8fr) minmax(0, 1.4fr) 260px; }
+.local-dashboard-page .ins-list-row > .ins-list-value { max-width: none; }
+@media (max-width: 640px) { .local-dashboard-page .ins-list-row { grid-template-columns: 26px minmax(0, 1fr) minmax(0, 1fr); }
+  .local-dashboard-page .ins-list-row > .ins-list-value { grid-column: 2 / -1; text-align: left; } }
+/* The duration histogram's buckets: each bar fills its button's width, so the button is its track. */
+:is(.local-dashboard-page, .ev-root) .ins-bars--short > .ins-bar { background: var(--ds-line); border-radius: var(--ds-radius-bar) var(--ds-radius-bar) 0 0; }
+/* Ranked bars laid out in rows (more than ten, e.g. Usage's savings and spend by model): each bar fills its slot sideways
+   (the upright rule drew every one full-width and 2px tall), and the value column is a fixed width so every track ends at
+   one point. A model that was not measured keeps its dashed outline and has no track, so it never reads as a value. */
+@container (min-width: 561px) { .rb-chart--filled.rb-chart--rows .rb-plot > li { grid-template-columns: minmax(7rem, min(18rem, 40%)) minmax(0, 1fr) 7.5rem; } }
+.rb-chart--filled.rb-chart--rows .rb-slot { width: 100%; max-width: none; margin: 0; align-items: stretch; border-radius: 0 var(--ds-radius-bar) var(--ds-radius-bar) 0; }
+.rb-chart--filled.rb-chart--rows .rb-slot .rb-bar:not([data-pattern="outline"]) { width: var(--rb-size, 0) !important; height: auto !important; border-radius: 0 var(--ds-radius-bar) var(--ds-radius-bar) 0; }
+.rb-chart--filled .rb-slot:has(> .rb-bar[data-pattern="outline"]) { background: none; }
+/* Savings by model's table rows (their wrapper became div.local-more in #484, so the details-only rules above had
+   stopped applying and every figure ran into the next): the row's saving bar fills a track like every other bar. */
+.local-dashboard-page .local-savings-bar { background: var(--ds-line); }
+/* A model whose saving was not measured has no fill, and no track either, so it never reads as a zero. */
+.local-dashboard-page .local-savings-bar:empty { background: none; }
+/* Usage's tokens per day stacks fill their full-height column (.utc-track), and Quality over time's measured days fill
+   theirs; a day before the sample (outlined) or with runs but no verdict (dashed) keeps its own mark and no track. */
+:is(.local-dashboard-page, .ev-root) .utc-track { background: var(--ds-line); border-radius: var(--ds-radius-bar) var(--ds-radius-bar) 0 0; }
+:is(.local-dashboard-page, .ev-root) .usage-trend-day[data-state="value"] { background: var(--ds-line); }
+/* Evidence's quality-gate bar fills a track too. */
+.ev-root .ev-qg-bar.bar-track { background: var(--ds-line); border-radius: 999px; }
+/* The Tasks list in columns (Lakshman 2026-11-05, "fix all"): glyph, task, share of runs (a full track), runs, pass
+   rate and verdicts, under one heading row, every column reading from the left at one width on every row. */
+.local-dashboard-page :is(.ins-task-head, .ins-list-row.ins-task-row) { display: grid; grid-template-columns: 26px minmax(9rem, 1fr) minmax(0, 1.6fr) 72px 88px 110px; column-gap: 16px; align-items: center; }
+.local-dashboard-page .ins-task-head { margin: 0 0 8px; font-size: 12px; color: var(--ds-ink-3); }
+.local-dashboard-page .ins-task-row > .ins-task-cell { text-align: left; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.local-dashboard-page .ins-task-row > .ins-task-cell[data-field-tone] { color: var(--field-ink, var(--ds-ink-2)); }
+@media (max-width: 640px) {
+  .local-dashboard-page :is(.ins-task-head, .ins-list-row.ins-task-row) { grid-template-columns: 26px minmax(0, 1fr) 56px 64px; }
+  .local-dashboard-page .ins-task-head > :nth-child(3), .local-dashboard-page .ins-task-head > :nth-child(6) { display: none; }
+  .local-dashboard-page .ins-task-row > .ins-track { grid-column: 2 / -1; grid-row: 2; }
+  .local-dashboard-page .ins-task-row > .ins-list-coverage { display: none; }
+}
+/* Routing groups (Lakshman 2026-11-05, "fix it"): a standard table with fixed columns, each as wide as its header's
+   longest word and its widest value (measured in Chrome; Escalations' header needs 131px, a backend 158px), the routed
+   model wrapping at its joins with its Rerouted mark. Two-word headers may wrap between their words. */
+.local-dashboard-page table[data-routing-table] { table-layout: fixed; width: 100%; }
+.local-dashboard-page table[data-routing-table] th:nth-child(1) { width: 146px; }
+.local-dashboard-page table[data-routing-table] th:nth-child(2) { width: auto; }
+.local-dashboard-page table[data-routing-table] th:nth-child(3) { width: 112px; }
+.local-dashboard-page table[data-routing-table] th:nth-child(4) { width: 160px; }
+.local-dashboard-page table[data-routing-table] th:nth-child(5) { width: 112px; }
+.local-dashboard-page table[data-routing-table] th:nth-child(6) { width: 132px; }
+.local-dashboard-page table[data-routing-table] th:nth-child(7) { width: 76px; }
+.local-dashboard-page table[data-routing-table] th:nth-child(8) { width: 140px; }
+.local-dashboard-page table[data-routing-table] :is(td[data-cell="tier"], td[data-cell="backend"], td[data-cell="finish"], td[data-cell="pass"]) { white-space: nowrap; }
+.local-dashboard-page table[data-routing-table] thead .local-table-head { white-space: normal; overflow-wrap: normal; word-break: normal; }
+/* Pass-rate bands (src/pages/local/plain-text.ts): each rate is a pill in the theme's status-pill style, a 14% tint of its
+   band's hue over the surface, a border in it and its ink; the key under the routing table shows the same pills. */
+.local-dashboard-page span[data-pass-band] { display: inline-block; padding: 1px 8px; border-radius: 999px; font-weight: 600; font-size: 12px; line-height: 20px; white-space: nowrap; }
+.local-dashboard-page td[data-pass-band] > .local-pass-pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-weight: 600; font-size: 12px; line-height: 20px; white-space: nowrap; }
+.local-dashboard-page :is(span[data-pass-band="1"], td[data-pass-band="1"] > .local-pass-pill) { background: color-mix(in srgb, var(--ds-pass-band-1) 14%, var(--ds-surface)); border: 1px solid color-mix(in srgb, var(--ds-pass-band-1) 45%, transparent); color: var(--ds-pass-band-1-ink) !important; }
+.local-dashboard-page :is(span[data-pass-band="2"], td[data-pass-band="2"] > .local-pass-pill) { background: color-mix(in srgb, var(--ds-pass-band-2) 14%, var(--ds-surface)); border: 1px solid color-mix(in srgb, var(--ds-pass-band-2) 45%, transparent); color: var(--ds-pass-band-2-ink) !important; }
+.local-dashboard-page :is(span[data-pass-band="3"], td[data-pass-band="3"] > .local-pass-pill) { background: color-mix(in srgb, var(--ds-pass-band-3) 14%, var(--ds-surface)); border: 1px solid color-mix(in srgb, var(--ds-pass-band-3) 45%, transparent); color: var(--ds-pass-band-3-ink) !important; }
+.local-dashboard-page :is(span[data-pass-band="4"], td[data-pass-band="4"] > .local-pass-pill) { background: color-mix(in srgb, var(--ds-pass-band-4) 14%, var(--ds-surface)); border: 1px solid color-mix(in srgb, var(--ds-pass-band-4) 45%, transparent); color: var(--ds-pass-band-4-ink) !important; }
+.local-dashboard-page :is(span[data-pass-band="5"], td[data-pass-band="5"] > .local-pass-pill) { background: color-mix(in srgb, var(--ds-pass-band-5) 14%, var(--ds-surface)); border: 1px solid color-mix(in srgb, var(--ds-pass-band-5) 45%, transparent); color: var(--ds-pass-band-5-ink) !important; }
+.local-dashboard-page .local-pass-key { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 12px; }
+.local-dashboard-page .local-pass-key .local-pass-swatch { display: none; }
+.local-dashboard-page .ins-task-head > :nth-child(6), .local-dashboard-page .ins-task-row > .ins-list-coverage { min-width: 0; }
+.local-dashboard-page :is(.ins-task-head, .ins-list-row.ins-task-row) { grid-template-columns: 26px minmax(9rem, 1fr) minmax(0, 1.6fr) 72px 88px 130px; }
+/* In the Tasks columns a pass-rate pill is as wide as its figure, not its column. */
+.local-dashboard-page .ins-task-row > [data-pass-band] { justify-self: start; }

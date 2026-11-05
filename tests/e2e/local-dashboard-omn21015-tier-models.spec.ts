@@ -78,7 +78,8 @@ test('OMN-21015 AC2: Overview lists each model under its tier with its served ru
 
   // Runs, share and cost exactly as served; an unpriced model is never $0, and a model with no served unmeasured count is
   // never shown as fully measured.
-  expect((await cells(page, 'qwen-a')).slice(1, 4)).toEqual(['3', '50.0%', '$0.00']);
+  // A measured zero cost reads "$0", muted, with the served "$0.00" as its title (Lakshman 2026-11-05).
+  expect((await cells(page, 'qwen-a')).slice(1, 4)).toEqual(['3', '50.0%', '$0']);
   await expect(panel.getByRole('row').filter({ hasText: 'qwen-a' }).locator('td').nth(2).getByTitle('0.5', { exact: true })).toBeVisible();
   expect((await cells(page, 'qwen-b')).slice(1, 4)).toEqual(['1', '16.7%', 'Not measured (1 run)']);
   await expect(panel.getByRole('row').filter({ hasText: 'qwen-b' }).locator('td').nth(2).getByTitle('0.16666666666666666', { exact: true })).toBeVisible();

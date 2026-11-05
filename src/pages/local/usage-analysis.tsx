@@ -4,6 +4,8 @@ import { Link } from 'wouter';
 import { formatUsd } from '@/lib/currency';
 import { DashboardTabs, DashboardToggle, DataTable, EmptyState, Panel, PanelTitle } from '@/theme/design-system/components';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
+import { tierLabel } from '@/pages/local/plain-text';
+import { PASS_BANDS, passBand } from '@/pages/local/plain-text';
 import { DEFAULT_RUNS_VIEW, writeRunsSearch, type RunsViewState } from '@/navigation/runs-url-state';
 import {
   coverageOf, groupDecisions, matrixOf, NOT_RECORDED, OTHER, qualityTrend, routesOf, SMALL_SAMPLE, SPARK_DAYS, totalsOf,
@@ -91,7 +93,7 @@ function GroupsView({ decisionRows }: { decisionRows: readonly unknown[] }) {
           {/* data-label names each value when a phone stacks the rows as cards (Codex MSG 753d170c). */}
           <td data-cell="runs" data-label="Runs">{group.runs}</td>
           <td data-cell="spend" data-label="Spend">{money(group.spend, group.spendMeasured, group.runs)}</td>
-          <td data-cell="pass" data-label="Pass rate">{passText(group)}</td>
+          <td data-cell="pass" data-label="Pass rate" data-pass-band={passBand(group.passed, group.verdicts)}><span className="local-pass-pill">{passText(group)}</span></td>
           <td data-cell="p50" data-label="p50 latency">{latency(group.p50)}</td>
           <td data-cell="p95" data-label="p95 latency">{latency(group.p95)}</td>
           <td data-cell="last" data-label="Last run">{lastText(group.last)}</td>
@@ -282,6 +284,12 @@ export function RunsTotals({ rows, sample, complete = false }: { rows: readonly 
   </p>;
 }
 
+/** The routing table's columns: the concept each header's glyph and colour come from, and its label. */
+const ROUTING_HEADERS: ReadonlyArray<readonly [string, string]> = [
+  ['routing-model', 'Requested model'], ['model', 'Routed model'], ['tier', 'Tier'], ['backend', 'Backend'],
+  ['completion', 'Finish reason'], ['escalated', 'Escalations'], ['delegations', 'Runs'], ['run-outcome', 'Pass rate'],
+];
+
 /**
  * Part 30 AC206: Runs' routing groups, from the returned runs: what each run asked for, the model it ran on, its tier,
  * backend, how it stopped and how often it escalated, with runs and pass rate per group. A field a run did not record is
@@ -292,27 +300,33 @@ export function RoutingAnalysis({ rows, complete = false }: { rows: readonly unk
   if (routes.length === 0) return <EmptyState>No returned runs to group by route</EmptyState>;
   return <Panel className="local-run-routing" aria-label="Routing" aria-busy="false">
     <PanelTitle><ConceptIcon concept="run-routes" label="Routing" size={16} />Routing</PanelTitle>
-    <p className="local-dashboard-caption" data-routing-note>
+    {/* Lakshman 2026-11-05 ("remove From the latest 500 served runs ..."): the note is not shown; it stays in the page for
+        assistive tech, since Not recorded must still read as not a dispatch failure (OMN-21166 AC206 D9). */}
+    <p className="local-dashboard-caption local-visually-hidden" data-routing-note>
       {`From ${complete ? 'all' : 'the latest'} ${totalsOf(rows).runs} served runs, grouped by requested and routed model, tier, backend, finish reason and escalations. `}
       Not recorded means the run did not record that field; it is not a dispatch failure.
     </p>
     <DataTable data-routing-table aria-label="Runs by route">
-        <thead><tr><th scope="col">Requested model</th><th scope="col">Routed model</th><th scope="col">Tier</th><th scope="col">Backend</th>
-          <th scope="col">Finish reason</th><th scope="col">Escalations</th><th scope="col">Runs</th><th scope="col">Pass rate</th></tr></thead>
+        {/* Headers as the run table writes them: each in its column's colour, with its glyph (Lakshman 2026-11-05). */}
+        <thead><tr>{ROUTING_HEADERS.map(([concept, label]) => <th scope="col" key={label}>
+          <span className="local-table-head" data-field-tone={concept}><ConceptIcon concept={concept} label={label} size={13} />{label}</span></th>)}</tr></thead>
         <tbody>{routes.map(route => {
           const rerouted = route.requested !== NOT_RECORDED && route.routed !== NOT_RECORDED && route.requested !== route.routed;
           return <tr key={[route.requested, route.routed, route.tier, route.backend, route.finish, route.escalations].join('|')}
             data-requested={route.requested} data-routed={route.routed}>
-            <td data-cell="requested">{route.requested}</td>
-            <td data-cell="routed">{route.routed}{rerouted && <span className="local-route-changed">Rerouted</span>}</td>
-            <td data-cell="tier">{route.tier}</td>
+            <td data-cell="requested">{breakableName(route.requested)}</td>
+            <td data-cell="routed">{breakableName(route.routed)}{rerouted && <span className="local-route-changed">Rerouted</span>}</td>
+            {/* The tier in words, as the tier table names it ("Cheap frontier", not cheap_frontier); the key stays the group. */}
+            <td data-cell="tier">{tierLabel(route.tier)}</td>
             <td data-cell="backend">{route.backend}</td>
             <td data-cell="finish">{route.finish}</td>
             <td data-cell="escalations">{route.escalations}</td>
             <td data-cell="runs">{route.totals.runs}</td>
-            <td data-cell="pass">{passText(route.totals)}</td>
+            <td data-cell="pass" data-pass-band={passBand(route.totals.passed, route.totals.verdicts)}><span className="local-pass-pill">{passText(route.totals)}</span></td>
           </tr>;
         })}</tbody>
     </DataTable>
+    {/* The pass-rate colours' key (Lakshman 2026-11-05). */}
+    <p className="local-dashboard-caption local-pass-key">Pass rate {PASS_BANDS.map(entry => <span key={entry.band} data-pass-band={entry.band}><i className="local-pass-swatch" aria-hidden="true" />{entry.label}</span>)}</p>
   </Panel>;
 }

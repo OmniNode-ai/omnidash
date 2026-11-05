@@ -74,14 +74,15 @@ describe('OMN-21305 AC3: a run refused before dispatch shows on Runs under statu
       'href',
       `/workflow?correlation_id=${REFUSED_ID}`,
     );
-    expect(within(row).getAllByRole('cell')[headers().indexOf('Status')]!.textContent).toBe('failed');
+    expect(within(row).getAllByRole('cell')[headers().indexOf('Status')]!.querySelector('.local-run-pill')?.textContent).toBe('failed');
   });
 
   it('R3: the cause reads Refused before dispatch, never the raw code, the detail, its error code or Not recorded', () => {
     render(<RunsTable now={NOW} decisions={[refusedRow, passedRow]} sessions={[]} />);
     chooseDropdown('Status', 'failed');
     const row = screen.getByRole('row', { name: new RegExp(`^${REFUSED_ID}`) });
-    const cause = within(row).getAllByRole('cell')[headers().indexOf('Cause')]!;
+    // The cause is on the Status cell (Lakshman 2026-11-05: the reason opens from the failed pill).
+    const cause = within(row).getAllByRole('cell')[headers().indexOf('Status')]!.querySelector('.local-runs-cause') as HTMLElement;
     expect(within(cause).getByText('Refused before dispatch')).toBeInTheDocument();
     expect(cause).not.toHaveTextContent('No local model is declared on this machine');
     expect(cause).not.toHaveTextContent('ONEX_CORE_041');

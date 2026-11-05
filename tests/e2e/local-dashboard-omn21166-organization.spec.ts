@@ -30,7 +30,7 @@ test('Workflow groups the same served fields and Runs keeps its list close to fi
   await expect(first).toBeVisible();
   expect(await first.evaluate(el => el.getBoundingClientRect().top)).toBeLessThan(820);
   await revealRunFields(page);
-  await expect(page.locator('[data-component="recent-runs"] th')).toHaveCount(18);
+  await expect(page.locator('[data-component="recent-runs"] th')).toHaveCount(16);
   await page.screenshot({ path: info.outputPath('runs-organized.png') });
 });
 

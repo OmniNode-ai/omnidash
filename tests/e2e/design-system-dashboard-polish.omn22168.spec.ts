@@ -131,7 +131,7 @@ test('L7: Routing columns adds its three columns and keeps the rest', async ({ p
   const shown = () => table.locator('thead th').evaluateAll(cells => cells
     .filter(cell => getComputedStyle(cell).display !== 'none').map(cell => cell.textContent?.trim()));
   const plain = await shown();
-  expect(plain).toEqual(expect.arrayContaining(['Model', 'Cost', 'Task type', 'Duration']));
+  expect(plain).toEqual(expect.arrayContaining(['Model', 'Cost', 'Duration']));
   await page.getByLabel('Routing columns', { exact: true }).check();
   const routing = await shown();
   const added = ['Requested model', 'Finish reason', 'Escalations'];
@@ -216,7 +216,7 @@ test('L10: each Recent runs column header has its own glyph and colour', async (
         return { name: cell.textContent?.trim() ?? '', count: icons.length, glyph, color: icons[0] ? getComputedStyle(icons[0]).color : 'none', grey };
       });
     });
-    expect(heads.length, `${theme}: every column shown`).toBe(21);
+    expect(heads.length, `${theme}: every column shown`).toBe(19);
     expect(heads.filter(head => head.count !== 1).map(head => `${head.name}: ${head.count} glyphs`), `${theme}: one glyph each`).toEqual([]);
     expect(heads.filter(head => head.color === head.grey).map(head => head.name), `${theme}: no header glyph is the interface grey`).toEqual([]);
     const sharedGlyph = heads.filter(head => heads.some(other => other !== head && other.glyph === head.glyph));

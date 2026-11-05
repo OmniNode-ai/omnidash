@@ -29,11 +29,11 @@ import { PAGE_PATHS } from '@/navigation/page-routes';
 import { normaliseRunId, readWorkflowRunId, workflowHref, writeWorkflowRunId } from '@/navigation/workflow-url-state';
 import { RunDurationChart, RunMetricChart, RunTimingChart, RunTokensChart, SpendByDayChart, runTimingBars, UNRESOLVED_BASELINE, type ListedRun } from '@/theme/design-system/charts';
 import { PassRateMeter } from '@/pages/local/shares';
-import { TIER_TONES } from '@/theme/design-system/charts';
+import { TIER_TONES, breakableName } from '@/theme/design-system/charts';
 import { InsightsSection, InsightsWindowContext, MeteringActivityInsights, OverviewRunsContext, PassRateSparkline, TaskIcon, type ActivityWindow } from '@/pages/local/insight-charts';
 import { UsageInsights } from '@/pages/local/usage-insights';
 import { RoutingAnalysis } from '@/pages/local/usage-analysis';
-import { Badge, ConfirmDialog, DashboardTabs, DataTable, Dropdown, EmptyState, Fact, FactList, Figure, InfoTip, Panel, PanelTitle, StatusChip } from '@/theme/design-system/components';
+import { Badge, ConfirmDialog, DashboardTabs, DataTable, Dropdown, EmptyState, Fact, FactList, Figure, InfoTip, Panel, PanelTitle, StatusChip, Tooltip } from '@/theme/design-system/components';
 import { Bot, CalendarRange, ChartArea, ChartPie, CircleCheck, CircleDollarSign, Clock3, FileJson, FileSpreadsheet, Gauge, Layers, ListChecks, Rows3, Server, Timer, TriangleAlert } from '@/theme/design-system/icons';
 import { SinceLastVisit } from '@/pages/local/since-last-visit';
 import { ModelKeys, providerName } from '@/pages/local/model-keys';
@@ -1203,6 +1203,22 @@ function costOf(session: Row | undefined, decision: Row): string {
   return formatUsd(value);
 }
 
+/**
+ * Run table item 8 (Lakshman 2026-11-05): a measured zero cost reads "$0", muted, so a free run is told apart from a
+ * priced one at a glance; the route is named in its title only ("we are showing them model"), and every other cost is
+ * costOf's text.
+ */
+function CostCell({ session, run }: { session: Row | undefined; run: Row }) {
+  const text = costOf(session, run);
+  const value = isMissing(session?.local_cost_usd) ? run.cost_usd : session?.local_cost_usd;
+  // Lakshman 2026-11-05 (a free cheap-frontier run read "$0.00" in ink beside the local runs' grey "$0"): every served
+  // zero takes the short, muted form, whatever the route; the route is named in its title. The short form drops the
+  // served zero's empty cents ("$0.00" to "$0"); the figure is still the served one.
+  const route = isMissing(run.cost_tier_name) ? '' : `, ${tierLabel(run.cost_tier_name).toLowerCase()} route`;
+  return !isMissing(value) && Number(value) === 0
+    ? <span className="local-cost-free" title={`${text}${route}`}>{text.replace(/\.0+$/, '')}</span> : <>{text}</>;
+}
+
 /** A plain decimal as the store serves it: optional minus, digits, optional fraction. No exponent, no grouping. */
 const SERVED_DECIMAL = /^(-?)(\d+)(?:\.(\d+))?$/;
 
@@ -1212,7 +1228,9 @@ const SERVED_DECIMAL = /^(-?)(\d+)(?:\.(\d+))?$/;
  * measured zero is a zero. Decimal text is formatted with every served digit (OMN-22168, replacing the earlier two-decimal policy)
  * without changing the source value; anything that is not a plain decimal is not shown as a figure.
  */
-export function runModelledCell(run: Row): string {
+export function runModelledCell(run: Row, withBaseline = true): string {
+  // withBaseline false: the table names one shared baseline in its Saving header's tooltip, so each cell shows the
+  // figure alone (Lakshman 2026-11-05, run table item 1, and "instead of column vs claude-sonnet-5-5 add into tooltip").
   const figure = run.modelled_savings_usd;
   const notMeasured = run.savings_measurement === 'unknown_tokens' ? 'Not measured: tokens not recorded'
     : run.savings_measurement === 'unknown_spend' ? 'Not measured: cost not recorded'
@@ -1221,7 +1239,7 @@ export function runModelledCell(run: Row): string {
   if (isMissing(figure)) return notMeasured;
   const match = SERVED_DECIMAL.exec(String(figure).trim());
   if (match === null) return 'Not measured';
-  return `${formatUsd(figure)} vs ${recorded(run.savings_baseline_model)}`;
+  return withBaseline ? `${formatUsd(figure)} vs ${recorded(run.savings_baseline_model)}` : formatUsd(figure);
 }
 
 /** The route tier as served, with its cost regime beside it when the row carries one (OMN-13649, OMN-20225). */
@@ -1498,15 +1516,20 @@ interface RunsTableProps {
   truncated?: boolean;
 }
 
+/**
+ * A host such as generativelanguage.googleapis.com wraps after a dot inside its standard-width column (OMN-20759's fit
+ * check found it 276px wide in a 150px column); the text is unchanged, only line-break opportunities are added. Model
+ * names use breakableName, which does not break at dots ("Qwen3.8-27B").
+ */
+function breakableHost(host: string): ReactNode[] {
+  return host.split(/(?<=\.)/).flatMap((part, index) => (index === 0 ? [part] : [<wbr key={index} />, part]));
+}
+
 /** A row whose served data_source names anything but real data is fixture data (FR-2). */
 function isFixture(decision: Row): boolean {
   return typeof decision.data_source === 'string' && decision.data_source !== '' && decision.data_source !== 'real';
 }
 
-/**
- * A Runs row's cause (OMN-19919 AC5): the cause the filter and the Overview list use, and the served failure detail it
- * came from, readable on the row (its title, and "Read failure details") whenever it says more than the cause.
- */
 /**
  * OMN-21166 part 10 AC58: a passed run has no failure cause; its cell reads a dash with an accessible "No failure",
  * never the word "None". The cause filter keeps its "None" option, which names the served value.
@@ -1515,15 +1538,59 @@ function NoFailure() {
   return <span className="local-runs-cause" data-failure-cause="none" aria-label="No failure" title="No failure">—</span>;
 }
 
-function RunCause({ run }: { run: Row }) {
+/**
+ * Lakshman 2026-11-05 (run table item 11): a row's time as the served clock (HH:MM), with the day written above it on
+ * the first row of each day; the exact served time stays in the title and datetime. Any other form is shown as served.
+ */
+function RunTimeCell({ value, showDay }: { value: unknown; showDay: boolean }) {
+  if (isMissing(value)) return <>{recorded(value)}</>;
+  const text = String(value);
+  const readable = readableTime(text);
+  const clock = /^\d{4}-\d{2}-\d{2}T(\d{2}:\d{2})/.exec(text)?.[1];
+  if (readable === null || clock === undefined) return <>{readable ?? text}</>;
+  const [day, rest] = readable.split(', ') as [string, string];
+  const zone = rest.split(' ').slice(1).join(' ');
+  // OMN-21166 R-A: the exact served text is the element's datetime and title.
+  return <time className="local-cell-time local-run-time" dateTime={text} title={text}>
+    {showDay && <span className="local-run-day">{day}</span>}
+    <span className="local-run-clock">{zone === 'UTC' ? clock : `${clock} ${zone}`}</span>
+  </time>;
+}
+
+/** The UTC (or served-offset) calendar day of a served timestamp, for grouping rows by day; null when it has none. */
+function runDayKey(value: unknown): string | null {
+  return isMissing(value) ? null : /^(\d{4}-\d{2}-\d{2})T/.exec(String(value))?.[1] ?? null;
+}
+
+/**
+ * Run table items 5 and 9 (Lakshman 2026-11-05): a routing value shown only when it is the exception. The usual value
+ * (finish reason stop, no escalation) is a quiet dash that names it in its title; a value not served still says so.
+ */
+function QuietUnlessUnusual({ value, usual, usualText }: { value: unknown; usual: (text: string) => boolean; usualText: string }) {
+  if (isMissing(value)) return <>{recorded(value)}</>;
+  const text = String(value);
+  return usual(text) ? <span className="local-run-quiet" title={usualText}>—</span> : <span className="local-run-unusual">{text}</span>;
+}
+
+
+/**
+ * Lakshman 2026-11-05 ("instead of extra text when user hover to failed he can see the reason"): a failed run's status
+ * pill shows its cause and the whole failure detail in a tooltip, on hover and on keyboard focus. The cause stays on the
+ * row for assistive tech and the cause filter (visually hidden, with the whole detail as its title), so nothing served
+ * is dropped (OMN-19919 AC5, OMN-21166 AC27 P3).
+ */
+function FailedStatus({ run }: { run: Row }) {
   const rawCause = causeOf(run);
-  if (rawCause === 'none') return <NoFailure />;
   const cause = displayCauseOf(run);
   const detail = failureDetailText(failureDetailOf(run) ?? cause);
-  if (detail === cause && cause.length <= 120) return <span className="local-runs-cause" data-failure-cause={rawCause} title={cause}>{cause}</span>;
+  const tip = <span className="local-run-failure-tip"><strong>{cause}</strong>{detail !== cause && <span>{detail}</span>}</span>;
   return <>
-    {detail !== cause && <span className="local-runs-cause" data-failure-cause={rawCause} title={detail}>{cause}</span>}
-    <details className="local-run-failure"><summary>Read failure details</summary><p className="local-runs-cause" title={detail === cause ? detail : undefined}>{detail}</p></details>
+    <span className="local-runs-tip" data-field-tone="failures">
+      <Tooltip side="bottom" text={tip}>
+        <span className="local-run-status-trigger" tabIndex={0}><OutcomePill value={statusOf(run)} /></span>
+      </Tooltip>
+    </span>
+    <span className="local-visually-hidden"><span className="local-runs-cause" data-failure-cause={rawCause} title={detail}>{cause}</span></span>
   </>;
 }
 
@@ -1629,15 +1696,23 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
   // Lakshman 2026-11-04, "all should be in different color and different icons": each column header carries its
   // concept's own glyph in that concept's colour (the same pair the concept draws on every other page).
   const headIcon = (concept: string, label: string) => <ConceptIcon concept={concept} label={label} size={13} />;
-  const plainHeader = (concept: string, label: string) => <th data-column={concept}><span className="local-runs-head">{headIcon(concept, label)}{label}</span></th>;
+  // Lakshman 2026-11-05 ("in all columns add a tooltip so that when we hover it should tell about that column"): each header
+  // explains its column on hover and on keyboard focus (the kit Tooltip), from RUN_COLUMN_TIPS.
+  const plainHeader = (concept: string, label: string, extra = false) => <th data-column={concept} data-extra={extra ? '' : undefined} style={{ width: RUN_COLUMN_WIDTHS[concept] }}>
+    <span className="local-runs-tip" data-field-tone={concept}><Tooltip text={RUN_COLUMN_TIPS[concept] ?? label} side="bottom"><span className="local-runs-head" tabIndex={0}>{headIcon(concept, label)}{label}</span></Tooltip></span>
+  </th>;
   const sortHeader = (key: RunSortKey, label: string, concept: string) => {
     const active = view.sort === key;
     const direction = active ? view.dir ?? 'desc' : null;
-    return <th data-column={concept} aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}>
+    return <th data-column={concept} style={{ width: RUN_COLUMN_WIDTHS[concept] }} aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}>
+      <span className="local-runs-tip" data-field-tone={concept}><Tooltip text={RUN_COLUMN_TIPS[concept] ?? label} side="bottom">
       <button type="button" className="local-sort-header" data-sort-active={active ? '' : undefined}
         onClick={() => updateView({ sort: key, dir: active && direction === 'desc' ? 'asc' : 'desc', page: 1 })}>
-        {headIcon(concept, label)}{label}<span aria-hidden="true">{direction === 'asc' ? ' ↑' : direction === 'desc' ? ' ↓' : ''}</span>
+        {headIcon(concept, label)}{label}{/* Only a sorted column draws its arrow: an empty one still took the button's gap, so the label sat 6px
+          short of its column's right-aligned figures (Lakshman 2026-11-05, "alignment of column and data is bad"). */}
+        {direction && <span aria-hidden="true">{direction === 'asc' ? ' ↑' : ' ↓'}</span>}
       </button>
+      </Tooltip></span>
     </th>;
   };
   // OMN-21166 AC76: every row the search and filters match, across all pages and in the shown order, as served.
@@ -1763,63 +1838,102 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
             onConfirm={() => { const format = pendingExport; setPendingExport(null); if (format) exportRuns(format); }}>
             <p>The file holds the runs that match the current search and filters, every field of each.</p>
           </ConfirmDialog>
-          <DataTable fit className={`local-runs-wrap${showAllFields ? ' local-runs-wrap--all' : ''}${showRouting ? ' local-runs-wrap--routing' : ''}`} id={`${id}-table`}>
+          {/* Lakshman 2026-11-05 ("do all 12"): the run list opens on eight columns (run, time, status with its cause, model,
+              tokens, cost, saving, duration); "Show all run fields" adds backend, host, task type, route tier and quality score,
+              and "Routing columns" adds requested model, finish reason and escalations (the last two shown only when unusual). OMN-21166 AC27 P2: every
+              field stays in the page in either view; the all-fields columns (data-extra) are drawn always and hidden by the
+              layout until the switch is on, and that view also lists baseline model, basis and tokens to compliance. */}
+          {(() => {
+            const baselineOf = (run: Row) => (isMissing(run.savings_baseline_model) ? bySession.get(String(run.correlation_id))?.baseline_model : run.savings_baseline_model);
+            const baselines = new Set(page.map(baselineOf).filter(value => !isMissing(value)).map(String));
+            const sharedBaseline = baselines.size === 1 ? [...baselines][0]! : null;
+            const byDay = !view.sort || view.sort === 'created';
+            const shownColumns = [...RUN_DEFAULT_COLUMNS, ...(showAllFields ? RUN_EXTRA_COLUMNS : []), ...(showRouting ? RUN_ROUTING_COLUMNS : [])];
+            const tableWidth = shownColumns.reduce((sum, concept) => sum + RUN_COLUMN_WIDTHS[concept]!, 0);
+            return <DataTable fit className={`local-runs-wrap${showAllFields ? ' local-runs-wrap--all' : ''}${showRouting ? ' local-runs-wrap--routing' : ''}`} id={`${id}-table`} style={{ width: tableWidth }}>
               <thead>
                 <tr>
-                  {plainHeader('identity', 'Run')}{sortHeader('created', 'Created', 'age')}{plainHeader('run-outcome', 'Status')}
-                  {plainHeader('failures', 'Cause')}{plainHeader('model', 'Model')}{plainHeader('backend', 'Backend')}
-                  {showRouting && <>{plainHeader('routing-model', 'Requested model')}{plainHeader('completion', 'Finish reason')}
-                    {plainHeader('escalated', 'Escalations')}</>}{plainHeader('host', 'Host')}
-                  {plainHeader('tokens-in', 'Tokens in')}{plainHeader('tokens-out', 'Tokens out')}{sortHeader('cost', 'Cost', 'cost')}
-                  {plainHeader('savings', 'Modelled saving')}{plainHeader('baseline', 'Baseline model')}{plainHeader('basis', 'Basis')}
-                  {plainHeader('task', 'Task type')}{sortHeader('duration', 'Duration', 'duration')}
-                  {plainHeader('tokens-completion', 'Tokens to compliance')}{plainHeader('tier', 'Route tier')}{plainHeader('score', 'Quality score')}
+                  {plainHeader('identity', 'Run')}{sortHeader('created', 'Time', 'age')}{plainHeader('run-outcome', 'Status')}
+                  {plainHeader('model', 'Model')}{plainHeader('backend', 'Backend', true)}
+                  {/* OMN-21166 AC206 D10: Routing columns adds requested model, finish reason and escalations. */}
+                  {showRouting && <>{plainHeader('routing-model', 'Requested model')}{plainHeader('completion', 'Finish reason')}{plainHeader('escalated', 'Escalations')}</>}
+                  {plainHeader('host', 'Host', true)}
+                  {plainHeader('tokens', 'Tokens')}{sortHeader('cost', 'Cost', 'cost')}
+                  {/* The shared baseline is named in the header's tooltip and accessible name, not on the page. */}
+                  <th data-column="savings" style={{ width: RUN_COLUMN_WIDTHS.savings }} aria-label={sharedBaseline ? `Saving vs ${sharedBaseline}` : undefined}>
+                    <span className="local-runs-tip" data-field-tone="savings"><Tooltip side="bottom" text={sharedBaseline
+                      ? `Modelled saving vs ${sharedBaseline}: what the run's tokens would cost at ${sharedBaseline}'s prices, less what the run cost. ${sharedBaseline} never ran.`
+                      : RUN_COLUMN_TIPS.savings!}>
+                      <span className="local-runs-head" tabIndex={0}>{headIcon('savings', 'Saving')}Saving</span>
+                    </Tooltip></span>
+                  </th>
+                  {plainHeader('baseline', 'Baseline model', true)}{plainHeader('basis', 'Basis', true)}
+                  {sortHeader('duration', 'Duration', 'duration')}
+                  {plainHeader('task', 'Task type', true)}{plainHeader('tokens-completion', 'Tokens to compliance', true)}
+                  {plainHeader('tier', 'Route tier', true)}{plainHeader('score', 'Quality score', true)}
                 </tr>
               </thead>
               <tbody>{page.map((run, index) => {
                 const session = bySession.get(String(run.correlation_id));
+                const dayKey = runDayKey(run.created_at);
+                const showDay = !byDay || index === 0 || dayKey !== runDayKey(page[index - 1]!.created_at);
+                const requested = isMissing(run.requested_model) ? null : String(run.requested_model);
+                const answered = modelOrUnknown(run.model_name);
+                const basis = session?.usage_source;
+                const saving = runModelledCell(run, sharedBaseline === null);
+                const score = Number(run.actual_score);
                 return <tr key={String(run.correlation_id ?? index)} tabIndex={0} aria-selected={selectedRunId !== null && selectedRunId === run.correlation_id}
-                  onClick={event => { if ((event.target as HTMLElement).closest('a, button, input, select')) return; setSelectedRunId(String(run.correlation_id ?? '')); }}
+                  data-day-start={byDay && showDay ? '' : undefined}
+                  onClick={event => { if ((event.target as HTMLElement).closest('a, button, input, select, summary')) return; setSelectedRunId(String(run.correlation_id ?? '')); }}
                   onKeyDown={event => { if ((event.key === 'Enter' || event.key === ' ') && !(event.target as HTMLElement).closest('a, button, input, select, summary')) { event.preventDefault(); setSelectedRunId(String(run.correlation_id ?? '')); } }}>
-                  <td className="local-dashboard-cell-token">
+                  <td data-label="Run" className="local-dashboard-cell-token">
                     {/* WF-3: a run opens its own path on Workflow; a run with no recorded id has nothing to open. */}
                     <RunRef id={run.correlation_id} short />
                     {isFixture(run) && <Badge>fixture</Badge>}
                   </td>
-                  <td className="local-dashboard-cell-token local-dashboard-cell-time"><CellTime value={run.created_at} /></td>
-                  <td><OutcomePill value={statusOf(run)} /></td>
-                  <td><RunCause run={run} /></td>
-                  {/* A run's model and backend set that filter: the same filters as the selects above, from the row. */}
-                  <td className="local-dashboard-cell-token">
-                    <button type="button" className="local-cell-filter" aria-label={`Show only runs of model ${modelOrUnknown(run.model_name)}`} onClick={() => updateView({ model: modelOrUnknown(run.model_name), page: 1 })}>
-                      {modelOrUnknown(run.model_name)}
+                  <td data-label="Time" className="local-dashboard-cell-token local-dashboard-cell-time"><RunTimeCell value={run.created_at} showDay={showDay} /></td>
+                  {/* Item 10: the status; on a run that failed, its cause and failure detail are the pill's tooltip. */}
+                  <td data-label="Status" className="local-run-status-cell">{causeOf(run) !== 'none' ? <FailedStatus run={run} /> : <OutcomePill value={statusOf(run)} />}</td>
+                  {/* A run's model sets that filter, as the selects above do. Item 3: a run answered by another model than it
+                      asked for names the requested one before it. */}
+                  <td data-label="Model" className="local-dashboard-cell-token">
+                    {requested !== null && requested !== answered && <span className="local-run-requested" title={`Requested ${requested}, answered by ${answered}`}>{requested} →</span>}
+                    <button type="button" className="local-cell-filter local-run-model" aria-label={`Show only runs of model ${answered}`} onClick={() => updateView({ model: answered, page: 1 })}>
+                      {breakableName(answered)}
                     </button>
                   </td>
-                  <td className="local-dashboard-cell-token">
+                  <td data-label="Backend" className="local-dashboard-cell-token" data-extra="">
                     <button type="button" className="local-cell-filter" aria-label={`Show only runs of backend ${recorded(run.backend_id)}`} onClick={() => updateView({ backend: recorded(run.backend_id), page: 1 })}>
-                      {recorded(run.backend_id)}
+                      {breakableName(recorded(run.backend_id))}
                     </button>
                   </td>
                   {showRouting && <>
-                    <td className="local-dashboard-cell-token" data-cell="requested-model">{recorded(run.requested_model)}</td>
-                    <td data-cell="finish-reason">{recorded(run.finish_reason)}</td>
-                    <td data-cell="escalations">{recordedCount(run.escalation_count)}</td>
+                    <td data-label="Requested model" className="local-dashboard-cell-token" data-cell="requested-model">{recorded(run.requested_model)}</td>
+                    <td data-label="Finish reason" data-cell="finish-reason"><QuietUnlessUnusual value={run.finish_reason} usual={text => text === 'stop'} usualText="Finished normally (stop)" /></td>
+                    <td data-label="Escalations" data-cell="escalations" data-num=""><QuietUnlessUnusual value={run.escalation_count} usual={text => Number(text) === 0} usualText="No escalation" /></td>
                   </>}
-                  <td className="local-dashboard-cell-token">{recorded(run.host)}</td>
-                  <td>{recordedTokens(run.tokens_input)}</td>
-                  <td>{recordedTokens(run.tokens_output)}</td>
-                  <td>{costOf(session, run)}</td>
-                  <td>{runModelledCell(run)}</td>
-                  <td>{recorded(isMissing(run.savings_baseline_model) ? session?.baseline_model : run.savings_baseline_model)}</td>
-                  <td>{recorded(session?.usage_source)}</td>
-                  <td>{isMissing(run.task_type) ? recorded(run.task_type) : <span className="local-task-cell"><TaskIcon task={String(run.task_type)} />{taskLabel(run.task_type)}</span>}</td>
-                  <td title={exactMs(run.latency_ms)}>{duration(run.latency_ms)}</td>
-                  <td>{recorded(run.tokens_to_compliance)}</td>
-                  <td>{tierOf(run)}</td>
-                  <td>{recorded(run.actual_score)}</td>
+                  <td data-label="Host" className="local-dashboard-cell-token" data-extra="">{breakableHost(recorded(run.host))}</td>
+                  {/* Item 4: tokens in and out in one cell; their total is the two added, so it is not a column of its own. */}
+                  <td data-label="Tokens" data-num="" title={`${recordedTokens(run.tokens_input)} tokens in, ${recordedTokens(run.tokens_output)} tokens out`}>
+                    {isMissing(run.tokens_input) && isMissing(run.tokens_output) ? 'Not recorded'
+                      : <><span data-field-tone="tokens-in">{recordedTokens(run.tokens_input)}</span><span className="local-run-quiet"> / </span><span data-field-tone="tokens-out">{recordedTokens(run.tokens_output)}</span></>}
+                  </td>
+                  <td data-label="Cost" data-num=""><CostCell session={session} run={run} /></td>
+                  {/* Items 1 and 2: the baseline is named once in the header when the rows share it; a basis other than
+                      measured is a tag beside the figure. */}
+                  <td data-label={sharedBaseline ? `Saving vs ${sharedBaseline}` : 'Saving'} data-num="" data-wrap={saving.startsWith('Not measured') ? '' : undefined}>{saving}{!isMissing(basis) && String(basis) !== 'measured' && !saving.startsWith('Not measured') && <span className="local-run-tag">{String(basis)}</span>}</td>
+                  <td data-label="Baseline model" className="local-dashboard-cell-token" data-extra="">{recorded(baselineOf(run))}</td>
+                  <td data-label="Basis" data-extra="">{recorded(basis)}</td>
+                  <td data-label="Duration" data-num="" title={exactMs(run.latency_ms)}>{duration(run.latency_ms)}</td>
+                  <td data-label="Task type" data-extra="">{isMissing(run.task_type) ? recorded(run.task_type) : <span className="local-task-cell"><TaskIcon task={String(run.task_type)} />{taskLabel(run.task_type)}</span>}</td>
+                  <td data-label="Tokens to compliance" data-extra="" data-num="">{recordedTokens(run.tokens_to_compliance)}</td>
+                  <td data-label="Route tier" data-extra="">{tierOf(run)}</td>
+                  {/* Item 7: one form for every score, two decimals; the served value is in the title. */}
+                  <td data-label="Quality score" data-extra="" data-num="" title={recorded(run.actual_score)}>{isMissing(run.actual_score) || !Number.isFinite(score) ? recorded(run.actual_score) : score.toFixed(2)}</td>
                 </tr>;
               })}</tbody>
-          </DataTable>
+          </DataTable>;
+          })()}
             </div>
           {selectedRun && <aside className="local-run-selected" role="complementary" aria-label="Selected run">
             <div className="local-dashboard-filters"><h3 className="local-dashboard-caption">Selected run</h3><button type="button" aria-label="Close selected run" onClick={() => setSelectedRunId(null)}>Close</button></div>
@@ -1930,6 +2044,26 @@ export function QualityPanel({ row }: { row: Row | null }) {
  * null and says how many runs were not measured, never $0; a priced group with some unpriced runs says so beside it.
  * A model served without its unmeasured count is never read as fully measured: the count is unknown, not zero.
  */
+/**
+ * Lakshman 2026-11-05 ("make it best", the tier breakdown): a tier-routed share as a meter, its fill the served share of
+ * a full track, with the served percent beside it (Readable, which keeps the served value in its title).
+ */
+function ShareMeter({ value }: { value: unknown }) {
+  const share = Number(value);
+  const width = isMissing(value) || !Number.isFinite(share) ? null : Math.min(Math.max(share, 0), 1);
+  return <span className="local-share-cell">
+    {width !== null && <span className="local-share-meter" aria-hidden="true"><i style={{ width: `${width * 100}%` }} /></span>}
+    <Readable value={value} kind="percent" />
+  </span>;
+}
+
+/** A model's cost in the tier table, in the run table's short muted form when it is a measured zero ("$0"). */
+function TierModelCostCell({ model }: { model: Row }) {
+  const text = tierModelCost(model);
+  return !isMissing(model.cost_usd) && Number(model.cost_usd) === 0 && /^\$0\.0+$/.test(text)
+    ? <span className="local-cost-free" title={text}>{text.replace(/\.0+$/, '')}</span> : <>{text}</>;
+}
+
 function tierModelCost(model: Row): string {
   const unmeasured = isMissing(model.unmeasured_cost_count) ? null : Number(model.unmeasured_cost_count);
   const runs = (n: number) => `${formatDashboardCount(n)} run${n === 1 ? '' : 's'}`;
@@ -1947,10 +2081,45 @@ function tierModelCost(model: Row): string {
  * counted or divided here; a model served without a count says Not recorded.
  */
 /** What each Runs view switch adds to the run list, shown on hover and keyboard focus. */
-const RUN_FIELDS_TIP = 'Shows every recorded field of each run: backend, host, tokens in and out, modelled saving, baseline model, '
-  + 'basis, tokens to compliance, route tier and quality score. The table scrolls sideways; the Run column stays in place.';
-const ROUTING_COLUMNS_TIP = 'Adds how each run was routed: the model it asked for, why the model stopped answering (finish reason) '
-  + 'and how many times it escalated to another model.';
+/**
+ * Lakshman 2026-11-05 ("use text wrap but make it standardized table"): one standard width per run table column, the
+ * same on every page and in every view, never sized by the rows on show. Each is at least the field's longest
+ * unbreakable word or figure, measured in Chrome, so text wraps inside its column and nothing spills. The table is laid
+ * out fixed at the sum of the columns shown, and fills its panel when that is wider.
+ */
+const RUN_COLUMN_WIDTHS: Readonly<Record<string, number>> = {
+  identity: 140, age: 96, 'run-outcome': 104, model: 260, backend: 200, 'routing-model': 180, completion: 150,
+  escalated: 136, host: 190, tokens: 136, cost: 96, savings: 164, baseline: 170, basis: 100, duration: 112, task: 150,
+  'tokens-completion': 210, tier: 136, score: 150,
+};
+const RUN_DEFAULT_COLUMNS = ['identity', 'age', 'run-outcome', 'model', 'tokens', 'cost', 'savings', 'duration'];
+const RUN_EXTRA_COLUMNS = ['backend', 'host', 'baseline', 'basis', 'task', 'tokens-completion', 'tier', 'score'];
+const RUN_ROUTING_COLUMNS = ['routing-model', 'completion', 'escalated'];
+
+/** What each run table column holds, shown when its header is hovered or focused (keyed by the header's concept). */
+const RUN_COLUMN_TIPS: Readonly<Record<string, string>> = {
+  identity: 'The run\'s id. Click it to open the run\'s full path on Workflow.',
+  age: 'When the run started, in UTC. The day is written above its first run; hover a time for the exact second. Click to sort.',
+  'run-outcome': 'Whether the run passed or failed its quality gate. A failed run shows why under its status.',
+  model: 'The model that answered. If it differs from the model the run asked for, the requested one is shown above it. Click a model to show only its runs.',
+  backend: 'The route that served the run. Click one to show only its runs.',
+  'routing-model': 'The model the run asked for, before routing. The Model column is the one that answered.',
+  completion: 'Why the model stopped answering. A dash means it finished normally (stop).',
+  escalated: 'How many times the run moved on to another model. A dash means none.',
+  host: 'The address of the machine that served the run, as recorded.',
+  tokens: 'Tokens sent to the model / tokens it returned, as recorded for the run.',
+  cost: 'What the run cost. A grey $0 is a free local run. Click to sort.',
+  savings: 'Modelled saving: what the run\'s tokens would cost at the baseline model\'s prices, less what the run cost. The baseline never ran.',
+  duration: 'How long the run took, end to end. Click to sort.',
+  task: 'The kind of work the run did.',
+  tier: 'The cost tier the run was routed to.',
+  score: 'The quality gate\'s score, from 0 to 1, to two decimals. Hover a score for the exact value.',
+};
+
+const RUN_FIELDS_TIP = 'Adds the backend, host, task type, route tier and quality score of each run. The table scrolls sideways; '
+  + 'the Run column stays in place. Every other recorded field is in the selected run and the export.';
+const ROUTING_COLUMNS_TIP = 'Adds why the model stopped answering (finish reason) and how many times it escalated to another model, '
+  + 'drawn only when unusual. A run answered by another model than it asked for names the requested one in its Model cell.';
 
 export function ModelUsagePanel({ row }: { row: Row | null }) {
   const modelColor = useModelColor();
@@ -2153,6 +2322,7 @@ export function OverviewTrendPanel({ rows, columns, window, now }: {
  */
 export function TierMixPanel({ row, compact = false }: { row: Row | null; compact?: boolean }) {
   const modelIdentityStyle = useModelIdentityStyle();
+  const totalsId = useId();
   const byTier = row && typeof row.by_tier === 'object' && row.by_tier !== null && !Array.isArray(row.by_tier)
     ? (row.by_tier as Row) : null;
   const tiers = byTier && Array.isArray(byTier.tiers) ? asRecords(byTier.tiers) : [];
@@ -2182,7 +2352,9 @@ export function TierMixPanel({ row, compact = false }: { row: Row | null; compac
     <section aria-label="Tier mix">
       {/* Part 18 AC120: the table, shown directly; the meter bars repeated its shares (Overview's Tier mix draws them). */}
       <DataTable fit>
-          <thead><tr><th><span><FieldIcon label="Tier" size={13} />Tier</span></th><th><span><ConceptIcon concept="delegations" label="Runs" size={13} />Runs</span></th><th><span><ConceptIcon concept="routing" label="Share of tier-routed" size={13} />Share of tier-routed</span></th><th><span><FieldIcon label="Cost" size={13} />Cost</span></th></tr></thead>
+          {/* Lakshman 2026-11-05 ("in run page check all and make it standardized"): headers as the run table writes them,
+              each in its column's colour with its glyph 6px from the label. */}
+          <thead><tr><th><span className="local-table-head" data-field-tone="tier"><FieldIcon label="Tier" size={13} />Tier</span></th><th><span className="local-table-head" data-field-tone="delegations"><ConceptIcon concept="delegations" label="Runs" size={13} />Runs</span></th><th><span className="local-table-head" data-field-tone="routing"><ConceptIcon concept="routing" label="Share of tier-routed" size={13} />Share of tier-routed</span></th><th><span className="local-table-head" data-field-tone="cost"><FieldIcon label="Cost" size={13} />Cost</span></th></tr></thead>
           <tbody>{tiers.flatMap((tier, index) => {
             const name = String(tier.cost_tier_name);
             const concept = tierConcept(name) ?? 'tier-other';
@@ -2196,24 +2368,29 @@ export function TierMixPanel({ row, compact = false }: { row: Row | null; compac
                   sideways scroll. Costs wrap at their spaces. */}
               <td className="local-dashboard-cell-token local-dashboard-cell-name"><span className="local-routing-name"><ConceptIcon concept={concept} label={tierLabel(name)} value={name} size={16} />{isMissing(tier.cost_tier_name) ? recorded(tier.cost_tier_name) : tierLabel(name)}</span></td>
               <td data-column="runs">{recordedCount(tier.count)}</td>
-              <td data-column="share" className="local-dashboard-cell-token">{routed ? <Readable value={tier.pct_of_tier_routed} kind="percent" /> : <><span aria-hidden="true">—</span><span className="local-visually-hidden">No share: not tier-routed</span></>}</td>
-              <td />
+              <td data-column="share" className="local-dashboard-cell-token">{routed ? <ShareMeter value={tier.pct_of_tier_routed} /> : <><span aria-hidden="true">—</span><span className="local-visually-hidden">No share: not tier-routed</span></>}</td>
+              {/* Cost is served per model, so a tier's row names none (its models' rows below do). */}
+              <td data-column="cost"><span className="local-run-quiet" aria-hidden="true">—</span><span className="local-visually-hidden">Cost is shown per model</span></td>
             </tr>,
             ...(Array.isArray(tier.models) ? asRecords(tier.models) : []).map((model, modelIndex) => (
               <tr data-tone={tone} style={{ '--tier-color': tierColor(name) } as CSSProperties} key={`${name}-${index}-${String(model.model_name)}-${modelIndex}`} className="local-dashboard-row--nested local-routing-model-row">
                 <td className="local-dashboard-cell-token local-dashboard-cell-name"><span className="local-routing-name local-model-identity" data-semantic-concept={`model:${String(model.model_name)}`} style={modelIdentityStyle(model.model_name)}><FieldIcon tone="model" value={model.model_name} size={14} />{recorded(model.model_name)}</span></td>
                 <td data-column="runs">{recordedCount(model.count)}</td>
-                <td data-column="share" className="local-dashboard-cell-token">{routed ? <Readable value={model.pct_of_tier_routed} kind="percent" /> : <><span aria-hidden="true">—</span><span className="local-visually-hidden">No share: not tier-routed</span></>}</td>
-                <td data-column="cost" data-unavailable={isMissing(model.cost_usd)}>{tierModelCost(model)}</td>
+                <td data-column="share" className="local-dashboard-cell-token">{routed ? <ShareMeter value={model.pct_of_tier_routed} /> : <><span aria-hidden="true">—</span><span className="local-visually-hidden">No share: not tier-routed</span></>}</td>
+                <td data-column="cost" data-unavailable={isMissing(model.cost_usd)}><TierModelCostCell model={model} /></td>
               </tr>
             )),
           ];})}</tbody>
       </DataTable>
+      {/* Lakshman 2026-11-05 ("one card so that we know it's total"): the three totals are one card under the table. */}
+      <div className="local-tier-totals" role="group" aria-labelledby={`${totalsId}-title`}>
+      <p className="local-dashboard-caption local-tier-totals-title" id={`${totalsId}-title`}>Totals</p>
       <FactList>
         <Fact term={<><FieldIcon label="Tier-routed" />Tier-routed</>} data-field-tone="routing" data-field-unavailable={isMissing(byTier.tier_routed_total)}>{recordedCount(byTier.tier_routed_total)}</Fact>
         <Fact term={<><FieldIcon label="Not tier-routed" />Not tier-routed</>} data-field-tone="unrouted" data-field-unavailable={isMissing(byTier.not_tier_routed_count)}>{recordedCount(byTier.not_tier_routed_count)}</Fact>
         <Fact term={<><FieldIcon label="All runs" />All runs</>} data-field-tone="delegations" data-field-unavailable={isMissing(byTier.total_tasks)}>{recordedCount(byTier.total_tasks)}</Fact>
       </FactList>
+      </div>
     </section>
   );
 }
@@ -2777,8 +2954,10 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns, acti
   const meteringDays = snapshots.find(snapshot => snapshot.topic === METERING_SUMMARY_TOPIC);
   const tokenDays = servedDays ?? (!decisionsCompleteRead(snapshots) && meteringDays && !meteringDays.failure
     ? meteringFilledDays(meteringDays.rows, snapshots.find(snapshot => snapshot.topic === DELEGATION_DECISIONS_TOPIC)?.rows ?? []) : null);
-  // OMN-22168 (Lakshman 2026-11-05, "Fix Runs per day"): Runs per day draws the same served day totals as the Daily trend,
-  // one bar per day, so the two agree with the headline; the verdicts read are named in each day's readout.
+  // Runs per day spans the days with a verdict read, and draws only those verdicts (Lakshman 2026-11-05, "in bar graph
+  // passed and failed only", "only days with verdicts"): a day's runs are its passed and failed runs.
+  const runVerdictDays = tokenDays && !servedDays
+    ? tokenDays.map(day => ({ ...day, runs: day.passed + day.failed, unrecorded: 0 })) : null;
   // OMN-21166 AC26: trends and breakdowns, counted from the served decision rows (rule change R-B, 2026-10-18).
   if (component.component_id === 'overview-insights') {
     // AC42: the metering KPIs for the selected window sit in this open panel, and their charts in its analysis,
@@ -2789,7 +2968,7 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns, acti
     // OMN-21166 part 13: Overview keeps the activity summary; the window's spend line sits in "More activity" with the
     // run counts, and the detailed analysis lives on Runs (its "Explore run analysis" link stays).
     if (slice) return rows.length === 0 ? <NoRunsYet /> : <InsightsSection decisions={rows} now={Date.now()} view={slice.key as 'runs' | 'tokens' | 'failures'} onInspectFailure={cause => navigate(causeHref(cause))}
-      servedDays={servedDays ?? tokenDays} complete={decisionsComplete} />;
+      servedDays={slice.key === 'tokens' ? tokenDays : servedDays ?? runVerdictDays} complete={decisionsComplete} />;
     return rows.length === 0 ? <NoRunsYet /> : <>
     <InsightsSection decisions={rows} now={Date.now()} view="summary" servedDays={servedDays} complete={decisionsComplete} more={meteringRows.length > 0
       ? <MeteringActivityInsights rows={meteringRows} now={Date.now()} window={activityWindow} unavailable={meteringUnavailable} display="kpis" />

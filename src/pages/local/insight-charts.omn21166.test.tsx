@@ -127,15 +127,13 @@ describe('OMN-21166: Overview insight charts', () => {
 
   // OMN-22168 (Lakshman 2026-11-04, "Verdict not recorded - removed and don't show anything if we don't have"): a run
   // with no recorded verdict is not drawn or counted on the day; it is never folded into passed or failed either.
-  // OMN-22168 (Lakshman 2026-11-05, "one Runs bar per day"): a day counts every run, the one with no verdict included;
-  // the passed and failed runs read are named beside the total, and no "not recorded" verdict is shown.
-  it('C2, C4, C6: focusing a day reads that UTC day: every run counted, passed and failed apart, an unrecorded verdict not shown', () => {
+  it('C2, C4, C6: focusing a day reads that UTC day: passed and failed apart, an unrecorded verdict not shown', () => {
     render(<InsightsSection decisions={ROWS} now={NOW} />);
     const chart = screen.getByRole('group', { name: 'Runs per day' });
     const today = within(chart).getByRole('button', { name: /^Oct 18:/ });
-    expect(today).toHaveAccessibleName('Oct 18: 3 runs, 1 passed, 1 failed');
+    expect(today).toHaveAccessibleName('Oct 18: 2 runs, 1 passed, 1 failed');
     fireEvent.focus(today);
-    expect(screen.getByTestId('runs-per-day-readout')).toHaveTextContent('Oct 18 · 3 runs · 1 passed · 1 failed');
+    expect(screen.getByTestId('runs-per-day-readout')).toHaveTextContent('Oct 18 · 2 runs · 1 passed · 1 failed');
     expect(screen.getByTestId('runs-per-day-readout').textContent).not.toMatch(/not recorded/);
   });
 

@@ -216,7 +216,7 @@ describe('OMN-21015: the Runs page draws the runs it lists', () => {
       expect(label(0)).toBe('');
     }
     // OMN-21166 AC55: the duration axis reads in seconds once a tick passes a second.
-    expect(chart('Duration per run').option.yAxis.axisLabel.formatter(2000)).toBe('2.0 s');
+    expect(chart('Duration per run').option.yAxis.axisLabel.formatter(2000)).toBe('2 s'); // whole units on an axis tick (Lakshman 2026-11-05: "3 min", not "3 min 0 s")
     expect(chart('Tokens per run').option.yAxis.axisLabel.formatter(300)).toBe('300');
   });
 

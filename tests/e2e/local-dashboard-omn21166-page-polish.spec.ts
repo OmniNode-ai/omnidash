@@ -7,11 +7,11 @@ import { gotoSettings } from './settings-sections';
 test.use({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce', trace: 'on' });
 test.beforeEach(async ({ page }) => { await serveCharts(page); });
 
-test('Runs retains all eighteen columns without splitting header words', async ({ page }, info) => {
+test('Runs retains all sixteen columns without splitting header words', async ({ page }, info) => {
   await page.goto('/runs');
   await revealRunFields(page);
   const headers = page.locator('[data-component="recent-runs"] .local-dashboard-table-wrap--fit th');
-  await expect(headers).toHaveCount(18);
+  await expect(headers).toHaveCount(16);
   const splitWords = await headers.evaluateAll(elements => elements.flatMap(element => {
     // OMN-21166 AC75: a sortable header's text sits inside its sort button, so the first text node is looked for inside.
     const text = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, { acceptNode: node => (node.textContent ?? '').trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP }).nextNode();
