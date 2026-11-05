@@ -34,6 +34,8 @@ async function boxes(page: Page) {
   const placed = [];
   for (const title of TITLES) {
     await chooseChartTab(page, title);
+    // The chosen tab's chart mounts after the tab switch; measure once its plot is drawn.
+    await expect(chartPanels(page).locator('.ins-bars.gdb-plot, .rb-chart--vertical .rb-track').first()).toBeVisible();
     const box = await chartPanels(page).evaluate(panel => {
       const r = panel.getBoundingClientRect();
       const frame = panel.closest('.local-overview-charts-panel')!.getBoundingClientRect();

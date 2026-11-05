@@ -45,9 +45,9 @@ for (const theme of ['light', 'dark'] as const) {
       const icons = await page.evaluate(() => [...document.querySelectorAll('.sidebar .dash-marker svg, main svg.lucide')]
         // OMN-21970 (Lakshman 2026-11-03, one colour per concept): an icon that names a concept draws its own colour on
         // every page (checked below); every icon that names none is the interface grey.
-        .filter(svg => !svg.closest('.local-run-pill, .badge, .chain-node, .live-pill, [role="alert"]') && !svg.matches('[data-field-icon], [data-semantic-concept]') && (svg as SVGElement).getBoundingClientRect().width > 0)
+        .filter(svg => !svg.closest('.local-run-pill, .badge, .chain-node, .live-pill, [role="alert"]') && !svg.matches('[data-field-icon], [data-semantic-concept^="model:"], [data-semantic-concept^="window:"], [data-semantic-concept^="status:"]') && (svg as SVGElement).getBoundingClientRect().width > 0)
         // OMN-22168 (Lakshman 2026-11-04/05, "make colourful"; "each unique thing has different and unique colors"): an icon
-        // that names a concept (data-semantic-concept: a window, a header status) draws its own colour, and each chart tab's
+        // that names a window or a header status (data-semantic-concept window: or status:) draws its own colour, and each chart tab's
         // glyph draws its chart's tone, as does the window picker's Pick a UTC day glyph; they are not interface icons.
         // OMN-22168 (Lakshman 2026-11-04, chosen over this grey for these controls only): each Runs filter's glyph and the
         // CSV and JSON export glyphs carry their own colour; design-system-dashboard-polish L8 checks them.
