@@ -233,7 +233,7 @@
   --ds-field-model: #6d28d9;
   --ds-field-age: #0369a1;
   --ds-field-identity: #0f6c7a;
-  --ds-field-duration: oklch(46% 0.11 45);
+  --ds-field-duration: #5b3c18;
   --ds-field-cost: #7e652d;
   --ds-field-savings: #014e44;
   --ds-field-backend: #9a3412;
@@ -312,7 +312,7 @@
   --ds-field-runs-daily: oklch(46% 0.11 230);
   --ds-field-pass-rate-daily: oklch(46% 0.11 210);
   --ds-field-activity-hourly: oklch(46% 0.11 270);
-  --ds-field-quality-model: oklch(46% 0.11 100);
+  --ds-field-quality-model: oklch(46% 0.11 108);
   --ds-field-failures: oklch(46% 0.11 345);
   --ds-field-runs-model: oklch(46% 0.11 5);
   --ds-field-runs-tier: oklch(46% 0.11 64.96998);
@@ -366,7 +366,7 @@
   --ds-field-model: #c4b5fd;
   --ds-field-age: #7dd3fc;
   --ds-field-identity: #67d8cf;
-  --ds-field-duration: oklch(79% 0.11 45);
+  --ds-field-duration: #e39c48;
   --ds-field-cost: #eecc64;
   --ds-field-savings: #21c8ac;
   --ds-field-backend: #fdba74;
@@ -445,7 +445,7 @@
   --ds-field-runs-daily: oklch(79% 0.11 230);
   --ds-field-pass-rate-daily: oklch(79% 0.11 210);
   --ds-field-activity-hourly: oklch(79% 0.11 270);
-  --ds-field-quality-model: oklch(79% 0.11 100);
+  --ds-field-quality-model: oklch(79% 0.11 108);
   --ds-field-failures: oklch(79% 0.11 345);
   --ds-field-runs-model: oklch(79% 0.11 5);
   --ds-field-runs-tier: oklch(79% 0.11 64.96998);
