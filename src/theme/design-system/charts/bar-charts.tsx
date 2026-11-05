@@ -1,6 +1,7 @@
 import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
 import { formatDashboardUsd } from '@/lib/dashboard-currency';
 import { formatDuration } from '@/components/format/duration';
+import { shortId } from '@/components/dashboard/event-dash/primitives';
 import { useEffect, useId, useState } from 'react';
 import { ChartEmpty, ChartHeading } from './frame';
 import { SwatchToggles } from './legend';
@@ -67,7 +68,9 @@ function RunInspector({ runs, describe }: { runs: readonly ListedRun[]; describe
   return <div className="local-chart-inspector">
     <label htmlFor={id}>Inspect run</label><select id={id} value={run ? selected : ''} onChange={event => setSelected(event.target.value)}>
       <option value="">Choose a listed run</option>
-      {runs.filter(item => item.id !== null).map((item, index) => <option key={`${item.id}-${index}`} value={item.id!}>{item.id} · {item.model}</option>)}
+      {/* The short id the run table shows (the whole id is the option's value and title, and is in the detail once
+          chosen), so the list stays as narrow as its control (Lakshman 2026-11-05). */}
+      {runs.filter(item => item.id !== null).map((item, index) => <option key={`${item.id}-${index}`} value={item.id!} title={item.id!}>{shortId(item.id!)} · {item.model}</option>)}
     </select>
     {run && <div className="local-chart-detail" role="status"><span><strong>{run.model}</strong><span className="local-chart-detail-id">{run.id}</span></span>
       <span>{describe ? describe(run) : `${run.status} · ${point(run.duration).served === null ? 'Not recorded' : formatDuration(point(run.duration).served)}`}</span>
@@ -360,7 +363,18 @@ export function runTimingBars(timings: readonly RunTiming[]): { bars: RunTimingB
 
 /** A tick of the milliseconds axis, read as "5.0 s" (OMN-21166 AC55); the origin carries no label, as on the money axis. */
 export function millisecondsAxisLabel(value: number): string {
-  return value === 0 ? '' : formatDuration(value);
+  // An axis tick names whole units only: "3 min" and "30 s", never "3 min 0 s" or "30.0 s" (Lakshman 2026-11-05). A
+  // tick between whole units (rare: the axis steps in round values) keeps the readout's form.
+  if (value === 0) return '';
+  if (value < 1000) return `${Math.round(value)} ms`;
+  const seconds = value / 1000;
+  if (seconds < 60 && Number.isInteger(seconds)) return `${seconds} s`;
+  if (seconds >= 60 && seconds < 3600 && Number.isInteger(seconds)) {
+    const minutes = Math.floor(seconds / 60);
+    const rest = seconds % 60;
+    return rest === 0 ? `${minutes} min` : `${minutes} min ${rest} s`;
+  }
+  return formatDuration(value);
 }
 
 function timingOption(bars: readonly RunTimingBar[], colours: readonly string[], compact = false) {

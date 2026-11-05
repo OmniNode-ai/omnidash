@@ -707,7 +707,10 @@ html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-cha
    soft gradient in its tone, a tone border and a glow; the others are quiet cards that lift on hover. */
 html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tab-slider { display: none !important; }
 html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist:has([data-stat]) {
-  display: grid !important; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 12px !important; width: 100%;
+  /* Lakshman 2026-11-05 ("Quality score per run" wrapped to three lines and its card stood taller): each card is as
+     wide as its label and headline and the row's spare width is shared out, so one long label is not squeezed into a
+     fifth of the row; with no room to spare, cards shrink as before. */
+  display: grid !important; grid-auto-flow: column; grid-auto-columns: auto; gap: 12px !important; width: 100%;
   padding: 0 !important; border: 0 !important; background: transparent !important; }
 @media (max-width: 900px) { html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist:has([data-stat]) { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-stat] {
@@ -1142,3 +1145,12 @@ html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs
      if it must. */
   html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody td:not([data-label="Run"]) { white-space: normal !important; overflow-wrap: anywhere; }
 }
+/* Inspect run: a control sized to its short run ids, not the panel's width, so its list opens beside its label. */
+html body .local-dashboard-page .local-chart-inspector select { width: auto; min-width: 260px; max-width: 420px; flex: 0 1 auto; }
+/* Six stat cards do not fit one row with their labels on one line (1272px of content in a 1111px row, measured): they
+   take two rows of three. Every card in a row is the row's height. */
+@media (min-width: 901px) {
+  html body .local-dashboard-page .local-dashboard-tablist:has([data-stat]):has(> [role="tab"] ~ [role="tab"] ~ [role="tab"] ~ [role="tab"] ~ [role="tab"] ~ [role="tab"]) {
+    grid-auto-flow: row !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+}
+html body .local-dashboard-page .local-dashboard-tablist:has([data-stat]) { align-items: stretch !important; }
