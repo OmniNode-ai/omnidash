@@ -402,12 +402,6 @@ html body .app svg.field-icon.field-icon[data-field-icon="usage-day"]:not([data-
 .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap:is(.local-runs-wrap--all, .local-runs-wrap--routing) {
   overflow-x: auto !important; overscroll-behavior-x: contain; scrollbar-width: thin;
 }
-.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap:is(.local-runs-wrap--all, .local-runs-wrap--routing) table {
-  width: max-content !important; min-width: 100%; table-layout: auto !important;
-}
-.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap:is(.local-runs-wrap--all, .local-runs-wrap--routing) :is(th, td) {
-  width: auto !important; white-space: nowrap !important; overflow-wrap: normal !important; word-break: normal !important;
-}
 .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap:is(.local-runs-wrap--all, .local-runs-wrap--routing) .local-runs-cause {
   display: inline-block; max-width: 280px; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom;
 }
@@ -1001,8 +995,8 @@ html body .local-dashboard-page--overview .local-overview-charts-panel .rb-chart
 /* Lakshman 2026-11-05 (run table, "do all 12"). */
 /* Item 6: numbers right-aligned in tabular figures, one format each. */
 html body .local-dashboard-page .local-runs-wrap :is(th, td)[data-num], html body .local-dashboard-page .local-runs-wrap td[data-num] { text-align: right; font-variant-numeric: tabular-nums; }
-html body .local-dashboard-page .local-runs-wrap th:is([data-column="tokens"], [data-column="cost"], [data-column="savings"], [data-column="duration"], [data-column="score"], [data-column="escalated"]) { text-align: right; }
-html body .local-dashboard-page .local-runs-wrap th:is([data-column="tokens"], [data-column="cost"], [data-column="savings"], [data-column="duration"], [data-column="score"], [data-column="escalated"]) :is(.local-runs-head, .local-sort-header) { justify-content: flex-end; margin-left: auto; }
+html body .local-dashboard-page .local-runs-wrap th:is([data-column="tokens"], [data-column="cost"], [data-column="savings"], [data-column="duration"], [data-column="score"], [data-column="escalated"], [data-column="tokens-completion"]) { text-align: right; }
+html body .local-dashboard-page .local-runs-wrap th:is([data-column="tokens"], [data-column="cost"], [data-column="savings"], [data-column="duration"], [data-column="score"], [data-column="escalated"], [data-column="tokens-completion"]) :is(.local-runs-head, .local-sort-header) { justify-content: flex-end; margin-left: auto; }
 /* Item 11: the day above the first row of each day, the clock on every row; the exact time is in the title. */
 html body .local-dashboard-page .local-run-time { display: inline-flex; flex-direction: column; gap: 2px; white-space: nowrap; }
 html body .local-dashboard-page .local-run-day { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ds-ink-3); }
@@ -1020,13 +1014,7 @@ html body .local-dashboard-page .local-run-unusual { font-weight: 600; color: va
 html body .local-dashboard-page .local-cost-free { color: var(--ds-ink-3); white-space: nowrap; }
 html body .local-dashboard-page .local-run-tag { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 999px; font-size: 11px; line-height: 18px;
   border: 1px solid var(--ds-line); color: var(--ds-ink-2); vertical-align: 1px; }
-/* The default columns size to their content (measured: fixed shares spilled the run id by 14px at a 1100px window): the
-   run id, the clock and the numbers keep one line, a model name wraps only at its joins inside a capped column, and the
-   status column holds the pill with its cause under it. */
-html body .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all):not(.local-runs-wrap--routing) table { table-layout: auto !important; width: 100% !important; }
-html body .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all):not(.local-runs-wrap--routing) :is(th, td) { width: auto !important; }
 html body .local-dashboard-page--runs .local-runs-wrap :is(td:first-child, td.local-dashboard-cell-time) { white-space: nowrap; }
-html body .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) .local-run-model { display: inline-block; max-width: 200px; }
 /* The status cell holds only its pill since the cause moved into its tooltip. */
 html body .local-dashboard-page .local-runs-wrap td[data-num] { white-space: nowrap; }
 html body .local-dashboard-page .local-runs-wrap td[data-num][data-wrap] { white-space: normal; color: var(--ds-ink-3); }
@@ -1042,7 +1030,7 @@ html body .local-dashboard-page .local-runs-wrap thead th:last-child .ds-tooltip
 html body .local-dashboard-page .local-runs-wrap thead .local-runs-head:focus-visible { outline: 2px solid var(--ds-ink); outline-offset: 2px; border-radius: 4px; }
 html body .local-dashboard-page .local-runs-wrap thead th { overflow: visible; }
 /* A right-aligned number column's tooltip opens from its right edge (Saving's ran 88px past the table at 1100px). */
-html body .local-dashboard-page .local-runs-wrap thead th:is([data-column="tokens"], [data-column="cost"], [data-column="savings"], [data-column="duration"], [data-column="score"], [data-column="escalated"]) .ds-tooltip { left: auto; right: 0; }
+html body .local-dashboard-page .local-runs-wrap thead th:is([data-column="tokens"], [data-column="cost"], [data-column="savings"], [data-column="duration"], [data-column="score"], [data-column="escalated"], [data-column="tokens-completion"]) .ds-tooltip { left: auto; right: 0; }
 /* Lakshman 2026-11-05 ("hover cards should be colorful same as their column name"): a column's tooltip wears its column's
    concept colour (the header glyph's): a tint of it, a 3px top edge in it, and the text in ink so it stays readable. */
 html body .local-dashboard-page .local-runs-wrap thead .local-runs-tip { display: inline-flex; max-width: 100%; }
@@ -1052,13 +1040,11 @@ html body .local-dashboard-page .local-runs-wrap .local-runs-tip .ds-tooltip {
   background: color-mix(in oklab, var(--field-ink, var(--ds-ink-3)) 7%, var(--ds-surface)); color: var(--ds-ink-2);
   border: 1px solid color-mix(in oklab, var(--field-ink, var(--ds-ink-3)) 28%, var(--ds-line)); border-top: 2px solid var(--field-ink, var(--ds-ink-3));
   box-shadow: none; font-weight: 400; padding: 6px 10px; }
-html body .local-dashboard-page .local-runs-wrap thead th:is([data-column="tokens"], [data-column="cost"], [data-column="savings"], [data-column="duration"], [data-column="score"], [data-column="escalated"]) .local-runs-tip { justify-content: flex-end; margin-left: auto; }
+html body .local-dashboard-page .local-runs-wrap thead th:is([data-column="tokens"], [data-column="cost"], [data-column="savings"], [data-column="duration"], [data-column="score"], [data-column="escalated"], [data-column="tokens-completion"]) .local-runs-tip { justify-content: flex-end; margin-left: auto; }
 /* At 1024px and under the eight default columns do not fit the panel (the run id spilled 35px at 768): the table scrolls
    sideways inside its panel with the Run column pinned, as the all-fields view does. */
 @media (max-width: 1024px) {
   .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap { overflow-x: auto !important; overscroll-behavior-x: contain; scrollbar-width: thin; }
-  .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap table { width: max-content !important; min-width: 100%; table-layout: auto !important; }
-  .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap :is(th, td) { white-space: nowrap; }
   .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap :is(thead th, tbody td):first-child { position: sticky; left: 0; z-index: 1; background: var(--ds-surface); box-shadow: 1px 0 0 var(--ds-line); min-width: 136px; }
   .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap thead th:first-child { z-index: 2; background: var(--ds-surface-2) !important; }
 }
@@ -1089,3 +1075,18 @@ html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs
 html body .local-dashboard-page .local-runs-wrap td .local-task-cell { display: flex; align-items: center; }
 /* With Routing columns on, the requested model has its own column, so the Model cell drops its "requested →" line. */
 html body .local-dashboard-page .local-runs-wrap--routing .local-run-requested { display: none; }
+/* Lakshman 2026-11-05 ("use text wrap but make it standardized table", "make table dynamic and modern perfect"): one
+   standard column width per field, the same on every page of runs and in every view, never sized by the rows on show.
+   Each width is at least the field's longest unbreakable word or figure (measured in Chrome), so text wraps inside its
+   column and nothing spills. The table fills its panel when the columns fit (the eight default ones are 1108px, the
+   panel at a 1440px window) and otherwise scrolls sideways with the Run column pinned. Figures, ids and times keep one
+   line; names, causes and labels wrap. */
+html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap { overflow-x: auto !important; overscroll-behavior-x: contain; scrollbar-width: thin; }
+/* The widths themselves are RUN_COLUMN_WIDTHS in LocalDashboardPage.tsx: the table is laid out fixed at their sum. */
+html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap table { table-layout: fixed !important; min-width: 100% !important; }
+html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap :is(th, td) { white-space: normal; overflow-wrap: normal; word-break: normal; }
+html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap :is(td[data-num], td:first-child, td.local-dashboard-cell-time) { white-space: nowrap; }
+html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap td[data-wrap] { min-width: 0; max-width: none; }
+html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap :is(thead th, tbody td):first-child { position: sticky; left: 0; z-index: 1; background: var(--ds-surface); box-shadow: 1px 0 0 var(--ds-line); }
+html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap thead th:first-child { z-index: 2; background: var(--ds-surface-2) !important; }
+html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody tr:hover td:first-child { background: var(--ds-surface-2); }

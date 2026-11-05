@@ -1689,13 +1689,13 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
   const headIcon = (concept: string, label: string) => <ConceptIcon concept={concept} label={label} size={13} />;
   // Lakshman 2026-11-05 ("in all columns add a tooltip so that when we hover it should tell about that column"): each header
   // explains its column on hover and on keyboard focus (the kit Tooltip), from RUN_COLUMN_TIPS.
-  const plainHeader = (concept: string, label: string, extra = false) => <th data-column={concept} data-extra={extra ? '' : undefined}>
+  const plainHeader = (concept: string, label: string, extra = false) => <th data-column={concept} data-extra={extra ? '' : undefined} style={{ width: RUN_COLUMN_WIDTHS[concept] }}>
     <span className="local-runs-tip" data-field-tone={concept}><Tooltip text={RUN_COLUMN_TIPS[concept] ?? label} side="bottom"><span className="local-runs-head" tabIndex={0}>{headIcon(concept, label)}{label}</span></Tooltip></span>
   </th>;
   const sortHeader = (key: RunSortKey, label: string, concept: string) => {
     const active = view.sort === key;
     const direction = active ? view.dir ?? 'desc' : null;
-    return <th data-column={concept} aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}>
+    return <th data-column={concept} style={{ width: RUN_COLUMN_WIDTHS[concept] }} aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}>
       <span className="local-runs-tip" data-field-tone={concept}><Tooltip text={RUN_COLUMN_TIPS[concept] ?? label} side="bottom">
       <button type="button" className="local-sort-header" data-sort-active={active ? '' : undefined}
         onClick={() => updateView({ sort: key, dir: active && direction === 'desc' ? 'asc' : 'desc', page: 1 })}>
@@ -1839,7 +1839,9 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
             const baselines = new Set(page.map(baselineOf).filter(value => !isMissing(value)).map(String));
             const sharedBaseline = baselines.size === 1 ? [...baselines][0]! : null;
             const byDay = !view.sort || view.sort === 'created';
-            return <DataTable fit className={`local-runs-wrap${showAllFields ? ' local-runs-wrap--all' : ''}${showRouting ? ' local-runs-wrap--routing' : ''}`} id={`${id}-table`}>
+            const shownColumns = [...RUN_DEFAULT_COLUMNS, ...(showAllFields ? RUN_EXTRA_COLUMNS : []), ...(showRouting ? RUN_ROUTING_COLUMNS : [])];
+            const tableWidth = shownColumns.reduce((sum, concept) => sum + (RUN_COLUMN_WIDTHS[concept] ?? 0), 0);
+            return <DataTable fit className={`local-runs-wrap${showAllFields ? ' local-runs-wrap--all' : ''}${showRouting ? ' local-runs-wrap--routing' : ''}`} id={`${id}-table`} style={{ width: tableWidth }}>
               <thead>
                 <tr>
                   {plainHeader('identity', 'Run')}{sortHeader('created', 'Time', 'age')}{plainHeader('run-outcome', 'Status')}
@@ -1849,7 +1851,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                   {plainHeader('host', 'Host', true)}
                   {plainHeader('tokens', 'Tokens')}{sortHeader('cost', 'Cost', 'cost')}
                   {/* The shared baseline is named in the header's tooltip and accessible name, not on the page. */}
-                  <th data-column="savings" aria-label={sharedBaseline ? `Saving vs ${sharedBaseline}` : undefined}>
+                  <th data-column="savings" style={{ width: RUN_COLUMN_WIDTHS.savings }} aria-label={sharedBaseline ? `Saving vs ${sharedBaseline}` : undefined}>
                     <span className="local-runs-tip" data-field-tone="savings"><Tooltip side="bottom" text={sharedBaseline
                       ? `Modelled saving vs ${sharedBaseline}: what the run's tokens would cost at ${sharedBaseline}'s prices, less what the run cost. ${sharedBaseline} never ran.`
                       : RUN_COLUMN_TIPS.savings!}>
@@ -2050,6 +2052,21 @@ function tierModelCost(model: Row): string {
  * counted or divided here; a model served without a count says Not recorded.
  */
 /** What each Runs view switch adds to the run list, shown on hover and keyboard focus. */
+/**
+ * Lakshman 2026-11-05 ("use text wrap but make it standardized table"): one standard width per run table column, the
+ * same on every page and in every view, never sized by the rows on show. Each is at least the field's longest
+ * unbreakable word or figure, measured in Chrome, so text wraps inside its column and nothing spills. The table is laid
+ * out fixed at the sum of the columns shown, and fills its panel when that is wider.
+ */
+const RUN_COLUMN_WIDTHS: Readonly<Record<string, number>> = {
+  identity: 140, age: 96, 'run-outcome': 104, model: 260, backend: 200, 'routing-model': 180, completion: 150,
+  escalated: 136, host: 150, tokens: 136, cost: 96, savings: 164, baseline: 170, basis: 100, duration: 112, task: 150,
+  'tokens-completion': 210, tier: 136, score: 150,
+};
+const RUN_DEFAULT_COLUMNS = ['identity', 'age', 'run-outcome', 'model', 'tokens', 'cost', 'savings', 'duration'];
+const RUN_EXTRA_COLUMNS = ['backend', 'host', 'baseline', 'basis', 'task', 'tokens-completion', 'tier', 'score'];
+const RUN_ROUTING_COLUMNS = ['routing-model', 'completion', 'escalated'];
+
 /** What each run table column holds, shown when its header is hovered or focused (keyed by the header's concept). */
 const RUN_COLUMN_TIPS: Readonly<Record<string, string>> = {
   identity: 'The run\'s id. Click it to open the run\'s full path on Workflow.',

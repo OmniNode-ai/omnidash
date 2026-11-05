@@ -1565,8 +1565,6 @@ figure.local-chart.usage-insight { min-width: 0; margin: 0; padding: 14px; }
 .local-overview-summary .local-card-details > summary { position: absolute; top: 4px; right: 10px; }
 /* OMN-21166 audit fixes (2026-10-18): Runs task names fit, durations name their unit; Usage panels size to content. */
 @media (min-width: 1025px) {
-  .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all):not(.local-runs-wrap--routing) :is(th, td):nth-child(4) { width: 19%; }
-  .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all):not(.local-runs-wrap--routing) :is(th, td):nth-child(14) { width: 15%; }
   .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) .local-task-cell { min-width: 0; }
 }
 /* OMN-21166 AC55: durations read with their own unit ("5.3 s"), so the header carries none. */
