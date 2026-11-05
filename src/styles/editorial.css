@@ -985,3 +985,9 @@ html body .local-dashboard-page .local-model-usage--upright { scrollbar-width: t
 html body .local-dashboard-page .local-model-usage--upright::-webkit-scrollbar { height: 8px; }
 html body .local-dashboard-page .local-model-usage--upright::-webkit-scrollbar-thumb { background: color-mix(in oklab, var(--ds-ink-3) 70%, transparent); border-radius: 999px; }
 html body .local-dashboard-page .local-model-usage--upright::-webkit-scrollbar-track { background: color-mix(in oklab, var(--ds-line) 60%, transparent); border-radius: 999px; }
+
+/* Lakshman 2026-11-05 ("these numbers also colorful"): on Overview's Model usage and Tier mix each bar's value reads in
+   its bar's colour, mixed a quarter toward ink so it stays readable on the light and the dark surface (the name stays
+   ink beside its swatch, OMN-21970 option a). */
+html body .local-dashboard-page--overview .local-overview-charts-panel .rb-chart li[data-ranked-item] .rb-value {
+  color: color-mix(in oklab, var(--rb-color, var(--ds-ink)) 75%, var(--ds-ink)) !important; font-weight: 600; }
