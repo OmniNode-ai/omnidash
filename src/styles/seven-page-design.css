@@ -2129,3 +2129,16 @@ html body .local-dashboard-page section.workflow-record-group[data-field-tone] >
 .local-dashboard-page .workflow-record-group dd { overflow-wrap: anywhere; }
 
 .local-dashboard-page .local-run-step-head > strong[data-field-tone] { color: var(--field-ink); }
+/* Phone: a run card's fact puts its label above its value, so a long model id gets the card's full width (390 check
+   2026-11-05: "thinkingmachines/" wrapped inside a 100px value column). */
+@media (max-width: 640px) {
+  html body .local-dashboard-page :is(.local-run-summary-group, .workflow-record-group) .local-dashboard-fields > div { grid-template-columns: minmax(0, 1fr) !important; row-gap: 2px; }
+}
+/* Re-measured 2026-11-05 with a classic 15px scrollbar (the table area 1109px, not 1124): the fixed columns summed past
+   it. The name column now takes what is left, and two columns give room: Groups' pass rate (its count is on its own
+   line) 100px, Usage by model and day's cost 84px and its share meter 36px, so a model id keeps to two lines. */
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="name"] { width: auto; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="pass"] { width: 100px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(5) { width: 84px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(9) { width: 118px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] .local-share-meter { flex-basis: 36px; }

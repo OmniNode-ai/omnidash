@@ -2087,9 +2087,10 @@ function tierModelCost(model: Row): string {
  * unbreakable word or figure, measured in Chrome, so text wraps inside its column and nothing spills. The table is laid
  * out fixed at the sum of the columns shown, and fills its panel when that is wider.
  */
+// Duration 120 (its sort header measured 120px with the button's padding, 2026-11-05), taken from the model's 260.
 const RUN_COLUMN_WIDTHS: Readonly<Record<string, number>> = {
-  identity: 140, age: 96, 'run-outcome': 104, model: 260, backend: 200, 'routing-model': 180, completion: 150,
-  escalated: 136, host: 190, tokens: 136, cost: 96, savings: 164, baseline: 170, basis: 100, duration: 112, task: 150,
+  identity: 140, age: 96, 'run-outcome': 104, model: 252, backend: 200, 'routing-model': 180, completion: 150,
+  escalated: 136, host: 190, tokens: 136, cost: 96, savings: 164, baseline: 170, basis: 100, duration: 120, task: 150,
   'tokens-completion': 210, tier: 136, score: 150,
 };
 const RUN_DEFAULT_COLUMNS = ['identity', 'age', 'run-outcome', 'model', 'tokens', 'cost', 'savings', 'duration'];
@@ -2533,7 +2534,8 @@ export function RunSummary({ decision, showAnalysis = false }: { decision: Row |
             {index === 0 && <Fact term={<><FieldIcon label="Status" value={status} />Status</>} data-field-tone={fieldTone('Status', status)}><OutcomePill value={status} /></Fact>}
             {fields.filter(([label]) => labels.includes(label)).map(([label, value]) => <Fact key={label} term={<><FieldIcon label={label} value={value} />{label}</>} data-summary-field={label} data-field-tone={fieldTone(label, value)} data-field-unavailable={isUnavailableField(value)} style={fieldTone(label, value) === 'model' && !isUnavailableField(value) ? modelIdentityStyle(value) : undefined}>{label === 'Cause' && value.length > 120
               ? <details className="local-run-failure-details"><summary title={value}>Show failure reason</summary><p>{value}</p></details>
-              : value}</Fact>)}
+              // A model id breaks at its joins ("thinkingmachines/" then "inkling:free"), never mid-word (phone check 2026-11-05).
+              : fieldTone(label, value) === 'model' && !isUnavailableField(value) ? breakableName(value) : value}</Fact>)}
           </FactList>
           <p className="local-run-summary-help" role="tooltip" id={`${sectionId}-${index}-help`}>{help}</p>
         </section>)}
@@ -2611,13 +2613,14 @@ export function RunTimeline({ steps, run, stepText }: {
   const span = known.length > 0 ? Math.max(1, Math.max(...known.map(entry => entry.end)) - origin) : 1;
   const escalations = run && !isMissing(run.escalation_count) ? Number(run.escalation_count) : 0;
   const attemptSteps = rows.some(row => !isMissing(row.attempt_number));
-  // The prompt follows the Request (else the first step); the answer follows the provider call that succeeded (else the
-  // last provider call, else the last step), which is where the run got it.
+  // The prompt follows the Request (else the first step). The answer is the run's last response, so it follows the last
+  // provider call whatever its outcome (else the last step): checked live 2026-11-05 on a failed run, whose recorded answer
+  // was the final call's HTTP 404 message, not the text of the earlier call that succeeded.
   const kindOf = (row: Row) => String(row.step_kind ?? '');
   const firstRequest = rows.findIndex(row => kindOf(row) === 'request');
   const promptAt = firstRequest >= 0 ? firstRequest : 0;
-  const calls = rows.map((row, index) => [row, index] as const).filter(([row]) => kindOf(row) === 'provider_call');
-  const answerAt = (calls.filter(([row]) => String(row.outcome) === 'succeeded').at(-1) ?? calls.at(-1))?.[1] ?? rows.length - 1;
+  const lastCall = rows.map(kindOf).lastIndexOf('provider_call');
+  const answerAt = lastCall >= 0 ? lastCall : rows.length - 1;
   return (
     <>
     {escalations > 0 && !attemptSteps && <p className="local-dashboard-caption" data-escalation-text>
