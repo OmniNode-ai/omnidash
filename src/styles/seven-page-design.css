@@ -1895,8 +1895,6 @@ html body .ev-root .local-dashboard-filters.local-dashboard-toggle[role="radiogr
 /* Usage analysis Groups, as the Runs table reads (Lakshman 2026-11-05, "fix ... same as overview or runs"): the name
    column in the table's own sans text on the row's surface (no darker band, no monospace), and every header on one
    line, the columns re-balanced so the headers fit (measured in Chrome at 1440). */
-html body .local-dashboard-page .usage-analysis table[data-analysis-table] tbody th[scope="row"] { font-family: var(--ds-font-sans) !important;
-  font-size: 13px !important; font-weight: 500 !important; background: var(--ds-surface) !important; }
 .local-dashboard-page .usage-analysis table[data-analysis-table] thead .local-table-head { white-space: nowrap; }
 .local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="name"] { width: 170px; }
 .local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="runs"] { width: 82px; }
@@ -1907,8 +1905,6 @@ html body .local-dashboard-page .usage-analysis table[data-analysis-table] tbody
 .local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="spark"] { width: 142px; }
 /* Model by task reads as the Groups table and the run table: sans model names on the row's surface (still opaque, so the
    name stays readable when the matrix scrolls under it) and the same sans pass pills. */
-html body .local-dashboard-page [data-decision-matrix] tbody th[scope="row"] { font-family: var(--ds-font-sans) !important;
-  font-size: 13px !important; font-weight: 500 !important; background: var(--ds-surface) !important; }
 html body .local-dashboard-page [data-decision-matrix] .usage-matrix-figure { font-family: var(--ds-font-sans) !important; font-variant-numeric: tabular-nums; }
 
 /* Each toggle option in its own colour (Lakshman 2026-11-05, "all tabs different colors"): its glyph wears the option's
@@ -1951,3 +1947,21 @@ html body .local-dashboard-page .usage-analysis table[data-analysis-table] tbody
 /* A toggles row is a grid child: without min-width 0 it kept its content width (279px in a 248px phone column). */
 .local-dashboard-page .local-dashboard-toggles { min-width: 0; max-width: 100%; }
 .local-dashboard-page .local-dashboard-toggles > [role="radiogroup"] { min-width: 0; }
+
+/* One table standard on every local page and on Delegation Evidence (Lakshman 2026-11-05, "improve and make all tables
+   unified same styles"), taken from the Runs table: its header band (surface-2, 10px 12px), 11px 12px body cells in
+   13px, identifiers (models, hosts, backends, run ids) in the mono face as the run table's token cells are, words and
+   figures in the sans face with tabular digits, a soft hover on every row and no line under the last one. */
+html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) table thead th {
+  background: var(--ds-surface-2) !important; padding: 10px 12px !important; vertical-align: bottom; }
+html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) table tbody :is(td, th) {
+  padding: 11px 12px !important; font-size: 13px !important; font-variant-numeric: tabular-nums; }
+html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) table tbody th[scope="row"] {
+  font-family: var(--ds-font-sans) !important; font-weight: 500 !important; background: var(--ds-surface) !important;
+  text-transform: none !important; letter-spacing: 0 !important; color: var(--ds-ink) !important; }
+html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) table tbody
+  :is(th[data-model-name], td[data-label="Model"], td.local-dashboard-cell-token) { font-family: var(--ds-font-mono) !important; font-weight: 500 !important; }
+html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) table tbody tr { transition: background 0.12s; }
+html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) table tbody tr:hover > :is(td, th) {
+  background: color-mix(in oklab, var(--ds-surface-2) 70%, var(--ds-surface)) !important; }
+html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) table tbody tr:last-child > :is(td, th) { border-bottom: 0 !important; }
