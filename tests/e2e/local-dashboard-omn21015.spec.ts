@@ -173,34 +173,22 @@ const metering = [
   meteringDay('2026-10-12', '0.120000', '0.520000', '0.400000'),
 ];
 
-// OMN-22168 (Lakshman 2026-11-05, "one Runs bar per day"): Runs per day is one bar per day with no series legend; the
-// keyboard legend this test held lives on the Daily trend's chips, the same kit control (SeriesToggles).
-test('OMN-21015: a trend legend hides and shows a line from the keyboard; Runs per day draws runs, passed and failed', async ({ page }) => {
+test('OMN-21015: the Runs per day legend hides and shows a series from the keyboard', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  // The Daily trend draws metering-summary.v1's day rows; two served days give it lines to hide and show.
-  await serve(page, { [DECISIONS]: firstScreenRuns, [METERING]: metering });
+  await serve(page, { [DECISIONS]: firstScreenRuns });
   await page.goto('/');
 
-  // OMN-22168 (Lakshman 2026-11-05, "pass and failed"): each day draws its run total with its passed and failed runs
-  // beside it, and the legend names all three.
-  const runsChart = page.getByRole('figure', { name: 'Runs per day', exact: true });
-  await expect(runsChart).toBeVisible();
-  await expect(runsChart.getByRole('group', { name: 'Series' }).getByRole('button')).toHaveText(['Runs', 'Passed', 'Failed']);
-  await expect.poll(() => runsChart.locator('.gdb-col[data-series="runs"] .gdb-bar').count()).toBeGreaterThan(0);
-  await expect.poll(() => runsChart.locator('.gdb-col[data-series="passed"] .gdb-bar').count()).toBeGreaterThan(0);
-  await expect.poll(() => runsChart.locator('.gdb-col[data-series="failed"] .gdb-bar').count()).toBeGreaterThan(0);
+  const figure = page.getByRole('figure', { name: 'Runs per day', exact: true });
+  await expect(figure).toBeVisible();
+  const toggles = figure.getByRole('group', { name: 'Series' }).getByRole('button');
+  await expect(toggles).toHaveText(['Passed', 'Failed']);
 
-  const trend = page.getByRole('figure', { name: 'Daily trend', exact: true });
-  // Spend and Savings sit side by side in the legend, and the two served days carry both (no token counts).
-  const group = trend.getByRole('group', { name: 'Trend lines' });
-  const toggles = group.getByRole('button').filter({ hasText: /^(Spend|Savings)$/ });
-  await expect(toggles).toHaveText(['Spend', 'Savings']);
-  const first = await toggles.nth(0).textContent();
-  const second = await toggles.nth(1).textContent();
-  /** The lines the drawing holds, by key. */
-  const drawn = () => trend.evaluate(element => [...element.querySelectorAll('path.od-draw[data-line]')].map(path => path.getAttribute('data-line')));
-  const slug = (text: string | null) => (text ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
-  await expect.poll(drawn).toContain(slug(second));
+  /** How many bars the drawing holds for each series, in legend order. */
+  const drawn = () => figure.evaluate((element) => ['passed', 'failed'].map(
+    (key) => element.querySelectorAll(`.gdb-col[data-series="${key}"] .gdb-bar`).length));
+
+  // One passed day and one failed day: one bar per series.
+  await expect.poll(drawn).toEqual([1, 1]);
 
   // Reach the second toggle with Tab from the first, then press Enter.
   await toggles.nth(0).focus();
@@ -208,14 +196,13 @@ test('OMN-21015: a trend legend hides and shows a line from the keyboard; Runs p
   await expect(toggles.nth(1)).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(toggles.nth(1)).toHaveAttribute('aria-pressed', 'false');
-  await expect.poll(drawn).not.toContain(slug(second));
-  await expect.poll(drawn).toContain(slug(first));
+  await expect.poll(drawn).toEqual([1, 0]);
   await page.screenshot({ path: screenshotPath('local-dashboard-omn21015-runs-legend-hidden-1440x900.png'), fullPage: false });
 
   // Space brings it back.
   await page.keyboard.press('Space');
   await expect(toggles.nth(1)).toHaveAttribute('aria-pressed', 'true');
-  await expect.poll(drawn).toContain(slug(second));
+  await expect.poll(drawn).toEqual([1, 1]);
 });
 
 // OMN-21015 stage 5: the charts are on the first screen. At 1440x900, with the page as it opens and nothing scrolled,

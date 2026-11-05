@@ -34,24 +34,20 @@ test('the active navigation item is neutral and outcome plots match their semant
   // the 01+20 look (Lakshman 2026-11-03, "01 + 20 do it"): the active item is the soft fill #f0f0f0 (was the card surface).
   await expect(nav).toHaveCSS('background-color','rgb(240, 240, 240)');
   await expect(nav.locator('.dash-name')).toHaveCSS('color','rgb(10, 10, 10)'); // the 01+20 ink (was #111111)
-  // OMN-22168 (Lakshman 2026-11-05, "one Runs bar per day"): Runs per day is one bar per day in its own colour, with no
-  // series legend; the legend chip whose colour must match its marks is the Daily trend's (the same kit control).
   const chart=page.getByRole('figure', { name:'Runs per day', exact:true });
-  const bars=()=>chart.locator('.gdb-col[data-series="runs"] .ins-seg').evaluateAll(els=>els.map(el=>getComputedStyle(el).color));
-  const runsTone=await page.locator('html').evaluate(el=>{ const probe=document.createElement('i'); probe.style.color='var(--ds-field-runs-daily)'; el.append(probe); const c=getComputedStyle(probe).color; probe.remove(); return c; });
-  const drawn=await bars();
-  expect(drawn.length).toBeGreaterThan(0);
-  expect(new Set(drawn)).toEqual(new Set([runsTone]));
-  const trend=page.getByRole('figure', { name:'Daily trend', exact:true });
-  const runsChip=trend.getByRole('button', { name:'Runs', exact:true });
-  await expect(runsChip).toHaveAttribute('aria-pressed','true');
-  const chipColor = await runsChip.evaluate(el => getComputedStyle(el, '::before').backgroundColor);
-  const lineColor = await trend.locator('path.od-draw[data-line="runs"]').evaluate(el => getComputedStyle(el).stroke);
-  expect(lineColor).toBe(chipColor);
-  await runsChip.click();
-  await expect(trend.locator('path.od-draw[data-line="runs"]')).toHaveCount(0);
-  await runsChip.click();
-  await expect(runsChip).toHaveAttribute('aria-pressed','true');
+  const passed=chart.getByRole('button', { name:'Passed', exact:true });
+  await expect(passed).toHaveAttribute('aria-pressed','true');
+  // OMN-21166 live review 2026-10-25: the dotted grouped bars are painted in currentColor (their colour property); their
+  // background is no longer a solid fill, so the mark colour is read from `color`.
+  const marks=()=>chart.locator('.gdb-col[data-series="passed"] .ins-seg').evaluateAll(els=>els.map(el=>getComputedStyle(el).color));
+  const before=await marks();
+  const passColor = await passed.evaluate(el => getComputedStyle(el, '::before').backgroundColor);
+  expect(before.length).toBeGreaterThan(0);
+  expect(before).toContain(passColor);
+  await passed.click();
+  expect(await marks()).toEqual([]);
+  await passed.click();
+  await expect(passed).toHaveAttribute('aria-pressed','true');
   await chart.scrollIntoViewIfNeeded();
   await page.screenshot({path:info.outputPath('nanomon-palette-light.png')});
 });

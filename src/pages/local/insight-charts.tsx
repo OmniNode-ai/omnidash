@@ -38,8 +38,6 @@ const RANGES = [
 
 const PASS = 'var(--ds-field-pass)';
 const FAIL = 'var(--ds-field-fail)';
-/** Runs per day's one bar: the day's served run total, in the chart's own concept colour. */
-const RUNS = 'var(--ds-field-runs-daily)';
 
 const TASK_CONCEPT: Readonly<Record<string, string>> = {
   document: 'task-document', code_generation: 'task-code-generation', research: 'task-research',
@@ -88,10 +86,9 @@ function runsWord(value: number): string {
 }
 
 function dayCounts(day: InsightDay): string {
-  // OMN-22168 (Lakshman 2026-11-05, "Fix Runs per day", "no verdict not needed"): a day is every run it served, so Runs
-  // per day agrees with the Daily trend and the headline; the passed and failed runs read are named beside it when any.
-  const verdicts = day.passed + day.failed;
-  return verdicts > 0 ? `${runsWord(day.runs)}, ${count(day.passed)} passed, ${count(day.failed)} failed` : runsWord(day.runs);
+  // OMN-22168 (Lakshman 2026-11-04, "don't show anything if we don't have"; 2026-11-05, "passed and failed only"): a run
+  // without a verdict is not drawn or named.
+  return [runsWord(day.passed + day.failed), `${count(day.passed)} passed`, `${count(day.failed)} failed`].join(', ');
 }
 
 /** A short label above a token bar ("2.9K", "206K"); the exact count is in the day's readout and accessible name. */
@@ -116,36 +113,32 @@ function RunsPerDay({ days }: { days: InsightDay[] }) {
   const onRuns = location === '/runs';
   const openDay = (key: string) => navigate(`/runs?${writeRunsSearch(onRuns ? search : '', { ...(onRuns ? readRunsSearch(search) : DEFAULT_RUNS_VIEW), day: key, page: 1 })}`);
   const opensId = useId();
-  // Lakshman 2026-11-05 ("one Runs bar per day", then "pass and failed"): each day draws its served run total and, beside
-  // it, the passed and failed runs read; a day with no verdict read draws its total only. Each series can be hidden; the
-  // last one shown stays on.
-  const [show, setShow] = useState({ runs: true, passed: true, failed: true });
-  const max = Math.max(1, ...days.flatMap(day => [show.runs ? day.runs : 0, show.passed ? day.passed : 0, show.failed ? day.failed : 0]));
+  // Lakshman 2026-11-05 ("in bar graph passed and failed only"): each day draws its passed and failed runs read. Each
+  // series can be hidden; the last one shown stays on.
+  const [show, setShow] = useState({ passed: true, failed: true });
+  const max = Math.max(1, ...days.flatMap(day => [show.passed ? day.passed : 0, show.failed ? day.failed : 0]));
   const active = hover === null ? null : days[hover]!;
   const ticks = dayTicks(days, onRuns ? 14 : 8);
-  const toggle = (key: 'runs' | 'passed' | 'failed') => setShow(current => {
-    const others = (['runs', 'passed', 'failed'] as const).filter(other => other !== key);
-    return current[key] && !others.some(other => current[other]) ? current : { ...current, [key]: !current[key] };
+  const toggle = (key: 'passed' | 'failed') => setShow(current => {
+    const other = key === 'passed' ? 'failed' : 'passed';
+    return current[key] && !current[other] ? current : { ...current, [key]: !current[key] };
   });
   return (
     <ChartCard title="Runs per day" concept="runs-daily" delay={0}>
       <ChartReadout testId="runs-per-day-readout" active={active !== null}
-        text={active ? <>{dayLabel(active.day)}<Sep /><span data-field-tone="count">{count(active.runs)} runs</span>{active.passed + active.failed > 0 ? <><Sep /><span data-field-tone="pass">{count(active.passed)} passed</span><Sep /><span data-field-tone="fail">{count(active.failed)} failed</span></> : null}</> : ''} />
+        text={active ? <>{dayLabel(active.day)}<Sep /><span data-field-tone="count">{count(active.passed + active.failed)} runs</span><Sep /><span data-field-tone="pass">{count(active.passed)} passed</span><Sep /><span data-field-tone="fail">{count(active.failed)} failed</span></> : ''} />
       <DayColumns label="Runs per day" days={days.map((day, index) => ({
         key: day.day,
         ariaLabel: `${dayLabel(day.day)}: ${dayCounts(day)}`,
         tick: ticks.has(index),
         values: [
-          ...(show.runs ? [{ key: 'runs', value: day.runs, color: RUNS, label: count(day.runs) }] : []),
-          // A day with no verdict read keeps its passed and failed slots empty (no bar, never a 0), so every day's bars
-          // keep one width.
+          // A day with no verdict read keeps its passed and failed slots empty (no bar, never a 0).
           ...(show.passed ? [{ key: 'passed', value: day.passed + day.failed > 0 ? day.passed : null, color: PASS, label: count(day.passed) }] : []),
           ...(show.failed ? [{ key: 'failed', value: day.passed + day.failed > 0 ? day.failed : null, color: FAIL, label: count(day.failed) }] : []),
         ],
       }))} max={max} hover={hover} onHover={setHover} onOpen={openDay} describedBy={opensId} dayLabel={dayLabel} />
       <span id={opensId} hidden>Opens Runs for this day</span>
-      <SeriesToggles label="Series" onToggle={key => toggle(key as 'runs' | 'passed' | 'failed')} series={[
-        { key: 'runs', label: 'Runs', color: RUNS, tone: 'runs-daily', shown: show.runs },
+      <SeriesToggles label="Series" onToggle={key => toggle(key as 'passed' | 'failed')} series={[
         { key: 'passed', label: 'Passed', color: PASS, tone: 'pass', shown: show.passed },
         { key: 'failed', label: 'Failed', color: FAIL, tone: 'fail', shown: show.failed },
       ]} />
