@@ -1542,22 +1542,10 @@ figure.local-chart.usage-insight { min-width: 0; margin: 0; padding: 14px; }
 .local-task-cell { display: inline-flex; align-items: center; gap: 8px; }
 .local-runs-cause { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: normal; word-break: normal; }
 @media (min-width: 1025px) {
-  .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all):not(.local-runs-wrap--routing) :is(th, td):is(:nth-child(6), :nth-child(7), :nth-child(8), :nth-child(9), :nth-child(11), :nth-child(12), :nth-child(13), :nth-child(16), :nth-child(17), :nth-child(18)) { display: none; }
-  /* Routing columns adds Requested model, Finish reason and Escalations after Backend, so every later column moves three
-     places; the position rule above hid the routing columns themselves and swapped Cost, Task type and Duration
-     for six others (live review 2026-11-04). The same ten columns are hidden at their routing-view places. */
-  .local-dashboard-page--runs .local-runs-wrap.local-runs-wrap--routing:not(.local-runs-wrap--all) :is(th, td):is(:nth-child(6), :nth-child(10), :nth-child(11), :nth-child(12), :nth-child(14), :nth-child(15), :nth-child(16), :nth-child(19), :nth-child(20), :nth-child(21)) { display: none; }
+  /* Lakshman 2026-11-05 ("do all 12"): the table draws only the columns it shows, so no column is hidden by position. */
   .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) th { font-size: 12px; }
   .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) td { font-size: 13px; overflow-wrap: normal; }
   .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) .local-run-pill { font-size: 12px; padding: 2px 8px; }
-  .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all):not(.local-runs-wrap--routing) :is(th, td):nth-child(1) { width: 14%; }
-  .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all):not(.local-runs-wrap--routing) :is(th, td):nth-child(2) { width: 15%; }
-  .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all):not(.local-runs-wrap--routing) :is(th, td):nth-child(3) { width: 9%; }
-  .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all):not(.local-runs-wrap--routing) :is(th, td):nth-child(4) { width: 22%; }
-  .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all):not(.local-runs-wrap--routing) :is(th, td):nth-child(5) { width: 13%; }
-  .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all):not(.local-runs-wrap--routing) :is(th, td):nth-child(10) { width: 8%; }
-  .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all):not(.local-runs-wrap--routing) :is(th, td):nth-child(14) { width: 12%; }
-  .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all):not(.local-runs-wrap--routing) :is(th, td):nth-child(15) { width: 7%; }
   .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) .local-dashboard-cell-token a { max-width: 100%; }
   .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) .local-cell-time { white-space: nowrap; }
 }
