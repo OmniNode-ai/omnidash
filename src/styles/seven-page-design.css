@@ -1548,6 +1548,11 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ds-accent); outline-o
   .od-draw {
     animation: omn-draw 800ms ease-out 160ms both;
   }
+  /* Lakshman 2026-11-05 ("why bar graph blinking"): choosing a chart tab mounts its chart again, so the chart's panel
+     faded in from nothing and its bars waited 140ms at zero height before growing: a blink on every switch. Inside a
+     tab the chart does not fade; its bars grow at once, briefly. The page's first entrance is unchanged. */
+  :is(.local-dashboard-page, .ev-root) .local-dashboard-tabpanel .local-dashboard-panel { animation: none; }
+  :is(.local-dashboard-page, .ev-root) .local-dashboard-tabpanel .gdb-bar.ins-seg { animation-duration: 380ms; animation-delay: 0ms; }
 
   /* Hover: a summary card lifts and glows in its own colour. */
   :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel {

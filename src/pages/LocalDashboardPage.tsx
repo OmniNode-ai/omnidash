@@ -2107,15 +2107,15 @@ export function OverviewTrendPanel({ rows, columns, window, now }: {
     <figure className="local-chart local-trend" aria-label="Daily trend">
       <p className="local-dashboard-caption">{visible.length === 1
         ? `${visible[0]!.header} per UTC day, on its real scale. Hover a day for its numbers.`
-        : 'Each UTC day, every line against its own busiest day. Point at a chip to bring its line forward; show one line for its real scale.'}</p>
+        : 'Each line is scaled to its own busiest UTC day. Point at a chip to bring it forward; show one line alone for its real scale.'}</p>
       <SeriesToggles label="Trend lines" onToggle={key => toggle(key)} onPreview={setPreview} focus={front}
         series={columns.map(column => ({ key: slug(column.header), label: column.header, color: TREND_TONES[column.header] ?? 'var(--ds-ink-2)',
           tone: TREND_FIELDS[column.header], shown: shown[slug(column.header)] ?? true }))} />
       <ChartReadout active={active !== undefined}
         // Lakshman 2026-11-05 ("this also should be colorful"): each value in the readout wears its own line's colour.
         text={active !== undefined ? <>{label(active)}{byDay.has(active) && !twice(active)
-          ? visible.map(column => <span key={column.key}>{' · '}<span data-field-tone={TREND_FIELDS[column.header]}>{say(valueOf(active, column), column, true)}</span></span>)
-          : <>{' · '}{dayText(active, true)}</>}</> : ''} />
+          ? visible.map(column => <span key={column.key}><span className="ins-readout-sep">{' · '}</span><span data-field-tone={TREND_FIELDS[column.header]}>{say(valueOf(active, column), column, true)}</span></span>)
+          : <><span className="ins-readout-sep">{' · '}</span>{dayText(active, true)}</>}</> : ''} />
       {/* OMN-22168 ("do all", item 5): one line shown is drawn on its real scale, with its top value and 0 marked. */}
       {(() => {
         const single = visible.length === 1 ? visible[0]! : null;
@@ -2777,10 +2777,8 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns, acti
   const meteringDays = snapshots.find(snapshot => snapshot.topic === METERING_SUMMARY_TOPIC);
   const tokenDays = servedDays ?? (!decisionsCompleteRead(snapshots) && meteringDays && !meteringDays.failure
     ? meteringFilledDays(meteringDays.rows, snapshots.find(snapshot => snapshot.topic === DELEGATION_DECISIONS_TOPIC)?.rows ?? []) : null);
-  // Runs per day spans the same served days, and draws only the verdicts read (Lakshman: "don't show anything if we don't
-  // have"): a day's runs are its passed and failed runs, nothing not recorded.
-  const runVerdictDays = tokenDays && !servedDays
-    ? tokenDays.map(day => ({ ...day, runs: day.passed + day.failed, unrecorded: 0 })) : null;
+  // OMN-22168 (Lakshman 2026-11-05, "Fix Runs per day"): Runs per day draws the same served day totals as the Daily trend,
+  // one bar per day, so the two agree with the headline; the verdicts read are named in each day's readout.
   // OMN-21166 AC26: trends and breakdowns, counted from the served decision rows (rule change R-B, 2026-10-18).
   if (component.component_id === 'overview-insights') {
     // AC42: the metering KPIs for the selected window sit in this open panel, and their charts in its analysis,
@@ -2791,7 +2789,7 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns, acti
     // OMN-21166 part 13: Overview keeps the activity summary; the window's spend line sits in "More activity" with the
     // run counts, and the detailed analysis lives on Runs (its "Explore run analysis" link stays).
     if (slice) return rows.length === 0 ? <NoRunsYet /> : <InsightsSection decisions={rows} now={Date.now()} view={slice.key as 'runs' | 'tokens' | 'failures'} onInspectFailure={cause => navigate(causeHref(cause))}
-      servedDays={slice.key === 'tokens' ? tokenDays : servedDays ?? runVerdictDays} complete={decisionsComplete} />;
+      servedDays={servedDays ?? tokenDays} complete={decisionsComplete} />;
     return rows.length === 0 ? <NoRunsYet /> : <>
     <InsightsSection decisions={rows} now={Date.now()} view="summary" servedDays={servedDays} complete={decisionsComplete} more={meteringRows.length > 0
       ? <MeteringActivityInsights rows={meteringRows} now={Date.now()} window={activityWindow} unavailable={meteringUnavailable} display="kpis" />

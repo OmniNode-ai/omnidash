@@ -733,6 +733,11 @@ html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-cha
   outline: 2px solid var(--tab-tone); outline-offset: 3px; }
 .local-tab-chip { display: inline-grid; place-items: center; flex: none; width: 42px; height: 42px; border-radius: 12px;
   background: color-mix(in oklab, var(--tab-tone) 16%, transparent); }
+/* Polish (Lakshman 2026-11-05, "polish existing"): an unchosen tab's glyph sat on a tint too faint to read on the dark
+   surface; its chip takes a stronger tint and a hairline in its tone, so every tab reads as its own colour. */
+html body .local-dashboard-page [role="tab"]:not([aria-selected="true"]) > .local-tab-chip {
+  background: color-mix(in oklab, var(--tab-tone) 24%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--tab-tone) 35%, transparent); }
 html body .local-dashboard-page .local-tab-chip svg.lucide { color: var(--tab-tone) !important; width: 20px; height: 20px; }
 [aria-selected="true"] > .local-tab-chip { background: var(--tab-tone); }
 html body .local-dashboard-page [aria-selected="true"] > .local-tab-chip svg.lucide { color: var(--ds-on-accent) !important; }
@@ -842,13 +847,17 @@ html body .local-dashboard-page--overview .local-overview-charts-panel :is(.ins-
 /* OMN-22168 (Lakshman 2026-11-05, "this look congested and bad"): the daily trend. One line in front with a soft fill,
    the rest thinner and quieter behind it; a served day with no neighbour is a dot; the readout row keeps its height when
    empty so nothing jumps; no y labels when several lines share the plot (they have no common scale). */
-html body .local-dashboard-page--overview .local-trend .ins-plot--multi[data-focus] :is(path, .ins-lone)[data-front="false"] { opacity: 0.55; transition: opacity 160ms ease; }
+html body .local-dashboard-page--overview .local-trend .ins-plot--multi[data-focus] :is(path, .ins-lone)[data-front="false"] { opacity: 0.85; transition: opacity 160ms ease; }
 html body .local-dashboard-page--overview .local-trend .ins-front { pointer-events: none; }
 html body .local-dashboard-page--overview .local-trend .ins-lone[data-front="true"] { z-index: 1; }
 html body .local-dashboard-page--overview .local-trend .ins-area { pointer-events: none; }
 html body .local-dashboard-page--overview .local-trend .ins-lone { position: absolute; width: 7px; height: 7px; border-radius: 999px;
   transform: translate(-50%, -50%); pointer-events: none; box-shadow: 0 0 0 2px var(--ds-surface); }
-html body .local-dashboard-page--overview .local-trend .ins-readout { min-height: 20px; margin: 6px 0 4px; font-variant-numeric: tabular-nums; }
+/* Lakshman 2026-11-05 ("give some space?"): the readout keeps a clear gap from the chips above it and the plot below it. */
+html body .local-dashboard-page--overview .local-trend .ins-readout { min-height: 20px; margin: 16px 0 12px; font-variant-numeric: tabular-nums; }
+/* Lakshman 2026-11-05 ("between each give some gap"): each value stands apart; the separator keeps its text (" · ") and
+   takes room on either side, in the quiet ink. */
+html body .local-dashboard-page--overview .local-trend .ins-readout .ins-readout-sep { margin: 0 6px; color: var(--ds-ink-3); }
 html body .local-dashboard-page--overview .local-trend .ins-toggle[data-front="true"] { box-shadow: 0 0 0 1px var(--ins-swatch), 0 0 12px -2px var(--ins-swatch); }
 html body .local-dashboard-page--overview .local-trend > .local-dashboard-caption:first-child { margin: 0 0 10px; }
 
