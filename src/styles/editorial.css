@@ -1084,4 +1084,7 @@ html body .local-dashboard-page .local-runs-wrap td .local-task-icon { width: au
 html body .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) :is(th, td):not([data-column="model"]):not(:has(.local-run-model)) { width: 1% !important; white-space: nowrap; }
 html body .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) :is(th, td)[data-num], html body .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) th:is([data-column="tokens"], [data-column="cost"], [data-column="savings"], [data-column="duration"]) { padding-left: 28px; }
 /* A not-measured saving wraps in a 132px column instead of widening Saving to its whole sentence. */
-html body .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) td[data-wrap] { white-space: normal !important; min-width: 132px; max-width: 160px; }
+html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap td[data-wrap] { white-space: normal !important; min-width: 132px; max-width: 160px; }
+/* A task type's icon and label are one block in its cell, so the label sits on the row's line (it was 2px high: an
+   inline-flex box takes its baseline from the icon's bottom edge). */
+html body .local-dashboard-page .local-runs-wrap td .local-task-cell { display: flex; align-items: center; }
