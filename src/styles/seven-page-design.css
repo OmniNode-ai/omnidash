@@ -1060,6 +1060,12 @@ ul.gdb-plot--names { margin-bottom: 48px; }
 @container (max-width: 420px) {
   .local-dashboard-page--overview .gdb-day:not(:first-child):not(:last-child) .gdb-day-label { visibility: hidden; }
 }
+/* Lakshman 2026-11-05 ("Nov 5 should be in middle"): on a chart wider than a phone the first and last day's labels are
+   centred on their day like every other; a day there is wide enough to hold its label, so it stays inside the panel.
+   Under 420px they keep to the chart's edges. */
+@container (min-width: 421px) {
+  .local-dashboard-page--overview .gdb-day:is(:first-child, :last-child) .gdb-day-label { left: 50%; right: auto; transform: translateX(-50%); text-align: center; }
+}
 /* An upright bar chart under 400px wide runs sideways (name and value above each bar), as the 'auto' charts do under
    560px, so six long model names fit a phone. */
 @container (max-width: 400px) {
