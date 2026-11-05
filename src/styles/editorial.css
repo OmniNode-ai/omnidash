@@ -1184,3 +1184,8 @@ html body .local-dashboard-page .local-share-meter > i { display: block; height:
 /* The tier totals under the table: set apart from it, figures in the figure weight. */
 html body .local-dashboard-page section[aria-label="Tier mix"] > :is(dl, .local-dashboard-fields) { margin-top: 16px; display: flex; gap: 40px; flex-wrap: wrap; }
 html body .local-dashboard-page section[aria-label="Tier mix"] > :is(dl, .local-dashboard-fields) dd { font-size: 18px; font-weight: 600; color: var(--ds-ink); margin: 2px 0 0; }
+/* Lakshman 2026-11-05 ("keep in middle"): the tier totals are three equal columns across the panel, each label and
+   figure centred in its column. */
+html body .local-dashboard-page section[aria-label="Tier mix"] > :is(dl, .local-dashboard-fields) { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; justify-items: center; text-align: center; }
+html body .local-dashboard-page section[aria-label="Tier mix"] > :is(dl, .local-dashboard-fields) > * { display: flex; flex-direction: column; align-items: center; }
+html body .local-dashboard-page section[aria-label="Tier mix"] > :is(dl, .local-dashboard-fields) dt { justify-content: center; }
