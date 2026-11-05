@@ -106,6 +106,25 @@ dod_evidence:
           test -d node_modules || npm ci --no-audit --no-fund; npx playwright test
           tests/e2e/design-system-dashboard-polish.omn22168.spec.ts --project=chromium --workers=1 --retries=0
         cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn22168-ac3-overview-polish"
+    description: >-
+      AC3, the 2026-11-05 Overview review only, not the whole criterion: Runs per day draws each day's served run
+      total as one bar per day (the day's passed and failed runs read named beside it), and the kit's series legend
+      still hides and shows a line from the keyboard on the Daily trend.
+    source: "manual"
+    binds_ac: ["AC3"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          test -d node_modules || npm ci --no-audit --no-fund; npx vitest run
+          src/pages/local/insight-charts.omn21166.test.tsx
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: >-
+          test -d node_modules || npm ci --no-audit --no-fund; npx playwright test
+          tests/e2e/local-dashboard-omn21015.spec.ts --grep "trend legend hides and shows" --project=chromium
+          --workers=1 --retries=0
+        cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn22168-ac4-component-kit"
     description: >-
       The tests prove that the component kit is used by every local page and Delegation Evidence
