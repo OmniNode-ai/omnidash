@@ -847,7 +847,7 @@ html body .local-dashboard-page--overview .local-overview-charts-panel :is(.ins-
 /* OMN-22168 (Lakshman 2026-11-05, "this look congested and bad"): the daily trend. One line in front with a soft fill,
    the rest thinner and quieter behind it; a served day with no neighbour is a dot; the readout row keeps its height when
    empty so nothing jumps; no y labels when several lines share the plot (they have no common scale). */
-html body .local-dashboard-page--overview .local-trend .ins-plot--multi[data-focus] :is(path, .ins-lone)[data-front="false"] { opacity: 0.55; transition: opacity 160ms ease; }
+html body .local-dashboard-page--overview .local-trend .ins-plot--multi[data-focus] :is(path, .ins-lone)[data-front="false"] { opacity: 0.85; transition: opacity 160ms ease; }
 html body .local-dashboard-page--overview .local-trend .ins-front { pointer-events: none; }
 html body .local-dashboard-page--overview .local-trend .ins-lone[data-front="true"] { z-index: 1; }
 html body .local-dashboard-page--overview .local-trend .ins-area { pointer-events: none; }
