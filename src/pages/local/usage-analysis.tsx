@@ -151,17 +151,21 @@ function DecisionMatrix({ decisionRows }: { decisionRows: readonly unknown[] }) 
     </div>
     <p className="local-dashboard-caption">{`Models by ${columnLabel.toLowerCase()}. A cell with fewer than ${SMALL_SAMPLE} verdicts is a small sample; a pair with no runs reads no runs. Each cell opens its runs.`}</p>
     <DataTable className="usage-matrix-wrap" data-decision-matrix aria-label={`Models by ${columnLabel.toLowerCase()}`}>
-        <thead><tr><th scope="col">Model</th>{matrix.columns.map(column => <th key={column} scope="col" data-col={column}>{columnName(column)}</th>)}</tr></thead>
+        {/* Headers as the run table writes them: each with its glyph in its column's colour (Lakshman 2026-11-05). */}
+        <thead><tr><th scope="col"><span className="local-table-head" data-field-tone="model"><ConceptIcon concept="model" label="Model" size={13} />Model</span></th>
+          {matrix.columns.map(column => <th key={column} scope="col" data-col={column}><span className="local-table-head" data-field-tone={columnsBy}><ConceptIcon concept={columnsBy} label={columnName(column)} size={13} />{columnName(column)}</span></th>)}</tr></thead>
         <tbody>{matrix.rows.map(row => <tr key={row}>
           <th scope="row" data-model-name={row !== NOT_RECORDED ? '' : undefined} data-semantic-concept={row !== NOT_RECORDED ? `model:${row}` : undefined}
-            style={row !== NOT_RECORDED ? { '--model-color': modelColor(row) } as CSSProperties : undefined}>{row}</th>
+            style={row !== NOT_RECORDED ? { '--model-color': modelColor(row) } as CSSProperties : undefined}>{breakableName(row)}</th>
           {matrix.columns.map(column => {
             const totals = matrix.cell(row, column);
             if (totals === null) return <td key={column} data-row={row} data-col={column} data-label={columnName(column)} data-state="no-runs">no runs</td>;
             const [figure, basis] = matrixFigure(totals, metric);
             const small = totals.verdicts < SMALL_SAMPLE;
             const href = runsHref([runsFilter('model', row), runsFilter(columnsBy, column)]);
-            const body = <><span className="usage-matrix-figure">{figure}</span>
+            // A pass rate is a pill in its band (red to green), as the rest of the page draws a pass rate.
+            const band = metric === 'pass' ? passBand(totals.passed, totals.verdicts) : undefined;
+            const body = <><span className="usage-matrix-figure" data-pass-band={band}>{figure}</span>
               <span className="usage-matrix-basis">{small ? `${basis} · small sample` : basis}</span></>;
             return <td key={column} data-row={row} data-col={column} data-label={columnName(column)} data-state={totals.verdicts === 0 ? 'no-verdicts' : 'value'} data-small={small ? 'true' : undefined}
               data-metric={metric}>

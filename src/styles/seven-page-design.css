@@ -1759,3 +1759,7 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ds-accent); outline-o
 .local-dashboard-page .local-savings-days thead th:nth-child(1) { width: 25%; }
 .local-dashboard-page .local-savings-days thead th:nth-child(2) { width: 50%; }
 .local-dashboard-page .local-savings-days thead th:nth-child(3) { width: 25%; }
+/* Model by task: model names as the run table writes them (no capitals, wrapping at their joins in a wider column). */
+.local-dashboard-page table[data-decision-matrix] tbody th[scope="row"] { text-transform: none; letter-spacing: 0; font-weight: 400; font-size: 13px; color: var(--ds-ink); min-width: 200px; }
+.local-dashboard-page table[data-decision-matrix] thead th:first-child { width: 200px; }
+.local-dashboard-page table[data-decision-matrix] .usage-matrix-figure[data-pass-band] { display: inline-block !important; width: fit-content !important; max-width: 100%; margin-bottom: 4px; }
