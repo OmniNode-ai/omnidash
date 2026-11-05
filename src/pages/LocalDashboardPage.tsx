@@ -2114,8 +2114,8 @@ export function OverviewTrendPanel({ rows, columns, window, now }: {
       <ChartReadout active={active !== undefined}
         // Lakshman 2026-11-05 ("this also should be colorful"): each value in the readout wears its own line's colour.
         text={active !== undefined ? <>{label(active)}{byDay.has(active) && !twice(active)
-          ? visible.map(column => <span key={column.key}>{' · '}<span data-field-tone={TREND_FIELDS[column.header]}>{say(valueOf(active, column), column, true)}</span></span>)
-          : <>{' · '}{dayText(active, true)}</>}</> : ''} />
+          ? visible.map(column => <span key={column.key}><span className="ins-readout-sep">{' · '}</span><span data-field-tone={TREND_FIELDS[column.header]}>{say(valueOf(active, column), column, true)}</span></span>)
+          : <><span className="ins-readout-sep">{' · '}</span>{dayText(active, true)}</>}</> : ''} />
       {/* OMN-22168 ("do all", item 5): one line shown is drawn on its real scale, with its top value and 0 marked. */}
       {(() => {
         const single = visible.length === 1 ? visible[0]! : null;
