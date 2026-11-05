@@ -52,6 +52,15 @@ export function barRadius(direction: 'vertical' | 'horizontal' = 'vertical'): nu
   return direction === 'horizontal' ? [0, r, r, 0] : [r, r, 0, 0];
 }
 
+/**
+ * Lakshman 2026-11-05 ("use all places this type of bargraph like water filled"): every bar stands in a track that runs
+ * the plot's full height (or length), in the line colour, so a bar reads as a fill against the whole. ECharts draws it
+ * behind each bar from the same radius.
+ */
+function barTrack(direction: 'vertical' | 'horizontal' = 'vertical') {
+  return { showBackground: true, backgroundStyle: { color: tone('--ds-line'), borderRadius: barRadius(direction) } };
+}
+
 /** A served UTC day (YYYY-MM-DD) as every day axis names it, e.g. Oct 13 (part 28 AC185); any other text is kept. */
 export function dayAxisLabel(day: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(day)
@@ -253,7 +262,7 @@ function optionFor(group: SpendByDayGroup, shown: ReadonlyArray<{ series: Served
       name: series.name,
       type: 'bar',
       data: series.values,
-      barMaxWidth: 36,
+      barMaxWidth: 36, ...barTrack(),
       itemStyle: flatBar(colour, barRadius()),
       emphasis: { focus: 'series' },
     })),
@@ -410,7 +419,7 @@ function timingOption(bars: readonly RunTimingBar[], colours: readonly string[],
     // One bar per measured timing, side by side and never stacked: the runtime serves no sum of them.
     series: [{
       type: 'bar',
-      barMaxWidth: 18,
+      barMaxWidth: 18, ...barTrack('horizontal'),
       data: bars.map((bar, index) => ({ value: bar.value, itemStyle: flatBar(colours[index]!, barRadius('horizontal')) })),
       label: { show: true, position: 'right', color: text, ...(compact ? { width: 50, overflow: 'break', distance: 4 } : {}), formatter: (param: { dataIndex: number }) => labelText(param.dataIndex) },
     }],
@@ -560,7 +569,7 @@ export function RunDurationChart({ runs, onOpen, title = 'Duration per run' }: {
     series: [{
       name: 'Duration',
       type: 'bar',
-      barMaxWidth: 28,
+      barMaxWidth: 28, ...barTrack(),
       data: runs.map((run, index) => ({
         value: hidden.has(run.status) ? null : points[index]!.value,
         itemStyle: flatBar(statusColour(run.status), barRadius()),
@@ -625,7 +634,7 @@ export function RunTokensChart({ runs, onOpen, title = 'Tokens per run' }: { run
     series: shown.map((series) => ({
       name: series.name,
       type: 'bar',
-      barMaxWidth: 18,
+      barMaxWidth: 18, ...barTrack(),
       data: series.points.map(({ value }) => value),
       itemStyle: flatBar(series.colour, barRadius()),
       emphasis: { focus: 'series' },
@@ -674,7 +683,7 @@ export function RunMetricChart({ runs, onOpen, metric }: {
         return [...runTooltipHead(run), run ? asText(valueText(run)) : 'Not recorded'].join('<br/>');
       },
     },
-    series: [{ name: label, type: 'bar', barMaxWidth: 28,
+    series: [{ name: label, type: 'bar', barMaxWidth: 28, ...barTrack(),
       data: points.map(p => p.value), itemStyle: flatBar(color, barRadius()),
       emphasis: { focus: 'self', itemStyle: { opacity: 1 } },
     }],

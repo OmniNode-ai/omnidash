@@ -126,17 +126,17 @@ main.ev-root .ev-acceptance-checks > li > :first-child, main.ev-root .ev-accepta
 /* Usage › Savings by model (AC66): one row per served model, bar against the largest saving. */
 .local-dashboard-page .local-savings-by-model { margin-top: 20px; }
 .local-dashboard-page .local-savings-by-model > h3 { display: flex; align-items: center; gap: 8px; }
-.local-dashboard-page .local-savings-by-model details ul { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 8px; }
-.local-dashboard-page .local-savings-by-model details ul > li {
+.local-dashboard-page .local-savings-by-model :is(details, .local-more) ul { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 8px; }
+.local-dashboard-page .local-savings-by-model :is(details, .local-more) ul > li {
   display: grid; grid-template-columns: minmax(0, 2fr) minmax(80px, 2fr) 96px minmax(0, 1.2fr) minmax(0, 1fr);
   gap: 10px; align-items: center; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ds-ink-2);
 }
-.local-dashboard-page .local-savings-by-model details ul > li > :first-child { overflow-wrap: anywhere; }
+.local-dashboard-page .local-savings-by-model :is(details, .local-more) ul > li > :first-child { overflow-wrap: anywhere; }
 .local-dashboard-page .local-savings-by-model strong { color: var(--ds-ink); font-weight: 600; text-align: right; }
 .local-dashboard-page .local-savings-bar { height: 6px; border-radius: 3px; background: var(--ds-line-soft); overflow: hidden; }
 .local-dashboard-page .local-savings-bar > i { display: block; height: 100%; background: var(--model-color, var(--ds-field-savings)); }
 @media (max-width: 760px) {
-  .local-dashboard-page .local-savings-by-model details ul > li { grid-template-columns: minmax(0, 1fr) auto; }
+  .local-dashboard-page .local-savings-by-model :is(details, .local-more) ul > li { grid-template-columns: minmax(0, 1fr) auto; }
   .local-dashboard-page .local-savings-bar { grid-column: 1 / -1; }
 }
 
@@ -1630,16 +1630,54 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ds-accent); outline-o
    Upright, the slot is the bar's column at full height; sideways (a chart under 560px, or an upright one on a local page
    under 400px, where the kit lays bars in rows), the slot is the bar's row at full width. */
 .rb-chart--filled .rb-slot { display: flex; align-items: flex-end; box-sizing: border-box; width: 100%; height: 100%;
-  background: color-mix(in oklab, var(--ds-ink) 7%, transparent); border-radius: var(--ds-radius-bar) var(--ds-radius-bar) 0 0; overflow: hidden; }
-.rb-chart--filled .rb-slot .rb-bar { width: 100% !important; max-width: none !important; margin: 0 !important; height: var(--rb-size, 0) !important; }
+  background: var(--ds-line); border-radius: var(--ds-radius-bar) var(--ds-radius-bar) 0 0; overflow: hidden; }
+.rb-chart--filled .rb-slot .rb-bar:not([data-pattern="outline"]) { width: 100% !important; max-width: none !important; margin: 0 !important; height: var(--rb-size, 0) !important; }
 .rb-chart--filled.rb-chart--vertical .rb-slot { width: 72%; max-width: 120px; margin: 0 auto; }
 @container (max-width: 560px) {
   .rb-chart--filled:not(.rb-chart--vertical) .rb-slot { width: 100%; align-items: stretch; border-radius: 0 var(--ds-radius-bar) var(--ds-radius-bar) 0; }
-  .rb-chart--filled:not(.rb-chart--vertical) .rb-slot .rb-bar { width: var(--rb-size, 0) !important; height: auto !important; border-radius: 0 var(--ds-radius-bar) var(--ds-radius-bar) 0; }
+  .rb-chart--filled:not(.rb-chart--vertical) .rb-slot .rb-bar:not([data-pattern="outline"]) { width: var(--rb-size, 0) !important; height: auto !important; border-radius: 0 var(--ds-radius-bar) var(--ds-radius-bar) 0; }
 }
 @container (max-width: 400px) {
   :is(.local-dashboard-page, .ev-root) .rb-chart--filled.rb-chart--vertical .rb-slot { width: 100%; max-width: none; margin: 0; align-items: stretch; border-radius: 0 var(--ds-radius-bar) var(--ds-radius-bar) 0; }
-  :is(.local-dashboard-page, .ev-root) .rb-chart--filled.rb-chart--vertical .rb-slot .rb-bar { width: var(--rb-size, 0) !important; height: auto !important; border-radius: 0 var(--ds-radius-bar) var(--ds-radius-bar) 0; }
+  :is(.local-dashboard-page, .ev-root) .rb-chart--filled.rb-chart--vertical .rb-slot .rb-bar:not([data-pattern="outline"]) { width: var(--rb-size, 0) !important; height: auto !important; border-radius: 0 var(--ds-radius-bar) var(--ds-radius-bar) 0; }
 }
 /* A share chart labels every bar with its percentage, as in the reference (the other ranked charts reveal on hover). */
-.rb-chart--filled .rb-plot > li > .rb-value, .rb-chart--filled .rb-plot > li > .rb-link > .rb-value { visibility: visible; font-weight: 600; }
+.rb-chart--share .rb-plot > li > .rb-value, .rb-chart--share .rb-plot > li > .rb-link > .rb-value { visibility: visible; font-weight: 600; }
+
+/* Lakshman 2026-11-05 ("use all places this type of bargraph like water filled"): every bar on the local pages stands in
+   a track in the line colour that runs the plot's full height (a column) or length (a horizontal bar), as the ranked
+   bars' slots and the canvas charts' backgrounds do. A column's track is as wide as its bar. */
+:is(.local-dashboard-page, .ev-root) .gdb-col { position: relative; }
+:is(.local-dashboard-page, .ev-root) .gdb-col::before { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 100%; background: var(--ds-line); border-radius: var(--ds-radius-bar) var(--ds-radius-bar) 0 0; pointer-events: none; }
+:is(.local-dashboard-page, .ev-root) .gdb-col > * { position: relative; }
+.local-dashboard-page--overview .local-overview-charts-panel .gdb-col::before { max-width: 44px; }
+:is(.local-dashboard-page, .ev-root) :is(.ins-track, .workflow-comparison-track, .local-tier-bar-track) { background: var(--ds-line) !important; }
+:is(.local-dashboard-page, .ev-root) .ins-money-day-bars { background: var(--ds-line); border-radius: var(--ds-radius-bar) var(--ds-radius-bar) 0 0; }
+/* With tracks drawn (Lakshman 2026-11-05) each row's own auto value column showed: tracks began and ended at different
+   points row to row. Every row of a list keeps the same columns: the value column is a fixed 260px and wraps inside. */
+.local-dashboard-page .ins-list-row { grid-template-columns: 26px minmax(110px, 1fr) minmax(0, 1fr) 260px; }
+.local-dashboard-page .ins-list-row.ins-list-row--plain { grid-template-columns: minmax(10rem, 0.8fr) minmax(0, 1.4fr) 260px; }
+.local-dashboard-page .ins-list-row > .ins-list-value { max-width: none; }
+@media (max-width: 640px) { .local-dashboard-page .ins-list-row { grid-template-columns: 26px minmax(0, 1fr) minmax(0, 1fr); }
+  .local-dashboard-page .ins-list-row > .ins-list-value { grid-column: 2 / -1; text-align: left; } }
+/* The duration histogram's buckets: each bar fills its button's width, so the button is its track. */
+:is(.local-dashboard-page, .ev-root) .ins-bars--short > .ins-bar { background: var(--ds-line); border-radius: var(--ds-radius-bar) var(--ds-radius-bar) 0 0; }
+/* Ranked bars laid out in rows (more than ten, e.g. Usage's savings and spend by model): each bar fills its slot sideways
+   (the upright rule drew every one full-width and 2px tall), and the value column is a fixed width so every track ends at
+   one point. A model that was not measured keeps its dashed outline and has no track, so it never reads as a value. */
+@container (min-width: 561px) { .rb-chart--filled.rb-chart--rows .rb-plot > li { grid-template-columns: minmax(7rem, min(18rem, 40%)) minmax(0, 1fr) 7.5rem; } }
+.rb-chart--filled.rb-chart--rows .rb-slot { width: 100%; max-width: none; margin: 0; align-items: stretch; border-radius: 0 var(--ds-radius-bar) var(--ds-radius-bar) 0; }
+.rb-chart--filled.rb-chart--rows .rb-slot .rb-bar:not([data-pattern="outline"]) { width: var(--rb-size, 0) !important; height: auto !important; border-radius: 0 var(--ds-radius-bar) var(--ds-radius-bar) 0; }
+.rb-chart--filled .rb-slot:has(> .rb-bar[data-pattern="outline"]) { background: none; }
+/* Savings by model's table rows (their wrapper became div.local-more in #484, so the details-only rules above had
+   stopped applying and every figure ran into the next): the row's saving bar fills a track like every other bar. */
+.local-dashboard-page .local-savings-bar { background: var(--ds-line); }
+/* A model whose saving was not measured has no fill, and no track either, so it never reads as a zero. */
+.local-dashboard-page .local-savings-bar:empty { background: none; }
+/* Usage's tokens per day stacks fill their full-height column (.utc-track), and Quality over time's measured days fill
+   theirs; a day before the sample (outlined) or with runs but no verdict (dashed) keeps its own mark and no track. */
+:is(.local-dashboard-page, .ev-root) .utc-track { background: var(--ds-line); border-radius: var(--ds-radius-bar) var(--ds-radius-bar) 0 0; }
+:is(.local-dashboard-page, .ev-root) .usage-trend-day[data-state="value"] { background: var(--ds-line); }
+/* Evidence's quality-gate bar fills a track too. */
+.ev-root .ev-qg-bar.bar-track { background: var(--ds-line); border-radius: 999px; }

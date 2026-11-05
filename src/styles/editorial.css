@@ -1154,3 +1154,7 @@ html body .local-dashboard-page .local-chart-inspector select { width: auto; min
     grid-auto-flow: row !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
 }
 html body .local-dashboard-page .local-dashboard-tablist:has([data-stat]) { align-items: stretch !important; }
+/* On Overview a ranked bar is at most 44px wide (above); its slot takes that width and the bar fills it, so the bar does
+   not sit at the slot's left edge (checked in Chrome on Model usage and Tier mix). */
+html body .local-dashboard-page--overview .local-overview-charts-panel .rb-chart.rb-chart--vertical .rb-slot { width: 72%; max-width: 44px; margin: 0 auto; }
+html body .local-dashboard-page--overview .local-overview-charts-panel .rb-chart.rb-chart--vertical .rb-slot .rb-bar:not([data-pattern="outline"]) { width: 100% !important; max-width: none !important; margin: 0 !important; }

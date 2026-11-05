@@ -1516,6 +1516,15 @@ interface RunsTableProps {
   truncated?: boolean;
 }
 
+/**
+ * A host such as generativelanguage.googleapis.com wraps after a dot inside its standard-width column (OMN-20759's fit
+ * check found it 276px wide in a 150px column); the text is unchanged, only line-break opportunities are added. Model
+ * names use breakableName, which does not break at dots ("Qwen3.8-27B").
+ */
+function breakableHost(host: string): ReactNode[] {
+  return host.split(/(?<=\.)/).flatMap((part, index) => (index === 0 ? [part] : [<wbr key={index} />, part]));
+}
+
 /** A row whose served data_source names anything but real data is fixture data (FR-2). */
 function isFixture(decision: Row): boolean {
   return typeof decision.data_source === 'string' && decision.data_source !== '' && decision.data_source !== 'real';
@@ -1840,7 +1849,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
             const sharedBaseline = baselines.size === 1 ? [...baselines][0]! : null;
             const byDay = !view.sort || view.sort === 'created';
             const shownColumns = [...RUN_DEFAULT_COLUMNS, ...(showAllFields ? RUN_EXTRA_COLUMNS : []), ...(showRouting ? RUN_ROUTING_COLUMNS : [])];
-            const tableWidth = shownColumns.reduce((sum, concept) => sum + (RUN_COLUMN_WIDTHS[concept] ?? 0), 0);
+            const tableWidth = shownColumns.reduce((sum, concept) => sum + RUN_COLUMN_WIDTHS[concept]!, 0);
             return <DataTable fit className={`local-runs-wrap${showAllFields ? ' local-runs-wrap--all' : ''}${showRouting ? ' local-runs-wrap--routing' : ''}`} id={`${id}-table`} style={{ width: tableWidth }}>
               <thead>
                 <tr>
@@ -1895,7 +1904,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                   </td>
                   <td data-label="Backend" className="local-dashboard-cell-token" data-extra="">
                     <button type="button" className="local-cell-filter" aria-label={`Show only runs of backend ${recorded(run.backend_id)}`} onClick={() => updateView({ backend: recorded(run.backend_id), page: 1 })}>
-                      {recorded(run.backend_id)}
+                      {breakableName(recorded(run.backend_id))}
                     </button>
                   </td>
                   {showRouting && <>
@@ -1903,7 +1912,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                     <td data-label="Finish reason" data-cell="finish-reason"><QuietUnlessUnusual value={run.finish_reason} usual={text => text === 'stop'} usualText="Finished normally (stop)" /></td>
                     <td data-label="Escalations" data-cell="escalations" data-num=""><QuietUnlessUnusual value={run.escalation_count} usual={text => Number(text) === 0} usualText="No escalation" /></td>
                   </>}
-                  <td data-label="Host" className="local-dashboard-cell-token" data-extra="">{recorded(run.host)}</td>
+                  <td data-label="Host" className="local-dashboard-cell-token" data-extra="">{breakableHost(recorded(run.host))}</td>
                   {/* Item 4: tokens in and out in one cell; their total is the two added, so it is not a column of its own. */}
                   <td data-label="Tokens" data-num="" title={`${recordedTokens(run.tokens_input)} tokens in, ${recordedTokens(run.tokens_output)} tokens out`}>
                     {isMissing(run.tokens_input) && isMissing(run.tokens_output) ? 'Not recorded'
@@ -2060,7 +2069,7 @@ function tierModelCost(model: Row): string {
  */
 const RUN_COLUMN_WIDTHS: Readonly<Record<string, number>> = {
   identity: 140, age: 96, 'run-outcome': 104, model: 260, backend: 200, 'routing-model': 180, completion: 150,
-  escalated: 136, host: 150, tokens: 136, cost: 96, savings: 164, baseline: 170, basis: 100, duration: 112, task: 150,
+  escalated: 136, host: 190, tokens: 136, cost: 96, savings: 164, baseline: 170, basis: 100, duration: 112, task: 150,
   'tokens-completion': 210, tier: 136, score: 150,
 };
 const RUN_DEFAULT_COLUMNS = ['identity', 'age', 'run-outcome', 'model', 'tokens', 'cost', 'savings', 'duration'];
