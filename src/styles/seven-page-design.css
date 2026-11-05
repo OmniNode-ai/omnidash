@@ -1763,11 +1763,9 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ds-accent); outline-o
 .local-dashboard-page table[data-decision-matrix] tbody th[scope="row"] { text-transform: none; letter-spacing: 0; font-weight: 400; font-size: 13px; color: var(--ds-ink); min-width: 200px; }
 .local-dashboard-page table[data-decision-matrix] thead th:first-child { width: 200px; }
 .local-dashboard-page table[data-decision-matrix] .usage-matrix-figure[data-pass-band] { display: inline-block !important; width: fit-content !important; max-width: 100%; margin-bottom: 4px; }
-/* Tokens per day's legends under the chart, one row of chips as Overview's chart legends are. */
-.local-dashboard-page .utc-chart .utc-legends { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; }
-.local-dashboard-page .utc-chart .utc-legends .utc-legend { display: contents; }
-.local-dashboard-page .utc-chart .utc-legends .utc-legend > li { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid var(--ds-line); border-radius: 999px; background: var(--ds-surface-2); font-size: 12px; color: var(--ds-ink-2); }
-.local-dashboard-page .utc-chart .utc-legends .utc-legend > li > i { width: 8px; height: 8px; border-radius: 2px; }
+/* Tokens per day's legends under the chart: one row of Overview's chips (models, then tiers). */
+.local-dashboard-page .utc-chart .utc-legends { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px; }
+.local-dashboard-page .utc-chart .utc-legends > ul { margin: 0 !important; flex: 0 1 auto; justify-content: flex-start; }
 /* Usage by model and day: a row that starts a new day draws a stronger line above it, as the run table does. */
 .local-dashboard-page table[aria-label="Usage by model and day"] tbody tr[data-day-start]:not(:first-child) > td { border-top: 1px solid var(--ds-line-strong, var(--ds-line)); }
 /* Phone: each row is its own card, so every card names its day (the desktop table names a day once per group). */
@@ -1790,4 +1788,40 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ds-accent); outline-o
 .local-dashboard-page .local-savings-pagination button { display: inline-flex; align-items: center; gap: 4px; min-height: 30px; padding: 4px 10px; font-size: 13px; }
 @media (max-width: 640px) {
   .local-dashboard-page .local-savings-value { flex-basis: auto; }
+}
+
+/* Tokens per day on Usage, drawn as Overview's day charts are (Lakshman 2026-11-05, "modern and unified like overview and
+   Runs"): Overview's segmented switch, the readout line above the plot, a 300px plot (220px on a phone) with the top and
+   middle gridlines, each day's track and stack at most 44px wide and centred in its slot, the other days dimmed while
+   one is read, and the day labels under the baseline. */
+.local-dashboard-page .utc-switch.local-dashboard-toggle { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--ds-line); border-radius: 6px; background: var(--ds-surface); overflow: visible; }
+.local-dashboard-page .utc-switch.local-dashboard-toggle button { min-height: 28px; height: auto; padding: 0 10px; border: 0 !important; border-radius: 6px; font-size: 12px; color: var(--ds-ink-2); background: transparent; }
+.local-dashboard-page .utc-switch.local-dashboard-toggle button:hover { color: var(--ds-ink); }
+.local-dashboard-page .utc-chart .ins-readout { min-height: 20px; margin: 4px 0 0; font-variant-numeric: tabular-nums; }
+.local-dashboard-page .utc-chart .ins-readout .ins-readout-sep { margin: 0 6px; color: var(--ds-ink-3); }
+.local-dashboard-page .utc-readout-swatch { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 999px; vertical-align: 1px; }
+.local-dashboard-page .utc-chart .utc-plot { margin-bottom: 26px; padding-top: 0;
+  background-image: linear-gradient(to bottom, var(--ds-line) 1px, transparent 1px), linear-gradient(to bottom, var(--ds-line) 1px, transparent 1px);
+  background-size: 100% 1px, 100% 1px; background-repeat: no-repeat; background-position: 0 calc(100% - 300px), 0 calc(100% - 150px); }
+.local-dashboard-page .utc-chart .utc-track { height: 300px; width: 100%; max-width: 44px; margin: 0 auto; }
+.local-dashboard-page .utc-chart .utc-plot > li { transition: opacity 0.15s; outline: none; }
+.local-dashboard-page .utc-chart .utc-plot > li[data-dim="true"] { opacity: 0.45; }
+.local-dashboard-page .utc-chart .utc-plot > li:focus-visible .utc-track { outline: 2px solid var(--ds-accent); outline-offset: 2px; }
+.local-dashboard-page .utc-chart .utc-day { color: var(--ds-ink-2); }
+.local-dashboard-page .utc-chart figcaption { margin-top: 2px; }
+@media (max-width: 700px) {
+  .local-dashboard-page .utc-chart .utc-track { height: 220px; }
+  .local-dashboard-page .utc-chart .utc-plot { background-position: 0 calc(100% - 220px), 0 calc(100% - 110px); }
+}
+/* Phone: 14 days in about 360px leave each day 17px, so every third day is labelled (the last always), and a long model
+   name wraps inside its chip instead of running past the panel. */
+@media (max-width: 640px) {
+  .local-dashboard-page .utc-chart .utc-plot > li .utc-day { visibility: hidden; }
+  .local-dashboard-page .utc-chart .utc-plot > li:is(:nth-child(3n+1), :last-child) .utc-day { visibility: visible; }
+  .local-dashboard-page .utc-chart .utc-plot > li:nth-last-child(2):nth-child(3n+1) .utc-day { visibility: hidden; }
+  .local-dashboard-page .utc-chart .utc-legends li { height: auto !important; min-height: var(--ds-chip-h, 28px); max-width: 100%; padding: 4px 12px !important;
+    white-space: normal; overflow-wrap: anywhere; }
+}
+@media (max-width: 640px) {
+  .local-dashboard-page .utc-chart .utc-plot > li:last-child .utc-day { left: auto; right: 0; text-align: right; }
 }

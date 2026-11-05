@@ -43,6 +43,7 @@ export interface UsageByModelDayRow {
 import { formatDashboardUsd as formatUsd } from '@/lib/dashboard-currency';
 import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
 import { DataTable, EmptyState } from '@/theme/design-system/components';
+import { ChartReadout } from '@/theme/design-system/charts/frame';
 export { formatDashboardUsd as formatUsd } from '@/lib/dashboard-currency';
 
 export const NO_USAGE_ROWS = 'No usage rows yet';
@@ -197,6 +198,9 @@ export default function UsageByModelDayWidget() {
 export function UsageTokensChart({ rows, days = 14 }: { rows: readonly unknown[]; days?: number }) {
   const modelColor = useModelColor();
   const [direction, setDirection] = useState<'in' | 'out'>('in');
+  // As Overview's day charts do (Lakshman 2026-11-05, "modern and unified like overview and Runs"): the day pointed at or
+  // focused is read out above the plot, and the other days dim.
+  const [hover, setHover] = useState<string | null>(null);
   const usage = asRows(rows);
   const field = direction === 'in' ? 'input_tokens' : 'output_tokens';
   const byDay = new Map<string, Map<string, { value: number; missing: boolean }>>();
@@ -221,19 +225,33 @@ export function UsageTokensChart({ rows, days = 14 }: { rows: readonly unknown[]
   return (
     <figure className="utc-chart" aria-label={`Tokens ${direction} per day by model`}>
       <div className="utc-tools">
-        <div className="utc-switch" role="group" aria-label="Direction">
+        <div className="utc-switch local-dashboard-toggle" role="group" aria-label="Direction">
           <button type="button" aria-pressed={direction === 'in'} onClick={() => setDirection('in')}>Tokens in</button>
           <button type="button" aria-pressed={direction === 'out'} onClick={() => setDirection('out')}>Tokens out</button>
         </div>
       </div>
-      <ol className="utc-plot" style={{ '--utc-count': shown.length } as CSSProperties}>
+      {(() => {
+        const day = hover === null ? undefined : byDay.get(hover);
+        if (hover === null || day === undefined) return <ChartReadout active={false} text="" />;
+        const models = [...day.entries()];
+        const allMissing = models.length > 0 && models.every(([, cell]) => cell.missing && cell.value === 0);
+        return <ChartReadout active text={<>{short(hover)}<span className="ins-readout-sep">{' · '}</span>
+          <span data-field-tone={`tokens-${direction}`}>{allMissing ? `tokens ${direction} not recorded`
+            : `${formatFullCount(total(hover))} tokens ${direction}${models.some(([, cell]) => cell.missing) ? ' (partial)' : ''}`}</span>
+          {models.map(([name, cell]) => <span key={name}><span className="ins-readout-sep">{' · '}</span>
+            <i className="utc-readout-swatch" aria-hidden="true" style={{ background: modelColor(name) }} />
+            {`${name} ${cell.missing && cell.value === 0 ? 'not recorded' : formatFullCount(cell.value)}`}</span>)}</>} />;
+      })()}
+      <ol className="utc-plot" style={{ '--utc-count': shown.length } as CSSProperties} onMouseLeave={() => setHover(null)}
+        onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setHover(null); }}>
         {shown.map(day => {
           const models = [...byDay.get(day)!.entries()];
           const label = `${day}: ${models.map(([name, cell]) => `${name}: ${cell.missing && cell.value === 0 ? 'not recorded' : `${formatFullCount(cell.value)}${cell.missing ? ' (some rows not recorded)' : ''}`}`).join('; ')}`;
           const dayTotal = total(day);
           return (
             // Focusable, so a keyboard reader reveals the day's total as a pointer does on hover (live review 2026-10-26).
-            <li key={day} data-token-day={day} aria-label={label} title={label} tabIndex={0}>
+            <li key={day} data-token-day={day} aria-label={label} tabIndex={0} data-dim={hover !== null && hover !== day}
+              onMouseEnter={() => setHover(day)} onFocus={() => setHover(day)}>
               {/* A day whose every count is not recorded has no total; a day with some not recorded totals only the rest. */}
               <span className="utc-value">{models.length > 0 && models.every(([, cell]) => cell.missing && cell.value === 0) ? 'Not recorded'
                 : `${formatDashboardCount(dayTotal)}${models.some(([, cell]) => cell.missing) ? ' (partial)' : ''}`}</span>
@@ -252,7 +270,7 @@ export function UsageTokensChart({ rows, days = 14 }: { rows: readonly unknown[]
       </ol>
       {/* As Overview draws a chart's legend: one row of chips under the chart (Lakshman 2026-11-05). */}
       <div className="utc-legends">
-        <ul className="utc-legend" aria-label="Models">
+        <ul className="utc-legend ins-token-legend gdb-legend" aria-label="Models">
           {names.map(name => <li key={name}><i aria-hidden="true" style={{ background: modelColor(name) }} />{name}</li>)}
         </ul>
         <TierLegend label="Tokens per day tier colours" models={names} />
