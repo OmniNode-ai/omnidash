@@ -848,7 +848,8 @@ html body .local-dashboard-page--overview .local-trend .ins-lone[data-front="tru
 html body .local-dashboard-page--overview .local-trend .ins-area { pointer-events: none; }
 html body .local-dashboard-page--overview .local-trend .ins-lone { position: absolute; width: 7px; height: 7px; border-radius: 999px;
   transform: translate(-50%, -50%); pointer-events: none; box-shadow: 0 0 0 2px var(--ds-surface); }
-html body .local-dashboard-page--overview .local-trend .ins-readout { min-height: 20px; margin: 6px 0 4px; font-variant-numeric: tabular-nums; }
+/* Lakshman 2026-11-05 ("give some space?"): the readout keeps a clear gap from the chips above it and the plot below it. */
+html body .local-dashboard-page--overview .local-trend .ins-readout { min-height: 20px; margin: 16px 0 12px; font-variant-numeric: tabular-nums; }
 html body .local-dashboard-page--overview .local-trend .ins-toggle[data-front="true"] { box-shadow: 0 0 0 1px var(--ins-swatch), 0 0 12px -2px var(--ins-swatch); }
 html body .local-dashboard-page--overview .local-trend > .local-dashboard-caption:first-child { margin: 0 0 10px; }
 
