@@ -1078,10 +1078,9 @@ html body .local-dashboard-page .local-runs-wrap tbody .local-runs-tip { display
    - a task type's glyph starts at its column's edge, as its header glyph does (its 22px chip inset it 4px). */
 html body .local-dashboard-page .local-runs-wrap td.local-dashboard-cell-token a { max-width: none; }
 html body .local-dashboard-page .local-runs-wrap td .local-task-icon { width: auto; height: auto; background: none; justify-content: flex-start; }
-/* Lakshman 2026-11-05 ("center aligned? all column and data?", "left aligned should be best?"): text stays left and
-   figures right, each header on its values' edge; the spare width goes to the Model column only, so the figures sit
-   together on the right with one even gap between them instead of a wide hole around Cost and Saving. */
-html body .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) :is(th, td):not([data-column="model"]):not(:has(.local-run-model)) { width: 1% !important; white-space: nowrap; }
+/* Lakshman 2026-11-05 ("center aligned? all column and data?", "left aligned should be best?", "why too much gap?"):
+   text stays left and figures right, each header on its values' edge, and the spare width is shared by every column
+   (giving it all to Model opened a hole between Model and Tokens). */
 html body .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) :is(th, td)[data-num], html body .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) th:is([data-column="tokens"], [data-column="cost"], [data-column="savings"], [data-column="duration"]) { padding-left: 28px; }
 /* A not-measured saving wraps in a 132px column instead of widening Saving to its whole sentence. */
 html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap td[data-wrap] { white-space: normal !important; min-width: 132px; max-width: 160px; }

@@ -50,7 +50,7 @@ export function Tooltip({ text, children, side = 'top' }: { text: ReactNode; chi
     if (anchor) {
       const left = box.left + shift;
       const arrow = Math.min(Math.max(anchor.left + anchor.width / 2 - left, 10), box.width - 10);
-      node.style.setProperty('--ds-tooltip-arrow-x', `${Math.round(arrow)}px`);
+      node.style.setProperty('--tooltip-arrow-x', `${Math.round(arrow)}px`);
     }
   }, [shown]);
   if (!isValidElement<Record<string, unknown>>(children)) return children;

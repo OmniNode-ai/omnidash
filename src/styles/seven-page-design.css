@@ -1625,3 +1625,21 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ds-accent); outline-o
   font-family: var(--ds-font-sans);
   font-weight: 600;
 }
+/* Lakshman 2026-11-05 ("all bargraph should fill like this"): a share chart (RankedBars with a ceiling) draws each bar
+   inside a grey slot that stands for the whole, so 50% fills half of it. Count and money charts have no slot.
+   Upright, the slot is the bar's column at full height; sideways (a chart under 560px, or an upright one on a local page
+   under 400px, where the kit lays bars in rows), the slot is the bar's row at full width. */
+.rb-chart--filled .rb-slot { display: flex; align-items: flex-end; box-sizing: border-box; width: 100%; height: 100%;
+  background: color-mix(in oklab, var(--ds-ink) 7%, transparent); border-radius: var(--ds-radius-bar) var(--ds-radius-bar) 0 0; overflow: hidden; }
+.rb-chart--filled .rb-slot .rb-bar { width: 100% !important; max-width: none !important; margin: 0 !important; height: var(--rb-size, 0) !important; }
+.rb-chart--filled.rb-chart--vertical .rb-slot { width: 72%; max-width: 120px; margin: 0 auto; }
+@container (max-width: 560px) {
+  .rb-chart--filled:not(.rb-chart--vertical) .rb-slot { width: 100%; align-items: stretch; border-radius: 0 var(--ds-radius-bar) var(--ds-radius-bar) 0; }
+  .rb-chart--filled:not(.rb-chart--vertical) .rb-slot .rb-bar { width: var(--rb-size, 0) !important; height: auto !important; border-radius: 0 var(--ds-radius-bar) var(--ds-radius-bar) 0; }
+}
+@container (max-width: 400px) {
+  :is(.local-dashboard-page, .ev-root) .rb-chart--filled.rb-chart--vertical .rb-slot { width: 100%; max-width: none; margin: 0; align-items: stretch; border-radius: 0 var(--ds-radius-bar) var(--ds-radius-bar) 0; }
+  :is(.local-dashboard-page, .ev-root) .rb-chart--filled.rb-chart--vertical .rb-slot .rb-bar { width: var(--rb-size, 0) !important; height: auto !important; border-radius: 0 var(--ds-radius-bar) var(--ds-radius-bar) 0; }
+}
+/* A share chart labels every bar with its percentage, as in the reference (the other ranked charts reveal on hover). */
+.rb-chart--filled .rb-plot > li > .rb-value, .rb-chart--filled .rb-plot > li > .rb-link > .rb-value { visibility: visible; font-weight: 600; }

@@ -43,7 +43,13 @@ const BASIS_WORDS: Readonly<Record<RankedBarBasis, string>> = {
   unknown: 'not measured',
 };
 
-export function RankedBars({ label, unit, items, order = 'asc', note, footnote, layout = 'auto', many = 'sideways' }: {
+export function RankedBars({ label, unit, items, order = 'asc', note, footnote, layout = 'auto', many = 'sideways', ceiling }: {
+  /**
+   * A share's whole, e.g. 100 for a percentage (Lakshman 2026-11-05, "all bargraph should fill like this", for share bars
+   * only): each bar is scaled against it, not against the largest bar, and fills a grey slot that stands for the whole.
+   * Left out for counts and money, which have no whole; they keep scaling against the largest bar.
+   */
+  ceiling?: number;
   /** 'vertical' keeps upright bars in a narrow panel (live review 2026-10-25), up to 10 of them (AC213); 'auto' turns them
    * sideways below 560px. */
   layout?: 'auto' | 'vertical';
@@ -69,21 +75,25 @@ export function RankedBars({ label, unit, items, order = 'asc', note, footnote, 
   // runs sideways. Every drawn item counts, an unserved outline included.
   const sideways = layout === 'vertical' && many === 'sideways' && ordered.length > 10;
   return (
-    <figure className={`rb-chart${layout === 'vertical' && !sideways ? ' rb-chart--vertical' : ''}${sideways ? ' rb-chart--rows' : ''}`} aria-label={label}>
+    <figure className={`rb-chart${layout === 'vertical' && !sideways ? ' rb-chart--vertical' : ''}${sideways ? ' rb-chart--rows' : ''}${ceiling !== undefined ? ' rb-chart--filled' : ''}`} aria-label={label}>
       <figcaption className="rb-head">
         <span className="rb-unit">{unit}</span>
         {note}
       </figcaption>
       <ol className="rb-plot" style={{ '--rb-count': ordered.length } as CSSProperties}>
         {ordered.map(item => {
+          const whole = ceiling ?? max;
           const scaled = item.basis === 'unknown' ? undefined
-            : `${max > 0 && item.value! > 0 ? Math.round((item.value! / max) * 1000) / 10 : 0}%`;
+            : `${whole > 0 && item.value! > 0 ? Math.min(100, Math.round((item.value! / whole) * 1000) / 10) : 0}%`;
           const label = `${item.name}: ${item.display}, ${BASIS_WORDS[item.basis]}`;
           const content = <>
             <span className="rb-value" title={item.title}>{item.display}</span>
             <span className="rb-track" aria-hidden="true">
               {/* The size is one variable: the bar's height when the chart is wide, its width when narrow. */}
-              <span className="rb-bar" data-pattern={item.basis === 'unknown' ? 'outline' : 'hatched'} style={scaled === undefined ? undefined : { '--rb-size': scaled } as CSSProperties} />
+              {(() => {
+                const bar = <span className="rb-bar" data-pattern={item.basis === 'unknown' ? 'outline' : 'hatched'} style={scaled === undefined ? undefined : { '--rb-size': scaled } as CSSProperties} />;
+                return ceiling === undefined ? bar : <span className="rb-slot">{bar}</span>;
+              })()}
             </span>
             {/* OMN-21970 (Lakshman 2026-11-03, option a): the name is ink for contrast; a swatch beside it carries the bar's colour. */}
             <span className="rb-name" title={item.name}><span className="rb-swatch" aria-hidden="true" data-model-id={item.model} data-tier={item.tier} />{breakableName(item.name)}</span>

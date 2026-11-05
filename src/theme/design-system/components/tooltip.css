@@ -10,7 +10,7 @@
 .ds-infotip:focus-visible { outline: 2px solid var(--ds-ink); outline-offset: 1px; }
 @media (hover: hover) { .ds-infotip:hover { color: var(--ds-ink); background: var(--ds-surface-2); } }
 /* The arrow: a 10px square turned 45 degrees, in the tooltip's own fill and border, half outside the edge that faces what
-   was hovered, at --ds-tooltip-arrow-x (set by Tooltip from the hovered element's centre; the middle until measured). */
-.ds-tooltip::before { content: ""; position: absolute; left: var(--ds-tooltip-arrow-x, 50%); bottom: -5px; width: 10px; height: 10px;
+   was hovered, at --tooltip-arrow-x (set by Tooltip from the hovered element's centre; the middle until measured). */
+.ds-tooltip::before { content: ""; position: absolute; left: var(--tooltip-arrow-x, 50%); bottom: -5px; width: 10px; height: 10px;
   margin-left: -5px; transform: rotate(45deg); background: inherit; border: inherit; border-top: 0; border-left: 0; border-radius: 0 0 2px 0; }
 .ds-tooltip[data-side="bottom"]::before { bottom: auto; top: -5px; border: inherit; border-right: 0; border-bottom: 0; border-radius: 2px 0 0 0; }
