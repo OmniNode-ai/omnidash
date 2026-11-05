@@ -119,6 +119,19 @@ dod_evidence:
         check_value: >-
           test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/styles/tab-hues.omn22168.test.ts
         cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn22168-ac1-pass-band-tokens"
+    description: >-
+      AC1, the 2026-11-05 Runs review only, not the whole criterion: the five pass-rate band colours and their inks
+      (--ds-pass-band-1..5) are defined once in src/theme/design-system/tokens.css for light and dark, pages read them
+      only through those tokens, and no raw colour literal was added outside the token file.
+    source: "manual"
+    binds_ac: ["AC1"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          test -d node_modules || npm ci --no-audit --no-fund; npx vitest run
+          tests/design-system/no-raw-colours.test.ts tests/design-system/token-seam.test.ts
+        cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn22168-ac4-component-kit"
     description: >-
       The tests prove that the component kit is used by every local page and Delegation Evidence
