@@ -23,8 +23,6 @@ const INK2 = { light: 'rgb(38, 38, 38)', dark: 'rgb(212, 212, 212)' } as const; 
 // the 01+20 look (Lakshman 2026-11-03, "01 + 20 do it"): ink-3 #525252 / #a3a3a3 and the soft fill #f0f0f0 / #1f1f1f for a chosen item.
 const INK3 = { light: 'rgb(82, 82, 82)', dark: 'rgb(163, 163, 163)' } as const;
 const RAISED = { light: 'rgb(240, 240, 240)', dark: 'rgb(31, 31, 31)' } as const;
-// The 01+20 hairline (Lakshman 2026-11-03): #e5e5e5 / #262626 (was #d4d4cf / #2b2b2b).
-const LINE = { light: 'rgb(229, 229, 229)', dark: 'rgb(38, 38, 38)' } as const;
 const PAGES = ['/overview', '/runs', '/workflow?correlation_id=chart-run-a', '/usage', '/settings', '/delegation-evidence'];
 
 async function openTheme(page: Page, theme: 'light' | 'dark') {
@@ -50,13 +48,13 @@ for (const theme of ['light', 'dark'] as const) {
         .filter(svg => !svg.closest('.local-run-pill, .badge, .chain-node, .live-pill, [role="alert"]') && !svg.matches('[data-field-icon], [data-semantic-concept]') && (svg as SVGElement).getBoundingClientRect().width > 0)
         // OMN-22168 (Lakshman 2026-11-04/05, "make colourful"; "each unique thing has different and unique colors"): an icon
         // that names a concept (data-semantic-concept: a window, a header status) draws its own colour, and each chart tab's
-        // glyph draws its chart's tone; they are not interface icons.
+        // glyph draws its chart's tone, as does the window picker's Pick a UTC day glyph; they are not interface icons.
         // OMN-22168 (Lakshman 2026-11-04, chosen over this grey for these controls only): each Runs filter's glyph and the
         // CSV and JSON export glyphs carry their own colour; design-system-dashboard-polish L8 checks them.
         // OMN-22168 (Lakshman 2026-11-04): the Runs filter and export glyphs, and each page's sidebar and title icon, draw
         // their own colour (design-system-dashboard-polish L8 and L11 check them); they still count as drawn icons.
         .map(svg => ({ color: getComputedStyle(svg).color, active: !!svg.closest('.mvp-nav-item.active'),
-          exempt: !!svg.closest('.local-dashboard-filters .ds-dropdown-mark, .local-runs-export button[data-export], .local-dashboard-tablist [role="tab"][data-toned]') || svg.matches('svg.destination-icon') })));
+          exempt: !!svg.closest('.local-dashboard-filters .ds-dropdown-mark, .local-runs-export button[data-export], .local-dashboard-tablist [role="tab"][data-toned], .local-day-picker .local-day-button') || svg.matches('svg.destination-icon') })));
       expect(icons.length, `${path} draws icons`).toBeGreaterThan(3);
       for (const icon of icons.filter(item => !item.exempt)) expect(icon.color, `${path} icon`).toBe(INK3[theme]);
       const concepts = await page.evaluate(() => [...document.querySelectorAll('main svg.field-icon[data-field-icon]:not([data-field-icon^="tier-"]):not([data-semantic-concept^="model:"])')]
@@ -98,11 +96,9 @@ for (const theme of ['light', 'dark'] as const) {
     expect(await unselected.evaluate(el => getComputedStyle(el).backgroundColor)).not.toBe(selectedFill);
     await page.keyboard.press('Escape');
     await expect(page.locator('main article.local-dashboard-panel').first()).toHaveCSS('border-radius', '12px');
-    const expand = page.locator('.local-chart-expand').first();
-    await expect(expand).toHaveCSS('border-radius', '8px');
-    await expect(expand).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
-    await expect(expand).toHaveCSS('border-top-color', LINE[theme]);
-    await expect(expand).toHaveCSS('color', INK2[theme]);
+    // OMN-22168 (Lakshman 2026-11-04, "full size big one"): each Overview chart is drawn full size in its tab, so there is no
+    // Expand control left to style (overview-expand checks it is gone); the secondary buttons are checked on Runs below.
+    await expect(page.locator('.local-chart-expand')).toHaveCount(0);
 
     await settle(page, '/settings');
     // AC208 removed Settings' Appearance choice; the chosen Settings section tab carries the one chosen state now.
@@ -174,8 +170,8 @@ test('AC183 the two day charts share a baseline and every chart title has the pa
     await chooseChartTab(page, tab);
     const panel = page.locator('.local-dashboard-panel[data-component="overview-insights"]');
     await expect(panel).toHaveCount(1);
-    // Page coordinates: choosing a tab can scroll it into view.
-    bottoms.push(await panel.locator('.ins-bars').first().evaluate(el => el.getBoundingClientRect().bottom + window.scrollY));
+    // Page coordinates (the page scrolls in .local-dashboard-page): choosing a tab can scroll it into view.
+    bottoms.push(await panel.locator('.ins-bars').first().evaluate(el => el.getBoundingClientRect().bottom + (el.closest('.local-dashboard-page')?.scrollTop ?? 0) + window.scrollY));
   }
   expect(Math.abs(bottoms[0]! - bottoms[1]!)).toBeLessThanOrEqual(1);
   // The 01+20 look (Lakshman 2026-11-03): a panel title is a small mono label with no rule under it (was a 1px divider).

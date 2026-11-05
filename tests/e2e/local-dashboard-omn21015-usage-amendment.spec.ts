@@ -1,5 +1,6 @@
 import { expect, test } from 'playwright/test';
 import { chartRows, narrowTo, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chooseChartTab } from './chart-tabs';
 // Failure modes: unbounded table, unequal adjacent panes, token panel on wrong row,
 // keyboard pagination broken, mobile overflow and display precision changing raw chart data.
 test.use({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce', trace: 'on' });

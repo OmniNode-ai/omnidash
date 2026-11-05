@@ -95,7 +95,8 @@ test('OMN-21015: on Usage a bar is as tall as its share of the largest served to
   await expect(page.getByRole('heading', { name: 'Tokens per day by model, in detail' })).toHaveCount(0);
   await expect(page.locator('.usage-tokens-bar')).toHaveCount(0);
 
-  await page.getByRole('heading', { name: 'Tokens by model', exact: true }).scrollIntoViewIfNeeded();
+  // OMN-22168: the chart's heading is hidden inside its tab; the tab names it.
+  await page.getByRole('tab', { name: 'Tokens by model', exact: true }).scrollIntoViewIfNeeded();
   await page.screenshot({ path: screenshotPath('local-dashboard-omn21015-usage-tokens-1440x900.png'), fullPage: false });
 });
 

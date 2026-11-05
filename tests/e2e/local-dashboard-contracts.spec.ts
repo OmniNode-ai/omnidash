@@ -414,7 +414,8 @@ test('Overview quality and tier-mix panels show served fields only (OMN-20225 AC
   await page.screenshot({ path: screenshotPath('local-dashboard-overview-panels-1440x900.png'), fullPage: false });
   // The raw served shares and the not-tier-routed count stay in Runs' routing breakdown, under "More analysis".
   await page.goto('/runs');
-  const routing = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Routing breakdown', exact: true }) });
+  // OMN-22168: the routing breakdown is Runs' Tier breakdown tab; its own heading is hidden inside the tab.
+  const routing = await chartTabPanel(page, 'Tier breakdown');
   // OMN-21166 part 18 AC120: the table is shown directly; the nested "Full routing breakdown" disclosure is removed.
   await expect(routing.locator('summary').filter({ hasText: 'Full routing breakdown' })).toHaveCount(0);
   for (const value of ['Cheap cloud', '71.4%', '28.6%']) {
@@ -490,7 +491,8 @@ test('local panels follow both themes on every page without losing readable surf
             title: panel.querySelector('h2')?.textContent,
             background: tile ? (a[3] === 255 && a.slice(0, 3).every((v, i) => Math.abs(v - b[i]) <= 20) ? 'panel-tint' : background) : background,
             // OMN-21970 AC10 (Lakshman 2026-11-02, "it should be full page"): Settings' sections and panels sit on the page.
-            expected: tile ? 'panel-tint' : panel.closest('.local-dashboard-page--settings') ? 'rgba(0, 0, 0, 0)' : expected.style.backgroundColor,
+            // OMN-22168: a chart drawn inside a tab is flat on the tabbed panel, whose own surface is checked as a panel here.
+            expected: tile ? 'panel-tint' : panel.closest('.local-dashboard-page--settings, .local-dashboard-tabpanel') ? 'rgba(0, 0, 0, 0)' : expected.style.backgroundColor,
           };
         });
       });

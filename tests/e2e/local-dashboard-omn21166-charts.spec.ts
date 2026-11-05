@@ -127,7 +127,11 @@ test('usage model bars do not change figures, table or other model colors', asyn
   // OMN-21166 Maple grid: the page's Tokens per day is a stacked chart that prints each served count in the day's label;
   // part 17 AC114: "Tokens by model" (under "More usage") is hatched grouped bars, two per model, values on hover or focus.
   await expect(page.locator(`[data-component="usage-tokens-by-day"]:not([data-slice]) li[data-token-day="${USAGE_DAY}"]`)).toHaveAttribute('aria-label', /model-a: 162/);
-  await chooseChartTab(page, 'Tokens by model');
+  // The tab is chosen by keyboard, as a keyboard reader does: the focus check below reads a value shown on :focus-visible,
+  // which a mouse click before it would turn off.
+  const tokensTab = page.getByRole('tab', { name: 'Tokens by model', exact: true });
+  await tokensTab.focus(); await page.keyboard.press('Enter');
+  await expect(tokensTab).toHaveAttribute('aria-selected', 'true');
   const figure = page.getByRole('figure', { name: 'Tokens in vs out by model', exact: true });
   const modelA = figure.locator('li.gdb-day[aria-label^="model-a:"]');
   const modelB = figure.locator('li.gdb-day[aria-label^="model-b:"]');
