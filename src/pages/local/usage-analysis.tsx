@@ -94,7 +94,10 @@ function GroupsView({ decisionRows }: { decisionRows: readonly unknown[] }) {
             style={by === 'model' && group.name !== NOT_RECORDED ? { '--model-color': modelColor(group.name) } as CSSProperties : undefined}>{breakableName(group.name)}</th>
           {/* data-label names each value when a phone stacks the rows as cards (Codex MSG 753d170c). */}
           <td data-cell="runs" data-label="Runs">{group.runs}</td>
-          <td data-cell="spend" data-label="Spend">{money(group.spend, group.spendMeasured, group.runs)}</td>
+          {/* A measured zero spend is the run table's muted "$0" with the served text as its title (Lakshman 2026-11-05). */}
+          <td data-cell="spend" data-label="Spend">{group.spend === 0
+            ? <><span className="local-cost-free" title={formatUsd(group.spend)}>{formatUsd(group.spend).replace(/\.0+$/, '')}</span>{` (${group.spendMeasured} of ${group.runs} measured)`}</>
+            : money(group.spend, group.spendMeasured, group.runs)}</td>
           <td data-cell="pass" data-label="Pass rate" data-pass-band={passBand(group.passed, group.verdicts)}><span className="local-pass-pill">{passText(group)}</span></td>
           <td data-cell="p50" data-label="p50 latency">{latency(group.p50)}</td>
           <td data-cell="p95" data-label="p95 latency">{latency(group.p95)}</td>

@@ -126,7 +126,9 @@ test('AC194 AC195 Usage analysis groups the served sample with its own denominat
   await expect(row('model-a').locator('[data-cell="pass"]')).toHaveText('66.7% (2 of 3)');
   await expect(row('model-a').locator('[data-cell="p50"]')).toHaveText('300 ms');
   await expect(row('model-a').locator('[data-cell="p95"]')).toHaveText('500 ms');
-  await expect(row('model-b').locator('[data-cell="spend"]')).toHaveText('$0.00 (2 of 2 measured)');
+  // A measured zero is the short "$0", muted, with the served "$0.00" as its title (Lakshman 2026-11-05).
+  await expect(row('model-b').locator('[data-cell="spend"]')).toHaveText('$0 (2 of 2 measured)');
+  await expect(row('model-b').locator('[data-cell="spend"] [title="$0.00"]')).toHaveText('$0');
   await expect(row('model-b').locator('[data-cell="pass"]')).toHaveText('100.0% (1 of 1)');
   await expect(row('model-b').locator('[data-cell="p95"]')).toHaveText('200 ms');
   await expect(row('Not recorded').locator('[data-cell="spend"]')).toHaveText('Not measured');
