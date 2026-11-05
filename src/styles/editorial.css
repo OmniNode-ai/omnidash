@@ -1322,3 +1322,8 @@ html body main.local-dashboard-page--settings [data-testid="status-grid-tile"]:n
    short enough not to scroll (Settings' Pricing and routing) was 16px wider than the next, so its tab row and cards jumped
    sideways between sections and pages. */
 @media (min-width: 641px) { html body :is(main.local-dashboard-page, main.ev-root) { scrollbar-gutter: stable; } }
+/* Evidence's stat-tab chips as Overview's (the chip rules above are scoped to .local-dashboard-page): the glyph in its tone,
+   on the chosen tab the on-accent glyph over the filled chip (it was a dark glyph on a dark chip in light theme). */
+html body main.ev-root .local-tab-chip svg.lucide { color: var(--tab-tone) !important; width: 20px; height: 20px; }
+html body main.ev-root [aria-selected="true"] > .local-tab-chip svg.lucide,
+html body main.ev-root [aria-selected="true"] > .local-tab-chip svg.lucide.field-icon.field-icon[data-field-icon] { color: var(--ds-on-accent) !important; }
