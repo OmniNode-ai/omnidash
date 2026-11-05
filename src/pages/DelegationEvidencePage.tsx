@@ -61,7 +61,7 @@ import { escalationReason, taskLabel } from '@/pages/local/plain-text';
 import { readableTime } from '@/components/format/readable-time';
 import { ModelTiersContext, TierLegend, useModelColor, useModelIdentityStyle } from '@/components/dashboard/model-tiers';
 import { modelTiersFrom } from '@/lib/dashboard-colors';
-import { Bot, ListChecks, TriangleAlert } from '@/theme/design-system/icons';
+import { Bot, FileJson, FileSpreadsheet, ListChecks, TriangleAlert } from '@/theme/design-system/icons';
 
 /**
  * OMN-21166 AC72 pass 1: a rate on Evidence reads to one decimal, as Overview writes the same served rate (91.6%, not
@@ -842,8 +842,9 @@ function DecisionSampleExport({ decisions, available }: { decisions: readonly De
       <span>{available ? <>Latest {formatDashboardCount(latest.length)} served decisions · sample, not the runs behind headline totals</>
         : 'Decision sample: Not measured'}</span>
       <div className="ev-decision-export-actions">
-        <button type="button" disabled={!available || latest.length === 0} onClick={() => downloadDecisionSample(latest, 'csv')}>Export CSV</button>
-        <button type="button" disabled={!available || latest.length === 0} onClick={() => downloadDecisionSample(latest, 'json')}>Export JSON</button>
+        {/* The Runs table's exports: their glyphs and colours (OMN-22168, "make all pages uniform"). */}
+        <button type="button" data-export="csv" disabled={!available || latest.length === 0} onClick={() => downloadDecisionSample(latest, 'csv')}><FileSpreadsheet size={15} aria-hidden="true" />Export CSV</button>
+        <button type="button" data-export="json" disabled={!available || latest.length === 0} onClick={() => downloadDecisionSample(latest, 'json')}><FileJson size={15} aria-hidden="true" />Export JSON</button>
       </div>
     </section>
   );

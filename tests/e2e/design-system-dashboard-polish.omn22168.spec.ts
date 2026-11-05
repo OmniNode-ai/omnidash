@@ -172,6 +172,28 @@ test('L8: each Runs filter glyph and both export buttons keep their own colour',
   }
 });
 
+// L8b (Lakshman 2026-11-05, "make all pages uniform"): Delegation Evidence's CSV and JSON exports are the Runs exports,
+// glyph and colour alike, in both themes. Fails if Evidence's exports go back to plain grey buttons, lose a glyph, or take
+// any colour other than the one Runs draws for the same format.
+test('L8b: Evidence exports draw the Runs exports, glyph and colour', async ({ page }) => {
+  const read = (selector: string) => page.evaluate(sel => [...document.querySelectorAll(sel)].map(button => ({
+    format: button.getAttribute('data-export'), text: getComputedStyle(button).color,
+    icon: button.querySelector('svg') ? getComputedStyle(button.querySelector('svg')!).color : 'missing',
+    border: getComputedStyle(button).borderTopColor, height: Math.round(button.getBoundingClientRect().height) })), selector);
+  for (const theme of ['light', 'dark'] as const) {
+    await page.goto('/runs');
+    await expect(page.locator('.local-runs-wrap tbody tr').first()).toBeVisible();
+    await useTheme(page, theme);
+    const runs = await read('.local-runs-export button[data-export]');
+    await page.goto('/delegation-evidence');
+    await expect(page.locator('.ev-decision-export-actions button').first()).toBeVisible();
+    await useTheme(page, theme);
+    const evidence = await read('.ev-decision-export-actions button[data-export]');
+    expect(runs.map(b => b.format), `${theme}: Runs has CSV and JSON`).toEqual(['csv', 'json']);
+    expect(evidence, `${theme}: Evidence's exports are the Runs exports`).toEqual(runs);
+  }
+});
+
 // The served names of the live review, the longest one-word parts first.
 const WORDY = ['thinkingmachines/inkling:free', 'nvidia/nemotron-3-ultra-550b-a55b:free', 'poolside/laguna-xs-2.1:free',
   'apodex/apodex-1.1-mini:free', 'google/gemma-4-31b-it:free', 'gemini-3.5-flash-lite', 'Qwen3.8-27B'];

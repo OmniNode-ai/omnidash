@@ -217,7 +217,9 @@ main.ev-root[data-destination="delegation-evidence"] .panel-h .pt { font-size: 1
 main.ev-root[data-destination="delegation-evidence"] :is(.kv .v, .kpi .k-v) { color: var(--ds-ink) !important; }
 /* Evidence's statistics and bar values keep their OMN-21308 concept colours (pass, fail, savings, baseline, cost). */
 .local-dashboard-page :is(dt, .ins-kpi > span, .ins-kpi small),
-main.ev-root[data-destination="delegation-evidence"] :is(.kv .k, .kpi .k-l, .note) { color: var(--ds-ink-3) !important; }
+main.ev-root[data-destination="delegation-evidence"] :is(.kv .k, .kpi .k-l) { color: var(--ds-ink-3) !important; }
+/* Notes read as every other page's captions, in ink-2 (OMN-22168, "make all pages uniform"). */
+main.ev-root[data-destination="delegation-evidence"] .note { color: var(--ds-ink-2) !important; }
 .local-dashboard-page [data-field-tone="fail"] :is(strong, .ins-list-value), .local-dashboard-page strong[data-field-tone="fail"] { color: var(--ds-bad) !important; }
 .local-dashboard-page [data-field-tone="pass"] strong { color: var(--ds-ok) !important; }
 .local-dashboard-page [data-field-unavailable="true"] :is(dd, strong), .local-dashboard-page :is(dd, strong)[data-field-unavailable="true"] { color: var(--ds-ink-3) !important; font-weight: 500; }

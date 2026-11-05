@@ -1327,3 +1327,38 @@ html body main.local-dashboard-page--settings [data-testid="status-grid-tile"]:n
 html body main.ev-root .local-tab-chip svg.lucide { color: var(--tab-tone) !important; width: 20px; height: 20px; }
 html body main.ev-root [aria-selected="true"] > .local-tab-chip svg.lucide,
 html body main.ev-root [aria-selected="true"] > .local-tab-chip svg.lucide.field-icon.field-icon[data-field-icon] { color: var(--ds-on-accent) !important; }
+
+/* One platform (Lakshman 2026-11-05, "make all pages uniform"), measured across the six pages in Chrome first:
+   - every secondary button (pagers, "Show all", the prompt and answer folds, a provider's "+N more" and full error, Copy,
+     Open run) is the Runs export's size: 32px, 8px corners, 12.5px at 500, one hairline;
+   - Evidence's exports are the Runs exports (glyph, green and purple tints);
+   - every caption and note reads in ink-2 at 1.4 line height (the Overview, Runs and Usage majority) (Evidence's notes and Settings' captions were ink-3);
+   - Evidence's panel titles are the other pages' title ink (seven were brighter), its stat tabs and Settings' section
+     tabs the other pages' 56px with 12px corners and padding. */
+html body :is(main.local-dashboard-page, main.ev-root) :is(.local-dashboard-pager button, .local-savings-pagination button, .usage-record-pagination button,
+  .ev-table-paging button, .ev-more-rows > summary, .workflow-run-answer-fold > summary, .local-provider-more > summary, .local-provider-error > summary,
+  .workflow-run-search > button, .local-run-copy, .ev-decision-export-actions button) {
+  display: inline-flex !important; align-items: center; gap: 6px; height: 32px !important; min-height: 32px !important; padding: 0 12px !important;
+  border: 1px solid var(--ds-line) !important; border-radius: 8px !important; font-size: 12.5px !important; font-weight: 500 !important; line-height: 1;
+  color: var(--ds-ink-2); background: transparent; cursor: pointer; list-style: none; }
+html body :is(main.local-dashboard-page, main.ev-root) :is(.local-dashboard-pager button, .local-savings-pagination button, .usage-record-pagination button, .ev-table-paging button,
+  .ev-more-rows > summary, .workflow-run-answer-fold > summary, .local-provider-more > summary, .local-provider-error > summary, .workflow-run-search > button, .ev-decision-export-actions button):not(:disabled):hover {
+  color: var(--ds-ink); background: var(--ds-surface-2); border-color: var(--ds-line-strong, var(--ds-line)) !important; }
+html body :is(main.local-dashboard-page, main.ev-root) :is(.local-provider-more, .local-provider-error) > summary::-webkit-details-marker { display: none; }
+html body main.ev-root .ev-decision-export-actions button[data-export] { --tone: var(--ds-hue-green); --tone-ink: color-mix(in oklab, var(--tone) 72%, var(--ds-ink));
+  color: var(--tone-ink) !important; border-color: color-mix(in oklab, var(--tone) 45%, var(--ds-line)) !important; background: color-mix(in oklab, var(--tone) 10%, transparent) !important; }
+html body main.ev-root .ev-decision-export-actions button[data-export="json"] { --tone: var(--ds-hue-purple); }
+html body main.ev-root .ev-decision-export-actions button[data-export]:not(:disabled):hover { background: color-mix(in oklab, var(--tone) 20%, transparent) !important; border-color: color-mix(in oklab, var(--tone) 70%, var(--ds-line)) !important; }
+html body main.ev-root .ev-decision-export-actions button[data-export] svg.lucide { color: var(--tone-ink) !important; }
+html body :is(main.local-dashboard-page, main.ev-root) :is(.local-dashboard-caption, .note):not(h3):not(h4):not([data-field-tone]) { color: var(--ds-ink-2); line-height: 1.4; }
+html body main.ev-root .local-dashboard-tablist [role="tab"][data-stat] { min-height: 56px !important; border-radius: 12px !important; padding: 10px 12px !important; }
+html body .local-dashboard-page--settings .local-settings-menu a { border-radius: 12px !important; }
+/* Every page's stat tabs at phone width (OMN-22168): the chip is one 32px square everywhere (Evidence drew 42px), and
+   a label or hint wider than its half of the row wraps inside the tab instead of running past it (Runs had two). */
+html body :is(main.local-dashboard-page, main.ev-root) .local-dashboard-tablist [role="tab"][data-stat] .local-tab-chip { width: 32px !important; height: 32px !important; flex: 0 0 32px; }
+@media (max-width: 640px) {
+  html body :is(main.local-dashboard-page, main.ev-root) .local-dashboard-tablist [role="tab"][data-stat] .local-tab-text { min-width: 0; }
+  html body :is(main.local-dashboard-page, main.ev-root) .local-dashboard-tablist [role="tab"][data-stat] :is(.local-tab-label, .local-tab-hint) { white-space: normal !important; overflow-wrap: anywhere; }
+}
+/* No text under 12px: the newest-run tag on Workflow was 11px. */
+html body main.local-dashboard-page .local-run-tag { font-size: 12px !important; }
