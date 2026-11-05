@@ -77,3 +77,12 @@ export function InfoTip({ label, text, side }: { label: string; text: ReactNode;
     </Tooltip>
   );
 }
+
+/**
+ * A column header's explanation, as the run table's headers have (Lakshman 2026-11-05, "check run table column hover do
+ * the same in usage and all other too"): the kit Tooltip under the header, tinted in the column's field colour (its
+ * glyph's), on hover and on keyboard focus. The child is the header's focusable label or sort button.
+ */
+export function ColumnTip({ tone, tip, children }: { tone: string; tip: ReactNode; children: ReactElement }) {
+  return <span className="local-runs-tip local-column-tip" data-field-tone={tone}><Tooltip text={tip} side="bottom">{children}</Tooltip></span>;
+}

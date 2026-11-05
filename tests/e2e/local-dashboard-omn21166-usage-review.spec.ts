@@ -1,5 +1,6 @@
 import { expect, test, type Page } from 'playwright/test';
 import { chooseChartTab } from './chart-tabs';
+import { filterTrigger, pickFilter } from './filter-dropdowns';
 import { chartRows, prefix, serveCharts, recentDay } from './omn21166-chart-fixtures';
 
 // Failure modes before implementation: long tables bury records; filters hide
@@ -28,11 +29,12 @@ test('Usage records can be paged and filtered without rewriting served figures',
   await expect(panel.getByText('Showing 1–25 of 28 records', { exact: true })).toBeVisible();
   await panel.getByRole('button', { name: 'Next usage records', exact: true }).click();
   await expect(table.locator('tbody tr')).toHaveCount(3);
-  await panel.getByLabel('Filter usage model', { exact: true }).selectOption('model-beta');
+  // OMN-22168 (Lakshman 2026-11-05, "modern like runs"): the filters are the Runs toolbar's kit Dropdowns.
+  await pickFilter(page, 'Usage model', 'model-beta');
   await expect(table.locator('tbody tr')).toHaveCount(14);
   await expect(table).toContainText('Not measured');
   await expect(table).toContainText('1 unmeasured');
-  await panel.getByLabel('Filter usage UTC day', { exact: true }).selectOption(recentDay(1));
+  await pickFilter(page, 'UTC day', recentDay(1));
   await expect(table.locator('tbody tr')).toHaveCount(1);
   await expect(table.locator('tbody tr')).toContainText('model-beta');
   await panel.getByRole('button', { name: 'Clear usage filters', exact: true }).click();
@@ -75,6 +77,6 @@ test('empty daily exposures remain explicit without fabricated totals', async ({
   await openMoreUsage(page);
   await expect(page.getByText('No usage rows yet', { exact: true })).toBeVisible();
   await expect(page.getByRole('table', { name: 'Usage by model and day', exact: true })).toHaveCount(0);
-  await expect(page.getByLabel('Filter usage model', { exact: true })).toHaveCount(0);
+  await expect(filterTrigger(page, 'Usage model')).toHaveCount(0);
   await expect(page.getByText('$0.00', { exact: true })).toHaveCount(0);
 });

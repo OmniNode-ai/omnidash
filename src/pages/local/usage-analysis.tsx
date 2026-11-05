@@ -2,7 +2,7 @@ import { useMemo, useState, type CSSProperties } from 'react';
 import { Link } from 'wouter';
 
 import { formatUsd } from '@/lib/currency';
-import { DashboardTabs, DashboardToggle, DataTable, EmptyState, InfoTip, Panel, PanelTitle } from '@/theme/design-system/components';
+import { ColumnTip, DashboardTabs, DashboardToggle, DataTable, EmptyState, InfoTip, Panel, PanelTitle } from '@/theme/design-system/components';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { tierLabel } from '@/pages/local/plain-text';
 import { PASS_BANDS, passBand } from '@/pages/local/plain-text';
@@ -27,6 +27,26 @@ const GROUPS: ReadonlyArray<{ by: GroupBy; label: string; tone: string; concept:
   { by: 'task', label: 'Task type', tone: 'var(--ds-field-task)', concept: 'task' },
   { by: 'backend', label: 'Backend', tone: 'var(--ds-field-backend)', concept: 'backend' },
 ];
+const GROUP_NAME_TIPS: Record<GroupBy, string> = {
+  model: 'The model that answered the runs in this group. Click to sort.',
+  tier: 'The cost tier the runs were routed to. Click to sort.',
+  task: 'The kind of work the runs did. Click to sort.',
+  backend: 'The route that served the runs. Click to sort.',
+};
+const GROUP_TIPS: Record<Exclude<SortKey, 'name'>, string> = {
+  runs: 'How many of the sampled runs are in this group. Click to sort.',
+  spend: 'What the group\'s measured runs cost; under it, how many of its runs had a measured cost. Click to sort.',
+  pass: 'Share of the group\'s runs with a quality verdict that passed; under it, the runs behind it. Click to sort.',
+  p50: 'The median run time: half the group\'s runs finished faster. Click to sort.',
+  p95: 'The time 95% of the group\'s runs finished within; the slowest 5% took longer. Click to sort.',
+  last: 'When the group\'s latest run started, in UTC. Click to sort.',
+};
+const MATRIX_TIPS: Record<MatrixMetric, string> = {
+  pass: 'Share of the model\'s runs with a verdict that passed',
+  p95: 'The time 95% of the model\'s runs finished within',
+  cost: 'Measured spend per measured run',
+  runs: 'How many runs the model did',
+};
 const toned = <T extends string>(value: T, label: string, concept: string) =>
   ({ value, label, tone: `var(--ds-field-${concept})`, icon: <ConceptIcon concept={concept} size={14} /> });
 type SortKey = 'name' | 'runs' | 'spend' | 'pass' | 'p50' | 'p95' | 'last';
@@ -83,9 +103,10 @@ function GroupsView({ decisionRows }: { decisionRows: readonly unknown[] }) {
   });
   // Headers as the run table writes them: each in its column's colour with its glyph (Lakshman 2026-11-05).
   const concept = (key: SortKey) => (key === 'name' ? NAME_CONCEPT[by] : SORT_CONCEPT[key] ?? 'count');
+  // Each header explains its column on hover and keyboard focus, as the run table's do (Lakshman 2026-11-05).
   const header = (key: SortKey, label: string) => (
     <th scope="col" data-col={key} aria-sort={sort.key === key ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
-      <button type="button" className="local-table-head" data-field-tone={concept(key)} onClick={() => setSort(sort.key === key ? { key, dir: sort.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: key === 'name' ? 'asc' : 'desc' })}><ConceptIcon concept={concept(key)} label={label} size={13} />{label}</button>
+      <ColumnTip tone={concept(key)} tip={key === 'name' ? GROUP_NAME_TIPS[by] : GROUP_TIPS[key]}><button type="button" className="local-table-head" data-field-tone={concept(key)} onClick={() => setSort(sort.key === key ? { key, dir: sort.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: key === 'name' ? 'asc' : 'desc' })}><ConceptIcon concept={concept(key)} label={label} size={13} />{label}</button></ColumnTip>
     </th>);
   const label = GROUPS.find(group => group.by === by)!.label;
   return <>
@@ -93,7 +114,7 @@ function GroupsView({ decisionRows }: { decisionRows: readonly unknown[] }) {
     <DataTable data-analysis-table aria-label={`Usage by ${label.toLowerCase()}`}>
         <thead><tr>{header('name', label)}{header('runs', 'Runs')}{header('spend', 'Spend')}
           {header('pass', 'Pass rate')}{header('p50', 'p50 latency')}{header('p95', 'p95 latency')}
-          {header('last', 'Last run')}<th scope="col" data-col="spark" title={`Runs per day, latest ${SPARK_DAYS} days`}><span className="local-table-head" data-field-tone="runs-daily"><ConceptIcon concept="runs-daily" label="Runs per day" size={13} />Runs per day<span className="local-visually-hidden">{` (${SPARK_DAYS} days)`}</span></span></th></tr></thead>
+          {header('last', 'Last run')}<th scope="col" data-col="spark"><ColumnTip tone="runs-daily" tip={`Runs per UTC day over the latest ${SPARK_DAYS} days. A dashed slot is a day before the sample.`}><span className="local-table-head" data-field-tone="runs-daily" tabIndex={0}><ConceptIcon concept="runs-daily" label="Runs per day" size={13} />Runs per day<span className="local-visually-hidden">{` (${SPARK_DAYS} days)`}</span></span></ColumnTip></th></tr></thead>
         <tbody>{sorted.map(group => <tr key={group.name}>
           <th scope="row" data-model-name={by === 'model' && group.name !== NOT_RECORDED ? '' : undefined}
             data-semantic-concept={by === 'model' && group.name !== NOT_RECORDED ? `model:${group.name}` : undefined}
@@ -109,10 +130,10 @@ function GroupsView({ decisionRows }: { decisionRows: readonly unknown[] }) {
             {group.spend === 0
               ? <span className="local-cost-free" title={formatUsd(group.spend)}>{formatUsd(group.spend).replace(/\.0+$/, '')}</span>
               : <span className="local-cell-figure">{formatUsd(group.spend)}</span>}
-            <span className="local-cell-sub">{` (${group.spendMeasured} of ${group.runs} measured)`}</span></>}</td>
+            <span className="local-cell-sub local-cell-sub--line">{` (${group.spendMeasured} of ${group.runs} measured)`}</span></>}</td>
           <td data-cell="pass" data-label="Pass rate" data-pass-band={passBand(group.passed, group.verdicts)}>{group.verdicts === 0
             ? <span className="local-pass-pill">{passText(group)}</span>
-            : <><span className="local-pass-pill">{passText(group).split(' (')[0]}</span><span className="local-cell-sub">{` (${passText(group).split(' (')[1]}`}</span></>}</td>
+            : <><span className="local-pass-pill">{passText(group).split(' (')[0]}</span><span className="local-cell-sub local-cell-sub--line">{` (${passText(group).split(' (')[1]}`}</span></>}</td>
           <td data-cell="p50" data-label="p50 latency">{latency(group.p50)}</td>
           <td data-cell="p95" data-label="p95 latency">{latency(group.p95)}</td>
           <td data-cell="last" data-label="Last run">{lastText(group.last)}</td>
@@ -173,8 +194,10 @@ function DecisionMatrix({ decisionRows }: { decisionRows: readonly unknown[] }) 
     <p className="local-dashboard-caption">{`Models by ${columnLabel.toLowerCase()}. A cell with fewer than ${SMALL_SAMPLE} verdicts is a small sample; a pair with no runs reads no runs. Each cell opens its runs.`}</p>
     <DataTable className="usage-matrix-wrap" data-decision-matrix aria-label={`Models by ${columnLabel.toLowerCase()}`}>
         {/* Headers as the run table writes them: each with its glyph in its column's colour (Lakshman 2026-11-05). */}
-        <thead><tr><th scope="col"><span className="local-table-head" data-field-tone="model"><ConceptIcon concept="model" label="Model" size={13} />Model</span></th>
-          {matrix.columns.map(column => <th key={column} scope="col" data-col={column}><span className="local-table-head" data-field-tone={columnsBy}><ConceptIcon concept={columnsBy} label={columnName(column)} size={13} />{columnName(column)}</span></th>)}</tr></thead>
+        <thead><tr><th scope="col"><ColumnTip tone="model" tip="The model that answered. Each row is one model; each cell opens its runs."><span className="local-table-head" data-field-tone="model" tabIndex={0}><ConceptIcon concept="model" label="Model" size={13} />Model</span></ColumnTip></th>
+          {matrix.columns.map(column => <th key={column} scope="col" data-col={column}><ColumnTip tone={columnsBy}
+            tip={column === NOT_RECORDED ? `${MATRIX_TIPS[metric]}, for runs that recorded no ${columnsBy === 'task' ? 'task type' : 'tier'}.` : `${MATRIX_TIPS[metric]}, on ${columnsBy === 'task' ? `${columnName(column)} tasks` : `the ${columnName(column)} tier`}.`}>
+            <span className="local-table-head" data-field-tone={columnsBy} tabIndex={0}><ConceptIcon concept={columnsBy} label={columnName(column)} size={13} />{columnName(column)}</span></ColumnTip></th>)}</tr></thead>
         <tbody>{matrix.rows.map(row => <tr key={row}>
           <th scope="row" data-model-name={row !== NOT_RECORDED ? '' : undefined} data-semantic-concept={row !== NOT_RECORDED ? `model:${row}` : undefined}
             style={row !== NOT_RECORDED ? { '--model-color': modelColor(row) } as CSSProperties : undefined}>{breakableName(row)}</th>
@@ -317,9 +340,15 @@ const NAME_CONCEPT: Readonly<Record<GroupBy, string>> = { model: 'model', tier: 
 const SORT_CONCEPT: Readonly<Record<string, string>> = { runs: 'delegations', spend: 'cost', pass: 'run-outcome', p50: 'duration', p95: 'duration', last: 'age' };
 
 /** The routing table's columns: the concept each header's glyph and colour come from, and its label. */
-const ROUTING_HEADERS: ReadonlyArray<readonly [string, string]> = [
-  ['routing-model', 'Requested model'], ['model', 'Routed model'], ['tier', 'Tier'], ['backend', 'Backend'],
-  ['completion', 'Finish reason'], ['escalated', 'Escalations'], ['delegations', 'Runs'], ['run-outcome', 'Pass rate'],
+const ROUTING_HEADERS: ReadonlyArray<readonly [string, string, string]> = [
+  ['routing-model', 'Requested model', 'The model the runs asked for, before routing.'],
+  ['model', 'Routed model', 'The model that answered the runs.'],
+  ['tier', 'Tier', 'The cost tier the runs were routed to.'],
+  ['backend', 'Backend', 'The route that served the runs.'],
+  ['completion', 'Finish reason', 'Why the model stopped answering.'],
+  ['escalated', 'Escalations', 'How many times the runs moved on to another model.'],
+  ['delegations', 'Runs', 'How many runs took this route.'],
+  ['run-outcome', 'Pass rate', 'Share of the route\'s runs with a quality verdict that passed.'],
 ];
 
 /**
@@ -340,8 +369,13 @@ export function RoutingAnalysis({ rows, complete = false }: { rows: readonly unk
     </p>
     <DataTable data-routing-table aria-label="Runs by route">
         {/* Headers as the run table writes them: each in its column's colour, with its glyph (Lakshman 2026-11-05). */}
-        <thead><tr>{ROUTING_HEADERS.map(([concept, label]) => <th scope="col" key={label}>
-          <span className="local-table-head" data-field-tone={concept}><ConceptIcon concept={concept} label={label} size={13} />{label}</span></th>)}</tr></thead>
+        {/* One header line each (measured in Chrome at 1440): two long labels show their first word, the rest kept for
+            assistive tech and said in the column's tooltip. */}
+        <thead><tr>{ROUTING_HEADERS.map(([concept, label, tip]) => {
+          const [shown, rest] = label === 'Requested model' ? ['Requested', ' model'] : label === 'Finish reason' ? ['Finish', ' reason'] : [label, ''];
+          return <th scope="col" key={label}><ColumnTip tone={concept} tip={tip}>
+            <span className="local-table-head" data-field-tone={concept} tabIndex={0}><ConceptIcon concept={concept} label={label} size={13} />{shown}{rest && <span className="local-visually-hidden">{rest}</span>}</span></ColumnTip></th>;
+        })}</tr></thead>
         <tbody>{routes.map(route => {
           const rerouted = route.requested !== NOT_RECORDED && route.routed !== NOT_RECORDED && route.requested !== route.routed;
           return <tr key={[route.requested, route.routed, route.tier, route.backend, route.finish, route.escalations].join('|')}

@@ -1,5 +1,5 @@
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
-import { tierLabel } from '@/pages/local/plain-text';
+import { passBand, tierLabel } from '@/pages/local/plain-text';
 import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
 
 // OMN-20006: tokens in, tokens out and measured cost per model per UTC day, from usage-by-model-day.v1.
@@ -19,7 +19,7 @@ import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
 //     share of calls is the served `call_share`, the row's calls over its tenant's calls that UTC day, formatted as a
 //     percentage. A row with no served share says so; no share is worked out here from the call counts.
 import { useId, useState, type CSSProperties } from 'react';
-import { ChevronLeft, ChevronRight, RotateCcw } from '@/theme/design-system/icons';
+import { CalendarDays, ChevronLeft, ChevronRight, RotateCcw } from '@/theme/design-system/icons';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionSnapshotQuery } from '@/hooks/useProjectionSnapshotQuery';
 import { TOPICS } from '@shared/types/topics';
@@ -42,7 +42,7 @@ export interface UsageByModelDayRow {
 
 import { formatDashboardUsd as formatUsd } from '@/lib/dashboard-currency';
 import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
-import { DataTable, EmptyState } from '@/theme/design-system/components';
+import { ColumnTip, DataTable, Dropdown, EmptyState } from '@/theme/design-system/components';
 import { ChartReadout } from '@/theme/design-system/charts/frame';
 export { formatDashboardUsd as formatUsd } from '@/lib/dashboard-currency';
 
@@ -80,6 +80,19 @@ function tier(value: unknown): string {
 
 /** OMN-21015: the served share of the day's calls (a fraction), shown as a percentage to two decimals at most. */
 /** The table's columns: the concept each header's glyph and colour come from, and its label. */
+const SHORT_HEADERS: Record<string, readonly [string, string]> = { 'Cost (measured)': ['Cost', ' (measured)'], 'Share of calls': ['Share', ' of calls'] };
+/** Each column's explanation on hover and keyboard focus, as the run table's (Lakshman 2026-11-05). */
+const USAGE_TIPS: Record<string, string> = {
+  Day: 'The UTC day. It is written on the first row of its day.',
+  Model: 'The model that answered the calls.',
+  'Tokens in': 'Tokens sent to the model that day, in this tier.',
+  'Tokens out': 'Tokens the model returned that day, in this tier.',
+  'Cost (measured)': 'The measured cost of the calls. A grey $0 is a free call.',
+  Unmeasured: 'Calls whose cost was not recorded. A dash means none.',
+  Tier: 'The cost tier the calls were routed to.',
+  Calls: 'Calls to the model that day, in this tier.',
+  'Share of calls': 'This row\'s calls out of all calls that UTC day.',
+};
 const USAGE_HEADERS: ReadonlyArray<readonly [string, string]> = [
   ['usage-day', 'Day'], ['model', 'Model'], ['tokens-in', 'Tokens in'], ['tokens-out', 'Tokens out'], ['cost', 'Cost (measured)'],
   ['unavailable', 'Unmeasured'], ['tier', 'Tier'], ['calls', 'Calls'], ['routing', 'Share of calls'],
@@ -98,6 +111,7 @@ function asRows(rows: readonly unknown[]): UsageByModelDayRow[] {
 /** US-1, US-2, US-4: one row per served day and model, in the order the exposure serves them. */
 export function UsageByModelDayTable({ rows, interactive = false }: { rows: readonly unknown[]; interactive?: boolean }) {
   const id = useId();
+  const modelColor = useModelColor();
   const [selectedModel, setSelectedModel] = useState('');
   const [selectedDay, setSelectedDay] = useState('');
   const [page, setPage] = useState(0);
@@ -116,19 +130,31 @@ export function UsageByModelDayTable({ rows, interactive = false }: { rows: read
     <div className={interactive ? 'usage-records' : undefined}>
       {interactive && <div className="usage-record-controls local-dashboard-filters" role="group" aria-label="Filter usage records">
         <span className="usage-record-controls-title"><ConceptIcon concept="recorded-rows" label="Recorded rows" size={15} />Recorded rows</span>
-        <label htmlFor={`${id}-model`}>Model<select id={`${id}-model`} aria-label="Filter usage model" value={activeModel} onChange={event => { setSelectedModel(event.target.value); setPage(0); }}>
-          <option value="">All models</option>{models.map(name => <option value={name} key={name}>{name}</option>)}
-        </select></label>
-        <label htmlFor={`${id}-day`}>UTC day<select id={`${id}-day`} aria-label="Filter usage UTC day" value={activeDay} onChange={event => { setSelectedDay(event.target.value); setPage(0); }}>
-          <option value="">All days</option>{days.map(day => <option value={day} key={day}>{day}</option>)}
-        </select></label>
+        {/* The Runs toolbar's filters (Lakshman 2026-11-05, "modern like runs"): the kit Dropdown, its glyph and colour inside
+            the pill, each model option with its swatch. */}
+        <div className="local-filter-field">
+          <Dropdown id={`${id}-model`} label="Usage model" value={activeModel} icon={<ConceptIcon concept="model" size={15} />} tone="var(--ds-field-model)"
+            onChange={value => { setSelectedModel(value); setPage(0); }}
+            options={[{ value: '', label: 'All models' }, ...models.map(name => ({ value: name, label: name, tone: modelColor(name) }))]} />
+        </div>
+        <div className="local-filter-field">
+          <Dropdown id={`${id}-day`} label="UTC day" value={activeDay} icon={<CalendarDays size={15} />} tone="var(--ds-field-usage-day)"
+            onChange={value => { setSelectedDay(value); setPage(0); }}
+            options={[{ value: '', label: 'All days' }, ...days.map(day => ({ value: day, label: day }))]} />
+        </div>
         {(activeModel || activeDay) && <button type="button" onClick={() => { setSelectedModel(''); setSelectedDay(''); setPage(0); }}><RotateCcw size={14} aria-hidden="true" />Clear usage filters</button>}
       </div>}
     <DataTable aria-label="Usage by model and day">
         <thead>
           <tr>
             {/* Headers as the run table writes them (Lakshman 2026-11-05, "make all pages like overview and runs"). */}
-            {USAGE_HEADERS.map(([concept, label]) => <th key={label}><span className="local-table-head" data-field-tone={concept}><ConceptIcon concept={concept} label={label} size={13} />{label}</span></th>)}
+            {/* One header line each (Lakshman 2026-11-05, "make it modern like runs"): a long label shows its first words and
+                keeps the rest for assistive tech and in its title, as Runs per day does. */}
+            {USAGE_HEADERS.map(([concept, label]) => {
+              const [shown, rest] = SHORT_HEADERS[label] ?? [label, ''];
+              return <th key={label}><ColumnTip tone={concept} tip={USAGE_TIPS[label] ?? label}><span className="local-table-head" data-field-tone={concept} tabIndex={0}>
+                <ConceptIcon concept={concept} label={label} size={13} />{shown}{rest && <span className="local-visually-hidden">{rest}</span>}</span></ColumnTip></th>;
+            })}
           </tr>
         </thead>
         {/* As the run table writes its rows (Lakshman 2026-11-05): a day is named on the first row of its group only (the
@@ -139,7 +165,9 @@ export function UsageByModelDayTable({ rows, interactive = false }: { rows: read
             data-day-start={index === 0 || shown[index - 1]!.usage_day !== row.usage_day ? '' : undefined}>
             <td data-label="Day">{index === 0 || shown[index - 1]!.usage_day !== row.usage_day
               ? recorded(row.usage_day) : <span className="local-visually-hidden">{recorded(row.usage_day)}</span>}</td>
-            <td data-label="Model">{model(row.model_id)}</td>
+            {/* The model's swatch beside its name, as Usage analysis and the decision matrix draw a model (Lakshman 2026-11-05). */}
+            <td data-label="Model"><span className="usage-model-name">{!isMissing(row.model_id) && <span className="gdb-swatch" aria-hidden="true"
+              data-model-id={model(row.model_id)} style={{ background: modelColor(model(row.model_id)) }} />}{model(row.model_id)}</span></td>
             <td data-label="Tokens in">{isMissing(row.input_tokens) ? recorded(row.input_tokens) : groupedCount(row.input_tokens)}</td>
             <td data-label="Tokens out">{isMissing(row.output_tokens) ? recorded(row.output_tokens) : groupedCount(row.output_tokens)}</td>
             <td data-label="Cost (measured)">{!isMissing(row.measured_cost_usd) && Number(row.measured_cost_usd) === 0
@@ -150,7 +178,9 @@ export function UsageByModelDayTable({ rows, interactive = false }: { rows: read
             <td data-label="Tier">{tier(row.cost_tier_name)}</td>
             <td data-label="Calls">{isMissing(row.call_count) ? 'Not recorded' : formatDashboardCount(row.call_count)}</td>
             <td data-label="Share of calls"><span className="local-share-cell">{!isMissing(row.call_share) && Number.isFinite(Number(row.call_share))
-              && <span className="local-share-meter" aria-hidden="true"><i style={{ width: `${Math.min(Math.max(Number(row.call_share), 0), 1) * 100}%` }} /></span>}{callShare(row.call_share)}</span></td>
+              && <span className="local-share-meter" aria-hidden="true" data-identity-decoration="share-bar"><i
+                data-share-band={passBand(Math.min(Math.max(Number(row.call_share), 0), 1) * 100, 100)}
+                style={{ width: `${Math.min(Math.max(Number(row.call_share), 0), 1) * 100}%` }} /></span>}{callShare(row.call_share)}</span></td>
           </tr>
         ))}</tbody>
     </DataTable>

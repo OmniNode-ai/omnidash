@@ -33,7 +33,7 @@ import { TIER_TONES, breakableName } from '@/theme/design-system/charts';
 import { InsightsSection, InsightsWindowContext, MeteringActivityInsights, OverviewRunsContext, PassRateSparkline, TaskIcon, type ActivityWindow } from '@/pages/local/insight-charts';
 import { UsageInsights } from '@/pages/local/usage-insights';
 import { RoutingAnalysis } from '@/pages/local/usage-analysis';
-import { Badge, ConfirmDialog, DashboardTabs, DataTable, Dropdown, EmptyState, Fact, FactList, Figure, InfoTip, Panel, PanelTitle, StatusChip, Tooltip } from '@/theme/design-system/components';
+import { Badge, ColumnTip, ConfirmDialog, DashboardTabs, DataTable, Dropdown, EmptyState, Fact, FactList, Figure, InfoTip, Panel, PanelTitle, StatusChip, Tooltip } from '@/theme/design-system/components';
 import { Bot, CalendarRange, ChartArea, ChartPie, CircleCheck, CircleDollarSign, Clock3, FileJson, FileSpreadsheet, Gauge, Layers, ListChecks, Rows3, Server, Timer, TriangleAlert } from '@/theme/design-system/icons';
 import { SinceLastVisit } from '@/pages/local/since-last-visit';
 import { ModelKeys, providerName } from '@/pages/local/model-keys';
@@ -2116,6 +2116,17 @@ const RUN_COLUMN_TIPS: Readonly<Record<string, string>> = {
   score: 'The quality gate\'s score, from 0 to 1, to two decimals. Hover a score for the exact value.',
 };
 
+const KEY_HEADERS: ReadonlyArray<readonly [string, string, string]> = [
+  ['backend', 'Provider', 'The provider the key is for.'],
+  ['credentials', 'Key ref', 'The name the key is stored under. The key itself is never shown.'],
+  ['identity', 'Fingerprint', 'The first 8 hex characters of the key\'s SHA-256, to tell keys apart.'],
+  ['age', 'Set', 'When the key was set, in UTC.'],
+  ['last', 'Last used', 'When a run last used the key, in UTC.'],
+  ['fail', 'Revoked', 'When the key was revoked, in UTC.'],
+  ['threshold', 'Expires', 'When the key expires, if it was given an expiry.'],
+  ['host', 'Bound host', 'The host the key is bound to, if any.'],
+];
+
 const RUN_FIELDS_TIP = 'Adds the backend, host, task type, route tier and quality score of each run. The table scrolls sideways; '
   + 'the Run column stays in place. Every other recorded field is in the selected run and the export.';
 const ROUTING_COLUMNS_TIP = 'Adds why the model stopped answering (finish reason) and how many times it escalated to another model, '
@@ -2354,7 +2365,8 @@ export function TierMixPanel({ row, compact = false }: { row: Row | null; compac
       <DataTable fit>
           {/* Lakshman 2026-11-05 ("in run page check all and make it standardized"): headers as the run table writes them,
               each in its column's colour with its glyph 6px from the label. */}
-          <thead><tr><th><span className="local-table-head" data-field-tone="tier"><FieldIcon label="Tier" size={13} />Tier</span></th><th><span className="local-table-head" data-field-tone="delegations"><ConceptIcon concept="delegations" label="Runs" size={13} />Runs</span></th><th><span className="local-table-head" data-field-tone="routing"><ConceptIcon concept="routing" label="Share of tier-routed" size={13} />Share of tier-routed</span></th><th><span className="local-table-head" data-field-tone="cost"><FieldIcon label="Cost" size={13} />Cost</span></th></tr></thead>
+          {/* Each header explains its column on hover and keyboard focus, as the run table's (Lakshman 2026-11-05). */}
+          <thead><tr><th><ColumnTip tone="tier" tip="The cost tier, with the models that ran under it."><span className="local-table-head" data-field-tone="tier" tabIndex={0}><FieldIcon label="Tier" size={13} />Tier</span></ColumnTip></th><th><ColumnTip tone="delegations" tip="Runs routed to the tier, and each model's runs in it."><span className="local-table-head" data-field-tone="delegations" tabIndex={0}><ConceptIcon concept="delegations" label="Runs" size={13} />Runs</span></ColumnTip></th><th><ColumnTip tone="routing" tip="The tier's share of the runs that were routed by tier."><span className="local-table-head" data-field-tone="routing" tabIndex={0}><ConceptIcon concept="routing" label="Share of tier-routed" size={13} />Share of tier-routed</span></ColumnTip></th><th><ColumnTip tone="cost" tip="What each model's runs in the tier cost. A grey $0 is free."><span className="local-table-head" data-field-tone="cost" tabIndex={0}><FieldIcon label="Cost" size={13} />Cost</span></ColumnTip></th></tr></thead>
           <tbody>{tiers.flatMap((tier, index) => {
             const name = String(tier.cost_tier_name);
             const concept = tierConcept(name) ?? 'tier-other';
@@ -2418,7 +2430,9 @@ export function CredentialsTable({ rows }: { rows: readonly unknown[] }) {
   const revoked = keys.filter(key => !isMissing(key.revoked_at));
   const table = (list: Row[], label: string) => (
     <DataTable className="local-credentials-records" aria-label={label}>
-        <thead><tr><th>Provider</th><th>Key ref</th><th>Fingerprint</th><th>Set</th><th>Last used</th><th>Revoked</th><th>Expires</th><th>Bound host</th></tr></thead>
+        {/* Headers as every other table writes them: glyph, colour and an explanation on hover (Lakshman 2026-11-05). */}
+        <thead><tr>{KEY_HEADERS.map(([concept, name, tip]) => <th key={name}><ColumnTip tone={concept} tip={tip}>
+          <span className="local-table-head" data-field-tone={concept} tabIndex={0}><ConceptIcon concept={concept} label={name} size={13} />{name}</span></ColumnTip></th>)}</tr></thead>
         <tbody>{list.map((key, index) => (
           <tr key={`${String(key.provider)}-${String(key.name)}-${index}`}>
             {/* Part 27 round 7: the provider's name in the one case the Model providers table uses (Gemini, not gemini). */}

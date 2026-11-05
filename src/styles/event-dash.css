@@ -484,3 +484,27 @@
 @media (max-width: 640px) {
   .ev-page-head .ev-title { font-size: 24px; }
 }
+
+/* Recent delegations reads as every other table (Lakshman 2026-11-05, "all other too"): the run table's header band and
+   coloured headers, 10px 12px header cells and 11px 12px rows in 13px, text and figures left as on Runs with tabular
+   digits, model names whole (they wrap in their column), the time on one line, and the Runs table's pager. */
+html body main.ev-root .dt-head { background: var(--ds-surface-2) !important; border-block: 1px solid var(--ds-line); }
+html body main.ev-root .dt-head > div { padding: 10px 12px !important; overflow: visible; text-align: left !important;
+  font-family: var(--ds-font-mono); font-size: 12px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ds-ink-3); }
+html body main.ev-root .row-main > div { padding: 11px 12px !important; font-size: 13px; font-variant-numeric: tabular-nums; }
+html body main.ev-root .row-main > .num { text-align: left !important; }
+html body main.ev-root .row-main > [data-label="Model"] { overflow-wrap: anywhere; }
+html body main.ev-root .row-main > [data-label="Created"] { white-space: nowrap; }
+html body main.ev-root .dt-head .local-column-tip { display: inline-flex; max-width: 100%; }
+html body main.ev-root .dt-head .local-column-tip .ds-tooltip {
+  background: color-mix(in oklab, var(--field-ink, var(--ds-ink-3)) 7%, var(--ds-surface)); color: var(--ds-ink-2);
+  border: 1px solid color-mix(in oklab, var(--field-ink, var(--ds-ink-3)) 28%, var(--ds-line)); border-top: 2px solid var(--field-ink, var(--ds-ink-3));
+  box-shadow: none; font-family: var(--ds-font-sans); font-size: 12px; font-weight: 400; text-transform: none; letter-spacing: 0;
+  white-space: normal; text-align: left; line-height: 1.45; padding: 6px 10px; width: max-content; max-width: 280px; z-index: 30; }
+html body main.ev-root .dt-head .local-column-tip .ds-tooltip[data-side="bottom"]::before { top: -6px; border-top: 2px solid var(--field-ink, var(--ds-ink-3)); border-left: 2px solid var(--field-ink, var(--ds-ink-3)); }
+html body main.ev-root .ev-table-paging.local-dashboard-pager { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--ds-line); }
+html body main.ev-root .ev-table-paging.local-dashboard-pager > span { margin-right: auto; color: var(--ds-ink-2); font-variant-numeric: tabular-nums; }
+html body main.ev-root .ev-table-paging.local-dashboard-pager button { display: inline-flex; align-items: center; gap: 4px; min-height: 30px; padding: 4px 10px; font-size: 13px; }
+/* The header label in its column's colour with its glyph 6px from it, as in every table (editorial.css scopes this to
+   real tables, and this list is drawn with grids). */
+html body main.ev-root .dt-head .local-table-head { display: inline-flex; align-items: center; gap: 6px; color: var(--field-ink, inherit); white-space: nowrap; }

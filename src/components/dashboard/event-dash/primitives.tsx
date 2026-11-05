@@ -15,7 +15,8 @@ import { formatDuration } from '@/components/format/duration';
  */
 
 import { Fragment, useId, useState, type CSSProperties, type ReactNode } from 'react';
-import { ChevronRight } from '@/theme/design-system/icons';
+import { ChevronLeft, ChevronRight } from '@/theme/design-system/icons';
+import { ColumnTip } from '@/theme/design-system/components/Tooltip';
 import { isTenantNotConfiguredReason } from '@/data-source/projection-tenant';
 import { TenantNotConfiguredState } from '../TenantNotConfiguredState';
 import { ConceptIcon, FieldIcon } from '../FieldIcon';
@@ -262,6 +263,10 @@ export interface DataColumn<T> {
   width?: string;
   grow?: boolean;
   truncate?: boolean;
+  /** The column's concept: its header glyph and colour, as every table's header has (Lakshman 2026-11-05). */
+  concept?: string;
+  /** What the column holds, read on hover and keyboard focus of its header. */
+  tip?: string;
   render?: (row: T) => ReactNode;
 }
 
@@ -295,9 +300,13 @@ export function DataTable<T>({
     <div className={`dt${pageSize ? ' dt-paged' : ''}`}>
       <div className="dt-head" style={gridStyle}>
         <div />
+        {/* Headers as the run table writes them: glyph, the column's colour and its explanation on hover (Lakshman 2026-11-05,
+            "do the same in usage and all other too"). */}
         {columns.map((c) => (
           <div key={c.key} className={c.num ? 'num' : undefined}>
-            {c.label}
+            {c.concept ? <ColumnTip tone={c.concept} tip={c.tip ?? c.label}>
+              <span className="local-table-head" data-field-tone={c.concept} tabIndex={0}><ConceptIcon concept={c.concept} label={c.label} size={13} />{c.label}</span>
+            </ColumnTip> : c.label}
           </div>
         ))}
       </div>
@@ -332,10 +341,11 @@ export function DataTable<T>({
           </div>
         );
       })}
-      {pages > 1 && <nav className="ev-table-paging" aria-label="Record pages">
+      {/* The Runs table's pager: the range first, then the two buttons with their chevrons. */}
+      {pages > 1 && <nav className="ev-table-paging local-dashboard-pager" aria-label="Record pages">
         <span aria-live="polite">{current * size + 1}–{Math.min((current + 1) * size, rows.length)} of {formatDashboardCount(rows.length)}</span>
-        <button type="button" disabled={current === 0} onClick={() => setPage(current - 1)}>Previous page</button>
-        <button type="button" disabled={current === pages - 1} onClick={() => setPage(current + 1)}>Next page</button>
+        <button type="button" aria-label="Previous page" disabled={current === 0} onClick={() => setPage(current - 1)}><ChevronLeft size={14} aria-hidden="true" />Previous</button>
+        <button type="button" aria-label="Next page" disabled={current === pages - 1} onClick={() => setPage(current + 1)}>Next<ChevronRight size={14} aria-hidden="true" /></button>
       </nav>}
     </div>
   );

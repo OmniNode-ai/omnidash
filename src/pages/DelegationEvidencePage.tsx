@@ -616,14 +616,14 @@ function DecisionDetail({ row }: { row: DelegationDecisionRow }) {
 function RecentDelegations({ decisions }: { decisions: DelegationDecisionRow[] }) {
   const modelIdentityStyle = useModelIdentityStyle();
   const cols: DataColumn<DelegationDecisionRow>[] = [
-    { key: 'correlation_id', label: 'Correlation', render: (r) => <span className="mono c-blue">{shortId(r.correlation_id)}</span> },
-    { key: 'task_type', label: 'Task', grow: true, render: (r) => taskLabel(r.task_type) },
-    { key: 'model_name', label: 'Model', truncate: true, render: (r) => <span className="mono local-model-identity" data-semantic-concept={`model:${r.model_name}`} style={modelIdentityStyle(r.model_name)}>{r.model_name.length > 22 ? `${r.model_name.slice(0, 20)}…` : r.model_name}</span> },
-    { key: 'state', label: 'State', render: (r) => <StateBadge passed={r.quality_gate_passed} /> },
-    { key: 'tokens', label: 'Tokens', num: true, render: (r) => formatDashboardCount(r.tokens_to_compliance) },
-    { key: 'latency_ms', label: 'Latency', num: true, render: (r) => fmtLatency(r.latency_ms) },
+    { key: 'correlation_id', label: 'Correlation', concept: 'identity', width: '150px', tip: 'The run\'s correlation id. Open the row for the run\'s detail.', render: (r) => <span className="mono c-blue">{shortId(r.correlation_id)}</span> },
+    { key: 'task_type', label: 'Task', grow: true, concept: 'task', tip: 'The kind of work the run did.', render: (r) => taskLabel(r.task_type) },
+    { key: 'model_name', label: 'Model', width: 'minmax(0,2.4fr)', concept: 'model', tip: 'The model that answered.', render: (r) => <span className="mono local-model-identity" data-semantic-concept={`model:${r.model_name}`} style={modelIdentityStyle(r.model_name)}>{r.model_name.length > 22 ? `${r.model_name.slice(0, 20)}…` : r.model_name}</span> },
+    { key: 'state', label: 'State', width: '120px', concept: 'run-outcome', tip: 'Whether the run passed or failed its quality gate.', render: (r) => <StateBadge passed={r.quality_gate_passed} /> },
+    { key: 'tokens', label: 'Tokens', num: true, width: '112px', concept: 'tokens', tip: 'Tokens the run took to reach a compliant answer.', render: (r) => formatDashboardCount(r.tokens_to_compliance) },
+    { key: 'latency_ms', label: 'Latency', num: true, width: '120px', concept: 'duration', tip: 'How long the run took, end to end.', render: (r) => fmtLatency(r.latency_ms) },
     // OMN-21166 AC60: the time reads as on the other pages; the served value is the title.
-    { key: 'created_at', label: 'Created', num: true, render: (r) => <span className="dim" title={r.created_at}>{readableTime(r.created_at) ?? r.created_at}</span> },
+    { key: 'created_at', label: 'Created', num: true, width: '200px', concept: 'age', tip: 'When the run was recorded, in UTC. Hover a time for the exact value.', render: (r) => <span className="dim" title={r.created_at}>{readableTime(r.created_at) ?? r.created_at}</span> },
   ];
   return (
     <Panel

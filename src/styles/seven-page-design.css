@@ -1965,3 +1965,100 @@ html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-e
 html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) table tbody tr:hover > :is(td, th) {
   background: color-mix(in oklab, var(--ds-surface-2) 70%, var(--ds-surface)) !important; }
 html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) table tbody tr:last-child > :is(td, th) { border-bottom: 0 !important; }
+/* A model name's swatch hangs in the cell's left padding beside the name's first line (Lakshman 2026-11-05: in the mono
+   face "thinkingmachines/" did not fit beside it, so the swatch sat alone on a line above the name). */
+html body .local-dashboard-page :is(.usage-analysis table, table[data-decision-matrix]) tbody th[data-model-name] {
+  position: relative; padding-left: calc(12px + 0.7em + 0.5em) !important; }
+html body .local-dashboard-page :is(.usage-analysis table, table[data-decision-matrix]) tbody th[data-model-name]::before {
+  position: absolute; left: 12px; top: calc(11px + 0.45em); margin: 0; }
+
+/* Measured in Chrome at 1440 (Lakshman 2026-11-05, "check on all, no assumption"): with model names in the mono face
+   the Groups name column needed 305px on one line and got 170px (three lines for the nemotron id), so each count sits
+   under its figure as a muted second line (the cell text is unchanged), which lets the name take two lines at most.
+   Every header fits its column on one line: p50 and p95 latency need 135px, Runs per day 143px. */
+.local-dashboard-page .usage-analysis .local-cell-sub--line { display: block; margin: 2px 0 0 !important; line-height: 1.3; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="name"] { width: 226px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="runs"] { width: 80px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="spend"] { width: 152px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="pass"] { width: 116px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th:is([data-col="p50"], [data-col="p95"]) { width: 136px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="last"] { width: 138px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="spark"] { width: 144px; }
+/* Usage by model and day, one header line each (Cost and Share keep "(measured)" and "of calls" for assistive tech and
+   in their titles); the columns as measured: day 104, tokens in 116, tokens out 130, cost 100, unmeasured 140, tier 118,
+   calls 86, share 112, the model name the rest. */
+.local-dashboard-page table[aria-label="Usage by model and day"] thead .local-table-head { white-space: nowrap; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(1) { width: 104px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(2) { width: auto; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(3) { width: 116px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(4) { width: 130px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(5) { width: 100px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(6) { width: 140px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(7) { width: 118px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(8) { width: 86px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(9) { width: 112px; }
+/* Re-measured: Groups' fixed columns summed 4px past the 1124px table; the share meter and percent need 130px. */
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="name"] { width: 218px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(7) { width: 114px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(9) { width: 132px; }
+/* The hanging swatch is centred on the name (the cell is middle-aligned; a row with a second line under its figures put a
+   top-pinned swatch above a one-line name). */
+html body .local-dashboard-page :is(.usage-analysis table, table[data-decision-matrix]) tbody th[data-model-name]::before {
+  top: 50%; transform: translateY(-50%); }
+
+/* Usage by model and day (Lakshman 2026-11-05, "fix this too"): the filters are the Runs toolbar's pills (no boxed group,
+   small labels, a set filter tinted blue, the clear button a pill), each model carries its swatch with its name hanging
+   beside it, and the share meter wears its column's colour as the day bars do. */
+html body .local-dashboard-page .usage-record-controls.local-dashboard-filters[role="group"] { display: flex !important; flex-wrap: wrap; align-items: center; gap: 8px 14px;
+  border: 0 !important; padding: 0 !important; background: none !important; box-shadow: none !important; margin: 0 0 14px; }
+.local-dashboard-page .usage-record-controls .usage-record-controls-title { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; color: var(--ds-ink); margin-right: 4px; }
+.local-dashboard-page .usage-record-controls label { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 500; color: var(--ds-ink-3); }
+html body .local-dashboard-page .usage-record-controls select { height: 32px; min-height: 32px !important; padding: 0 28px 0 12px; border-radius: 999px !important;
+  border: 1px solid var(--ds-line) !important; background-color: transparent !important; color: var(--ds-ink-2); font-size: 12.5px; cursor: pointer;
+  transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease; }
+html body .local-dashboard-page .usage-record-controls select:hover { border-color: var(--ds-line-strong) !important; color: var(--ds-ink); background-color: var(--ds-surface-2) !important; }
+html body .local-dashboard-page .usage-record-controls label:has(option:checked:not(:first-child)) select {
+  border-color: color-mix(in oklab, var(--ds-hue-blue) 55%, var(--ds-line)) !important; color: var(--ds-ink);
+  background-color: color-mix(in oklab, var(--ds-hue-blue) 12%, transparent) !important; }
+html body .local-dashboard-page .usage-record-controls select:focus-visible { outline: 2px solid var(--ds-hue-blue); outline-offset: 2px; box-shadow: none !important; }
+html body .local-dashboard-page .usage-record-controls button { display: inline-flex; align-items: center; gap: 6px; height: 32px; min-height: 32px !important; padding: 0 12px;
+  border-radius: 999px !important; border: 1px solid var(--ds-line) !important; background: transparent !important; color: var(--ds-ink-2); font-size: 12.5px; }
+html body .local-dashboard-page .usage-record-controls button:hover { color: var(--ds-ink); background: var(--ds-surface-2) !important; }
+.local-dashboard-page .usage-model-name { position: relative; display: inline-block; padding-left: calc(0.7em + 0.5em); }
+.local-dashboard-page .usage-model-name > .gdb-swatch { position: absolute; left: 0; top: 0.42em; margin: 0; }
+.local-dashboard-page table[aria-label="Usage by model and day"] .local-share-meter > i { background: var(--ds-field-routing); }
+
+/* Share of calls in five bands (Lakshman 2026-11-05, "5 types of color ... 0 to 20, 21 to 40, 41 to 60 and so on"): the
+   meter takes the band of its share, in the same five colours as the pass-rate pills. */
+.local-dashboard-page table[aria-label="Usage by model and day"] .local-share-meter > i[data-share-band="1"] { background: var(--ds-pass-band-1); }
+.local-dashboard-page table[aria-label="Usage by model and day"] .local-share-meter > i[data-share-band="2"] { background: var(--ds-pass-band-2); }
+.local-dashboard-page table[aria-label="Usage by model and day"] .local-share-meter > i[data-share-band="3"] { background: var(--ds-pass-band-3); }
+.local-dashboard-page table[aria-label="Usage by model and day"] .local-share-meter > i[data-share-band="4"] { background: var(--ds-pass-band-4); }
+.local-dashboard-page table[aria-label="Usage by model and day"] .local-share-meter > i[data-share-band="5"] { background: var(--ds-pass-band-5); }
+/* The Usage filters sit in a row as the Runs toolbar's do: the kit Dropdown pills, sized to their choice. */
+.local-dashboard-page .usage-record-controls .local-filter-field { flex: 0 1 auto; display: block; min-width: 0; margin: 0; }
+
+/* Routing groups, measured in Chrome at 1440 with every header on one line: requested 132, tier 116, backend 168,
+   finish 96, escalations 138, runs 78, pass rate 144; the routed model takes the rest (252px). */
+.local-dashboard-page table[data-routing-table] thead .local-table-head { white-space: nowrap; }
+.local-dashboard-page table[data-routing-table] th:nth-child(1) { width: 132px; }
+.local-dashboard-page table[data-routing-table] th:nth-child(2) { width: auto; }
+.local-dashboard-page table[data-routing-table] th:nth-child(3) { width: 116px; }
+.local-dashboard-page table[data-routing-table] th:nth-child(4) { width: 168px; }
+.local-dashboard-page table[data-routing-table] th:nth-child(5) { width: 96px; }
+.local-dashboard-page table[data-routing-table] th:nth-child(6) { width: 138px; }
+.local-dashboard-page table[data-routing-table] th:nth-child(7) { width: 78px; }
+.local-dashboard-page table[data-routing-table] th:nth-child(8) { width: 144px; }
+/* Phone Tasks list, restated after the desktop columns above (line 1724 redefined them at every width, so on a 390px
+   phone each 498px track ran past its 248px card and "Runs" sat on "Pass rate"): task, runs and pass rate on one line,
+   the track under them, verdicts left out as before. */
+@media (max-width: 700px) {
+  .local-dashboard-page :is(.ins-task-head, .ins-list-row.ins-task-row) { grid-template-columns: 26px minmax(0, 1fr) 44px 64px; column-gap: 10px; }
+  .local-dashboard-page .ins-task-head > :nth-child(3), .local-dashboard-page .ins-task-head > :nth-child(6) { display: none; }
+  .local-dashboard-page .ins-task-row > .ins-track { grid-column: 2 / -1; grid-row: 2; min-width: 0; }
+  .local-dashboard-page .ins-task-row > .ins-list-coverage { display: none; }
+}
+@media (max-width: 700px) {
+  .local-dashboard-page :is(.ins-task-head, .ins-list-row.ins-task-row) { grid-template-columns: 26px minmax(0, 1fr) 36px 58px; column-gap: 8px; }
+  .local-dashboard-page .ins-task-row .ins-list-name, .local-dashboard-page .ins-task-row > :nth-child(2) { overflow-wrap: normal; word-break: normal; }
+}

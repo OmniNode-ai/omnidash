@@ -14,7 +14,7 @@ import { TOPICS } from '@shared/types/topics';
 import { formatUsd } from './UsageByModelDayWidget';
 import { useState } from 'react';
 import { ChevronLeft, ChevronRight } from '@/theme/design-system/icons';
-import { DataTable, EmptyState } from '@/theme/design-system/components';
+import { ColumnTip, DataTable, EmptyState } from '@/theme/design-system/components';
 
 /** The subset of metering-summary.v1 columns the series renders. */
 export interface MeteringSummaryRow {
@@ -93,9 +93,9 @@ function SavingsDays({ baseline, days }: { baseline: string; days: MeteringSumma
           </nav>}>
             {/* Headers as the run table writes them (Lakshman 2026-11-05, "make all pages like overview and runs"). */}
             <thead><tr>
-              <th><span className="local-table-head" data-field-tone="usage-day"><ConceptIcon concept="usage-day" label="Day" size={13} />Day</span></th>
-              <th><span className="local-table-head" data-field-tone="savings"><ConceptIcon concept="savings" label="Savings" size={13} />{`Savings vs ${baseline}`}</span></th>
-              <th><span className="local-table-head" data-field-tone="delegations"><ConceptIcon concept="delegations" label="Runs" size={13} />Runs</span></th>
+              <th><ColumnTip tone="usage-day" tip="The UTC day."><span className="local-table-head" data-field-tone="usage-day" tabIndex={0}><ConceptIcon concept="usage-day" label="Day" size={13} />Day</span></ColumnTip></th>
+              <th><ColumnTip tone="savings" tip={`Modelled saving for the day: the runs' tokens at ${baseline}'s list price, less what they cost. The baseline never ran. The bar is the day against the biggest day.`}><span className="local-table-head" data-field-tone="savings" tabIndex={0}><ConceptIcon concept="savings" label="Savings" size={13} />{`Savings vs ${baseline}`}</span></ColumnTip></th>
+              <th><ColumnTip tone="delegations" tip="Runs that UTC day."><span className="local-table-head" data-field-tone="delegations" tabIndex={0}><ConceptIcon concept="delegations" label="Runs" size={13} />Runs</span></ColumnTip></th>
             </tr></thead>
             <tbody>{days.slice(start, start + DAYS_PER_PAGE).map((row, index) => {
               const { text, amount } = served[start + index]!;

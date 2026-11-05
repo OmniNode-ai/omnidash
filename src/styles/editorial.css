@@ -1198,3 +1198,16 @@ html body .local-dashboard-page .local-tier-totals > :is(dl, .local-dashboard-fi
 html body .local-dashboard-page .local-tier-totals > :is(dl, .local-dashboard-fields) > * + * { border-left: 1px solid var(--ds-line); }
 html body .local-dashboard-page .local-tier-totals dt { display: inline-flex; align-items: center; gap: 6px; justify-content: center; }
 html body .local-dashboard-page .local-tier-totals dd { font-size: 20px; font-weight: 600; color: var(--ds-ink); margin: 4px 0 0; }
+
+/* Every table's column tooltips look as the run table's do (Lakshman 2026-11-05, "do the same in usage and all other
+   too"): a faint tint of the column's colour, its 2px top edge and arrow in it, a hairline, normal-weight sentence case. */
+html body :is(.local-dashboard-page, main.ev-root) .local-dashboard-table-wrap thead .local-column-tip { display: inline-flex; max-width: 100%; }
+html body :is(.local-dashboard-page, main.ev-root) .local-dashboard-table-wrap .local-column-tip .ds-tooltip {
+  background: color-mix(in oklab, var(--field-ink, var(--ds-ink-3)) 7%, var(--ds-surface)); color: var(--ds-ink-2);
+  border: 1px solid color-mix(in oklab, var(--field-ink, var(--ds-ink-3)) 28%, var(--ds-line)); border-top: 2px solid var(--field-ink, var(--ds-ink-3));
+  box-shadow: none; font-family: var(--ds-font-sans); font-size: 12px; font-weight: 400; text-transform: none; letter-spacing: 0;
+  white-space: normal; text-align: left; line-height: 1.45; padding: 6px 10px; width: max-content; max-width: 280px; z-index: 30; }
+html body :is(.local-dashboard-page, main.ev-root) .local-dashboard-table-wrap .local-column-tip .ds-tooltip[data-side="bottom"]::before {
+  top: -6px; border-top: 2px solid var(--field-ink, var(--ds-ink-3)); border-left: 2px solid var(--field-ink, var(--ds-ink-3)); }
+html body :is(.local-dashboard-page, main.ev-root) .local-dashboard-table-wrap thead .local-column-tip :is(.local-table-head, .local-runs-head):focus-visible {
+  outline: 2px solid var(--field-ink, var(--ds-accent)); outline-offset: 2px; border-radius: 4px; }
