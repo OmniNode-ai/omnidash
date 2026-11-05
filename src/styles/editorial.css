@@ -1005,7 +1005,7 @@ html body .local-dashboard-page .local-runs-wrap th:is([data-column="tokens"], [
 html body .local-dashboard-page .local-runs-wrap th:is([data-column="tokens"], [data-column="cost"], [data-column="savings"], [data-column="duration"], [data-column="score"], [data-column="escalated"]) :is(.local-runs-head, .local-sort-header) { justify-content: flex-end; margin-left: auto; }
 /* Item 11: the day above the first row of each day, the clock on every row; the exact time is in the title. */
 html body .local-dashboard-page .local-run-time { display: inline-flex; flex-direction: column; gap: 2px; white-space: nowrap; }
-html body .local-dashboard-page .local-run-day { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ds-ink-3); }
+html body .local-dashboard-page .local-run-day { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ds-ink-3); }
 html body .local-dashboard-page .local-run-clock { font-variant-numeric: tabular-nums; }
 html body .local-dashboard-page .local-runs-wrap tbody tr[data-day-start]:not(:first-child) td { border-top: 1px solid var(--ds-line-strong, var(--ds-line)); }
 /* Item 10: the cause sits under the status pill on a failed run. */
@@ -1013,7 +1013,7 @@ html body .local-dashboard-page .local-run-status-cell { display: table-cell; }
 html body .local-dashboard-page .local-run-status-cell .local-runs-cause { display: block; margin-top: 4px; font-size: 12px; color: var(--ds-ink-2); }
 html body .local-dashboard-page .local-run-status-cell .local-run-failure { margin-top: 2px; font-size: 12px; }
 /* Item 3: the requested model before the one that answered, when they differ. */
-html body .local-dashboard-page .local-run-requested { display: block; font-size: 11px; color: var(--ds-ink-3); margin-bottom: 2px; }
+html body .local-dashboard-page .local-run-requested { display: block; font-size: 12px; color: var(--ds-ink-3); margin-bottom: 2px; }
 /* Items 5 and 8: the usual value is quiet; a free local run is muted; a basis other than measured is a small tag. */
 html body .local-dashboard-page .local-run-quiet { color: var(--ds-ink-3); }
 html body .local-dashboard-page .local-run-unusual { font-weight: 600; color: var(--ds-ink); }
@@ -1027,7 +1027,7 @@ html body .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all
 html body .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all):not(.local-runs-wrap--routing) :is(th, td) { width: auto !important; }
 html body .local-dashboard-page--runs .local-runs-wrap :is(td:first-child, td.local-dashboard-cell-time) { white-space: nowrap; }
 html body .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) .local-run-model { display: inline-block; max-width: 200px; }
-html body .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) .local-run-status-cell { min-width: 150px; }
+/* The status cell holds only its pill since the cause moved into its tooltip. */
 html body .local-dashboard-page .local-runs-wrap td[data-num] { white-space: nowrap; }
 html body .local-dashboard-page .local-runs-wrap td[data-num][data-wrap] { white-space: normal; color: var(--ds-ink-3); }
 html body .local-dashboard-page .local-runs-wrap .local-run-model { overflow-wrap: normal; word-break: normal; text-align: left; }
@@ -1078,3 +1078,10 @@ html body .local-dashboard-page .local-runs-wrap tbody .local-runs-tip { display
    - a task type's glyph starts at its column's edge, as its header glyph does (its 22px chip inset it 4px). */
 html body .local-dashboard-page .local-runs-wrap td.local-dashboard-cell-token a { max-width: none; }
 html body .local-dashboard-page .local-runs-wrap td .local-task-icon { width: auto; height: auto; background: none; justify-content: flex-start; }
+/* Lakshman 2026-11-05 ("center aligned? all column and data?", "left aligned should be best?"): text stays left and
+   figures right, each header on its values' edge; the spare width goes to the Model column only, so the figures sit
+   together on the right with one even gap between them instead of a wide hole around Cost and Saving. */
+html body .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) :is(th, td):not([data-column="model"]):not(:has(.local-run-model)) { width: 1% !important; white-space: nowrap; }
+html body .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) :is(th, td)[data-num], html body .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) th:is([data-column="tokens"], [data-column="cost"], [data-column="savings"], [data-column="duration"]) { padding-left: 28px; }
+/* A not-measured saving wraps in a 132px column instead of widening Saving to its whole sentence. */
+html body .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) td[data-wrap] { white-space: normal !important; min-width: 132px; max-width: 160px; }

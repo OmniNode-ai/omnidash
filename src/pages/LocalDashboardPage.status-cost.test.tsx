@@ -29,17 +29,19 @@ const MEASURED = localRow('measured-run', '2026-10-08T18:40:44Z', { cost_usd: 0.
 const UNMEASURED = localRow('unmeasured-run', '2026-10-08T18:40:18Z', { cost_usd: null });
 
 describe('Runs status and cost from the local store (OMN-20753)', () => {
-  it('Runs shows a 1-served gate verdict as passed and a measured zero cost as $0.00', () => {
+  it('Runs shows a 1-served gate verdict as passed and a measured zero cost as a zero', () => {
     render(<RunsTable now={NOW} decisions={[MEASURED, UNMEASURED]} sessions={[]} />);
     const measured = screen.getByRole('row', { name: /^measured-run/ });
     expect(within(measured).getByText('passed')).toBeInTheDocument();
-    expect(within(measured).getByText('$0.00')).toBeInTheDocument();
+    // The short form (Lakshman 2026-11-05): "$0" on the row, the served "$0.00" and its route in the title.
+    expect(within(measured).getByText('$0').getAttribute('title')).toMatch(/^\$0\.00\b/);
   });
 
   it('Runs shows a cost never measured as Not recorded, never $0.00 (AC2)', () => {
     render(<RunsTable now={NOW} decisions={[MEASURED, UNMEASURED]} sessions={[]} />);
     const unmeasured = screen.getByRole('row', { name: /unmeasured-run/ });
     expect(within(unmeasured).queryByText('$0.00')).not.toBeInTheDocument();
+    expect(within(unmeasured).queryByText('$0')).not.toBeInTheDocument();
     expect(within(unmeasured).getAllByText('Not recorded').length).toBeGreaterThan(0);
   });
 

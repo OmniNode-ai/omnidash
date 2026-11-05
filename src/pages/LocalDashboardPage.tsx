@@ -1204,17 +1204,19 @@ function costOf(session: Row | undefined, decision: Row): string {
 }
 
 /**
- * Run table item 8 (Lakshman 2026-11-05): a measured zero cost on a local run reads "$0", muted, so a free local run is
- * told apart from a priced one at a glance; the route is named in its title only ("we are showing them model"), and
- * every other cost is costOf's text.
+ * Run table item 8 (Lakshman 2026-11-05): a measured zero cost reads "$0", muted, so a free run is told apart from a
+ * priced one at a glance; the route is named in its title only ("we are showing them model"), and every other cost is
+ * costOf's text.
  */
 function CostCell({ session, run }: { session: Row | undefined; run: Row }) {
   const text = costOf(session, run);
   const value = isMissing(session?.local_cost_usd) ? run.cost_usd : session?.local_cost_usd;
-  const local = String(run.cost_tier_name ?? '').toLowerCase() === 'local';
-  // The short form drops the served zero's empty cents ("$0.00" to "$0"); the figure is still the served one.
-  return !isMissing(value) && Number(value) === 0 && local
-    ? <span className="local-cost-free" title={`${text}, local route`}>{text.replace(/\.0+$/, '')}</span> : <>{text}</>;
+  // Lakshman 2026-11-05 (a free cheap-frontier run read "$0.00" in ink beside the local runs' grey "$0"): every served
+  // zero takes the short, muted form, whatever the route; the route is named in its title. The short form drops the
+  // served zero's empty cents ("$0.00" to "$0"); the figure is still the served one.
+  const route = isMissing(run.cost_tier_name) ? '' : `, ${tierLabel(run.cost_tier_name).toLowerCase()} route`;
+  return !isMissing(value) && Number(value) === 0
+    ? <span className="local-cost-free" title={`${text}${route}`}>{text.replace(/\.0+$/, '')}</span> : <>{text}</>;
 }
 
 /** A plain decimal as the store serves it: optional minus, digits, optional fraction. No exponent, no grouping. */
