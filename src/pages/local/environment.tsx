@@ -157,8 +157,7 @@ export function EnvironmentPanel({ rows, complete = true }: { rows: readonly Env
       <p className="local-environment-line" role="status" data-environment-state={alertCount > 0 ? 'alert' : allowClear ? 'clear' : 'unknown'}>
         <span className="local-environment-dot" aria-hidden="true" />{statusParts.join(' · ')}
       </p>
-      <details className="local-more">
-      <summary>Environment details</summary>
+      <div className="local-more local-more--open" data-section="Environment details">
       <FactList>
         <Fact term="Mode">{mode}</Fact>
         {mode === 'native' && <>
@@ -174,7 +173,7 @@ export function EnvironmentPanel({ rows, complete = true }: { rows: readonly Env
       {refusedHealth && <EmptyState>Some service health details are not available.</EmptyState>}
       {validHealth.length > 0 && <div role="status"><EnvironmentStatus rows={validHealth} mode={mode} plain /></div>}
       <div role="status"><EnvironmentAlerts rows={selected} mode={mode} plain allowClear={allowClear} /></div>
-      </details>
+      </div>
     </section>;
   })}</>;
 }

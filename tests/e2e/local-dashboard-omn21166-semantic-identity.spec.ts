@@ -1,5 +1,6 @@
 import { expect, test } from 'playwright/test';
 import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chooseChartTab } from './chart-tabs';
 
 // Before implementation: unrelated identity/savings, backend/queue and host/finish
 // fields share colors; field labels lack icons; recent-run and daily-token cards
@@ -49,6 +50,8 @@ test('the same recent-run and daily-token concepts keep their icons on owner pag
   await page.goto('/runs');
   await expect(page.locator('[data-component="recent-runs"] h2 svg')).toHaveCount(1);
   await page.goto('/overview');
+  // OMN-22168: Overview's four charts are a row of tabs; this chart's tab is chosen first.
+  await chooseChartTab(page, 'Tokens per day');
   const tokens = page.getByRole('figure', { name: 'Tokens per day', exact: true });
   const tokenIcon = await tokens.locator('h3 svg').getAttribute('class');
   expect(tokenIcon).toBeTruthy();
@@ -131,6 +134,8 @@ test('routing categories have separate colors matching their legend in both them
   // OMN-21166 AC64 / Maple grid: the tier donut and its legend buttons are ranked bars (figure "Runs by tier"); a bar is
   // drawn in the tier's colour and the tier's name beneath it is written in the same colour, so the bar and its
   // label are the pair that has to match, and the seven tiers still have to differ.
+  // OMN-22168: Overview's four charts are a row of tabs; this chart's tab is chosen first.
+  await chooseChartTab(page, 'Tier mix');
   const chart = page.getByRole('figure', { name: 'Runs by tier', exact: true });
   await expect(chart.locator('[data-ranked-item]')).toHaveCount(7);
   for (const theme of ['light','dark']) {

@@ -64,7 +64,6 @@ test('OMN-21015 AC2: Overview lists each model under its tier with its served ru
   // OMN-21166 Maple grid / part 13: Overview's Tier mix is ranked bars (tier shares only); the models under each tier,
   // with their runs, share and cost, are Runs' routing breakdown table, under its closed "More analysis".
   await page.goto('/runs');
-  await page.locator('summary').filter({ hasText: /^More analysis$/ }).click();
 
   const panel = page.getByRole('region', { name: 'Tier mix' });
   await expect(panel).toBeVisible();
@@ -83,7 +82,8 @@ test('OMN-21015 AC2: Overview lists each model under its tier with its served ru
   await expect(panel.getByRole('row').filter({ hasText: 'qwen-a' }).locator('td').nth(2).getByTitle('0.5', { exact: true })).toBeVisible();
   expect((await cells(page, 'qwen-b')).slice(1, 4)).toEqual(['1', '16.7%', 'Not measured (1 run)']);
   await expect(panel.getByRole('row').filter({ hasText: 'qwen-b' }).locator('td').nth(2).getByTitle('0.16666666666666666', { exact: true })).toBeVisible();
-  expect((await cells(page, 'gemini')).slice(1, 4)).toEqual(['2', '33.3%', '$0.01 (unpriced runs unknown)']);
+  // OMN-22168: money shows every served digit, so the served 0.009 reads $0.009, never rounded up to $0.01.
+  expect((await cells(page, 'gemini')).slice(1, 4)).toEqual(['2', '33.3%', '$0.009 (unpriced runs unknown)']);
   await expect(panel.getByRole('row').filter({ hasText: 'gemini' }).locator('td').nth(2).getByTitle('0.3333333333333333', { exact: true })).toBeVisible();
 
   // Every column, the cost included, is readable without scrolling sideways at 1440x900: the served shares are long

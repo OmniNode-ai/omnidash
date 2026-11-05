@@ -7,17 +7,13 @@ test.use({ viewport: { width: 1440, height: 900 }, trace: 'on' });
 test('Evidence explains the canonical total and exports only the latest served decision sample', async ({ page }, info) => {
   await serveEvidence(page);
   await page.goto('/delegation-evidence');
-  const claim = page.getByRole('region', { name: 'Evidence claim' });
-  await expect(claim).toContainText('$18.00');
-  await expect(claim).toContainText('modelled');
-  await expect(claim).toContainText('cloud-baseline');
-  await expect(claim).toContainText('pricing v3');
-  await expect(claim).toContainText('7 measured runs');
-  await expect(claim).toContainText('2 with no token counts');
-  await expect(claim).toContainText('1 with no spend recorded');
-  await expect(claim).toContainText('$12.00');
-  await expect(claim).toContainText('$30.00');
+  // OMN-22168 (Lakshman 2026-11-05, "remove"): the claim sentence and its derivation row are gone; the canonical
+  // figures it repeated stay in the Savings panel, which reads the same served row.
+  await expect(page.getByRole('region', { name: 'Evidence claim' })).toHaveCount(0);
+  const savings = page.locator('[data-panel-title="SAVINGS vs CLOUD BASELINE"]');
   await expect(page.locator('.ev-savings-hero .big')).toHaveText('$18.00');
+  await expect(savings).toContainText('cloud-baseline');
+  await expect(savings).toContainText('pricing v3');
   await page.screenshot({ path: info.outputPath('evidence-claim-desktop.png') });
   await page.goto('/overview');
   await expect(page.locator('[data-component="overview-savings"] .local-dashboard-metric')).toHaveText('$18.00');
@@ -43,7 +39,6 @@ test('Quality breakdown ranks served failures and distinguishes zero from an uns
   await page.goto('/delegation-evidence');
   const quality = page.locator('[data-panel-title="QUALITY GATE"]');
   await expect(quality).toContainText('All quality checks served');
-  await quality.getByText('More quality detail').click();
   await expect(quality.getByRole('list', { name: 'Checks by type' })).toContainText('score vs required bar');
   await expect(quality.getByText('Median tokens to comply')).toBeVisible();
   await expect(quality.locator('.kv > div', { hasText: 'Median tokens to comply' }).locator('.v')).toHaveText('0');
@@ -56,7 +51,6 @@ test('Quality breakdown ranks served failures and distinguishes zero from an uns
     failure_categories: undefined, escalation_rate: undefined,
   }] });
   await page.getByRole('button', { name: 'Refresh', exact: true }).click();
-  await quality.getByText('More quality detail').click();
   await expect(quality).toContainText('Not served');
   await expect(quality.locator('.kv > div', { hasText: 'Median tokens to comply' }).locator('.v')).toHaveText('Not served');
   await expect(quality.getByRole('list', { name: 'Checks by type' })).toHaveCount(0);
@@ -74,10 +68,13 @@ test('Missing quality aggregate is a typed empty state; mixed pricing is named',
   });
   await page.goto('/delegation-evidence');
   await expect(page.locator('[data-panel-title="QUALITY GATE"]')).toContainText('No quality-gate rows');
-  await expect(page.getByRole('region', { name: 'Evidence claim' })).toContainText('mixed basis');
-  await expect(page.getByRole('region', { name: 'Evidence claim' })).not.toContainText('pricing v3');
+  // OMN-22168: no claim block; the Savings panel names the mixed basis instead of one pricing version.
+  const savings = page.locator('[data-panel-title="SAVINGS vs CLOUD BASELINE"]');
+  await expect(page.getByRole('region', { name: 'Evidence claim' })).toHaveCount(0);
+  await expect(savings).toContainText('mixed basis');
+  await expect(savings).not.toContainText('pricing v3');
   await narrowTo(page, 390, 844);
-  await expect(page.getByRole('region', { name: 'Evidence claim' })).toBeVisible();
+  await expect(savings).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   await info.attach('evidence-missing-and-mixed', { body: JSON.stringify({ aggregate: 'absent', allTimeVersion: '3', dailyVersion: '2' }), contentType: 'application/json' });
   await page.screenshot({ path: info.outputPath('evidence-missing-and-mixed.png'), fullPage: true });

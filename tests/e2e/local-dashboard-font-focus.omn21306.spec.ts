@@ -1,6 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import { expect, test } from 'playwright/test';
 import { serveCharts } from './omn21166-chart-fixtures';
+import { chooseChartTab } from './chart-tabs';
 
 // The census at rest misses the donut's interactive text; exercise the actual visible state.
 // OMN-21166 part 18 AC120: Runs' routing breakdown is a table shown directly, so its visible text is what is measured.
@@ -12,6 +13,8 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     // ("More analysis"); Overview's ranked tier bars are measured too. Same 12px floor on the actual visible text.
     await page.goto('/overview');
     // OMN-21166 live review 2026-10-25: the Overview chart cell is no longer a named region; it is found by its component.
+    // OMN-22168: Overview's four charts are a row of tabs; this one is chosen first.
+    await chooseChartTab(page, 'Tier mix');
     const ranked = page.locator('[data-component="overview-tier-mix"] figure.rb-chart');
     await expect(ranked).toBeVisible();
     const rankedFonts = await ranked.evaluate(el => [el, ...el.querySelectorAll('*')]
@@ -20,7 +23,6 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     expect(rankedFonts.length).toBeGreaterThan(0);
     expect(rankedFonts.filter(row => row.size < 12)).toEqual([]);
     await page.goto('/runs');
-    await page.getByText('More analysis', { exact: true }).press('Enter');
     const area = page.getByRole('region', { name: 'Tier mix', exact: true });
     // OMN-21166 part 18 AC120: the routing breakdown has no pinnable tier bars, focus label or nested disclosure; its
     // table is shown directly, so the 12px floor is read on the table's and the totals' visible text.

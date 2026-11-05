@@ -1,7 +1,9 @@
 import { revealRunFields } from './omn21166-chart-fixtures';
+import { chartTabPanel, chooseChartTab } from './chart-tabs';
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { expect, test, type Page } from 'playwright/test';
+import { pickFilter, expectFilter } from './filter-dropdowns';
 
 // OMN-19981 AC4: no page renders 0 for an unmeasured figure, and the default page renders at 1440x900 with no panel
 // cut off. The fixtures are the served shapes read from the lakshman lane on 2026-10-02, including one unmeasured run
@@ -240,16 +242,16 @@ test('Overview is the default page and fits 1440x900 with no unmeasured 0 (AC4)'
 
   // D1: Savings follows cost.savings-overview.v1, never a metering row.
   const savings = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Savings', exact: true }) });
-  // D1: legacy1.2252, never the conflicting metering1.2184.
-  await expect(savings.getByText('$1.22', { exact: true })).toBeVisible();
-  await expect(savings.getByText('$1.21', { exact: true })).toHaveCount(0);
+  // D1: legacy 1.2252, never the conflicting metering 1.2184 (OMN-22168: every served digit is shown).
+  await expect(savings.getByText('$1.2252', { exact: true })).toBeVisible();
+  await expect(savings.getByText('$1.2184', { exact: true })).toHaveCount(0);
   // OMN-21166 (card basis in a tooltip): the basis line is in the card's tooltip, shown on keyboard focus of the card.
   // Part 29 AC191: the basis is the card's caption, always in the page; no About button to focus.
   await expect(savings.getByText('Modelled · vs cloud baseline', { exact: true })).toBeVisible();
   await expect(savings.getByText('$0.40', { exact: true })).toHaveCount(0);
   // D1: all four headline tiles follow the same legacy all row.
   const headline = (title: string) => page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: title, exact: true }) });
-  await expect(headline('Actual spend').getByText('$0.01', { exact: true })).toBeVisible();
+  await expect(headline('Actual spend').getByText('$0.00686', { exact: true })).toBeVisible();
   await expect(headline('Agent calls').getByText('49', { exact: true })).toBeVisible();
   await expect(headline('Agent calls').getByText('46', { exact: true })).toHaveCount(0);
   // Part 29 AC191: the basis is the card's caption, always in the page; no About button to focus.
@@ -283,7 +285,7 @@ test('Runs lists every decision with typed unmeasured values at 1440x900 (AC4)',
   for (const header of ['Baseline cost', 'Savings']) {
     await expect(page.getByRole('columnheader', { name: header, exact: true }), header).toHaveCount(0);
   }
-  await expect(unmeasured.getByText('$0.01', { exact: true })).toBeVisible();
+  await expect(unmeasured.getByText('$0.0004', { exact: true })).toBeVisible();
   await expect(unmeasured.getByText('Baseline unresolved')).toHaveCount(0);
   await expect(page.getByText('Runs 1–2 of 2')).toBeVisible();
   // OMN-21166 AC63: the Runs summary strip shows the served Failed count; both runs passed, so its 0 is a measured
@@ -297,7 +299,6 @@ test('Runs lists every decision with typed unmeasured values at 1440x900 (AC4)',
   await expectNoPanelCutOff(page);
   // OMN-21166 part 18 AC121: the "Run outcomes" donut and its legend (Passed/Failed/Not recorded) are removed from Runs'
   // "More analysis"; the Runs, Pass rate and Failed cards above hold the same figures.
-  await page.getByText('More analysis', { exact: true }).press('Enter');
   await expect(page.locator('.overview-outcome-legend button')).toHaveCount(0);
   await expect(page.getByRole('figure', { name: 'Run outcomes', exact: true })).toHaveCount(0);
 
@@ -329,8 +330,6 @@ test('Usage shows measured cost beside unmeasured runs, never 0 for unmeasured, 
   await expect(page.getByRole('heading', { level: 1, name: 'Usage' })).toBeVisible();
   // OMN-21166 part 13: the usage-by-model-day records are under "More usage", and the savings day table under "Savings
   // by day as a table".
-  await page.getByText('More usage', { exact: true }).press('Enter');
-  await page.getByText('Savings by day as a table', { exact: true }).press('Enter');
   // Part 29 AC194: Usage analysis also lists models; these rows are the usage-by-model-day records.
   const records = page.getByRole('table', { name: 'Usage by model and day' });
   const mixed = records.getByRole('row').filter({ hasText: 'Qwen3.8-27B' });
@@ -342,7 +341,8 @@ test('Usage shows measured cost beside unmeasured runs, never 0 for unmeasured, 
   await expect(page.getByText(/9\.25/)).toHaveCount(0);
   await expect(page.getByText('$0', { exact: true })).toHaveCount(0);
   await expect(page.getByText('0', { exact: true })).toHaveCount(0);
-  const savings = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Savings per day' }) });
+  // OMN-22168: Savings per day is a tab of "Savings and spend"; its own heading is hidden inside the tab, which names it.
+  const savings = await chartTabPanel(page, 'Savings per day');
   const series = savings.getByRole('table', { name: 'Savings per day vs claude-sonnet-5-5' });
   const day = series.getByRole('row').filter({ hasText: '2026-10-02' });
   for (const value of ['2026-10-02', '$0.40', '46']) await expect(day.getByText(value, { exact: true })).toBeVisible();
@@ -402,7 +402,8 @@ test('Overview quality and tier-mix panels show served fields only (OMN-20225 AC
   await expect(quality.getByText('1 failed · deterministic checks', { exact: true })).toBeVisible();
   // OMN-21166 Maple grid/AC64: Overview's Tier mix is ranked bars that print each served share and count, with the
   // not-tier-routed count; the table with the raw served shares (title 0.7143) is Runs' routing breakdown, below.
-  const tierMix = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Tier mix', exact: true }) });
+  // OMN-22168: Tier mix is the fourth tab of Overview's chart panel; the tab names it, its own heading is hidden.
+  const tierMix = await chartTabPanel(page, 'Tier mix');
   await expect(tierMix.getByRole('link', { name: 'Local: 5 · 71.4%, measured. Opens Runs filtered to Local', exact: true })).toBeVisible();
   await expect(tierMix.getByRole('link', { name: 'Cheap cloud: 2 · 28.6%, measured. Opens Runs filtered to Cheap cloud', exact: true })).toBeVisible();
   await expect(tierMix.getByText('7 tier-routed · 2 not tier-routed · 9 runs', { exact: true })).toBeVisible();
@@ -413,8 +414,8 @@ test('Overview quality and tier-mix panels show served fields only (OMN-20225 AC
   await page.screenshot({ path: screenshotPath('local-dashboard-overview-panels-1440x900.png'), fullPage: false });
   // The raw served shares and the not-tier-routed count stay in Runs' routing breakdown, under "More analysis".
   await page.goto('/runs');
-  await page.getByText('More analysis', { exact: true }).press('Enter');
-  const routing = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Routing breakdown', exact: true }) });
+  // OMN-22168: the routing breakdown is Runs' Tier breakdown tab; its own heading is hidden inside the tab.
+  const routing = await chartTabPanel(page, 'Tier breakdown');
   // OMN-21166 part 18 AC120: the table is shown directly; the nested "Full routing breakdown" disclosure is removed.
   await expect(routing.locator('summary').filter({ hasText: 'Full routing breakdown' })).toHaveCount(0);
   for (const value of ['Cheap cloud', '71.4%', '28.6%']) {
@@ -490,7 +491,8 @@ test('local panels follow both themes on every page without losing readable surf
             title: panel.querySelector('h2')?.textContent,
             background: tile ? (a[3] === 255 && a.slice(0, 3).every((v, i) => Math.abs(v - b[i]) <= 20) ? 'panel-tint' : background) : background,
             // OMN-21970 AC10 (Lakshman 2026-11-02, "it should be full page"): Settings' sections and panels sit on the page.
-            expected: tile ? 'panel-tint' : panel.closest('.local-dashboard-page--settings') ? 'rgba(0, 0, 0, 0)' : expected.style.backgroundColor,
+            // OMN-22168: a chart drawn inside a tab is flat on the tabbed panel, whose own surface is checked as a panel here.
+            expected: tile ? 'panel-tint' : panel.closest('.local-dashboard-page--settings, .local-dashboard-tabpanel') ? 'rgba(0, 0, 0, 0)' : expected.style.backgroundColor,
           };
         });
       });
@@ -554,6 +556,8 @@ test('Overview and Runs scroll to their last row while the header stays reachabl
   await page.mouse.move(1100, 650);
   await page.mouse.wheel(0, 4000);
   await expect.poll(() => scrollPage.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  // OMN-22168: Tier mix is a tab of Overview's chart panel, drawn when chosen.
+  await chooseChartTab(page, 'Tier mix');
   const lastOverviewPanel = page.locator('[data-component="overview-tier-mix"]');
   await lastOverviewPanel.scrollIntoViewIfNeeded();
   await expect.poll(async () => { const box = await lastOverviewPanel.boundingBox(); return box!.y + box!.height; }).toBeLessThanOrEqual(900);
@@ -587,14 +591,15 @@ test('manual Refresh rereads local exposures and preserves the Runs filter', asy
   await page.goto('/');
   // D1: refresh rereads the legacy Overview total independently of metering.
   const savingsCard = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Savings', exact: true }) });
-  await expect(savingsCard.getByText('$1.22', { exact: true })).toBeVisible();
+  // OMN-22168: money shows every served digit, so the legacy total 1.2252 reads $1.2252.
+  await expect(savingsCard.getByText('$1.2252', { exact: true })).toBeVisible();
   await page.getByTestId('nav-local-runs').click();
   await expect(page.getByText('Runs 1–2 of 2')).toBeVisible();
-  await page.getByLabel('Status', { exact: true }).selectOption('passed');
+  await pickFilter(page, 'Status', 'passed');
   const before = reads;
   await page.getByRole('button', { name: 'Refresh', exact: true }).click();
   await expect.poll(() => reads, { timeout: 3000 }).toBeGreaterThan(before);
-  await expect(page.getByLabel('Status', { exact: true })).toHaveValue('passed');
+  await expectFilter(page, 'Status', 'passed');
   await expect(page.getByText('Runs 1–2 of 2')).toBeVisible();
 });
 
@@ -697,8 +702,8 @@ test('Runs URL preserves filters and pagination through reload and Back/Forward'
   await serveFixtures(page, { ...fixtures, [DECISIONS]: many });
   await page.goto(`/runs?status=failed&model=${encodeURIComponent(model)}&page=2`);
   await expect(page.getByText('Runs 26–34 of 34')).toBeVisible();
-  await expect(page.getByLabel('Status', { exact: true })).toHaveValue('failed');
-  await expect(page.getByLabel('Model', { exact: true })).toHaveValue(model);
+  await expectFilter(page, 'Status', 'failed');
+  await expectFilter(page, 'Model', model);
   await page.reload();
   await expect(page.getByText('Runs 26–34 of 34')).toBeVisible();
   await page.getByTestId('nav-local-overview').click();
@@ -708,14 +713,14 @@ test('Runs URL preserves filters and pagination through reload and Back/Forward'
   await page.getByRole('button', { name: 'Previous page', exact: true }).click();
   await expect(page.getByText('Runs 1–25 of 34')).toBeVisible();
   expect(new URL(page.url()).searchParams.has('page')).toBe(false);
-  await page.getByLabel('Status', { exact: true }).selectOption('passed');
+  await pickFilter(page, 'Status', 'passed');
   await expect(page.getByText('Runs 1–25 of 26')).toBeVisible();
   expect(new URL(page.url()).searchParams.get('status')).toBe('passed');
   await page.goBack();
-  await expect(page.getByLabel('Status', { exact: true })).toHaveValue('failed');
+  await expectFilter(page, 'Status', 'failed');
   await expect(page.getByText('Runs 1–25 of 34')).toBeVisible();
   await page.goForward();
-  await expect(page.getByLabel('Status', { exact: true })).toHaveValue('passed');
+  await expectFilter(page, 'Status', 'passed');
   await expect(page.getByText('Runs 1–25 of 26')).toBeVisible();
 });
 
@@ -723,15 +728,15 @@ test('bad URL values stay usable, absent models are explicit and unknown pages r
   await serveFixtures(page);
   await page.goto('/runs?status=bad&window=yesterday&page=-3');
   await expect(page.getByText('Runs 1–2 of 2')).toBeVisible();
-  await expect(page.getByLabel('Status', { exact: true })).toHaveValue('all');
-  await expect(page.getByLabel('Window', { exact: true })).toHaveValue('all');
+  await expectFilter(page, 'Status', 'all');
+  await expectFilter(page, 'Window', 'all');
   await expect(page).toHaveURL(/\/runs$/);
   await page.goto('/runs?page=9999');
   await expect(page.getByText('Runs 1–2 of 2')).toBeVisible();
   await expect(page).toHaveURL(/\/runs$/);
   await page.goto('/runs?model=absent-model&cause=absent-cause');
-  await expect(page.getByLabel('Model', { exact: true })).toHaveValue('absent-model');
-  await expect(page.getByLabel('Cause', { exact: true })).toHaveValue('absent-cause');
+  await expectFilter(page, 'Model', 'absent-model');
+  await expectFilter(page, 'Cause', 'absent-cause');
   await expect(page.getByText('No runs match these filters')).toBeVisible();
   await page.goto('/no-such-page');
   await expect(page.getByRole('heading', { name: 'Page not found' })).toBeVisible();
@@ -825,14 +830,14 @@ test('Runs filters, pagination and table hover use readable themed controls', as
   for (const theme of ['dark', 'light']) {
     if ((await page.locator('html').getAttribute('data-theme') === 'dark' ? 'dark' : 'light') !== theme) await page.getByRole('button', { name: 'Toggle theme' }).click();
     await expect(page.locator('body')).toHaveClass(`theme-${theme}`);
-    const selects = page.locator('.local-dashboard-filters select');
+    // OMN-22168 (Lakshman 2026-11-04): the seven filters are the kit Dropdown, each a pill with its own glyph.
+    const selects = page.locator('.local-dashboard-filters .ds-dropdown-trigger');
     // Status, Cause, Model, Window, and since OMN-21015 AC8 Backend. OMN-21166 Maple grid: the task chips became a
-    // sixth select, Task; part 23 AC145 added a seventh, Tier.
+    // sixth filter, Task; part 23 AC145 added a seventh, Tier.
     await expect(selects).toHaveCount(7);
     for (const select of await selects.all()) {
-      // OMN-21166 part 28 AC181 as restyled by the 01+20 look: the toolbar's selects have the 8px control radius (was 6px)
-      // and keep the 40px touch target.
-      await expect(select).toHaveCSS('border-radius', '8px');
+      // OMN-21166 part 28 AC181: the toolbar's filters keep the 40px touch target; since OMN-22168 they are pills.
+      await expect(select).toHaveCSS('border-radius', '999px');
       await expect(select).toHaveCSS('min-height', '40px');
       await expect(select).toHaveCSS('border-top-style', 'solid');
     }

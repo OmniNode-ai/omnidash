@@ -10,7 +10,8 @@ import {
   type Group, type GroupBy, type Totals, type TrendDay, type TrendSeriesBy,
 } from './decision-analysis';
 import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
-import { BarSparkline, CostQualityScatter } from '@/theme/design-system/charts';
+import { BarSparkline, CostQualityScatter, breakableName } from '@/theme/design-system/charts';
+import { ChartLine, Gauge, Layers, LayoutGrid } from '@/theme/design-system/icons';
 
 /**
  * OMN-21166 part 29 (revision 6) AC194 and AC195: Usage analysis, read from the latest N served decisions (Langfuse's
@@ -86,7 +87,7 @@ function GroupsView({ decisionRows }: { decisionRows: readonly unknown[] }) {
         <tbody>{sorted.map(group => <tr key={group.name}>
           <th scope="row" data-model-name={by === 'model' && group.name !== NOT_RECORDED ? '' : undefined}
             data-semantic-concept={by === 'model' && group.name !== NOT_RECORDED ? `model:${group.name}` : undefined}
-            style={by === 'model' && group.name !== NOT_RECORDED ? { '--model-color': modelColor(group.name) } as CSSProperties : undefined}>{group.name}</th>
+            style={by === 'model' && group.name !== NOT_RECORDED ? { '--model-color': modelColor(group.name) } as CSSProperties : undefined}>{breakableName(group.name)}</th>
           {/* data-label names each value when a phone stacks the rows as cards (Codex MSG 753d170c). */}
           <td data-cell="runs" data-label="Runs">{group.runs}</td>
           <td data-cell="spend" data-label="Spend">{money(group.spend, group.spendMeasured, group.runs)}</td>
@@ -250,11 +251,17 @@ export function UsageAnalysis({ decisionRows, complete = false }: { decisionRows
       {`From ${complete ? 'all' : 'the latest'} ${sample} served runs${coverage ? `, covering ${dayLabel(coverage.first)} to ${dayLabel(coverage.last)}` : ''}. `}
       Spend counts measured runs, pass rate counts runs with a verdict, latency counts recorded latencies (nearest rank). Savings are on the charts above (metering).
     </p>
+    {/* OMN-22168 (Lakshman 2026-11-05, "fix all pages and make it uniform"): Overview's stat tabs, one per view; each hint
+        says what the view shows, and the one count is the served sample's model groups. */}
     <DashboardTabs label="Usage analysis views" param="analysis" tabs={[
-      { id: 'groups', label: 'Groups', panel: () => <GroupsView decisionRows={decisionRows} /> },
-      { id: 'matrix', label: 'Model by task', panel: () => <DecisionMatrix decisionRows={decisionRows} /> },
-      { id: 'trend', label: 'Quality over time', panel: () => <QualityTrend decisionRows={decisionRows} /> },
-      { id: 'quality', label: 'Cost versus quality', panel: () => <QualityChart groups={models} /> },
+      { id: 'groups', label: 'Groups', tone: 'var(--ds-field-usage-analysis)', icon: <Layers size={18} />, hint: 'Spend, pass rate, latency',
+        panel: () => <GroupsView decisionRows={decisionRows} /> },
+      { id: 'matrix', label: 'Model by task', tone: 'var(--ds-field-routing-model)', icon: <LayoutGrid size={18} />,
+        hint: `${models.length} ${models.length === 1 ? 'model' : 'models'} by task`, panel: () => <DecisionMatrix decisionRows={decisionRows} /> },
+      { id: 'trend', label: 'Quality over time', tone: 'var(--ds-field-pass-rate-daily)', icon: <ChartLine size={18} />, hint: 'Pass rate per day',
+        panel: () => <QualityTrend decisionRows={decisionRows} /> },
+      { id: 'quality', label: 'Cost versus quality', tone: 'var(--ds-field-quality-comparison)', icon: <Gauge size={18} />, hint: 'Spend against pass rate',
+        panel: () => <QualityChart groups={models} /> },
     ]} />
   </section>;
 }

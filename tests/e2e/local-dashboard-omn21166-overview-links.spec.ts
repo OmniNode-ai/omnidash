@@ -1,6 +1,8 @@
 import { expect, test, type Page } from 'playwright/test';
 import { chartRows, prefix, serveCharts, keepRealClock } from './omn21166-chart-fixtures';
 import { chooseWindow, expectWindow } from './overview-window-menu';
+import { pickFilter, expectFilter } from './filter-dropdowns';
+import { chooseChartTab } from './chart-tabs';
 // This spec dates its rows from the real clock, so the browser keeps it (see FIXTURE_NOW).
 test.beforeEach(({ page }) => keepRealClock(page));
 
@@ -111,6 +113,8 @@ test('AC134 each card opens its page, and its info button shows details without 
 test('AC135 a model or tier bar opens Runs filtered to it; an unnamed model opens nothing', async ({ page }) => {
   await serveMetering(page);
   await page.goto('/overview');
+  // OMN-22168: Overview's four charts are a row of tabs; Model usage is chosen first.
+  await chooseChartTab(page, 'Model usage');
   const modelLink = page.locator('.local-model-usage a.rb-link', { hasText: 'qwen/qwen3.8-coder-480b-a35b-instruct' });
   await expect(modelLink).toHaveAccessibleName(/Opens Runs filtered to qwen\/qwen3\.8-coder-480b-a35b-instruct$/);
   await expect(page.locator('.local-model-usage [data-ranked-item]', { hasText: 'Not recorded' }).locator('a')).toHaveCount(0);
@@ -121,20 +125,21 @@ test('AC135 a model or tier bar opens Runs filtered to it; an unnamed model open
   // The link takes no box of its own (display: contents); a click on the bar's name lands on it.
   await modelLink.locator('.rb-name').click();
   await expect(page).toHaveURL(/\/runs\?model=qwen%2Fqwen3\.8-coder-480b-a35b-instruct$/);
-  await expect(page.getByLabel('Model', { exact: true })).toHaveValue('qwen/qwen3.8-coder-480b-a35b-instruct');
+  await expectFilter(page, 'Model', 'qwen/qwen3.8-coder-480b-a35b-instruct');
   await page.goto('/overview');
+  await chooseChartTab(page, 'Tier mix');
   await page.locator('section[aria-label="Tier mix"] a.rb-link', { hasText: 'Cheap cloud' }).locator('.rb-name').click();
   await expect(page).toHaveURL(/\/runs\?tier=cheap_cloud$/);
-  await expect(page.getByLabel('Tier', { exact: true })).toHaveValue('cheap_cloud');
+  await expectFilter(page, 'Tier', 'cheap_cloud');
 });
 
 test('AC145 the Runs tier filter keeps only that tier, lives in the address and clears', async ({ page }) => {
   await serveMetering(page);
   await page.goto('/runs?tier=local');
   const expected = decisions.filter(row => row.cost_tier_name === 'local').length;
-  await expect(page.getByLabel('Tier', { exact: true })).toHaveValue('local');
+  await expectFilter(page, 'Tier', 'local');
   await expect(page.locator('[data-component="recent-runs"] tbody tr')).toHaveCount(expected);
-  await page.getByLabel('Tier', { exact: true }).selectOption('cheap_cloud');
+  await pickFilter(page, 'Tier', 'cheap_cloud');
   await expect(page).toHaveURL(/tier=cheap_cloud/);
   await expect(page.locator('[data-component="recent-runs"] tbody tr')).toHaveCount(decisions.filter(row => row.cost_tier_name === 'cheap_cloud').length);
   await page.getByRole('button', { name: 'Clear filters', exact: true }).click();

@@ -1,6 +1,6 @@
 import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
 import { useId, useState, type CSSProperties, type ReactNode } from 'react';
-import { ComparisonTrack, RunTimingChart } from '@/theme/design-system/charts';
+import { ComparisonTrack } from '@/theme/design-system/charts';
 import { ConceptIcon, FieldIcon } from '@/components/dashboard/FieldIcon';
 import { fieldTone, isUnavailableField } from '@/components/dashboard/field-identity';
 import { formatUsd } from '@/components/dashboard/usage/UsageByModelDayWidget';
@@ -82,9 +82,10 @@ function writerOf(value: unknown): unknown {
   return typeof value === 'string' && /^<sql:[^>]*>$/.test(value.trim()) ? 'Not recorded' : value;
 }
 
-export function WorkflowRecordDetails({ decision, steps }: { decision: Run | undefined; steps: Run[] }) {
+/** OMN-22168: the recorded fields of a run. The stage-duration chart that sat beside them repeated the Run timeline's step
+ *  durations and is removed (Lakshman 2026-11-05, "remove duplicates"); `steps` is kept for the callers' signature. */
+export function WorkflowRecordDetails({ decision }: { decision: Run | undefined; steps?: Run[] }) {
   const id = useId();
-  const durations = steps.map((step, index) => ({ key: `stage-${index}`, label: recorded(step.step_kind).replaceAll('_', ' '), value: step.duration_ms }));
   return <div className="workflow-record-grid">
     {decision && <section className="workflow-analysis-card workflow-analysis-card--record" aria-labelledby={id}>
       <h3 id={id} className="local-dashboard-caption" data-page-heading tabIndex={-1}><ConceptIcon concept="run-details" size={16} />Recorded run details</h3>
@@ -106,10 +107,6 @@ export function WorkflowRecordDetails({ decision, steps }: { decision: Run | und
           ? <time dateTime={value} title={value}>{new Date(value).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'UTC' })} UTC</time>
           : label === 'Recorded cost (USD)' ? recordedUsd(value) : label === 'Tokens to compliance' ? formatDashboardCount(value) : recorded(value)}</Fact>)}
       </FactList>
-    </section>}
-    {durations.some(item => measured(item.value) !== null) && <section className="workflow-analysis-card workflow-analysis-card--stages" aria-label="Stage timing analysis">
-      <h3 className="local-dashboard-caption" data-page-heading tabIndex={-1}><ConceptIcon concept="stage-timing" size={16} />Execution stage durations</h3>
-      <RunTimingChart timings={durations} title="Execution stage durations" accentToken="--workflow-stages-accent" />
     </section>}
   </div>;
 }

@@ -1,5 +1,7 @@
 import { expect, test } from 'playwright/test';
 import { chartRows, prefix, serveCharts, keepRealClock } from './omn21166-chart-fixtures';
+import { expectFilter } from './filter-dropdowns';
+import { chooseChartTab } from './chart-tabs';
 // This spec dates its rows from the real clock, so the browser keeps it (see FIXTURE_NOW).
 test.beforeEach(({ page }) => keepRealClock(page));
 
@@ -22,12 +24,19 @@ test('Overview is a compact summary with exact day links and no detailed tables'
   // Live review 2026-10-25: Why runs failed, More activity, Recent runs, Last run and Additional runtime metrics are
   // deleted from Overview (AC86, Lakshman 2026-10-25); the figures in view are Runs per day, Tokens per day and Runs by
   // tier (Model usage is a ranked-bars cell that shows its empty state on these fixtures, which serve no by_model).
-  await expect(page.locator('main figure:visible')).toHaveCount(3);
+  // OMN-22168 (Lakshman 2026-11-04): the Daily trend joins them, and the four charts are one row of tabs, so the page
+  // opens on two figures (the trend and the chosen tab's chart) and each tab draws its own.
+  await expect(page.locator('main figure:visible')).toHaveCount(2);
+  await expect(page.getByRole('figure', { name: 'Daily trend', exact: true })).toBeVisible();
   await expect(page.getByRole('figure', { name: 'Runs per day', exact: true })).toBeVisible();
   await expect(page.getByRole('figure', { name: 'Why runs failed', exact: true })).toHaveCount(0);
+  await chooseChartTab(page, 'Tokens per day');
   await expect(page.getByRole('figure', { name: 'Tokens per day', exact: true })).toBeVisible();
+  await chooseChartTab(page, 'Model usage');
   await expect(page.locator('[data-component="overview-model-usage"]')).toBeVisible();
+  await chooseChartTab(page, 'Tier mix');
   await expect(page.getByRole('figure', { name: 'Runs by tier', exact: true })).toBeVisible();
+  await chooseChartTab(page, 'Runs per day');
   // OMN-21166 AC86 (Lakshman 2026-10-25): Additional runtime metrics, Recent runs, its field table and Last run are deleted.
   await expect(page.locator('details.local-overview-secondary')).toHaveCount(0);
   await expect(page.locator('[data-component="overview-recent-runs"]')).toHaveCount(0);
@@ -47,19 +56,24 @@ test('Runs owns deep analysis and failure drilldown still filters exact records'
   await page.getByRole('link', { name: 'Runs', exact: true }).click();
   await expect(page).toHaveURL(/\/runs$/);
   // OMN-21166 part 13: the page-level "More analysis" replaces the "Show run analysis" fold on Runs.
-  await page.getByText('More analysis', { exact: true }).click();
   // OMN-21166 part 18 AC119/AC121: "Runs by model", "Runs by tier" and the "Run outcomes" donut are removed from Runs
   // (Overview's Model usage and Tier mix, and the Runs headline cards, show the same figures).
   for (const name of ['Runs by model', 'Runs by tier', 'Run outcomes']) {
     await expect(page.getByRole('figure', { name, exact: true })).toHaveCount(0);
   }
+  // OMN-22168: Run analysis is a row of tabs; each chart is drawn when its tab (named as the chart) is chosen.
   for (const name of ['Tasks', 'Pass rate per day', 'Why runs failed', 'How long runs take', 'Model scoreboard', 'When runs happen']) {
+    await chooseChartTab(page, name);
     await expect(page.getByRole('figure', { name, exact: true })).toBeVisible();
   }
+  // The loop ends on the last tab; the drilldown is on Why runs failed, so it is chosen again.
+  await chooseChartTab(page, 'Why runs failed');
   await page.getByRole('figure', { name: 'Why runs failed', exact: true }).getByRole('button', { name: 'Show runs failed by Failure reason unavailable', exact: true }).click(); // an unmapped raw code reads as unavailable (daa30c81); the filter still carries SUMMARY_FAILURE
   // OMN-19919 AC7: a cause opens Runs on status=failed and that cause (the cause filter), not a free-text search.
-  await expect(page).toHaveURL(/\/runs\?status=failed&cause=SUMMARY_FAILURE$/);
-  await expect(page.getByLabel('Cause', { exact: true })).toHaveValue('SUMMARY_FAILURE');
+  // The address may also keep the chosen analysis tab (?insight=); the filter is status=failed and that cause, no search.
+  await expect.poll(() => { const url = new URL(page.url()); return [url.pathname, url.searchParams.get('status'), url.searchParams.get('cause'), url.searchParams.get('q')]; })
+    .toEqual(['/runs', 'failed', 'SUMMARY_FAILURE', null]);
+  await expectFilter(page, 'Cause', 'SUMMARY_FAILURE');
   await expect(page.getByRole('searchbox', { name: 'Search runs' })).toHaveValue('');
   await expect(page.locator('[data-component="recent-runs"] tbody tr')).toHaveCount(10);
   await expect(page.locator('[data-component="recent-runs"] tbody')).not.toContainText('summary-run-0');
@@ -82,6 +96,5 @@ test('Overview fits a phone and Usage detail stays reachable by keyboard', async
   await expect(page.getByRole('link', { name: 'Explore usage', exact: true })).toHaveCount(0);
   await page.goto('/usage');
   // OMN-21166 Maple grid: the by-day table is under the closed "More usage" disclosure.
-  await page.getByText('More usage', { exact: true }).press('Enter');
   await expect(page.getByRole('heading', { name: 'Usage by model and day', exact: true })).toBeVisible();
 });

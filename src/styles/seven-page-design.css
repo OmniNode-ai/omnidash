@@ -315,7 +315,7 @@ main.ev-root[data-destination="delegation-evidence"] .kv [data-field-tone="model
 .local-card-basis-tip { position: absolute; top: 12px; right: 12px; z-index: 5; }
 .local-card-info {
   display: inline-grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%;
-  background: transparent; color: var(--ds-ink-3); cursor: help;
+  background: transparent; color: var(--ds-ink-3); cursor: pointer;
 }
 .local-card-info:is(:hover, :focus-visible) { background: var(--ds-surface-2); color: var(--ds-ink); outline: none; }
 .local-card-info:focus-visible { box-shadow: 0 0 0 2px var(--ds-accent); }
@@ -1074,7 +1074,7 @@ ul.gdb-plot--names { margin-bottom: 48px; }
 
 /* OMN-21166 part 22 AC144 (onex delegate run 0320afb4, scoped and corrected): Model usage never cuts a model name, in
    either layout, at any width; names sit in flow under or above their bar and wrap, values wrap rather than ellipsis. */
-:is(.local-dashboard-page, .ev-root) .local-model-usage .rb-chart .rb-name { position: static; display: block; -webkit-line-clamp: unset; overflow: visible; overflow-wrap: anywhere; word-break: normal; }
+:is(.local-dashboard-page, .ev-root) .local-model-usage .rb-chart .rb-name { position: static; display: block; -webkit-line-clamp: unset; overflow: visible; overflow-wrap: break-word; word-break: normal; }
 :is(.local-dashboard-page, .ev-root) .local-model-usage .rb-chart .rb-value { white-space: normal; overflow: visible; text-overflow: clip; }
 /* Six or fewer models: upright bars whose tops line up, names of any length below their own bar. */
 :is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart .rb-plot { align-items: start; margin-bottom: 0; }
@@ -1133,11 +1133,14 @@ ul.gdb-plot--names { margin-bottom: 48px; }
 /* Part 27 round 1: 64px columns let seven models fit a half-width panel at 1440 without a scrollbar or a cut name. */
 :is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart { min-width: max(100%, calc(7 /* OMN-22168: --rb-model-count was never set, so this was always 7 */ * 70px)); }
 :is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart.rb-chart--vertical .rb-plot {
-  display: grid; grid-template-columns: repeat(var(--rb-count), minmax(64px, 1fr)); gap: 6px;
+  /* Lakshman 2026-11-04, "widen the model usage columns so names don't break": a column is at least as wide as its
+     name's longest part between joins (96px at the least), so a name wraps only at a slash, colon, hyphen or underscore;
+     more models than fit scroll inside the panel. */
+  display: grid; grid-template-columns: repeat(var(--rb-count), minmax(min-content, 1fr)); gap: 6px;
   align-items: start; border-left: 0; border-bottom: 1px solid var(--ds-line); margin-bottom: 0;
 }
 :is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart.rb-chart--vertical .rb-plot > li {
-  display: flex; flex-direction: column; align-items: stretch; grid-template-areas: none;
+  min-width: 96px; display: flex; flex-direction: column; align-items: stretch; grid-template-areas: none;
 }
 :is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart.rb-chart--vertical .rb-track {
   height: 115px; align-items: flex-end; justify-content: center;
@@ -1146,8 +1149,8 @@ ul.gdb-plot--names { margin-bottom: 48px; }
   height: var(--rb-size, 0); width: 72%; max-width: 120px; margin: 0 auto;
 }
 :is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart.rb-chart--vertical .rb-name {
-  /* Names break at their own hyphens first, and inside a part only when that part is wider than the column. */
-  position: static; margin: 8px 0 0; text-align: center; overflow-wrap: break-word; word-break: normal; hyphens: manual; -webkit-line-clamp: unset;
+  /* Names break only at their joins: the column is never narrower than a part. */
+  position: static; margin: 8px 0 0; text-align: center; overflow-wrap: normal; word-break: normal; hyphens: manual; -webkit-line-clamp: unset;
 }
 :is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart.rb-chart--vertical .rb-value {
   grid-area: auto; margin: 0 0 6px; text-align: center;
@@ -1356,7 +1359,7 @@ html .app svg.field-icon.field-icon:is([data-field-icon^="tier-"], [data-semanti
 .usage-analysis > .usage-analysis-quality { order: 3; }
 .usage-analysis table { width: 100%; table-layout: auto; }
 .usage-analysis tbody th[scope="row"] { text-transform: none; letter-spacing: normal; font-family: var(--ds-font-mono); font-size: 12px;
-  font-weight: 500; overflow-wrap: anywhere; min-width: 120px; max-width: 240px; }
+  font-weight: 500; white-space: normal; overflow-wrap: anywhere; min-width: 120px; max-width: 240px; }
 .usage-analysis td { white-space: normal; }
 .usage-analysis td[data-cell="spark"] { white-space: nowrap; }
 /* Codex review 2026-10-27 05:56Z (MSGs a9bd908d, 3ab10059). AC197: a measured 0 ms step is an instant marker, not a bar
@@ -1404,6 +1407,9 @@ html .app svg.field-icon.field-icon:is([data-field-icon^="tier-"], [data-semanti
 .local-dashboard-tablist.local-dashboard-filters [role="tab"]:hover { color: var(--ds-ink); }
 .local-dashboard-tablist.local-dashboard-filters [role="tab"]:focus-visible { outline: 2px solid var(--ds-accent); outline-offset: 1px; }
 .local-dashboard-tabpanel { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+/* A panel carries the page grid's 12-column span into a tab; here that span made 11 empty implicit columns whose gaps
+   left the run charts 132px short of the tab (live review 2026-11-04). Every child fills the one column. */
+.local-dashboard-tabpanel > * { grid-column: 1 / -1; }
 .usage-analysis .local-dashboard-tabpanel > .local-dashboard-table-wrap { overflow-x: auto; max-width: 100%; }
 .local-dashboard-tabpanel:focus-visible { outline: 2px solid var(--ds-accent); outline-offset: 4px; border-radius: 4px; }
 .local-dashboard-toggle.local-dashboard-filters label { display: inline-flex; align-items: center; min-height: 28px; padding: 0 10px; border-radius: 6px;
@@ -1458,6 +1464,11 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ds-accent); outline-o
 .ev-triage-rows li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px;
   align-items: baseline; min-width: 0; padding: 10px 0; border-bottom: 1px solid var(--ds-line); }
 .ev-triage-rows li:last-child { border-bottom: 0; }
+/* OMN-22168 (Lakshman 2026-11-04): each row's share of the failures as a thin bar under it, in the failure colour. */
+.ev-triage-rows .ev-triage-share { grid-column: 1 / -1; position: relative; height: 4px; margin-top: -2px; overflow: hidden;
+  border-radius: 999px; background: var(--ds-surface-2); }
+.ev-triage-rows .ev-triage-share::before { content: ''; position: absolute; inset: 0 auto 0 0; width: var(--share, 0%);
+  border-radius: inherit; background: var(--ds-bad); }
 .ev-triage-rows a, .ev-triage-rows li > span:first-child { min-width: 0; overflow-wrap: anywhere; }
 .ev-triage-rows .mono { color: var(--ds-ink-2); text-align: right; white-space: normal; }
 .ev-savings-bridge { display: grid; gap: 14px; min-width: 0; }
@@ -1513,7 +1524,9 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ds-accent); outline-o
    ============================================================================ */
 @keyframes omn-rise-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @keyframes omn-grow-y { from { transform: scaleY(0); } to { transform: scaleY(1); } }
-@keyframes omn-draw { to { stroke-dashoffset: 0; } }
+/* The line draws by revealing it left to right. A dash-based draw (stroke-dasharray with pathLength) is measured in
+   screen space under vector-effect: non-scaling-stroke and a stretched viewBox, so Chrome left the line cut short. */
+@keyframes omn-draw { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
 
 @media (prefers-reduced-motion: no-preference) {
   /* Rise-in: cards and panels enter once, the summary cards one after another. */
@@ -1533,9 +1546,7 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ds-accent); outline-o
     animation: omn-grow-y 560ms cubic-bezier(0.2, 0.75, 0.25, 1) 140ms both;
   }
   .od-draw {
-    stroke-dasharray: 1;
-    stroke-dashoffset: 1;
-    animation: omn-draw 800ms ease-out 160ms forwards;
+    animation: omn-draw 800ms ease-out 160ms both;
   }
 
   /* Hover: a summary card lifts and glows in its own colour. */
@@ -1556,7 +1567,7 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ds-accent); outline-o
   .ev-root .panel,
   .gdb-bar.ins-seg,
   .od-draw { animation: none !important; }
-  .od-draw { stroke-dasharray: none; stroke-dashoffset: 0; }
+  .od-draw { clip-path: none; }
   :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel,
   :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel:hover {
     transition: none !important;

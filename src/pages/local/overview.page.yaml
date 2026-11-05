@@ -218,6 +218,64 @@
         "page_size": 25,
         "show_pagination": false
       }
+    },
+    {
+      "widget_id": "c8842fde-f13c-5f8d-aaf7-be043addca23",
+      "title": "Environment",
+      "row": 22,
+      "col": 0,
+      "width": 12,
+      "height": 2,
+      "data_source": "status-environment",
+      "config": {
+        "config_kind": "status_grid",
+        "widget_type": "status_grid",
+        "columns": 3,
+        "show_labels": true,
+        "compact": true
+      }
+    },
+    {
+      "widget_id": "3eed69cb-9958-517d-8c4c-c84cf2e90f90",
+      "title": "Daily trend",
+      "row": 24,
+      "col": 0,
+      "width": 12,
+      "height": 4,
+      "data_source": "overview-trend",
+      "config": {
+        "config_kind": "table",
+        "widget_type": "table",
+        "columns": [
+          {
+            "key": "runs_total",
+            "header": "Runs",
+            "format": "number"
+          },
+          {
+            "key": "tokens_in",
+            "header": "Tokens in",
+            "format": "number"
+          },
+          {
+            "key": "tokens_out",
+            "header": "Tokens out",
+            "format": "number"
+          },
+          {
+            "key": "spend_usd",
+            "header": "Spend",
+            "format": "currency"
+          },
+          {
+            "key": "savings_usd",
+            "header": "Savings",
+            "format": "currency"
+          }
+        ],
+        "page_size": 10,
+        "show_pagination": false
+      }
     }
   ]
 }

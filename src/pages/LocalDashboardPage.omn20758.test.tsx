@@ -63,7 +63,7 @@ describe('OMN-20758 Overview titles match the demo mockup', () => {
 
   it('T1: Actual spend shows the served total_cost_usd', async () => {
     await overview();
-    expect(figure('Actual spend')).toBe('$0.01');
+    expect(figure('Actual spend')).toBe('$0.0123');
   });
 
   // OMN-21166 AC37: Agent calls is every call, the served run_count; the measured count is its breakdown (T3).

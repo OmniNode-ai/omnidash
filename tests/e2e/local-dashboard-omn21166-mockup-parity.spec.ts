@@ -2,6 +2,8 @@ import { expect, test } from 'playwright/test';
 import { chartRows, prefix, serveCharts, keepRealClock } from './omn21166-chart-fixtures';
 // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the window radios sit in one dropdown; chooseWindow opens it and proves it closed.
 import { chooseWindow, openWindows } from './overview-window-menu';
+import { expectFilterOption, pickFilter } from './filter-dropdowns';
+import { chooseChartTab } from './chart-tabs';
 // This spec dates its rows from the real clock, so the browser keeps it (see FIXTURE_NOW).
 test.beforeEach(({ page }) => keepRealClock(page));
 
@@ -84,7 +86,8 @@ test('AC26 Overview applies the selected window to cards and charts and never in
   // OMN-21166 part 13: the duration histogram moved to Runs' analysis, under its closed "More analysis". It reads every
   // served run (the Overview window does not apply there); one of them (run-yesterday, 7,780 ms) is 5 to 10 seconds.
   await page.goto('/runs');
-  await page.locator('summary').filter({ hasText: /^More analysis$/ }).click();
+  // OMN-22168: Run analysis is a row of tabs; How long runs take is chosen first.
+  await chooseChartTab(page, 'How long runs take');
   const duration = page.getByRole('figure', { name: 'How long runs take', exact: true });
   const fiveToTenSeconds = duration.getByRole('button', { name: '5 seconds to 10 seconds: 1 run' }); // "1 run" since part 21's edge-case check
   await fiveToTenSeconds.focus();
@@ -107,12 +110,14 @@ test('AC27 Runs filters by UTC day and task, then shows the selected run without
   await page.goto('/runs');
   // OMN-21166 part 13: the "This week" chart is under the closed "More analysis" (part 18 AC118: merged with "More run
   // charts"), below the run list.
-  await page.locator('summary').filter({ hasText: /^More analysis$/ }).click();
   const week = page.getByRole('group', { name: 'This week' });
   const listTop = await page.getByRole('heading', { name: 'Run list', exact: true }).evaluate(element => element.getBoundingClientRect().top);
-  const weekHeading = page.getByRole('heading', { name: 'This week', exact: true });
-  expect(await weekHeading.count()).toBe(1);
-  const weekTop = await weekHeading.evaluate(element => element.getBoundingClientRect().top);
+  // OMN-22168: This week is a tab of the run charts panel; the tab names it (the chart's own heading is hidden inside it).
+  await chooseChartTab(page, 'This week');
+  await page.locator('.local-dashboard-page').evaluate(el => { el.scrollTop = 0; });
+  const weekPanel = page.getByRole('tabpanel', { name: 'This week', exact: true });
+  await expect(weekPanel).toHaveCount(1);
+  const weekTop = await weekPanel.evaluate(element => element.getBoundingClientRect().top);
   const filtersTop = await page.locator('.local-runs-search').evaluate(element => element.getBoundingClientRect().top);
   const listBox = await page.locator('.local-runs-wrap').boundingBox();
   expect(listBox).not.toBeNull();
@@ -120,22 +125,20 @@ test('AC27 Runs filters by UTC day and task, then shows the selected run without
   expect(weekTop).toBeGreaterThanOrEqual(listBox!.y + listBox!.height - 1);
   // OMN-21166 part 13: the "Days" chip row is gone; a UTC day in the address still filters the list and the week status
   // names it, and the task chips are the Task select (its option counts follow the other filters).
-  await page.goto(`/runs?day=${utcDay(0)}`);
-  await page.locator('summary').filter({ hasText: /^More analysis$/ }).click();
+  await page.goto(`/runs?day=${utcDay(0)}&runchart=week`);
   await expect(week.getByRole('status')).toContainText('2 runs · 1 passed · 1 failed');
   await expect(page).toHaveURL(new RegExp(`day=${utcDay(0)}`));
   await expect(page.getByRole('row', { name: /run-today-unmeasured/ })).toBeVisible();
-  const task = page.getByLabel('Task', { exact: true });
-  await expect(task.locator('option', { hasText: 'code generation' })).toHaveText('code generation (1)');
+  await expectFilterOption(page, 'Task', 'code generation', 'code generation (1)');
   await page.getByRole('button', { name: 'Clear filters', exact: true }).click();
   await expect(page).not.toHaveURL(/day=/);
   await expect(page.getByRole('row', { name: /run-prev-pass/ })).toBeVisible();
 
-  await expect(task.locator('option', { hasText: 'code generation' })).toHaveText('code generation (2)');
-  await task.selectOption('code_generation');
+  await expectFilterOption(page, 'Task', 'code generation', 'code generation (2)');
+  await pickFilter(page, 'Task', 'code_generation');
   await expect(page.getByRole('row', { name: /run-today-fail/ })).toBeVisible();
   await expect(page.getByRole('row', { name: /run-yesterday/ })).toHaveCount(0);
-  await task.selectOption('all');
+  await pickFilter(page, 'Task', 'all');
   await expect(page.getByRole('row', { name: /run-yesterday/ })).toBeVisible();
 
   await page.getByRole('row', { name: /run-today-unmeasured/ }).click();
@@ -204,6 +207,8 @@ test('AC27 selection moves to the first listed run when paging hides the selecte
 test('AC29 Usage exposes measured model spend, per-call cost, tokens, and honest unavailable route savings', async ({ page }, info) => {
   await serveCharts(page, fixtureRows());
   await page.goto('/usage');
+  // OMN-22168: Usage's charts are tabs, one drawn at a time; each is chosen before it is read.
+  await chooseChartTab(page, 'Spend by model');
   const spend = page.getByRole('figure', { name: 'Spend by model', exact: true });
   // OMN-21166 AC64: spend by model is ranked bars (figure "Measured spend per model"); a bar is a list item named by its
   // model and measured value, a model with no measured spend is "Not measured" (never $0.00), and the count of
@@ -218,7 +223,7 @@ test('AC29 Usage exposes measured model spend, per-call cost, tokens, and honest
   // OMN-21166 part 13: cost per run, tokens by model, cost by route and the per-day table are under "More usage"; part 17
   // AC112: each chart is its own panel (Cost per run, Tokens by model, Cost by route), the first two hatched grouped bars
   // whose values show on hover or focus and are named in the group's accessible name.
-  await page.locator('summary').filter({ hasText: /^More usage$/ }).click();
+  await chooseChartTab(page, 'Cost per run');
   const perCall = page.getByRole('figure', { name: 'Cost per run', exact: true });
   await expect(perCall).toContainText('$0.50');
   const allUnmeasuredDay = perCall.getByRole('listitem', { name: new RegExp(`${utcDay(-2)}.*measured cost per call Not measured.*2 unmeasured calls`) });
@@ -226,6 +231,7 @@ test('AC29 Usage exposes measured model spend, per-call cost, tokens, and honest
   await expect(allUnmeasuredDay).toHaveAttribute('aria-label', /measured cost per call Not measured/);
   // Part 17 AC113: a day with no measured call draws no bar.
   await expect(allUnmeasuredDay.locator('.gdb-bar')).toHaveCount(0);
+  await chooseChartTab(page, 'Tokens by model');
   const tokens = page.getByRole('figure', { name: 'Tokens in vs out by model', exact: true });
   await expect(tokens.getByRole('listitem', { name: /model-a/ })).toBeVisible();
   await expect(tokens.getByRole('listitem', { name: 'model-a: 80 tokens in, 20 tokens out', exact: true })).toBeVisible();
@@ -234,6 +240,7 @@ test('AC29 Usage exposes measured model spend, per-call cost, tokens, and honest
   await expect(modelB).toBeVisible();
   await expect(modelB.locator('.gdb-col[data-series="in"] .gdb-bar')).toHaveCount(0);
   await expect(page.getByRole('table', { name: 'Usage by model and day', exact: true })).toContainText('model-b');
+  await chooseChartTab(page, 'Cost by route');
   const route = page.getByRole('region', { name: 'Cost by route', exact: true });
   await expect(route).toContainText('$0.50');
   await expect(route.locator('[data-ranked-item]').first()).toHaveAttribute('aria-label', /^Local: \$0\.50 · 2 runs · 66\.7%, measured$/);

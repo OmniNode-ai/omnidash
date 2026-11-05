@@ -1,5 +1,7 @@
 import { expect, test, type Page } from 'playwright/test';
 import { chartRows, prefix, runIds, serveCharts, USAGE_DAY } from './omn21166-chart-fixtures';
+import { pickFilter } from './filter-dropdowns';
+import { chooseChartTab } from './chart-tabs';
 
 // Failure modes declared before implementation: wrong bar after hiding/zoom;
 // stale selection after filters; missing value becomes zero; unknown day filled;
@@ -7,10 +9,10 @@ import { chartRows, prefix, runIds, serveCharts, USAGE_DAY } from './omn21166-ch
 test.use({ viewport: { width: 1440, height: 900 }, trace: 'on', actionTimeout: 5000 });
 test.beforeEach(async ({ page }) => { await serveCharts(page); });
 
-// OMN-21166 part 18 AC118: Runs' four run charts and "This week" sit first inside the page's one closed "More analysis".
+// OMN-22168 (Lakshman 2026-11-05): Runs' run charts are in view with no fold, one tab at a time.
 async function openRunCharts(page: Page) {
-  await page.getByText('More analysis', { exact: true }).press('Enter');
-  await expect(page.locator('details.local-more').filter({ has: page.locator('article.local-run-charts-panel') })).toHaveAttribute('open', '');
+  await expect(page.locator('details.local-more')).toHaveCount(0);
+  await expect(page.locator('article.local-run-charts-panel')).toBeVisible();
 }
 
 test('single-token chart axis never marks valid fractional tick coordinates as missing data', async ({ page }, info) => {
@@ -20,6 +22,7 @@ test('single-token chart axis never marks valid fractional tick coordinates as m
   }] });
   await page.goto('/runs');
   await openRunCharts(page);
+  await chooseChartTab(page, 'Tokens per run');
   const chart = page.getByRole('figure', { name: 'Tokens per run', exact: true });
   await expect(chart.locator('.local-chart-canvas svg')).toBeVisible();
   await expect(chart.locator('svg text').filter({ hasText: 'Not measured' })).toHaveCount(0);
@@ -49,10 +52,11 @@ test('a chart has no range slider; the selected run and the table are unchanged'
 test('chart selected run is cleared after filtering rather than opening a different index', async ({ page }) => {
   await page.goto('/runs');
   await openRunCharts(page);
+  await chooseChartTab(page, 'Tokens per run');
   const chart = page.getByRole('figure', { name: 'Tokens per run', exact: true });
   await chart.getByLabel('Inspect run').selectOption(runIds[1]);
   await expect(chart.getByRole('link', { name: 'Open run', exact: true })).toHaveAttribute('href', /chart-run-b/);
-  await page.getByRole('combobox', { name: 'Status', exact: true }).selectOption('passed');
+  await pickFilter(page, 'Status', 'passed');
   await expect(chart.getByLabel('Inspect run')).toHaveValue('');
   await expect(chart.getByRole('link', { name: 'Open run', exact: true })).toHaveCount(0);
   await expect(page.locator('[data-component="recent-runs"] table')).not.toContainText('chart-run-b');
@@ -62,6 +66,7 @@ test('an actual bar opens its exact run after a series is hidden', async ({ page
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/runs');
   await openRunCharts(page);
+  await chooseChartTab(page, 'Tokens per run');
   const chart = page.getByRole('figure', { name: 'Tokens per run', exact: true });
   await chart.getByRole('button', { name: 'Tokens in', exact: true }).click();
   const color = await chart.getByRole('button', { name: 'Tokens out', exact: true }).locator('[data-swatch]').evaluate(el => getComputedStyle(el).backgroundColor);
@@ -97,12 +102,13 @@ test('tier shares read directly from the routing table and preserve served denom
   // the same served shares directly. Both keep the served denominator. Tier names read "Local"/"Cloud" (OMN-21166
   // readable tier names, tierLabel).
   await page.goto('/overview');
+  // OMN-22168: Overview's four charts are a row of tabs; Tier mix is chosen first.
+  await chooseChartTab(page, 'Tier mix');
   const overview = page.getByRole('region', { name: 'Tier mix', exact: true });
   await expect(overview.getByRole('link', { name: 'Local: 6 · 75.0%, measured. Opens Runs filtered to Local', exact: true })).toBeVisible();
   await expect(overview.getByRole('link', { name: 'Cloud: 2 · 25.0%, measured. Opens Runs filtered to Cloud', exact: true })).toBeVisible();
   await expect(overview).toContainText('2 not tier-routed');
   await page.goto('/runs');
-  await page.getByText('More analysis', { exact: true }).press('Enter');
   const area = page.getByRole('region', { name: 'Tier mix', exact: true });
   await expect(area.getByRole('button', { name: 'Inspect Local', exact: true })).toHaveCount(0);
   await expect(area.getByRole('button', { name: 'Clear tier selection' })).toHaveCount(0);
@@ -117,11 +123,15 @@ test('tier shares read directly from the routing table and preserve served denom
 });
 
 test('usage model bars do not change figures, table or other model colors', async ({ page }) => {
-  await page.goto('/usage');
+  await page.goto('/usage'); // OMN-22168: Usage's charts are tabs, one drawn at a time; the address names the tab to open.
   // OMN-21166 Maple grid: the page's Tokens per day is a stacked chart that prints each served count in the day's label;
   // part 17 AC114: "Tokens by model" (under "More usage") is hatched grouped bars, two per model, values on hover or focus.
   await expect(page.locator(`[data-component="usage-tokens-by-day"]:not([data-slice]) li[data-token-day="${USAGE_DAY}"]`)).toHaveAttribute('aria-label', /model-a: 162/);
-  await page.getByText('More usage', { exact: true }).press('Enter');
+  // The tab is chosen by keyboard, as a keyboard reader does: the focus check below reads a value shown on :focus-visible,
+  // which a mouse click before it would turn off.
+  const tokensTab = page.getByRole('tab', { name: 'Tokens by model', exact: true });
+  await tokensTab.focus(); await page.keyboard.press('Enter');
+  await expect(tokensTab).toHaveAttribute('aria-selected', 'true');
   const figure = page.getByRole('figure', { name: 'Tokens in vs out by model', exact: true });
   const modelA = figure.locator('li.gdb-day[aria-label^="model-a:"]');
   const modelB = figure.locator('li.gdb-day[aria-label^="model-b:"]');
@@ -147,7 +157,7 @@ test('reduced motion disables chart engine animation, single point omits meaning
   await openRunCharts(page);
   await expect(page.locator('.local-chart-canvas').first().locator('svg')).toBeVisible();
   await expect(page.locator('.local-chart').first()).toHaveAttribute('data-motion', 'reduced');
-  await page.getByRole('combobox', { name: 'Status', exact: true }).selectOption('failed');
+  await pickFilter(page, 'Status', 'failed');
   await expect(page.getByRole('figure', { name: 'Duration per run' }).getByLabel('First point')).toHaveCount(0);
 });
 
@@ -170,12 +180,13 @@ test.describe('touch chart controls', () => {
     // OMN-21166 part 18 AC120 / part 17 AC114: Runs' routing breakdown table shows the tier shares directly (no pinnable
     // bars); Usage's "Tokens by model" groups take focus and name every value.
     await page.goto('/runs');
-    await page.getByText('More analysis', { exact: true }).tap();
     const area = page.getByRole('region', { name: 'Tier mix', exact: true });
     await expect(area.getByRole('button', { name: 'Inspect Cloud', exact: true })).toHaveCount(0);
     await expect(area.getByRole('row').filter({ hasText: 'Cloud' }).locator('td[data-column="share"]')).toHaveText('25.0%');
     await page.getByRole('link',{name:'Usage',exact:true}).tap();
-    await page.getByText('More usage', { exact: true }).tap();
+    // OMN-22168: Tokens by model is a tab of Usage's "Tokens" panel; a touch reader taps the tab first.
+    await page.getByRole('tab', { name: 'Tokens by model', exact: true }).tap();
+    await expect(page.getByRole('tab', { name: 'Tokens by model', exact: true })).toHaveAttribute('aria-selected', 'true');
     const group = page.getByRole('figure', { name: 'Tokens in vs out by model', exact: true }).locator('li.gdb-day[aria-label^="model-b:"]');
     await group.tap();
     await expect(group).toHaveAttribute('aria-label', /Not recorded tokens out/);

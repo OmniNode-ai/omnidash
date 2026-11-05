@@ -18,7 +18,8 @@ import {
   type MeteringWindow,
 } from './insight-aggregates';
 import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
-import { EmptyState, KpiTile } from '@/theme/design-system/components';
+import { DashboardTabs, EmptyState, KpiTile } from '@/theme/design-system/components';
+import { Bot, CircleCheck, Clock3, ListChecks, Timer, TriangleAlert } from '@/theme/design-system/icons';
 
 /**
  * OMN-21166 AC26 (mockup build; rule change R-B, Lakshman 2026-10-18): the Overview's trends and breakdowns, counted
@@ -37,7 +38,6 @@ const RANGES = [
 
 const PASS = 'var(--ds-field-pass)';
 const FAIL = 'var(--ds-field-fail)';
-const UNKNOWN = 'var(--ds-chart-unknown)';
 
 const TASK_CONCEPT: Readonly<Record<string, string>> = {
   document: 'task-document', code_generation: 'task-code-generation', research: 'task-research',
@@ -86,9 +86,8 @@ function runsWord(value: number): string {
 }
 
 function dayCounts(day: InsightDay): string {
-  const parts = [runsWord(day.runs), `${count(day.passed)} passed`, `${count(day.failed)} failed`];
-  if (day.unrecorded > 0) parts.push(`${count(day.unrecorded)} not recorded`);
-  return parts.join(', ');
+  // OMN-22168 (Lakshman 2026-11-04, "don't show anything if we don't have"): a run without a verdict is not drawn or named.
+  return [runsWord(day.passed + day.failed), `${count(day.passed)} passed`, `${count(day.failed)} failed`].join(', ');
 }
 
 /** A short label above a token bar ("2.9K", "206K"); the exact count is in the day's readout and accessible name. */
@@ -109,7 +108,7 @@ function RunsPerDay({ days }: { days: InsightDay[] }) {
   const openDay = (key: string) => navigate(`/runs?${writeRunsSearch(onRuns ? search : '', { ...(onRuns ? readRunsSearch(search) : DEFAULT_RUNS_VIEW), day: key, page: 1 })}`);
   const opensId = useId();
   const [show, setShow] = useState({ passed: true, failed: true });
-  const max = Math.max(1, ...days.flatMap(day => [show.passed ? day.passed : 0, show.failed ? day.failed : 0, day.unrecorded]));
+  const max = Math.max(1, ...days.flatMap(day => [show.passed ? day.passed : 0, show.failed ? day.failed : 0]));
   const active = hover === null ? null : days[hover]!;
   const ticks = dayTicks(days, onRuns ? 14 : 8);
   const toggle = (key: 'passed' | 'failed') => setShow(current => {
@@ -119,7 +118,7 @@ function RunsPerDay({ days }: { days: InsightDay[] }) {
   return (
     <ChartCard title="Runs per day" concept="runs-daily" delay={0}>
       <ChartReadout testId="runs-per-day-readout" active={active !== null}
-        text={active ? <>{dayLabel(active.day)} · <span data-field-tone="count">{count(active.runs)} runs</span> · <span data-field-tone="pass">{count(active.passed)} passed</span> · <span data-field-tone="fail">{count(active.failed)} failed</span>{active.unrecorded ? <> · {count(active.unrecorded)} not recorded</> : null}</> : ''} />
+        text={active ? <>{dayLabel(active.day)} · <span data-field-tone="count">{count(active.passed + active.failed)} runs</span> · <span data-field-tone="pass">{count(active.passed)} passed</span> · <span data-field-tone="fail">{count(active.failed)} failed</span></> : ''} />
       <DayColumns label="Runs per day" days={days.map((day, index) => ({
         key: day.day,
         ariaLabel: `${dayLabel(day.day)}: ${dayCounts(day)}`,
@@ -127,7 +126,6 @@ function RunsPerDay({ days }: { days: InsightDay[] }) {
         values: [
           ...(show.passed ? [{ key: 'passed', value: day.passed, color: PASS, label: count(day.passed) }] : []),
           ...(show.failed ? [{ key: 'failed', value: day.failed, color: FAIL, label: count(day.failed) }] : []),
-          ...(day.unrecorded > 0 ? [{ key: 'unrecorded', value: day.unrecorded, color: UNKNOWN, label: count(day.unrecorded) }] : []),
         ],
       }))} max={max} hover={hover} onHover={setHover} onOpen={openDay} describedBy={opensId} dayLabel={dayLabel} />
       <span id={opensId} hidden>Opens Runs for this day</span>
@@ -595,12 +593,12 @@ export const DECISIONS_READ_LIMIT = 500;
 
 /**
  * OMN-21166 part 21 AC142: the line under an Overview chart, only when the chart does not draw every run. OMN-21970
- * AC3: the latest-500 notice is gone. A read that walked every page draws every run and carries no notice; a walk that
- * could not finish (a failed page, a server that does not page) says how many runs it read and that the rest were not.
+ * AC3: the latest-500 notice is gone. OMN-22168 (Lakshman 2026-11-04, "remove the 500 runs line from Runs per day"): a
+ * read that could not walk every page carries no read-limit line either; only runs with no date, which no chart can
+ * draw, are named.
  */
-export function chartLimitLine(servedCount: number, undatedCount: number, complete = false): string | null {
+export function chartLimitLine(undatedCount: number): string | null {
   const parts: string[] = [];
-  if (!complete && servedCount >= DECISIONS_READ_LIMIT) parts.push(`Showing ${count(servedCount)} runs read; the rest could not be read`);
   if (undatedCount > 0) parts.push(undatedCount === 1 ? '1 run has no date and is not drawn' : `${count(undatedCount)} runs have no date and are not drawn`);
   return parts.length > 0 ? parts.join(' · ') : null;
 }
@@ -641,7 +639,7 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
       ? `${complete ? '' : 'Latest '}${count(servedCount)} served runs · ${windowCaption(window)}`
       : `${count(runs.length)} of the ${served === 'latest' ? `latest ${count(servedCount)} served runs` : `${count(servedCount)} served runs`} · ${windowCaption(window)}`;
   const undated = undatedCount > 0 ? ` · ${count(undatedCount)} undated ${undatedCount === 1 ? 'row' : 'rows'} excluded` : '';
-  const limitLine = chartLimitLine(servedCount, undatedCount, complete);
+  const limitLine = chartLimitLine(undatedCount);
   const earlier = complete ? '' : ' · Earlier activity is not included';
   const emptyMessage = customIncomplete ? 'Choose both UTC dates for this range'
     : customReversed ? 'End date must be on or after the start date'
@@ -682,13 +680,35 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
           </div>
         </div>
       )}
-      <p className="local-dashboard-caption ins-sub" data-testid="insights-total">{population}{undated}{view === 'summary' ? null : <> · Row timestamps: {servedSpan}{earlier}{window.kind === 'days' ? '' : ' · Comparisons with the previous window appear for 1, 7, 15 and 30 days'}{window.kind === 'all' || window.kind === 'custom' ? ` · Charts show at most ${MAX_ALL_TIME_DAYS} UTC days; ${count(chartRuns.length)} of ${count(runs.length)} selected runs plotted` : ''}</>}</p>
+      <p className="local-dashboard-caption ins-sub" data-testid="insights-total">{population}{undated}{view === 'summary' ? null : <> · Row timestamps: {servedSpan}{earlier}{window.kind === 'days' || view !== 'all' ? '' : ' · Comparisons with the previous window appear for 1, 7, 15 and 30 days'}{window.kind === 'all' || window.kind === 'custom' ? ` · Charts show at most ${MAX_ALL_TIME_DAYS} UTC days; ${count(chartRuns.length)} of ${count(runs.length)} selected runs plotted` : ''}</>}</p>
       {emptyMessage !== null ? <EmptyState className="ins-empty" aria-label="Insights">{emptyMessage}</EmptyState> : (
         <div className="overview-chart-sections">
           {view === 'all' && <RunWindowKpis runs={runs} decisions={decisions} now={now} days={window.kind === 'days' ? window.days : MAX_ALL_TIME_DAYS} label={windowCaption(window)} comparisonEnabled={window.kind === 'days'} />}
           {view !== 'analysis' && <ChartSection concept="activity" title="Activity over time"><RunsPerDay days={chartDays} /><TokensPerDay days={chartDays} /></ChartSection>}
           {view === 'summary' && <ChartSection concept="quality-outcomes" title="Why runs failed"><FailureCauses runs={runs} limit={3} /></ChartSection>}
-          {view !== 'summary' && <>
+          {/* Lakshman 2026-11-05 ("run page should be fully organised and logically ... visually attractive"): on Runs the six
+              analysis charts are one full-width row of tabs, one big chart at a time, as the run charts above them; each
+              hint counts what that chart draws, never a computed figure. */}
+          {view === 'analysis' && (() => {
+            const plural = (value: number, word: string) => `${formatDashboardCount(value)} ${word}${value === 1 ? '' : 's'}`;
+            const distinct = (pick: (run: InsightRun) => string | null) => new Set(runs.map(pick).filter((value): value is string => value !== null)).size;
+            return <DashboardTabs label="Run analysis" param="insight" tabs={[
+              { id: 'tasks', label: 'Tasks', tone: 'var(--ds-field-task)', icon: <ListChecks size={18} />,
+                hint: plural(distinct(run => run.task), 'task type'), panel: () => <TaskMix runs={runs} /> },
+              { id: 'pass-rate', label: 'Pass rate per day', tone: 'var(--ds-field-pass-rate-daily)', icon: <CircleCheck size={18} />,
+                hint: plural(chartDays.length, 'day'), panel: () => <PassRateTrend days={chartDays} /> },
+              { id: 'failures', label: 'Why runs failed', tone: 'var(--ds-field-failures)', icon: <TriangleAlert size={18} />,
+                hint: plural(runs.filter(run => run.status === 'failed').length, 'failed run'),
+                panel: () => <FailureCauses runs={runs} onInspectFailure={onInspectFailure} /> },
+              { id: 'duration', label: 'How long runs take', tone: 'var(--ds-field-duration)', icon: <Timer size={18} />,
+                hint: `${formatDashboardCount(runs.filter(run => run.latencyMs !== null).length)} timed`, panel: () => <DurationHistogram runs={runs} /> },
+              { id: 'models', label: 'Model scoreboard', tone: 'var(--ds-field-quality-model)', icon: <Bot size={18} />,
+                hint: plural(distinct(run => run.model), 'model'), panel: () => <ModelScoreboard runs={runs} /> },
+              { id: 'hours', label: 'When runs happen', tone: 'var(--ds-field-activity-hourly)', icon: <Clock3 size={18} />,
+                hint: 'By UTC hour', panel: () => <ActivityHeatmap runs={runs} days={chartDaysList} window={window} /> },
+            ]} />;
+          })()}
+          {view === 'all' && <>
           {/* Part 18 AC119, AC121: runs by model and by tier are Overview's Model usage and Tier mix, and the outcome donut
               repeats the Runs headline cards, so none is drawn here. */}
           <ChartSection concept="routing-workload" title="Routing and workload"><TaskMix runs={runs} /></ChartSection>
@@ -699,12 +719,11 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
         </div>
       )}
       {view === 'summary' && emptyMessage === null && (
-        <details className="local-more">
-          <summary>More activity</summary>
+        <div className="local-more local-more--open" data-section="More activity">
           <p className="local-dashboard-caption ins-sub">{population}{undated} · Row timestamps: {servedSpan}{earlier}{window.kind === 'days' ? '' : ' · Comparisons with the previous window appear for 1, 7, 15 and 30 days'}{window.kind === 'all' || window.kind === 'custom' ? ` · Charts show at most ${MAX_ALL_TIME_DAYS} UTC days; ${count(chartRuns.length)} of ${count(runs.length)} selected runs plotted` : ''}</p>
           <RunWindowKpis runs={runs} decisions={decisions} now={now} days={window.kind === 'days' ? window.days : MAX_ALL_TIME_DAYS} label={windowCaption(window)} comparisonEnabled={window.kind === 'days'} />
           {more}
-        </details>
+        </div>
       )}
     </div>
   );

@@ -330,3 +330,40 @@ export function servedDailyDays(rows: readonly unknown[]): ServedDay[] | null {
   }
   return served;
 }
+
+/**
+ * OMN-22168 (Lakshman 2026-11-04, "do all": Runs per day must not disagree with the Daily trend). When the decisions
+ * read stopped short of every run, metering-summary.v1's served day rows give each day's run total and token totals;
+ * the pass and fail split is the decision rows read for that day, capped at the served total, and the rest of the day's
+ * runs are not recorded. A day served by two rows is left out; the all-time row is never a day. Null without day rows.
+ */
+export function meteringFilledDays(meteringRows: readonly unknown[], decisions: readonly unknown[]): ServedDay[] | null {
+  const byDay = new Map<string, Record<string, unknown>[]>();
+  for (const row of meteringRows) {
+    if (row === null || typeof row !== 'object') continue;
+    const record = row as Record<string, unknown>;
+    if (record.window_kind !== 'day' || typeof record.window_start !== 'string') continue;
+    const key = record.window_start.slice(0, 10);
+    byDay.set(key, [...(byDay.get(key) ?? []), record]);
+  }
+  if (byDay.size === 0) return null;
+  const verdicts = new Map<string, { passed: number; failed: number }>();
+  for (const run of toInsightRuns(decisions)) {
+    const counts = verdicts.get(run.day) ?? { passed: 0, failed: 0 };
+    if (run.status === 'passed') counts.passed += 1;
+    else if (run.status === 'failed') counts.failed += 1;
+    verdicts.set(run.day, counts);
+  }
+  const days: ServedDay[] = [];
+  for (const [day, rows] of [...byDay.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    if (rows.length !== 1) continue;
+    const runs = servedCount(rows[0]!.runs_total);
+    if (runs === null) continue;
+    const read = verdicts.get(day);
+    const passed = Math.min(read ? read.passed : 0, runs);
+    const failed = Math.min(read ? read.failed : 0, runs - passed);
+    days.push({ day, runs, passed, failed, unrecorded: runs - passed - failed,
+      tokensIn: servedCount(rows[0]!.tokens_in), tokensOut: servedCount(rows[0]!.tokens_out), tokensInUnmeasured: 0, tokensOutUnmeasured: 0 });
+  }
+  return days.length === 0 ? null : days;
+}

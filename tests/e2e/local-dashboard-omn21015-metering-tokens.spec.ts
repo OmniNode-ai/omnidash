@@ -1,4 +1,5 @@
 import { expect, test } from 'playwright/test';
+import { chooseChartTab } from './chart-tabs';
 import { chartRows, narrowTo, prefix, serveCharts } from './omn21166-chart-fixtures';
 
 // Failures: available aggregate directions hidden by an empty model projection;
@@ -93,9 +94,10 @@ test('served model/day rows retain their own series rather than being replaced b
   const detail = page.locator('[data-component="usage-tokens-by-day"][data-slice="detail"]');
   await expect(panel.getByRole('figure', { name: 'Tokens in per day by model' })).toBeVisible();
   await expect(panel.getByRole('figure', { name: 'Daily metering token totals' })).toHaveCount(0);
-  await page.locator('summary').filter({ hasText: /^More usage$/ }).click();
   await expect(detail).toHaveCount(0);
   await expect(page.getByRole('figure', { name: 'Tokens by model and day' })).toHaveCount(0);
+  // OMN-22168: Tokens by model is the second tab of Usage's "Tokens" panel.
+  await chooseChartTab(page, 'Tokens by model');
   const byModel = page.getByRole('figure', { name: 'Tokens in vs out by model', exact: true });
   await expect(byModel.getByRole('listitem', { name: 'model-primary: 17 tokens in, 3 tokens out', exact: true })).toBeVisible();
   await expect(page.getByRole('figure', { name: 'Daily metering token totals' })).toHaveCount(0);

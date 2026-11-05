@@ -68,9 +68,14 @@ describe('OMN-19988 production Overview Environment binding', () => {
     // OMN-21166 part 26 revision 2 AC158: Environment has its own System status document and is on no other page.
     const page = loadLocalPageConfig('status');
     expect(page.components.find(component => component.component_id === 'status-environment')?.component_kind).toBe('status_grid');
-    for (const other of ['overview', 'api-keys', 'credentials'] as const) {
+    for (const other of ['api-keys', 'credentials'] as const) {
       expect(loadLocalPageConfig(other).components.some(component => component.component_id.endsWith('-environment'))).toBe(false);
     }
+    // OMN-22168 (Lakshman 2026-11-04, "all 4"): Overview's status line under its title reads the same Environment component,
+    // bound exactly as System status binds it; no other Environment component exists.
+    const overview = loadLocalPageConfig('overview').components.filter(component => component.component_id.endsWith('-environment'));
+    expect(overview.map(component => [component.component_id, component.component_kind, component.data_bindings])).toEqual([
+      ['status-environment', 'status_grid', page.components.find(component => component.component_id === 'status-environment')?.data_bindings]]);
     const validate = new Ajv({ allErrors: true, validateFormats: false, strict: false }).compile(dashboardConfigSchema);
     expect(validate(page.dashboard), JSON.stringify(validate.errors)).toBe(true);
     expect(validate({ ...page.dashboard, widgets: [...page.dashboard.widgets, {

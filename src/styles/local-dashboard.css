@@ -904,7 +904,11 @@
 .local-chart-reset:hover { color: var(--ds-ink); border-color: var(--ds-ink-3); background: var(--ds-surface-2); }
 .local-chart-inspector { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding-top: 10px; border-top: 1px solid var(--ds-line); }
 .local-chart-inspector > label { font-size: 12px; color: var(--ds-ink-2); font-weight: 500; }
-.local-chart-inspector select { flex: 1; min-width: 0; max-width: 100%; min-height: 34px; border: 1px solid var(--ds-hue-blue); border-radius: 7px; padding: 5px 8px; background: var(--ds-surface); color: var(--ds-ink); font: inherit; font-size: 12px; text-overflow: ellipsis; }
+/* At rest the inspector reads like the page's other selects; blue marks only the one a keyboard has focused (live review
+   2026-11-04: an idle select drawn in the focus colour looked selected). */
+.local-chart-inspector select:hover { border-color: var(--ds-ink-3); }
+.local-chart-inspector select:focus-visible { border-color: var(--ds-hue-blue); outline: 2px solid var(--ds-hue-blue); outline-offset: 1px; }
+.local-chart-inspector select { flex: 1; min-width: 0; max-width: 100%; min-height: 34px; border: 1px solid var(--ds-line-strong); border-radius: 7px; padding: 5px 8px; background: var(--ds-surface); color: var(--ds-ink); font: inherit; font-size: 12px; text-overflow: ellipsis; }
 .local-chart-detail { width: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px; margin-top: 8px; border: 1px solid color-mix(in oklch, var(--panel-accent) 24%, var(--ds-line)); border-radius: 8px; background: color-mix(in oklch, var(--panel-accent) 5%, var(--ds-surface)); font-size: 12px; overflow-wrap: anywhere; animation: chart-detail-enter 180ms ease-out; }
 .local-chart-detail strong { font-weight: 600; }
 .local-chart-detail-id { display: block; font-family: var(--ds-font-mono); font-size: 12px; color: var(--ds-ink-2); }
@@ -1078,9 +1082,9 @@
 .local-recent-toolbar input { accent-color: var(--ds-link); width: 15px; height: 15px; }
 .local-recent-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 12px; font-size: 12px; }
 .local-recent-footer a { display: inline-flex; align-items: center; gap: 5px; color: var(--ds-link); text-decoration: none; min-height: 32px; }
-/* Keep both Runs charts and the table header on the first desktop screen. */
+/* The Runs charts sit inside the closed "More analysis" (OMN-21166 AC118), so they no longer share the first screen with
+   the table; at 150px their value labels stacked 12px apart (live review 2026-11-04), so they keep the kit's 210px. */
 @media(min-width:1025px) {
-  .local-dashboard-page--runs .local-chart--runs .local-chart-canvas { height: 150px !important; }
   .local-dashboard-page--runs .local-chart-heading { margin-bottom: 10px; }
   .local-dashboard-page--runs .local-run-charts { margin-bottom: 16px; }
 }
@@ -1538,18 +1542,22 @@ figure.local-chart.usage-insight { min-width: 0; margin: 0; padding: 14px; }
 .local-task-cell { display: inline-flex; align-items: center; gap: 8px; }
 .local-runs-cause { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: normal; word-break: normal; }
 @media (min-width: 1025px) {
-  .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) :is(th, td):is(:nth-child(6), :nth-child(7), :nth-child(8), :nth-child(9), :nth-child(11), :nth-child(12), :nth-child(13), :nth-child(16), :nth-child(17), :nth-child(18)) { display: none; }
+  .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all):not(.local-runs-wrap--routing) :is(th, td):is(:nth-child(6), :nth-child(7), :nth-child(8), :nth-child(9), :nth-child(11), :nth-child(12), :nth-child(13), :nth-child(16), :nth-child(17), :nth-child(18)) { display: none; }
+  /* Routing columns adds Requested model, Finish reason and Escalations after Backend, so every later column moves three
+     places; the position rule above hid the routing columns themselves and swapped Cost, Task type and Duration
+     for six others (live review 2026-11-04). The same ten columns are hidden at their routing-view places. */
+  .local-dashboard-page--runs .local-runs-wrap.local-runs-wrap--routing:not(.local-runs-wrap--all) :is(th, td):is(:nth-child(6), :nth-child(10), :nth-child(11), :nth-child(12), :nth-child(14), :nth-child(15), :nth-child(16), :nth-child(19), :nth-child(20), :nth-child(21)) { display: none; }
   .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) th { font-size: 12px; }
   .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) td { font-size: 13px; overflow-wrap: normal; }
   .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) .local-run-pill { font-size: 12px; padding: 2px 8px; }
-  .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) :is(th, td):nth-child(1) { width: 14%; }
-  .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) :is(th, td):nth-child(2) { width: 15%; }
-  .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) :is(th, td):nth-child(3) { width: 9%; }
-  .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) :is(th, td):nth-child(4) { width: 22%; }
-  .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) :is(th, td):nth-child(5) { width: 13%; }
-  .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) :is(th, td):nth-child(10) { width: 8%; }
-  .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) :is(th, td):nth-child(14) { width: 12%; }
-  .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) :is(th, td):nth-child(15) { width: 7%; }
+  .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all):not(.local-runs-wrap--routing) :is(th, td):nth-child(1) { width: 14%; }
+  .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all):not(.local-runs-wrap--routing) :is(th, td):nth-child(2) { width: 15%; }
+  .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all):not(.local-runs-wrap--routing) :is(th, td):nth-child(3) { width: 9%; }
+  .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all):not(.local-runs-wrap--routing) :is(th, td):nth-child(4) { width: 22%; }
+  .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all):not(.local-runs-wrap--routing) :is(th, td):nth-child(5) { width: 13%; }
+  .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all):not(.local-runs-wrap--routing) :is(th, td):nth-child(10) { width: 8%; }
+  .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all):not(.local-runs-wrap--routing) :is(th, td):nth-child(14) { width: 12%; }
+  .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all):not(.local-runs-wrap--routing) :is(th, td):nth-child(15) { width: 7%; }
   .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) .local-dashboard-cell-token a { max-width: 100%; }
   .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) .local-cell-time { white-space: nowrap; }
 }
@@ -1569,8 +1577,8 @@ figure.local-chart.usage-insight { min-width: 0; margin: 0; padding: 14px; }
 .local-overview-summary .local-card-details > summary { position: absolute; top: 4px; right: 10px; }
 /* OMN-21166 audit fixes (2026-10-18): Runs task names fit, durations name their unit; Usage panels size to content. */
 @media (min-width: 1025px) {
-  .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) :is(th, td):nth-child(4) { width: 19%; }
-  .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) :is(th, td):nth-child(14) { width: 15%; }
+  .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all):not(.local-runs-wrap--routing) :is(th, td):nth-child(4) { width: 19%; }
+  .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all):not(.local-runs-wrap--routing) :is(th, td):nth-child(14) { width: 15%; }
   .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) .local-task-cell { min-width: 0; }
 }
 /* OMN-21166 AC55: durations read with their own unit ("5.3 s"), so the header carries none. */
@@ -1618,6 +1626,8 @@ figure.local-chart.usage-insight { min-width: 0; margin: 0; padding: 14px; }
 .local-dashboard-panel[data-component="runs-tier-mix"] { --panel-accent: var(--ds-accent-panel-runs-tier-mix); }
 [data-theme="dark"] .local-dashboard-panel[data-component="overview-tier-mix"] { --panel-accent: var(--ds-accent-panel-overview-tier-mix); }
 [data-theme="dark"] .local-dashboard-panel[data-component="runs-tier-mix"] { --panel-accent: var(--ds-accent-panel-runs-tier-mix); }
+.local-dashboard-panel[data-component="overview-trend"] { --panel-accent: var(--ds-accent-panel-overview-trend); }
+[data-theme="dark"] .local-dashboard-panel[data-component="overview-trend"] { --panel-accent: var(--ds-accent-panel-overview-trend); }
 .local-dashboard-panel[data-component="overview-recent-runs"] { --panel-accent: var(--ds-accent-panel-overview-recent-runs); }
 .local-dashboard-panel[data-component="recent-runs"] { --panel-accent: var(--ds-accent-panel-recent-runs); }
 [data-theme="dark"] .local-dashboard-panel[data-component="overview-recent-runs"] { --panel-accent: var(--ds-accent-panel-overview-recent-runs); }
@@ -1772,7 +1782,7 @@ figure.local-chart.usage-insight { min-width: 0; margin: 0; padding: 14px; }
 .local-dashboard-page--workflow .local-dashboard-filters { display: flex; flex-direction: row; align-items: center; gap: 8px; margin-bottom: 14px; }
 .local-dashboard-page--workflow .local-dashboard-filters label { flex: none; }
 .local-dashboard-page--workflow .local-dashboard-filters input { flex: 1 1 260px; max-width: 540px; }
-.local-dashboard-page--runs .local-chart--runs .local-chart-canvas { height: 128px !important; }
+/* The Runs charts keep the kit's 210px: at 128px their value labels stacked 12.6px apart (live review 2026-11-04). */
 .local-dashboard-page--runs .local-run-charts { margin-bottom: 14px; }
 .local-dashboard-page--runs .local-chart-heading { margin-bottom: 10px; }
 .local-dashboard-page--runs .local-chart-inspector { margin-top: 8px; }

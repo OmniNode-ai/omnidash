@@ -3,6 +3,7 @@ import { sourceIdentity } from './source-identity';
 import { createHash } from 'node:crypto';
 import { expect, test } from 'playwright/test';
 import type { Page } from 'playwright/test';
+import { chooseChartTab } from './chart-tabs';
 
 // Expected before styling: RED for IBM body typography, uppercase headings,
 // monochrome unbadged icons, and the evidence surface ignoring light mode.
@@ -144,6 +145,8 @@ test('AC10 labels meet contrast and reduced motion disables presentation animati
 
 test('AC10 unserved topic names stay readable inside narrow cards', async ({ page }) => {
   await page.goto('/overview');
+  // OMN-22168: Overview's four charts are a row of tabs; this chart's tab is chosen first.
+  await chooseChartTab(page, 'Tier mix');
   const empty = page.locator('[data-component="overview-tier-mix"] .local-dashboard-empty');
   await expect(empty).toContainText('Not available yet');
   expect(await empty.evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1);

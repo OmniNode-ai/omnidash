@@ -1,4 +1,5 @@
 import { expect, test, type Page } from 'playwright/test';
+import { chooseChartTab } from './chart-tabs';
 import { chartRows, prefix, serveCharts, recentDay } from './omn21166-chart-fixtures';
 
 // Failure modes before implementation: long tables bury records; filters hide
@@ -11,11 +12,10 @@ const usage = Array.from({ length: 28 }, (_, index) => ({
   measured_cost_usd: index === 1 ? null : '0.00000000', unmeasured_call_count: index === 1 ? 1 : 0,
   call_count: 1, call_share: '0.5', cost_tier_name: index % 2 ? 'cloud' : 'local',
 }));
-// OMN-21166 part 13: the usage-by-model-day records and the per-model token bars sit under the page-level "More usage"
-// section (part 17: the per-day token detail is removed).
+// OMN-22168 (Lakshman 2026-11-05, "don't use this instead open all, no hide the contents"): the usage-by-model-day
+// records and the per-model token bars are in view; no "More usage" fold hides them.
 async function openMoreUsage(page: Page) {
-  await page.getByText('More usage', { exact: true }).press('Enter');
-  await expect(page.locator('details.local-more').filter({ hasText: 'More usage' }).first()).toHaveAttribute('open', '');
+  await expect(page.locator('details.local-more')).toHaveCount(0);
 }
 test.beforeEach(async ({ page }) => { await serveCharts(page, { ...chartRows, [prefix + 'usage-by-model-day.v1']: usage }); });
 
@@ -59,6 +59,9 @@ test('phone Usage records retain every labelled value and the model legend ident
   const swatch = await page.locator('.utc-legend li').filter({ hasText: 'model-alpha' }).locator('i').evaluate(element => getComputedStyle(element).backgroundColor);
   const segment = page.locator('.utc-stack i[data-token-model="model-alpha"]').first();
   expect(await segment.evaluate(element => getComputedStyle(element).color)).toBe(swatch);
+  // OMN-22168: Tokens per day and Tokens by model are tabs of Usage's "Tokens" panel; the legend above is read on the
+  // first, the pair's name on the second.
+  await chooseChartTab(page, 'Tokens by model');
   const name = page.getByRole('figure', { name: 'Tokens in vs out by model', exact: true }).locator('li.gdb-day[aria-label^="model-alpha:"] .gdb-day-label');
   // OMN-21970 option a (Lakshman 2026-11-03): the name reads in ink; the swatch beside it carries the model's colour.
   expect(await name.locator('.gdb-swatch').evaluate(element => getComputedStyle(element).backgroundColor)).toBe(swatch);

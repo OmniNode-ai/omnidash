@@ -2,6 +2,8 @@ import { revealRunFields } from './omn21166-chart-fixtures';
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { expect, test, type Page, type Locator } from 'playwright/test';
+import { expectFilter } from './filter-dropdowns';
+import { chooseChartTab } from './chart-tabs';
 
 // OMN-21015 AC4, series half: on the Usage page the drawn height of each model's bar in "Tokens by model" is its served
 // token count against the largest served count in the chart. OMN-21166 part 17 AC114: the chart is hatched grouped bars
@@ -57,10 +59,9 @@ test('OMN-21015: on Usage a bar is as tall as its share of the largest served to
   // OMN-21970 AC9 added a grow-in to every bar; this measures geometry, so it reads the bars without motion.
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await serve(page);
-  await page.goto('/usage');
+  await page.goto('/usage?tokens=tokens-model'); // OMN-22168: Usage's charts are tabs, one drawn at a time; the address names the tab to open.
   // OMN-21166 Maple grid: the per-model token bars (the series this test measures) are under the page's closed
   // "More usage"; the page itself shows the stacked "Tokens per day" chart.
-  await page.locator('summary').filter({ hasText: /^More usage$/ }).click();
 
   const geminiIn = await drawnHeight(page, 'gemini-3.5-flash-lite', 'in');
   const geminiOut = await drawnHeight(page, 'gemini-3.5-flash-lite', 'out');
@@ -94,7 +95,8 @@ test('OMN-21015: on Usage a bar is as tall as its share of the largest served to
   await expect(page.getByRole('heading', { name: 'Tokens per day by model, in detail' })).toHaveCount(0);
   await expect(page.locator('.usage-tokens-bar')).toHaveCount(0);
 
-  await page.getByRole('heading', { name: 'Tokens by model', exact: true }).scrollIntoViewIfNeeded();
+  // OMN-22168: the chart's heading is hidden inside its tab; the tab names it.
+  await page.getByRole('tab', { name: 'Tokens by model', exact: true }).scrollIntoViewIfNeeded();
   await page.screenshot({ path: screenshotPath('local-dashboard-omn21015-usage-tokens-1440x900.png'), fullPage: false });
 });
 
@@ -119,7 +121,8 @@ test('OMN-21015: on Overview a tier slice covers its served share of the ring', 
   await serve(page, { [ROUTING]: routing });
   await page.goto('/');
 
-  // OMN-21166 AC64: ranked bars, not a ring.
+  // OMN-21166 AC64: ranked bars, not a ring. OMN-22168: Overview's charts are tabs; Tier mix is chosen first.
+  await chooseChartTab(page, 'Tier mix');
   const chart = page.getByRole('figure', { name: 'Runs by tier', exact: true });
   await expect(chart).toBeVisible();
   await expect(page.locator('svg.local-donut')).toHaveCount(0);
@@ -257,6 +260,10 @@ test('OMN-21166: the Overview first screen holds exact legacy tiles and the acti
   console.log('FIRST-SCREEN-GEOMETRY', JSON.stringify(await page.locator('.local-dashboard-header, .maple-cell, .ins-bars').evaluateAll(nodes => nodes.map(el => { const r=el.getBoundingClientRect();return {element:el.className,field:el.getAttribute('data-field'),y:r.y,height:r.height,width:r.width,columns:getComputedStyle(el).gridTemplateColumns}; }))));
   const activity = [];
   for (const title of ['Runs per day', 'Tokens per day']) {
+    // OMN-22168: Overview's four charts are a row of tabs, one drawn at a time; each is chosen in turn. Choosing a tab
+    // scrolls it into view, so the page is put back at the top: the check below is about the page as it opens.
+    await chooseChartTab(page, title);
+    await page.evaluate(() => { window.scrollTo(0, 0); for (const node of document.querySelectorAll('*')) if (node.scrollTop) node.scrollTop = 0; });
     const drawing = await placed(page, page.getByRole('figure', { name: title, exact: true }).locator('.ins-bars'));
     expect(drawing.window).toEqual([1440, 900]);
     expect(drawing.scrolled).toBe(0);
@@ -265,11 +272,14 @@ test('OMN-21166: the Overview first screen holds exact legacy tiles and the acti
     expect(drawing.right).toBeLessThanOrEqual(1440);
     activity.push(drawing);
   }
-  // OMN-21166 AC64 / Maple grid: the tier mix is ranked bars (figure "Runs by tier"), in the second row beside Tokens
-  // per day, so it lies below the Runs per day drawing rather than below both activity plots.
+  // OMN-21166 AC64: the tier mix is ranked bars (figure "Runs by tier"). OMN-22168 (Lakshman 2026-11-04, "these 4 into
+  // one ... with tab and full size"): it is the Tier mix tab of the same panel, drawn where the activity charts are.
+  await chooseChartTab(page, 'Tier mix');
+  await page.evaluate(() => { window.scrollTo(0, 0); for (const node of document.querySelectorAll('*')) if (node.scrollTop) node.scrollTop = 0; });
   const tiers = await placed(page, page.getByRole('figure', { name: 'Runs by tier', exact: true }));
   expect(tiers.height).toBeGreaterThan(120);
-  expect(tiers.top).toBeGreaterThan(activity[0]!.bottom);
+  expect(tiers.right).toBeLessThanOrEqual(1440);
+  expect(tiers.scrolled).toBe(0);
   // The tables that remain on Overview (none are required) must not scroll sideways.
   const tables = await page.locator('.local-dashboard-table-wrap:visible').evaluateAll(elements => elements.map(el => el.scrollWidth - el.clientWidth));
   expect(tables.filter(over => over > 0)).toEqual([]);
@@ -401,11 +411,11 @@ const listedRuns = [
 
 /** The bars of one figure, left to right, once two reads in a row agree (the chart grows its bars in). */
 async function settledBars(page: Page, name: string) {
-  // OMN-21166 part 18 AC118: Runs keeps its run charts inside its one closed "More analysis"; open it before reading them.
-  const more = page.locator('summary').filter({ hasText: /^More analysis$/ });
-  await more.waitFor();
-  if (await more.locator('xpath=..').getAttribute('open') === null) await more.click();
+  // OMN-22168 (Lakshman 2026-11-05): no fold; the run charts are tabs, one drawn at a time, so choose the chart's tab.
   const figure = page.getByRole('figure', { name });
+  if (!(await figure.isVisible()) && await page.getByRole('tab', { name, exact: true }).count()) {
+    await page.getByRole('tab', { name, exact: true }).click();
+  }
   await expect(figure).toBeVisible();
   await figure.scrollIntoViewIfNeeded();
   const read = () => figure.locator('.local-chart-canvas svg').evaluate((svg) => [...svg.querySelectorAll('path')]
@@ -450,11 +460,17 @@ test('OMN-21015: on Runs the listed runs are drawn below the list, and a bar ope
 
   // Runs is list first; inspect chart positions after returning to the top.
   await page.locator('.local-dashboard-page').evaluate(el => { el.scrollTop = 0; });
+  // OMN-22168: the run charts are tabs, so each is chosen in turn and both are drawn in the same place under the list.
+  // Choosing a tab scrolls it into view, so the page is put back at the top before each chart is measured.
+  const top = () => page.locator('.local-dashboard-page').evaluate(el => { el.scrollTop = 0; });
+  await chooseChartTab(page, 'Duration per run'); await top();
   const left = await placed(page, 'figure[aria-label="Duration per run"]');
+  await chooseChartTab(page, 'Tokens per run'); await top();
   const right = await placed(page, 'figure[aria-label="Tokens per run"]');
+  await chooseChartTab(page, 'Duration per run'); await top();
   const list = await placed(page, '.local-dashboard-table-wrap thead');
   expect(left.scrolled).toBe(0);
-  expect(right.top).toBeGreaterThanOrEqual(left.bottom);
+  expect(Math.abs(right.top-left.top)).toBeLessThan(2);
   expect(Math.abs(right.left-left.left)).toBeLessThan(2);
   expect(left.top).toBeGreaterThanOrEqual(list.bottom);
   expect(list.bottom).toBeLessThanOrEqual(900);
@@ -496,7 +512,7 @@ test('OMN-21015: on Runs a backend in a row filters the list, the charts and the
   await page.getByRole('button', { name: 'Show only runs of backend byok-gemini' }).focus();
   await page.keyboard.press('Enter');
   await expect(page.locator('.local-dashboard-table-wrap tbody tr')).toHaveCount(1);
-  await expect(page.getByLabel('Backend', { exact: true })).toHaveValue('byok-gemini');
+  await expectFilter(page, 'Backend', 'byok-gemini');
   await expect(page).toHaveURL(/[?&]backend=byok-gemini/);
   expect(await settledBars(page, 'Duration per run')).toHaveLength(1);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

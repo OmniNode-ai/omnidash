@@ -51,7 +51,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
   test(`AC213 39 models turn sideways and every name and value reads at ${viewport.width}`, async ({ page }) => {
     await page.setViewportSize(viewport);
     await serveModels(page, 39);
-    await page.goto('/usage');
+    await page.goto('/usage?money=savings-model'); // OMN-22168: Usage's charts are tabs, one drawn at a time; the address names the tab to open.
     await expect(chart(page)).toBeVisible({ timeout: 15_000 });
     const items = chart(page).locator('.rb-plot > li');
     await expect(items).toHaveCount(39);
@@ -70,7 +70,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
 test('AC213 11 items, one of them unserved, count as 11 and turn sideways', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await serveModels(page, 11);
-  await page.goto('/usage');
+  await page.goto('/usage?money=savings-model');
   await expect(chart(page)).toBeVisible({ timeout: 15_000 });
   const items = chart(page).locator('.rb-plot > li');
   await expect(items).toHaveCount(11);
@@ -81,7 +81,7 @@ test('AC213 11 items, one of them unserved, count as 11 and turn sideways', asyn
 test('AC213 control: 7 models stay upright', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await serveModels(page, 7);
-  await page.goto('/usage');
+  await page.goto('/usage?money=savings-model');
   await expect(chart(page)).toBeVisible({ timeout: 15_000 });
   const items = chart(page).locator('.rb-plot > li');
   await expect(items).toHaveCount(7);

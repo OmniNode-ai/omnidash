@@ -1,5 +1,7 @@
 import { expect, test, type Page } from 'playwright/test';
 import { chartRows, prefix, runIds, serveCharts } from './omn21166-chart-fixtures';
+import { pickFilter } from './filter-dropdowns';
+import { chooseChartTab } from './chart-tabs';
 
 // Before implementation: catch wrong source/identity, zero replaced by missing,
 // absent/malformed data rendered as zero, stale filter/page selection, overflow,
@@ -17,9 +19,10 @@ test.use({ viewport: { width: 1440, height: 900 }, trace: 'on' });
 
 // OMN-21166 part 18 AC118: Runs' four run charts and "This week" sit first inside the page's one closed "More analysis"
 // (the "More run charts" disclosure is merged into it).
+// OMN-22168 (Lakshman 2026-11-05): no fold; the run charts panel is in view, one chart tab at a time.
 async function openRunCharts(page: Page) {
-  await page.getByText('More analysis', { exact: true }).press('Enter');
-  await expect(page.locator('details.local-more').filter({ has: page.locator('article.local-run-charts-panel') })).toHaveAttribute('open', '');
+  await expect(page.locator('details.local-more')).toHaveCount(0);
+  await expect(page.locator('article.local-run-charts-panel')).toBeVisible();
   await expect(page.getByText('More run charts', { exact: true })).toHaveCount(0);
 }
 
@@ -29,8 +32,8 @@ test('fractional median duration retains milliseconds instead of the integer cou
   // OMN-21166 AC86 (Lakshman 2026-10-25): "More activity" and its Median duration card are deleted from Overview; AC55's
   // one duration formatter (whole milliseconds, exact median in the title) is checked on Runs' analysis below.
   await page.goto('/runs');
-  // OMN-21166 part 13: Runs' analysis sits under the page-level "More analysis".
-  await page.getByText('More analysis', { exact: true }).press('Enter');
+  // OMN-22168: Run analysis is a row of tabs; the duration distribution is How long runs take.
+  await chooseChartTab(page, 'How long runs take');
   await expect(page.getByText('Median 512 ms', { exact: true })).toBeVisible();
   await expect(page.locator('article[data-kpi-card="Median duration"] .local-dashboard-metric')).toHaveAttribute('title', '511.5 ms');
   await expect(page.getByText('Not measured ms', { exact: true })).toHaveCount(0);
@@ -42,24 +45,31 @@ test('cost and score show precise served values, zero and unknown, and open exac
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/runs');
   await openRunCharts(page);
-  const cost = page.getByRole('figure', { name: 'Local cost per run', exact: true });
+  const cost = page.getByRole('figure', { name: 'Cost per run', exact: true });
   const score = page.getByRole('figure', { name: 'Quality score per run', exact: true });
-  for (const chart of [cost, score]) await expect(chart.locator('.local-chart-canvas svg')).toBeVisible();
+  // OMN-22168: Cost per run and Quality score per run are tabs of the run charts panel, one drawn at a time.
+  await chooseChartTab(page, 'Cost per run');
+  await expect(cost.locator('.local-chart-canvas svg')).toBeVisible();
   await cost.getByLabel('Inspect run').selectOption(runIds[0]);
   await expect(cost.getByRole('status')).toContainText('$1.23'); // session cost wins over decision
+  await chooseChartTab(page, 'Quality score per run');
+  await expect(score.locator('.local-chart-canvas svg')).toBeVisible();
   await score.getByLabel('Inspect run').selectOption(runIds[0]);
   await expect(score.getByRole('status')).toContainText('0.987654');
   await expect(score.getByRole('link', { name: 'Open run', exact: true })).toHaveAttribute('href', /chart-run-a/);
   for (const chart of [cost, score]) {
+    await chooseChartTab(page, chart === cost ? 'Cost per run' : 'Quality score per run');
     await chart.getByLabel('Inspect run').selectOption(runIds[1]);
     await expect(chart.getByRole('status')).toContainText(chart === cost ? '$0' : 'Score: 0');
     await chart.getByLabel('Inspect run').selectOption(runIds[2]);
     await expect(chart.getByRole('status')).toContainText('Not recorded');
   }
+  await chooseChartTab(page, 'Cost per run');
   await cost.getByLabel('Inspect run').selectOption(runIds[1]);
-  await page.getByRole('combobox', { name: 'Status', exact: true }).selectOption('passed');
+  await pickFilter(page, 'Status', 'passed');
   await expect(cost.getByLabel('Inspect run')).toHaveValue('');
   await expect(cost.getByLabel('Inspect run').locator('option')).toHaveCount(3);
+  await chooseChartTab(page, 'Quality score per run');
   await score.getByLabel('Inspect run').selectOption(runIds[0]);
   // Read and activate the actual painted score bar, not chart-library state.
   await score.scrollIntoViewIfNeeded();
@@ -84,7 +94,8 @@ test('missing and malformed metric values remain explicit instead of zero charts
   await serveCharts(page, { ...rows, [savings]: [], [decisions]: rows[decisions].map(row => ({ ...row, cost_usd: null, actual_score: [] })) });
   await page.goto('/runs');
   await openRunCharts(page);
-  for (const name of ['Local cost per run', 'Quality score per run']) {
+  for (const name of ['Cost per run', 'Quality score per run']) {
+    await chooseChartTab(page, name);
     const chart = page.getByRole('figure', { name, exact: true });
     await expect(chart).toContainText('No recorded values for these runs');
     await expect(chart.locator('.local-chart-canvas')).toHaveCount(0);
@@ -100,7 +111,8 @@ test('metrics follow pagination and keep compact equal cards in both themes and 
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/runs');
   await openRunCharts(page);
-  const cost = page.getByRole('figure', { name: 'Local cost per run', exact: true });
+  await chooseChartTab(page, 'Cost per run');
+  const cost = page.getByRole('figure', { name: 'Cost per run', exact: true });
   await expect(cost).toHaveAttribute('data-motion', 'reduced');
   await cost.getByLabel('Inspect run').selectOption('metric-0');
   await page.getByRole('button', { name: 'Next page', exact: true }).click();
@@ -108,8 +120,12 @@ test('metrics follow pagination and keep compact equal cards in both themes and 
   await expect(cost.getByLabel('Inspect run').locator('option')).toHaveCount(2);
   await expect(cost.getByLabel('First point')).toHaveCount(0);
   await expect(cost.getByLabel('Inspect run').locator('option').last()).toHaveAttribute('value', 'metric-25');
-  const heights = await page.locator('.local-run-charts > figure').evaluateAll(els => els.map(el => el.getBoundingClientRect().height));
-  expect(Math.abs(heights[2] - heights[3])).toBeLessThan(2);
+  // Cost and score cards keep one height: each is measured on its own tab (one chart drawn at a time).
+  const costHeight = await cost.evaluate(el => el.getBoundingClientRect().height);
+  await chooseChartTab(page, 'Quality score per run');
+  const scoreHeight = await page.getByRole('figure', { name: 'Quality score per run', exact: true }).evaluate(el => el.getBoundingClientRect().height);
+  expect(Math.abs(costHeight - scoreHeight)).toBeLessThan(2);
+  await chooseChartTab(page, 'Cost per run');
   for (const width of [1440, 390, 320]) {
     if (width === 390) await page.getByRole('button', { name: 'Collapse sidebar', exact: true }).click();
     await page.setViewportSize({ width, height: 900 });
@@ -127,7 +143,8 @@ test('measured zero cost has a visible explanation and keeps missing costs separ
   await serveCharts(page, { ...rows, [savings]: [], [decisions]: rows[decisions].map((row, i) => ({ ...row, cost_usd: i === 2 ? null : 0 })) });
   await page.goto('/runs');
   await openRunCharts(page);
-  const chart = page.getByRole('figure', { name: 'Local cost per run', exact: true });
+  await chooseChartTab(page, 'Cost per run');
+  const chart = page.getByRole('figure', { name: 'Cost per run', exact: true });
   await expect(chart).toContainText('2 of 3 recorded');
   await expect(chart).toContainText('Recorded costs are $0');
   await expect(chart).toContainText('1 not recorded');

@@ -224,6 +224,65 @@
         "missing-field",
         "no-data"
       ]
+    },
+    {
+      "component_id": "status-environment",
+      "component_kind": "status_grid",
+      "title": "Environment",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "status-environment-health",
+          "projection_topic": "onex.snapshot.projection.local-environment.v1",
+          "ordering_authority_field": "last_seen",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "mode",
+            "service",
+            "verdict",
+            "verdict_reason"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "overview-trend",
+      "component_kind": "table",
+      "title": "Daily trend",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-trend-metering",
+          "projection_topic": "onex.snapshot.projection.metering-summary.v1",
+          "ordering_authority_field": "as_of",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "window_kind",
+            "window_start",
+            "runs_total",
+            "tokens_in",
+            "tokens_out",
+            "spend_usd",
+            "savings_usd"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
     }
   ],
   "page_empty_state_reasons": [

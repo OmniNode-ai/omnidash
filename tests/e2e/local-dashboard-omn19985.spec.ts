@@ -109,8 +109,7 @@ test('OMN-19985: Credentials lists each key ref with its fingerprint and set tim
   await expect(live.locator('.local-provider-setup')).toHaveText('Set up with onex models add openrouter');
   // The revoked key is never among the keys in use.
   await expect(page.locator('.local-provider-list')).not.toContainText('0123abcd');
-  const history = page.getByText('Show key history (1 revoked)', { exact: true });
-  await history.press('Enter');
+  // OMN-22168: the key history is open content now (no "Show key history" fold).
   const revokedTable = page.getByRole('table', { name: 'Revoked key references', exact: true });
   const revoked = revokedTable.getByRole('row').filter({ hasText: '0123abcd' });
   await expect(revoked.locator('td[data-label="Revoked"]')).toHaveText('Oct 7, 07:35:00 UTC');

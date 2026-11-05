@@ -100,8 +100,9 @@ test('a run shows one modelled saving on Delegation Evidence and on Runs', async
   const selected = page.locator('[data-panel-title="SELECTED RUN"]');
   await expect(selected.locator('.kv')).toContainText(RUN);
   const evidenceSaving = selected.locator('.kv > div', { has: page.locator('.k', { hasText: 'Savings (modelled)' }) });
-  await expect(evidenceSaving.locator('.v')).toContainText('$0.01');
+  // OMN-22168: money shows every served digit (0.012345), and both pages show the same number.
+  await expect(evidenceSaving.locator('.v')).toContainText('$0.012345');
 
   await page.goto('/runs');
-  await expect(page.locator('table').first()).toContainText('$0.01 vs claude-sonnet-5-5');
+  await expect(page.locator('table').first()).toContainText('$0.012345 vs claude-sonnet-5-5');
 });

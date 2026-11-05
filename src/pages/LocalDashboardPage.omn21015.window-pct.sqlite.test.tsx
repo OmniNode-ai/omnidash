@@ -153,7 +153,13 @@ describe('OMN-21015 AC7: the Overview page', () => {
   });
 
   const NOTE = 'All time: this panel does not follow the window above.';
-  const article = (title: string) => screen.getByRole('heading', { name: title }).closest('article') as HTMLElement;
+  // OMN-22168: the four Overview charts are tabs, each drawn when its tab is chosen; the chart's panel is read after
+  // choosing its tab.
+  const article = (title: string) => {
+    const tab = screen.queryByRole('tab', { name: title });
+    if (tab) fireEvent.click(tab);
+    return screen.getByRole('heading', { name: title }).closest('article') as HTMLElement;
+  };
   // By the exposure each panel is bound to in overview.contracts.yaml: metering-summary.v1 has a row per window, the
   // decisions, model-routing and quality-gate exposures do not.
   // OMN-21166 live review 2026-10-25: Overview is the four headline cards and Delegation Quality, Runs and Tokens per

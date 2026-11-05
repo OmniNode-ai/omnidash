@@ -1,5 +1,6 @@
 import { expect, test, type Locator } from 'playwright/test';
 import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chooseChartTab } from './chart-tabs';
 
 // Before implementation: the same field has different colors on each page;
 // missing values look measured; metadata loses served zero/precision; shared
@@ -30,6 +31,8 @@ test('matching fields retain one distinct color across Overview, Workflow and Ev
   const grey = await page.evaluate(() => { const probe = document.createElement('i'); probe.style.color = 'var(--icon-grey)';
     document.body.append(probe); const value = getComputedStyle(probe).color; probe.remove(); return value; });
   await page.goto('/overview');
+  // OMN-22168: Overview's charts are tabs; Tokens per day is chosen first.
+  await chooseChartTab(page, 'Tokens per day');
   const daily = page.getByRole('figure', { name: 'Tokens per day', exact: true });
   const legend = await Promise.all([color(daily.locator('.ins-token-legend [data-field-tone="tokens-in"]')), color(daily.locator('.ins-token-legend [data-field-tone="tokens-out"]'))]);
   expect(new Set(legend).size).toBe(2);
@@ -63,7 +66,7 @@ test('Evidence keeps small recorded cost and input/output availability independe
   await page.goto('/delegation-evidence');
   const selected = page.locator('.panel').filter({ has: page.getByRole('heading', { name: 'Selected run', exact: true }) });
   const value = (name: string) => selected.locator('.kv > div').filter({ has: page.getByText(name, { exact: true }) }).locator('.v');
-  await expect(value('Cost')).toHaveText('$0.01');
+  await expect(value('Cost')).toHaveText('$0.001234');
   await expect(value('Tokens in')).toHaveText('Not recorded');
   await expect(value('Tokens out')).toHaveText('0');
   await page.screenshot({ path: info.outputPath('uniform-precise-cost.png') });
@@ -96,6 +99,8 @@ test('shared field colors stay readable in both themes with phone-safe expanded 
       // OMN-21166 live review 2026-10-25: Overview has no dt/dd fields now; its tone-coloured text is the Tokens per day
       // legend and readout, so those are measured too.
       // Part 15 AC96: the readout is empty at rest and fills for the day a reader points at, so a day is focused first.
+      // OMN-22168: Overview's charts are tabs; Tokens per day is chosen first.
+      if (route === 'overview') await chooseChartTab(page, 'Tokens per day');
       if (route === 'overview') await page.getByRole('group', { name: 'Tokens per day', exact: true }).getByRole('button').last().focus();
       const contrasts = await page.locator('[data-field-tone] > dt, [data-field-tone] > dd, [data-field-tone] > .k, [data-field-tone] > .v, .ins-token-legend > [data-field-tone], .ins-readout > [data-field-tone]').evaluateAll(els => {
         const canvas = document.createElement('canvas'); canvas.width = canvas.height = 1;

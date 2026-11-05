@@ -1,5 +1,6 @@
 import { expect, test, type Page } from 'playwright/test';
 import { chartRows, prefix, serveCharts, keepRealClock } from './omn21166-chart-fixtures';
+import { chooseChartTab } from './chart-tabs';
 // This spec dates its rows from the real clock, so the browser keeps it (see FIXTURE_NOW).
 test.beforeEach(({ page }) => keepRealClock(page));
 
@@ -53,10 +54,11 @@ for (const scenario of COVERAGE_SCENARIOS) {
     await serveCharts(page, { ...chartRows, [DECISIONS]: decisions(scenario.verdicts) });
     await page.goto('/runs');
     // OMN-21166 part 13: the page-level "More analysis" replaces the "Show run analysis" fold on Runs.
-    await page.getByText('More analysis', { exact: true }).click();
     const tasks = page.getByRole('list', { name: 'Tasks' }).getByRole('listitem');
     await expect(tasks).toHaveCount(1);
     await expect(tasks).toContainText(scenario.coverage, MISSING);
+    // OMN-22168: Run analysis is a row of tabs; the pass rate by model is the Model scoreboard tab.
+    await chooseChartTab(page, 'Model scoreboard');
     await expect(page.getByRole('figure', { name: 'Pass rate by model', exact: true })).toContainText(scenario.coverage, MISSING);
   });
 }

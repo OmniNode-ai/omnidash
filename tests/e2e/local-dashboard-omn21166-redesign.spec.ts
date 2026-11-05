@@ -2,6 +2,7 @@ import { writeFileSync } from 'node:fs';
 import { sourceIdentity } from './source-identity';
 import { expect, test } from 'playwright/test';
 import { serveCharts } from './omn21166-chart-fixtures';
+import { chooseChartTab } from './chart-tabs';
 
 // RED controls: baseline source label and counts are invented; row pointer-only;
 // unavailable values use giant numeric-card typography; dark/light sparse surfaces.
@@ -63,6 +64,8 @@ test('unavailable figures remain honest and are readable messages rather than gi
   const missing = card.locator('.local-dashboard-metric');
   expect(await missing.evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBeLessThanOrEqual(22);
   // OMN-21166 readable tier names + Maple grid: Overview's tier mix is ranked bars that print the served tier ("Local") and its share.
+  // OMN-22168: Overview's four charts are a row of tabs; this chart's tab is chosen first.
+  await chooseChartTab(page, 'Tier mix');
   await expect(page.locator('[data-component="overview-tier-mix"]')).toContainText('Local');
   await expect(page.locator('[data-component="overview-tier-mix"]')).toContainText('75.0%');
 });

@@ -32,7 +32,6 @@ test.beforeEach(async ({ page }) => { await serveCharts(page, baseRows); });
 test('Workflow exposes available backend decision fields compactly', async ({ page }, info) => {
   await page.goto('/workflow?correlation_id=chart-run-a');
   // OMN-21166 part 13: Recorded run details sit under the closed "More run details".
-  await page.getByText('More run details', { exact: true }).press('Enter');
   const details = page.getByRole('region', { name: 'Recorded run details', exact: true });
   for (const value of ['served-routed-model', 'served-answering-backend', 'served-score-source', 'served-writer']) {
     await expect(details).toContainText(value);
@@ -47,17 +46,22 @@ test('Workflow exposes available backend decision fields compactly', async ({ pa
 
 test('Workflow charts and recorded details read the selected run without inventing values', async ({ page }, info) => {
   await page.goto('/workflow?correlation_id=chart-run-a');
-  // OMN-21166 part 13: Token flow, Quality score comparison and Recorded run details are under "More run details".
-  await page.getByText('More run details', { exact: true }).press('Enter');
-  const tokens = page.getByRole('figure', { name: 'Token flow', exact: true });
+  // OMN-22168 (Lakshman 2026-11-05, "remove duplicates"): the Token flow and Quality score comparisons repeated the
+  // Tokens and Run outcome cards, and the stage chart repeated the Run timeline's step durations, so all three are gone.
+  // Every value they drew is still read here, from the one place it is now shown.
+  for (const gone of ['Token flow', 'Quality score and threshold', 'Execution stage durations']) {
+    await expect(page.getByRole('figure', { name: gone, exact: true }), `${gone} is not drawn twice`).toHaveCount(0);
+  }
+  const tokens = page.getByRole('region', { name: 'Tokens and completion', exact: true });
   await expect(tokens).toBeVisible();
-  await expect(tokens).toContainText('Input tokens');
+  await expect(tokens).toContainText('Tokens in');
   await expect(tokens).toContainText('0');
   await expect(tokens).toContainText('Not recorded');
-  const quality = page.getByRole('figure', { name: 'Quality score and threshold', exact: true });
+  const quality = page.getByRole('region', { name: 'Run outcome', exact: true });
   await expect(quality).toContainText('0.40');
   await expect(quality).toContainText('0.80');
-  await expect(page.getByRole('figure', { name: 'Execution stage durations', exact: true })).toBeVisible();
+  // The step durations are the Run timeline's (provider call, 120 ms served).
+  await expect(page.locator('main ol')).toContainText('120 ms');
   // 3c5cb779: the recorded cost reads as money, not the raw served decimal.
   await expect(page.getByRole('region', { name: 'Recorded run details', exact: true })).toContainText('Recorded cost (USD)$0.00');
   await expect(page.getByRole('region', { name: 'Recorded run details', exact: true })).toContainText('fixture');
@@ -73,6 +77,8 @@ test('an unknown run does not inherit the newest run charts or foreign stage dur
   await expect(page.getByText('No decision is served for this run', { exact: true })).toBeVisible();
   await expect(page.getByRole('figure', { name: 'Token flow', exact: true })).toHaveCount(0);
   await expect(page.getByRole('figure', { name: 'Execution stage durations', exact: true })).toHaveCount(0);
+  // OMN-22168: those charts are removed for every run; the property here is that no foreign values appear instead.
+  await expect(page.getByText('120 ms', { exact: true })).toHaveCount(0);
 });
 
 test('compact timing ticks remain readable without overlapping', async ({ page }) => {

@@ -51,15 +51,19 @@ describe('OMN-21970 AC9: CSS motion families', () => {
 
   it('M1 grow-in: bars grow from their axis and the line draws, inside the no-preference block only', () => {
     expect(motion()).toMatch(/\.gdb-bar\.ins-seg\s*\{[^}]*transform-origin: 50% 100%;[^}]*animation: omn-grow-y /);
-    expect(motion()).toMatch(/\.od-draw\s*\{[^}]*stroke-dasharray: 1;[^}]*animation: omn-draw /);
+    expect(motion()).toMatch(/\.od-draw\s*\{[^}]*animation: omn-draw [^;]*both;/);
     expect(outsideBlocks()).not.toMatch(/animation: omn-(grow-y|draw)/);
   });
   it('M2 grow-in: reduced motion switches bars and line off and draws the line whole', () => {
     expect(reduce()).toMatch(/\.gdb-bar\.ins-seg,\s*\.od-draw \{ animation: none !important; \}/);
-    expect(reduce()).toMatch(/\.od-draw \{ stroke-dasharray: none; stroke-dashoffset: 0; \}/);
+    expect(reduce()).toMatch(/\.od-draw \{ clip-path: none; \}/);
   });
-  it('M4: the drawn line is measured in path units', () => {
-    expect(charts).toMatch(/className="od-draw"[^>]*pathLength=\{1\}/);
+  it('M4: the line draws by a left-to-right reveal that ends on the whole line, not by a stroke dash', () => {
+    // A dash measured with pathLength under vector-effect: non-scaling-stroke left the line cut short in Chrome
+    // (Pass rate per day stopped before its last day, 2026-11-04); the reveal ends at inset(0) whatever the stroke.
+    expect(css).toMatch(/@keyframes omn-draw \{ from \{ clip-path: inset\(0 100% 0 0\); \} to \{ clip-path: inset\(0 0 0 0\); \} \}/);
+    expect(motion()).not.toMatch(/\.od-draw\s*\{[^}]*stroke-dash/);
+    expect(charts).not.toMatch(/className="od-draw"[^>]*pathLength/);
   });
 
   it('M1 hover: a summary card lifts and glows in its own colour, inside the no-preference block only', () => {

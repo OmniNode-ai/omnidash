@@ -7,6 +7,7 @@ import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
 // Failure modes declared before the code:
 //   R1  a label or headline figure keeps Inter, or other text leaves Inter (AC166);
 //   R2  a headline card keeps a coloured edge, or a metric loses its identity colour on its icon when the edge goes (AC167);
+//       OMN-22168 (Lakshman 2026-11-05) reversed the neutral edge: each headline card's edge is its own distinct accent;
 //   R3  the page title, figure, radius or active navigation item keeps its old size or blue (AC168);
 //   R4  mono figures widen the cards so a page scrolls sideways at 390 or 320 (AC168);
 //   R5  Settings still shows an Appearance choice, or the header toggle stops switching or keeping the theme (AC169a);
@@ -83,12 +84,16 @@ for (const theme of ['light', 'dark'] as const) {
         expect(firstFamily(card.figureFont), 'AC166 figure in the display face').toBe(firstFamily(face.display));
         expect(card.figureSize, 'AC168 figure 32px').toBe('32px');
       }
-      expect([card.edge, card.edgeColor], 'AC167 neutral 1px ink hairline').toEqual(['1px', face.rule]);
+      // OMN-22168 (Lakshman 2026-11-05, "make each cards different color and distinct") reverses AC167's neutral hairline
+      // for the headline cards: the 1px edge stays, its colour is the card's own accent (checked distinct below).
+      expect(card.edge, 'the headline card keeps a 1px edge').toBe('1px');
+      expect(card.edgeColor, 'the headline edge is not the neutral rule').not.toBe(face.rule);
       expect(card.radius, 'OMN-21970 01+20 look: 12px card corners (was AC9 square, part 28 AC181 8px)').toBe('12px');
     }
     // OMN-21970 AC8 (committed 801bf845) supersedes part 28 AC177's one grey: each headline concept has its own icon
     // colour, and an icon is never its label's colour.
     expect(new Set(read.map(card => card.iconColor)).size, 'each headline icon has its own concept colour (AC8)').toBe(read.length);
+    expect(new Set(read.map(card => card.edgeColor)).size, 'each headline edge has its own colour (OMN-22168)').toBe(read.length);
     expect(read.every(card => card.iconColor !== card.labelColor), 'the icon is not the label colour').toBe(true);
     // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): every other panel title is a small mono label too (was Inter), weight 500.
     const title = page.locator('.local-dashboard-panel:not(.local-overview-summary > .local-dashboard-panel) > h2').first();

@@ -13,8 +13,8 @@ test('Evidence savings labels retain exact decimal strings across the headline a
   await page.goto('/delegation-evidence');
   // Live review 2026-10-26: the three money figures are hatched ranked bars; each bar's value is its label on hover.
   const bar = (key: string) => page.locator(`[data-panel-title="SAVINGS vs CLOUD BASELINE"] [data-ranked-item="${key}"] .rb-value`);
-  await expect(bar('baseline')).toHaveText('$9,999,999,999.99');
-  await expect(bar('cost')).toHaveText('$0.01');
+  await expect(bar('baseline')).toHaveText('$9,999,999,999.99999999');
+  await expect(bar('cost')).toHaveText('$0.00999999');
   await expect(page.locator('.ev-savings-hero .big')).toHaveText('$9,999,999,999.99');
   await expect(bar('savings')).toHaveText('$9,999,999,999.99');
   await page.screenshot({ path: info.outputPath('evidence-exact-currency.png') });
@@ -35,7 +35,9 @@ test('Evidence summary cards each have a logical icon and their own identity col
       const style = getComputedStyle(element);
       return { border: style.borderTopColor, bottom: style.borderBottomColor, color: getComputedStyle(element.querySelector('svg')!).color, icon: element.querySelector('svg')?.getAttribute('class') };
     }));
-    expect(new Set(identities.map(item => item.border)).size).toBe(1);
+    // OMN-22168 (Lakshman 2026-11-05, "make each cards different color and distinct"; "each unique thing has different and
+    // unique colors"): supersedes the one neutral card edge (AC141/AC167); each card's edge is mixed from its own concept.
+    expect(new Set(identities.map(item => item.border)).size).toBe(identities.length);
     // OMN-21970 AC8 (committed 801bf845) supersedes part 28 AC177's one grey: each headline concept has its own colour on Evidence too; each card also keeps its own icon shape.
     expect(new Set(identities.map(item => item.color)).size).toBe(identities.length);
     expect(new Set(identities.map(item => item.icon)).size).toBe(4);

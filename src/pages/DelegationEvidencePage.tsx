@@ -8,12 +8,12 @@ import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
  * projection returns no rows / is degraded renders an explicit honest state.
  */
 
-import { type ReactNode } from 'react';
+import { type ReactNode, type CSSProperties } from 'react';
 import { formatUsd } from '@/components/dashboard/usage/UsageByModelDayWidget';
 import { isUnavailableField } from '@/components/dashboard/field-identity';
 import { EvPageShell } from '@/components/dashboard/event-dash/EvPageShell';
 import { KpiStrip } from '@/components/dashboard/KpiStrip';
-import { DashboardTabs, Fact, FactList } from '@/theme/design-system/components';
+import { DashboardTabs } from '@/theme/design-system/components';
 import { RankedBars } from '@/theme/design-system/charts';
 import {
   Badge,
@@ -57,10 +57,11 @@ import { overviewRunCount } from '@/lib/dashboard-overview-count';
 
 import { formatDuration } from '@/components/format/duration';
 import { percent as sharePercent } from '@/theme/design-system/charts';
-import { taskLabel } from '@/pages/local/plain-text';
+import { escalationReason, taskLabel } from '@/pages/local/plain-text';
 import { readableTime } from '@/components/format/readable-time';
 import { ModelTiersContext, TierLegend, useModelColor, useModelIdentityStyle } from '@/components/dashboard/model-tiers';
 import { modelTiersFrom } from '@/lib/dashboard-colors';
+import { Bot, ListChecks, TriangleAlert } from '@/theme/design-system/icons';
 
 /**
  * OMN-21166 AC72 pass 1: a rate on Evidence reads to one decimal, as Overview writes the same served rate (91.6%, not
@@ -113,50 +114,8 @@ export function pricingLabel(version: unknown): string | null {
   return /^\d/.test(text) ? `pricing v${text}` : `pricing ${text}`;
 }
 
-const REASON_MAX = 120;
-
-// OMN-21166 AC52: the gate's typed codes as a reader names them. A code not listed reads as its words in sentence case.
-const REASON_CODE_LABELS: Readonly<Record<string, string>> = {
-  SHAPE_REFUSED: 'Response too short', MALFORMED: 'Malformed output', TASK_MISMATCH: 'Task mismatch',
-  WEAK_OUTPUT: 'Weak output', UNGROUNDED: 'Ungrounded figures', REFUSAL: 'Response refused',
-  SCHEMA_VIOLATION: 'Schema violation',
-};
-const REASON_PHRASES: ReadonlyArray<[RegExp, string]> = [
-  [/\bfinish_reason=length\b/g, 'output limit reached'],
-  [/\bcredential_rejected\b/g, 'key rejected'],
-];
-
-/** A stored credential's id never reaches the page, in the row or in its title (OMN-21166 AC52). */
-function maskCredentialIds(text: string): string {
-  return text.replace(/\bcred_[A-Za-z0-9_]+/g, 'a stored key');
-}
-
-function sentenceCase(code: string): string {
-  const words = code.toLowerCase().split('_').filter(Boolean).join(' ');
-  return words.charAt(0).toUpperCase() + words.slice(1);
-}
-
-/** The reason in plain words: typed codes and snake_case names become words; the served wording is kept otherwise. */
-function plainReasonText(text: string): string {
-  let plain = maskCredentialIds(text)
-    .replace(/\b([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+|[A-Z]{3,}):\s*/g, (_, code: string) => `${REASON_CODE_LABELS[code] ?? sentenceCase(code)}: `);
-  for (const [pattern, phrase] of REASON_PHRASES) plain = plain.replace(pattern, phrase);
-  return plain.replace(/\b([a-z]+(?:_[a-z0-9]+)+)\b/g, name => name.replace(/_/g, ' '));
-}
-
-/**
- * OMN-21166: one escalation reason as the panel shows it. A served reason can be a whole provider error, URLs and
- * response body included; the row shows its first line of text in plain words (AC52), shortened to fit, and the
- * element's title keeps the whole served text with any credential id masked. A missing reason is named, never an
- * empty row.
- */
-export function escalationReason(reason: unknown): { text: string; title: string | undefined } {
-  const served = typeof reason === 'string' ? reason : isUnavailableField(reason) ? '' : String(reason);
-  const text = plainReasonText(served.replace(/\s+/g, ' ').trim());
-  if (text === '') return { text: 'Not recorded', title: undefined };
-  if (text.length <= REASON_MAX) return { text, title: undefined };
-  return { text: `${text.slice(0, REASON_MAX - 1).trimEnd()}…`, title: maskCredentialIds(served) };
-}
+// OMN-22168: escalationReason moved to plain-text so Overview can use it without importing this page (and its styles).
+export { escalationReason } from '@/pages/local/plain-text';
 
 /**
  * OMN-21166 AC53: why a panel has no rows, in plain words with no HTTP status. A runtime that does not serve the data
@@ -332,8 +291,7 @@ function QualityGate() {
       </div>
       {/* OMN-21166 Maple grid: the headline in view; the checks by type, cost to comply and escalation reasons are one
           click away, so the panel sits beside the selected run without running the length of the page. */}
-      <details className="local-more ev-more">
-      <summary>More quality detail</summary>
+      <div className="local-more ev-more local-more--open" data-section="More quality detail">
       <AcceptanceChecks q={q} />
       <div className="divider" />
       <div className="section-label">Failure categories</div>
@@ -350,7 +308,7 @@ function QualityGate() {
           })}
         </ol>
       )}
-      </details>
+      </div>
     </Panel>
   );
 }
@@ -438,11 +396,16 @@ export function TriageRows({ rows, denominator, kind }: {
 }) {
   if (rows.length === 0) return <p className="note">No failures in this population.</p>;
   return <ol className="ev-triage-rows" aria-label={`Failures by ${kind}`}>
-    {rows.map(row => <li data-triage-row key={`${kind}-${row.id ?? row.name}`}>
-      <a href={row.href} title={row.title} aria-label={`View failed runs for ${row.name}`}>{row.name}</a>
-      <span className="mono">{row.count === null ? 'Not served' : formatDashboardCount(row.count)} · {row.count === null || denominator === null || denominator === 0
-        ? 'Share not served' : sharePercent(row.count / denominator)}</span>
-    </li>)}
+    {rows.map(row => {
+      const share = row.count === null || denominator === null || denominator === 0 ? null : row.count / denominator;
+      return <li data-triage-row key={`${kind}-${row.id ?? row.name}`}>
+        <a href={row.href} title={row.title} aria-label={`View failed runs for ${row.name}`}>{row.name}</a>
+        <span className="mono">{row.count === null ? 'Not served' : formatDashboardCount(row.count)} · {share === null ? 'Share not served' : sharePercent(share)}</span>
+        {/* OMN-22168 (Lakshman 2026-11-04, "make it modern"): the share drawn as a bar; none where the share is not served. */}
+        {share !== null && <span className="ev-triage-share" aria-hidden="true" data-identity-decoration="share-bar"
+          style={{ '--share': `${Number((share * 100).toFixed(3))}%` } as CSSProperties} />}
+      </li>;
+    })}
   </ol>;
 }
 
@@ -484,7 +447,9 @@ export function FailureTriage({ decisions, available, complete = false }: { deci
   const failedChecks = servedNumber(quality?.total_failed);
   return <Panel title="FAILURE TRIAGE" sub="Where quality failed">
     <DashboardTabs label="Failure triage" param="triage" tabs={[
-      { id: 'category', label: 'By category', panel: () => <div className="ev-triage-panel">
+      { id: 'category', label: 'By category', tone: 'var(--ds-field-failures)', icon: <TriangleAlert size={18} />,
+        hint: failedChecks === null ? 'Failed checks not served' : `${formatDashboardCount(failedChecks)} failed checks`,
+        panel: () => <div className="ev-triage-panel">
         {qualityQ.isLoading ? <EvEmpty title="Loading quality checks…" /> : !quality
           ? <EvEmpty title="No quality-gate rows" reason={plainUnservedReason(qualityQ.data?.degradedReason ?? (qualityQ.error ? 'The runtime could not answer' : null))} />
           : <>
@@ -500,12 +465,16 @@ export function FailureTriage({ decisions, available, complete = false }: { deci
               </li>)}</ol>}
           </>}
       </div> },
-      { id: 'model', label: 'By model', panel: () => <div className="ev-triage-panel">
+      { id: 'model', label: 'By model', tone: 'var(--ds-field-model)', icon: <Bot size={18} />,
+        hint: available ? `${formatDashboardCount(failed.length)} failed runs` : 'Not measured',
+        panel: () => <div className="ev-triage-panel">
         <p className="note">{sampleLine}</p>
         {available ? <TriageRows rows={grouped('model')} denominator={failed.length} kind="model" />
           : <EvEmpty title="Failed runs not measured" note="The latest decisions could not be read." />}
       </div> },
-      { id: 'task', label: 'By task', panel: () => <div className="ev-triage-panel">
+      { id: 'task', label: 'By task', tone: 'var(--ds-field-task)', icon: <ListChecks size={18} />,
+        hint: available ? `${formatDashboardCount(failed.length)} failed runs` : 'Not measured',
+        panel: () => <div className="ev-triage-panel">
         <p className="note">{sampleLine}</p>
         {available ? <TriageRows rows={grouped('task')} denominator={failed.length} kind="task" />
           : <EvEmpty title="Failed runs not measured" note="The latest decisions could not be read." />}
@@ -769,27 +738,6 @@ function moneyBasis(money: HeadlineMoney | null): string {
   return `${baseline} · ${pricing}`;
 }
 
-function EvidenceClaim({ money, unavailable }: { money: HeadlineMoney | null; unavailable: string }) {
-  const saved = money ? servedUsd(money.saved) : unavailable;
-  const count = (value: unknown) => servedCount(value);
-  return (
-    <section className="ev-evidence-claim" aria-label="Evidence claim">
-      <p className="ev-evidence-claim-sentence">
-        {saved === 'Not measured' || saved.startsWith('Not measured:')
-          ? <>Modelled savings: {saved}.</>
-          : <>Savings were {saved}, modelled {moneyBasis(money)}.</>}
-      </p>
-      <FactList look="evidence-derivation" aria-label="Claim derivation">
-        <Fact term="Measured runs">{count(money?.measuredRuns)} measured runs</Fact>
-        <Fact term="No token counts">{count(money?.unknownTokens)} with no token counts</Fact>
-        <Fact term="No spend recorded">{count(money?.unknownSpend)} with no spend recorded</Fact>
-        <Fact term="Actual spend">{money ? servedUsd(money.local) : unavailable}</Fact>
-        <Fact term="Baseline cost (modelled)">{money ? servedUsd(money.cloud) : unavailable}</Fact>
-      </FactList>
-    </section>
-  );
-}
-
 /**
  * A served dollar figure exactly as served (amendment 30b, AC207a): thousands separated, every served decimal kept, none
  * added or rounded away. A number is written in its shortest exact form, so a parsed 4.743332 never prints float noise.
@@ -943,7 +891,8 @@ export function DelegationEvidencePage() {
       scope={evidenceScopeLine(headline.runs, source === 'metering' ? 'measured' : 'served')}
       headRight={headRight}
     >
-      <EvidenceClaim money={headline.money} unavailable={headline.unavailable} />
+      {/* Lakshman 2026-11-05 ("remove"): no claim sentence or derivation row above the cards; the Savings card and
+          the Savings panel carry the same served figures. */}
       {/* OMN-21166 AC63: the four headline figures read as one segmented strip, as on the local pages. */}
       {/* OMN-21166 part 15 AC91: the four headline figures are Overview's cards; their captions are in the tooltips. */}
       <KpiStrip label="Delegation summary" items={[

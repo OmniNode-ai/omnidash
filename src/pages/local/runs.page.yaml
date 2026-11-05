@@ -61,7 +61,7 @@
           },
           {
             "key": "local_cost_usd",
-            "header": "Local cost"
+            "header": "Cost"
           },
           {
             "key": "modelled_savings_usd",

@@ -3,6 +3,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { LastRunCard, NoRunsYet, RecentRunsTable, RunSummary, RunsTable } from './LocalDashboardPage';
 import { causeHref } from './local/run-filter';
+import { chooseDropdown, dropdownValue, dropdownOptions } from '../../tests/test-utils/dropdown';
 
 // Shapes are the lakshman-lane reads of 2026-10-02 11:34Z: a decisions row and the savings session that shares its id.
 const NOW = Date.parse('2026-10-02T10:12:00Z');
@@ -190,7 +191,7 @@ describe('RunsTable rows, status, cause and filters (RU-1, F18, F28)', () => {
 
   it('filters by status', () => {
     render(<RunsTable now={NOW} decisions={decisions} sessions={sessions} />);
-    fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'failed' } });
+    chooseDropdown('Status', 'failed');
     const rows = screen.getAllByRole('row').slice(1).map((row) => row.textContent ?? '');
     expect(rows).toHaveLength(2);
     expect(rows.every((text) => text.includes('run-b') || text.includes('run-d'))).toBe(true);
@@ -198,7 +199,7 @@ describe('RunsTable rows, status, cause and filters (RU-1, F18, F28)', () => {
 
   it('filters by cause', () => {
     render(<RunsTable now={NOW} decisions={decisions} sessions={sessions} />);
-    fireEvent.change(screen.getByLabelText('Cause'), { target: { value: 'provider timeout after 30s' } });
+    chooseDropdown('Cause', 'provider timeout after 30s');
     const rows = screen.getAllByRole('row').slice(1);
     expect(rows).toHaveLength(1);
     expect(within(rows[0]!).getByText('run-d')).toBeInTheDocument();
@@ -206,7 +207,7 @@ describe('RunsTable rows, status, cause and filters (RU-1, F18, F28)', () => {
 
   it('filters by model', () => {
     render(<RunsTable now={NOW} decisions={decisions} sessions={sessions} />);
-    fireEvent.change(screen.getByLabelText('Model'), { target: { value: 'Qwen3.8-27B' } });
+    chooseDropdown('Model', 'Qwen3.8-27B');
     const ids = screen.getAllByRole('row').slice(1).map((row) => row.textContent ?? '');
     expect(ids).toHaveLength(3);
     expect(ids.some((text) => text.includes('run-b'))).toBe(false);
@@ -214,7 +215,7 @@ describe('RunsTable rows, status, cause and filters (RU-1, F18, F28)', () => {
 
   it('filters to runs from today (UTC)', () => {
     render(<RunsTable now={NOW} decisions={decisions} sessions={sessions} />);
-    fireEvent.change(screen.getByLabelText('Window'), { target: { value: 'today' } });
+    chooseDropdown('Window', 'today');
     const rows = screen.getAllByRole('row').slice(1).map((row) => row.textContent ?? '');
     expect(rows).toHaveLength(3);
     expect(rows.some((text) => text.includes('run-c'))).toBe(false);
@@ -222,7 +223,7 @@ describe('RunsTable rows, status, cause and filters (RU-1, F18, F28)', () => {
 
   it('says so when a filter leaves no rows, instead of an empty table', () => {
     render(<RunsTable now={NOW} decisions={[decisions[2]!]} sessions={sessions} />);
-    fireEvent.change(screen.getByLabelText('Window'), { target: { value: 'today' } });
+    chooseDropdown('Window', 'today');
     expect(screen.getByText('No runs match these filters')).toBeInTheDocument();
   });
 });
@@ -247,7 +248,7 @@ describe('RunsTable pagination (RU-1, F29)', () => {
   it('goes back to the first page when a filter changes', () => {
     render(<RunsTable now={NOW} decisions={many} sessions={[]} pageSize={25} />);
     fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
-    fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'passed' } });
+    chooseDropdown('Status', 'passed');
     expect(screen.getByText('Runs 1–25 of 30')).toBeInTheDocument();
   });
 });
@@ -328,7 +329,7 @@ describe('OMN-19919 AC5, AC6: Runs lists failed runs with their typed cause', ()
 
   it('U1-U4: status=failed lists each failed run with its id, time, typed cause or Not recorded, the detail readable', () => {
     render(<RunsTable now={NOW} decisions={decisions} sessions={[]} />);
-    fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'failed' } });
+    chooseDropdown('Status', 'failed');
     expect(listed()).toEqual(['run-typed', 'run-terminal', 'run-empty', 'run-legacy']);
     expect(cell('run-typed', 'Created').textContent).toBe('Oct 2, 10:05:00 UTC');
     expect(cell('run-typed', 'Status').textContent).toBe('failed');
@@ -340,17 +341,17 @@ describe('OMN-19919 AC5, AC6: Runs lists failed runs with their typed cause', ()
       expect(cell(id, 'Status').textContent, id).toBe('failed');
       expect(cell(id, 'Cause').textContent, id).toBe('Not recorded');
     }
-    fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'Not recorded' } });
+    chooseDropdown('Status', 'Not recorded');
     expect(listed()).toEqual(['run-unjudged']);
-    fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'passed' } });
+    chooseDropdown('Status', 'passed');
     expect(listed()).toEqual(['run-pass']);
   });
 
   it('U5: the cause filter offers the typed cause and keeps only its runs', () => {
     render(<RunsTable now={NOW} decisions={decisions} sessions={[]} />);
-    const options = within(screen.getByLabelText('Cause')).getAllByRole('option').map((option) => option.getAttribute('value'));
+    const options = dropdownOptions('Cause');
     expect(options).toEqual(['all', 'MALFORMED', 'Not recorded', 'provider_error']);
-    fireEvent.change(screen.getByLabelText('Cause'), { target: { value: 'provider_error' } });
+    chooseDropdown('Cause', 'provider_error');
     expect(listed()).toEqual(['run-typed']);
   });
 
@@ -358,8 +359,8 @@ describe('OMN-19919 AC5, AC6: Runs lists failed runs with their typed cause', ()
     window.history.replaceState(null, '', causeHref('provider_error'));
     const { unmount } = render(<RunsTable now={NOW} decisions={decisions} sessions={[]} syncUrl />);
     expect(listed()).toEqual(['run-typed']);
-    expect(screen.getByLabelText('Status')).toHaveValue('failed');
-    expect(screen.getByLabelText('Cause')).toHaveValue('provider_error');
+    expect(dropdownValue('Status')).toBe('failed');
+    expect(dropdownValue('Cause')).toBe('provider_error');
     unmount();
     window.history.replaceState(null, '', causeHref('Not recorded'));
     render(<RunsTable now={NOW} decisions={decisions} sessions={[]} syncUrl />);
@@ -395,14 +396,14 @@ describe('OMN-19919: a whitespace-only typed cause falls back like a missing one
       blankCause('run-ws-empty', '2026-10-02T10:04:00Z', ''),
       blankCause('run-ws-tab', '2026-10-02T10:03:00Z', undefined, '\t \n'),
     ]} sessions={[]} />);
-    fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'failed' } });
+    chooseDropdown('Status', 'failed');
     expect(listed()).toEqual(['run-ws-null', 'run-ws-empty', 'run-ws-tab']);
     const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent?.trim());
     for (const id of ['run-ws-null', 'run-ws-empty', 'run-ws-tab']) {
       const row = screen.getByRole('row', { name: new RegExp(`^${id}`) });
       expect(within(row).getAllByRole('cell')[headers.indexOf('Cause')]!.textContent, id).toBe('Not recorded');
     }
-    const options = within(screen.getByLabelText('Cause')).getAllByRole('option').map((option) => option.getAttribute('value'));
+    const options = dropdownOptions('Cause');
     expect(options).toEqual(['all', 'Not recorded']);
   });
 

@@ -27,7 +27,7 @@ describe('MetricCard on an Overview headline card', () => {
   it('keeps the figure in view and puts every basis fact in the caption', () => {
     const { container } = render(<MetricCard component={component('overview-spend', 'Actual spend', ['window_kind', 'as_of', 'spend_usd'])}
       config={{ metric_key: 'spend_usd', format: 'currency' } as never} row={ROW} caption={BASIS} />);
-    expect(container.querySelector('.local-dashboard-metric')?.textContent).toBe('$0.23');
+    expect(container.querySelector('.local-dashboard-metric')?.textContent).toBe('$0.232022');
     const caption = container.querySelector('.local-card-caption')!;
     for (const fact of ['Baseline claude-sonnet-5-5', 'pricing manifest v1.0.0', '7 runs with no token counts', '0 runs with no spend recorded']) {
       expect(caption.textContent).toContain(fact);

@@ -206,6 +206,12 @@ async function collect(page: Page): Promise<Reading[]> {
       // OMN-21166 part 12 AC73: the "About <card>" info button sits inside a field-toned card but is a control, not that
       // field's icon; it is recorded as an action (its Lucide shape and paint are still compared with the canonical icon).
       if (svg.closest('button.local-card-info') && icon === 'info') { kind = 'action'; concept = 'action:info'; }
+      // OMN-22168 (2026-11-04): the kit's InfoTip is the same kind of control, beside the Runs view switches.
+      if (svg.closest('button.ds-infotip') && icon === 'info') { kind = 'action'; concept = 'action:info'; }
+      // OMN-22168 (Lakshman 2026-11-04/05, every chart switched by tabs): a chart tab's glyph is part of the tab control.
+      // Choosing the tab repaints it (on-accent inside the chosen tab's filled chip), so it holds no one paint identity; the
+      // chart's own concept colours are measured on the chart the tab shows.
+      if (svg.closest('[role="tab"]')) { kind = 'action'; concept = 'action:chart-tab'; }
       // Exact affordance icons plus a control are the action allowlist. A Bot,
       // Award, Model etc. inside a clickable semantic row is NOT an action.
       const control = svg.closest('button,a,summary,[role="button"]');
@@ -215,7 +221,9 @@ async function collect(page: Page): Promise<Reading[]> {
         // OMN-21166 live review 2026-10-25: the Overview window control's calendar button (Pick a UTC day).
         'calendar-days',
         // OMN-21166 part 24 AC148: each Overview graph's labelled "Expand" button opens its larger view.
-        'maximize2', 'maximize-2']);
+        'maximize2', 'maximize-2',
+        // OMN-22168 (Lakshman 2026-11-04): the Runs export buttons' file glyphs and each filter dropdown's own glyph.
+        'file-spreadsheet', 'file-braces', 'list-checks', 'circle-check', 'triangle-alert', 'bot', 'layers', 'server']);
       if (!concept && control && label && actionIcons.has(icon)) { kind = 'action'; concept = `action:${icon}`; }
       if (!concept && icon === 'check' && control && /^copy/i.test(label)) { kind = 'action'; concept = 'action:copy-confirmation'; }
       if (!concept && icon === 'scan-line' && svg.classList.contains('local-chart-inspect-icon')) {
@@ -372,6 +380,8 @@ async function collect(page: Page): Promise<Reading[]> {
         // connector geometry, not unnamed semantic icons. State dots remain
         // semantic and retain their measured paint in the census.
         if (el.matches('.mvp-nav-item.active') && pseudo === '::before') structural = 'active-navigation-indicator';
+        // OMN-22168: the chosen tab's underline in its tone marks which tab is chosen, like the active navigation bar.
+        if (el.matches('[role="tab"]')) structural = 'chosen-tab-indicator';
         if (el.matches('.developer-switch') && pseudo === '::after') action = 'action:developer-setting-knob';
         if (el.matches('.widget-live') && pseudo === '::before') concept = 'state:live';
         if (el.matches('.local-dashboard-steps > li')) {
@@ -633,9 +643,8 @@ test('AC4 Usage token-direction graphics match canonical fields in both themes',
     input_tokens: 100, output_tokens: 20, measured_cost_usd: '1', call_count: 1,
     unmeasured_call_count: 0, cost_tier_name: 'local',
   }] });
-  await page.goto('/usage');
+  await page.goto('/usage?tokens=tokens-model'); // OMN-22168: Usage's charts are tabs, one drawn at a time; the address names the tab to open.
   // OMN-21166 part 13: "Tokens in vs out by model" is under the closed "More usage" section.
-  await page.getByText('More usage', { exact: true }).press('Enter');
   const figure = page.getByRole('figure', { name: 'Tokens in vs out by model', exact: true });
   // Part 17 AC114: the model's pair is one focusable list item (hatched grouped bars) whose name carries both counts.
   await expect(figure.getByRole('listitem', { name: /model-a: 100 tokens in, 20 tokens out/ })).toHaveCount(1);

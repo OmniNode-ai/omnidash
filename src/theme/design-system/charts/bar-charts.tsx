@@ -171,6 +171,14 @@ function tone(token: string): string {
 }
 
 /**
+ * OMN-22168: every chart tooltip in the page's theme. The chart library draws a white box by default, which stayed
+ * white in the dark theme (live review 2026-11-04).
+ */
+export function tooltipSkin() {
+  return { backgroundColor: tone('--ds-surface'), borderColor: tone('--ds-line-strong'), textStyle: { color: tone('--ds-ink') } };
+}
+
+/**
  * One colour per plotted series, by its place among the plotted columns, unless the panel says which of the four
  * colours each takes (`places`, 1 to 4). A panel says so when it plots a figure another panel also plots, so the
  * figure is one colour on every page: Savings is the third colour on Overview and is given the third on Usage, where
@@ -208,6 +216,7 @@ function optionFor(group: SpendByDayGroup, shown: ReadonlyArray<{ series: Served
     ...(fontFamily ? { textStyle: { fontFamily } } : {}),
     grid: { left: 64, right: 20, top: 16, bottom: 28 },
     tooltip: {
+      ...tooltipSkin(),
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
       // The tooltip shows the served text of each figure, not the number the axis needed. The chart numbers the
@@ -366,6 +375,7 @@ function timingOption(bars: readonly RunTimingBar[], colours: readonly string[],
     ...(fontFamily ? { textStyle: { fontFamily } } : {}),
     grid: { left: compact ? 60 : 96, right: compact ? 64 : 84, top: 6, bottom: 24 }, // room for the longest label ("1 min 10 s") at 390px
     tooltip: {
+      ...tooltipSkin(),
       trigger: 'item',
       formatter: (param: { dataIndex: number; name: string; marker: string }) => `${param.marker}${asText(param.name)}: ${asText(servedText(param.dataIndex))}`,
     },
@@ -448,9 +458,11 @@ function runLabel(run: ListedRun): string {
 }
 
 /** The colour of a run's status, the same the status pill in its row carries. */
+// OMN-22168 (Lakshman 2026-11-05, "each unique thing has a unique colour and vice versa"): a passed or failed run is the
+// same pass and fail concept the Pass rate and Failed cards wear, not a second green and red.
 function statusColour(status: string): string {
-  if (status === 'passed') return tone('--ds-ok');
-  if (status === 'failed') return tone('--ds-bad');
+  if (status === 'passed') return tone('--ds-field-pass');
+  if (status === 'failed') return tone('--ds-field-fail');
   return tone('--ds-ink-3');
 }
 
@@ -522,6 +534,7 @@ export function RunDurationChart({ runs, onOpen, title = 'Duration per run' }: {
     ...runChartFrame(runs, millisecondsAxisLabel),
     ...motion.option,
     tooltip: {
+      ...tooltipSkin(),
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
       formatter: (params: Array<{ dataIndex: number; marker: string }>) => {
@@ -544,7 +557,8 @@ export function RunDurationChart({ runs, onOpen, title = 'Duration per run' }: {
     <figure className="local-chart local-chart--runs" aria-label={title} data-motion={motion.reduced ? 'reduced' : 'full'}>
       <ChartHeading title={title} concept="duration" />
       <SwatchToggles label="Statuses shown" onToggle={toggle}
-        series={statuses.map(status => ({ key: status, label: status, color: statusColour(status), shown: !hidden.has(status) }))} />
+        series={statuses.map(status => ({ key: status, label: status, color: statusColour(status), shown: !hidden.has(status),
+          tone: status === 'passed' ? 'pass' : status === 'failed' ? 'fail' : undefined }))} />
       {statuses.every((status) => hidden.has(status))
         ? <ChartEmpty status>{EVERY_SERIES_HIDDEN}</ChartEmpty>
         : <ReactEChartsCore echarts={echarts} option={option} notMerge opts={{ renderer: 'svg' }} className="local-chart-canvas" onEvents={openOnClick(runs, onOpen)} />}
@@ -582,6 +596,7 @@ export function RunTokensChart({ runs, onOpen, title = 'Tokens per run' }: { run
     ...runChartFrame(runs, countAxisLabel),
     ...motion.option,
     tooltip: {
+      ...tooltipSkin(),
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
       formatter: (params: Array<{ dataIndex: number; seriesIndex: number; marker: string; seriesName: string }>) => {
@@ -623,8 +638,8 @@ export function RunMetricChart({ runs, onOpen, metric }: {
   useThemeName();
   const motion = useChartMotion();
   const cost = metric === 'cost';
-  const title = cost ? 'Local cost per run' : 'Quality score per run';
-  const label = cost ? 'Local cost' : 'Score';
+  const title = cost ? 'Cost per run' : 'Quality score per run';
+  const label = cost ? 'Cost' : 'Score';
   const points = runs.map(run => point(run[metric]));
   const measured = points.some(p => p.value !== null);
   const recordedCount = points.filter(p => p.value !== null).length;
@@ -638,6 +653,7 @@ export function RunMetricChart({ runs, onOpen, metric }: {
     ...runChartFrame(runs, value => value === 0 ? '' : cost ? formatDashboardUsd(value) : String(value)),
     ...motion.option,
     tooltip: {
+      ...tooltipSkin(),
       trigger: 'axis', axisPointer: { type: 'shadow' },
       formatter: (params: Array<{ dataIndex: number }>) => {
         const run = runs[params[0]?.dataIndex ?? 0];

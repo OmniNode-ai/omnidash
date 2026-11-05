@@ -1,6 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import { expect, test } from 'playwright/test';
 import { serveCharts } from './omn21166-chart-fixtures';
+import { chooseChartTab } from './chart-tabs';
 
 test.use({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce', trace: 'on' });
 test.beforeEach(async ({page}) => { await serveCharts(page); });
@@ -43,6 +44,8 @@ test('quality is a headline card above the full-width rows; the tier mix stays o
   // Additional runtime metrics, Spend per day and Recent runs are deleted (AC86, Lakshman 2026-10-25).
   const quality=page.locator('.local-overview-summary [data-component="overview-quality"]');
   await expect(quality).toBeVisible();
+  // OMN-22168: Overview's four charts are a row of tabs; Tier mix is chosen first.
+  await chooseChartTab(page, 'Tier mix');
   const tier=page.locator('.maple-grid [data-component="overview-tier-mix"]');
   await expect(tier).toBeVisible();
   const q=await quality.boundingBox(), r=await tier.boundingBox();
@@ -69,6 +72,8 @@ test('compact layout fits narrow viewports', async ({page},info) => {
     await expect(page.getByRole('region',{name:'Runtime summary',exact:true})).toBeVisible();
     // OMN-21166 AC86 (Lakshman 2026-10-25): Additional runtime metrics and Recent runs deleted from Overview; the
     // no-overflow property stays on the surviving cards and charts.
+    // OMN-22168: Overview's four charts are a row of tabs; this one is chosen first.
+    await chooseChartTab(page, 'Tier mix');
     await expect(page.locator('[data-component="overview-tier-mix"]')).toBeVisible();
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
     expect(await page.evaluate(()=>[...document.querySelectorAll('.local-overview-summary article')].filter(c=>c.scrollWidth>c.clientWidth+1).length)).toBe(0);

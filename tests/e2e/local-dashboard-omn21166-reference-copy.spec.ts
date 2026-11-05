@@ -1,6 +1,7 @@
 import { expect, test, type Page } from 'playwright/test';
 import { serveCharts } from './omn21166-chart-fixtures';
 import { withAllTime } from './omn21166-redesign-fixtures';
+import { chartTabPanel, chooseChartTab } from './chart-tabs';
 
 // OMN-21166 part 28, revision 5 (Lakshman 2026-10-27: "take help of codex and paradev and entire style copy it"; he chose
 // a monochrome interface, solid flat bars and 8px corners). Failure modes declared before the code:
@@ -22,8 +23,6 @@ const INK2 = { light: 'rgb(38, 38, 38)', dark: 'rgb(212, 212, 212)' } as const; 
 // the 01+20 look (Lakshman 2026-11-03, "01 + 20 do it"): ink-3 #525252 / #a3a3a3 and the soft fill #f0f0f0 / #1f1f1f for a chosen item.
 const INK3 = { light: 'rgb(82, 82, 82)', dark: 'rgb(163, 163, 163)' } as const;
 const RAISED = { light: 'rgb(240, 240, 240)', dark: 'rgb(31, 31, 31)' } as const;
-// The 01+20 hairline (Lakshman 2026-11-03): #e5e5e5 / #262626 (was #d4d4cf / #2b2b2b).
-const LINE = { light: 'rgb(229, 229, 229)', dark: 'rgb(38, 38, 38)' } as const;
 const PAGES = ['/overview', '/runs', '/workflow?correlation_id=chart-run-a', '/usage', '/settings', '/delegation-evidence'];
 
 async function openTheme(page: Page, theme: 'light' | 'dark') {
@@ -46,12 +45,21 @@ for (const theme of ['light', 'dark'] as const) {
       const icons = await page.evaluate(() => [...document.querySelectorAll('.sidebar .dash-marker svg, main svg.lucide')]
         // OMN-21970 (Lakshman 2026-11-03, one colour per concept): an icon that names a concept draws its own colour on
         // every page (checked below); every icon that names none is the interface grey.
-        .filter(svg => !svg.closest('.local-run-pill, .badge, .chain-node, .live-pill, [role="alert"]') && !svg.matches('[data-field-icon], [data-semantic-concept^="model:"]') && (svg as SVGElement).getBoundingClientRect().width > 0)
-        .map(svg => ({ color: getComputedStyle(svg).color, active: !!svg.closest('.mvp-nav-item.active') })));
+        .filter(svg => !svg.closest('.local-run-pill, .badge, .chain-node, .live-pill, [role="alert"]') && !svg.matches('[data-field-icon], [data-semantic-concept^="model:"], [data-semantic-concept^="window:"], [data-semantic-concept^="status:"]') && (svg as SVGElement).getBoundingClientRect().width > 0)
+        // OMN-22168 (Lakshman 2026-11-04/05, "make colourful"; "each unique thing has different and unique colors"): an icon
+        // that names a window or a header status (data-semantic-concept window: or status:) draws its own colour, and each chart tab's
+        // glyph draws its chart's tone, as does the window picker's Pick a UTC day glyph; they are not interface icons.
+        // OMN-22168 (Lakshman 2026-11-04, chosen over this grey for these controls only): each Runs filter's glyph and the
+        // CSV and JSON export glyphs carry their own colour; design-system-dashboard-polish L8 checks them.
+        // OMN-22168 (Lakshman 2026-11-04): the Runs filter and export glyphs, and each page's sidebar and title icon, draw
+        // their own colour (design-system-dashboard-polish L8 and L11 check them); they still count as drawn icons.
+        .map(svg => ({ color: getComputedStyle(svg).color, active: !!svg.closest('.mvp-nav-item.active'),
+          exempt: !!svg.closest('.local-dashboard-filters .ds-dropdown-mark, .local-runs-export button[data-export], .local-dashboard-tablist [role="tab"][data-toned], .local-day-picker .local-day-button') || svg.matches('svg.destination-icon') })));
       expect(icons.length, `${path} draws icons`).toBeGreaterThan(3);
-      for (const icon of icons) expect(icon.color, `${path} icon`).toBe(INK3[theme]);
+      for (const icon of icons.filter(item => !item.exempt)) expect(icon.color, `${path} icon`).toBe(INK3[theme]);
       const concepts = await page.evaluate(() => [...document.querySelectorAll('main svg.field-icon[data-field-icon]:not([data-field-icon^="tier-"]):not([data-semantic-concept^="model:"])')]
-        .filter(svg => (svg as SVGElement).getBoundingClientRect().width > 0 && !svg.closest('[data-field-unavailable="true"]'))
+        // A chart tab's glyph is part of the tab control: the chosen tab repaints it (checked by the identity census).
+        .filter(svg => (svg as SVGElement).getBoundingClientRect().width > 0 && !svg.closest('[data-field-unavailable="true"], .local-dashboard-tablist'))
         .map(svg => { const concept = svg.getAttribute('data-field-icon')!; const probe = document.createElement('i');
           probe.style.color = `var(--ds-field-${concept})`; document.body.append(probe); const want = getComputedStyle(probe).color; probe.remove();
           return { concept, color: getComputedStyle(svg).color, want }; }));
@@ -77,19 +85,21 @@ for (const theme of ['light', 'dark'] as const) {
     await page.locator('.local-window-trigger').click();
     const selected = page.locator('.local-window-list [role="radio"][aria-checked="true"]').first();
     const unselected = page.locator('.local-window-list [role="radio"][aria-checked="false"]').first();
-    await expect(selected.locator('svg')).toHaveCount(1);
-    await expect(unselected.locator('svg')).toHaveCount(0);
-    await expect(selected).toHaveCSS('background-color', RAISED[theme]);
+    // OMN-22168 (Lakshman 2026-11-04, "make colourful"; supersedes the neutral chosen option): each option shows its own
+    // window icon and the chosen one is tinted in its window's tone with a tick; its text stays in ink.
+    await expect(selected.locator('svg.local-window-icon')).toHaveCount(1);
+    await expect(selected.locator('svg.lucide-check')).toHaveCount(1);
+    await expect(unselected.locator('svg.lucide-check')).toHaveCount(0);
     await expect(selected).toHaveCSS('color', INK[theme]);
+    const selectedFill = await selected.evaluate(el => getComputedStyle(el).backgroundColor);
+    expect(selectedFill).not.toBe('rgba(0, 0, 0, 0)');
     // Control: the unselected option is told apart from the selected one.
-    expect(await unselected.evaluate(el => getComputedStyle(el).backgroundColor)).not.toBe(RAISED[theme]);
+    expect(await unselected.evaluate(el => getComputedStyle(el).backgroundColor)).not.toBe(selectedFill);
     await page.keyboard.press('Escape');
     await expect(page.locator('main article.local-dashboard-panel').first()).toHaveCSS('border-radius', '12px');
-    const expand = page.locator('.local-chart-expand').first();
-    await expect(expand).toHaveCSS('border-radius', '8px');
-    await expect(expand).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
-    await expect(expand).toHaveCSS('border-top-color', LINE[theme]);
-    await expect(expand).toHaveCSS('color', INK2[theme]);
+    // OMN-22168 (Lakshman 2026-11-04, "full size big one"): each Overview chart is drawn full size in its tab, so there is no
+    // Expand control left to style (overview-expand checks it is gone); the secondary buttons are checked on Runs below.
+    await expect(page.locator('.local-chart-expand')).toHaveCount(0);
 
     await settle(page, '/settings');
     // AC208 removed Settings' Appearance choice; the chosen Settings section tab carries the one chosen state now.
@@ -100,10 +110,13 @@ for (const theme of ['light', 'dark'] as const) {
     expect(await page.locator('.local-settings-menu a:not([aria-current])').first().evaluate(el => getComputedStyle(el).backgroundColor)).not.toBe(RAISED[theme]);
 
     await settle(page, '/runs');
+    // OMN-22168 (Lakshman 2026-11-04): the exports carry their own colour, and stay secondary: a light tint (alpha 0.25 or
+    // less), never a solid fill.
     for (const name of ['Export CSV', 'Export JSON']) {
       const button = page.getByRole('button', { name, exact: true });
-      await expect(button).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
-      await expect(button).toHaveCSS('color', INK2[theme]);
+      const fill = await button.evaluate(el => getComputedStyle(el).backgroundColor);
+      const alpha = Number(/\/\s*([\d.]+)\)$/.exec(fill)?.[1] ?? /rgba\([^)]*,\s*([\d.]+)\)$/.exec(fill)?.[1] ?? 1);
+      expect(alpha, `${name} fill ${fill}`).toBeLessThanOrEqual(0.25);
     }
   });
 }
@@ -117,8 +130,9 @@ test('AC179 as superseded by AC191: the card basis is a caption inside its own c
   await settle(page, '/overview');
   // The first and last cards that carry a basis (a card with nothing to say, like Tokens here, draws no caption).
   const cards = page.locator('.local-overview-summary > .local-dashboard-panel').filter({ has: page.locator('.local-card-caption') });
+  // The cards fill in after the page heading; wait for a caption rather than counting once (a loaded lab read 0).
+  await expect.poll(() => cards.count(), { message: 'cards with a caption' }).toBeGreaterThanOrEqual(1);
   const count = await cards.count();
-  expect(count, 'cards with a caption').toBeGreaterThanOrEqual(1);
   for (const index of [...new Set([0, count - 1])]) {
     const card = cards.nth(index);
     await card.hover();
@@ -148,12 +162,19 @@ test('AC180 every bar is a solid flat fill, never a hatch', async ({ page }) => 
   }
 });
 
-test('AC183 Overview pairs share a baseline and every chart title has the panel divider', async ({ page }) => {
+// OMN-22168: the pair is two tabs of one panel now, so "share a baseline" means the two day charts put their bars on the
+// same baseline when each is chosen: switching tabs does not move the chart.
+test('AC183 the two day charts share a baseline and every chart title has the panel divider', async ({ page }) => {
   await openTheme(page, 'dark');
   await settle(page, '/overview');
-  const pair = page.locator('.local-dashboard-panel[data-component="overview-insights"]');
-  await expect(pair).toHaveCount(2);
-  const bottoms = await pair.locator('.ins-bars').evaluateAll(els => els.map(el => el.getBoundingClientRect().bottom));
+  const bottoms: number[] = [];
+  for (const tab of ['Runs per day', 'Tokens per day']) {
+    await chooseChartTab(page, tab);
+    const panel = page.locator('.local-dashboard-panel[data-component="overview-insights"]');
+    await expect(panel).toHaveCount(1);
+    // Page coordinates (the page scrolls in .local-dashboard-page): choosing a tab can scroll it into view.
+    bottoms.push(await panel.locator('.ins-bars').first().evaluate(el => el.getBoundingClientRect().bottom + (el.closest('.local-dashboard-page')?.scrollTop ?? 0) + window.scrollY));
+  }
   expect(Math.abs(bottoms[0]! - bottoms[1]!)).toBeLessThanOrEqual(1);
   // The 01+20 look (Lakshman 2026-11-03): a panel title is a small mono label with no rule under it (was a 1px divider).
   const titles = await page.locator('.local-dashboard-page--overview .local-dashboard-panel:not(.local-overview-summary > *) > h2').all();
@@ -177,7 +198,8 @@ test('AC184 Delegation Evidence content lines up with its title on desktop and p
 test('AC185 Usage Savings per day names its days like every other day axis', async ({ page }) => {
   await openTheme(page, 'dark');
   await settle(page, '/usage');
-  const savings = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Savings per day' }) });
+  // OMN-22168: Savings per day is a tab of "Savings and spend"; its own heading is hidden inside the tab, which names it.
+  const savings = await chartTabPanel(page, 'Savings per day');
   const labels = savings.locator('figure svg text');
   await expect(labels.first()).toBeVisible();
   const texts = (await labels.allTextContents()).map(text => text.trim()).filter(Boolean);

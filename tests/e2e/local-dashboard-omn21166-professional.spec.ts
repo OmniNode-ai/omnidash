@@ -11,7 +11,8 @@ test.beforeEach(async ({ page }) => { await serveCharts(page); });
 test('page navigation starts at the top while query edits preserve scroll and input focus', async ({ page }, info) => {
   await page.goto('/overview');
   // OMN-21166 AC86 (Lakshman 2026-10-25): Recent runs is deleted from Overview; its last chart cell anchors the page.
-  await expect(page.getByRole('heading', { name: 'Tier mix', exact: true })).toBeVisible();
+  // OMN-22168: the charts are tabs; a chart's own heading is hidden inside its tab, so the Tier mix tab anchors the page.
+  await expect(page.getByRole('tab', { name: 'Tier mix', exact: true })).toBeVisible();
   await page.locator('main').evaluate(el => { el.scrollTop = el.scrollHeight; });
   // Positive control: Overview is scrolled before navigating, so the reset to 0 below is real. OMN-21166 part 21 made
   // Overview about two screens long, so the scroll is shorter than the old 100px bar.
@@ -21,7 +22,6 @@ test('page navigation starts at the top while query edits preserve scroll and in
   expect(await page.locator('main').evaluate(el => el.scrollTop)).toBe(0);
   // OMN-21166 part 13: Runs now fits one screen; open its closed section so the page scrolls and the scroll check is real.
   // Part 18 AC118: the run charts are inside the one "More analysis" now.
-  await page.getByText('More analysis', { exact: true }).press('Enter');
   expect(await page.locator('main').evaluate(el => el.scrollHeight - el.clientHeight), 'positive control: Runs scrolls').toBeGreaterThan(200);
   const input = page.getByRole('searchbox', { name: 'Search runs' });
   await input.fill('model');

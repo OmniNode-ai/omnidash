@@ -6,13 +6,15 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { StoryPage, StorySection } from '../story-frame';
 import {
-  Badge, Card, DashboardTabs, DashboardToggle, DataTable, Dropdown, EmptyState, Fact, FactList, Figure, InfoTip, KpiTile, Panel, PanelTitle,
-  StatusChip, Tooltip,
+  Badge, Card, ConfirmDialog, DashboardTabs, DashboardToggle, DataTable, Dropdown, EmptyState, Fact, FactList, Figure, InfoTip, KpiTile, Panel,
+  PanelTitle, StatusChip, Tooltip,
 } from './index';
+import { FileSpreadsheet } from '../icons';
 
 function Controls() {
   const [window, setWindow] = useState('7d');
   const [view, setView] = useState<'runs' | 'tokens'>('runs');
+  const [confirming, setConfirming] = useState(false);
   return <>
     <Dropdown label="Window" value={window} onChange={setWindow} options={[
       { value: '24h', label: '24 h', name: 'Last 24 hours' }, { value: '7d', label: '7 d', name: 'Last 7 days' }, { value: 'all', label: 'All' }]} />
@@ -24,6 +26,11 @@ function Controls() {
       <Tooltip text="Spend as metered by the provider"><button type="button">Hover or focus me</button></Tooltip>{' '}
       <InfoTip label="About savings" text="Savings are modelled against the baseline's list price." />
     </p>
+    <p><button type="button" onClick={() => setConfirming(true)}>Export CSV</button></p>
+    <ConfirmDialog open={confirming} tone="green" icon={<FileSpreadsheet size={16} />} title="Download 25 runs as CSV?"
+      confirmLabel="Download CSV" onCancel={() => setConfirming(false)} onConfirm={() => setConfirming(false)}>
+      <p>The file holds the runs that match the current search and filters, every field of each.</p>
+    </ConfirmDialog>
   </>;
 }
 

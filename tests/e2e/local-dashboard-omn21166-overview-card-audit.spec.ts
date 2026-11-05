@@ -1,12 +1,13 @@
 import { expect, test, type Page } from 'playwright/test';
 import { serveCharts } from './omn21166-chart-fixtures';
+import { chooseChartTab } from './chart-tabs';
 
 // Failure modes before edits: chart numbers use unrelated/neutral colors,
 // daily/run token charts disagree, and missing measurements look measured.
 test.use({ viewport: { width: 1440, height: 900 }, trace: 'on' });
-// OMN-21166 part 18 AC118: Runs keeps its analysis and its run charts under the page's one closed "More analysis".
+// OMN-22168 (Lakshman 2026-11-05): nothing is folded away, so Runs' analysis and run charts are in view with no fold.
 async function openRunsDetail(page: Page) {
-  await page.locator('summary').filter({ hasText: /^More analysis$/ }).click();
+  await expect(page.locator('details.local-more')).toHaveCount(0);
 }
 
 test('Overview chart values retain field identities and token legends agree', async ({ page }, info) => {
@@ -19,12 +20,15 @@ test('Overview chart values retain field identities and token legends agree', as
   for (const theme of ['light', 'dark']) {
     if ((await page.locator('html').getAttribute('data-theme') === 'dark' ? 'dark' : 'light') !== theme) await page.getByRole('button', { name: 'Toggle theme' }).click();
     await page.goto('/overview');
+    // OMN-22168: Overview's charts are tabs; the daily token legend is the Tokens per day tab's.
+    await chooseChartTab(page, 'Tokens per day');
     // OMN-21166 Maple grid: each legend item now also carries its concept icon (an svg with the same tone), so the
     // items are read from the list entries, tokens in first and tokens out second.
     await page.locator('.ins-token-legend li[data-field-tone]').first().waitFor({ state: 'visible' });
     const dailyColors = await page.locator('.ins-token-legend li[data-field-tone]').evaluateAll(es => es.map(el => getComputedStyle(el).color));
     await page.goto('/runs');
     await openRunsDetail(page);
+    await chooseChartTab(page, 'Tokens per run');
     for (const [label, tone] of [['Tokens in', 'tokens-in'], ['Tokens out', 'tokens-out']]) {
       const expected = dailyColors[tone === 'tokens-in' ? 0 : 1];
       const legend = tokens.getByRole('button', { name: label, exact: true });
@@ -50,7 +54,6 @@ test('Overview expanded cards preserve missing values and fit a phone', async ({
   await page.goto('/runs');
   // OMN-21166 part 13: the routing breakdown is inside Runs' closed "More analysis"; part 18 AC120: its table is shown
   // directly, with no nested "Full routing breakdown" disclosure.
-  await page.locator('summary').filter({ hasText: /^More analysis$/ }).click();
   await expect(page.getByText('Full routing breakdown', { exact: true })).toHaveCount(0);
   const tier = page.getByRole('region', { name: 'Tier mix', exact: true });
   await expect(tier.locator('dl > [data-field-tone]')).toHaveCount(3);

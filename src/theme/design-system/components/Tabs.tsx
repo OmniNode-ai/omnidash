@@ -1,4 +1,4 @@
-import { useId, useRef, type KeyboardEvent, type ReactNode } from 'react';
+import { useId, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { useLocation, useSearch } from 'wouter';
 
 /**
@@ -8,7 +8,14 @@ import { useLocation, useSearch } from 'wouter';
  * tabs pattern (arrow keys, Home and End move and select, one tab in the tab order) and only the selected panel is drawn.
  * Both controls sit in the shared filter part, so their text is drawn where every panel's controls are (OMN-21015 K2).
  */
-export interface DashboardTab { id: string; label: string; panel: () => ReactNode }
+export interface DashboardTab {
+  id: string; label: string; panel: () => ReactNode;
+  /** OMN-22168 (Lakshman 2026-11-04, "each tab colourful modern"): the tab's glyph, from the icon registry, and its tone. */
+  icon?: ReactNode; tone?: string;
+  /** OMN-22168 (Lakshman 2026-11-04, "best design, impress user"): a headline under the label (a stat tab). The tab keeps
+   * its label as its accessible name. */
+  hint?: ReactNode;
+}
 
 /** The tab a search string selects for one panel: its parameter when it names a tab, else the first tab. */
 export function readTab(search: string, param: string, ids: readonly string[]): string {
@@ -53,12 +60,36 @@ export function DashboardTabs({ label, param, tabs }: { label: string; param: st
     buttons.current[next]?.focus();
   };
   const panel = tabs.find(tab => tab.id === active)!;
+  // OMN-22168 (Lakshman 2026-11-04, "use slider to change tab"): one pill behind the tabs slides to the chosen tab; it is
+  // decoration (aria-hidden), measured from the chosen button so it follows wrapping and resizing.
+  const [slider, setSlider] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
+  const activeIndex = ids.indexOf(active);
+  useLayoutEffect(() => {
+    const measure = () => {
+      const button = buttons.current[activeIndex];
+      setSlider(button ? { left: button.offsetLeft, top: button.offsetTop, width: button.offsetWidth, height: button.offsetHeight } : null);
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(measure);
+    const list = buttons.current[0]?.parentElement;
+    if (list) observer.observe(list);
+    return () => observer.disconnect();
+  }, [activeIndex]);
   return <div className="local-dashboard-tabs" data-tabs={param}>
     <div className="local-dashboard-filters local-dashboard-tablist" role="tablist" aria-label={label}>
+      {slider && <span className="local-dashboard-tab-slider" aria-hidden="true" data-tab-slider={active}
+        style={{ transform: `translate(${slider.left}px, ${slider.top}px)`, width: slider.width, height: slider.height }} />}
       {tabs.map((tab, index) => <button key={tab.id} ref={element => { buttons.current[index] = element; }} type="button" role="tab"
         id={`${base}-${tab.id}-tab`} aria-controls={`${base}-${tab.id}-panel`} aria-selected={tab.id === active}
-        tabIndex={tab.id === active ? 0 : -1} data-tab={tab.id} onClick={() => select(tab.id)} onKeyDown={event => onKeyDown(event, index)}>
-        {tab.label}
+        tabIndex={tab.id === active ? 0 : -1} data-tab={tab.id} onClick={() => select(tab.id)} onKeyDown={event => onKeyDown(event, index)}
+        data-toned={tab.tone ? '' : undefined} data-stat={tab.hint !== undefined ? '' : undefined}
+        aria-label={tab.hint !== undefined ? tab.label : undefined}
+        style={tab.tone ? { '--tab-tone': tab.tone } as CSSProperties : undefined}>
+        {tab.hint !== undefined
+          ? <>{tab.icon && <span className="local-tab-chip" aria-hidden="true">{tab.icon}</span>}
+            <span className="local-tab-text"><span className="local-tab-label">{tab.label}</span><span className="local-tab-hint">{tab.hint}</span></span></>
+          : <>{tab.icon}{tab.label}</>}
       </button>)}
     </div>
     <div role="tabpanel" id={`${base}-${panel.id}-panel`} aria-labelledby={`${base}-${panel.id}-tab`} tabIndex={0}

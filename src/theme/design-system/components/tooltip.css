@@ -6,6 +6,6 @@
   overflow-wrap: anywhere; pointer-events: none; }
 .ds-tooltip[data-side="bottom"] { bottom: auto; top: calc(100% + 8px); }
 .ds-infotip { display: inline-grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%;
-  background: transparent; color: var(--ds-ink-3); cursor: help; }
+  background: transparent; color: var(--ds-ink-3); cursor: pointer; } /* the normal pointer, not the help "?" (Lakshman 2026-11-04) */
 .ds-infotip:focus-visible { outline: 2px solid var(--ds-ink); outline-offset: 1px; }
 @media (hover: hover) { .ds-infotip:hover { color: var(--ds-ink); background: var(--ds-surface-2); } }

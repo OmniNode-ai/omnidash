@@ -300,3 +300,663 @@ html body .app svg.field-icon.field-icon[data-field-icon="unavailable"]:not([dat
 html body .app svg.field-icon.field-icon[data-field-icon="unrouted"]:not([data-semantic-concept^="model:"]) { color: var(--ds-field-unrouted) !important; }
 html body .app svg.field-icon.field-icon[data-field-icon="usage-analysis"]:not([data-semantic-concept^="model:"]) { color: var(--ds-field-usage-analysis) !important; }
 html body .app svg.field-icon.field-icon[data-field-icon="usage-day"]:not([data-semantic-concept^="model:"]) { color: var(--ds-field-usage-day) !important; }
+
+/* ============================================================================
+   OMN-22168 (Lakshman 2026-11-04, "make it modern"): the Recent runs panel on Runs. Markup and behaviour are unchanged;
+   this restyles the toolbar and the table with design-system tokens only.
+   - Search and filters are one row of soft pills; a filter that is set reads as active.
+   - "Show all run fields" and "Routing columns" are switches; the exports are quiet buttons at the row's end.
+   - The table has a small-caps header, roomier rows, a hover row and plain-ink links.
+   ============================================================================ */
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-toolbar { gap: 10px; margin-bottom: 10px; }
+/* The search box spans the panel on its own row; the filters sit under it (Lakshman 2026-11-04: "should be full box"). */
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-toolbar .local-runs-search { flex: 1 1 100% !important; min-width: 0; max-width: none; }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-toolbar .local-runs-search input { max-width: none !important; width: 100% !important; }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-toolbar .local-runs-search input {
+  height: 40px; min-height: 40px; border-radius: 10px; border: 1px solid var(--ds-line); background-color: var(--ds-surface-2);
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-toolbar .local-runs-search input:focus-visible {
+  outline: none; border-color: var(--ds-hue-blue); box-shadow: 0 0 0 3px color-mix(in oklab, var(--ds-hue-blue) 22%, transparent);
+}
+/* The filters share the full row under the search, like it (Lakshman 2026-11-04: "full length like search"), and wrap
+   two or three to a row when the panel is narrow. */
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-toolbar .local-dashboard-filters {
+  flex: 1 1 100% !important; display: grid !important; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px;
+  border: 0 !important; padding: 0 !important; background: none !important; box-shadow: none !important;
+}
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-toolbar .local-dashboard-filters > .local-filter-field { width: auto; min-width: 0; }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-toolbar .local-dashboard-filters > .local-filter-field > select { width: 100% !important; max-width: none !important; }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-toolbar .local-dashboard-filters > .local-filter-field > select {
+  height: 32px; min-height: 32px; padding: 0 26px 0 12px; border-radius: 999px !important; border: 1px solid var(--ds-line);
+  background-color: transparent; color: var(--ds-ink-2); font-size: 12.5px; cursor: pointer;
+  transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
+}
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-toolbar .local-dashboard-filters > .local-filter-field > select:hover {
+  border-color: var(--ds-line-strong); color: var(--ds-ink); background-color: var(--ds-surface-2);
+}
+/* A filter that is set (any choice but its first, "All ...") reads as an active pill. */
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-toolbar .local-filter-field:has(option:checked:not(:first-child)) > select {
+  border-color: color-mix(in oklab, var(--ds-hue-blue) 55%, var(--ds-line)); color: var(--ds-ink);
+  background-color: color-mix(in oklab, var(--ds-hue-blue) 12%, transparent);
+}
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-toolbar .local-dashboard-filters > .local-filter-field > select:focus-visible {
+  outline: 2px solid var(--ds-hue-blue); outline-offset: 2px;
+}
+
+/* The view toggles as switches, the exports as quiet buttons pushed to the row's end. */
+.local-dashboard-page--runs [data-component="recent-runs"] .local-recent-toolbar { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin: 0 0 12px; }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-recent-toolbar label { gap: 9px; min-height: 32px; font-size: 13px; color: var(--ds-ink-2); }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-recent-toolbar label:hover { color: var(--ds-ink); }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-recent-toolbar input[type="checkbox"] {
+  appearance: none; -webkit-appearance: none; position: relative; flex: none; width: 30px; height: 18px; margin: 0; border-radius: 999px;
+  background: var(--ds-line-strong); cursor: pointer; transition: background-color 140ms ease;
+}
+.local-dashboard-page--runs [data-component="recent-runs"] .local-recent-toolbar input[type="checkbox"]::before {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--ds-page); box-shadow: var(--ds-shadow-sm); transition: transform 140ms ease;
+}
+.local-dashboard-page--runs [data-component="recent-runs"] .local-recent-toolbar input[type="checkbox"]:checked { background: var(--ds-hue-blue); }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-recent-toolbar input[type="checkbox"]:checked::before { transform: translateX(12px); background: var(--ds-on-accent); }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-recent-toolbar input[type="checkbox"]:focus-visible { outline: 2px solid var(--ds-hue-blue); outline-offset: 2px; }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-export { margin-left: auto; display: inline-flex; gap: 6px; }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-export button {
+  height: 32px; min-height: 32px; padding: 0 12px; border-radius: 8px !important; border: 1px solid var(--ds-line); background: transparent;
+  color: var(--ds-ink-2); font-size: 12.5px; font-weight: 500; cursor: pointer; transition: background-color 120ms ease, color 120ms ease;
+}
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-export button { display: inline-flex; align-items: center; gap: 7px; }
+/* Each export in its own colour and glyph (Lakshman 2026-11-04): CSV a spreadsheet green, JSON a code purple. */
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-export button[data-export] { --tone: var(--ds-hue-green); color: var(--tone);
+  border-color: color-mix(in oklab, var(--tone) 45%, var(--ds-line)); background: color-mix(in oklab, var(--tone) 10%, transparent); }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-export button[data-export="json"] { --tone: var(--ds-hue-purple); }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-export button[data-export]:hover {
+  background: color-mix(in oklab, var(--tone) 20%, transparent); border-color: color-mix(in oklab, var(--tone) 70%, var(--ds-line)); }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-export button[data-export]:focus-visible { outline: 2px solid var(--tone); outline-offset: 2px; }
+
+/* The table: small-caps header, roomier rows, a hover row, links in plain ink. */
+.local-dashboard-page--runs [data-component="recent-runs"] .local-dashboard-table-wrap { border-radius: 12px !important; overflow-x: auto; }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap table thead th {
+  background: var(--ds-surface-2) !important; color: var(--ds-ink-3) !important; font-size: 12px !important; font-weight: 600 !important;
+  text-transform: uppercase !important; letter-spacing: 0.06em !important; padding: 10px 12px !important; border-bottom: 1px solid var(--ds-line);
+}
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap table thead th button { text-transform: inherit; letter-spacing: inherit; font: inherit; color: inherit; }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody :is(td, th) { padding: 11px 12px; border-bottom: 1px solid var(--ds-line-soft, var(--ds-line)); }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody tr:last-child :is(td, th) { border-bottom: 0; }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody tr { transition: background-color 100ms ease; }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody tr:hover { background: color-mix(in oklab, var(--ds-surface-2) 70%, transparent); }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody td a,
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody .local-cell-filter {
+  color: var(--ds-ink); text-decoration: none; border-bottom: 0;
+}
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody td a:hover,
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody .local-cell-filter:hover { text-decoration: underline; text-underline-offset: 3px; }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody .local-cell-time { color: var(--ds-ink-2); }
+/* The status pill: the word, compact; its colour is the pill's own (no extra dot: the 12px floor and the icon census). */
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap .local-run-pill {
+  display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; line-height: 18px;
+}
+/* With every field or the routing columns shown, the table keeps each column at its natural width and scrolls sideways
+   inside its panel, instead of squeezing 18 columns into the panel and breaking words letter by letter (live review
+   2026-11-04: "doc / ume / nt"). The Run column stays in place while the rest scroll; a long cause is cut with its full
+   text in its tooltip. */
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap:is(.local-runs-wrap--all, .local-runs-wrap--routing) {
+  overflow-x: auto !important; overscroll-behavior-x: contain; scrollbar-width: thin;
+}
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap:is(.local-runs-wrap--all, .local-runs-wrap--routing) table {
+  width: max-content !important; min-width: 100%; table-layout: auto !important;
+}
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap:is(.local-runs-wrap--all, .local-runs-wrap--routing) :is(th, td) {
+  width: auto !important; white-space: nowrap !important; overflow-wrap: normal !important; word-break: normal !important;
+}
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap:is(.local-runs-wrap--all, .local-runs-wrap--routing) .local-runs-cause {
+  display: inline-block; max-width: 280px; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom;
+}
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap:is(.local-runs-wrap--all, .local-runs-wrap--routing) :is(thead th, tbody td):first-child {
+  position: sticky; left: 0; z-index: 1; background: var(--ds-surface);
+  box-shadow: 1px 0 0 var(--ds-line);
+}
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap:is(.local-runs-wrap--all, .local-runs-wrap--routing) thead th:first-child { z-index: 2; background: var(--ds-surface-2) !important; }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap:is(.local-runs-wrap--all, .local-runs-wrap--routing) tbody tr:hover td:first-child { background: var(--ds-surface-2); }
+@media (prefers-reduced-motion: reduce) {
+  .local-dashboard-page--runs [data-component="recent-runs"] :is(input, select, button, tr, input::before) { transition: none !important; }
+}
+/* Each view switch with its info icon (Lakshman 2026-11-04: "tooltip icon ... so that people will hover it"). */
+.local-dashboard-page--runs [data-component="recent-runs"] .local-recent-switch { display: inline-flex; align-items: center; gap: 2px; }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-recent-switch .ds-infotip { width: 22px; height: 22px; color: var(--ds-ink-3); }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-recent-switch .ds-infotip:hover { color: var(--ds-hue-blue); }
+
+/* ============================================================================
+   OMN-22168 (Lakshman 2026-11-04, "verify each page one by one and everything and make it modern"): the Recent runs
+   treatment, applied to every local page and Delegation Evidence through the shared classes. Tokens only.
+   - every table: small-caps header, a hover row, 12px corners;
+   - every filter select: a soft pill, active when set;
+   - the quiet controls (filter-row buttons, Copy, the run neighbour links, chart Expand): one 32px quiet button.
+   ============================================================================ */
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-dashboard-table-wrap { border-radius: 12px !important; }
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) table thead th {
+  font-size: 12px !important; font-weight: 600 !important; text-transform: uppercase !important; letter-spacing: 0.06em !important;
+}
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) table tbody tr { transition: background-color 100ms ease; }
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) table tbody tr:hover { background: color-mix(in oklab, var(--ds-surface-2) 70%, transparent); }
+
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-dashboard-filters select {
+  min-height: 32px; border-radius: 999px !important; border: 1px solid var(--ds-line); background-color: transparent;
+  color: var(--ds-ink-2); padding-left: 12px; cursor: pointer; transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
+}
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-dashboard-filters select:hover {
+  border-color: var(--ds-line-strong); color: var(--ds-ink); background-color: var(--ds-surface-2);
+}
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-dashboard-filters .local-filter-field:has(option:checked:not(:first-child)) > select {
+  border-color: color-mix(in oklab, var(--ds-hue-blue) 55%, var(--ds-line)); color: var(--ds-ink);
+  background-color: color-mix(in oklab, var(--ds-hue-blue) 12%, transparent);
+}
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-dashboard-filters input:not([type="checkbox"]):not([type="radio"]) {
+  min-height: 34px; border-radius: 10px !important; border: 1px solid var(--ds-line); background-color: var(--ds-surface-2);
+}
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-dashboard-filters input:not([type="checkbox"]):not([type="radio"]):focus-visible {
+  outline: none; border-color: var(--ds-hue-blue); box-shadow: 0 0 0 3px color-mix(in oklab, var(--ds-hue-blue) 22%, transparent);
+}
+
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) :is(.local-dashboard-filters > button, .local-copy, .local-run-neighbours a, .local-chart-expand) {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; border-radius: 8px !important;
+  border: 1px solid var(--ds-line); background: transparent; color: var(--ds-ink-2); font-size: 12.5px; font-weight: 500;
+  text-decoration: none; cursor: pointer; transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) :is(.local-dashboard-filters > button, .local-copy, .local-run-neighbours a, .local-chart-expand):hover {
+  background: var(--ds-surface-2); color: var(--ds-ink); border-color: var(--ds-line-strong);
+}
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) :is(.local-dashboard-filters > button, .local-copy, .local-run-neighbours a, .local-chart-expand):focus-visible {
+  outline: 2px solid var(--ds-hue-blue); outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) :is(table tbody tr, .local-dashboard-filters select, .local-copy, .local-chart-expand) { transition: none !important; }
+}
+/* The kit Dropdown as a filter (Lakshman 2026-11-04): a soft pill with its glyph, blue-tinted while a filter is set. */
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-dashboard-filters .ds-dropdown-trigger {
+  min-height: 40px; padding: 0 12px 0 10px; gap: 8px; border-radius: 999px !important; border: 1px solid var(--ds-line);
+  background: transparent; color: var(--ds-ink-2); font-size: 12.5px; font-weight: 500;
+  transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
+}
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-dashboard-filters .ds-dropdown-trigger:hover {
+  border-color: var(--ds-line-strong); color: var(--ds-ink); background: var(--ds-surface-2);
+}
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-dashboard-filters .ds-dropdown-trigger:not([data-value="all"]) {
+  border-color: color-mix(in oklab, var(--ds-hue-blue) 55%, var(--ds-line)); color: var(--ds-ink);
+  background: color-mix(in oklab, var(--ds-hue-blue) 12%, transparent);
+}
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-dashboard-filters .ds-dropdown-trigger:focus-visible {
+  outline: 2px solid var(--ds-hue-blue); outline-offset: 2px;
+}
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-dashboard-filters .ds-dropdown { width: 100%; }
+
+/* OMN-22168 (Lakshman 2026-11-04, chosen over the 10-27 grey-icon rule for these controls only): each Runs filter's glyph
+   takes its own tone, and the CSV and JSON exports keep their green and purple. Specificity (0,4,2) and !important on
+   purpose: the page-scoped grey rule in seven-page-design.css is (0,3,2) !important. Every other interface icon stays grey. */
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .ds-dropdown-mark svg.lucide { color: var(--mark, var(--ds-ink-3)) !important; }
+/* The word and glyph are the tone mixed toward ink, so they read at 4.5:1 or more on the tint in both themes (AC170). */
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-export button[data-export] {
+  --tone-ink: color-mix(in oklab, var(--tone) 72%, var(--ds-ink));
+  color: var(--tone-ink) !important; border-color: color-mix(in oklab, var(--tone) 45%, var(--ds-line)) !important;
+  background: color-mix(in oklab, var(--tone) 10%, transparent) !important; }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-export button[data-export]:hover {
+  background: color-mix(in oklab, var(--tone) 20%, transparent) !important; border-color: color-mix(in oklab, var(--tone) 70%, var(--ds-line)) !important; }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-export button[data-export] svg.lucide { color: var(--tone-ink) !important; }
+
+/* OMN-22168 (Lakshman 2026-11-04): each Recent runs column header leads with its concept's glyph, in that concept's colour. */
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap thead :is(.local-runs-head, .local-sort-header) {
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap thead .field-icon { flex: none; }
+/* The last default column, Duration, needs 120px for its glyph, word and sort arrow, or the table runs past its panel
+   at 1440 (contracts: Runs fits with nothing to scroll sideways); the other columns give up a few pixels. */
+@media (min-width: 1025px) {
+  .local-dashboard-page--runs .local-dashboard-table-wrap--fit th[data-column="duration"] { width: 120px !important; }
+}
+
+/* OMN-22168 (Lakshman 2026-11-04, chosen over the 10-27 one grey for these icons): each sidebar page's icon and its page
+   title's icon draw that page's own colour (--ds-destination-accent), and the title icon is big: a 28px glyph on a 48px
+   tile tinted in the same colour. Specificity above the page-scoped grey rule in seven-page-design.css. */
+.app .sidebar .mvp-nav-item .dash-marker svg.destination-icon,
+.app .sidebar a[data-destination] svg.destination-icon { color: var(--ds-destination-accent) !important; }
+.app main :is(.local-dashboard-page-icon, .ev-title-icon) svg.destination-icon { color: var(--ds-destination-accent) !important;
+  width: 28px !important; height: 28px !important; }
+.app main .local-dashboard-header .local-dashboard-page-icon,
+.app main.ev-root .ev-title-icon {
+  display: inline-grid !important; place-items: center; flex: none; width: 48px !important; height: 48px !important;
+  border-radius: 14px !important; border: 0 !important;
+  background: color-mix(in oklab, var(--ds-destination-accent) 14%, transparent) !important; }
+
+/* OMN-22168 (Lakshman 2026-11-04): Overview's runtime status line, under the page title. */
+.local-overview-status { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: 6px 0 0; color: var(--ds-ink-2); font-size: 13px; }
+.local-overview-status strong { color: var(--ds-ink); font-weight: 600; }
+.local-overview-status-dot { width: 9px; height: 9px; flex: none; border-radius: 999px; background: var(--ds-ink-3); }
+.local-overview-status[data-state="running"] .local-overview-status-dot { background: var(--ds-hue-green);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--ds-hue-green) 22%, transparent); }
+.local-overview-status[data-state="attention"] { border-color: color-mix(in oklab, var(--ds-hue-amber) 55%, var(--ds-line)); }
+.local-overview-status[data-state="attention"] .local-overview-status-dot { background: var(--ds-hue-amber); }
+.local-overview-status-reason { color: var(--ds-ink-2); }
+
+/* The status line is its own row at the foot of the header, so the title and the window control keep one centre line. */
+/* The header is a grid: the status line spans every column on a row of its own. */
+.local-dashboard-page .local-dashboard-header:has(> .local-overview-status) { row-gap: 6px; }
+.local-dashboard-page .local-dashboard-header > .local-overview-status { grid-column: 1 / -1; order: 99; margin: 0; }
+
+/* OMN-22168 (Lakshman 2026-11-04, "line chart should be big"): the daily trend's plot is tall enough to read five lines
+   apart, and shorter on a phone so the page still fits. */
+.local-dashboard-page .local-trend .ins-plot { height: 300px; }
+@media (max-width: 700px) { .local-dashboard-page .local-trend .ins-plot { height: 220px; } }
+.local-dashboard-page .local-trend .ins-plot path { stroke-width: 3; }
+
+/* OMN-22168 (Lakshman 2026-11-04, "full size big one"): in the tabbed chart row each chart is drawn large, as the old
+   full view drew it; shorter on a phone. */
+.local-dashboard-page--overview .local-overview-charts .ins-bars.gdb-plot { height: 320px; }
+.local-dashboard-page--overview .local-overview-charts .rb-chart.rb-chart--vertical .rb-track { height: 260px; }
+@media (max-width: 700px) {
+  .local-dashboard-page--overview .local-overview-charts .ins-bars.gdb-plot { height: 220px; }
+  .local-dashboard-page--overview .local-overview-charts .rb-chart.rb-chart--vertical .rb-track { height: 180px; }
+}
+
+/* OMN-22168 (Lakshman 2026-11-04, "give heading to line chart and bar chart and each tab colourful modern"). The tabbed
+   charts sit in one titled panel; the chart inside keeps its own heading but loses its second frame. */
+:is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"]) { display: grid; gap: 12px; }
+:is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"]) .local-dashboard-panel-title { display: flex; align-items: center; gap: 8px; margin: 0; }
+:is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"]) > .local-dashboard-caption { margin: -6px 0 0; }
+:is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tabpanel > .local-dashboard-panel,
+:is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tabpanel .maple-cell > .local-dashboard-panel {
+  border: 0 !important; background: transparent !important; box-shadow: none !important; padding: 0 !important; }
+/* Tabs: pills with their chart's glyph in its colour; the chosen tab is tinted in that colour. */
+.local-dashboard-tablist [role="tab"][data-toned] {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 0 14px; border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--tab-tone) 30%, var(--ds-line));
+  background: color-mix(in oklab, var(--tab-tone) 7%, transparent); color: var(--ds-ink-2); font-weight: 600;
+  transition: background var(--ds-motion-fast) var(--ds-ease), border-color var(--ds-motion-fast) var(--ds-ease), color var(--ds-motion-fast) var(--ds-ease); }
+.local-dashboard-tablist [role="tab"][data-toned] svg { flex: none; } /* the glyph keeps its concept's colour */
+@media (hover: hover) { .local-dashboard-tablist [role="tab"][data-toned]:hover { border-color: color-mix(in oklab, var(--tab-tone) 55%, var(--ds-line)); color: var(--ds-ink); } }
+.local-dashboard-tablist [role="tab"][data-toned][aria-selected="true"] {
+  background: color-mix(in oklab, var(--tab-tone) 22%, transparent); border-color: var(--tab-tone);
+  color: var(--ds-ink); box-shadow: 0 0 0 3px color-mix(in oklab, var(--tab-tone) 18%, transparent); }
+.local-dashboard-tablist [role="tab"][data-toned]:focus-visible { outline: 2px solid var(--tab-tone); outline-offset: 2px; }
+.local-dashboard-tablist:has([data-toned]) { display: flex; flex-wrap: wrap; gap: 8px; border: 0; background: transparent; padding: 0; }
+/* Lakshman 2026-11-04, "horizontal height increase and make it best": taller pills, each tab's colour visible at rest,
+   the chosen tab filled in its colour; the tab row loses its outer box. */
+:is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist { border: 0 !important; background: transparent !important; padding: 0 !important;
+  box-shadow: none !important; gap: 10px !important; }
+:is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-toned] {
+  min-height: 44px; padding: 0 18px; gap: 9px; font-size: 14px;
+  background: color-mix(in oklab, var(--tab-tone) 14%, transparent); border-color: color-mix(in oklab, var(--tab-tone) 45%, var(--ds-line)); }
+:is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-toned] svg { width: 16px; height: 16px; }
+:is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-toned][aria-selected="true"] {
+  background: color-mix(in oklab, var(--tab-tone) 32%, transparent); border-color: var(--tab-tone); color: var(--ds-ink);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--tab-tone) 22%, transparent), 0 6px 18px -8px var(--tab-tone); }
+/* OMN-22168 ("do all", item 2): inside a tab the chart's own heading repeats the tab's label; the tab panel is named by
+   its tab (aria-labelledby), so the repeat is not drawn. */
+.local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tabpanel .local-dashboard-panel > h2 { display: none !important; }
+/* Item 3: the runtime state opens Settings' System status. */
+.local-overview-status a.local-overview-status-link { color: inherit; text-decoration: none; border-bottom: 1px dashed currentColor; }
+.local-overview-status a.local-overview-status-link:hover { color: var(--ds-link); }
+/* Item 5: a single trend line gets a real-value axis at its left. */
+.local-trend-scaled--axis { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; }
+.local-trend-yaxis { display: flex; flex-direction: column; justify-content: space-between; padding: 2px 0;
+  font-size: 12px; color: var(--ds-ink-3); font-variant-numeric: tabular-nums; text-align: right; }
+/* Lakshman 2026-11-04, "don't know which one is selected": only the chosen tab carries colour. The others are plain
+   outlined pills (their glyph keeps its concept colour); the chosen one is filled in its tone with on-accent text, bold,
+   with a bar under it. */
+:is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-toned] {
+  background: transparent !important; border-color: var(--ds-line) !important; color: var(--ds-ink-2) !important; box-shadow: none !important; }
+@media (hover: hover) {
+  :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-toned]:hover {
+    background: color-mix(in oklab, var(--tab-tone) 10%, transparent) !important; color: var(--ds-ink) !important; } }
+:is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-toned][aria-selected="true"] {
+  position: relative; background: var(--tab-tone) !important; border-color: var(--tab-tone) !important;
+  color: var(--ds-on-accent) !important; font-weight: 700;
+  box-shadow: 0 6px 16px -8px var(--tab-tone) !important; }
+:is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-toned][aria-selected="true"]::after {
+  content: ''; position: absolute; left: 18px; right: 18px; bottom: -8px; height: 3px; border-radius: 3px; background: var(--tab-tone); }
+/* Lakshman 2026-11-04 ("very bad" on the filled tab): the chart tabs are one segmented control. A rounded track holds the
+   four tabs; the chosen tab is a raised segment (surface, ink text, shadow) with a 3px underline in its tone; the others
+   are quiet text on the track. Glyphs keep their concept colours. Later rules here replace the earlier tab looks. */
+.local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist {
+  display: inline-flex !important; width: fit-content; max-width: 100%; flex-wrap: wrap; gap: 4px !important; padding: 4px !important;
+  border: 1px solid var(--ds-line) !important; border-radius: 14px !important; background: var(--ds-surface-2) !important; }
+.local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-toned] {
+  min-height: 40px; padding: 0 16px; gap: 8px; border: 0 !important; border-radius: 10px !important;
+  background: transparent !important; color: var(--ds-ink-2) !important; font-weight: 500; box-shadow: none !important; }
+@media (hover: hover) {
+  .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-toned]:hover {
+    background: color-mix(in oklab, var(--ds-surface) 70%, transparent) !important; color: var(--ds-ink) !important; } }
+.local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-toned][aria-selected="true"] {
+  background: var(--ds-surface) !important; color: var(--ds-ink) !important; font-weight: 600;
+  box-shadow: var(--ds-shadow-sm, 0 1px 2px var(--ds-scrim)), inset 0 -3px 0 var(--tab-tone) !important; }
+.local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-toned][aria-selected="true"]::after { content: none; }
+/* The segmented track and the raised segment, stated with enough weight to win over the earlier tab looks. */
+html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist { background: var(--ds-surface-2) !important; }
+html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-toned][aria-selected="true"] {
+  background: var(--ds-surface) !important;
+  box-shadow: 0 1px 3px color-mix(in oklab, var(--ds-ink) 18%, transparent), inset 0 -3px 0 var(--tab-tone) !important; }
+
+/* OMN-22168 (Lakshman 2026-11-04, "make colourful"): each Overview window has its own tone; every option shows its dot,
+   the chosen option is tinted in its tone with its tick in that tone, and the trigger shows the chosen window's dot. */
+.local-window-menu [data-window="all"] { --win-tone: var(--ds-hue-blue); }
+.local-window-menu [data-window="today"] { --win-tone: var(--ds-hue-amber); }
+.local-window-menu [data-window="last-7"] { --win-tone: var(--ds-hue-green); }
+.local-window-menu [data-window="last-15"] { --win-tone: var(--ds-hue-teal); }
+.local-window-menu [data-window="last-30"] { --win-tone: var(--ds-hue-purple); }
+.local-window-menu [data-window="last-90"] { --win-tone: var(--ds-hue-pink); }
+.local-window-menu .local-window-list [role="radio"] { display: flex; align-items: center; gap: 10px; border-radius: 10px; }
+.local-window-menu .local-window-list [role="radio"]::before,
+.local-window-menu .local-window-trigger[data-window]::before {
+  content: ''; width: 10px; height: 10px; flex: none; border-radius: 999px; background: var(--win-tone, var(--ds-ink-3));
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--win-tone, var(--ds-ink-3)) 22%, transparent); }
+.local-window-menu .local-window-list [role="radio"] > span { flex: 1; text-align: left; }
+@media (hover: hover) {
+  .local-window-menu .local-window-list [role="radio"]:hover { background: color-mix(in oklab, var(--win-tone) 12%, transparent) !important; color: var(--ds-ink) !important; } }
+.local-window-menu .local-window-list [role="radio"][aria-checked="true"] {
+  background: color-mix(in oklab, var(--win-tone) 18%, transparent) !important; color: var(--ds-ink) !important; font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--win-tone); }
+.local-window-menu .local-window-list [role="radio"][aria-checked="true"] svg { color: var(--win-tone) !important; }
+.local-window-menu .local-window-trigger[data-window] { display: inline-flex; align-items: center; gap: 10px;
+  border-color: color-mix(in oklab, var(--win-tone) 45%, var(--ds-line)) !important; }
+html body .local-window-menu .local-window-list [role="radio"][aria-checked="true"] {
+  background: color-mix(in oklab, var(--win-tone) 18%, transparent) !important; box-shadow: inset 3px 0 0 var(--win-tone) !important; }
+
+/* OMN-22168 (Lakshman 2026-11-04, "selected ... fully grey and use slider to change tab"): the chosen tab is a fully
+   filled grey pill that slides between tabs; its underline takes the chosen tab's tone. Other pages' tabs have no slider. */
+.local-dashboard-tab-slider { display: none; }
+html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist { position: relative; isolation: isolate; }
+html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tab-slider {
+  display: block; position: absolute; left: 0; top: 0; z-index: 0; border-radius: 10px; pointer-events: none;
+  background: color-mix(in oklab, var(--ds-ink) 13%, var(--ds-surface));
+  box-shadow: 0 1px 3px color-mix(in oklab, var(--ds-ink) 18%, transparent), inset 0 -3px 0 var(--slider-tone, var(--ds-ink-3));
+  transition: transform 250ms cubic-bezier(.2, .8, .2, 1), width 250ms cubic-bezier(.2, .8, .2, 1); }
+@media (prefers-reduced-motion: reduce) { html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tab-slider { transition: none; } }
+html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-toned] { position: relative; z-index: 1; }
+html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-toned][aria-selected="true"] {
+  background: transparent !important; box-shadow: none !important; color: var(--ds-ink) !important; font-weight: 600; }
+/* The slider's underline follows the chosen tab's tone. */
+:is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist:has([data-tab="runs"][aria-selected="true"]) { --slider-tone: var(--ds-hue-green); }
+:is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist:has([data-tab="tokens"][aria-selected="true"]) { --slider-tone: var(--ds-hue-blue); }
+:is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist:has([data-tab="models"][aria-selected="true"]) { --slider-tone: var(--ds-hue-purple); }
+:is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist:has([data-tab="tiers"][aria-selected="true"]) { --slider-tone: var(--ds-hue-amber); }
+/* Lakshman 2026-11-04, "no dots ... use icons and calendar also colourful": the window glyphs replace the dots; each
+   glyph takes its window's tone, and the calendar button has its own tone (teal). */
+html body .local-window-menu .local-window-list [role="radio"]::before,
+html body .local-window-menu .local-window-trigger[data-window]::before { content: none !important; display: none !important; }
+html body .local-window-menu svg.local-window-icon { color: var(--win-tone, var(--ds-ink-3)) !important; flex: none; }
+html body .local-dashboard-page .local-day-picker .local-day-button {
+  --day-tone: var(--ds-hue-teal);
+  border-color: color-mix(in oklab, var(--day-tone) 45%, var(--ds-line)) !important;
+  background: color-mix(in oklab, var(--day-tone) 10%, transparent) !important; }
+html body .local-dashboard-page .local-day-picker .local-day-button svg { color: var(--day-tone) !important; }
+html body .local-dashboard-page .local-day-picker .local-day-button[aria-pressed="true"] { background: color-mix(in oklab, var(--day-tone) 22%, transparent) !important; }
+/* Specificity (0,4,3) on purpose: above the page-scoped grey icon rule (0,3,2). */
+html body .local-dashboard-page .local-window-menu svg.lucide.local-window-icon { color: var(--win-tone, var(--ds-ink-3)) !important; }
+/* Lakshman 2026-11-04 ("polish"): the daily trend's scale, gridlines and date ticks. */
+.local-trend-scaled--axis { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; }
+.local-trend-yaxis { display: flex; flex-direction: column; justify-content: space-between; height: 300px; padding: 0;
+  font-size: 12px; color: var(--ds-ink-3); font-variant-numeric: tabular-nums; text-align: right; }
+@media (max-width: 700px) { .local-trend-yaxis { height: 220px; } }
+.local-trend-plot { min-width: 0; }
+.local-dashboard-page .local-trend .ins-plot {
+  background-image: linear-gradient(to bottom, var(--ds-line) 1px, transparent 1px);
+  background-size: 100% 50%; background-repeat: repeat-y; border-bottom: 1px solid var(--ds-line); }
+.local-trend-ticks { position: relative; height: 20px; margin-top: 6px; font-size: 12px; color: var(--ds-ink-3); }
+.local-trend-ticks > span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
+.local-trend-ticks > span:first-child { transform: none; }
+.local-trend-ticks > span:last-child { transform: translateX(-100%); }
+/* No frame inside the tab panel: the chart sits straight in the "Activity breakdown" panel. */
+html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"]) :is(figure.local-chart, .ins-card, .rb-chart) {
+  border: 0 !important; background: transparent !important; box-shadow: none !important; padding-left: 0 !important; padding-right: 0 !important; }
+html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tabpanel article.local-dashboard-panel {
+  border: 0 !important; background: transparent !important; box-shadow: none !important; padding: 0 !important; }
+
+/* OMN-22168 (Lakshman 2026-11-04, "not happy with design, use best design and impress user"): stat tabs. Four equal
+   cards across the row; each has a glyph tile in its tone, the chart's name and a served headline. The chosen card has a
+   soft gradient in its tone, a tone border and a glow; the others are quiet cards that lift on hover. */
+html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tab-slider { display: none !important; }
+html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist:has([data-stat]) {
+  display: grid !important; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 12px !important; width: 100%;
+  padding: 0 !important; border: 0 !important; background: transparent !important; }
+@media (max-width: 900px) { html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist:has([data-stat]) { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-stat] {
+  display: flex; align-items: center; gap: 12px; min-height: 76px; padding: 14px 16px; text-align: left;
+  border: 1px solid var(--ds-line) !important; border-radius: 14px !important; background: var(--ds-surface) !important;
+  color: var(--ds-ink) !important; box-shadow: none !important; cursor: pointer;
+  transition: transform 180ms var(--ds-ease, ease), border-color 180ms ease, box-shadow 180ms ease, background 180ms ease; }
+@media (hover: hover) {
+  html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-stat]:hover {
+    transform: translateY(-2px); border-color: color-mix(in oklab, var(--tab-tone) 45%, var(--ds-line)) !important;
+    box-shadow: 0 8px 20px -14px var(--tab-tone) !important; } }
+html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-stat][aria-selected="true"] {
+  border-color: var(--tab-tone) !important;
+  background: linear-gradient(135deg, color-mix(in oklab, var(--tab-tone) 20%, var(--ds-surface)) 0%, var(--ds-surface) 75%) !important;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--tab-tone) 18%, transparent), 0 12px 28px -16px var(--tab-tone) !important; }
+html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-stat]:focus-visible {
+  outline: 2px solid var(--tab-tone); outline-offset: 3px; }
+.local-tab-chip { display: inline-grid; place-items: center; flex: none; width: 42px; height: 42px; border-radius: 12px;
+  background: color-mix(in oklab, var(--tab-tone) 16%, transparent); }
+html body .local-dashboard-page .local-tab-chip svg.lucide { color: var(--tab-tone) !important; width: 20px; height: 20px; }
+[aria-selected="true"] > .local-tab-chip { background: var(--tab-tone); }
+html body .local-dashboard-page [aria-selected="true"] > .local-tab-chip svg.lucide { color: var(--ds-on-accent) !important; }
+.local-tab-text { display: grid; gap: 2px; min-width: 0; }
+.local-tab-label { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ds-ink-3); }
+.local-tab-hint { font-size: 20px; font-weight: 700; line-height: 1.15; color: var(--ds-ink); font-variant-numeric: tabular-nums;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+[aria-selected="true"] .local-tab-label { color: var(--tab-tone); }
+
+/* Lakshman 2026-11-04 ("colourful"): the status line's facts are chips, each with its glyph in its own tone. */
+.local-overview-status { gap: 8px 10px; }
+.local-status-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
+  color: var(--ds-ink); background: color-mix(in oklab, var(--chip-tone) 13%, transparent);
+  border: 1px solid color-mix(in oklab, var(--chip-tone) 35%, var(--ds-line)); }
+.local-status-chip[data-tone="blue"] { --chip-tone: var(--ds-hue-blue); }
+.local-status-chip[data-tone="purple"] { --chip-tone: var(--ds-hue-purple); }
+.local-status-chip[data-tone="amber"] { --chip-tone: var(--ds-hue-amber); }
+html body .local-dashboard-page .local-status-chip svg.lucide { color: var(--chip-tone) !important; }
+.local-overview-status[data-state="running"] > strong { color: var(--ds-hue-green); }
+.local-overview-status > span[aria-hidden="true"]:not(.local-overview-status-dot) { display: none; }
+/* Lakshman 2026-11-04 ("why too big?"): compact stat tabs, 56px tall. */
+html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist:has([data-stat]) { gap: 10px !important; }
+html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-stat] {
+  min-height: 56px; padding: 8px 12px; gap: 10px; border-radius: 12px !important; }
+html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-tab-chip { width: 32px; height: 32px; border-radius: 9px; }
+html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-tab-chip svg.lucide { width: 16px; height: 16px; }
+html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-tab-hint { font-size: 16px; line-height: 1.2; }
+html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-tab-label { font-size: 12px; letter-spacing: 0.04em; }
+html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-stat][aria-selected="true"] {
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--tab-tone) 16%, transparent), 0 8px 18px -14px var(--tab-tone) !important; }
+/* Lakshman 2026-11-04 ("text cuts?"): room between the stat tabs and the chart's caption. */
+html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tabpanel { padding-top: 14px; }
+/* An empty unit line takes no space (Overview's Model usage and Tier mix, Lakshman 2026-11-04 "remove"). */
+.rb-head:not(:has(> :not(.rb-unit:empty))) { display: none; }
+.rb-unit:empty { display: none; }
+
+/* OMN-22168 (Lakshman 2026-11-04, "improve UI/UX of overview and make it uniform"): one rhythm for the whole page,
+   measured before: section gaps 17/19/16px, paddings 14x18x12 and 14x16, heading tracking 0.72 and 1.44px, heading glyphs
+   14 and 15px, chips at radius 8 and 999 with heights 32 and 25, the stat labels in a second font. Now: 16px between
+   sections, 16px inside every card and panel, one heading style, 15px heading glyphs, one pill chip (28px). */
+html body .local-dashboard-page--overview { --ov-gap: 16px; --ov-pad: 16px; --ov-track: 0.12em; }
+html body .local-dashboard-page--overview .local-dashboard-header { margin-bottom: var(--ov-gap) !important; }
+html body .local-dashboard-page--overview .local-overview-surface { margin-bottom: 0 !important; }
+html body .local-dashboard-page--overview .local-overview-summary { gap: 12px !important; }
+html body .local-dashboard-page--overview .maple-grid { gap: var(--ov-gap) !important; row-gap: var(--ov-gap) !important; }
+/* One heading style: the panel headings and the card headings share font, size, weight and tracking. */
+html body .local-dashboard-page--overview :is(.local-overview-summary article, .maple-cell > article.local-dashboard-panel) > h2,
+html body .local-dashboard-page--overview .local-overview-charts-panel > .local-dashboard-panel-title {
+  font-size: 12px !important; font-weight: 500 !important; letter-spacing: var(--ov-track) !important; text-transform: uppercase !important;
+  gap: 8px !important; align-items: center; }
+/* Panel title glyphs are 15px; the summary cards' label glyphs stay 14px (OMN-21166 part 11/AC63). */
+html body .local-dashboard-page--overview .maple-cell > article.local-dashboard-panel > h2 svg,
+html body .local-dashboard-page--overview .local-overview-charts-panel > .local-dashboard-panel-title svg { width: 15px !important; height: 15px !important; }
+html body .local-dashboard-page--overview .local-tab-label { font-family: var(--ds-font-mono); letter-spacing: var(--ov-track); }
+/* One chip: the trend's legend toggles and the status line's facts are 28px pills. */
+html body .local-dashboard-page--overview .local-trend .ins-toggle {
+  min-height: 28px; height: 28px; padding: 0 12px !important; border-radius: 999px !important; font-size: 12px; font-weight: 600;
+  border: 1px solid color-mix(in oklab, var(--ins-swatch) 35%, var(--ds-line)) !important;
+  background: color-mix(in oklab, var(--ins-swatch) 12%, transparent) !important; }
+html body .local-dashboard-page--overview .local-trend .ins-toggle[aria-pressed="false"] { opacity: 0.55; background: transparent !important; }
+html body .local-dashboard-page--overview .local-status-chip { min-height: 28px; padding: 0 12px; }
+html body .local-dashboard-page--overview .local-trend .ins-toggles { gap: 8px !important; margin: 4px 0 8px; }
+/* Captions sit 6px under their heading and read in the secondary ink everywhere. */
+html body .local-dashboard-page--overview :is(.maple-cell > article.local-dashboard-panel, .local-overview-charts-panel) .local-dashboard-caption {
+  color: var(--ds-ink-2) !important; margin-top: 2px; }
+/* The cards had a 1px frame around their row (a box around boxes) and the page grid an 18px gap: no frame, 16px rows. */
+html body .local-dashboard-page--overview .local-overview-surface { border: 0 !important; background: transparent !important; box-shadow: none !important; }
+html body .local-dashboard-page--overview .local-dashboard-grid { row-gap: var(--ov-gap) !important; }
+/* Every legend toggle on Overview is the same 28px pill (the day charts' Passed / Failed, Tokens in / out, the trend). */
+html body .local-dashboard-page--overview .local-overview-charts-panel .ins-toggles .ins-toggle { border-radius: 999px !important; }
+
+/* OMN-22168 (Lakshman 2026-11-04, "why all bar graph style different?"). Measured: bar widths 57, 10, 69 and 120px and
+   plot heights 320, 320, 355 and 284px across Runs per day, Tokens per day, Model usage and Tier mix, and no gridlines on
+   any. Now every tabbed bar chart draws in a 300px plot, its bars at most 44px wide and centred in their slot, with the
+   daily trend's top and middle gridlines. */
+html body .local-dashboard-page--overview .local-overview-charts-panel .ins-bars.gdb-plot,
+html body .local-dashboard-page--overview .local-overview-charts-panel .rb-chart.rb-chart--vertical .rb-track { height: 300px !important; }
+@media (max-width: 700px) {
+  html body .local-dashboard-page--overview .local-overview-charts-panel .ins-bars.gdb-plot,
+  html body .local-dashboard-page--overview .local-overview-charts-panel .rb-chart.rb-chart--vertical .rb-track { height: 220px !important; } }
+html body .local-dashboard-page--overview .local-overview-charts-panel .gdb-bar { max-width: 44px; }
+html body .local-dashboard-page--overview .local-overview-charts-panel .gdb-col { align-items: center; }
+html body .local-dashboard-page--overview .local-overview-charts-panel .rb-chart.rb-chart--vertical .rb-bar { width: 72% !important; max-width: 44px !important; margin: 0 auto; }
+/* Gridlines: one at the top of the plot and one at its middle, as on the daily trend. */
+html body .local-dashboard-page--overview .local-overview-charts-panel .ins-bars.gdb-plot,
+html body .local-dashboard-page--overview .local-overview-charts-panel .rb-chart.rb-chart--vertical .rb-track {
+  background-image: linear-gradient(to bottom, var(--ds-line) 1px, transparent 1px), linear-gradient(to bottom, var(--ds-line) 1px, transparent 1px);
+  background-size: 100% 1px, 100% 1px; background-position: 0 0, 0 50%; background-repeat: no-repeat; }
+html body .local-dashboard-page--overview .local-overview-charts-panel .ins-bars.gdb-plot {
+  background-image: linear-gradient(to bottom, var(--ds-line) 1px, transparent 1px), linear-gradient(to bottom, var(--ds-line) 1px, transparent 1px) !important;
+  background-size: 100% 1px, 100% 1px !important; background-position: 0 0, 0 50% !important; background-repeat: no-repeat !important; }
+/* The ranked charts' gridlines run across the whole plot (the top and the middle of the 300px tracks), not per bar. */
+html body .local-dashboard-page--overview .local-overview-charts-panel .rb-chart.rb-chart--vertical .rb-track { background-image: none !important; }
+html body .local-dashboard-page--overview .local-overview-charts-panel .rb-chart.rb-chart--vertical .rb-plot {
+  background-image: linear-gradient(to bottom, var(--ds-line) 1px, transparent 1px), linear-gradient(to bottom, var(--ds-line) 1px, transparent 1px);
+  background-size: 100% 1px, 100% 1px; background-position: 0 0, 0 150px; background-repeat: no-repeat; }
+@media (max-width: 700px) { html body .local-dashboard-page--overview .local-overview-charts-panel .rb-chart.rb-chart--vertical .rb-plot { background-position: 0 0, 0 110px; } }
+/* Every legend on the tabbed charts is the same 28px pill: the static series and tier legends join the toggles. */
+html body .local-dashboard-page--overview .local-overview-charts-panel :is(.ins-token-legend, .tier-legend) {
+  display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 0; padding: 0; list-style: none; }
+html body .local-dashboard-page--overview .local-overview-charts-panel :is(.ins-token-legend, .tier-legend) li {
+  display: inline-flex; align-items: center; gap: 7px; height: 28px; padding: 0 12px; border-radius: 999px;
+  border: 1px solid var(--ds-line); background: var(--ds-surface-2); font-size: 12px; font-weight: 600; color: var(--field-ink, var(--ds-ink)); }
+html body .local-dashboard-page--overview .local-overview-charts-panel :is(.ins-token-legend, .tier-legend) li > i {
+  width: 9px; height: 9px; border-radius: 999px; flex: none; }
+
+/* OMN-22168 (Lakshman 2026-11-05, "this look congested and bad"): the daily trend. One line in front with a soft fill,
+   the rest thinner and quieter behind it; a served day with no neighbour is a dot; the readout row keeps its height when
+   empty so nothing jumps; no y labels when several lines share the plot (they have no common scale). */
+html body .local-dashboard-page--overview .local-trend .ins-plot--multi[data-focus] :is(path, .ins-lone)[data-front="false"] { opacity: 0.55; transition: opacity 160ms ease; }
+html body .local-dashboard-page--overview .local-trend .ins-front { pointer-events: none; }
+html body .local-dashboard-page--overview .local-trend .ins-lone[data-front="true"] { z-index: 1; }
+html body .local-dashboard-page--overview .local-trend .ins-area { pointer-events: none; }
+html body .local-dashboard-page--overview .local-trend .ins-lone { position: absolute; width: 7px; height: 7px; border-radius: 999px;
+  transform: translate(-50%, -50%); pointer-events: none; box-shadow: 0 0 0 2px var(--ds-surface); }
+html body .local-dashboard-page--overview .local-trend .ins-readout { min-height: 20px; margin: 6px 0 4px; font-variant-numeric: tabular-nums; }
+html body .local-dashboard-page--overview .local-trend .ins-toggle[data-front="true"] { box-shadow: 0 0 0 1px var(--ins-swatch), 0 0 12px -2px var(--ins-swatch); }
+html body .local-dashboard-page--overview .local-trend > .local-dashboard-caption:first-child { margin: 0 0 10px; }
+
+/* OMN-22168 (Lakshman 2026-11-05, "in runs page many bar graph use tab and full page"): the Runs page's five run charts
+   share Overview's stat tabs (rules above take both panels). The tab row takes one equal column per tab (both pages), and the
+   chart inside does not repeat its tab's name. */
+html body .local-dashboard-page .local-run-charts-panel .local-dashboard-tabpanel .local-run-charts { display: block; margin: 0; }
+html body .local-dashboard-page .local-run-charts-panel .local-dashboard-tabpanel .local-run-charts figure > .local-chart-heading,
+html body .local-dashboard-page .local-run-charts-panel .local-dashboard-tabpanel .local-runs-week > h3 { display: none; }
+
+
+/* OMN-22168 (Lakshman 2026-11-05, "text should be uniform to our whole platform", "also use uniform fonts"): one type
+   scale for every page, measured first on Usage, Settings and Delegation Evidence (the platform's norm) and then on
+   Overview and Runs, which drifted. Two families only: --ds-font-sans for reading, --ds-font-mono for headings and
+   table headers.
+   Delegation Evidence (.ev-root, its panel headings h2.pt) takes the same scale.
+   - Page title: 46px, 600, -0.03em on every page (Evidence was -0.015em).
+   - Headings (panel titles, card labels, tab labels): mono 12px, 500, uppercase, 0.12em. Panels used 0.12em and cards
+     0.06em; Overview had become 600 at 0.1em; tab labels were sans 600 at 0.04em.
+   - Figures: 600 (tab hints were 700).
+   - Controls (chips, legend buttons, tabs, filters, the window menu): 12.5px, 500 (they were 12px 400, 12px 600 or
+     13px 500 depending on the page).
+   - Tables: headers mono 12px, 600, uppercase, 0.06em (Runs used sans); every cell 13px (some were 12px).
+   - Captions: 12px, 400. */
+html body :is(.local-dashboard-page, .ev-root) h1 { letter-spacing: -0.03em !important; }
+html body :is(.local-dashboard-page, .ev-root) :is(article > h2, h2.pt, .local-dashboard-panel-title, .local-tab-label) {
+  font-family: var(--ds-font-mono) !important; font-size: 12px !important; font-weight: 500 !important;
+  text-transform: uppercase !important; letter-spacing: 0.12em !important; }
+html body :is(.local-dashboard-page, .ev-root) .local-tab-hint { font-weight: 600 !important; }
+html body :is(.local-dashboard-page, .ev-root) :is(.ins-toggle, .local-status-chip, .local-chart-legend button, .local-window-trigger,
+  [role="tab"]:not([data-stat]), .local-runs-toolbar button) { font-size: 12.5px !important; font-weight: 500 !important; }
+html body :is(.local-dashboard-page, .ev-root) :is(.ins-token-legend, .tier-legend, .gdb-legend) li { font-size: 12.5px !important; font-weight: 500 !important; }
+html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-dashboard-table-wrap--fit table th,
+html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) table th,
+html body :is(.local-dashboard-page, .ev-root) th { font-family: var(--ds-font-mono) !important; font-size: 12px !important; font-weight: 600 !important;
+  text-transform: uppercase; letter-spacing: 0.06em; }
+html body :is(.local-dashboard-page, .ev-root) td { font-size: 13px !important; }
+html body :is(.local-dashboard-page, .ev-root) .local-dashboard-caption { font-size: 12px !important; font-weight: 400; }
+
+/* The Runs page sections under the run list: one 16px rhythm, as on Overview. */
+html body .local-dashboard-page .local-runs-sections { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px;
+  grid-column: 1 / -1; width: 100%; min-width: 0; }
+html body .local-dashboard-page .local-runs-sections > .local-run-charts-slot:empty { display: none; }
+html body .local-dashboard-page .local-runs-sections > .local-run-charts-slot,
+html body .local-dashboard-page .local-runs-sections > .local-run-charts-slot > article { width: 100%; min-width: 0; }
+html body .local-dashboard-page .local-runs-sections > * { grid-column: 1 / -1; }
+html body .local-dashboard-page .local-recent-runs-wrap th :is(span, button) { font-family: inherit; }
+/* A chart inside a Run analysis tab does not repeat the tab's name (its detail line stays). */
+html body .local-dashboard-page article[data-component="runs-insights"] .local-dashboard-tabpanel .ins-card-head > h3.ins-title { display: none; }
+
+/* OMN-22168 (Lakshman 2026-11-05, "fix all pages and make it uniform ... standardised, reusable ... styles, themes"): the
+   one layout layer every page takes, from tokens only (tokens.css), replacing the per-page copies. Measured before, per
+   page: panel padding 16 (Overview), 14x16 and 14x18 (Runs, Workflow, Usage, Evidence), 18x20 borderless (Settings); legend
+   chips 28px pills (Overview), 32px radius-8 buttons (Runs), 19px plain text (Usage, Evidence).
+   - Every top-level panel and card: --ds-pad-y / --ds-pad-x, --ds-radius, a 1px --ds-line border on --ds-surface. A panel
+     inside a panel (a tab's chart), or inside a Settings section (whose panel group is the one card, AC160), keeps no
+     frame of its own.
+   - Evidence's panels pad their head and body from the same tokens.
+   - Every legend, chip and series toggle: a --ds-chip-h pill. */
+html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) article.local-dashboard-panel:not(article article, .local-dashboard-tabpanel article, .local-settings-section article) {
+  padding: var(--ds-pad-y) var(--ds-pad-x) !important; border-radius: var(--ds-radius) !important;
+  border: 1px solid var(--ds-line) !important; background: var(--ds-surface) !important; }
+html body main.ev-root .panel { border-radius: var(--ds-radius) !important; }
+html body main.ev-root .panel > .panel-h { padding: var(--ds-pad-y) var(--ds-pad-x) 0 !important; }
+html body main.ev-root .panel > .panel-b { padding: var(--ds-pad-y) var(--ds-pad-x) var(--ds-pad-y) !important; }
+html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) :is(.ins-toggle, .local-chart-toggle, .local-chart-legend button) {
+  height: var(--ds-chip-h); min-height: var(--ds-chip-h); padding: 0 12px !important; border-radius: var(--ds-radius-pill) !important;
+  border: 1px solid color-mix(in oklab, var(--ins-swatch, var(--ds-ink-3)) 35%, var(--ds-line)) !important;
+  background: color-mix(in oklab, var(--ins-swatch, var(--ds-ink-3)) 12%, transparent) !important; }
+html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) :is(.ins-toggle, .local-chart-toggle, .local-chart-legend button)[aria-pressed="false"] { opacity: 0.55; background: transparent !important; }
+html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) :is(.ins-toggles, .local-chart-legend) { display: flex; flex-wrap: wrap; gap: 8px !important; }
+html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) :is(.ins-token-legend, .tier-legend, .gdb-legend) {
+  display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 0; padding: 0; list-style: none; }
+html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) :is(.ins-token-legend, .tier-legend, .gdb-legend) li {
+  display: inline-flex; align-items: center; gap: 7px; height: var(--ds-chip-h); padding: 0 12px; border-radius: var(--ds-radius-pill);
+  border: 1px solid var(--ds-line); background: var(--ds-surface-2); color: var(--field-ink, var(--ds-ink)); }
+/* A legend item reads in its field's ink (the readable shade of the field colour), as the same field's toggle does on
+   every other chart, so one field is one colour across Overview, Runs and Usage. */
+html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) :is(.ins-token-legend, .tier-legend, .gdb-legend) li > i { width: 9px; height: 9px; border-radius: var(--ds-radius-pill); flex: none; }
+
+/* OMN-22168 (Lakshman 2026-11-05, "make each cards different color and distinct", "use everything logically"): every
+   summary card on every page wears its own concept colour, not only on its figure. Measured first: each card already has
+   a distinct --panel-accent within its page, and one concept keeps one colour across pages (runs and calls blue, quality
+   lime, savings teal, spend amber, tokens purple), but all cards shared one grey surface and border, so they read alike.
+   Now each card takes, from its own accent: a soft wash into the surface, a border mixed with the accent, a 3px top bar
+   and a tinted icon chip. color-mix keeps it right in both themes. */
+html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-overview-summary > article.local-dashboard-panel.local-dashboard-panel {
+  position: relative; overflow: hidden;
+  background: linear-gradient(155deg, color-mix(in oklab, var(--panel-accent, var(--ds-line)) 13%, var(--ds-surface)) 0%,
+    var(--ds-surface) 62%) !important;
+  /* The gradient shorthand leaves background-color transparent; the card keeps an opaque surface under its tint. */
+  background-color: var(--ds-surface) !important;
+  border-color: color-mix(in oklab, var(--panel-accent, var(--ds-line)) 38%, var(--ds-line)) !important; }
+html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-overview-summary > article.local-dashboard-panel.local-dashboard-panel::before {
+  content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: var(--panel-accent, var(--ds-line)); opacity: 0.9; }
+html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-overview-summary > article.local-dashboard-panel.local-dashboard-panel > h2 svg {
+  color: var(--panel-accent, currentColor) !important; }
+/* Delegation Quality's edge is the pass green (AC82), but its icon keeps the site-wide quality identity (one concept, one
+   colour on every page; the AC4 census). */
+html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-overview-summary > article.local-dashboard-panel.local-dashboard-panel[data-component="overview-quality"] > h2 svg {
+  color: var(--ds-field-quality) !important; }
+/* The 16px card padding grew the summary cards from 148px to 154px (measured), past the 150px a compact card may take
+   (OMN-21166 hierarchy). The figure's top margin and the card's gaps give back those 6px, so cards are 148px again. */
+html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-overview-summary > article.local-dashboard-panel.local-dashboard-panel { row-gap: 5px !important; }
+html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-overview-summary > article.local-dashboard-panel.local-dashboard-panel > .local-dashboard-metric { margin-top: 2px !important; }
+/* A tab chip's concept icon (Usage's tabs use ConceptIcon) keeps the per-concept colour rule from painting it in the chip's
+   own fill when the tab is chosen: lavender on lavender was invisible (measured on Cost by route). Unchosen, it keeps the
+   tab's tone as Overview's do. */
+html body .local-dashboard-page [aria-selected="true"] > .local-tab-chip svg.lucide.field-icon.field-icon[data-field-icon] { color: var(--ds-on-accent) !important; }
+html body .local-dashboard-page [role="tab"] > .local-tab-chip svg.lucide.field-icon.field-icon[data-field-icon] { color: var(--tab-tone) !important; }
+html body .local-dashboard-page [aria-selected="true"] > .local-tab-chip svg.lucide.field-icon.field-icon[data-field-icon] { color: var(--ds-on-accent) !important; }

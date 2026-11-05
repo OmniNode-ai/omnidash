@@ -1,5 +1,7 @@
 import { expect, test } from 'playwright/test';
 import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { pickFilter } from './filter-dropdowns';
+import { chooseChartTab } from './chart-tabs';
 
 // Failure modes declared before implementation: searching the wrong fields or
 // source, a stale page hiding matches, lost query on reload, filters not composing,
@@ -17,7 +19,7 @@ test('run search composes with filters, survives reload and clears without stale
   await expect(page).toHaveURL(/q=CHART-RUN-B/);
   await page.reload();
   await expect(search).toHaveValue('CHART-RUN-B');
-  await page.getByLabel('Status', { exact: true }).selectOption('passed');
+  await pickFilter(page, 'Status', 'passed');
   await expect(page.getByRole('status').filter({ hasText: 'No runs match' })).toBeVisible();
   await page.getByRole('button', { name: 'Clear filters', exact: true }).click();
   await expect(search).toHaveValue('');
@@ -98,8 +100,9 @@ test('run chart captions identify the listed records without claiming an obsolet
   for (const route of ['/runs']) {
     await page.goto(route);
     // OMN-21166 part 18 AC118: Runs keeps its run charts inside its one closed "More analysis".
-    await page.locator('summary').filter({ hasText: /^More analysis$/ }).click();
     for (const name of ['Duration per run', 'Tokens per run']) {
+      // OMN-22168: the run charts are tabs; each is chosen in turn.
+      await chooseChartTab(page, name);
       const chart = page.getByRole('figure', { name, exact: true });
       await expect(chart).toBeVisible();
       // OMN-21166 part 18 AC124: the filler subtitle "Explore the listed runs" is removed from the per-run charts.
