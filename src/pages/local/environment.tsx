@@ -158,18 +158,36 @@ export function EnvironmentPanel({ rows, complete = true }: { rows: readonly Env
         <span className="local-environment-dot" aria-hidden="true" />{statusParts.join(' · ')}
       </p>
       <div className="local-more local-more--open" data-section="Environment details">
-      <FactList>
-        <Fact term="Mode">{mode}</Fact>
-        {mode === 'native' && <>
-          {versions.length > 0 ? versions.map(([name, version]) => <Fact term={labels[name] ?? name} key={name}>{text(version) || 'Not recorded'}</Fact>)
-            : <Fact term="Versions">Not recorded</Fact>}
-          <Fact term="Store">{text(first.store_kind) || 'Not recorded'}</Fact>
-          {/* OMN-21970 AC10: where the store is and when the state last changed, each only when served. */}
-          {text(first.store_location) && <Fact term="Store location" valueClassName="mono" valueTitle={text(first.store_location)}>{text(first.store_location)}</Fact>}
-          {text(first.last_change) && <Fact term="State since" valueTitle={text(first.last_change)}>{readableTime(text(first.last_change)) ?? text(first.last_change)}</Fact>}
-          <Fact term="Last start" valueTitle={text(first.token_minted_at) || undefined}>{text(first.token_minted_at) ? readableTime(text(first.token_minted_at)) ?? text(first.token_minted_at) : 'Not recorded'}</Fact>
-        </>}
-      </FactList>
+      {/* The machine's facts as cards in their own colours, as Workflow's record cards (Lakshman 2026-11-05, "Settings ...
+          same as runs, overview"): the machine, which versions, and when; a long store path wraps inside its card. */}
+      <div className="workflow-record-groups local-environment-groups">
+        {/* "Machine", not "Environment": the panel that holds these cards is already the Environment panel. */}
+        <section className="workflow-record-group" data-field-tone="host" aria-label="Machine">
+          <h4 className="local-dashboard-caption">Machine</h4>
+          <FactList>
+            <Fact term="Mode">{mode}</Fact>
+            {mode === 'native' && <>
+              <Fact term="Store">{text(first.store_kind) || 'Not recorded'}</Fact>
+              {/* OMN-21970 AC10: where the store is and when the state last changed, each only when served. */}
+              {text(first.store_location) && <Fact term="Store location" valueClassName="mono" valueTitle={text(first.store_location)}>{text(first.store_location)}</Fact>}
+            </>}
+          </FactList>
+        </section>
+        {mode === 'native' && <section className="workflow-record-group" data-field-tone="contract" aria-label="Versions">
+          <h4 className="local-dashboard-caption">Versions</h4>
+          <FactList>
+            {versions.length > 0 ? versions.map(([name, version]) => <Fact term={labels[name] ?? name} key={name}>{text(version) || 'Not recorded'}</Fact>)
+              : <Fact term="Versions">Not recorded</Fact>}
+          </FactList>
+        </section>}
+        {mode === 'native' && <section className="workflow-record-group" data-field-tone="age" aria-label="Times">
+          <h4 className="local-dashboard-caption">Times</h4>
+          <FactList>
+            {text(first.last_change) && <Fact term="State since" valueTitle={text(first.last_change)}>{readableTime(text(first.last_change)) ?? text(first.last_change)}</Fact>}
+            <Fact term="Last start" valueTitle={text(first.token_minted_at) || undefined}>{text(first.token_minted_at) ? readableTime(text(first.token_minted_at)) ?? text(first.token_minted_at) : 'Not recorded'}</Fact>
+          </FactList>
+        </section>}
+      </div>
       {refusedHealth && <EmptyState>Some service health details are not available.</EmptyState>}
       {validHealth.length > 0 && <div role="status"><EnvironmentStatus rows={validHealth} mode={mode} plain /></div>}
       <div role="status"><EnvironmentAlerts rows={selected} mode={mode} plain allowClear={allowClear} /></div>

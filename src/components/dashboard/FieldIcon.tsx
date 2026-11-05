@@ -22,7 +22,7 @@ export const CONCEPT_LABELS: Readonly<Record<string, string>> = {
   'cloud-keys': 'Cloud keys', path: 'Run path', 'local-run': 'Local runs',
   'run-outcome': 'Run outcome', 'routing-model': 'Routing and model', 'tokens-completion': 'Tokens and completion',
   timing: 'Run timing', 'run-details': 'Recorded run details', 'stage-timing': 'Execution stage durations',
-  answer: 'Answer', 'routing-flow': 'Recorded routing flow', 'token-flow': 'Token flow',
+  answer: 'Answer', prompt: 'Prompt', truncated: 'Truncated', written: 'Written at', writer: 'Recorded by', 'routing-flow': 'Recorded routing flow', 'token-flow': 'Token flow',
   'quality-comparison': 'Quality score and threshold',
   'tier-local': 'local', 'tier-harness': 'harness', 'tier-cheap-frontier': 'cheap_frontier',
   'tier-cheap-cloud': 'cheap_cloud', 'tier-cloud': 'cloud', 'tier-claude': 'claude',

@@ -99,16 +99,48 @@ export function DashboardTabs({ label, param, tabs }: { label: string; param: st
   </div>;
 }
 
-export interface ToggleOption<T extends string> { value: T; label: string }
+export interface ToggleOption<T extends string> {
+  value: T; label: string;
+  /** The option's own colour (a field token), as each stat tab has one: its icon wears it and the thumb takes it. */
+  tone?: string;
+  /** The option's glyph, drawn before its label in its tone. */
+  icon?: ReactNode;
+}
 
 /** A small choice that changes what a panel shows (a radio group in the shared filter part). */
 export function DashboardToggle<T extends string>({ label, options, value, onChange }: {
   label: string; options: ReadonlyArray<ToggleOption<T>>; value: T; onChange: (value: T) => void;
 }) {
   const name = useId();
-  return <div className="local-dashboard-filters local-dashboard-toggle" role="radiogroup" aria-label={label}>
-    {options.map(option => <label key={option.value}>
+  // OMN-22168 (Lakshman 2026-11-05, "all tab modern and same as overview or runs"): a pill track whose thumb slides to
+  // the chosen option, as the Tokens in / Tokens out switch and the stat tabs' slider do; the thumb is decoration
+  // (aria-hidden), measured from the chosen option so it follows wrapping and resizing.
+  const labels = useRef<Array<HTMLLabelElement | null>>([]);
+  const chosen = options.findIndex(option => option.value === value);
+  const [thumb, setThumb] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
+  useLayoutEffect(() => {
+    const measure = () => {
+      const option = labels.current[chosen];
+      setThumb(option ? { left: option.offsetLeft, top: option.offsetTop, width: option.offsetWidth, height: option.offsetHeight } : null);
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(measure);
+    const group = labels.current[0]?.parentElement;
+    if (group) observer.observe(group);
+    return () => observer.disconnect();
+  }, [chosen, options.length]);
+  const tone = options[chosen]?.tone;
+  return <div className="local-dashboard-filters local-dashboard-toggle" role="radiogroup" aria-label={label}
+    style={tone ? { '--toggle-tone': tone } as CSSProperties : undefined}>
+    {thumb && <span className="local-toggle-thumb" aria-hidden="true"
+      style={{ transform: `translate(${thumb.left}px, ${thumb.top}px)`, width: thumb.width, height: thumb.height }} />}
+    {options.map((option, index) => <label key={option.value} ref={element => { labels.current[index] = element; }}
+      style={option.tone ? { '--option-tone': option.tone } as CSSProperties : undefined} data-toned={option.tone ? '' : undefined}>
       <input type="radio" name={name} value={option.value} checked={value === option.value} onChange={() => onChange(option.value)} />
+      {/* The glyph's badge is decoration (its colour names nothing on its own); ins-chip-icon lets the icon census read
+          the option's own text as the glyph's label. */}
+      {option.icon && <span className="local-toggle-icon ins-chip-icon" aria-hidden="true" data-identity-decoration="toggle-chip">{option.icon}</span>}
       {option.label}
     </label>)}
   </div>;

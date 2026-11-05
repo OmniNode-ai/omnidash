@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { DestinationIcon } from '@/navigation/destination-icons';
 import { LocalDashboardPage, type LocalDashboardCache } from './LocalDashboardPage';
@@ -56,10 +56,13 @@ export function SettingsPage({ navigationCache }: { navigationCache: LocalDashbo
         <ol>{SETTINGS_SECTIONS.map((section, index) => {
           const active = section.hash === current;
           return <li key={section.id}>
-            <a className="local-settings-link" href={`#${section.hash}`} aria-current={active ? 'page' : undefined} data-active={active ? 'true' : undefined}>
+            {/* Overview's stat tabs (Lakshman 2026-11-05, "Settings ... like runs, overview"): each section in its concept colour,
+                its glyph in a tinted chip; the chosen one a tinted card with a border in that colour. */}
+            <a className="local-settings-link" href={`#${section.hash}`} aria-current={active ? 'page' : undefined} data-active={active ? 'true' : undefined}
+              style={{ '--tab-tone': `var(--ds-field-${section.icon})` } as CSSProperties}>
               <span className="local-settings-index mono" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
               {/* The section's concept icon from the registry, so it carries the same glyph and colour wherever the concept appears. */}
-              <ConceptIcon concept={section.icon} label={section.title} size={16} /><span>{section.title}</span>
+              <span className="local-settings-chip ins-chip-icon" aria-hidden="true" data-identity-decoration="tab-chip"><ConceptIcon concept={section.icon} label={section.title} size={16} /></span><span>{section.title}</span>
             </a>
           </li>;
         })}</ol>

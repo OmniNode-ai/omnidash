@@ -90,7 +90,8 @@ export function StatusGrid({ title, rows, waitsOn, isLoading, error, fileMode, c
                 <Text size="xs" color={role.textColor} style={{ display: 'inline-flex' }}>
                   <SeverityIcon severity={row.severity} />
                 </Text>
-                <Text size="xs" weight="bold" color="primary">
+                {/* A class for pages that draw the served status as their status pill (Settings, OMN-22168). */}
+                <Text size="xs" weight="bold" color="primary" className="status-grid-status">
                   {statusLabel ? statusLabel(row) : row.status}
                 </Text>
                 <Text size="xs" color="secondary">

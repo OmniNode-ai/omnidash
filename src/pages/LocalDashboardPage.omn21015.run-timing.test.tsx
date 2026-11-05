@@ -90,7 +90,8 @@ describe('OMN-21015: where a run\'s time went', () => {
   it('T11: with several measured the caption says they are not added together', () => {
     render(<RunSummary decision={run()} />);
     const caption = within(summary()).getByRole('figure', { name: 'Run timing' }).querySelector('figcaption')?.textContent;
-    expect(caption).toBe('Queue wait, Execution, Duration of this run in milliseconds, each as served, side by side and not added together.');
+    // OMN-22168 (Lakshman 2026-11-05): the axis reads seconds, so the caption no longer says milliseconds.
+    expect(caption).toBe('Queue wait, Execution, Duration of this run, each as served, side by side and not added together.');
   });
 
   it('T3: a timing that is not a number is not drawn', () => {

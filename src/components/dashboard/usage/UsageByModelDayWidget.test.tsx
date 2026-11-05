@@ -57,11 +57,13 @@ describe('UsageByModelDayTable', () => {
     expect(screen.queryByText(/\$4.00/)).not.toBeInTheDocument();
   });
 
-  it('renders a measured zero as $0.00 and no unmeasured run as none', () => {
+  // OMN-22168 (Lakshman 2026-11-05): as the run table writes them, a measured zero is the muted "$0" with the served
+  // "$0.00" as its title, and no unmeasured run is a quiet dash titled so.
+  it('renders a measured zero as a zero ($0, served $0.00) and no unmeasured run as a dash', () => {
     render(<UsageByModelDayTable rows={[row({ cost_usd: 0, measured_cost_usd: 0, unmeasured_call_count: 0 })]} />);
     const cells = within(screen.getAllByRole('row')[1]!);
-    expect(cells.getByText('$0.00')).toBeInTheDocument();
-    expect(cells.getByText('none')).toBeInTheDocument();
+    expect(cells.getByText('$0')).toHaveAttribute('title', '$0.00');
+    expect(cells.getByTitle('No unmeasured calls')).toHaveTextContent('—');
     expect(screen.queryByText('Not measured')).not.toBeInTheDocument();
   });
 

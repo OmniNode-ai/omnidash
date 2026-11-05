@@ -36,7 +36,8 @@ test('Workflow exposes available backend decision fields compactly', async ({ pa
   for (const value of ['served-routed-model', 'served-answering-backend', 'served-score-source', 'served-writer']) {
     await expect(details).toContainText(value);
   }
-  await expect(details.locator('div').filter({ has: page.locator('dt', { hasText: /^Tokens to compliance$/ }) })).toContainText('0');
+  // OMN-22168: the details are four cards now, so the fact is the list row that holds its term (not any div around it).
+  await expect(details.locator('dl > div').filter({ has: page.locator('dt', { hasText: /^Tokens to compliance$/ }) })).toContainText('0');
   await expect(details.getByText('Parent correlation', { exact: true })).toHaveCount(0);
   await page.screenshot({ path: info.outputPath('workflow-served-fields.png'), animations: 'disabled', fullPage: true });
   await page.goto('/workflow?correlation_id=unknown-run');
@@ -63,7 +64,9 @@ test('Workflow charts and recorded details read the selected run without inventi
   // The step durations are the Run timeline's (provider call, 120 ms served).
   await expect(page.locator('main ol')).toContainText('120 ms');
   // 3c5cb779: the recorded cost reads as money, not the raw served decimal.
-  await expect(page.getByRole('region', { name: 'Recorded run details', exact: true })).toContainText('Recorded cost (USD)$0.00');
+  // OMN-22168 (Lakshman 2026-11-05): a measured zero is the run table's muted "$0", the served "$0.00" its title.
+  await expect(page.getByRole('region', { name: 'Recorded run details', exact: true })).toContainText('Recorded cost (USD)$0');
+  await expect(page.getByRole('region', { name: 'Recorded run details', exact: true }).getByTitle('$0.00')).toHaveText('$0');
   await expect(page.getByRole('region', { name: 'Recorded run details', exact: true })).toContainText('fixture');
   await page.screenshot({ path: info.outputPath('workflow-analysis-desktop.png'), animations: 'disabled', fullPage: true });
   await narrowTo(page, 390, 844);

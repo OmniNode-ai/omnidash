@@ -225,7 +225,8 @@ test('AC201 AC203 AC204 AC206 the decision views stay inside their card on a pho
   await expect(matrixCell).toBeVisible();
   expect(await label(matrixCell)).toBe('"code generation"');
   await page.getByRole('radiogroup', { name: 'Matrix columns', exact: true }).getByRole('radio', { name: 'Tier', exact: true }).check();
-  expect(await label(page.locator('table[data-decision-matrix] td[data-row="model-a"][data-col="local"]'))).toBe('"local"');
+  // A tier column is named in words (Lakshman 2026-11-05, "same as overview or runs").
+  expect(await label(page.locator('table[data-decision-matrix] td[data-row="model-a"][data-col="local"]'))).toBe('"Local"');
   await settle(page, '/usage?analysis=groups');
   expect(await label(page.locator('table[data-analysis-table] tbody tr').first().locator('td[data-cell="pass"]'))).toBe('"Pass rate"');
 });

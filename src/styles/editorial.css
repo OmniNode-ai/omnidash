@@ -207,6 +207,10 @@ html body .app svg.field-icon.field-icon[data-field-icon="activity-hourly"]:not(
 html body .app svg.field-icon.field-icon[data-field-icon="age"]:not([data-semantic-concept^="model:"]) { color: var(--ds-field-age) !important; }
 html body .app svg.field-icon.field-icon[data-field-icon="analysis"]:not([data-semantic-concept^="model:"]) { color: var(--ds-field-analysis) !important; }
 html body .app svg.field-icon.field-icon[data-field-icon="answer"]:not([data-semantic-concept^="model:"]) { color: var(--ds-field-answer) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="prompt"]:not([data-semantic-concept^="model:"]) { color: var(--ds-field-prompt) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="truncated"]:not([data-semantic-concept^="model:"]) { color: var(--ds-field-truncated) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="written"]:not([data-semantic-concept^="model:"]) { color: var(--ds-field-written) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="writer"]:not([data-semantic-concept^="model:"]) { color: var(--ds-field-writer) !important; }
 html body .app svg.field-icon.field-icon[data-field-icon="backend"]:not([data-semantic-concept^="model:"]) { color: var(--ds-field-backend) !important; }
 html body .app svg.field-icon.field-icon[data-field-icon="baseline"]:not([data-semantic-concept^="model:"]) { color: var(--ds-field-baseline) !important; }
 html body .app svg.field-icon.field-icon[data-field-icon="basis"]:not([data-semantic-concept^="model:"]) { color: var(--ds-field-basis) !important; }
@@ -1198,3 +1202,163 @@ html body .local-dashboard-page .local-tier-totals > :is(dl, .local-dashboard-fi
 html body .local-dashboard-page .local-tier-totals > :is(dl, .local-dashboard-fields) > * + * { border-left: 1px solid var(--ds-line); }
 html body .local-dashboard-page .local-tier-totals dt { display: inline-flex; align-items: center; gap: 6px; justify-content: center; }
 html body .local-dashboard-page .local-tier-totals dd { font-size: 20px; font-weight: 600; color: var(--ds-ink); margin: 4px 0 0; }
+
+/* Every table's column tooltips look as the run table's do (Lakshman 2026-11-05, "do the same in usage and all other
+   too"): a faint tint of the column's colour, its 2px top edge and arrow in it, a hairline, normal-weight sentence case. */
+html body :is(.local-dashboard-page, main.ev-root) .local-dashboard-table-wrap thead .local-column-tip { display: inline-flex; max-width: 100%; }
+html body :is(.local-dashboard-page, main.ev-root) .local-dashboard-table-wrap .local-column-tip .ds-tooltip {
+  background: color-mix(in oklab, var(--field-ink, var(--ds-ink-3)) 7%, var(--ds-surface)); color: var(--ds-ink-2);
+  border: 1px solid color-mix(in oklab, var(--field-ink, var(--ds-ink-3)) 28%, var(--ds-line)); border-top: 2px solid var(--field-ink, var(--ds-ink-3));
+  box-shadow: none; font-family: var(--ds-font-sans); font-size: 12px; font-weight: 400; text-transform: none; letter-spacing: 0;
+  white-space: normal; text-align: left; line-height: 1.45; padding: 6px 10px; width: max-content; max-width: 280px; z-index: 30; }
+html body :is(.local-dashboard-page, main.ev-root) .local-dashboard-table-wrap .local-column-tip .ds-tooltip[data-side="bottom"]::before {
+  top: -6px; border-top: 2px solid var(--field-ink, var(--ds-ink-3)); border-left: 2px solid var(--field-ink, var(--ds-ink-3)); }
+html body :is(.local-dashboard-page, main.ev-root) .local-dashboard-table-wrap thead .local-column-tip :is(.local-table-head, .local-runs-head):focus-visible {
+  outline: 2px solid var(--field-ink, var(--ds-accent)); outline-offset: 2px; border-radius: 4px; }
+
+/* Delegation Evidence's stat tabs as Overview's and Runs' (Lakshman 2026-11-05, "make it full platform uniform"): the
+   stat-tab rules above are scoped under .local-dashboard-page, which main.ev-root is not inside, so Evidence fell back to
+   the older filled tab whose label read on-accent over its tone and vanished. The same rules, under Evidence's root. */
+html body main.ev-root .local-dashboard-tab-slider { display: none !important; }
+html body main.ev-root .local-dashboard-tablist:has([data-stat]) {
+  display: grid !important; grid-auto-flow: column; grid-auto-columns: auto; gap: 12px !important; width: 100%;
+  padding: 0 !important; border: 0 !important; background: transparent !important; }
+@media (max-width: 900px) { html body main.ev-root .local-dashboard-tablist:has([data-stat]) { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+html body main.ev-root .local-dashboard-tablist [role="tab"][data-stat] {
+  display: flex; align-items: center; gap: 12px; min-height: 76px; padding: 14px 16px; text-align: left; font-weight: 400;
+  border: 1px solid var(--ds-line) !important; border-radius: 14px !important; background: var(--ds-surface) !important;
+  color: var(--ds-ink) !important; box-shadow: none !important; cursor: pointer;
+  transition: transform 180ms var(--ds-ease, ease), border-color 180ms ease, box-shadow 180ms ease, background 180ms ease; }
+html body main.ev-root .local-dashboard-tablist [role="tab"][data-stat]::after { content: none !important; }
+@media (hover: hover) {
+  html body main.ev-root .local-dashboard-tablist [role="tab"][data-stat]:hover {
+    transform: translateY(-2px); border-color: color-mix(in oklab, var(--tab-tone) 45%, var(--ds-line)) !important;
+    box-shadow: 0 8px 20px -14px var(--tab-tone) !important; } }
+html body main.ev-root .local-dashboard-tablist [role="tab"][data-stat][aria-selected="true"] {
+  border-color: var(--tab-tone) !important; color: var(--ds-ink) !important;
+  background: linear-gradient(135deg, color-mix(in oklab, var(--tab-tone) 20%, var(--ds-surface)) 0%, var(--ds-surface) 75%) !important;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--tab-tone) 18%, transparent), 0 12px 28px -16px var(--tab-tone) !important; }
+html body main.ev-root .local-dashboard-tablist [role="tab"][data-stat]:focus-visible { outline: 2px solid var(--tab-tone); outline-offset: 3px; }
+html body main.ev-root [role="tab"]:not([aria-selected="true"]) > .local-tab-chip { background: color-mix(in oklab, var(--tab-tone) 24%, transparent); }
+
+/* Settings' section menu as Overview's stat tabs (Lakshman 2026-11-05, "Settings and Delegation Evidence ... same as
+   runs, overview in style, colors and uniform"): each section a card with its glyph in a chip tinted in its concept
+   colour; the chosen one keeps the raised surface (reference style) with a tint in its colour washing over it and a
+   border in that colour. */
+html body .local-dashboard-page--settings .local-settings-menu { padding: 0 !important; border: 0 !important; background: var(--ds-page) !important; box-shadow: none !important; }
+html body .local-dashboard-page--settings .local-settings-menu ol { gap: 12px; }
+html body .local-dashboard-page--settings .local-settings-menu a { display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 10px 14px;
+  border: 1px solid var(--ds-line) !important; border-radius: 14px !important; background-color: var(--ds-surface) !important; color: var(--ds-ink-2) !important;
+  font-weight: 600; transition: border-color 180ms ease, transform 180ms ease, box-shadow 180ms ease; }
+@media (hover: hover) { html body .local-dashboard-page--settings .local-settings-menu a:hover { transform: translateY(-2px);
+  border-color: color-mix(in oklab, var(--tab-tone) 45%, var(--ds-line)) !important; box-shadow: 0 8px 20px -14px var(--tab-tone); color: var(--ds-ink) !important; } }
+html body .local-dashboard-page--settings .local-settings-menu a[aria-current="page"] {
+  background-color: var(--ds-surface-2) !important; color: var(--ds-ink) !important; border-color: var(--tab-tone) !important;
+  background-image: linear-gradient(135deg, color-mix(in oklab, var(--tab-tone) 20%, transparent) 0%, transparent 75%) !important;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--tab-tone) 18%, transparent), 0 12px 28px -16px var(--tab-tone) !important; }
+html body .local-dashboard-page--settings .local-settings-menu a:focus-visible { outline: 2px solid var(--tab-tone); outline-offset: 3px; }
+html body .local-dashboard-page--settings .local-settings-chip.ins-chip-icon { display: inline-grid; place-items: center; flex: none; width: 34px; height: 34px;
+  border-radius: 10px; background: color-mix(in oklab, var(--tab-tone) 22%, transparent); color: inherit; }
+html body .local-dashboard-page--settings .local-settings-menu a[aria-current="page"] .local-settings-chip { background: color-mix(in oklab, var(--tab-tone) 34%, transparent); }
+html body .local-dashboard-page--settings .local-settings-index { font-size: 12px; color: var(--ds-ink-3) !important; }
+
+/* Settings, as Overview and Runs (Lakshman 2026-11-05): the headline figures and the pricing facts are Overview's cards,
+   each tinted in its concept colour with its figure in that colour; the provider list's head band reads as every table's
+   header (glyph and colour per column, the header band), with no lines between columns, the provider's name at the table
+   size; a provider's status is the run table's sentence-case pill. */
+html body .local-dashboard-page--settings :is(.local-provider-figures, .local-pricing-facts) { display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px !important;
+  border: 0 !important; background: none !important; padding: 0 !important; }
+@media (max-width: 900px) { html body .local-dashboard-page--settings :is(.local-provider-figures, .local-pricing-facts) { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+html body .local-dashboard-page--settings :is(.local-provider-figures, .local-pricing-facts) > div[data-field-tone] { min-width: 0; padding: 14px 16px !important; border-radius: 12px !important;
+  border: 1px solid color-mix(in oklab, var(--field-ink) 32%, var(--ds-line)) !important;
+  background: linear-gradient(170deg, color-mix(in oklab, var(--field-ink) 11%, var(--ds-surface)) 0%, var(--ds-surface) 60%) !important; }
+html body .local-dashboard-page--settings :is(.local-provider-figures, .local-pricing-facts) > div[data-field-tone] > dt { display: flex; align-items: center; gap: 7px;
+  color: var(--field-ink) !important; letter-spacing: 0.08em; }
+html body .local-dashboard-page--settings :is(.local-provider-figures, .local-pricing-facts) > div[data-field-tone] > dt svg { color: var(--field-ink) !important; }
+html body .local-dashboard-page--settings .local-provider-figures > div[data-field-tone] strong { color: var(--field-ink); }
+html body .local-dashboard-page--settings .local-pricing-facts > div[data-field-tone] > dd { color: var(--ds-ink); overflow-wrap: anywhere; }
+html body .local-dashboard-page--settings .local-provider-head-band { background: var(--ds-surface-2) !important; }
+html body .local-dashboard-page--settings .local-provider-head-band > .local-table-head { display: inline-flex; align-items: center; gap: 6px; color: var(--field-ink) !important; }
+html body .local-dashboard-page--settings .local-provider-cell + .local-provider-cell { border-left: 0 !important; }
+html body .local-dashboard-page--settings .local-provider-cell--name { border-right: 0 !important; }
+html body .local-dashboard-page--settings .local-provider-name { font-size: 15px !important; }
+html body .local-dashboard-page--settings .local-provider-status { font-family: var(--ds-font-sans) !important; text-transform: none !important; letter-spacing: 0 !important;
+  font-size: 12px !important; font-weight: 600; border: 1px solid color-mix(in oklab, var(--pill-fg) 40%, transparent) !important; }
+/* Settings' Access and System status as Workflow's cards: each panel or group a card tinted in its concept colour with its
+   title in it, fact labels in sentence case like every fact list, the two Access cards apart. The card look itself is
+   seven-page-design.css's workflow-record-group, scoped there to .local-dashboard-page, which Settings is. */
+/* The section's panels stay one card (OMN-21970 AC9/AC10, AC160): the group keeps its one ink rule and the panels draw no
+   box of their own; each panel carries its colour as a tint and its title, not as a border. */
+/* (0,4,4): above the panel rule's (0,3,4). */
+html body main.local-dashboard-page--settings .local-settings-section article.local-dashboard-panel:is([data-component="api-keys-local-identity"], [data-component="api-keys-access"]) {
+  background: linear-gradient(170deg, color-mix(in oklab, var(--field-ink) 10%, var(--ds-surface)) 0%, var(--ds-surface) 58%) !important; }
+/* A label column of its own width, so a value keeps the panel's width (the tenant id is read whole). */
+html body main.local-dashboard-page--settings article:is([data-component="api-keys-local-identity"], [data-component="api-keys-access"]) .local-dashboard-fields > div {
+  grid-template-columns: minmax(110px, 0.55fr) minmax(0, 1.45fr) !important; }
+html body .local-dashboard-page--settings article[data-component="api-keys-local-identity"] { --field-ink: var(--ds-field-local-identity); }
+html body .local-dashboard-page--settings article[data-component="api-keys-access"] { --field-ink: var(--ds-field-local-access); }
+html body .local-dashboard-page--settings article:is([data-component="api-keys-local-identity"], [data-component="api-keys-access"]) > :is(h2, header h2, .local-dashboard-panel-title) { color: var(--field-ink) !important; }
+html body .local-dashboard-page :is(.local-dashboard-page--settings article[data-component^="api-keys-"], .local-environment-groups) dt {
+  text-transform: none !important; letter-spacing: 0 !important; font-family: var(--ds-font-sans) !important; font-size: 12.5px !important; color: var(--ds-ink-2) !important; }
+html body .local-dashboard-page .local-environment-groups { margin: 12px 0; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 900px) { html body .local-dashboard-page .local-environment-groups { grid-template-columns: minmax(0, 1fr); } }
+html body .local-dashboard-page .local-environment-groups .local-dashboard-fields { display: grid !important; grid-template-columns: minmax(0, 1fr) !important; gap: 10px !important; border: 0 !important; }
+html body .local-dashboard-page .local-environment-groups .local-dashboard-fields > div { border: 0 !important; padding: 0 !important; min-height: 0 !important; display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 8px; background: none !important; }
+html body .local-dashboard-page .local-environment-groups dd { overflow-wrap: anywhere; color: var(--ds-ink); }
+html body main.local-dashboard-page--settings article:is([data-component="api-keys-local-identity"], [data-component="api-keys-access"]) h2 { color: var(--field-ink) !important; }
+html body main.local-dashboard-page--settings article:is([data-component="api-keys-local-identity"], [data-component="api-keys-access"]) h2 svg { color: var(--field-ink) !important; }
+/* Settings' Services card as the run cards (OMN-22168): no dashboard drag grip (Settings has no layout to edit; it left an
+   empty slot before the title), the title in ink, each service tile a card and its served status the run table's
+   sentence-case pill ("Running"; the served text is unchanged). */
+html body main.local-dashboard-page--settings .widget-grip { display: none !important; }
+html body main.local-dashboard-page--settings .widget-title { color: var(--ds-ink) !important; }
+html body main.local-dashboard-page--settings [data-testid="status-grid-tile"] { border-radius: 10px !important; padding: 10px 12px !important; }
+html body main.local-dashboard-page--settings .status-grid-status { display: inline-block; text-transform: lowercase; padding: 1px 8px; border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--ds-field-pass) 45%, transparent); background: color-mix(in oklab, var(--ds-field-pass) 14%, var(--ds-surface)); color: var(--ds-field-pass) !important; }
+html body main.local-dashboard-page--settings .status-grid-status::first-letter { text-transform: uppercase; }
+html body main.local-dashboard-page--settings [data-testid="status-grid-tile"]:not([data-severity="ok"]):not([data-severity="nominal"]) .status-grid-status {
+  border-color: color-mix(in oklab, var(--ds-field-fail) 45%, transparent); background: color-mix(in oklab, var(--ds-field-fail) 14%, var(--ds-surface)); color: var(--ds-field-fail) !important; }
+/* Every page's scroller keeps its scrollbar's room (OMN-22168, measured 2026-11-05): with a classic 15px scrollbar a page
+   short enough not to scroll (Settings' Pricing and routing) was 16px wider than the next, so its tab row and cards jumped
+   sideways between sections and pages. */
+@media (min-width: 641px) { html body :is(main.local-dashboard-page, main.ev-root) { scrollbar-gutter: stable; } }
+/* Evidence's stat-tab chips as Overview's (the chip rules above are scoped to .local-dashboard-page): the glyph in its tone,
+   on the chosen tab the on-accent glyph over the filled chip (it was a dark glyph on a dark chip in light theme). */
+html body main.ev-root .local-tab-chip svg.lucide { color: var(--tab-tone) !important; width: 20px; height: 20px; }
+html body main.ev-root [aria-selected="true"] > .local-tab-chip svg.lucide,
+html body main.ev-root [aria-selected="true"] > .local-tab-chip svg.lucide.field-icon.field-icon[data-field-icon] { color: var(--ds-on-accent) !important; }
+
+/* One platform (Lakshman 2026-11-05, "make all pages uniform"), measured across the six pages in Chrome first:
+   - every secondary button (pagers, "Show all", the prompt and answer folds, a provider's "+N more" and full error, Copy,
+     Open run) is the Runs export's size: 32px, 8px corners, 12.5px at 500, one hairline;
+   - Evidence's exports are the Runs exports (glyph, green and purple tints);
+   - every caption and note reads in ink-2 at 1.4 line height (the Overview, Runs and Usage majority) (Evidence's notes and Settings' captions were ink-3);
+   - Evidence's panel titles are the other pages' title ink (seven were brighter), its stat tabs and Settings' section
+     tabs the other pages' 56px with 12px corners and padding. */
+html body :is(main.local-dashboard-page, main.ev-root) :is(.local-dashboard-pager button, .local-savings-pagination button, .usage-record-pagination button,
+  .ev-table-paging button, .ev-more-rows > summary, .workflow-run-answer-fold > summary, .local-provider-more > summary, .local-provider-error > summary,
+  .workflow-run-search > button, .local-run-copy, .ev-decision-export-actions button) {
+  display: inline-flex !important; align-items: center; gap: 6px; height: 32px !important; min-height: 32px !important; padding: 0 12px !important;
+  border: 1px solid var(--ds-line) !important; border-radius: 8px !important; font-size: 12.5px !important; font-weight: 500 !important; line-height: 1;
+  color: var(--ds-ink-2); background: transparent; cursor: pointer; list-style: none; }
+html body :is(main.local-dashboard-page, main.ev-root) :is(.local-dashboard-pager button, .local-savings-pagination button, .usage-record-pagination button, .ev-table-paging button,
+  .ev-more-rows > summary, .workflow-run-answer-fold > summary, .local-provider-more > summary, .local-provider-error > summary, .workflow-run-search > button, .ev-decision-export-actions button):not(:disabled):hover {
+  color: var(--ds-ink); background: var(--ds-surface-2); border-color: var(--ds-line-strong, var(--ds-line)) !important; }
+html body :is(main.local-dashboard-page, main.ev-root) :is(.local-provider-more, .local-provider-error) > summary::-webkit-details-marker { display: none; }
+html body main.ev-root .ev-decision-export-actions button[data-export] { --tone: var(--ds-hue-green); --tone-ink: color-mix(in oklab, var(--tone) 72%, var(--ds-ink));
+  color: var(--tone-ink) !important; border-color: color-mix(in oklab, var(--tone) 45%, var(--ds-line)) !important; background: color-mix(in oklab, var(--tone) 10%, transparent) !important; }
+html body main.ev-root .ev-decision-export-actions button[data-export="json"] { --tone: var(--ds-hue-purple); }
+html body main.ev-root .ev-decision-export-actions button[data-export]:not(:disabled):hover { background: color-mix(in oklab, var(--tone) 20%, transparent) !important; border-color: color-mix(in oklab, var(--tone) 70%, var(--ds-line)) !important; }
+html body main.ev-root .ev-decision-export-actions button[data-export] svg.lucide { color: var(--tone-ink) !important; }
+html body :is(main.local-dashboard-page, main.ev-root) :is(.local-dashboard-caption, .note):not(h3):not(h4):not([data-field-tone]) { color: var(--ds-ink-2); line-height: 1.4; }
+html body main.ev-root .local-dashboard-tablist [role="tab"][data-stat] { min-height: 56px !important; border-radius: 12px !important; padding: 10px 12px !important; }
+html body .local-dashboard-page--settings .local-settings-menu a { border-radius: 12px !important; }
+/* Every page's stat tabs at phone width (OMN-22168): the chip is one 32px square everywhere (Evidence drew 42px), and
+   a label or hint wider than its half of the row wraps inside the tab instead of running past it (Runs had two). */
+html body :is(main.local-dashboard-page, main.ev-root) .local-dashboard-tablist [role="tab"][data-stat] .local-tab-chip { width: 32px !important; height: 32px !important; flex: 0 0 32px; }
+@media (max-width: 640px) {
+  html body :is(main.local-dashboard-page, main.ev-root) .local-dashboard-tablist [role="tab"][data-stat] .local-tab-text { min-width: 0; }
+  html body :is(main.local-dashboard-page, main.ev-root) .local-dashboard-tablist [role="tab"][data-stat] :is(.local-tab-label, .local-tab-hint) { white-space: normal !important; overflow-wrap: anywhere; }
+}
+/* No text under 12px: the newest-run tag on Workflow was 11px. */
+html body main.local-dashboard-page .local-run-tag { font-size: 12px !important; }

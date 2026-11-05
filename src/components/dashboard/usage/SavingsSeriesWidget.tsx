@@ -1,3 +1,4 @@
+import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { formatDashboardCount } from '@/lib/dashboard-count';
 // OMN-20006 Amendment 1 (US-3): savings per UTC day against the one baseline, from metering-summary.v1.
 //
@@ -12,7 +13,8 @@ import { useProjectionSnapshotQuery } from '@/hooks/useProjectionSnapshotQuery';
 import { TOPICS } from '@shared/types/topics';
 import { formatUsd } from './UsageByModelDayWidget';
 import { useState } from 'react';
-import { DataTable, EmptyState } from '@/theme/design-system/components';
+import { ChevronLeft, ChevronRight } from '@/theme/design-system/icons';
+import { ColumnTip, DataTable, EmptyState } from '@/theme/design-system/components';
 
 /** The subset of metering-summary.v1 columns the series renders. */
 export interface MeteringSummaryRow {
@@ -34,9 +36,12 @@ function isMissing(value: unknown): boolean {
   return value === null || value === undefined || value === '';
 }
 
-function savings(row: MeteringSummaryRow): string {
-  if (row.baseline_state === 'unresolved' || isMissing(row.baseline_model)) return 'Baseline unresolved';
-  return isMissing(row.savings_usd) ? 'Not measured' : formatUsd(row.savings_usd);
+/** The served saving as text, and as a number for the day's bar (null when none was served). */
+function savings(row: MeteringSummaryRow): { text: string; amount: number | null } {
+  if (row.baseline_state === 'unresolved' || isMissing(row.baseline_model)) return { text: 'Baseline unresolved', amount: null };
+  if (isMissing(row.savings_usd)) return { text: 'Not measured', amount: null };
+  const amount = Number(row.savings_usd);
+  return { text: formatUsd(row.savings_usd), amount: Number.isFinite(amount) ? amount : null };
 }
 
 /** Day rows grouped by the baseline they are stated against, each group in served order. */
@@ -75,20 +80,37 @@ function SavingsDays({ baseline, days }: { baseline: string; days: MeteringSumma
   const last = Math.max(0, Math.ceil(days.length / DAYS_PER_PAGE) - 1);
   const page = Math.min(requestedPage, last);
   const start = page * DAYS_PER_PAGE;
+  // The day's bar fills against the series' biggest served saving (Lakshman 2026-11-05, "make it modern"): a scale, not
+  // a sum, so the browser still adds nothing up. A day with no served saving draws no bar.
+  const served = days.map(row => savings(row));
+  const most = Math.max(0, ...served.flatMap(({ amount }) => (amount === null ? [] : [amount])));
   return (
-        <DataTable className="local-savings-days" aria-label={`Savings per day vs ${baseline}`} footer={<nav className="local-savings-pagination" aria-label={`Savings days for ${baseline}`}>
-            <button type="button" className="local-filter-clear" aria-label={`Previous savings days for ${baseline}`} disabled={page === 0} onClick={() => setPage(page - 1)}>Previous</button>
+        <DataTable className="local-savings-days" aria-label={`Savings per day vs ${baseline}`} footer={<nav className="local-dashboard-pager local-savings-pagination" aria-label={`Savings days for ${baseline}`}>
+            {/* The Runs table's pager: the range first, the two page buttons after it. */}
             <span role="status">{start + 1}–{Math.min(start + DAYS_PER_PAGE, days.length)} of {formatDashboardCount(days.length)} days</span>
-            <button type="button" className="local-filter-clear" aria-label={`Next savings days for ${baseline}`} disabled={page === last} onClick={() => setPage(page + 1)}>Next</button>
+            <button type="button" aria-label={`Previous savings days for ${baseline}`} disabled={page === 0} onClick={() => setPage(page - 1)}><ChevronLeft size={14} aria-hidden="true" />Previous</button>
+            <button type="button" aria-label={`Next savings days for ${baseline}`} disabled={page === last} onClick={() => setPage(page + 1)}>Next<ChevronRight size={14} aria-hidden="true" /></button>
           </nav>}>
-            <thead><tr><th>Day</th><th>{`Savings vs ${baseline}`}</th><th>Runs</th></tr></thead>
-            <tbody>{days.slice(start, start + DAYS_PER_PAGE).map((row, index) => (
+            {/* Headers as the run table writes them (Lakshman 2026-11-05, "make all pages like overview and runs"). */}
+            <thead><tr>
+              <th><ColumnTip tone="usage-day" tip="The UTC day."><span className="local-table-head" data-field-tone="usage-day" tabIndex={0}><ConceptIcon concept="usage-day" label="Day" size={13} />Day</span></ColumnTip></th>
+              <th><ColumnTip tone="savings" tip={`Modelled saving for the day: the runs' tokens at ${baseline}'s list price, less what they cost. The baseline never ran. The bar is the day against the biggest day.`}><span className="local-table-head" data-field-tone="savings" tabIndex={0}><ConceptIcon concept="savings" label="Savings" size={13} />{`Savings vs ${baseline}`}</span></ColumnTip></th>
+              <th><ColumnTip tone="delegations" tip="Runs that UTC day."><span className="local-table-head" data-field-tone="delegations" tabIndex={0}><ConceptIcon concept="delegations" label="Runs" size={13} />Runs</span></ColumnTip></th>
+            </tr></thead>
+            <tbody>{days.slice(start, start + DAYS_PER_PAGE).map((row, index) => {
+              const { text, amount } = served[start + index]!;
+              return (
               <tr key={`${String(row.window_start)}-${index}`}>
                 <td data-label="Day">{isMissing(row.window_start) ? 'Not recorded' : String(row.window_start)}</td>
-                <td data-label={`Savings vs ${baseline}`}>{savings(row)}</td>
+                <td data-label={`Savings vs ${baseline}`}><span className="local-savings-cell">
+                  <span className="local-savings-value">{text}</span>
+                  {amount !== null && most > 0 && <span className="local-savings-meter" aria-hidden="true">
+                    <i style={{ width: `${Math.round((Math.max(amount, 0) / most) * 1000) / 10}%` }} /></span>}
+                </span></td>
                 <td data-label="Runs">{isMissing(row.runs_total) ? 'Not recorded' : formatDashboardCount(row.runs_total)}</td>
               </tr>
-            ))}</tbody>
+              );
+            })}</tbody>
         </DataTable>
   );
 }

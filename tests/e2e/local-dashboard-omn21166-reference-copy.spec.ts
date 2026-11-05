@@ -53,8 +53,9 @@ for (const theme of ['light', 'dark'] as const) {
         // CSV and JSON export glyphs carry their own colour; design-system-dashboard-polish L8 checks them.
         // OMN-22168 (Lakshman 2026-11-04): the Runs filter and export glyphs, and each page's sidebar and title icon, draw
         // their own colour (design-system-dashboard-polish L8 and L11 check them); they still count as drawn icons.
+        // OMN-22168 (Lakshman 2026-11-05, "make all pages uniform"): Evidence's CSV and JSON exports are the Runs exports.
         .map(svg => ({ color: getComputedStyle(svg).color, active: !!svg.closest('.mvp-nav-item.active'),
-          exempt: !!svg.closest('.local-dashboard-filters .ds-dropdown-mark, .local-runs-export button[data-export], .local-dashboard-tablist [role="tab"][data-toned], .local-day-picker .local-day-button') || svg.matches('svg.destination-icon') })));
+          exempt: !!svg.closest('.local-dashboard-filters .ds-dropdown-mark, .local-runs-export button[data-export], .ev-decision-export-actions button[data-export], .local-dashboard-tablist [role="tab"][data-toned], .local-day-picker .local-day-button') || svg.matches('svg.destination-icon') })));
       expect(icons.length, `${path} draws icons`).toBeGreaterThan(3);
       for (const icon of icons.filter(item => !item.exempt)) expect(icon.color, `${path} icon`).toBe(INK3[theme]);
       const concepts = await page.evaluate(() => [...document.querySelectorAll('main svg.field-icon[data-field-icon]:not([data-field-icon^="tier-"]):not([data-semantic-concept^="model:"])')]

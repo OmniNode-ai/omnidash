@@ -126,7 +126,7 @@ main.ev-root[data-destination="delegation-evidence"] .kpi[data-tone] .k-l svg {
   border-color: var(--ds-line); box-shadow: none;
 }
 .app main.ev-root[data-destination="delegation-evidence"] [data-panel-title] .panel-h .pt {
-  color: var(--ds-ink);
+  color: var(--ds-ink-2); /* every page's panel-title ink (OMN-22168, "make all pages uniform") */
 }
 .app main.ev-root[data-destination="delegation-evidence"] [data-panel-title] .panel-h .ev-panel-icon,
 .app main.ev-root[data-destination="delegation-evidence"] .ev-title-icon {

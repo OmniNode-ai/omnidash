@@ -2328,7 +2328,7 @@ figure.local-chart.usage-insight { min-width: 0; margin: 0; padding: 14px; }
 .local-dashboard-page--settings .local-settings-section > h2 { margin: 0 0 6px; font-family: var(--ds-font-sans); font-size: 36px; font-weight: 600;
   font-variation-settings: normal; letter-spacing: -0.01em; line-height: 1.05; color: var(--ds-ink); }
 .local-dashboard-page--settings .local-settings-description { margin: 0 0 20px; font-size: 15px; color: var(--ds-ink-2); }
-.local-dashboard-page--settings .local-dashboard-caption { color: var(--ds-ink-3); }
+.local-dashboard-page--settings .local-dashboard-caption { color: var(--ds-ink-2); }
 
 /* Figures strip: four served counts, set large in the display face. */
 .local-provider-figures { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0 0 20px; border: 1px solid var(--ds-line-strong); }

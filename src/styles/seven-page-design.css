@@ -217,7 +217,9 @@ main.ev-root[data-destination="delegation-evidence"] .panel-h .pt { font-size: 1
 main.ev-root[data-destination="delegation-evidence"] :is(.kv .v, .kpi .k-v) { color: var(--ds-ink) !important; }
 /* Evidence's statistics and bar values keep their OMN-21308 concept colours (pass, fail, savings, baseline, cost). */
 .local-dashboard-page :is(dt, .ins-kpi > span, .ins-kpi small),
-main.ev-root[data-destination="delegation-evidence"] :is(.kv .k, .kpi .k-l, .note) { color: var(--ds-ink-3) !important; }
+main.ev-root[data-destination="delegation-evidence"] :is(.kv .k, .kpi .k-l) { color: var(--ds-ink-3) !important; }
+/* Notes read as every other page's captions, in ink-2 (OMN-22168, "make all pages uniform"). */
+main.ev-root[data-destination="delegation-evidence"] .note { color: var(--ds-ink-2) !important; }
 .local-dashboard-page [data-field-tone="fail"] :is(strong, .ins-list-value), .local-dashboard-page strong[data-field-tone="fail"] { color: var(--ds-bad) !important; }
 .local-dashboard-page [data-field-tone="pass"] strong { color: var(--ds-ok) !important; }
 .local-dashboard-page [data-field-unavailable="true"] :is(dd, strong), .local-dashboard-page :is(dd, strong)[data-field-unavailable="true"] { color: var(--ds-ink-3) !important; font-weight: 500; }
@@ -495,7 +497,7 @@ main.ev-root[data-destination="delegation-evidence"] .kv [data-field-tone="model
 .utc-stack i { display: block; min-height: 1px; }
 .utc-missing { position: absolute; top: 0; right: 0; font-size: 12px; color: var(--ds-ink-3); border: 1px dashed var(--ds-ink-3); border-radius: 3px; padding: 0 2px; }
 .utc-day { position: absolute; top: calc(100% + 6px); left: 0; right: 0; text-align: center; font-size: 12px; color: var(--ds-ink-3); white-space: nowrap; }
-.utc-chart figcaption { margin-top: 22px; }
+.utc-chart figcaption { margin-top: 10px; }
 
 /* A slice panel's own heading is the panel's; the inner duplicate title is not drawn. */
 .local-dashboard-panel[data-slice] .local-savings-by-model > h3,
@@ -1724,3 +1726,421 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ds-accent); outline-o
 .local-dashboard-page :is(.ins-task-head, .ins-list-row.ins-task-row) { grid-template-columns: 26px minmax(9rem, 1fr) minmax(0, 1.6fr) 72px 88px 130px; }
 /* In the Tasks columns a pass-rate pill is as wide as its figure, not its column. */
 .local-dashboard-page .ins-task-row > [data-pass-band] { justify-self: start; }
+/* Usage (Lakshman 2026-11-05, "make all pages like overview and runs"): its tables written as the Runs tables are.
+   Groups: a model, tier, task or backend reads as the run table's model cell (no capitals); fixed columns, each as wide as
+   its header's longest word and its widest value, so spend, pass rate and last run keep one line. */
+.local-dashboard-page .usage-analysis table[data-analysis-table] tbody th[scope="row"] { text-transform: none; letter-spacing: 0; font-weight: 400; font-size: 13px; color: var(--ds-ink); }
+.local-dashboard-page .usage-analysis table[data-analysis-table] { table-layout: fixed; width: 100%; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="name"] { width: 211px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="runs"] { width: 85px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="spend"] { width: 197px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="pass"] { width: 150px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th:is([data-col="p50"], [data-col="p95"]) { width: 108px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="last"] { width: 128px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="spark"] { width: 122px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] :is(td[data-cell="spend"], td[data-cell="pass"], td[data-cell="last"], td[data-cell="p50"], td[data-cell="p95"]) { white-space: nowrap; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] thead .local-table-head { white-space: normal; text-align: left; }
+/* Usage by model and day: fixed columns, each its header's longest word or its widest value (measured in Chrome), a long
+   model name wrapping inside its column, figures on one line, the share of calls a meter beside its percent. */
+.local-dashboard-page table[aria-label="Usage by model and day"] { table-layout: fixed; width: 100%; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(1) { width: 96px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(2) { width: 190px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(3) { width: 101px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(4) { width: 101px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(5) { width: 134px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(6) { width: 146px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(7) { width: 110px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(8) { width: 90px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(9) { width: 140px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] td:nth-child(2), .local-dashboard-page table[aria-label="Usage by model and day"] td:nth-child(2) * { white-space: normal !important; overflow-wrap: anywhere; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead .local-table-head { white-space: normal; }
+.local-dashboard-page table[aria-label="Usage by model and day"] :is(td:nth-child(1), td:nth-child(3), td:nth-child(4), td:nth-child(5), td:nth-child(7), td:nth-child(8), td:nth-child(9)) { white-space: nowrap; }
+.local-dashboard-page table[aria-label="Usage by model and day"] .local-share-meter { flex-basis: 48px; }
+/* Savings per day: day, saving and runs in fixed shares. */
+.local-dashboard-page table.local-savings-days, .local-dashboard-page .local-savings-days table { table-layout: fixed; width: 100%; }
+.local-dashboard-page .local-savings-days thead th:nth-child(1) { width: 160px; }
+.local-dashboard-page .local-savings-days thead th:nth-child(2) { width: auto; }
+.local-dashboard-page .local-savings-days thead th:nth-child(3) { width: 120px; }
+/* Model by task: model names as the run table writes them (no capitals, wrapping at their joins in a wider column). */
+.local-dashboard-page table[data-decision-matrix] tbody th[scope="row"] { text-transform: none; letter-spacing: 0; font-weight: 400; font-size: 13px; color: var(--ds-ink); min-width: 200px; }
+.local-dashboard-page table[data-decision-matrix] thead th:first-child { width: 200px; }
+.local-dashboard-page table[data-decision-matrix] .usage-matrix-figure[data-pass-band] { display: inline-block !important; width: fit-content !important; max-width: 100%; margin-bottom: 4px; }
+/* Tokens per day's legends under the chart: one row of Overview's chips (models, then tiers). */
+.local-dashboard-page .utc-chart .utc-legends { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px; }
+.local-dashboard-page .utc-chart .utc-legends > ul { margin: 0 !important; flex: 0 1 auto; justify-content: flex-start; }
+/* Usage by model and day: a row that starts a new day draws a stronger line above it, as the run table does. */
+.local-dashboard-page table[aria-label="Usage by model and day"] tbody tr[data-day-start]:not(:first-child) > td { border-top: 1px solid var(--ds-line-strong, var(--ds-line)); }
+/* Phone: each row is its own card, so every card names its day (the desktop table names a day once per group). */
+@media (max-width: 640px) {
+  .local-dashboard-page table[aria-label="Usage by model and day"] td[data-label="Day"] > .local-visually-hidden {
+    position: static !important; width: auto; height: auto; margin: 0; overflow: visible; clip: auto; white-space: normal; }
+}
+
+/* Savings per day, modern (Lakshman 2026-11-05): figures in tabular digits, each saving with a filled bar against the
+   series' biggest day, a soft row hover, and the Runs table's pager (range, then the two buttons). */
+.local-dashboard-page .local-savings-days tbody td { font-variant-numeric: tabular-nums; }
+.local-dashboard-page .local-savings-days tbody tr { transition: background 0.12s; }
+.local-dashboard-page .local-savings-days tbody tr:hover > td { background: color-mix(in srgb, var(--ds-field-savings) 6%, transparent); }
+.local-dashboard-page .local-savings-cell { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.local-dashboard-page .local-savings-value { flex: 0 0 104px; font-weight: 500; }
+.local-dashboard-page .local-savings-meter { flex: 1 1 auto; margin-right: 32px; height: 8px; border-radius: 999px; background: var(--ds-line); overflow: hidden; }
+.local-dashboard-page .local-savings-meter > i { display: block; height: 100%; min-width: 2px; border-radius: inherit; background: var(--ds-field-savings); }
+.local-dashboard-page .local-savings-days .local-savings-pagination { justify-content: flex-end; margin: 0; padding: 10px 12px; border-top: 1px solid var(--ds-line); }
+.local-dashboard-page .local-savings-pagination > [role="status"] { margin-right: auto; color: var(--ds-ink-2); font-variant-numeric: tabular-nums; }
+.local-dashboard-page .local-savings-pagination button { display: inline-flex; align-items: center; gap: 4px; min-height: 30px; padding: 4px 10px; font-size: 13px; }
+@media (max-width: 640px) {
+  .local-dashboard-page .local-savings-value { flex-basis: auto; }
+}
+
+/* Tokens per day on Usage, drawn as Overview's day charts are (Lakshman 2026-11-05, "modern and unified like overview and
+   Runs"): Overview's segmented switch, the readout line above the plot, a 300px plot (220px on a phone) with the top and
+   middle gridlines, each day's track and stack at most 44px wide and centred in its slot, the other days dimmed while
+   one is read, and the day labels under the baseline. */
+.local-dashboard-page .utc-chart .ins-readout { min-height: 20px; margin: 4px 0 0; font-variant-numeric: tabular-nums; }
+.local-dashboard-page .utc-chart .ins-readout .ins-readout-sep { margin: 0 6px; color: var(--ds-ink-3); }
+.local-dashboard-page .utc-readout-swatch { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 999px; vertical-align: 1px; }
+.local-dashboard-page .utc-chart .utc-plot { margin-bottom: 26px; padding-top: 0;
+  background-image: linear-gradient(to bottom, var(--ds-line) 1px, transparent 1px), linear-gradient(to bottom, var(--ds-line) 1px, transparent 1px);
+  background-size: 100% 1px, 100% 1px; background-repeat: no-repeat; background-position: 0 calc(100% - 300px), 0 calc(100% - 150px); }
+.local-dashboard-page .utc-chart .utc-track { height: 300px; width: 100%; max-width: 44px; margin: 0 auto; }
+.local-dashboard-page .utc-chart .utc-plot > li { transition: opacity 0.15s; outline: none; }
+.local-dashboard-page .utc-chart .utc-plot > li[data-dim="true"] { opacity: 0.45; }
+.local-dashboard-page .utc-chart .utc-plot > li:focus-visible .utc-track { outline: 2px solid var(--ds-accent); outline-offset: 2px; }
+.local-dashboard-page .utc-chart .utc-day { color: var(--ds-ink-2); }
+.local-dashboard-page .utc-chart figcaption { margin-top: 2px; }
+@media (max-width: 700px) {
+  .local-dashboard-page .utc-chart .utc-track { height: 220px; }
+  .local-dashboard-page .utc-chart .utc-plot { background-position: 0 calc(100% - 220px), 0 calc(100% - 110px); }
+}
+/* Phone: 14 days in about 360px leave each day 17px, so every third day is labelled (the last always), and a long model
+   name wraps inside its chip instead of running past the panel. */
+@media (max-width: 640px) {
+  .local-dashboard-page .utc-chart .utc-plot > li .utc-day { visibility: hidden; }
+  .local-dashboard-page .utc-chart .utc-plot > li:is(:nth-child(3n+1), :last-child) .utc-day { visibility: visible; }
+  .local-dashboard-page .utc-chart .utc-plot > li:nth-last-child(2):nth-child(3n+1) .utc-day { visibility: hidden; }
+  .local-dashboard-page .utc-chart .utc-legends li { height: auto !important; min-height: var(--ds-chip-h, 28px); max-width: 100%; padding: 4px 12px !important;
+    white-space: normal; overflow-wrap: anywhere; }
+}
+@media (max-width: 640px) {
+  .local-dashboard-page .utc-chart .utc-plot > li:last-child .utc-day { left: auto; right: 0; text-align: right; }
+}
+
+/* Usage's grouped bars (Tokens by model, Cost per run), drawn as Overview's day charts are (Lakshman 2026-11-05): the
+   readout line above, a 300px plot (220px on a phone) with the top and middle gridlines, bars at most 44px wide and
+   centred, the other groups dimmed while one is read, and the series and tier chips in one row under the names. */
+.local-dashboard-page .usage-insight .ins-readout { min-height: 20px; margin: 4px 0 8px; font-variant-numeric: tabular-nums; }
+.local-dashboard-page ul.gdb-plot--list { height: 300px;
+  background-image: linear-gradient(to bottom, var(--ds-line) 1px, transparent 1px), linear-gradient(to bottom, var(--ds-line) 1px, transparent 1px);
+  background-size: 100% 1px, 100% 1px; background-position: 0 0, 0 50%; background-repeat: no-repeat; }
+.local-dashboard-page ul.gdb-plot--list .gdb-col { max-width: 44px; align-items: center; }
+.local-dashboard-page ul.gdb-plot--list .gdb-bar { max-width: 44px; }
+.local-dashboard-page ul.gdb-plot--list > .ins-bar.gdb-day { transition: opacity 0.15s; }
+.local-dashboard-page ul.gdb-plot--list > .ins-bar.gdb-day[data-dim="true"] { opacity: 0.45; }
+.local-dashboard-page ul.gdb-plot--list > .ins-bar.gdb-day:is(:hover, :focus-visible) .gdb-day-label { color: var(--ds-ink) !important; }
+.local-dashboard-page .gdb-legends { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px; }
+.local-dashboard-page .gdb-legends > ul { margin: 0 !important; }
+@media (max-width: 700px) {
+  .local-dashboard-page ul.gdb-plot--list { height: 220px; }
+}
+@media (max-width: 640px) {
+  .local-dashboard-page .gdb-legends li { height: auto !important; min-height: var(--ds-chip-h, 28px); max-width: 100%; padding: 4px 12px !important; white-space: normal; overflow-wrap: anywhere; }
+}
+/* The readout says each value in full, so the grouped bars draw no figure over a bar, as on Overview; long wrapped names
+   keep clear of the chips under them. */
+.local-dashboard-page ul.gdb-plot--list .gdb-val { display: none; }
+.local-dashboard-page ul.gdb-plot--names { margin-bottom: 58px; }
+
+/* Tokens in / Tokens out, a modern pill switch (Lakshman 2026-11-05, "modern tab"): two equal options on a soft track, a
+   thumb that slides to the chosen one, tinted in its field colour (cyan in, pink out, as the cards and the readout). */
+.local-dashboard-page .utc-switch.utc-direction { --utc-tone: var(--ds-field-tokens-in); position: relative; display: inline-grid;
+  grid-template-columns: 1fr 1fr; gap: 0; padding: 4px; width: max-content; max-width: 100%; border: 1px solid var(--ds-line) !important;
+  border-radius: 999px !important; background: var(--ds-surface-2) !important; overflow: visible !important; }
+.local-dashboard-page .utc-switch.utc-direction[data-direction="out"] { --utc-tone: var(--ds-field-tokens-out); }
+.local-dashboard-page .utc-direction-thumb { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc(50% - 4px);
+  border-radius: 999px; border: 1px solid color-mix(in oklab, var(--utc-tone) 60%, transparent);
+  background: color-mix(in oklab, var(--utc-tone) 18%, var(--ds-surface));
+  box-shadow: 0 6px 16px -8px var(--utc-tone);
+  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.28s, border-color 0.28s; pointer-events: none; }
+.local-dashboard-page .utc-switch.utc-direction[data-direction="out"] .utc-direction-thumb { transform: translateX(100%); }
+.local-dashboard-page .utc-switch.utc-direction button { position: relative; z-index: 1; display: inline-flex; align-items: center;
+  justify-content: center; gap: 8px; min-height: 34px; height: auto; padding: 0 18px; border: 0 !important; border-radius: 999px;
+  background: transparent !important; box-shadow: none !important; font-size: 13px; font-weight: 600; color: var(--ds-ink-2) !important;
+  cursor: pointer; transition: color 0.2s; white-space: nowrap; }
+.local-dashboard-page .utc-switch.utc-direction button + button { border-left: 0 !important; }
+.local-dashboard-page .utc-switch.utc-direction button[aria-pressed="true"] { color: var(--ds-ink) !important; }
+.local-dashboard-page .utc-switch.utc-direction button[aria-pressed="false"] .field-icon { opacity: 0.6; }
+.local-dashboard-page .utc-switch.utc-direction button:hover { color: var(--ds-ink) !important; }
+.local-dashboard-page .utc-switch.utc-direction button:focus-visible { outline: 2px solid var(--utc-tone); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .local-dashboard-page .utc-direction-thumb { transition: none; } }
+
+/* Every small toggle on the local pages (Group by, Matrix metric and columns, Trend metric and series) is the same pill
+   switch as Tokens in / Tokens out (Lakshman 2026-11-05, "all tab modern"): a soft pill track, 34px options, and a
+   tinted thumb (the panel's accent, else the brand blue) that slides to the chosen one. */
+/* Above editorial.css's panel rule, which gives every .local-dashboard-filters a panel's 12px corners and surface. */
+html body .local-dashboard-page .local-dashboard-filters.local-dashboard-toggle[role="radiogroup"],
+html body .ev-root .local-dashboard-filters.local-dashboard-toggle[role="radiogroup"] { position: relative; gap: 0 !important; padding: 4px !important;
+  border: 1px solid var(--ds-line) !important; border-radius: 999px !important; background: var(--ds-surface-2) !important; }
+.local-dashboard-toggle.local-dashboard-filters label { position: relative; z-index: 1; min-height: 34px !important; padding: 0 16px !important;
+  border-radius: 999px !important; font-size: 13px !important; font-weight: 600; color: var(--ds-ink-2) !important;
+  background: transparent !important; box-shadow: none !important; transition: color 0.2s; white-space: nowrap; }
+.local-dashboard-toggle.local-dashboard-filters label:hover,
+.local-dashboard-toggle.local-dashboard-filters label:has(input:checked) { color: var(--ds-ink) !important; }
+.local-dashboard-toggle.local-dashboard-filters label:has(input:focus-visible) { outline: 2px solid var(--ds-accent); outline-offset: 2px; }
+.local-dashboard-toggle .local-toggle-thumb { position: absolute; top: 0; left: 0; z-index: 0; border-radius: 999px; pointer-events: none;
+  border: 1px solid color-mix(in oklab, var(--toggle-tone, var(--panel-accent, var(--ds-brand))) 60%, transparent);
+  background: color-mix(in oklab, var(--toggle-tone, var(--panel-accent, var(--ds-brand))) 18%, var(--ds-surface));
+  box-shadow: 0 6px 16px -8px var(--toggle-tone, var(--panel-accent, var(--ds-brand)));
+  transition-property: transform, width, background, border-color;
+  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), width 0.28s cubic-bezier(0.2, 0.8, 0.2, 1); }
+@media (prefers-reduced-motion: reduce) { .local-dashboard-toggle .local-toggle-thumb { transition: none; } }
+
+/* Usage analysis Groups, as the Runs table reads (Lakshman 2026-11-05, "fix ... same as overview or runs"): the name
+   column in the table's own sans text on the row's surface (no darker band, no monospace), and every header on one
+   line, the columns re-balanced so the headers fit (measured in Chrome at 1440). */
+.local-dashboard-page .usage-analysis table[data-analysis-table] thead .local-table-head { white-space: nowrap; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="name"] { width: 170px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="runs"] { width: 82px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="spend"] { width: 188px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="pass"] { width: 148px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th:is([data-col="p50"], [data-col="p95"]) { width: 128px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="last"] { width: 138px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="spark"] { width: 142px; }
+/* Model by task reads as the Groups table and the run table: sans model names on the row's surface (still opaque, so the
+   name stays readable when the matrix scrolls under it) and the same sans pass pills. */
+html body .local-dashboard-page [data-decision-matrix] .usage-matrix-figure { font-family: var(--ds-font-sans) !important; font-variant-numeric: tabular-nums; }
+
+/* Each toggle option in its own colour (Lakshman 2026-11-05, "all tabs different colors"): its glyph wears the option's
+   field colour, and the thumb takes the chosen option's colour as it slides. */
+.local-dashboard-toggle.local-dashboard-filters label[data-toned] { gap: 7px; }
+.local-dashboard-toggle .local-toggle-icon { display: inline-flex; pointer-events: none; }
+.local-dashboard-toggle.local-dashboard-filters label[data-toned]:not(:has(input:checked)) .local-toggle-icon { opacity: 0.75; }
+
+/* Usage analysis Groups, modern (Lakshman 2026-11-05, "table needs fixing - make it modern"): each figure first in full
+   ink, its count muted beside it; a pass rate's pill holds the rate only; figures in tabular digits; a soft row hover;
+   no stray line under the last name cell; the day bars rounded, the days before the sample a faint dashed slot. */
+.local-dashboard-page .usage-analysis table[data-analysis-table] tbody td { font-variant-numeric: tabular-nums; }
+.local-dashboard-page .usage-analysis .local-cell-sub { color: var(--ds-ink-3); font-size: 12px; }
+.local-dashboard-page .usage-analysis .local-cell-figure { color: var(--ds-ink); font-weight: 500; }
+.local-dashboard-page .usage-analysis td[data-cell="pass"] .local-cell-sub { margin-left: 2px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] tbody tr { transition: background 0.12s; }
+html body .local-dashboard-page .usage-analysis table[data-analysis-table] tbody tr:hover > :is(td, th) { background: var(--ds-surface-2) !important; }
+html body .local-dashboard-page .usage-analysis table[data-analysis-table] tbody tr:last-child > :is(td, th) { border-bottom: 0 !important; }
+.local-dashboard-page .usage-analysis-spark { gap: 3px; height: 22px; }
+.local-dashboard-page .usage-analysis-spark i { border-radius: 2px 2px 0 0; background: var(--ds-ink-2); }
+.local-dashboard-page .usage-analysis-spark i[data-covered="false"] { box-shadow: none; height: 100%; border-radius: 2px;
+  background: repeating-linear-gradient(to top, var(--ds-line) 0 2px, transparent 2px 4px); }
+.local-dashboard-page .usage-analysis-spark i[data-covered="true"] { box-shadow: inset 0 -1px 0 var(--ds-line-strong, var(--ds-line)); }
+/* The option's glyph sits in a small round badge of its colour, as the stat tabs' chips do, so each option's colour reads. */
+.local-dashboard-toggle .local-toggle-icon.ins-chip-icon { width: 22px; height: 22px; margin-left: -6px; align-items: center; justify-content: center; border-radius: 999px;
+  background: color-mix(in oklab, var(--option-tone) 18%, transparent); }
+.local-dashboard-toggle.local-dashboard-filters label[data-toned]:has(input:checked) .local-toggle-icon { background: color-mix(in oklab, var(--option-tone) 30%, transparent); }
+
+/* Runs per day in Groups: the day bars in the column's own colour (Lakshman 2026-11-05, "colorful?"), as its header is;
+   the days before the sample stay a faint dashed slot. */
+.local-dashboard-page .usage-analysis-spark i[data-covered="true"] { background: var(--ds-field-runs-daily); box-shadow: none; }
+.local-dashboard-page .usage-analysis-spark i[data-covered="true"][data-runs="0"] { background: var(--ds-line-strong, var(--ds-line)); }
+/* Phone: the pill toggles keep inside the card; options are tighter and, if they still do not fit, wrap within the pill
+   (the thumb is measured from the chosen option, so it follows it onto its row). */
+@media (max-width: 640px) {
+  html body .local-dashboard-page .local-dashboard-filters.local-dashboard-toggle[role="radiogroup"] { flex-wrap: wrap; max-width: 100%; border-radius: 18px !important; }
+  .local-dashboard-toggle.local-dashboard-filters label { padding: 0 10px !important; font-size: 12px !important; min-height: 32px !important; }
+  .local-dashboard-toggle .local-toggle-icon.ins-chip-icon { width: 20px; height: 20px; margin-left: -4px; }
+}
+/* A toggles row is a grid child: without min-width 0 it kept its content width (279px in a 248px phone column). */
+.local-dashboard-page .local-dashboard-toggles { min-width: 0; max-width: 100%; }
+.local-dashboard-page .local-dashboard-toggles > [role="radiogroup"] { min-width: 0; }
+
+/* One table standard on every local page and on Delegation Evidence (Lakshman 2026-11-05, "improve and make all tables
+   unified same styles"), taken from the Runs table: its header band (surface-2, 10px 12px), 11px 12px body cells in
+   13px, identifiers (models, hosts, backends, run ids) in the mono face as the run table's token cells are, words and
+   figures in the sans face with tabular digits, a soft hover on every row and no line under the last one. */
+html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) table thead th {
+  background: var(--ds-surface-2) !important; padding: 10px 12px !important; vertical-align: bottom; }
+html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) table tbody :is(td, th) {
+  padding: 11px 12px !important; font-size: 13px !important; font-variant-numeric: tabular-nums; }
+html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) table tbody th[scope="row"] {
+  font-family: var(--ds-font-sans) !important; font-weight: 500 !important; background: var(--ds-surface) !important;
+  text-transform: none !important; letter-spacing: 0 !important; color: var(--ds-ink) !important; }
+html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) table tbody
+  :is(th[data-model-name], td[data-label="Model"], td.local-dashboard-cell-token) { font-family: var(--ds-font-mono) !important; font-weight: 500 !important; }
+html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) table tbody tr { transition: background 0.12s; }
+html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) table tbody tr:hover > :is(td, th) {
+  background: color-mix(in oklab, var(--ds-surface-2) 70%, var(--ds-surface)) !important; }
+html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) table tbody tr:last-child > :is(td, th) { border-bottom: 0 !important; }
+/* A model name's swatch hangs in the cell's left padding beside the name's first line (Lakshman 2026-11-05: in the mono
+   face "thinkingmachines/" did not fit beside it, so the swatch sat alone on a line above the name). */
+html body .local-dashboard-page :is(.usage-analysis table, table[data-decision-matrix]) tbody th[data-model-name] {
+  position: relative; padding-left: calc(12px + 0.7em + 0.5em) !important; }
+html body .local-dashboard-page :is(.usage-analysis table, table[data-decision-matrix]) tbody th[data-model-name]::before {
+  position: absolute; left: 12px; top: calc(11px + 0.45em); margin: 0; }
+
+/* Measured in Chrome at 1440 (Lakshman 2026-11-05, "check on all, no assumption"): with model names in the mono face
+   the Groups name column needed 305px on one line and got 170px (three lines for the nemotron id), so each count sits
+   under its figure as a muted second line (the cell text is unchanged), which lets the name take two lines at most.
+   Every header fits its column on one line: p50 and p95 latency need 135px, Runs per day 143px. */
+.local-dashboard-page .usage-analysis .local-cell-sub--line { display: block; margin: 2px 0 0 !important; line-height: 1.3; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="name"] { width: 226px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="runs"] { width: 80px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="spend"] { width: 152px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="pass"] { width: 116px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th:is([data-col="p50"], [data-col="p95"]) { width: 136px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="last"] { width: 138px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="spark"] { width: 144px; }
+/* Usage by model and day, one header line each (Cost and Share keep "(measured)" and "of calls" for assistive tech and
+   in their titles); the columns as measured: day 104, tokens in 116, tokens out 130, cost 100, unmeasured 140, tier 118,
+   calls 86, share 112, the model name the rest. */
+.local-dashboard-page table[aria-label="Usage by model and day"] thead .local-table-head { white-space: nowrap; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(1) { width: 104px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(2) { width: auto; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(3) { width: 116px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(4) { width: 130px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(5) { width: 100px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(6) { width: 140px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(7) { width: 118px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(8) { width: 86px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(9) { width: 112px; }
+/* Re-measured: Groups' fixed columns summed 4px past the 1124px table; the share meter and percent need 130px. */
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="name"] { width: 218px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(7) { width: 114px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(9) { width: 132px; }
+/* The hanging swatch is centred on the name (the cell is middle-aligned; a row with a second line under its figures put a
+   top-pinned swatch above a one-line name). */
+html body .local-dashboard-page :is(.usage-analysis table, table[data-decision-matrix]) tbody th[data-model-name]::before {
+  top: 50%; transform: translateY(-50%); }
+
+/* Usage by model and day (Lakshman 2026-11-05, "fix this too"): the filters are the Runs toolbar's pills (no boxed group,
+   small labels, a set filter tinted blue, the clear button a pill), each model carries its swatch with its name hanging
+   beside it, and the share meter wears its column's colour as the day bars do. */
+html body .local-dashboard-page .usage-record-controls.local-dashboard-filters[role="group"] { display: flex !important; flex-wrap: wrap; align-items: center; gap: 8px 14px;
+  border: 0 !important; padding: 0 !important; background: none !important; box-shadow: none !important; margin: 0 0 14px; }
+.local-dashboard-page .usage-record-controls .usage-record-controls-title { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; color: var(--ds-ink); margin-right: 4px; }
+.local-dashboard-page .usage-record-controls label { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 500; color: var(--ds-ink-3); }
+html body .local-dashboard-page .usage-record-controls select { height: 32px; min-height: 32px !important; padding: 0 28px 0 12px; border-radius: 999px !important;
+  border: 1px solid var(--ds-line) !important; background-color: transparent !important; color: var(--ds-ink-2); font-size: 12.5px; cursor: pointer;
+  transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease; }
+html body .local-dashboard-page .usage-record-controls select:hover { border-color: var(--ds-line-strong) !important; color: var(--ds-ink); background-color: var(--ds-surface-2) !important; }
+html body .local-dashboard-page .usage-record-controls label:has(option:checked:not(:first-child)) select {
+  border-color: color-mix(in oklab, var(--ds-hue-blue) 55%, var(--ds-line)) !important; color: var(--ds-ink);
+  background-color: color-mix(in oklab, var(--ds-hue-blue) 12%, transparent) !important; }
+html body .local-dashboard-page .usage-record-controls select:focus-visible { outline: 2px solid var(--ds-hue-blue); outline-offset: 2px; box-shadow: none !important; }
+html body .local-dashboard-page .usage-record-controls button { display: inline-flex; align-items: center; gap: 6px; height: 32px; min-height: 32px !important; padding: 0 12px;
+  border-radius: 999px !important; border: 1px solid var(--ds-line) !important; background: transparent !important; color: var(--ds-ink-2); font-size: 12.5px; }
+html body .local-dashboard-page .usage-record-controls button:hover { color: var(--ds-ink); background: var(--ds-surface-2) !important; }
+.local-dashboard-page .usage-model-name { position: relative; display: inline-block; padding-left: calc(0.7em + 0.5em); }
+.local-dashboard-page .usage-model-name > .gdb-swatch { position: absolute; left: 0; top: 0.42em; margin: 0; }
+.local-dashboard-page table[aria-label="Usage by model and day"] .local-share-meter > i { background: var(--ds-field-routing); }
+
+/* Share of calls in five bands (Lakshman 2026-11-05, "5 types of color ... 0 to 20, 21 to 40, 41 to 60 and so on"): the
+   meter takes the band of its share, in the same five colours as the pass-rate pills. */
+.local-dashboard-page table[aria-label="Usage by model and day"] .local-share-meter > i[data-share-band="1"] { background: var(--ds-pass-band-1); }
+.local-dashboard-page table[aria-label="Usage by model and day"] .local-share-meter > i[data-share-band="2"] { background: var(--ds-pass-band-2); }
+.local-dashboard-page table[aria-label="Usage by model and day"] .local-share-meter > i[data-share-band="3"] { background: var(--ds-pass-band-3); }
+.local-dashboard-page table[aria-label="Usage by model and day"] .local-share-meter > i[data-share-band="4"] { background: var(--ds-pass-band-4); }
+.local-dashboard-page table[aria-label="Usage by model and day"] .local-share-meter > i[data-share-band="5"] { background: var(--ds-pass-band-5); }
+/* The Usage filters sit in a row as the Runs toolbar's do: the kit Dropdown pills, sized to their choice. */
+.local-dashboard-page .usage-record-controls .local-filter-field { flex: 0 1 auto; display: block; min-width: 0; margin: 0; }
+
+/* Routing groups, measured in Chrome at 1440 with every header on one line: requested 132, tier 116, backend 168,
+   finish 96, escalations 138, runs 78, pass rate 144; the routed model takes the rest (252px). */
+.local-dashboard-page table[data-routing-table] thead .local-table-head { white-space: nowrap; }
+.local-dashboard-page table[data-routing-table] th:nth-child(1) { width: 132px; }
+.local-dashboard-page table[data-routing-table] th:nth-child(2) { width: auto; }
+.local-dashboard-page table[data-routing-table] th:nth-child(3) { width: 116px; }
+.local-dashboard-page table[data-routing-table] th:nth-child(4) { width: 168px; }
+.local-dashboard-page table[data-routing-table] th:nth-child(5) { width: 96px; }
+.local-dashboard-page table[data-routing-table] th:nth-child(6) { width: 138px; }
+.local-dashboard-page table[data-routing-table] th:nth-child(7) { width: 78px; }
+.local-dashboard-page table[data-routing-table] th:nth-child(8) { width: 144px; }
+/* Phone Tasks list, restated after the desktop columns above (line 1724 redefined them at every width, so on a 390px
+   phone each 498px track ran past its 248px card and "Runs" sat on "Pass rate"): task, runs and pass rate on one line,
+   the track under them, verdicts left out as before. */
+@media (max-width: 700px) {
+  .local-dashboard-page :is(.ins-task-head, .ins-list-row.ins-task-row) { grid-template-columns: 26px minmax(0, 1fr) 44px 64px; column-gap: 10px; }
+  .local-dashboard-page .ins-task-head > :nth-child(3), .local-dashboard-page .ins-task-head > :nth-child(6) { display: none; }
+  .local-dashboard-page .ins-task-row > .ins-track { grid-column: 2 / -1; grid-row: 2; min-width: 0; }
+  .local-dashboard-page .ins-task-row > .ins-list-coverage { display: none; }
+}
+@media (max-width: 700px) {
+  .local-dashboard-page :is(.ins-task-head, .ins-list-row.ins-task-row) { grid-template-columns: 26px minmax(0, 1fr) 36px 58px; column-gap: 8px; }
+  .local-dashboard-page .ins-task-row .ins-list-name, .local-dashboard-page .ins-task-row > :nth-child(2) { overflow-wrap: normal; word-break: normal; }
+}
+
+/* Workflow, as Overview and Runs (Lakshman 2026-11-05, "lets work on workflow page"): the correlation search is the Runs
+   search's pill with its glyph inside, no boxed group; the answer opens from a styled disclosure; the run timeline sits in
+   a titled card like every other part of the run. */
+html body .local-dashboard-page .workflow-run-search.local-dashboard-filters { display: flex !important; flex-wrap: wrap; align-items: center; gap: 8px;
+  border: 0 !important; padding: 0 !important; background: none !important; box-shadow: none !important; margin: 0 0 14px; }
+.local-dashboard-page .workflow-run-search-field { position: relative; flex: 1 1 360px; min-width: 0; display: flex; align-items: center; }
+html body .local-dashboard-page .workflow-run-search-field > input { width: 100% !important; max-width: none !important; height: 40px; min-height: 40px;
+  padding: 0 14px 0 36px !important; border-radius: 999px !important; border: 1px solid var(--ds-line) !important;
+  /* The Runs search's own magnifier, drawn as its background (no extra glyph for the icon census to name). */
+  background: var(--ds-surface-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%23888' stroke-width='2' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") no-repeat 14px center !important;
+  color: var(--ds-ink); font-size: 13px; }
+html body .local-dashboard-page .workflow-run-search-field > input:focus-visible { outline: none; border-color: var(--ds-hue-blue) !important;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ds-hue-blue) 22%, transparent) !important; }
+html body .local-dashboard-page .workflow-run-search > button { height: 40px; min-height: 40px !important; padding: 0 16px; border-radius: 999px !important; font-size: 13px; font-weight: 600; }
+.local-dashboard-page .workflow-run-answer-fold > summary { list-style: none; display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+  padding: 6px 12px; border: 1px solid var(--ds-line); border-radius: 999px; font-size: 13px; color: var(--ds-ink-2); transition: background 0.15s, color 0.15s; }
+.local-dashboard-page .workflow-run-answer-fold > summary::-webkit-details-marker { display: none; }
+.local-dashboard-page .workflow-run-answer-fold > summary:hover { background: var(--ds-surface-2); color: var(--ds-ink); }
+.local-dashboard-page .workflow-run-answer-fold > summary:focus-visible { outline: 2px solid var(--ds-hue-blue); outline-offset: 2px; }
+.local-dashboard-page .workflow-run-answer-chevron { transition: transform 0.2s; }
+.local-dashboard-page .workflow-run-answer-fold[open] > summary .workflow-run-answer-chevron { transform: rotate(90deg); }
+.local-dashboard-page .workflow-run-answer-fold[open] > summary { margin-bottom: 10px; }
+.local-dashboard-page .workflow-run-timeline-card { padding: 14px 16px; border-radius: var(--ds-radius); }
+.local-dashboard-page .workflow-run-timeline-card > h3 { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 12px; }
+
+/* The prompt and answer inside their steps: a quiet titled block with the step's indent, its text in the mono face in a
+   soft inset box, folded behind the styled disclosure when long. */
+.local-dashboard-page .workflow-step-text { margin: 10px 0 2px; display: grid; gap: 6px; max-width: 920px; }
+.local-dashboard-page .workflow-step-text-title { display: inline-flex; align-items: center; gap: 7px; margin: 0; font-size: 12px; font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--field-ink, var(--ds-ink-2)); font-family: var(--ds-font-mono); }
+.local-dashboard-page .workflow-step-text .workflow-run-answer-text { margin: 0; max-height: 360px; overflow: auto; padding: 10px 12px; border: 1px solid var(--ds-line);
+  border-radius: 8px; background: var(--ds-inset); font-family: var(--ds-font-mono); font-size: 12.5px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.local-dashboard-page .workflow-step-text .workflow-run-answer-fold > summary { margin-bottom: 0; }
+.local-dashboard-page .workflow-step-text .workflow-run-answer-fold[open] > summary { margin-bottom: 8px; }
+
+/* Workflow, modern (Lakshman 2026-11-05, "make workflow modern, attractive and good design"): the four run cards wear
+   their concept colour as Overview's cards do (a tint washing in from the top, a border and the title in it); each
+   timeline step leads with its kind's glyph and its bar is drawn in that kind's colour; the step's duration is a quiet
+   chip rather than capitals. */
+html body .local-dashboard-page section.local-run-summary-group[data-field-tone][tabindex] {
+  background: linear-gradient(170deg, color-mix(in oklab, var(--field-ink) 11%, var(--ds-surface)) 0%, var(--ds-surface) 58%) !important;
+  border: 1px solid color-mix(in oklab, var(--field-ink) 32%, var(--ds-line)) !important; border-radius: 12px !important; padding: 16px !important; }
+html body .local-dashboard-page section.local-run-summary-group[data-field-tone][tabindex] > h3 { color: var(--field-ink) !important; letter-spacing: 0.08em; margin-bottom: 14px; }
+html body .local-dashboard-page section.local-run-summary-group[data-field-tone][tabindex] > h3 svg { color: var(--field-ink) !important; }
+.local-dashboard-page .local-run-step-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.local-dashboard-page .local-run-step-head > svg.field-icon { flex: none; }
+.local-dashboard-page .local-run-waterfall [data-waterfall-bar][data-field-tone] { background: var(--field-ink); }
+html body .local-dashboard-page .local-run-step-duration { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px;
+  border: 1px solid var(--ds-line); border-radius: 999px; font-size: 12.5px; font-variant-numeric: tabular-nums; color: var(--ds-ink); }
+html body .local-dashboard-page .local-run-step-duration > span:first-child { text-transform: none; letter-spacing: 0; font-size: 12px; color: var(--ds-ink-3); font-family: var(--ds-font-sans); }
+html body .local-dashboard-page .local-run-step-duration[data-measured="false"] { color: var(--ds-ink-3); border-style: dashed; }
+/* Recorded run details as four cards in their own colours, as the run's cards above (Lakshman 2026-11-05, "like three
+   cards colorful"; colourful cards chosen over R8 and R10's neutral cards the same day). */
+.local-dashboard-page .workflow-record-groups { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 4px; }
+@media (max-width: 1100px) { .local-dashboard-page .workflow-record-groups { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .local-dashboard-page .workflow-record-groups { grid-template-columns: minmax(0, 1fr); } }
+html body .local-dashboard-page section.workflow-record-group[data-field-tone] { min-width: 0; padding: 14px 16px; border-radius: 12px;
+  background: linear-gradient(170deg, color-mix(in oklab, var(--field-ink) 11%, var(--ds-surface)) 0%, var(--ds-surface) 58%);
+  border: 1px solid color-mix(in oklab, var(--field-ink) 32%, var(--ds-line)); }
+html body .local-dashboard-page section.workflow-record-group[data-field-tone] > h4 { display: flex; align-items: center; gap: 8px; margin: 0 0 12px;
+  color: var(--field-ink) !important; letter-spacing: 0.08em; font-size: 12px; }
+html body .local-dashboard-page section.workflow-record-group[data-field-tone] > h4 svg { color: var(--field-ink) !important; }
+.local-dashboard-page .workflow-record-group .local-dashboard-fields { grid-template-columns: minmax(0, 1fr) !important; gap: 10px; }
+.local-dashboard-page .workflow-record-group dd { overflow-wrap: anywhere; }
+
+.local-dashboard-page .local-run-step-head > strong[data-field-tone] { color: var(--field-ink); }
+/* Phone: a run card's fact puts its label above its value, so a long model id gets the card's full width (390 check
+   2026-11-05: "thinkingmachines/" wrapped inside a 100px value column). */
+@media (max-width: 640px) {
+  html body .local-dashboard-page :is(.local-run-summary-group, .workflow-record-group) .local-dashboard-fields > div { grid-template-columns: minmax(0, 1fr) !important; row-gap: 2px; }
+}
+/* Re-measured 2026-11-05 with a classic 15px scrollbar (the table area 1109px, not 1124): the fixed columns summed past
+   it. The name column now takes what is left, and two columns give room: Groups' pass rate (its count is on its own
+   line) 100px, Usage by model and day's cost 84px and its share meter 36px, so a model id keeps to two lines. */
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="name"] { width: auto; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="pass"] { width: 100px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(5) { width: 84px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(9) { width: 118px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] .local-share-meter { flex-basis: 36px; }

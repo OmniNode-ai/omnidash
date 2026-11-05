@@ -33,7 +33,7 @@ import { TIER_TONES, breakableName } from '@/theme/design-system/charts';
 import { InsightsSection, InsightsWindowContext, MeteringActivityInsights, OverviewRunsContext, PassRateSparkline, TaskIcon, type ActivityWindow } from '@/pages/local/insight-charts';
 import { UsageInsights } from '@/pages/local/usage-insights';
 import { RoutingAnalysis } from '@/pages/local/usage-analysis';
-import { Badge, ConfirmDialog, DashboardTabs, DataTable, Dropdown, EmptyState, Fact, FactList, Figure, InfoTip, Panel, PanelTitle, StatusChip, Tooltip } from '@/theme/design-system/components';
+import { Badge, ColumnTip, ConfirmDialog, DashboardTabs, DataTable, Dropdown, EmptyState, Fact, FactList, Figure, InfoTip, Panel, PanelTitle, StatusChip, Tooltip } from '@/theme/design-system/components';
 import { Bot, CalendarRange, ChartArea, ChartPie, CircleCheck, CircleDollarSign, Clock3, FileJson, FileSpreadsheet, Gauge, Layers, ListChecks, Rows3, Server, Timer, TriangleAlert } from '@/theme/design-system/icons';
 import { SinceLastVisit } from '@/pages/local/since-last-visit';
 import { ModelKeys, providerName } from '@/pages/local/model-keys';
@@ -59,7 +59,7 @@ import '@/styles/editorial.css';
 import { overviewRunCount } from '@/lib/dashboard-overview-count';
 import { DestinationIcon } from '@/navigation/destination-icons';
 import type { AppPage } from '@/store/types';
-import { RunAnswer, WorkflowDecisionCharts, WorkflowRecordDetails, WorkflowRoutingFlow } from '@/pages/local/workflow-analysis';
+import { RunAnswer, RunTraceText, WorkflowDecisionCharts, WorkflowRecordDetails, WorkflowRoutingFlow } from '@/pages/local/workflow-analysis';
 import {
   loadLocalPageConfig,
   loadLocalPageSnapshots,
@@ -2087,9 +2087,10 @@ function tierModelCost(model: Row): string {
  * unbreakable word or figure, measured in Chrome, so text wraps inside its column and nothing spills. The table is laid
  * out fixed at the sum of the columns shown, and fills its panel when that is wider.
  */
+// Duration 120 (its sort header measured 120px with the button's padding, 2026-11-05), taken from the model's 260.
 const RUN_COLUMN_WIDTHS: Readonly<Record<string, number>> = {
-  identity: 140, age: 96, 'run-outcome': 104, model: 260, backend: 200, 'routing-model': 180, completion: 150,
-  escalated: 136, host: 190, tokens: 136, cost: 96, savings: 164, baseline: 170, basis: 100, duration: 112, task: 150,
+  identity: 140, age: 96, 'run-outcome': 104, model: 252, backend: 200, 'routing-model': 180, completion: 150,
+  escalated: 136, host: 190, tokens: 136, cost: 96, savings: 164, baseline: 170, basis: 100, duration: 120, task: 150,
   'tokens-completion': 210, tier: 136, score: 150,
 };
 const RUN_DEFAULT_COLUMNS = ['identity', 'age', 'run-outcome', 'model', 'tokens', 'cost', 'savings', 'duration'];
@@ -2115,6 +2116,17 @@ const RUN_COLUMN_TIPS: Readonly<Record<string, string>> = {
   tier: 'The cost tier the run was routed to.',
   score: 'The quality gate\'s score, from 0 to 1, to two decimals. Hover a score for the exact value.',
 };
+
+const KEY_HEADERS: ReadonlyArray<readonly [string, string, string]> = [
+  ['backend', 'Provider', 'The provider the key is for.'],
+  ['credentials', 'Key ref', 'The name the key is stored under. The key itself is never shown.'],
+  ['identity', 'Fingerprint', 'The first 8 hex characters of the key\'s SHA-256, to tell keys apart.'],
+  ['age', 'Set', 'When the key was set, in UTC.'],
+  ['last', 'Last used', 'When a run last used the key, in UTC.'],
+  ['fail', 'Revoked', 'When the key was revoked, in UTC.'],
+  ['threshold', 'Expires', 'When the key expires, if it was given an expiry.'],
+  ['host', 'Bound host', 'The host the key is bound to, if any.'],
+];
 
 const RUN_FIELDS_TIP = 'Adds the backend, host, task type, route tier and quality score of each run. The table scrolls sideways; '
   + 'the Run column stays in place. Every other recorded field is in the selected run and the export.';
@@ -2354,7 +2366,8 @@ export function TierMixPanel({ row, compact = false }: { row: Row | null; compac
       <DataTable fit>
           {/* Lakshman 2026-11-05 ("in run page check all and make it standardized"): headers as the run table writes them,
               each in its column's colour with its glyph 6px from the label. */}
-          <thead><tr><th><span className="local-table-head" data-field-tone="tier"><FieldIcon label="Tier" size={13} />Tier</span></th><th><span className="local-table-head" data-field-tone="delegations"><ConceptIcon concept="delegations" label="Runs" size={13} />Runs</span></th><th><span className="local-table-head" data-field-tone="routing"><ConceptIcon concept="routing" label="Share of tier-routed" size={13} />Share of tier-routed</span></th><th><span className="local-table-head" data-field-tone="cost"><FieldIcon label="Cost" size={13} />Cost</span></th></tr></thead>
+          {/* Each header explains its column on hover and keyboard focus, as the run table's (Lakshman 2026-11-05). */}
+          <thead><tr><th><ColumnTip tone="tier" tip="The cost tier, with the models that ran under it."><span className="local-table-head" data-field-tone="tier" tabIndex={0}><FieldIcon label="Tier" size={13} />Tier</span></ColumnTip></th><th><ColumnTip tone="delegations" tip="Runs routed to the tier, and each model's runs in it."><span className="local-table-head" data-field-tone="delegations" tabIndex={0}><ConceptIcon concept="delegations" label="Runs" size={13} />Runs</span></ColumnTip></th><th><ColumnTip tone="routing" tip="The tier's share of the runs that were routed by tier."><span className="local-table-head" data-field-tone="routing" tabIndex={0}><ConceptIcon concept="routing" label="Share of tier-routed" size={13} />Share of tier-routed</span></ColumnTip></th><th><ColumnTip tone="cost" tip="What each model's runs in the tier cost. A grey $0 is free."><span className="local-table-head" data-field-tone="cost" tabIndex={0}><FieldIcon label="Cost" size={13} />Cost</span></ColumnTip></th></tr></thead>
           <tbody>{tiers.flatMap((tier, index) => {
             const name = String(tier.cost_tier_name);
             const concept = tierConcept(name) ?? 'tier-other';
@@ -2418,7 +2431,9 @@ export function CredentialsTable({ rows }: { rows: readonly unknown[] }) {
   const revoked = keys.filter(key => !isMissing(key.revoked_at));
   const table = (list: Row[], label: string) => (
     <DataTable className="local-credentials-records" aria-label={label}>
-        <thead><tr><th>Provider</th><th>Key ref</th><th>Fingerprint</th><th>Set</th><th>Last used</th><th>Revoked</th><th>Expires</th><th>Bound host</th></tr></thead>
+        {/* Headers as every other table writes them: glyph, colour and an explanation on hover (Lakshman 2026-11-05). */}
+        <thead><tr>{KEY_HEADERS.map(([concept, name, tip]) => <th key={name}><ColumnTip tone={concept} tip={tip}>
+          <span className="local-table-head" data-field-tone={concept} tabIndex={0}><ConceptIcon concept={concept} label={name} size={13} />{name}</span></ColumnTip></th>)}</tr></thead>
         <tbody>{list.map((key, index) => (
           <tr key={`${String(key.provider)}-${String(key.name)}-${index}`}>
             {/* Part 27 round 7: the provider's name in the one case the Model providers table uses (Gemini, not gemini). */}
@@ -2513,13 +2528,14 @@ export function RunSummary({ decision, showAnalysis = false }: { decision: Row |
           { name: 'Routing and model', concept: 'routing-model', labels: ['Model', 'Requested model', 'Backend', 'Host', 'Route tier'], help: 'The requested model and recorded answering route. Not recorded means the run supplied no value.' },
           { name: 'Tokens and completion', concept: 'tokens-completion', labels: ['Tokens in', 'Tokens out', 'Finish reason', 'Truncated', 'Escalations'], help: 'Token counts and completion details recorded for this run.' },
           { name: 'Timing', concept: 'timing', labels: ['Queue wait', 'Execution', 'Duration'], help: 'Recorded decision timings. Duration here is the latency field; timeline steps carry separate durations.' },
-        ].map(({ name, concept, labels, help }, index) => <section key={name} className="local-run-summary-group" tabIndex={0} aria-labelledby={`${sectionId}-${index}`} aria-describedby={`${sectionId}-${index}-help`}>
+        ].map(({ name, concept, labels, help }, index) => <section key={name} className="local-run-summary-group" data-field-tone={concept} tabIndex={0} aria-labelledby={`${sectionId}-${index}`} aria-describedby={`${sectionId}-${index}-help`}>
           <h3 className="local-dashboard-caption" id={`${sectionId}-${index}`}><ConceptIcon concept={concept} label={name} size={16} />{name}</h3>
           <FactList>
             {index === 0 && <Fact term={<><FieldIcon label="Status" value={status} />Status</>} data-field-tone={fieldTone('Status', status)}><OutcomePill value={status} /></Fact>}
             {fields.filter(([label]) => labels.includes(label)).map(([label, value]) => <Fact key={label} term={<><FieldIcon label={label} value={value} />{label}</>} data-summary-field={label} data-field-tone={fieldTone(label, value)} data-field-unavailable={isUnavailableField(value)} style={fieldTone(label, value) === 'model' && !isUnavailableField(value) ? modelIdentityStyle(value) : undefined}>{label === 'Cause' && value.length > 120
               ? <details className="local-run-failure-details"><summary title={value}>Show failure reason</summary><p>{value}</p></details>
-              : value}</Fact>)}
+              // A model id breaks at its joins ("thinkingmachines/" then "inkling:free"), never mid-word (phone check 2026-11-05).
+              : fieldTone(label, value) === 'model' && !isUnavailableField(value) ? breakableName(value) : value}</Fact>)}
           </FactList>
           <p className="local-run-summary-help" role="tooltip" id={`${sectionId}-${index}-help`}>{help}</p>
         </section>)}
@@ -2555,6 +2571,9 @@ export function RunNeighbours({ decisions, runId }: { decisions: readonly unknow
 }
 
 /** The step kinds run-trace.v1 serves today; any other kind is shown as served, never dropped. */
+const STEP_CONCEPTS: Record<string, string> = {
+  request: 'step-request', routing_decision: 'step-routing', provider_call: 'step-provider-call', quality_gate: 'step-quality', terminal: 'step-terminal',
+};
 const RUN_STEP_LABELS: Record<string, string> = {
   request: 'Request',
   routing_decision: 'Routing decision',
@@ -2568,14 +2587,17 @@ const RUN_STEP_LABELS: Record<string, string> = {
  * step sequence the delegate orchestrator assigned, so this renders rows in the order given and sorts nothing. The
  * step that failed a run is the one the terminal row names in failing_step_sequence; it is looked up, never inferred.
  */
-export function RunTimeline({ steps, run }: {
+export function RunTimeline({ steps, run, stepText }: {
   steps: readonly unknown[];
+  /** The run's prompt, drawn under its Request step, and its answer, under the step that returned it (OMN-22168). */
+  stepText?: { prompt?: ReactNode; answer?: ReactNode };
   /** The run's backend and model, shown in the run summary above; a step repeats them only where it differs (part 18 AC126). */
   run?: { backend_id?: unknown; model_name?: unknown; escalation_count?: unknown };
 }) {
   const rows = asRecords(steps);
   if (rows.length === 0) {
-    return <EmptyState>No steps recorded for this run</EmptyState>;
+    // With no steps the prompt and answer still read, under the timeline's empty state.
+    return <><EmptyState>No steps recorded for this run</EmptyState>{stepText?.prompt}{stepText?.answer}</>;
   }
   const named = rows.find((row) => !isMissing(row.failing_step_sequence))?.failing_step_sequence;
   // Part 29 AC197: the steps on one time axis, from the earliest recorded start to the latest recorded end. A step is a
@@ -2591,6 +2613,14 @@ export function RunTimeline({ steps, run }: {
   const span = known.length > 0 ? Math.max(1, Math.max(...known.map(entry => entry.end)) - origin) : 1;
   const escalations = run && !isMissing(run.escalation_count) ? Number(run.escalation_count) : 0;
   const attemptSteps = rows.some(row => !isMissing(row.attempt_number));
+  // The prompt follows the Request (else the first step). The answer is the run's last response, so it follows the last
+  // provider call whatever its outcome (else the last step): checked live 2026-11-05 on a failed run, whose recorded answer
+  // was the final call's HTTP 404 message, not the text of the earlier call that succeeded.
+  const kindOf = (row: Row) => String(row.step_kind ?? '');
+  const firstRequest = rows.findIndex(row => kindOf(row) === 'request');
+  const promptAt = firstRequest >= 0 ? firstRequest : 0;
+  const lastCall = rows.map(kindOf).lastIndexOf('provider_call');
+  const answerAt = lastCall >= 0 ? lastCall : rows.length - 1;
   return (
     <>
     {escalations > 0 && !attemptSteps && <p className="local-dashboard-caption" data-escalation-text>
@@ -2627,8 +2657,13 @@ export function RunTimeline({ steps, run }: {
             data-failing-step={failing ? 'true' : undefined}
             data-outcome={isMissing(row.outcome) ? undefined : String(row.outcome)}
           >
+            {/* Each step kind has its own glyph and colour (Lakshman 2026-11-05, "modern, attractive"); the dot keeps the
+                step's outcome colour. */}
+            {/* The kind's colour is on its glyph and title only; the outcome pill keeps its own status colour (Lakshman
+                2026-11-05, "succeeded colour should be green in all"). */}
             <div className="local-run-step-head">
-              <strong>{RUN_STEP_LABELS[kind] ?? recorded(row.step_kind)}</strong>
+              <ConceptIcon concept={STEP_CONCEPTS[kind] ?? 'step-other'} label={RUN_STEP_LABELS[kind] ?? recorded(row.step_kind)} size={15} />
+              <strong data-field-tone={STEP_CONCEPTS[kind] ?? 'step-other'}>{RUN_STEP_LABELS[kind] ?? recorded(row.step_kind)}</strong>
               <OutcomePill value={row.outcome} />
               {failing && <Badge>Failed here</Badge>}
               <span className="local-run-step-duration" data-measured={isMissing(row.duration_ms) ? 'false' : 'true'}>
@@ -2640,7 +2675,8 @@ export function RunTimeline({ steps, run }: {
               const at = timed[index];
               return <div className="local-run-waterfall" data-waterfall data-positioned={at ? 'true' : 'false'}>
                 {/* A measured 0 ms step is an instant marker at its start, never a widened bar (Codex MSG a9bd908d). */}
-                {at ? <span data-waterfall-bar data-instant={at.end === at.start ? 'true' : undefined} title={`${duration(row.duration_ms)} from ${duration(at.start - origin)}`}
+                {at ? <span data-waterfall-bar data-instant={at.end === at.start ? 'true' : undefined}
+                  data-field-tone={String(row.outcome) === 'failed' ? undefined : STEP_CONCEPTS[kind] ?? 'step-other'} title={`${duration(row.duration_ms)} from ${duration(at.start - origin)}`}
                   style={{ '--wf-left': `${((at.start - origin) / span) * 100}%`, '--wf-width': `${((at.end - at.start) / span) * 100}%` } as CSSProperties} />
                   : <span className="local-run-waterfall-missing">start or duration not recorded</span>}
               </div>;
@@ -2653,6 +2689,8 @@ export function RunTimeline({ steps, run }: {
               </div>
             )}
             {!isMissing(row.reason) && <p className="local-run-step-reason">{String(row.reason)}</p>}
+            {index === promptAt && stepText?.prompt}
+            {index === answerAt && stepText?.answer}
           </li>
         );
       })}
@@ -2684,15 +2722,17 @@ function RunPicker({ requested, onOpen }: { requested: string | null; onOpen: (r
   const id = useId();
   const [draft, setDraft] = useState(requested ?? '');
   return (
+    // The Runs search's pill (Lakshman 2026-11-05, "lets work on workflow page"): a search glyph inside the field, its
+    // label kept for assistive tech, the open button a pill beside it.
     <form
-      className="local-dashboard-filters"
+      className="local-dashboard-filters workflow-run-search"
       onSubmit={(event) => {
         event.preventDefault();
         onOpen(normaliseRunId(draft));
       }}
     >
-      <label htmlFor={`${id}-run`}>Correlation id</label>
-      <input
+      <label htmlFor={`${id}-run`} className="local-visually-hidden">Correlation id</label>
+      <span className="workflow-run-search-field"><input
         id={`${id}-run`}
         type="text"
         value={draft}
@@ -2700,7 +2740,7 @@ function RunPicker({ requested, onOpen }: { requested: string | null; onOpen: (r
         spellCheck={false}
         autoComplete="off"
         onChange={(event) => setDraft(event.target.value)}
-      />
+      /></span>
       <button type="submit">Open run</button>
       {requested !== null && <button type="button" onClick={() => onOpen(null)}>Newest run</button>}
     </form>
@@ -2768,14 +2808,20 @@ export function WorkflowRun({ component, snapshots, requested, onOpen }: Workflo
       ) : null}
       {/* OMN-19920: the run's answer, read for this run only; the page binds it only where its contract declares it.
           Part 18 AC125: the row of step boxes is gone (the timeline below shows the same steps, with time and detail). */}
-      {(component.data_bindings ?? []).some((binding) => binding.projection_topic === CORRELATION_TRACE_TOPIC) && (
+      {/* The answer card only when the timeline cannot carry the prompt and answer (its steps unread or another run's). */}
+      {(component.data_bindings ?? []).some((binding) => binding.projection_topic === CORRELATION_TRACE_TOPIC) && (stepsUnread || foreign) && (
         <RunAnswer read={snapshots.find((snapshot) => snapshot.topic === CORRELATION_TRACE_TOPIC)} runId={runId} />
       )}
       {stepsUnread || foreign ? null : (
         <>
-          <section className="local-run-timeline" aria-label="Run timeline">
-            <h3 className="local-dashboard-caption" data-page-heading tabIndex={-1}>Run timeline</h3>
-            <RunTimeline steps={rows} run={decisions.find((row) => row.correlation_id === runId)} />
+          {/* A titled card as every other part of the run (Lakshman 2026-11-05). */}
+          <section className="local-run-timeline workflow-analysis-card workflow-run-timeline-card" aria-label="Run timeline">
+            <h3 className="local-dashboard-caption" data-page-heading tabIndex={-1}><ConceptIcon concept="stage-timing" label="Run timeline" size={16} />Run timeline</h3>
+            <RunTimeline steps={rows} run={decisions.find((row) => row.correlation_id === runId)}
+              stepText={(component.data_bindings ?? []).some((binding) => binding.projection_topic === CORRELATION_TRACE_TOPIC) ? {
+                prompt: <RunTraceText kind="prompt" read={snapshots.find((snapshot) => snapshot.topic === CORRELATION_TRACE_TOPIC)} runId={runId} />,
+                answer: <RunTraceText kind="answer" read={snapshots.find((snapshot) => snapshot.topic === CORRELATION_TRACE_TOPIC)} runId={runId} />,
+              } : undefined} />
           </section>
           {stepsRead?.truncated && (
             <EmptyState>

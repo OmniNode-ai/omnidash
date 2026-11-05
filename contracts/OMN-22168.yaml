@@ -145,6 +145,20 @@ dod_evidence:
           test -d node_modules || npm ci --no-audit --no-fund; npx vitest run
           tests/design-system/components.test.tsx tests/design-system/dropdown.test.tsx
         cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn22168-ac4-evidence-uses-runs-exports"
+    description: >-
+      AC4, the 2026-11-05 uniformity review only, not the whole criterion: Delegation Evidence's CSV and JSON exports
+      are the Runs exports from the same kit, glyph, colour, border and size alike, in light and dark (they were plain
+      grey buttons with no glyph, a page-local copy of the control).
+    source: "manual"
+    binds_ac: ["AC4"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          test -d node_modules || npm ci --no-audit --no-fund; npx playwright test
+          tests/e2e/design-system-dashboard-polish.omn22168.spec.ts --grep "L8b" --project=chromium --workers=1
+          --retries=0
+        cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn22168-ac5-token-seam"
     description: >-
       The test proves that pages reference only --ds-* custom properties, catching a planted

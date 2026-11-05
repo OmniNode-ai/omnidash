@@ -4,7 +4,8 @@
  * that takes focus and names all its values. A value that is not served draws no bar and no number; heights are each
  * value over the largest served value in the chart (layout only).
  */
-import type { CSSProperties } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
+import { ChartReadout } from './frame';
 import { SeriesLegend } from './legend';
 
 export interface GroupedBarValue {
@@ -30,21 +31,31 @@ export interface GroupedBarGroup {
   values: readonly GroupedBarValue[];
 }
 
-export function GroupedBars({ label, groups, legend, wrapNames = false }: {
+export function GroupedBars({ label, groups, legend, wrapNames = false, extraLegend }: {
   label: string;
   groups: readonly GroupedBarGroup[];
   legend?: ReadonlyArray<{ label: string; color: string }>;
   /** Long names (model ids) wrap under their column instead of sitting on one line. */
   wrapNames?: boolean;
+  /** A second legend (a chart's tier colours) drawn in the same row of chips as the series legend. */
+  extraLegend?: ReactNode;
 }) {
+  // As Overview's day charts do (Lakshman 2026-11-05, "modern and unified like overview and Runs"): the group pointed at
+  // or focused is read out above the plot in its full sentence, and the other groups dim.
+  const [hover, setHover] = useState<string | null>(null);
+  const active = groups.find(group => group.key === hover);
   // A value not served is left out of the scale rather than counted as 0 (OMN-21015 S3); the floor of 0 is unchanged.
   const max = Math.max(0, ...groups.flatMap(group => group.values.flatMap(entry => (entry.value === null ? [] : [entry.value]))));
   return (
     <>
-      <ul className={`ins-bars gdb-plot gdb-plot--list${wrapNames ? ' gdb-plot--names' : ''}`} aria-label={label}>
+      <ChartReadout active={active !== undefined} text={active === undefined ? '' : active.label} />
+      <ul className={`ins-bars gdb-plot gdb-plot--list${wrapNames ? ' gdb-plot--names' : ''}`} aria-label={label}
+        onMouseLeave={() => setHover(null)}
+        onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setHover(null); }}>
         {groups.map(group => (
-          // The column's full sentence (e.g. a day's unmeasured calls) is its hover title as well as its accessible name.
-          <li key={group.key} className="ins-bar gdb-day" tabIndex={0} aria-label={group.label} title={group.label}>
+          // The column's full sentence (e.g. a day's unmeasured calls) is its accessible name and the readout's text.
+          <li key={group.key} className="ins-bar gdb-day" tabIndex={0} aria-label={group.label}
+            data-dim={hover !== null && hover !== group.key} onMouseEnter={() => setHover(group.key)} onFocus={() => setHover(group.key)}>
             <span className="gdb-group">
               {group.values.map(entry => {
                 const drawn = entry.value !== null && entry.value > 0 && max > 0;
@@ -61,7 +72,10 @@ export function GroupedBars({ label, groups, legend, wrapNames = false }: {
           </li>
         ))}
       </ul>
-      {legend && legend.length > 0 && <SeriesLegend label="Series" series={legend} />}
+      {((legend && legend.length > 0) || extraLegend) && <div className="gdb-legends">
+        {legend && legend.length > 0 && <SeriesLegend label="Series" series={legend} />}
+        {extraLegend}
+      </div>}
     </>
   );
 }

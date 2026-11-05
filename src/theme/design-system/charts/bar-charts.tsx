@@ -453,7 +453,7 @@ export function RunTimingChart({ timings, title = 'Run timing', compact = false,
     <figure className="local-chart local-chart--timing" aria-label={title}>
       <ReactEChartsCore echarts={echarts} option={{ ...timingOption(bars, colours, compact), ...motion.option }} notMerge opts={{ renderer: 'svg' }} className="local-chart-canvas" />
       <figcaption>
-        {`${bars.map((bar) => bar.label).join(', ')} of this run in milliseconds, ${bars.length === 1 ? 'as served.' : 'each as served, side by side and not added together.'}`}
+        {`${bars.map((bar) => bar.label).join(', ')} of this run, ${bars.length === 1 ? 'as served.' : 'each as served, side by side and not added together.'}`}
         {unmeasured.length > 0 && ` No measured value to draw for: ${unmeasured.join(', ')}.`}
       </figcaption>
     </figure>

@@ -116,6 +116,10 @@
 [data-field-tone="run-details"] { --field-ink: var(--ds-field-run-details); }
 [data-field-tone="stage-timing"] { --field-ink: var(--ds-field-stage-timing); }
 [data-field-tone="answer"] { --field-ink: var(--ds-field-answer); }
+[data-field-tone="prompt"] { --field-ink: var(--ds-field-prompt); }
+[data-field-tone="truncated"] { --field-ink: var(--ds-field-truncated); }
+[data-field-tone="written"] { --field-ink: var(--ds-field-written); }
+[data-field-tone="writer"] { --field-ink: var(--ds-field-writer); }
 [data-field-tone="routing-flow"] { --field-ink: var(--ds-field-routing-flow); }
 [data-field-tone="token-flow"] { --field-ink: var(--ds-field-token-flow); }
 [data-field-tone="quality-comparison"] { --field-ink: var(--ds-field-quality-comparison); }
