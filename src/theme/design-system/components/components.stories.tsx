@@ -6,7 +6,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { StoryPage, StorySection } from '../story-frame';
 import {
-  Badge, Card, ConfirmDialog, DashboardTabs, DashboardToggle, DataTable, Dropdown, EmptyState, Fact, FactList, Figure, InfoTip, KpiTile, Panel,
+  Badge, Card, ColumnTip, ConfirmDialog, DashboardTabs, DashboardToggle, DataTable, Dropdown, EmptyState, Fact, FactList, Figure, InfoTip, KpiTile, Panel,
   PanelTitle, StatusChip, Tooltip,
 } from './index';
 import { FileSpreadsheet } from '../icons';
@@ -24,7 +24,9 @@ function Controls() {
       { id: 'second', label: 'Routing', panel: () => <p>The second tab&apos;s panel.</p> }]} />
     <p>
       <Tooltip text="Spend as metered by the provider"><button type="button">Hover or focus me</button></Tooltip>{' '}
-      <InfoTip label="About savings" text="Savings are modelled against the baseline's list price." />
+      <InfoTip label="About savings" text="Savings are modelled against the baseline's list price." />{' '}
+      {/* A column header's explanation, tinted in its column's colour (OMN-22168). */}
+      <ColumnTip tone="cost" tip="What the run cost. A grey $0 is a free local run."><span className="local-table-head" data-field-tone="cost" tabIndex={0}>Cost</span></ColumnTip>
     </p>
     <p><button type="button" onClick={() => setConfirming(true)}>Export CSV</button></p>
     <ConfirmDialog open={confirming} tone="green" icon={<FileSpreadsheet size={16} />} title="Download 25 runs as CSV?"

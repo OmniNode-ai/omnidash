@@ -2062,3 +2062,70 @@ html body .local-dashboard-page .usage-record-controls button:hover { color: var
   .local-dashboard-page :is(.ins-task-head, .ins-list-row.ins-task-row) { grid-template-columns: 26px minmax(0, 1fr) 36px 58px; column-gap: 8px; }
   .local-dashboard-page .ins-task-row .ins-list-name, .local-dashboard-page .ins-task-row > :nth-child(2) { overflow-wrap: normal; word-break: normal; }
 }
+
+/* Workflow, as Overview and Runs (Lakshman 2026-11-05, "lets work on workflow page"): the correlation search is the Runs
+   search's pill with its glyph inside, no boxed group; the answer opens from a styled disclosure; the run timeline sits in
+   a titled card like every other part of the run. */
+html body .local-dashboard-page .workflow-run-search.local-dashboard-filters { display: flex !important; flex-wrap: wrap; align-items: center; gap: 8px;
+  border: 0 !important; padding: 0 !important; background: none !important; box-shadow: none !important; margin: 0 0 14px; }
+.local-dashboard-page .workflow-run-search-field { position: relative; flex: 1 1 360px; min-width: 0; display: flex; align-items: center; }
+html body .local-dashboard-page .workflow-run-search-field > input { width: 100% !important; max-width: none !important; height: 40px; min-height: 40px;
+  padding: 0 14px 0 36px !important; border-radius: 999px !important; border: 1px solid var(--ds-line) !important;
+  /* The Runs search's own magnifier, drawn as its background (no extra glyph for the icon census to name). */
+  background: var(--ds-surface-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%23888' stroke-width='2' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") no-repeat 14px center !important;
+  color: var(--ds-ink); font-size: 13px; }
+html body .local-dashboard-page .workflow-run-search-field > input:focus-visible { outline: none; border-color: var(--ds-hue-blue) !important;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ds-hue-blue) 22%, transparent) !important; }
+html body .local-dashboard-page .workflow-run-search > button { height: 40px; min-height: 40px !important; padding: 0 16px; border-radius: 999px !important; font-size: 13px; font-weight: 600; }
+.local-dashboard-page .workflow-run-answer-fold > summary { list-style: none; display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+  padding: 6px 12px; border: 1px solid var(--ds-line); border-radius: 999px; font-size: 13px; color: var(--ds-ink-2); transition: background 0.15s, color 0.15s; }
+.local-dashboard-page .workflow-run-answer-fold > summary::-webkit-details-marker { display: none; }
+.local-dashboard-page .workflow-run-answer-fold > summary:hover { background: var(--ds-surface-2); color: var(--ds-ink); }
+.local-dashboard-page .workflow-run-answer-fold > summary:focus-visible { outline: 2px solid var(--ds-hue-blue); outline-offset: 2px; }
+.local-dashboard-page .workflow-run-answer-chevron { transition: transform 0.2s; }
+.local-dashboard-page .workflow-run-answer-fold[open] > summary .workflow-run-answer-chevron { transform: rotate(90deg); }
+.local-dashboard-page .workflow-run-answer-fold[open] > summary { margin-bottom: 10px; }
+.local-dashboard-page .workflow-run-timeline-card { padding: 14px 16px; border-radius: var(--ds-radius); }
+.local-dashboard-page .workflow-run-timeline-card > h3 { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 12px; }
+
+/* The prompt and answer inside their steps: a quiet titled block with the step's indent, its text in the mono face in a
+   soft inset box, folded behind the styled disclosure when long. */
+.local-dashboard-page .workflow-step-text { margin: 10px 0 2px; display: grid; gap: 6px; max-width: 920px; }
+.local-dashboard-page .workflow-step-text-title { display: inline-flex; align-items: center; gap: 7px; margin: 0; font-size: 12px; font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--field-ink, var(--ds-ink-2)); font-family: var(--ds-font-mono); }
+.local-dashboard-page .workflow-step-text .workflow-run-answer-text { margin: 0; max-height: 360px; overflow: auto; padding: 10px 12px; border: 1px solid var(--ds-line);
+  border-radius: 8px; background: var(--ds-inset); font-family: var(--ds-font-mono); font-size: 12.5px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.local-dashboard-page .workflow-step-text .workflow-run-answer-fold > summary { margin-bottom: 0; }
+.local-dashboard-page .workflow-step-text .workflow-run-answer-fold[open] > summary { margin-bottom: 8px; }
+
+/* Workflow, modern (Lakshman 2026-11-05, "make workflow modern, attractive and good design"): the four run cards wear
+   their concept colour as Overview's cards do (a tint washing in from the top, a border and the title in it); each
+   timeline step leads with its kind's glyph and its bar is drawn in that kind's colour; the step's duration is a quiet
+   chip rather than capitals. */
+html body .local-dashboard-page section.local-run-summary-group[data-field-tone][tabindex] {
+  background: linear-gradient(170deg, color-mix(in oklab, var(--field-ink) 11%, var(--ds-surface)) 0%, var(--ds-surface) 58%) !important;
+  border: 1px solid color-mix(in oklab, var(--field-ink) 32%, var(--ds-line)) !important; border-radius: 12px !important; padding: 16px !important; }
+html body .local-dashboard-page section.local-run-summary-group[data-field-tone][tabindex] > h3 { color: var(--field-ink) !important; letter-spacing: 0.08em; margin-bottom: 14px; }
+html body .local-dashboard-page section.local-run-summary-group[data-field-tone][tabindex] > h3 svg { color: var(--field-ink) !important; }
+.local-dashboard-page .local-run-step-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.local-dashboard-page .local-run-step-head > svg.field-icon { flex: none; }
+.local-dashboard-page .local-run-waterfall [data-waterfall-bar][data-field-tone] { background: var(--field-ink); }
+html body .local-dashboard-page .local-run-step-duration { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px;
+  border: 1px solid var(--ds-line); border-radius: 999px; font-size: 12.5px; font-variant-numeric: tabular-nums; color: var(--ds-ink); }
+html body .local-dashboard-page .local-run-step-duration > span:first-child { text-transform: none; letter-spacing: 0; font-size: 12px; color: var(--ds-ink-3); font-family: var(--ds-font-sans); }
+html body .local-dashboard-page .local-run-step-duration[data-measured="false"] { color: var(--ds-ink-3); border-style: dashed; }
+/* Recorded run details as four cards in their own colours, as the run's cards above (Lakshman 2026-11-05, "like three
+   cards colorful"; colourful cards chosen over R8 and R10's neutral cards the same day). */
+.local-dashboard-page .workflow-record-groups { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 4px; }
+@media (max-width: 1100px) { .local-dashboard-page .workflow-record-groups { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .local-dashboard-page .workflow-record-groups { grid-template-columns: minmax(0, 1fr); } }
+html body .local-dashboard-page section.workflow-record-group[data-field-tone] { min-width: 0; padding: 14px 16px; border-radius: 12px;
+  background: linear-gradient(170deg, color-mix(in oklab, var(--field-ink) 11%, var(--ds-surface)) 0%, var(--ds-surface) 58%);
+  border: 1px solid color-mix(in oklab, var(--field-ink) 32%, var(--ds-line)); }
+html body .local-dashboard-page section.workflow-record-group[data-field-tone] > h4 { display: flex; align-items: center; gap: 8px; margin: 0 0 12px;
+  color: var(--field-ink) !important; letter-spacing: 0.08em; font-size: 12px; }
+html body .local-dashboard-page section.workflow-record-group[data-field-tone] > h4 svg { color: var(--field-ink) !important; }
+.local-dashboard-page .workflow-record-group .local-dashboard-fields { grid-template-columns: minmax(0, 1fr) !important; gap: 10px; }
+.local-dashboard-page .workflow-record-group dd { overflow-wrap: anywhere; }
+
+.local-dashboard-page .local-run-step-head > strong[data-field-tone] { color: var(--field-ink); }

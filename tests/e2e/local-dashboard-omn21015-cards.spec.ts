@@ -66,7 +66,11 @@ test(`organized cards across all seven MVP pages in ${theme}`, async ({ page }, 
       expect(new Set(plain.map(card => card.color)).size, 'Every other card border is the one line colour').toBe(settings || plain.length === 0 ? 0 : 1);
       expect(plain.every(card => card.image === 'none'), 'Other cards use flat surfaces, without decorative gradients').toBe(true);
       expect(new Set(headlines.map(card => card.color)).size, 'Each headline card wears its own border colour').toBe(headlines.length);
-      const nestedSurfaces = page.locator('.local-run-summary-group, .workflow-analysis-card, .workflow-flow-node, .local-chart.ins-card, .usage-insight');
+      // OMN-22168 (Lakshman 2026-11-05): Workflow's run and record cards are tinted in their colours by choice; every other
+      // nested surface stays plain, and each tinted card does wear its tint.
+      const tinted = page.locator('.local-run-summary-group[data-field-tone], .workflow-record-group[data-field-tone]');
+      expect((await tinted.evaluateAll(els => els.map(el => getComputedStyle(el).backgroundImage))).every(image => image.includes('gradient')), 'Workflow cards wear their tint').toBe(true);
+      const nestedSurfaces = page.locator('.local-run-summary-group:not([data-field-tone]), .workflow-analysis-card, .workflow-flow-node, .local-chart.ins-card, .usage-insight');
       const nestedStyles = await nestedSurfaces.evaluateAll(elements => elements.map(el => ({
         image: getComputedStyle(el).backgroundImage,
         shadow: getComputedStyle(el).boxShadow,

@@ -207,6 +207,10 @@ html body .app svg.field-icon.field-icon[data-field-icon="activity-hourly"]:not(
 html body .app svg.field-icon.field-icon[data-field-icon="age"]:not([data-semantic-concept^="model:"]) { color: var(--ds-field-age) !important; }
 html body .app svg.field-icon.field-icon[data-field-icon="analysis"]:not([data-semantic-concept^="model:"]) { color: var(--ds-field-analysis) !important; }
 html body .app svg.field-icon.field-icon[data-field-icon="answer"]:not([data-semantic-concept^="model:"]) { color: var(--ds-field-answer) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="prompt"]:not([data-semantic-concept^="model:"]) { color: var(--ds-field-prompt) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="truncated"]:not([data-semantic-concept^="model:"]) { color: var(--ds-field-truncated) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="written"]:not([data-semantic-concept^="model:"]) { color: var(--ds-field-written) !important; }
+html body .app svg.field-icon.field-icon[data-field-icon="writer"]:not([data-semantic-concept^="model:"]) { color: var(--ds-field-writer) !important; }
 html body .app svg.field-icon.field-icon[data-field-icon="backend"]:not([data-semantic-concept^="model:"]) { color: var(--ds-field-backend) !important; }
 html body .app svg.field-icon.field-icon[data-field-icon="baseline"]:not([data-semantic-concept^="model:"]) { color: var(--ds-field-baseline) !important; }
 html body .app svg.field-icon.field-icon[data-field-icon="basis"]:not([data-semantic-concept^="model:"]) { color: var(--ds-field-basis) !important; }

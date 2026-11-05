@@ -285,9 +285,12 @@ for (const theme of ['light', 'dark'] as const) {
     expect(panel[1], 'panels carry the ink hairline').toBe(face.rule);
     const read = await groups.evaluateAll(els => els.map(el => ({ top: getComputedStyle(el).borderTopWidth, edge: getComputedStyle(el).borderTopColor,
       fill: getComputedStyle(el).backgroundColor, title: getComputedStyle(el.querySelector('h3')!).color })));
-    for (const group of read) expect([group.top, group.edge, group.fill], 'neutral card').toEqual(['1px', face.rule, panel[0]]);
-    // Part 28 AC177 supersedes AC150/AC172's subject colours: the four titles are one grey.
-    expect(new Set(read.map(group => group.title)).size, 'the four subject titles are one grey (AC177)').toBe(1);
+    // OMN-22168 (Lakshman 2026-11-05, "colourful tinted cards" chosen over R8/R10's neutral cards and AC177's one grey):
+    // each subject card keeps a 1px border, in its own colour, and its title wears that colour.
+    for (const group of read) expect(group.top, 'one 1px border').toBe('1px');
+    expect(new Set(read.map(group => group.edge)).size, 'four subject borders, four colours').toBe(4);
+    expect(new Set(read.map(group => group.title)).size, 'four subject titles, four colours').toBe(4);
+    expect(read.every(group => group.edge !== face.rule), 'no subject card on the neutral rule').toBe(true);
     await page.goto('/runs');
     const week = page.locator('.local-runs-week .local-section-heading');
     if (await week.count()) expect(firstFamily(await week.first().evaluate(el => getComputedStyle(el).fontFamily))).toBe(firstFamily(face.mono));

@@ -7,6 +7,8 @@ import { formatUsd } from '@/components/dashboard/usage/UsageByModelDayWidget';
 import type { BoundProjectionSnapshot } from '@/layout/local-page-loader';
 import { plainFailureMessage } from './plain-text';
 import { useModelIdentityStyle } from '@/components/dashboard/model-tiers';
+import { readableTime } from '@/components/format/readable-time';
+import { ChevronRight } from '@/theme/design-system/icons';
 import { EmptyState, Fact, FactList } from '@/theme/design-system/components';
 
 type Run = Record<string, unknown>;
@@ -84,29 +86,46 @@ function writerOf(value: unknown): unknown {
 
 /** OMN-22168: the recorded fields of a run. The stage-duration chart that sat beside them repeated the Run timeline's step
  *  durations and is removed (Lakshman 2026-11-05, "remove duplicates"); `steps` is kept for the callers' signature. */
+/** Facts a run with none of them leaves out (a run with no lineage names no retry); every other fact says Not recorded. */
+const OPTIONAL_FACTS = new Set(['Tokens to compliance', 'Routed model', 'Answering backend', 'Score source', 'Recorded by', 'Retry of', 'Lineage']);
+const RECORD_GROUPS: ReadonlyArray<{ name: string; concept: string; facts: (decision: Run) => Array<[string, unknown]> }> = [
+  // OMN-19920 AC5: the run's receipt identity. receipt.json records the correlation id as receipt_id.
+  { name: 'Identity', concept: 'identity', facts: decision => [['Receipt id', decision.correlation_id], ['Session', decision.session_id],
+    // OMN-21166 AC66: a retried run names the run it retried and how; a run with no lineage leaves both out.
+    ['Retry of', decision.parent_correlation_id], ['Lineage', decision.lineage_kind]] },
+  { name: 'Recorded times', concept: 'age', facts: decision => [['Created at', decision.created_at], ['Written at', decision.written_at],
+    ['Terminal OK', yesNo(decision.terminal_ok)]] },
+  { name: 'Route and cost', concept: 'cost', facts: decision => [['Routed model', decision.routed_model], ['Answering backend', decision.answering_backend],
+    ['Recorded cost (USD)', decision.cost_usd], ['Tokens to compliance', decision.tokens_to_compliance]] },
+  { name: 'Source', concept: 'basis', facts: decision => [['Data source', decision.data_source], ['Score source', decision.score_source],
+    ['Recorded by', writerOf(decision.writer_identity)]] },
+];
+
 export function WorkflowRecordDetails({ decision }: { decision: Run | undefined; steps?: Run[] }) {
   const id = useId();
   return <div className="workflow-record-grid">
     {decision && <section className="workflow-analysis-card workflow-analysis-card--record" aria-labelledby={id}>
       <h3 id={id} className="local-dashboard-caption" data-page-heading tabIndex={-1}><ConceptIcon concept="run-details" size={16} />Recorded run details</h3>
-      <FactList>
-        {[
-          // OMN-19920 AC5: the run's receipt identity. receipt.json records the correlation id as receipt_id.
-          ['Receipt id', decision.correlation_id],
-          ['Created at', decision.created_at], ['Written at', decision.written_at],
-          ['Recorded cost (USD)', decision.cost_usd], ['Data source', decision.data_source],
-          ['Terminal OK', yesNo(decision.terminal_ok)], ['Session', decision.session_id],
-          ...[
-            ['Tokens to compliance', decision.tokens_to_compliance],
-            ['Routed model', decision.routed_model], ['Answering backend', decision.answering_backend],
-            ['Score source', decision.score_source], ['Recorded by', writerOf(decision.writer_identity)],
-            // OMN-21166 AC66: a retried run names the run it retried and how; a run with no lineage leaves both out.
-            ['Retry of', decision.parent_correlation_id], ['Lineage', decision.lineage_kind],
-          ].filter(([, value]) => value !== null && value !== undefined && value !== ''),
-        ].map(([label, value]) => <Fact key={String(label)} term={<><FieldIcon label={label} value={value} />{String(label)}</>} data-field-tone={fieldTone(label, value)} data-field-unavailable={isUnavailableField(value)}>{(label === 'Created at' || label === 'Written at') && typeof value === 'string' && Number.isFinite(Date.parse(value))
-          ? <time dateTime={value} title={value}>{new Date(value).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'UTC' })} UTC</time>
-          : label === 'Recorded cost (USD)' ? recordedUsd(value) : label === 'Tokens to compliance' ? formatDashboardCount(value) : recorded(value)}</Fact>)}
-      </FactList>
+      {/* The run's record as four cards in their own colours, as the run's cards above (Lakshman 2026-11-05, "like three
+          cards colorful"): who and which run, when it was recorded, its route and cost, and where the record came from. */}
+      <div className="workflow-record-groups">
+        {RECORD_GROUPS.map(group => {
+          const facts = group.facts(decision).filter(([label, value]) => !OPTIONAL_FACTS.has(String(label)) || (value !== null && value !== undefined && value !== ''));
+          if (facts.length === 0) return null;
+          return <section key={group.name} className="workflow-record-group" data-field-tone={group.concept} aria-label={group.name}>
+            {/* Colour only: a glyph here would repeat the glyph of a fact inside the card (Lakshman 2026-11-05, "icons unique"). */}
+            <h4 className="local-dashboard-caption">{group.name}</h4>
+            <FactList>
+              {facts.map(([label, value]) => <Fact key={String(label)} term={<><FieldIcon label={label} value={value} />{String(label)}</>} data-field-tone={fieldTone(label, value)} data-field-unavailable={isUnavailableField(value)}>{(label === 'Created at' || label === 'Written at') && typeof value === 'string' && Number.isFinite(Date.parse(value))
+          // The time as every page writes it ("Nov 5, 14:58:46 UTC"), the served value its title; a measured zero cost the
+          // run table's muted "$0" (Lakshman 2026-11-05).
+          ? <time dateTime={value} title={value}>{readableTime(String(value)) ?? `${new Date(value).toISOString().slice(0, 19).replace('T', ' ')} UTC`}</time>
+          : label === 'Recorded cost (USD)' ? (recordedUsd(value) === formatUsd(0)
+            ? <span className="local-cost-free" title={recordedUsd(value)}>{recordedUsd(value).replace(/\.0+$/, '')}</span> : recordedUsd(value)) : label === 'Tokens to compliance' ? formatDashboardCount(value) : recorded(value)}</Fact>)}
+            </FactList>
+          </section>;
+        })}
+      </div>
     </section>}
   </div>;
 }
@@ -115,14 +134,15 @@ export function WorkflowRecordDetails({ decision }: { decision: Run | undefined;
 const ANSWER_FOLD_LINES = 12;
 const ANSWER_FOLD_CHARS = 1200;
 
-function AnswerText({ text }: { text: string }) {
+function AnswerText({ text, noun = 'answer' }: { text: string; noun?: 'answer' | 'prompt' }) {
   // Text only: React escapes it, so markup in an answer is shown as the characters it is and creates no element
   // (AC6). Never dangerouslySetInnerHTML, never a markdown renderer.
   const lines = text.split('\n').length;
   const block = <pre className="workflow-run-answer-text">{text}</pre>;
   if (lines <= ANSWER_FOLD_LINES && text.length <= ANSWER_FOLD_CHARS) return block;
   return <details className="workflow-run-answer-fold">
-    <summary>{`Show the answer (${formatDashboardCount(lines)} lines, ${formatDashboardCount(text.length)} characters)`}</summary>
+    {/* A styled disclosure instead of the browser's triangle: a chevron that turns when the answer is open. */}
+    <summary><ChevronRight size={14} aria-hidden="true" className="workflow-run-answer-chevron" />{`Show the ${noun} (${formatDashboardCount(lines)} lines, ${formatDashboardCount(text.length)} characters)`}</summary>
     {block}
   </details>;
 }
@@ -133,27 +153,43 @@ function AnswerText({ text }: { text: string }) {
  * answered for another run (refused, never shown under this run's id). What the user reads names no exposure, topic
  * or field (OMN-21166 AC39); those stay in this comment and the contract.
  */
+/** The run's prompt or answer from its correlation-trace.v1 row, in each read state, for the run asked and no other. */
+function traceTextBody(read: BoundProjectionSnapshot | undefined, runId: string, noun: 'answer' | 'prompt'): ReactNode {
+  const state = (text: string, error = false) => (error ? <p className="local-dashboard-error">{text}</p> : <EmptyState status={false}>{text}</EmptyState>);
+  const field = noun === 'answer' ? 'response_text' : 'prompt_text';
+  if (!read || read.runId !== runId) return state(`Reading the ${noun}…`);
+  if (read.failure && !read.lastGoodAt) {
+    const failed = read.failure.kind === 'error' || read.failure.kind === 'timeout';
+    return state(plainFailureMessage(read.failure, { topic: read.topic, subject: `The ${noun}` }), failed);
+  }
+  const rows = read.rows.filter((row): row is Run => typeof row === 'object' && row !== null && !Array.isArray(row));
+  const texts = rows.filter((row) => row[field] !== null && row[field] !== undefined && row[field] !== '');
+  if (rows.some((row) => row.correlation_id !== runId)) return state(`The ${noun} read belongs to another run, so it is not shown.`, true);
+  if (texts.length === 0) return state(`No ${noun} recorded for this run`);
+  return texts.map((row, index) => <div key={index}>
+    <AnswerText text={String(row[field])} noun={noun} />
+    {/* Part 15 AC96: a real answer needs no source line; any other source (fixtures, an unrecorded one) is named. */}
+    {row.data_source !== 'real' && <p className="local-dashboard-caption">{`Data source: ${recorded(row.data_source)}`}</p>}
+  </div>);
+}
+
+/**
+ * OMN-22168 (Lakshman 2026-11-05, "instead of Answer i want prompt or trace after each request in meaningful and logical
+ * way"): the prompt under the run timeline's Request step and the answer under the step that returned it, each a named
+ * region with its glyph, folded when long. The same read states as the answer card.
+ */
+export function RunTraceText({ read, runId, kind }: { read: BoundProjectionSnapshot | undefined; runId: string; kind: 'prompt' | 'answer' }) {
+  const id = useId();
+  const title = kind === 'prompt' ? 'Prompt' : 'Answer';
+  return <section className="workflow-step-text" data-trace-text={kind} aria-labelledby={id}>
+    <p id={id} className="workflow-step-text-title" data-field-tone={kind}><ConceptIcon concept={kind} label={title} size={14} />{title}</p>
+    {traceTextBody(read, runId, kind)}
+  </section>;
+}
+
 export function RunAnswer({ read, runId }: { read: BoundProjectionSnapshot | undefined; runId: string }) {
   const id = useId();
-  const state = (text: string, error = false) => (error ? <p className="local-dashboard-error">{text}</p> : <EmptyState status={false}>{text}</EmptyState>);
-  let body: ReactNode;
-  if (!read || read.runId !== runId) {
-    body = state('Reading the answer…');
-  } else if (read.failure && !read.lastGoodAt) {
-    const failed = read.failure.kind === 'error' || read.failure.kind === 'timeout';
-    body = state(plainFailureMessage(read.failure, { topic: read.topic, subject: 'The answer' }), failed);
-  } else {
-    const rows = read.rows.filter((row): row is Run => typeof row === 'object' && row !== null && !Array.isArray(row));
-    const answers = rows.filter((row) => row.response_text !== null && row.response_text !== undefined && row.response_text !== '');
-    body = rows.some((row) => row.correlation_id !== runId)
-      ? state('The answer read belongs to another run, so it is not shown.', true)
-      : answers.length === 0 ? state('No answer recorded for this run')
-      : answers.map((row, index) => <div key={index}>
-        <AnswerText text={String(row.response_text)} />
-        {/* Part 15 AC96: a real answer needs no source line; any other source (fixtures, an unrecorded one) is named. */}
-        {row.data_source !== 'real' && <p className="local-dashboard-caption">{`Data source: ${recorded(row.data_source)}`}</p>}
-      </div>);
-  }
+  const body = traceTextBody(read, runId, 'answer');
   return <section className="workflow-analysis-card workflow-analysis-card--answer" aria-labelledby={id}>
     <h3 id={id} className="local-dashboard-caption" data-page-heading tabIndex={-1}><ConceptIcon concept="answer" size={16} />Answer</h3>
     {body}

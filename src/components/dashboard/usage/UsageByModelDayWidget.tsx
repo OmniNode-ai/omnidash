@@ -19,7 +19,7 @@ import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
 //     share of calls is the served `call_share`, the row's calls over its tenant's calls that UTC day, formatted as a
 //     percentage. A row with no served share says so; no share is worked out here from the call counts.
 import { useId, useState, type CSSProperties } from 'react';
-import { CalendarDays, ChevronLeft, ChevronRight, RotateCcw } from '@/theme/design-system/icons';
+import { Bot, CalendarDays, ChevronLeft, ChevronRight, RotateCcw } from '@/theme/design-system/icons';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionSnapshotQuery } from '@/hooks/useProjectionSnapshotQuery';
 import { TOPICS } from '@shared/types/topics';
@@ -133,7 +133,7 @@ export function UsageByModelDayTable({ rows, interactive = false }: { rows: read
         {/* The Runs toolbar's filters (Lakshman 2026-11-05, "modern like runs"): the kit Dropdown, its glyph and colour inside
             the pill, each model option with its swatch. */}
         <div className="local-filter-field">
-          <Dropdown id={`${id}-model`} label="Usage model" value={activeModel} icon={<ConceptIcon concept="model" size={15} />} tone="var(--ds-field-model)"
+          <Dropdown id={`${id}-model`} label="Usage model" value={activeModel} icon={<Bot size={15} />} tone="var(--ds-field-model)"
             onChange={value => { setSelectedModel(value); setPage(0); }}
             options={[{ value: '', label: 'All models' }, ...models.map(name => ({ value: name, label: name, tone: modelColor(name) }))]} />
         </div>

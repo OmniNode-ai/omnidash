@@ -301,6 +301,10 @@
   --ds-field-run-details: oklch(46% 0.11 341.04062);
   --ds-field-stage-timing: oklch(46% 0.11 8.44187);
   --ds-field-answer: oklch(46% 0.11 186.32868);
+  --ds-field-prompt: oklch(46% 0.11 140);
+  --ds-field-truncated: oklch(46% 0.11 82.5);
+  --ds-field-written: oklch(46% 0.11 19.0);
+  --ds-field-writer: oklch(46% 0.11 351.5);
   --ds-field-routing-flow: oklch(46% 0.11 233.71179);
   --ds-field-token-flow: oklch(46% 0.11 184.04561);
   --ds-field-quality-comparison: oklch(46% 0.11 120);
@@ -434,6 +438,10 @@
   --ds-field-run-details: oklch(79% 0.11 341.04062);
   --ds-field-stage-timing: oklch(79% 0.11 8.44187);
   --ds-field-answer: oklch(79% 0.11 186.32868);
+  --ds-field-prompt: oklch(79% 0.11 140);
+  --ds-field-truncated: oklch(79% 0.11 82.5);
+  --ds-field-written: oklch(79% 0.11 19.0);
+  --ds-field-writer: oklch(79% 0.11 351.5);
   --ds-field-routing-flow: oklch(79% 0.11 233.71179);
   --ds-field-token-flow: oklch(79% 0.11 184.04561);
   --ds-field-quality-comparison: oklch(79% 0.11 120);

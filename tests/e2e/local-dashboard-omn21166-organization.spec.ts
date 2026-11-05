@@ -122,5 +122,6 @@ test('Workflow fact cards have distinct semantic Lucide icons and colors', async
   expect(new Set(identities.map(identity => identity.icon)).size).toBe(4);
   // One colour per concept (Lakshman 2026-11-03): the four subject icons are four concepts, so four colours; the titles stay grey.
   expect(new Set(identities.map(identity => identity.color)).size).toBe(4);
-  expect(new Set(identities.map(identity => identity.border)).size).toBe(1);
+  // OMN-22168 (Lakshman 2026-11-05, colourful tinted cards chosen over one shared border): each card's border is its own.
+  expect(new Set(identities.map(identity => identity.border)).size).toBe(4);
 });
