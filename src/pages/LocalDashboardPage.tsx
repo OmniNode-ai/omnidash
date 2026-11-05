@@ -1204,15 +1204,16 @@ function costOf(session: Row | undefined, decision: Row): string {
 }
 
 /**
- * Run table item 8 (Lakshman 2026-11-05): a measured zero cost on a local run reads "$0 · local", muted, so a free local
- * run is told apart from a priced one at a glance; every other cost is costOf's text.
+ * Run table item 8 (Lakshman 2026-11-05): a measured zero cost on a local run reads "$0", muted, so a free local run is
+ * told apart from a priced one at a glance; the route is named in its title only ("we are showing them model"), and
+ * every other cost is costOf's text.
  */
 function CostCell({ session, run }: { session: Row | undefined; run: Row }) {
   const text = costOf(session, run);
   const value = isMissing(session?.local_cost_usd) ? run.cost_usd : session?.local_cost_usd;
   const local = String(run.cost_tier_name ?? '').toLowerCase() === 'local';
   return !isMissing(value) && Number(value) === 0 && local
-    ? <span className="local-cost-free" title={`${text}, local route`}>$0 · local</span> : <>{text}</>;
+    ? <span className="local-cost-free" title={`${text}, local route`}>$0</span> : <>{text}</>;
 }
 
 /** A plain decimal as the store serves it: optional minus, digits, optional fraction. No exponent, no grouping. */
