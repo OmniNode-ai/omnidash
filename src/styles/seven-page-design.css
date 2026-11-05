@@ -1709,15 +1709,15 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ds-accent); outline-o
 .local-dashboard-page table[data-routing-table] th:nth-child(8) { width: 140px; }
 .local-dashboard-page table[data-routing-table] :is(td[data-cell="tier"], td[data-cell="backend"], td[data-cell="finish"], td[data-cell="pass"]) { white-space: nowrap; }
 .local-dashboard-page table[data-routing-table] thead .local-table-head { white-space: normal; overflow-wrap: normal; word-break: normal; }
-/* Pass-rate bands (src/pages/local/plain-text.ts): each rate is a solid pill in its band's colour with the ink that reads on it,
-   so the five bands are told apart at a glance in either theme; the key under the routing table shows the same pills. */
+/* Pass-rate bands (src/pages/local/plain-text.ts): each rate is a pill in the theme's status-pill style, a 14% tint of its
+   band's hue over the surface, a border in it and its ink; the key under the routing table shows the same pills. */
 .local-dashboard-page span[data-pass-band] { display: inline-block; padding: 1px 8px; border-radius: 999px; font-weight: 600; font-size: 12px; line-height: 20px; white-space: nowrap; }
 .local-dashboard-page td[data-pass-band] > .local-pass-pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-weight: 600; font-size: 12px; line-height: 20px; white-space: nowrap; }
-.local-dashboard-page :is(span[data-pass-band="1"], td[data-pass-band="1"] > .local-pass-pill) { background: var(--ds-pass-band-1); color: var(--ds-pass-band-1-ink) !important; }
-.local-dashboard-page :is(span[data-pass-band="2"], td[data-pass-band="2"] > .local-pass-pill) { background: var(--ds-pass-band-2); color: var(--ds-pass-band-2-ink) !important; }
-.local-dashboard-page :is(span[data-pass-band="3"], td[data-pass-band="3"] > .local-pass-pill) { background: var(--ds-pass-band-3); color: var(--ds-pass-band-3-ink) !important; }
-.local-dashboard-page :is(span[data-pass-band="4"], td[data-pass-band="4"] > .local-pass-pill) { background: var(--ds-pass-band-4); color: var(--ds-pass-band-4-ink) !important; }
-.local-dashboard-page :is(span[data-pass-band="5"], td[data-pass-band="5"] > .local-pass-pill) { background: var(--ds-pass-band-5); color: var(--ds-pass-band-5-ink) !important; }
+.local-dashboard-page :is(span[data-pass-band="1"], td[data-pass-band="1"] > .local-pass-pill) { background: color-mix(in srgb, var(--ds-pass-band-1) 14%, var(--ds-surface)); border: 1px solid color-mix(in srgb, var(--ds-pass-band-1) 45%, transparent); color: var(--ds-pass-band-1-ink) !important; }
+.local-dashboard-page :is(span[data-pass-band="2"], td[data-pass-band="2"] > .local-pass-pill) { background: color-mix(in srgb, var(--ds-pass-band-2) 14%, var(--ds-surface)); border: 1px solid color-mix(in srgb, var(--ds-pass-band-2) 45%, transparent); color: var(--ds-pass-band-2-ink) !important; }
+.local-dashboard-page :is(span[data-pass-band="3"], td[data-pass-band="3"] > .local-pass-pill) { background: color-mix(in srgb, var(--ds-pass-band-3) 14%, var(--ds-surface)); border: 1px solid color-mix(in srgb, var(--ds-pass-band-3) 45%, transparent); color: var(--ds-pass-band-3-ink) !important; }
+.local-dashboard-page :is(span[data-pass-band="4"], td[data-pass-band="4"] > .local-pass-pill) { background: color-mix(in srgb, var(--ds-pass-band-4) 14%, var(--ds-surface)); border: 1px solid color-mix(in srgb, var(--ds-pass-band-4) 45%, transparent); color: var(--ds-pass-band-4-ink) !important; }
+.local-dashboard-page :is(span[data-pass-band="5"], td[data-pass-band="5"] > .local-pass-pill) { background: color-mix(in srgb, var(--ds-pass-band-5) 14%, var(--ds-surface)); border: 1px solid color-mix(in srgb, var(--ds-pass-band-5) 45%, transparent); color: var(--ds-pass-band-5-ink) !important; }
 .local-dashboard-page .local-pass-key { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 12px; }
 .local-dashboard-page .local-pass-key .local-pass-swatch { display: none; }
 .local-dashboard-page .ins-task-head > :nth-child(6), .local-dashboard-page .ins-task-row > .ins-list-coverage { min-width: 0; }

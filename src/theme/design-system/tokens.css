@@ -15,13 +15,14 @@
 /* 1. Semantic tokens, light (design 20). Light is the default: the app marks dark with html[data-theme="dark"]. */
 :root {
   color-scheme: light;
-  /* Pass-rate bands (src/pages/local/plain-text.ts): solid pills in five clearly different colours, red, orange, yellow, lime,
-     green (Lakshman 2026-11-05, "visually unique color"), each with the ink that reads at 4.5:1 or more on it. */
-  --ds-pass-band-1: #dc2626; --ds-pass-band-1-ink: #ffffff;
-  --ds-pass-band-2: #f97316; --ds-pass-band-2-ink: #1c1917;
-  --ds-pass-band-3: #facc15; --ds-pass-band-3-ink: #1c1917;
-  --ds-pass-band-4: #a3e635; --ds-pass-band-4-ink: #1c1917;
-  --ds-pass-band-5: #15803d; --ds-pass-band-5-ink: #ffffff;
+  /* Pass-rate bands (src/pages/local/plain-text.ts): pills in the theme's status-pill style (Lakshman 2026-11-05, "use
+     color to suit our theme"): a soft tint of the band's hue, a border in it and its ink, red, orange, yellow, lime and
+     green, each ink at 4.5:1 or more on its tint. */
+  --ds-pass-band-1: #dc2626; --ds-pass-band-1-ink: #991b1b;
+  --ds-pass-band-2: #ea580c; --ds-pass-band-2-ink: #9a3412;
+  --ds-pass-band-3: #ca8a04; --ds-pass-band-3-ink: #854d0e;
+  --ds-pass-band-4: #65a30d; --ds-pass-band-4-ink: #3f6212;
+  --ds-pass-band-5: #16a34a; --ds-pass-band-5-ink: #166534;
   --ds-page: #ffffff;
   --ds-surface: #fafafa;
   --ds-surface-2: #f0f0f0;
@@ -86,11 +87,11 @@
 /* 1. Semantic tokens, dark (design 01). color-scheme draws native scrollbars and controls dark too. */
 [data-theme="dark"] {
   color-scheme: dark;
-  --ds-pass-band-1: #dc2626; --ds-pass-band-1-ink: #ffffff;
-  --ds-pass-band-2: #f97316; --ds-pass-band-2-ink: #1c1917;
-  --ds-pass-band-3: #facc15; --ds-pass-band-3-ink: #1c1917;
-  --ds-pass-band-4: #a3e635; --ds-pass-band-4-ink: #1c1917;
-  --ds-pass-band-5: #16a34a; --ds-pass-band-5-ink: #052e16;
+  --ds-pass-band-1: #f87171; --ds-pass-band-1-ink: #fca5a5;
+  --ds-pass-band-2: #fb923c; --ds-pass-band-2-ink: #fdba74;
+  --ds-pass-band-3: #facc15; --ds-pass-band-3-ink: #fde047;
+  --ds-pass-band-4: #a3e635; --ds-pass-band-4-ink: #bef264;
+  --ds-pass-band-5: #4ade80; --ds-pass-band-5-ink: #86efac;
   --ds-page: #0a0a0a;
   --ds-surface: #141414;
   --ds-surface-2: #1f1f1f;
