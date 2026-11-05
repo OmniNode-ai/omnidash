@@ -189,18 +189,29 @@ function ActivityHeatmap({ runs, days, window }: { runs: InsightRun[]; days: rea
 function TaskMix({ runs }: { runs: InsightRun[] }) {
   const groups = countBy(runs, 'task');
   const max = Math.max(1, ...groups.map(group => group.runs));
+  // Lakshman 2026-11-05 ("fix all", on the Tasks list): a list in columns, like a table. Each value has its own column
+  // under a heading (runs, pass rate, verdicts), all reading from the left, so a long value never pushes a bar; the bar
+  // is the task's share of the listed runs in a full track.
   return (
     <ChartCard title="Tasks" concept="task" note="Runs and pass rate" delay={180}>
-      <ul className="ins-list" aria-label="Tasks">
+      <div className="ins-task-head local-dashboard-caption" aria-hidden="true">
+        <span /><span>Task</span><span>Share of runs</span><span>Runs</span><span>Pass rate</span><span>Verdicts</span>
+      </div>
+      <ul className="ins-list ins-task-list" aria-label="Tasks">
         {groups.map((group, index) => {
           const look = taskLook(group.key);
           const judged = group.passed + group.failed;
+          const name = group.key === NOT_RECORDED ? NOT_RECORDED : readable(group.key);
+          const pass = judged ? `${Math.round((group.passed / judged) * 100)}%` : 'No verdicts';
           return (
-            <li key={group.key} className="ins-list-row" style={{ '--ins-swatch': look.color } as CSSProperties}>
+            <li key={group.key} className="ins-list-row ins-task-row" style={{ '--ins-swatch': look.color } as CSSProperties}
+              aria-label={`${name}: ${count(group.runs)} runs, pass rate ${pass}, ${verdictCoverage(judged, group.runs)}`}>
               <span className="ins-chip-icon" aria-hidden="true">{look.icon}</span>
-              <span className="ins-list-name">{group.key === NOT_RECORDED ? NOT_RECORDED : readable(group.key)}</span>
+              <span className="ins-list-name">{name}</span>
               <BarTrack share={group.runs / max} delay={index * 60} />
-              <span className="ins-list-value"><span data-field-tone="count">{count(group.runs)}</span> · <span data-field-tone="pass" data-field-unavailable={!judged}>{judged ? `${Math.round((group.passed / judged) * 100)}%` : 'no verdicts'}</span> · <span className="ins-list-coverage" data-field-tone="basis">{verdictCoverage(judged, group.runs)}</span></span>
+              <span className="ins-task-cell" data-field-tone="count">{count(group.runs)}</span>
+              <span className="ins-task-cell" data-field-tone="pass" data-field-unavailable={!judged}>{pass}</span>
+              <span className="ins-task-cell ins-list-coverage" data-field-tone="basis" title={verdictCoverage(judged, group.runs)}>{`${count(judged)} of ${count(group.runs)}`}</span>
             </li>
           );
         })}

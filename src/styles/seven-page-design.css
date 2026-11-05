@@ -1650,11 +1650,10 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ds-accent); outline-o
 /* Lakshman 2026-11-05 ("use all places this type of bargraph like water filled"): every bar on the local pages stands in
    a track in the line colour that runs the plot's full height (a column) or length (a horizontal bar), as the ranked
    bars' slots and the canvas charts' backgrounds do. A column's track is as wide as its bar. */
-:is(.local-dashboard-page, .ev-root) .gdb-col { position: relative; }
-:is(.local-dashboard-page, .ev-root) .gdb-col::before { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; transform: translateX(-50%);
-  width: 100%; background: var(--ds-line); border-radius: var(--ds-radius-bar) var(--ds-radius-bar) 0 0; pointer-events: none; }
-:is(.local-dashboard-page, .ev-root) .gdb-col > * { position: relative; }
-.local-dashboard-page--overview .local-overview-charts-panel .gdb-col::before { max-width: 44px; }
+/* The track is the column's own background (a pseudo-element would read as a second, unnamed mark to the identity
+   census): the column's width elsewhere, a 44px centred strip on Overview, where the bar is capped at 44px. */
+:is(.local-dashboard-page, .ev-root) .gdb-col { background: var(--ds-line); border-radius: var(--ds-radius-bar) var(--ds-radius-bar) 0 0; }
+.local-dashboard-page--overview .local-overview-charts-panel .gdb-col { background: linear-gradient(var(--ds-line), var(--ds-line)) center / min(44px, 100%) 100% no-repeat; border-radius: 0; }
 :is(.local-dashboard-page, .ev-root) :is(.ins-track, .workflow-comparison-track, .local-tier-bar-track) { background: var(--ds-line) !important; }
 :is(.local-dashboard-page, .ev-root) .ins-money-day-bars { background: var(--ds-line); border-radius: var(--ds-radius-bar) var(--ds-radius-bar) 0 0; }
 /* With tracks drawn (Lakshman 2026-11-05) each row's own auto value column showed: tracks began and ended at different
@@ -1684,3 +1683,15 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ds-accent); outline-o
 :is(.local-dashboard-page, .ev-root) .usage-trend-day[data-state="value"] { background: var(--ds-line); }
 /* Evidence's quality-gate bar fills a track too. */
 .ev-root .ev-qg-bar.bar-track { background: var(--ds-line); border-radius: 999px; }
+/* The Tasks list in columns (Lakshman 2026-11-05, "fix all"): glyph, task, share of runs (a full track), runs, pass
+   rate and verdicts, under one heading row, every column reading from the left at one width on every row. */
+.local-dashboard-page :is(.ins-task-head, .ins-list-row.ins-task-row) { display: grid; grid-template-columns: 26px minmax(9rem, 1fr) minmax(0, 1.6fr) 72px 88px 110px; column-gap: 16px; align-items: center; }
+.local-dashboard-page .ins-task-head { margin: 0 0 8px; font-size: 12px; color: var(--ds-ink-3); }
+.local-dashboard-page .ins-task-row > .ins-task-cell { text-align: left; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.local-dashboard-page .ins-task-row > .ins-task-cell[data-field-tone] { color: var(--field-ink, var(--ds-ink-2)); }
+@media (max-width: 640px) {
+  .local-dashboard-page :is(.ins-task-head, .ins-list-row.ins-task-row) { grid-template-columns: 26px minmax(0, 1fr) 56px 64px; }
+  .local-dashboard-page .ins-task-head > :nth-child(3), .local-dashboard-page .ins-task-head > :nth-child(6) { display: none; }
+  .local-dashboard-page .ins-task-row > .ins-track { grid-column: 2 / -1; grid-row: 2; }
+  .local-dashboard-page .ins-task-row > .ins-list-coverage { display: none; }
+}

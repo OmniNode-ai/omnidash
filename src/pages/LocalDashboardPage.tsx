@@ -2322,6 +2322,7 @@ export function OverviewTrendPanel({ rows, columns, window, now }: {
  */
 export function TierMixPanel({ row, compact = false }: { row: Row | null; compact?: boolean }) {
   const modelIdentityStyle = useModelIdentityStyle();
+  const totalsId = useId();
   const byTier = row && typeof row.by_tier === 'object' && row.by_tier !== null && !Array.isArray(row.by_tier)
     ? (row.by_tier as Row) : null;
   const tiers = byTier && Array.isArray(byTier.tiers) ? asRecords(byTier.tiers) : [];
@@ -2381,11 +2382,15 @@ export function TierMixPanel({ row, compact = false }: { row: Row | null; compac
             )),
           ];})}</tbody>
       </DataTable>
+      {/* Lakshman 2026-11-05 ("one card so that we know it's total"): the three totals are one card under the table. */}
+      <div className="local-tier-totals" role="group" aria-labelledby={`${totalsId}-title`}>
+      <p className="local-dashboard-caption local-tier-totals-title" id={`${totalsId}-title`}>Totals</p>
       <FactList>
         <Fact term={<><FieldIcon label="Tier-routed" />Tier-routed</>} data-field-tone="routing" data-field-unavailable={isMissing(byTier.tier_routed_total)}>{recordedCount(byTier.tier_routed_total)}</Fact>
         <Fact term={<><FieldIcon label="Not tier-routed" />Not tier-routed</>} data-field-tone="unrouted" data-field-unavailable={isMissing(byTier.not_tier_routed_count)}>{recordedCount(byTier.not_tier_routed_count)}</Fact>
         <Fact term={<><FieldIcon label="All runs" />All runs</>} data-field-tone="delegations" data-field-unavailable={isMissing(byTier.total_tasks)}>{recordedCount(byTier.total_tasks)}</Fact>
       </FactList>
+      </div>
     </section>
   );
 }
