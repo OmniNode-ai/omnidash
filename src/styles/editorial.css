@@ -1067,7 +1067,6 @@ html body .local-dashboard-page .local-runs-wrap td .local-task-icon { width: au
 /* Lakshman 2026-11-05 ("center aligned? all column and data?", "left aligned should be best?", "why too much gap?"):
    text stays left and figures right, each header on its values' edge, and the spare width is shared by every column
    (giving it all to Model opened a hole between Model and Tokens). */
-html body .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) :is(th, td)[data-num], html body .local-dashboard-page--runs .local-runs-wrap:not(.local-runs-wrap--all) th:is([data-column="tokens"], [data-column="cost"], [data-column="savings"], [data-column="duration"]) { padding-left: 28px; }
 /* A not-measured saving wraps in a 132px column instead of widening Saving to its whole sentence. */
 html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap td[data-wrap] { white-space: normal !important; min-width: 132px; max-width: 160px; }
 /* A task type's icon and label are one block in its cell, so the label sits on the row's line (it was 2px high: an
@@ -1090,3 +1089,10 @@ html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs
 html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap :is(thead th, tbody td):first-child { position: sticky; left: 0; z-index: 1; background: var(--ds-surface); box-shadow: 1px 0 0 var(--ds-line); }
 html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap thead th:first-child { z-index: 2; background: var(--ds-surface-2) !important; }
 html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody tr:hover td:first-child { background: var(--ds-surface-2); }
+/* Lakshman 2026-11-05 ("fix alignment and I would suggest go with left alignment"): every run column reads from the
+   left, header and values on one left edge; figures keep tabular digits so they still stack cleanly. A header's
+   tooltip opens from its left edge (the kit Tooltip slides one that would leave the table back inside). */
+html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap :is(th, td),
+html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap :is(th, td)[data-num] { text-align: left !important; font-variant-numeric: tabular-nums; }
+html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap thead :is(.local-runs-tip, .local-sort-header) { justify-content: flex-start !important; margin-left: 0 !important; }
+html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap thead th .ds-tooltip { left: 0 !important; right: auto !important; }
