@@ -37,7 +37,8 @@ test('Usage records can be paged and filtered without rewriting served figures',
   await expect(table.locator('tbody tr')).toContainText('model-beta');
   await panel.getByRole('button', { name: 'Clear usage filters', exact: true }).click();
   await expect(table.locator('tbody tr')).toHaveCount(25);
-  await expect(table).toContainText('$0.00');
+  // A measured zero is shown as a zero: the short "$0", with the served "$0.00" as its title (Lakshman 2026-11-05).
+  await expect(table.getByTitle('$0.00').first()).toHaveText('$0');
   await page.screenshot({ path: info.outputPath('usage-records-desktop.png'), fullPage: true, animations: 'disabled' });
 });
 

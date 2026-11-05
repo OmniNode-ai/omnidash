@@ -130,14 +130,22 @@ export function UsageByModelDayTable({ rows, interactive = false }: { rows: read
             {USAGE_HEADERS.map(([concept, label]) => <th key={label}><span className="local-table-head" data-field-tone={concept}><ConceptIcon concept={concept} label={label} size={13} />{label}</span></th>)}
           </tr>
         </thead>
+        {/* As the run table writes its rows (Lakshman 2026-11-05): a day is named on the first row of its group only (the
+            rest keep it for assistive tech and filters), a measured zero cost is a muted "$0" with the served text as its
+            title, and no unmeasured calls is a quiet dash. */}
         <tbody>{shown.map((row, index) => (
-          <tr key={`${String(row.usage_day)}-${String(row.model_id)}-${String(row.cost_tier_name)}-${index}`}>
-            <td data-label="Day">{recorded(row.usage_day)}</td>
+          <tr key={`${String(row.usage_day)}-${String(row.model_id)}-${String(row.cost_tier_name)}-${index}`}
+            data-day-start={index === 0 || shown[index - 1]!.usage_day !== row.usage_day ? '' : undefined}>
+            <td data-label="Day">{index === 0 || shown[index - 1]!.usage_day !== row.usage_day
+              ? recorded(row.usage_day) : <span className="local-visually-hidden">{recorded(row.usage_day)}</span>}</td>
             <td data-label="Model">{model(row.model_id)}</td>
             <td data-label="Tokens in">{isMissing(row.input_tokens) ? recorded(row.input_tokens) : groupedCount(row.input_tokens)}</td>
             <td data-label="Tokens out">{isMissing(row.output_tokens) ? recorded(row.output_tokens) : groupedCount(row.output_tokens)}</td>
-            <td data-label="Cost (measured)">{measuredCost(row.measured_cost_usd)}</td>
-            <td data-label="Unmeasured">{unmeasured(row.unmeasured_call_count)}</td>
+            <td data-label="Cost (measured)">{!isMissing(row.measured_cost_usd) && Number(row.measured_cost_usd) === 0
+              ? <span className="local-cost-free" title={measuredCost(row.measured_cost_usd)}>{measuredCost(row.measured_cost_usd).replace(/\.0+$/, '')}</span>
+              : measuredCost(row.measured_cost_usd)}</td>
+            <td data-label="Unmeasured">{unmeasured(row.unmeasured_call_count) === 'none'
+              ? <span className="local-run-quiet" title="No unmeasured calls">—</span> : unmeasured(row.unmeasured_call_count)}</td>
             <td data-label="Tier">{tier(row.cost_tier_name)}</td>
             <td data-label="Calls">{isMissing(row.call_count) ? 'Not recorded' : formatDashboardCount(row.call_count)}</td>
             <td data-label="Share of calls"><span className="local-share-cell">{!isMissing(row.call_share) && Number.isFinite(Number(row.call_share))
@@ -217,10 +225,6 @@ export function UsageTokensChart({ rows, days = 14 }: { rows: readonly unknown[]
           <button type="button" aria-pressed={direction === 'in'} onClick={() => setDirection('in')}>Tokens in</button>
           <button type="button" aria-pressed={direction === 'out'} onClick={() => setDirection('out')}>Tokens out</button>
         </div>
-        <ul className="utc-legend" aria-label="Models">
-          {names.map(name => <li key={name}><i aria-hidden="true" style={{ background: modelColor(name) }} />{name}</li>)}
-        </ul>
-        <TierLegend label="Tokens per day tier colours" models={names} />
       </div>
       <ol className="utc-plot" style={{ '--utc-count': shown.length } as CSSProperties}>
         {shown.map(day => {
@@ -246,6 +250,13 @@ export function UsageTokensChart({ rows, days = 14 }: { rows: readonly unknown[]
           );
         })}
       </ol>
+      {/* As Overview draws a chart's legend: one row of chips under the chart (Lakshman 2026-11-05). */}
+      <div className="utc-legends">
+        <ul className="utc-legend" aria-label="Models">
+          {names.map(name => <li key={name}><i aria-hidden="true" style={{ background: modelColor(name) }} />{name}</li>)}
+        </ul>
+        <TierLegend label="Tokens per day tier colours" models={names} />
+      </div>
       <figcaption className="local-dashboard-caption">{`Tokens ${direction} per UTC day, latest ${shown.length} served ${shown.length === 1 ? 'day' : 'days'}; n/r marks a day with a count not recorded.`}</figcaption>
     </figure>
   );

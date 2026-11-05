@@ -1763,3 +1763,10 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ds-accent); outline-o
 .local-dashboard-page table[data-decision-matrix] tbody th[scope="row"] { text-transform: none; letter-spacing: 0; font-weight: 400; font-size: 13px; color: var(--ds-ink); min-width: 200px; }
 .local-dashboard-page table[data-decision-matrix] thead th:first-child { width: 200px; }
 .local-dashboard-page table[data-decision-matrix] .usage-matrix-figure[data-pass-band] { display: inline-block !important; width: fit-content !important; max-width: 100%; margin-bottom: 4px; }
+/* Tokens per day's legends under the chart, one row of chips as Overview's chart legends are. */
+.local-dashboard-page .utc-chart .utc-legends { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; }
+.local-dashboard-page .utc-chart .utc-legends .utc-legend { display: contents; }
+.local-dashboard-page .utc-chart .utc-legends .utc-legend > li { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid var(--ds-line); border-radius: 999px; background: var(--ds-surface-2); font-size: 12px; color: var(--ds-ink-2); }
+.local-dashboard-page .utc-chart .utc-legends .utc-legend > li > i { width: 8px; height: 8px; border-radius: 2px; }
+/* Usage by model and day: a row that starts a new day draws a stronger line above it, as the run table does. */
+.local-dashboard-page table[aria-label="Usage by model and day"] tbody tr[data-day-start]:not(:first-child) > td { border-top: 1px solid var(--ds-line-strong, var(--ds-line)); }

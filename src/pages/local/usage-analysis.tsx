@@ -2,7 +2,7 @@ import { useMemo, useState, type CSSProperties } from 'react';
 import { Link } from 'wouter';
 
 import { formatUsd } from '@/lib/currency';
-import { DashboardTabs, DashboardToggle, DataTable, EmptyState, Panel, PanelTitle } from '@/theme/design-system/components';
+import { DashboardTabs, DashboardToggle, DataTable, EmptyState, InfoTip, Panel, PanelTitle } from '@/theme/design-system/components';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { tierLabel } from '@/pages/local/plain-text';
 import { PASS_BANDS, passBand } from '@/pages/local/plain-text';
@@ -257,7 +257,7 @@ export function UsageAnalysis({ decisionRows, complete = false }: { decisionRows
     <p className="local-dashboard-caption">
       {/* OMN-21970 AC3: a read that walked every page holds every served run, so it is not called the latest. */}
       {`From ${complete ? 'all' : 'the latest'} ${sample} served runs${coverage ? `, covering ${dayLabel(coverage.first)} to ${dayLabel(coverage.last)}` : ''}. `}
-      Spend counts measured runs, pass rate counts runs with a verdict, latency counts recorded latencies (nearest rank). Savings are on the charts above (metering).
+      <InfoTip side="bottom" label="How these views count" text="Spend counts measured runs, pass rate counts runs with a verdict, latency counts recorded latencies (nearest rank). Savings are on the charts above (metering)." />
     </p>
     {/* OMN-22168 (Lakshman 2026-11-05, "fix all pages and make it uniform"): Overview's stat tabs, one per view; each hint
         says what the view shows, and the one count is the served sample's model groups. */}
