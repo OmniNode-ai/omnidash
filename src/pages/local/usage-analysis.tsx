@@ -93,7 +93,7 @@ function GroupsView({ decisionRows }: { decisionRows: readonly unknown[] }) {
           {/* data-label names each value when a phone stacks the rows as cards (Codex MSG 753d170c). */}
           <td data-cell="runs" data-label="Runs">{group.runs}</td>
           <td data-cell="spend" data-label="Spend">{money(group.spend, group.spendMeasured, group.runs)}</td>
-          <td data-cell="pass" data-label="Pass rate" data-pass-band={passBand(group.passed, group.verdicts)}>{passText(group)}</td>
+          <td data-cell="pass" data-label="Pass rate" data-pass-band={passBand(group.passed, group.verdicts)}><span className="local-pass-pill">{passText(group)}</span></td>
           <td data-cell="p50" data-label="p50 latency">{latency(group.p50)}</td>
           <td data-cell="p95" data-label="p95 latency">{latency(group.p95)}</td>
           <td data-cell="last" data-label="Last run">{lastText(group.last)}</td>
@@ -322,7 +322,7 @@ export function RoutingAnalysis({ rows, complete = false }: { rows: readonly unk
             <td data-cell="finish">{route.finish}</td>
             <td data-cell="escalations">{route.escalations}</td>
             <td data-cell="runs">{route.totals.runs}</td>
-            <td data-cell="pass" data-pass-band={passBand(route.totals.passed, route.totals.verdicts)}>{passText(route.totals)}</td>
+            <td data-cell="pass" data-pass-band={passBand(route.totals.passed, route.totals.verdicts)}><span className="local-pass-pill">{passText(route.totals)}</span></td>
           </tr>;
         })}</tbody>
     </DataTable>

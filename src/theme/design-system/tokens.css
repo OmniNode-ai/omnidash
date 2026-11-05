@@ -15,12 +15,13 @@
 /* 1. Semantic tokens, light (design 20). Light is the default: the app marks dark with html[data-theme="dark"]. */
 :root {
   color-scheme: light;
-  /* Pass-rate bands (src/lib/pass-band.ts), red to green; each reads at 4.5:1 or more on the light surfaces. */
-  --ds-pass-band-1: #b42318;
-  --ds-pass-band-2: #b54708;
-  --ds-pass-band-3: #8a6100;
-  --ds-pass-band-4: #4d7c0f;
-  --ds-pass-band-5: #067647;
+  /* Pass-rate bands (src/lib/pass-band.ts): solid pills in five clearly different colours, red, orange, yellow, lime,
+     green (Lakshman 2026-11-05, "visually unique color"), each with the ink that reads at 4.5:1 or more on it. */
+  --ds-pass-band-1: #dc2626; --ds-pass-band-1-ink: #ffffff;
+  --ds-pass-band-2: #f97316; --ds-pass-band-2-ink: #1c1917;
+  --ds-pass-band-3: #facc15; --ds-pass-band-3-ink: #1c1917;
+  --ds-pass-band-4: #a3e635; --ds-pass-band-4-ink: #1c1917;
+  --ds-pass-band-5: #15803d; --ds-pass-band-5-ink: #ffffff;
   --ds-page: #ffffff;
   --ds-surface: #fafafa;
   --ds-surface-2: #f0f0f0;
@@ -85,11 +86,11 @@
 /* 1. Semantic tokens, dark (design 01). color-scheme draws native scrollbars and controls dark too. */
 [data-theme="dark"] {
   color-scheme: dark;
-  --ds-pass-band-1: #f97066;
-  --ds-pass-band-2: #fb923c;
-  --ds-pass-band-3: #facc15;
-  --ds-pass-band-4: #a3e635;
-  --ds-pass-band-5: #4ade80;
+  --ds-pass-band-1: #dc2626; --ds-pass-band-1-ink: #ffffff;
+  --ds-pass-band-2: #f97316; --ds-pass-band-2-ink: #1c1917;
+  --ds-pass-band-3: #facc15; --ds-pass-band-3-ink: #1c1917;
+  --ds-pass-band-4: #a3e635; --ds-pass-band-4-ink: #1c1917;
+  --ds-pass-band-5: #16a34a; --ds-pass-band-5-ink: #052e16;
   --ds-page: #0a0a0a;
   --ds-surface: #141414;
   --ds-surface-2: #1f1f1f;

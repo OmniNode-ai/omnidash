@@ -1709,15 +1709,18 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ds-accent); outline-o
 .local-dashboard-page table[data-routing-table] th:nth-child(8) { width: 140px; }
 .local-dashboard-page table[data-routing-table] :is(td[data-cell="tier"], td[data-cell="backend"], td[data-cell="finish"], td[data-cell="pass"]) { white-space: nowrap; }
 .local-dashboard-page table[data-routing-table] thead .local-table-head { white-space: normal; overflow-wrap: normal; word-break: normal; }
-/* Pass-rate bands (src/lib/pass-band.ts): the rate's text in its band's colour, with a key under the routing table. */
-.local-dashboard-page [data-pass-band="1"] { color: var(--ds-pass-band-1) !important; }
-.local-dashboard-page [data-pass-band="2"] { color: var(--ds-pass-band-2) !important; }
-.local-dashboard-page [data-pass-band="3"] { color: var(--ds-pass-band-3) !important; }
-.local-dashboard-page [data-pass-band="4"] { color: var(--ds-pass-band-4) !important; }
-.local-dashboard-page [data-pass-band="5"] { color: var(--ds-pass-band-5) !important; }
-.local-dashboard-page [data-pass-band] { font-weight: 600; }
-.local-dashboard-page .local-pass-key { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-top: 12px; }
-.local-dashboard-page .local-pass-key > [data-pass-band] { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; }
-.local-dashboard-page .local-pass-key .local-pass-swatch { width: 10px; height: 10px; border-radius: 3px; background: currentColor; }
+/* Pass-rate bands (src/lib/pass-band.ts): each rate is a solid pill in its band's colour with the ink that reads on it,
+   so the five bands are told apart at a glance in either theme; the key under the routing table shows the same pills. */
+.local-dashboard-page span[data-pass-band] { display: inline-block; padding: 1px 8px; border-radius: 999px; font-weight: 600; font-size: 12px; line-height: 20px; white-space: nowrap; }
+.local-dashboard-page td[data-pass-band] > .local-pass-pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-weight: 600; font-size: 12px; line-height: 20px; white-space: nowrap; }
+.local-dashboard-page :is(span[data-pass-band="1"], td[data-pass-band="1"] > .local-pass-pill) { background: var(--ds-pass-band-1); color: var(--ds-pass-band-1-ink) !important; }
+.local-dashboard-page :is(span[data-pass-band="2"], td[data-pass-band="2"] > .local-pass-pill) { background: var(--ds-pass-band-2); color: var(--ds-pass-band-2-ink) !important; }
+.local-dashboard-page :is(span[data-pass-band="3"], td[data-pass-band="3"] > .local-pass-pill) { background: var(--ds-pass-band-3); color: var(--ds-pass-band-3-ink) !important; }
+.local-dashboard-page :is(span[data-pass-band="4"], td[data-pass-band="4"] > .local-pass-pill) { background: var(--ds-pass-band-4); color: var(--ds-pass-band-4-ink) !important; }
+.local-dashboard-page :is(span[data-pass-band="5"], td[data-pass-band="5"] > .local-pass-pill) { background: var(--ds-pass-band-5); color: var(--ds-pass-band-5-ink) !important; }
+.local-dashboard-page .local-pass-key { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 12px; }
+.local-dashboard-page .local-pass-key .local-pass-swatch { display: none; }
 .local-dashboard-page .ins-task-head > :nth-child(6), .local-dashboard-page .ins-task-row > .ins-list-coverage { min-width: 0; }
 .local-dashboard-page :is(.ins-task-head, .ins-list-row.ins-task-row) { grid-template-columns: 26px minmax(9rem, 1fr) minmax(0, 1.6fr) 72px 88px 130px; }
+/* In the Tasks columns a pass-rate pill is as wide as its figure, not its column. */
+.local-dashboard-page .ins-task-row > [data-pass-band] { justify-self: start; }
