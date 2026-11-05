@@ -1877,50 +1877,50 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                   data-day-start={byDay && showDay ? '' : undefined}
                   onClick={event => { if ((event.target as HTMLElement).closest('a, button, input, select, summary')) return; setSelectedRunId(String(run.correlation_id ?? '')); }}
                   onKeyDown={event => { if ((event.key === 'Enter' || event.key === ' ') && !(event.target as HTMLElement).closest('a, button, input, select, summary')) { event.preventDefault(); setSelectedRunId(String(run.correlation_id ?? '')); } }}>
-                  <td className="local-dashboard-cell-token">
+                  <td data-label="Run" className="local-dashboard-cell-token">
                     {/* WF-3: a run opens its own path on Workflow; a run with no recorded id has nothing to open. */}
                     <RunRef id={run.correlation_id} short />
                     {isFixture(run) && <Badge>fixture</Badge>}
                   </td>
-                  <td className="local-dashboard-cell-token local-dashboard-cell-time"><RunTimeCell value={run.created_at} showDay={showDay} /></td>
+                  <td data-label="Time" className="local-dashboard-cell-token local-dashboard-cell-time"><RunTimeCell value={run.created_at} showDay={showDay} /></td>
                   {/* Item 10: the status; on a run that failed, its cause and failure detail are the pill's tooltip. */}
-                  <td className="local-run-status-cell">{causeOf(run) !== 'none' ? <FailedStatus run={run} /> : <OutcomePill value={statusOf(run)} />}</td>
+                  <td data-label="Status" className="local-run-status-cell">{causeOf(run) !== 'none' ? <FailedStatus run={run} /> : <OutcomePill value={statusOf(run)} />}</td>
                   {/* A run's model sets that filter, as the selects above do. Item 3: a run answered by another model than it
                       asked for names the requested one before it. */}
-                  <td className="local-dashboard-cell-token">
+                  <td data-label="Model" className="local-dashboard-cell-token">
                     {requested !== null && requested !== answered && <span className="local-run-requested" title={`Requested ${requested}, answered by ${answered}`}>{requested} →</span>}
                     <button type="button" className="local-cell-filter local-run-model" aria-label={`Show only runs of model ${answered}`} onClick={() => updateView({ model: answered, page: 1 })}>
                       {breakableName(answered)}
                     </button>
                   </td>
-                  <td className="local-dashboard-cell-token" data-extra="">
+                  <td data-label="Backend" className="local-dashboard-cell-token" data-extra="">
                     <button type="button" className="local-cell-filter" aria-label={`Show only runs of backend ${recorded(run.backend_id)}`} onClick={() => updateView({ backend: recorded(run.backend_id), page: 1 })}>
                       {recorded(run.backend_id)}
                     </button>
                   </td>
                   {showRouting && <>
-                    <td className="local-dashboard-cell-token" data-cell="requested-model">{recorded(run.requested_model)}</td>
-                    <td data-cell="finish-reason"><QuietUnlessUnusual value={run.finish_reason} usual={text => text === 'stop'} usualText="Finished normally (stop)" /></td>
-                    <td data-cell="escalations" data-num=""><QuietUnlessUnusual value={run.escalation_count} usual={text => Number(text) === 0} usualText="No escalation" /></td>
+                    <td data-label="Requested model" className="local-dashboard-cell-token" data-cell="requested-model">{recorded(run.requested_model)}</td>
+                    <td data-label="Finish reason" data-cell="finish-reason"><QuietUnlessUnusual value={run.finish_reason} usual={text => text === 'stop'} usualText="Finished normally (stop)" /></td>
+                    <td data-label="Escalations" data-cell="escalations" data-num=""><QuietUnlessUnusual value={run.escalation_count} usual={text => Number(text) === 0} usualText="No escalation" /></td>
                   </>}
-                  <td className="local-dashboard-cell-token" data-extra="">{recorded(run.host)}</td>
+                  <td data-label="Host" className="local-dashboard-cell-token" data-extra="">{recorded(run.host)}</td>
                   {/* Item 4: tokens in and out in one cell; their total is the two added, so it is not a column of its own. */}
-                  <td data-num="" title={`${recordedTokens(run.tokens_input)} tokens in, ${recordedTokens(run.tokens_output)} tokens out`}>
+                  <td data-label="Tokens" data-num="" title={`${recordedTokens(run.tokens_input)} tokens in, ${recordedTokens(run.tokens_output)} tokens out`}>
                     {isMissing(run.tokens_input) && isMissing(run.tokens_output) ? 'Not recorded'
                       : <><span data-field-tone="tokens-in">{recordedTokens(run.tokens_input)}</span><span className="local-run-quiet"> / </span><span data-field-tone="tokens-out">{recordedTokens(run.tokens_output)}</span></>}
                   </td>
-                  <td data-num=""><CostCell session={session} run={run} /></td>
+                  <td data-label="Cost" data-num=""><CostCell session={session} run={run} /></td>
                   {/* Items 1 and 2: the baseline is named once in the header when the rows share it; a basis other than
                       measured is a tag beside the figure. */}
-                  <td data-num="" data-wrap={saving.startsWith('Not measured') ? '' : undefined}>{saving}{!isMissing(basis) && String(basis) !== 'measured' && !saving.startsWith('Not measured') && <span className="local-run-tag">{String(basis)}</span>}</td>
-                  <td className="local-dashboard-cell-token" data-extra="">{recorded(baselineOf(run))}</td>
-                  <td data-extra="">{recorded(basis)}</td>
-                  <td data-num="" title={exactMs(run.latency_ms)}>{duration(run.latency_ms)}</td>
-                  <td data-extra="">{isMissing(run.task_type) ? recorded(run.task_type) : <span className="local-task-cell"><TaskIcon task={String(run.task_type)} />{taskLabel(run.task_type)}</span>}</td>
-                  <td data-extra="" data-num="">{recordedTokens(run.tokens_to_compliance)}</td>
-                  <td data-extra="">{tierOf(run)}</td>
+                  <td data-label={sharedBaseline ? `Saving vs ${sharedBaseline}` : 'Saving'} data-num="" data-wrap={saving.startsWith('Not measured') ? '' : undefined}>{saving}{!isMissing(basis) && String(basis) !== 'measured' && !saving.startsWith('Not measured') && <span className="local-run-tag">{String(basis)}</span>}</td>
+                  <td data-label="Baseline model" className="local-dashboard-cell-token" data-extra="">{recorded(baselineOf(run))}</td>
+                  <td data-label="Basis" data-extra="">{recorded(basis)}</td>
+                  <td data-label="Duration" data-num="" title={exactMs(run.latency_ms)}>{duration(run.latency_ms)}</td>
+                  <td data-label="Task type" data-extra="">{isMissing(run.task_type) ? recorded(run.task_type) : <span className="local-task-cell"><TaskIcon task={String(run.task_type)} />{taskLabel(run.task_type)}</span>}</td>
+                  <td data-label="Tokens to compliance" data-extra="" data-num="">{recordedTokens(run.tokens_to_compliance)}</td>
+                  <td data-label="Route tier" data-extra="">{tierOf(run)}</td>
                   {/* Item 7: one form for every score, two decimals; the served value is in the title. */}
-                  <td data-extra="" data-num="" title={recorded(run.actual_score)}>{isMissing(run.actual_score) || !Number.isFinite(score) ? recorded(run.actual_score) : score.toFixed(2)}</td>
+                  <td data-label="Quality score" data-extra="" data-num="" title={recorded(run.actual_score)}>{isMissing(run.actual_score) || !Number.isFinite(score) ? recorded(run.actual_score) : score.toFixed(2)}</td>
                 </tr>;
               })}</tbody>
           </DataTable>;

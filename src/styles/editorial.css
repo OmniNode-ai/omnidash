@@ -1096,3 +1096,49 @@ html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs
 html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap :is(th, td)[data-num] { text-align: left !important; font-variant-numeric: tabular-nums; }
 html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap thead :is(.local-runs-tip, .local-sort-header) { justify-content: flex-start !important; margin-left: 0 !important; }
 html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap thead th .ds-tooltip { left: 0 !important; right: auto !important; }
+/* Lakshman 2026-11-05 ("yes make phone cards"): under 640px each run is a card instead of a row that scrolls sideways.
+   Its first line is the run id with its status on the right; every other field shown in the current view is a small
+   label over its value, two to a line, with the model on a line of its own. The table and its header stay in the page
+   (the header visually hidden), so assistive tech and the cause filter read the same fields. */
+@media (max-width: 640px) {
+  html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap { overflow: visible !important; border: 0 !important; background: none !important; }
+  html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap table { display: block; width: auto !important; min-width: 0 !important; table-layout: auto !important; border: 0; }
+  html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap thead { position: absolute !important; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody { display: flex; flex-direction: column; gap: 10px; }
+  html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody tr {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px 16px; padding: 14px 16px;
+    border: 1px solid var(--ds-line); border-radius: 12px; background: var(--ds-surface); }
+  html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody tr:hover { background: var(--ds-surface-2); }
+  html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody td {
+    display: block; width: auto !important; min-width: 0 !important; max-width: none !important; padding: 0 !important; border: 0 !important;
+    position: static !important; box-shadow: none !important; background: none !important; text-align: left !important; white-space: normal; }
+  html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody td[data-extra] { display: none; }
+  html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap--all tbody td[data-extra] { display: block; }
+  html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody td::before {
+    content: attr(data-label); display: block; margin-bottom: 2px; font-size: 12px; font-weight: 500; letter-spacing: 0.02em; color: var(--ds-ink-3); }
+  /* The card's first line: the run id, and its status at the right. */
+  html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody td[data-label="Run"] { order: -2; align-self: center; }
+  html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody td[data-label="Status"] { order: -1; justify-self: end; align-self: center; }
+  html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody td:is([data-label="Run"], [data-label="Status"])::before { content: none; }
+  html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody td[data-label="Model"] { grid-column: 1 / -1; }
+  html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody td .local-run-day { display: inline; margin-right: 6px; }
+  html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody td .local-run-time { display: inline; }
+}
+@media (max-width: 640px) {
+  /* Checked at 390px: a half-card column cut the run id to "600f620d…6…", and a figure's one-line rule ran the Saving
+     label into Duration's. The id takes the card's whole first line with the status pinned at its top right, and
+     every label wraps. */
+  html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody tr { position: relative; }
+  html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody td[data-label="Run"] { grid-column: 1 / -1; padding-right: 88px !important; min-height: 26px; display: flex; align-items: center; }
+  html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody td[data-label="Status"] { position: absolute !important; top: 14px; right: 16px; }
+  html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody td::before { white-space: normal; }
+}
+@media (max-width: 640px) {
+  /* Every card label in the interface font: on an id-styled cell (time, model, backend) it took the code font. */
+  html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody td::before { font-family: var(--ds-font-sans); font-variant-numeric: normal; }
+}
+@media (max-width: 640px) {
+  /* A value with no break point (a host's address) ran into the next field: on a card every value wraps, anywhere
+     if it must. */
+  html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap tbody td:not([data-label="Run"]) { white-space: normal !important; overflow-wrap: anywhere; }
+}
