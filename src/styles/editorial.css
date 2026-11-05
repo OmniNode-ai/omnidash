@@ -1260,7 +1260,7 @@ html body .local-dashboard-page--settings .local-settings-menu a:focus-visible {
 html body .local-dashboard-page--settings .local-settings-chip.ins-chip-icon { display: inline-grid; place-items: center; flex: none; width: 34px; height: 34px;
   border-radius: 10px; background: color-mix(in oklab, var(--tab-tone) 22%, transparent); color: inherit; }
 html body .local-dashboard-page--settings .local-settings-menu a[aria-current="page"] .local-settings-chip { background: color-mix(in oklab, var(--tab-tone) 34%, transparent); }
-html body .local-dashboard-page--settings .local-settings-index { font-size: 11px; color: var(--ds-ink-3) !important; }
+html body .local-dashboard-page--settings .local-settings-index { font-size: 12px; color: var(--ds-ink-3) !important; }
 
 /* Settings, as Overview and Runs (Lakshman 2026-11-05): the headline figures and the pricing facts are Overview's cards,
    each tinted in its concept colour with its figure in that colour; the provider list's head band reads as every table's
@@ -1287,11 +1287,14 @@ html body .local-dashboard-page--settings .local-provider-status { font-family: 
 /* Settings' Access and System status as Workflow's cards: each panel or group a card tinted in its concept colour with its
    title in it, fact labels in sentence case like every fact list, the two Access cards apart. The card look itself is
    seven-page-design.css's workflow-record-group, scoped there to .local-dashboard-page, which Settings is. */
-html body main.local-dashboard-page--settings .local-dashboard-page--api-keys .local-dashboard-grid { gap: 12px !important; border: 0 !important; background: none !important; padding: 0 !important; }
+/* The section's panels stay one card (OMN-21970 AC9/AC10, AC160): the group keeps its one ink rule and the panels draw no
+   box of their own; each panel carries its colour as a tint and its title, not as a border. */
 /* (0,4,4): above the panel rule's (0,3,4). */
 html body main.local-dashboard-page--settings .local-settings-section article.local-dashboard-panel:is([data-component="api-keys-local-identity"], [data-component="api-keys-access"]) {
-  border-radius: 12px !important; border: 1px solid color-mix(in oklab, var(--field-ink) 32%, var(--ds-line)) !important;
-  background: linear-gradient(170deg, color-mix(in oklab, var(--field-ink) 11%, var(--ds-surface)) 0%, var(--ds-surface) 58%) !important; }
+  background: linear-gradient(170deg, color-mix(in oklab, var(--field-ink) 10%, var(--ds-surface)) 0%, var(--ds-surface) 58%) !important; }
+/* A label column of its own width, so a value keeps the panel's width (the tenant id is read whole). */
+html body main.local-dashboard-page--settings article:is([data-component="api-keys-local-identity"], [data-component="api-keys-access"]) .local-dashboard-fields > div {
+  grid-template-columns: minmax(110px, 0.55fr) minmax(0, 1.45fr) !important; }
 html body .local-dashboard-page--settings article[data-component="api-keys-local-identity"] { --field-ink: var(--ds-field-local-identity); }
 html body .local-dashboard-page--settings article[data-component="api-keys-access"] { --field-ink: var(--ds-field-local-access); }
 html body .local-dashboard-page--settings article:is([data-component="api-keys-local-identity"], [data-component="api-keys-access"]) > :is(h2, header h2, .local-dashboard-panel-title) { color: var(--field-ink) !important; }
@@ -1318,4 +1321,4 @@ html body main.local-dashboard-page--settings [data-testid="status-grid-tile"]:n
 /* Every page's scroller keeps its scrollbar's room (OMN-22168, measured 2026-11-05): with a classic 15px scrollbar a page
    short enough not to scroll (Settings' Pricing and routing) was 16px wider than the next, so its tab row and cards jumped
    sideways between sections and pages. */
-html body :is(main.local-dashboard-page, main.ev-root) { scrollbar-gutter: stable; }
+@media (min-width: 641px) { html body :is(main.local-dashboard-page, main.ev-root) { scrollbar-gutter: stable; } }
