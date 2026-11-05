@@ -1695,3 +1695,29 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ds-accent); outline-o
   .local-dashboard-page .ins-task-row > .ins-track { grid-column: 2 / -1; grid-row: 2; }
   .local-dashboard-page .ins-task-row > .ins-list-coverage { display: none; }
 }
+/* Routing groups (Lakshman 2026-11-05, "fix it"): a standard table with fixed columns, each as wide as its header's
+   longest word and its widest value (measured in Chrome; Escalations' header needs 131px, a backend 158px), the routed
+   model wrapping at its joins with its Rerouted mark. Two-word headers may wrap between their words. */
+.local-dashboard-page table[data-routing-table] { table-layout: fixed; width: 100%; }
+.local-dashboard-page table[data-routing-table] th:nth-child(1) { width: 146px; }
+.local-dashboard-page table[data-routing-table] th:nth-child(2) { width: auto; }
+.local-dashboard-page table[data-routing-table] th:nth-child(3) { width: 112px; }
+.local-dashboard-page table[data-routing-table] th:nth-child(4) { width: 160px; }
+.local-dashboard-page table[data-routing-table] th:nth-child(5) { width: 112px; }
+.local-dashboard-page table[data-routing-table] th:nth-child(6) { width: 132px; }
+.local-dashboard-page table[data-routing-table] th:nth-child(7) { width: 76px; }
+.local-dashboard-page table[data-routing-table] th:nth-child(8) { width: 140px; }
+.local-dashboard-page table[data-routing-table] :is(td[data-cell="tier"], td[data-cell="backend"], td[data-cell="finish"], td[data-cell="pass"]) { white-space: nowrap; }
+.local-dashboard-page table[data-routing-table] thead .local-table-head { white-space: normal; overflow-wrap: normal; word-break: normal; }
+/* Pass-rate bands (src/lib/pass-band.ts): the rate's text in its band's colour, with a key under the routing table. */
+.local-dashboard-page [data-pass-band="1"] { color: var(--ds-pass-band-1) !important; }
+.local-dashboard-page [data-pass-band="2"] { color: var(--ds-pass-band-2) !important; }
+.local-dashboard-page [data-pass-band="3"] { color: var(--ds-pass-band-3) !important; }
+.local-dashboard-page [data-pass-band="4"] { color: var(--ds-pass-band-4) !important; }
+.local-dashboard-page [data-pass-band="5"] { color: var(--ds-pass-band-5) !important; }
+.local-dashboard-page [data-pass-band] { font-weight: 600; }
+.local-dashboard-page .local-pass-key { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-top: 12px; }
+.local-dashboard-page .local-pass-key > [data-pass-band] { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; }
+.local-dashboard-page .local-pass-key .local-pass-swatch { width: 10px; height: 10px; border-radius: 3px; background: currentColor; }
+.local-dashboard-page .ins-task-head > :nth-child(6), .local-dashboard-page .ins-task-row > .ins-list-coverage { min-width: 0; }
+.local-dashboard-page :is(.ins-task-head, .ins-list-row.ins-task-row) { grid-template-columns: 26px minmax(9rem, 1fr) minmax(0, 1.6fr) 72px 88px 130px; }

@@ -4,6 +4,7 @@ import { formatDashboardUsd } from '@/lib/dashboard-currency';
 import { formatDuration } from '@/components/format/duration';
 import { createContext, useContext, useId, useState, type CSSProperties, type ReactNode } from 'react';
 import { millisecondsAxisLabel } from '@/theme/design-system/charts/bar-charts';
+import { passBand } from '@/lib/pass-band';
 import { BarTrack, ChartCard, ChartEmpty, ChartReadout, CumulativeColumns, DayColumns, Histogram, HourHeatmap, LinePlot, NamedByPanel, RankedBars, SeriesLegend, SeriesToggles, SpendColumns, dayTicks } from '@/theme/design-system/charts';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { causeHref, useSharedRunFilter } from './run-filter';
@@ -210,8 +211,9 @@ function TaskMix({ runs }: { runs: InsightRun[] }) {
               <span className="ins-list-name">{name}</span>
               <BarTrack share={group.runs / max} delay={index * 60} />
               <span className="ins-task-cell" data-field-tone="count">{count(group.runs)}</span>
-              <span className="ins-task-cell" data-field-tone="pass" data-field-unavailable={!judged}>{pass}</span>
-              <span className="ins-task-cell ins-list-coverage" data-field-tone="basis" title={verdictCoverage(judged, group.runs)}>{`${count(judged)} of ${count(group.runs)}`}</span>
+              <span className="ins-task-cell" data-field-unavailable={!judged} data-pass-band={passBand(group.passed, judged)}>{pass}</span>
+              {/* The unit is written ("3 of 4 runs"), as OMN-21166 honesty AC3 reads it. */}
+              <span className="ins-task-cell ins-list-coverage" data-field-tone="basis" title={verdictCoverage(judged, group.runs)}>{`${count(judged)} of ${count(group.runs)} runs`}</span>
             </li>
           );
         })}

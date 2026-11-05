@@ -15,6 +15,12 @@
 /* 1. Semantic tokens, light (design 20). Light is the default: the app marks dark with html[data-theme="dark"]. */
 :root {
   color-scheme: light;
+  /* Pass-rate bands (src/lib/pass-band.ts), red to green; each reads at 4.5:1 or more on the light surfaces. */
+  --ds-pass-band-1: #b42318;
+  --ds-pass-band-2: #b54708;
+  --ds-pass-band-3: #8a6100;
+  --ds-pass-band-4: #4d7c0f;
+  --ds-pass-band-5: #067647;
   --ds-page: #ffffff;
   --ds-surface: #fafafa;
   --ds-surface-2: #f0f0f0;
@@ -79,6 +85,11 @@
 /* 1. Semantic tokens, dark (design 01). color-scheme draws native scrollbars and controls dark too. */
 [data-theme="dark"] {
   color-scheme: dark;
+  --ds-pass-band-1: #f97066;
+  --ds-pass-band-2: #fb923c;
+  --ds-pass-band-3: #facc15;
+  --ds-pass-band-4: #a3e635;
+  --ds-pass-band-5: #4ade80;
   --ds-page: #0a0a0a;
   --ds-surface: #141414;
   --ds-surface-2: #1f1f1f;

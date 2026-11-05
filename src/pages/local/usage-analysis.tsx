@@ -5,6 +5,7 @@ import { formatUsd } from '@/lib/currency';
 import { DashboardTabs, DashboardToggle, DataTable, EmptyState, Panel, PanelTitle } from '@/theme/design-system/components';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { tierLabel } from '@/pages/local/plain-text';
+import { PASS_BANDS, passBand } from '@/lib/pass-band';
 import { DEFAULT_RUNS_VIEW, writeRunsSearch, type RunsViewState } from '@/navigation/runs-url-state';
 import {
   coverageOf, groupDecisions, matrixOf, NOT_RECORDED, OTHER, qualityTrend, routesOf, SMALL_SAMPLE, SPARK_DAYS, totalsOf,
@@ -92,7 +93,7 @@ function GroupsView({ decisionRows }: { decisionRows: readonly unknown[] }) {
           {/* data-label names each value when a phone stacks the rows as cards (Codex MSG 753d170c). */}
           <td data-cell="runs" data-label="Runs">{group.runs}</td>
           <td data-cell="spend" data-label="Spend">{money(group.spend, group.spendMeasured, group.runs)}</td>
-          <td data-cell="pass" data-label="Pass rate">{passText(group)}</td>
+          <td data-cell="pass" data-label="Pass rate" data-pass-band={passBand(group.passed, group.verdicts)}>{passText(group)}</td>
           <td data-cell="p50" data-label="p50 latency">{latency(group.p50)}</td>
           <td data-cell="p95" data-label="p95 latency">{latency(group.p95)}</td>
           <td data-cell="last" data-label="Last run">{lastText(group.last)}</td>
@@ -299,7 +300,9 @@ export function RoutingAnalysis({ rows, complete = false }: { rows: readonly unk
   if (routes.length === 0) return <EmptyState>No returned runs to group by route</EmptyState>;
   return <Panel className="local-run-routing" aria-label="Routing" aria-busy="false">
     <PanelTitle><ConceptIcon concept="run-routes" label="Routing" size={16} />Routing</PanelTitle>
-    <p className="local-dashboard-caption" data-routing-note>
+    {/* Lakshman 2026-11-05 ("remove From the latest 500 served runs ..."): the note is not shown; it stays in the page for
+        assistive tech, since Not recorded must still read as not a dispatch failure (OMN-21166 AC206 D9). */}
+    <p className="local-dashboard-caption local-visually-hidden" data-routing-note>
       {`From ${complete ? 'all' : 'the latest'} ${totalsOf(rows).runs} served runs, grouped by requested and routed model, tier, backend, finish reason and escalations. `}
       Not recorded means the run did not record that field; it is not a dispatch failure.
     </p>
@@ -319,9 +322,11 @@ export function RoutingAnalysis({ rows, complete = false }: { rows: readonly unk
             <td data-cell="finish">{route.finish}</td>
             <td data-cell="escalations">{route.escalations}</td>
             <td data-cell="runs">{route.totals.runs}</td>
-            <td data-cell="pass">{passText(route.totals)}</td>
+            <td data-cell="pass" data-pass-band={passBand(route.totals.passed, route.totals.verdicts)}>{passText(route.totals)}</td>
           </tr>;
         })}</tbody>
     </DataTable>
+    {/* The pass-rate colours' key (Lakshman 2026-11-05). */}
+    <p className="local-dashboard-caption local-pass-key">Pass rate {PASS_BANDS.map(entry => <span key={entry.band} data-pass-band={entry.band}><i className="local-pass-swatch" aria-hidden="true" />{entry.label}</span>)}</p>
   </Panel>;
 }
