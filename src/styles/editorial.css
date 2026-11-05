@@ -969,3 +969,11 @@ html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-e
 html body .local-dashboard-page [aria-selected="true"] > .local-tab-chip svg.lucide.field-icon.field-icon[data-field-icon] { color: var(--ds-on-accent) !important; }
 html body .local-dashboard-page [role="tab"] > .local-tab-chip svg.lucide.field-icon.field-icon[data-field-icon] { color: var(--tab-tone) !important; }
 html body .local-dashboard-page [aria-selected="true"] > .local-tab-chip svg.lucide.field-icon.field-icon[data-field-icon] { color: var(--ds-on-accent) !important; }
+
+/* Lakshman 2026-11-05 ("when hover on bar graph it's colliding the words"; "text should be up and increase horizontal
+   space"): on Overview's tabbed day charts the hovered day's words sat at the plot's foot, over the date labels (the
+   legend row they shared is gone with Runs per day's one bar per day). They sit above the plot on a reserved line, so
+   the chart does not move, and each value stands apart. */
+html body .local-dashboard-page--overview .local-overview-charts-panel .local-dashboard-panel[data-slice] .ins-readout {
+  position: static; max-width: none; min-height: 22px; line-height: 22px; margin: 0 0 12px; white-space: normal; }
+html body .local-dashboard-page--overview .local-overview-charts-panel .ins-readout .ins-readout-sep { margin: 0 6px; color: var(--ds-ink-3); }

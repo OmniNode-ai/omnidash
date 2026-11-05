@@ -102,6 +102,11 @@ function shortCount(value: number | null): string {
   return String(value);
 }
 
+/** A readout's separator: the same text (" · ") in its own span, so it can take room on either side in the quiet ink. */
+function Sep() {
+  return <span className="ins-readout-sep">{' · '}</span>;
+}
+
 function RunsPerDay({ days }: { days: InsightDay[] }) {
   const [hover, setHover] = useState<number | null>(null);
   // OMN-21166 AC78: a day opens Runs filtered to that UTC day (the day key is already the UTC date).
@@ -118,7 +123,7 @@ function RunsPerDay({ days }: { days: InsightDay[] }) {
   return (
     <ChartCard title="Runs per day" concept="runs-daily" delay={0}>
       <ChartReadout testId="runs-per-day-readout" active={active !== null}
-        text={active ? <>{dayLabel(active.day)} · <span data-field-tone="count">{count(active.runs)} runs</span>{active.passed + active.failed > 0 ? <> · <span data-field-tone="pass">{count(active.passed)} passed</span> · <span data-field-tone="fail">{count(active.failed)} failed</span></> : null}</> : ''} />
+        text={active ? <>{dayLabel(active.day)}<Sep /><span data-field-tone="count">{count(active.runs)} runs</span>{active.passed + active.failed > 0 ? <><Sep /><span data-field-tone="pass">{count(active.passed)} passed</span><Sep /><span data-field-tone="fail">{count(active.failed)} failed</span></> : null}</> : ''} />
       <DayColumns label="Runs per day" days={days.map((day, index) => ({
         key: day.day,
         ariaLabel: `${dayLabel(day.day)}: ${dayCounts(day)}`,
@@ -289,7 +294,7 @@ function TokensPerDay({ days }: { days: InsightDay[] }) {
   const ticks = dayTicks(days, location === '/runs' ? 14 : 8);
   return (
     <ChartCard title="Tokens per day" concept="tokens-daily" delay={420}>
-      <ChartReadout active={active !== null} text={active ? <>{dayLabel(active.day)} · <span data-field-tone="tokens-in" data-field-unavailable={active.tokensIn === null}>{side(active.tokensIn, active.tokensInUnmeasured, 'in')}</span>, <span data-field-tone="tokens-out" data-field-unavailable={active.tokensOut === null}>{side(active.tokensOut, active.tokensOutUnmeasured, 'out')}</span></> : ''} />
+      <ChartReadout active={active !== null} text={active ? <>{dayLabel(active.day)}<Sep /><span data-field-tone="tokens-in" data-field-unavailable={active.tokensIn === null}>{side(active.tokensIn, active.tokensInUnmeasured, 'in')}</span>, <span data-field-tone="tokens-out" data-field-unavailable={active.tokensOut === null}>{side(active.tokensOut, active.tokensOutUnmeasured, 'out')}</span></> : ''} />
       <DayColumns label="Tokens per day" days={days.map((day, index) => ({
         key: day.day,
         ariaLabel: label(day),
