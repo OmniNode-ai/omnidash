@@ -2164,7 +2164,7 @@ export function TierMixPanel({ row, compact = false }: { row: Row | null; compac
     const share = (value: unknown) => (isMissing(value) || !Number.isFinite(Number(value)) ? null : Number(value));
     return (
       <section aria-label="Tier mix">
-        <RankedBars label="Runs by tier" unit={compact ? '' : 'Share of tier-routed runs'} order="desc" layout="vertical"
+        <RankedBars label="Runs by tier" unit="" order="desc" layout="vertical"
           items={tiers.filter(tier => tier.cost_tier_name !== 'not_tier_routed').map((tier, index) => {
             const name = String(tier.cost_tier_name);
             const pct = share(tier.pct_of_tier_routed);
