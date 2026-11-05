@@ -22,6 +22,12 @@ const fullRead = Array.from({ length: 500 }, (_, index) => {
   return { ...decision, correlation_id: `full-read-${index}`, created_at: at, written_at: at, quality_gate_passed: index % 5 !== 0 };
 });
 const undatedRow = { ...decision, correlation_id: 'undated-run', created_at: null, written_at: null };
+// The served model routing with its all-time by_model list, so Model usage draws its bars (the shared fixture serves
+// none, and Model usage then says "No model usage served yet": nothing to measure).
+const routing = chartRows[prefix + 'delegation.model-routing.v1'][0] as Record<string, unknown>;
+const withModels = { ...chartRows, [prefix + 'delegation.model-routing.v1']: [{ ...routing, by_model: [
+  { model_name: 'model-a', total_count: 6, pct_of_total: 0.6 }, { model_name: 'model-b', total_count: 4, pct_of_total: 0.4 },
+] }] };
 
 // OMN-22168 (Lakshman 2026-11-04, "these 4 into one ... with tab and full size big one"): the four charts are one row of
 // tabs and one chart is drawn at a time, so every check below runs on each chart's tab in turn.
@@ -65,7 +71,7 @@ async function daySpans(page: Page, title: string) {
 // ("full size big one"), every plot one height. The bars-fill-their-days rule (AC143) and its control are unchanged.
 test('AC139 AC140 AC143: the four Overview charts are full-width tabs of one height, with bars that fill their days', async ({ page }, info) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await serveCharts(page);
+  await serveCharts(page, withModels);
   await page.goto('/overview');
   await expect(page.locator('.local-overview-charts-panel').getByRole('tab')).toHaveCount(4);
   const placed = await boxes(page);
@@ -128,7 +134,7 @@ test('AC143 AC139: thirty days of runs keep wide bars and labels inside the pane
 test('AC139: under 1100px each chart takes the full width, and 390px never scrolls sideways', async ({ page }, info) => {
   for (const width of [1024, 390]) {
     await page.setViewportSize({ width, height: 900 });
-    await serveCharts(page);
+    await serveCharts(page, withModels);
     await page.goto('/overview');
     await expect(page.locator('.local-overview-charts-panel').getByRole('tab')).toHaveCount(4);
     const placed = await boxes(page);

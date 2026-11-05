@@ -92,8 +92,10 @@ test('AC193 a model on Usage opens Runs filtered to it, the filter survives a re
   await expect(page).toHaveURL(new RegExp(`/runs\\?.*model=${encodeURIComponent(model!).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
   const filtered = async () => {
     await expect(page.locator('main h1')).toHaveText('Runs');
-    const names = await page.locator('[data-component="recent-runs"] tbody button.local-cell-filter[aria-label^="Show only runs of model"]').allTextContents();
-    expect(names.length, 'filtered rows').toBeGreaterThan(0);
+    const cells = page.locator('[data-component="recent-runs"] tbody button.local-cell-filter[aria-label^="Show only runs of model"]');
+    // The run list reads its rows after the page heading shows; wait for them rather than reading once (a loaded lab read 0).
+    await expect.poll(() => cells.count(), { message: 'filtered rows' }).toBeGreaterThan(0);
+    const names = await cells.allTextContents();
     for (const name of names) expect(name.trim()).toBe(model);
   };
   await filtered();

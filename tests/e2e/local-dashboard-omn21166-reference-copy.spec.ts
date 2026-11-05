@@ -58,7 +58,8 @@ for (const theme of ['light', 'dark'] as const) {
       expect(icons.length, `${path} draws icons`).toBeGreaterThan(3);
       for (const icon of icons.filter(item => !item.exempt)) expect(icon.color, `${path} icon`).toBe(INK3[theme]);
       const concepts = await page.evaluate(() => [...document.querySelectorAll('main svg.field-icon[data-field-icon]:not([data-field-icon^="tier-"]):not([data-semantic-concept^="model:"])')]
-        .filter(svg => (svg as SVGElement).getBoundingClientRect().width > 0 && !svg.closest('[data-field-unavailable="true"]'))
+        // A chart tab's glyph is part of the tab control: the chosen tab repaints it (checked by the identity census).
+        .filter(svg => (svg as SVGElement).getBoundingClientRect().width > 0 && !svg.closest('[data-field-unavailable="true"], .local-dashboard-tablist'))
         .map(svg => { const concept = svg.getAttribute('data-field-icon')!; const probe = document.createElement('i');
           probe.style.color = `var(--ds-field-${concept})`; document.body.append(probe); const want = getComputedStyle(probe).color; probe.remove();
           return { concept, color: getComputedStyle(svg).color, want }; }));
