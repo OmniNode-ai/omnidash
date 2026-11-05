@@ -99,7 +99,13 @@ export function DashboardTabs({ label, param, tabs }: { label: string; param: st
   </div>;
 }
 
-export interface ToggleOption<T extends string> { value: T; label: string }
+export interface ToggleOption<T extends string> {
+  value: T; label: string;
+  /** The option's own colour (a field token), as each stat tab has one: its icon wears it and the thumb takes it. */
+  tone?: string;
+  /** The option's glyph, drawn before its label in its tone. */
+  icon?: ReactNode;
+}
 
 /** A small choice that changes what a panel shows (a radio group in the shared filter part). */
 export function DashboardToggle<T extends string>({ label, options, value, onChange }: {
@@ -124,11 +130,17 @@ export function DashboardToggle<T extends string>({ label, options, value, onCha
     if (group) observer.observe(group);
     return () => observer.disconnect();
   }, [chosen, options.length]);
-  return <div className="local-dashboard-filters local-dashboard-toggle" role="radiogroup" aria-label={label}>
+  const tone = options[chosen]?.tone;
+  return <div className="local-dashboard-filters local-dashboard-toggle" role="radiogroup" aria-label={label}
+    style={tone ? { '--toggle-tone': tone } as CSSProperties : undefined}>
     {thumb && <span className="local-toggle-thumb" aria-hidden="true"
       style={{ transform: `translate(${thumb.left}px, ${thumb.top}px)`, width: thumb.width, height: thumb.height }} />}
-    {options.map((option, index) => <label key={option.value} ref={element => { labels.current[index] = element; }}>
+    {options.map((option, index) => <label key={option.value} ref={element => { labels.current[index] = element; }}
+      style={option.tone ? { '--option-tone': option.tone } as CSSProperties : undefined} data-toned={option.tone ? '' : undefined}>
       <input type="radio" name={name} value={option.value} checked={value === option.value} onChange={() => onChange(option.value)} />
+      {/* The glyph's badge is decoration (its colour names nothing on its own); ins-chip-icon lets the icon census read
+          the option's own text as the glyph's label. */}
+      {option.icon && <span className="local-toggle-icon ins-chip-icon" aria-hidden="true" data-identity-decoration="toggle-chip">{option.icon}</span>}
       {option.label}
     </label>)}
   </div>;

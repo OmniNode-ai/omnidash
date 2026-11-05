@@ -20,9 +20,15 @@ import { ChartLine, Gauge, Layers, LayoutGrid } from '@/theme/design-system/icon
  * explicit dimension and sample scope, Portkey's summary table, Braintrust's cost-and-quality view). It states its
  * sample and coverage, keeps each rate's own denominator, and never draws an unmeasured value as 0.
  */
-const GROUPS: ReadonlyArray<{ by: GroupBy; label: string }> = [
-  { by: 'model', label: 'Model' }, { by: 'tier', label: 'Tier' }, { by: 'task', label: 'Task type' }, { by: 'backend', label: 'Backend' },
+// Each choice wears its own field colour and glyph, as each stat tab does (Lakshman 2026-11-05, "all tabs different colors").
+const GROUPS: ReadonlyArray<{ by: GroupBy; label: string; tone: string; concept: string }> = [
+  { by: 'model', label: 'Model', tone: 'var(--ds-field-model)', concept: 'model' },
+  { by: 'tier', label: 'Tier', tone: 'var(--ds-field-tier)', concept: 'tier' },
+  { by: 'task', label: 'Task type', tone: 'var(--ds-field-task)', concept: 'task' },
+  { by: 'backend', label: 'Backend', tone: 'var(--ds-field-backend)', concept: 'backend' },
 ];
+const toned = <T extends string>(value: T, label: string, concept: string) =>
+  ({ value, label, tone: `var(--ds-field-${concept})`, icon: <ConceptIcon concept={concept} size={14} /> });
 type SortKey = 'name' | 'runs' | 'spend' | 'pass' | 'p50' | 'p95' | 'last';
 
 const dayLabel = (day: string) => new Date(`${day}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
@@ -83,7 +89,7 @@ function GroupsView({ decisionRows }: { decisionRows: readonly unknown[] }) {
     </th>);
   const label = GROUPS.find(group => group.by === by)!.label;
   return <>
-    <DashboardToggle label="Group by" options={GROUPS.map(group => ({ value: group.by, label: group.label }))} value={by} onChange={setBy} />
+    <DashboardToggle label="Group by" options={GROUPS.map(group => toned(group.by, group.label, group.concept))} value={by} onChange={setBy} />
     <DataTable data-analysis-table aria-label={`Usage by ${label.toLowerCase()}`}>
         <thead><tr>{header('name', label)}{header('runs', 'Runs')}{header('spend', 'Spend')}
           {header('pass', 'Pass rate')}{header('p50', 'p50 latency')}{header('p95', 'p95 latency')}
@@ -91,14 +97,22 @@ function GroupsView({ decisionRows }: { decisionRows: readonly unknown[] }) {
         <tbody>{sorted.map(group => <tr key={group.name}>
           <th scope="row" data-model-name={by === 'model' && group.name !== NOT_RECORDED ? '' : undefined}
             data-semantic-concept={by === 'model' && group.name !== NOT_RECORDED ? `model:${group.name}` : undefined}
-            style={by === 'model' && group.name !== NOT_RECORDED ? { '--model-color': modelColor(group.name) } as CSSProperties : undefined}>{breakableName(group.name)}</th>
+            style={by === 'model' && group.name !== NOT_RECORDED ? { '--model-color': modelColor(group.name) } as CSSProperties : undefined}>{/* A task or tier reads in words, as in Model by task and the rest of the pages (Lakshman 2026-11-05). */}
+            {group.name === NOT_RECORDED ? group.name : by === 'task' ? group.name.replace(/_+/g, ' ')
+              : by === 'tier' ? tierLabel(group.name) : breakableName(group.name)}</th>
           {/* data-label names each value when a phone stacks the rows as cards (Codex MSG 753d170c). */}
           <td data-cell="runs" data-label="Runs">{group.runs}</td>
           {/* A measured zero spend is the run table's muted "$0" with the served text as its title (Lakshman 2026-11-05). */}
-          <td data-cell="spend" data-label="Spend">{group.spend === 0
-            ? <><span className="local-cost-free" title={formatUsd(group.spend)}>{formatUsd(group.spend).replace(/\.0+$/, '')}</span>{` (${group.spendMeasured} of ${group.runs} measured)`}</>
-            : money(group.spend, group.spendMeasured, group.runs)}</td>
-          <td data-cell="pass" data-label="Pass rate" data-pass-band={passBand(group.passed, group.verdicts)}><span className="local-pass-pill">{passText(group)}</span></td>
+          {/* The figure first, its count muted beside it (Lakshman 2026-11-05, "table needs fixing - make it modern"); the
+              cell's text is unchanged. */}
+          <td data-cell="spend" data-label="Spend">{group.spend === null ? money(group.spend, group.spendMeasured, group.runs) : <>
+            {group.spend === 0
+              ? <span className="local-cost-free" title={formatUsd(group.spend)}>{formatUsd(group.spend).replace(/\.0+$/, '')}</span>
+              : <span className="local-cell-figure">{formatUsd(group.spend)}</span>}
+            <span className="local-cell-sub">{` (${group.spendMeasured} of ${group.runs} measured)`}</span></>}</td>
+          <td data-cell="pass" data-label="Pass rate" data-pass-band={passBand(group.passed, group.verdicts)}>{group.verdicts === 0
+            ? <span className="local-pass-pill">{passText(group)}</span>
+            : <><span className="local-pass-pill">{passText(group).split(' (')[0]}</span><span className="local-cell-sub">{` (${passText(group).split(' (')[1]}`}</span></>}</td>
           <td data-cell="p50" data-label="p50 latency">{latency(group.p50)}</td>
           <td data-cell="p95" data-label="p95 latency">{latency(group.p95)}</td>
           <td data-cell="last" data-label="Last run">{lastText(group.last)}</td>
@@ -119,10 +133,12 @@ const runsHref = (filters: ReadonlyArray<Partial<RunsViewState> | null>, extra: 
 
 const runCount = (runs: number) => `${runs} ${runs === 1 ? 'run' : 'runs'}`;
 type MatrixMetric = 'pass' | 'p95' | 'cost' | 'runs';
-const MATRIX_METRICS: ReadonlyArray<{ value: MatrixMetric; label: string }> = [
-  { value: 'pass', label: 'Pass rate' }, { value: 'p95', label: 'p95 latency' }, { value: 'cost', label: 'Cost per measured run' }, { value: 'runs', label: 'Runs' },
+const MATRIX_METRICS: ReadonlyArray<{ value: MatrixMetric; label: string; concept: string }> = [
+  { value: 'pass', label: 'Pass rate', concept: 'pass' }, { value: 'p95', label: 'p95 latency', concept: 'duration-p95' },
+  { value: 'cost', label: 'Cost per measured run', concept: 'cost' }, { value: 'runs', label: 'Runs', concept: 'delegations' },
 ];
-const MATRIX_COLUMNS: ReadonlyArray<{ value: Extract<GroupBy, 'task' | 'tier'>; label: string }> = [{ value: 'task', label: 'Task type' }, { value: 'tier', label: 'Tier' }];
+const MATRIX_COLUMNS: ReadonlyArray<{ value: Extract<GroupBy, 'task' | 'tier'>; label: string; concept: string }> = [
+  { value: 'task', label: 'Task type', concept: 'task' }, { value: 'tier', label: 'Tier', concept: 'tier' }];
 
 /** One cell's figure for the chosen metric, and the line that names its denominator. */
 function matrixFigure(totals: Totals, metric: MatrixMetric): [string, string] {
@@ -151,8 +167,8 @@ function DecisionMatrix({ decisionRows }: { decisionRows: readonly unknown[] }) 
     : columnsBy === 'task' ? column.replace(/_+/g, ' ') : columnsBy === 'tier' ? tierLabel(column) : column);
   return <>
     <div className="local-dashboard-toggles">
-      <DashboardToggle label="Matrix metric" options={MATRIX_METRICS} value={metric} onChange={setMetric} />
-      <DashboardToggle label="Matrix columns" options={MATRIX_COLUMNS} value={columnsBy} onChange={setColumnsBy} />
+      <DashboardToggle label="Matrix metric" options={MATRIX_METRICS.map(option => toned(option.value, option.label, option.concept))} value={metric} onChange={setMetric} />
+      <DashboardToggle label="Matrix columns" options={MATRIX_COLUMNS.map(option => toned(option.value, option.label, option.concept))} value={columnsBy} onChange={setColumnsBy} />
     </div>
     <p className="local-dashboard-caption">{`Models by ${columnLabel.toLowerCase()}. A cell with fewer than ${SMALL_SAMPLE} verdicts is a small sample; a pair with no runs reads no runs. Each cell opens its runs.`}</p>
     <DataTable className="usage-matrix-wrap" data-decision-matrix aria-label={`Models by ${columnLabel.toLowerCase()}`}>
@@ -185,6 +201,7 @@ function DecisionMatrix({ decisionRows }: { decisionRows: readonly unknown[] }) 
 
 type TrendMetric = 'pass' | 'p95';
 const TREND_SERIES: ReadonlyArray<{ value: TrendSeriesBy; label: string }> = [{ value: 'all', label: 'All runs' }, { value: 'model', label: 'By model' }, { value: 'task', label: 'By task' }];
+const TREND_CONCEPT: Record<TrendSeriesBy, string> = { all: 'delegations', model: 'model', task: 'task' };
 
 function trendLabel(day: TrendDay, metric: TrendMetric): string {
   const date = dayLabel(day.day);
@@ -211,8 +228,8 @@ function QualityTrend({ decisionRows }: { decisionRows: readonly unknown[] }) {
   const days = series[0]?.days ?? [];
   return <figure className="local-chart usage-trend" data-quality-trend data-metric={metric} aria-label="Quality over time">
     <div className="local-dashboard-toggles">
-      <DashboardToggle label="Trend metric" options={[{ value: 'pass', label: 'Pass rate' }, { value: 'p95', label: 'p95 latency' }]} value={metric} onChange={setMetric} />
-      <DashboardToggle label="Trend series" options={TREND_SERIES} value={by} onChange={setBy} />
+      <DashboardToggle label="Trend metric" options={[toned('pass' as const, 'Pass rate', 'pass'), toned('p95' as const, 'p95 latency', 'duration-p95')]} value={metric} onChange={setMetric} />
+      <DashboardToggle label="Trend series" options={TREND_SERIES.map(option => toned(option.value, option.label, TREND_CONCEPT[option.value]))} value={by} onChange={setBy} />
     </div>
     <figcaption className="local-dashboard-caption">{metric === 'pass'
       ? 'Pass rate per UTC day over runs with a verdict; an outlined day is before the sample, a dashed one has runs but no verdicts.'

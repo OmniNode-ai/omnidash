@@ -1885,10 +1885,10 @@ html body .ev-root .local-dashboard-filters.local-dashboard-toggle[role="radiogr
 .local-dashboard-toggle.local-dashboard-filters label:has(input:checked) { color: var(--ds-ink) !important; }
 .local-dashboard-toggle.local-dashboard-filters label:has(input:focus-visible) { outline: 2px solid var(--ds-accent); outline-offset: 2px; }
 .local-dashboard-toggle .local-toggle-thumb { position: absolute; top: 0; left: 0; z-index: 0; border-radius: 999px; pointer-events: none;
-  --toggle-tone: var(--panel-accent, var(--ds-brand));
-  border: 1px solid color-mix(in oklab, var(--toggle-tone) 60%, transparent);
-  background: color-mix(in oklab, var(--toggle-tone) 18%, var(--ds-surface));
-  box-shadow: 0 6px 16px -8px var(--toggle-tone);
+  border: 1px solid color-mix(in oklab, var(--toggle-tone, var(--panel-accent, var(--ds-brand))) 60%, transparent);
+  background: color-mix(in oklab, var(--toggle-tone, var(--panel-accent, var(--ds-brand))) 18%, var(--ds-surface));
+  box-shadow: 0 6px 16px -8px var(--toggle-tone, var(--panel-accent, var(--ds-brand)));
+  transition-property: transform, width, background, border-color;
   transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), width 0.28s cubic-bezier(0.2, 0.8, 0.2, 1); }
 @media (prefers-reduced-motion: reduce) { .local-dashboard-toggle .local-toggle-thumb { transition: none; } }
 
@@ -1910,3 +1910,44 @@ html body .local-dashboard-page .usage-analysis table[data-analysis-table] tbody
 html body .local-dashboard-page [data-decision-matrix] tbody th[scope="row"] { font-family: var(--ds-font-sans) !important;
   font-size: 13px !important; font-weight: 500 !important; background: var(--ds-surface) !important; }
 html body .local-dashboard-page [data-decision-matrix] .usage-matrix-figure { font-family: var(--ds-font-sans) !important; font-variant-numeric: tabular-nums; }
+
+/* Each toggle option in its own colour (Lakshman 2026-11-05, "all tabs different colors"): its glyph wears the option's
+   field colour, and the thumb takes the chosen option's colour as it slides. */
+.local-dashboard-toggle.local-dashboard-filters label[data-toned] { gap: 7px; }
+.local-dashboard-toggle .local-toggle-icon { display: inline-flex; pointer-events: none; }
+.local-dashboard-toggle.local-dashboard-filters label[data-toned]:not(:has(input:checked)) .local-toggle-icon { opacity: 0.75; }
+
+/* Usage analysis Groups, modern (Lakshman 2026-11-05, "table needs fixing - make it modern"): each figure first in full
+   ink, its count muted beside it; a pass rate's pill holds the rate only; figures in tabular digits; a soft row hover;
+   no stray line under the last name cell; the day bars rounded, the days before the sample a faint dashed slot. */
+.local-dashboard-page .usage-analysis table[data-analysis-table] tbody td { font-variant-numeric: tabular-nums; }
+.local-dashboard-page .usage-analysis .local-cell-sub { color: var(--ds-ink-3); font-size: 12px; }
+.local-dashboard-page .usage-analysis .local-cell-figure { color: var(--ds-ink); font-weight: 500; }
+.local-dashboard-page .usage-analysis td[data-cell="pass"] .local-cell-sub { margin-left: 2px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] tbody tr { transition: background 0.12s; }
+html body .local-dashboard-page .usage-analysis table[data-analysis-table] tbody tr:hover > :is(td, th) { background: var(--ds-surface-2) !important; }
+html body .local-dashboard-page .usage-analysis table[data-analysis-table] tbody tr:last-child > :is(td, th) { border-bottom: 0 !important; }
+.local-dashboard-page .usage-analysis-spark { gap: 3px; height: 22px; }
+.local-dashboard-page .usage-analysis-spark i { border-radius: 2px 2px 0 0; background: var(--ds-ink-2); }
+.local-dashboard-page .usage-analysis-spark i[data-covered="false"] { box-shadow: none; height: 100%; border-radius: 2px;
+  background: repeating-linear-gradient(to top, var(--ds-line) 0 2px, transparent 2px 4px); }
+.local-dashboard-page .usage-analysis-spark i[data-covered="true"] { box-shadow: inset 0 -1px 0 var(--ds-line-strong, var(--ds-line)); }
+/* The option's glyph sits in a small round badge of its colour, as the stat tabs' chips do, so each option's colour reads. */
+.local-dashboard-toggle .local-toggle-icon.ins-chip-icon { width: 22px; height: 22px; margin-left: -6px; align-items: center; justify-content: center; border-radius: 999px;
+  background: color-mix(in oklab, var(--option-tone) 18%, transparent); }
+.local-dashboard-toggle.local-dashboard-filters label[data-toned]:has(input:checked) .local-toggle-icon { background: color-mix(in oklab, var(--option-tone) 30%, transparent); }
+
+/* Runs per day in Groups: the day bars in the column's own colour (Lakshman 2026-11-05, "colorful?"), as its header is;
+   the days before the sample stay a faint dashed slot. */
+.local-dashboard-page .usage-analysis-spark i[data-covered="true"] { background: var(--ds-field-runs-daily); box-shadow: none; }
+.local-dashboard-page .usage-analysis-spark i[data-covered="true"][data-runs="0"] { background: var(--ds-line-strong, var(--ds-line)); }
+/* Phone: the pill toggles keep inside the card; options are tighter and, if they still do not fit, wrap within the pill
+   (the thumb is measured from the chosen option, so it follows it onto its row). */
+@media (max-width: 640px) {
+  html body .local-dashboard-page .local-dashboard-filters.local-dashboard-toggle[role="radiogroup"] { flex-wrap: wrap; max-width: 100%; border-radius: 18px !important; }
+  .local-dashboard-toggle.local-dashboard-filters label { padding: 0 10px !important; font-size: 12px !important; min-height: 32px !important; }
+  .local-dashboard-toggle .local-toggle-icon.ins-chip-icon { width: 20px; height: 20px; margin-left: -4px; }
+}
+/* A toggles row is a grid child: without min-width 0 it kept its content width (279px in a 248px phone column). */
+.local-dashboard-page .local-dashboard-toggles { min-width: 0; max-width: 100%; }
+.local-dashboard-page .local-dashboard-toggles > [role="radiogroup"] { min-width: 0; }
