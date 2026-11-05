@@ -1825,3 +1825,28 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ds-accent); outline-o
 @media (max-width: 640px) {
   .local-dashboard-page .utc-chart .utc-plot > li:last-child .utc-day { left: auto; right: 0; text-align: right; }
 }
+
+/* Usage's grouped bars (Tokens by model, Cost per run), drawn as Overview's day charts are (Lakshman 2026-11-05): the
+   readout line above, a 300px plot (220px on a phone) with the top and middle gridlines, bars at most 44px wide and
+   centred, the other groups dimmed while one is read, and the series and tier chips in one row under the names. */
+.local-dashboard-page .usage-insight .ins-readout { min-height: 20px; margin: 4px 0 8px; font-variant-numeric: tabular-nums; }
+.local-dashboard-page ul.gdb-plot--list { height: 300px;
+  background-image: linear-gradient(to bottom, var(--ds-line) 1px, transparent 1px), linear-gradient(to bottom, var(--ds-line) 1px, transparent 1px);
+  background-size: 100% 1px, 100% 1px; background-position: 0 0, 0 50%; background-repeat: no-repeat; }
+.local-dashboard-page ul.gdb-plot--list .gdb-col { max-width: 44px; align-items: center; }
+.local-dashboard-page ul.gdb-plot--list .gdb-bar { max-width: 44px; }
+.local-dashboard-page ul.gdb-plot--list > .ins-bar.gdb-day { transition: opacity 0.15s; }
+.local-dashboard-page ul.gdb-plot--list > .ins-bar.gdb-day[data-dim="true"] { opacity: 0.45; }
+.local-dashboard-page ul.gdb-plot--list > .ins-bar.gdb-day:is(:hover, :focus-visible) .gdb-day-label { color: var(--ds-ink) !important; }
+.local-dashboard-page .gdb-legends { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px; }
+.local-dashboard-page .gdb-legends > ul { margin: 0 !important; }
+@media (max-width: 700px) {
+  .local-dashboard-page ul.gdb-plot--list { height: 220px; }
+}
+@media (max-width: 640px) {
+  .local-dashboard-page .gdb-legends li { height: auto !important; min-height: var(--ds-chip-h, 28px); max-width: 100%; padding: 4px 12px !important; white-space: normal; overflow-wrap: anywhere; }
+}
+/* The readout says each value in full, so the grouped bars draw no figure over a bar, as on Overview; long wrapped names
+   keep clear of the chips under them. */
+.local-dashboard-page ul.gdb-plot--list .gdb-val { display: none; }
+.local-dashboard-page ul.gdb-plot--names { margin-bottom: 58px; }

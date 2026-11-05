@@ -146,7 +146,9 @@ test('usage model bars do not change figures, table or other model colors', asyn
   const swatch = modelA.locator('.gdb-col[data-series="in"] .gdb-bar');
   const color = await swatch.evaluate(el => getComputedStyle(el).color);
   await modelB.focus();
-  await expect(modelB.locator('.gdb-col[data-series="in"] .gdb-val')).toBeVisible();
+  // OMN-22168 (Lakshman 2026-11-05, "unified like overview and Runs"): as on Overview, focus reads the model's values out
+  // above the plot, in full, instead of a figure squeezed over a 44px bar.
+  await expect(page.locator('.usage-insight .ins-readout')).toHaveText('model-b: 90 tokens in, Not recorded tokens out');
   expect(await swatch.evaluate(el => getComputedStyle(el).color)).toBe(color);
   expect(await page.locator('[data-component="usage-by-model-day"] table').innerText()).toBe(before);
 });

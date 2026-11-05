@@ -134,6 +134,7 @@ function TokensByModel({ data, titled }: { data: UsageAggregates; titled: boolea
     {data.models.length === 0 ? <EmptyState>No token data available</EmptyState> : (
       <GroupedBars label="Token counts by model" wrapNames
         legend={[{ label: 'Tokens in', color: 'var(--ds-field-tokens-in)' }, { label: 'Tokens out', color: 'var(--ds-field-tokens-out)' }]}
+        extraLegend={<TierLegend label="Tokens by model tier colours" models={data.models.map(model => model.model)} />}
         groups={data.models.map(model => ({
           key: model.model, name: model.model, model: model.model, nameColor: modelColor(model.model),
           label: `${model.model}: ${words(model.inputTokens)} tokens in, ${words(model.outputTokens)} tokens out`,
@@ -143,7 +144,6 @@ function TokensByModel({ data, titled }: { data: UsageAggregates; titled: boolea
           ],
         }))} />
     )}
-    {data.models.length > 0 && <TierLegend label="Tokens by model tier colours" models={data.models.map(model => model.model)} />}
   </figure>;
 }
 
