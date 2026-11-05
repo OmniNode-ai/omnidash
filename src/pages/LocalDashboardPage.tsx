@@ -33,7 +33,7 @@ import { TIER_TONES, breakableName } from '@/theme/design-system/charts';
 import { InsightsSection, InsightsWindowContext, MeteringActivityInsights, OverviewRunsContext, PassRateSparkline, TaskIcon, type ActivityWindow } from '@/pages/local/insight-charts';
 import { UsageInsights } from '@/pages/local/usage-insights';
 import { RoutingAnalysis } from '@/pages/local/usage-analysis';
-import { Badge, ConfirmDialog, DashboardTabs, DataTable, Dropdown, EmptyState, Fact, FactList, Figure, InfoTip, Panel, PanelTitle, StatusChip } from '@/theme/design-system/components';
+import { Badge, ConfirmDialog, DashboardTabs, DataTable, Dropdown, EmptyState, Fact, FactList, Figure, InfoTip, Panel, PanelTitle, StatusChip, Tooltip } from '@/theme/design-system/components';
 import { Bot, CalendarRange, ChartArea, ChartPie, CircleCheck, CircleDollarSign, Clock3, FileJson, FileSpreadsheet, Gauge, Layers, ListChecks, Rows3, Server, Timer, TriangleAlert } from '@/theme/design-system/icons';
 import { SinceLastVisit } from '@/pages/local/since-last-visit';
 import { ModelKeys, providerName } from '@/pages/local/model-keys';
@@ -1683,15 +1683,21 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
   // Lakshman 2026-11-04, "all should be in different color and different icons": each column header carries its
   // concept's own glyph in that concept's colour (the same pair the concept draws on every other page).
   const headIcon = (concept: string, label: string) => <ConceptIcon concept={concept} label={label} size={13} />;
-  const plainHeader = (concept: string, label: string) => <th data-column={concept}><span className="local-runs-head">{headIcon(concept, label)}{label}</span></th>;
+  // Lakshman 2026-11-05 ("in all columns add a tooltip so that when we hover it should tell about that column"): each header
+  // explains its column on hover and on keyboard focus (the kit Tooltip), from RUN_COLUMN_TIPS.
+  const plainHeader = (concept: string, label: string) => <th data-column={concept}>
+    <span className="local-runs-tip" data-field-tone={concept}><Tooltip text={RUN_COLUMN_TIPS[concept] ?? label} side="bottom"><span className="local-runs-head" tabIndex={0}>{headIcon(concept, label)}{label}</span></Tooltip></span>
+  </th>;
   const sortHeader = (key: RunSortKey, label: string, concept: string) => {
     const active = view.sort === key;
     const direction = active ? view.dir ?? 'desc' : null;
     return <th data-column={concept} aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}>
+      <span className="local-runs-tip" data-field-tone={concept}><Tooltip text={RUN_COLUMN_TIPS[concept] ?? label} side="bottom">
       <button type="button" className="local-sort-header" data-sort-active={active ? '' : undefined}
         onClick={() => updateView({ sort: key, dir: active && direction === 'desc' ? 'asc' : 'desc', page: 1 })}>
         {headIcon(concept, label)}{label}<span aria-hidden="true">{direction === 'asc' ? ' ↑' : direction === 'desc' ? ' ↓' : ''}</span>
       </button>
+      </Tooltip></span>
     </th>;
   };
   // OMN-21166 AC76: every row the search and filters match, across all pages and in the shown order, as served.
@@ -1835,7 +1841,15 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                   {showRouting && <>{plainHeader('completion', 'Finish reason')}{plainHeader('escalated', 'Escalations')}</>}
                   {showAllFields && plainHeader('host', 'Host')}
                   {plainHeader('tokens', 'Tokens')}{sortHeader('cost', 'Cost', 'cost')}
-                  {plainHeader('savings', sharedBaseline ? `Saving vs ${sharedBaseline}` : 'Saving')}
+                  {/* The shared baseline is a second, quieter line under "Saving", so the header keeps to its column. */}
+                  <th data-column="savings" aria-label={sharedBaseline ? `Saving vs ${sharedBaseline}` : undefined}>
+                    <span className="local-runs-tip" data-field-tone="savings"><Tooltip text={RUN_COLUMN_TIPS.savings!} side="bottom">
+                      <span className="local-runs-head-stack" tabIndex={0}>
+                        <span className="local-runs-head">{headIcon('savings', 'Saving')}Saving</span>
+                        {sharedBaseline && <span className="local-runs-head-sub">vs {sharedBaseline}</span>}
+                      </span>
+                    </Tooltip></span>
+                  </th>
                   {sortHeader('duration', 'Duration', 'duration')}
                   {showAllFields && <>{plainHeader('task', 'Task type')}{plainHeader('tier', 'Route tier')}{plainHeader('score', 'Quality score')}</>}
                 </tr>
@@ -2026,6 +2040,25 @@ function tierModelCost(model: Row): string {
  * counted or divided here; a model served without a count says Not recorded.
  */
 /** What each Runs view switch adds to the run list, shown on hover and keyboard focus. */
+/** What each run table column holds, shown when its header is hovered or focused (keyed by the header's concept). */
+const RUN_COLUMN_TIPS: Readonly<Record<string, string>> = {
+  identity: 'The run\'s id. Click it to open the run\'s full path on Workflow.',
+  age: 'When the run started, in UTC. The day is written above its first run; hover a time for the exact second. Click to sort.',
+  'run-outcome': 'Whether the run passed or failed its quality gate. A failed run shows why under its status.',
+  model: 'The model that answered. If it differs from the model the run asked for, the requested one is shown above it. Click a model to show only its runs.',
+  backend: 'The route that served the run. Click one to show only its runs.',
+  completion: 'Why the model stopped answering. A dash means it finished normally (stop).',
+  escalated: 'How many times the run moved on to another model. A dash means none.',
+  host: 'The address of the machine that served the run, as recorded.',
+  tokens: 'Tokens sent to the model / tokens it returned, as recorded for the run.',
+  cost: 'What the run cost. A grey $0 is a free local run. Click to sort.',
+  savings: 'Modelled saving: what the run\'s tokens would cost at the baseline model\'s prices, less what the run cost. The baseline never ran.',
+  duration: 'How long the run took, end to end. Click to sort.',
+  task: 'The kind of work the run did.',
+  tier: 'The cost tier the run was routed to.',
+  score: 'The quality gate\'s score, from 0 to 1, to two decimals. Hover a score for the exact value.',
+};
+
 const RUN_FIELDS_TIP = 'Adds the backend, host, task type, route tier and quality score of each run. The table scrolls sideways; '
   + 'the Run column stays in place. Every other recorded field is in the selected run and the export.';
 const ROUTING_COLUMNS_TIP = 'Adds why the model stopped answering (finish reason) and how many times it escalated to another model, '
