@@ -528,3 +528,5 @@ html body main.ev-root .kv .v { overflow-wrap: break-word !important; word-break
 html body main.ev-root .kv .v.accent, html body main.ev-root .kv .v .mono { overflow-wrap: anywhere !important; }
 /* The run table's muted zero cost, on Evidence too (its rule is scoped to .local-dashboard-page, which main.ev-root is not inside). */
 html body main.ev-root .local-cost-free { color: var(--ds-ink-3); }
+/* A wrapped model name hangs beside its swatch, its second line under its first letter, not under the swatch. */
+html body main.ev-root .row-main [data-label="Model"] .local-model-identity { display: inline-block; padding-left: 1.15em; text-indent: -1.15em; }

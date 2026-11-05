@@ -14,7 +14,7 @@ import { isUnavailableField } from '@/components/dashboard/field-identity';
 import { EvPageShell } from '@/components/dashboard/event-dash/EvPageShell';
 import { KpiStrip } from '@/components/dashboard/KpiStrip';
 import { DashboardTabs } from '@/theme/design-system/components';
-import { RankedBars } from '@/theme/design-system/charts';
+import { RankedBars, breakableName } from '@/theme/design-system/charts';
 import {
   Badge,
   CodeBlock,
@@ -368,16 +368,19 @@ function AcceptanceChecks({ q }: { q: QualityGateRow }) {
         { k: 'Average attempts', v: attempts(q.avg_compliance_attempts) },
       ]} />
       {q.tokens_to_compliance_by_model == null ? <p className="note">Tokens to comply by model: Not served</p> : byModel.length === 0 ? <p className="note">0 models</p> : (
-        <ul className="ev-acceptance-models" aria-label="Tokens to comply by model">
-          {byModel.map((model, index) => (
+        // The top models in view, the rest one click away, as the cause lists (OMN-22168: thirteen rows ran down the panel).
+        <>{[byModel.slice(0, MODEL_PREVIEW), byModel.slice(MODEL_PREVIEW)].map((part, partIndex) => part.length === 0 ? null : (() => { const list = (
+        <ul className="ev-acceptance-models" aria-label={partIndex === 0 ? 'Tokens to comply by model' : 'More tokens to comply by model'}>
+          {part.map((model, index) => (
             <li key={`${String(model.model_name)}-${index}`}>
               <span className="mono local-model-identity" data-semantic-concept={isUnavailableField(model.model_name) ? undefined : `model:${String(model.model_name)}`} style={modelIdentityStyle(String(model.model_name ?? ''))}>{isUnavailableField(model.model_name) ? 'Unknown model' : String(model.model_name)}</span>
               <span>{wholeTokens(model.avg_tokens)} tokens</span>
               <span>{attempts(model.avg_attempts)} attempts</span>
-              <span>{servedNumber(model.sample_count) === null ? 'Not served' : `${formatDashboardCount(model.sample_count)} runs`}</span>
+              <span>{servedNumber(model.sample_count) === null ? 'Not served' : `${formatDashboardCount(model.sample_count)} ${servedNumber(model.sample_count) === 1 ? 'run' : 'runs'}`}</span>
             </li>
           ))}
-        </ul>
+        </ul>);
+        return partIndex === 0 ? <div key="top">{list}</div> : <details key="rest" className="ev-more-rows"><summary>{`Show all ${formatDashboardCount(byModel.length)} models`}</summary>{list}</details>; })())}</>
       )}
     </section>
   );
@@ -399,6 +402,7 @@ function triageName(value: unknown, kind: 'model' | 'task'): string {
 
 /** How many ranked rows a list shows before the rest fold away (OMN-22168, Lakshman 2026-11-05). */
 const CATEGORY_PREVIEW = 5;
+const MODEL_PREVIEW = 5;
 const TRIAGE_PREVIEW = 8;
 
 export function TriageRows({ rows, denominator, kind }: {
@@ -638,7 +642,7 @@ function RecentDelegations({ decisions }: { decisions: DelegationDecisionRow[] }
   const cols: DataColumn<DelegationDecisionRow>[] = [
     { key: 'correlation_id', label: 'Correlation', concept: 'identity', width: '150px', tip: 'The run\'s correlation id. Open the row for the run\'s detail.', render: (r) => <span className="mono c-blue">{shortId(r.correlation_id)}</span> },
     { key: 'task_type', label: 'Task', grow: true, concept: 'task', tip: 'The kind of work the run did.', render: (r) => taskLabel(r.task_type) },
-    { key: 'model_name', label: 'Model', width: 'minmax(0,2.4fr)', concept: 'model', tip: 'The model that answered.', render: (r) => <span className="mono local-model-identity" data-semantic-concept={`model:${r.model_name}`} style={modelIdentityStyle(r.model_name)}>{r.model_name.length > 22 ? `${r.model_name.slice(0, 20)}…` : r.model_name}</span> },
+    { key: 'model_name', label: 'Model', width: 'minmax(0,2.4fr)', concept: 'model', tip: 'The model that answered.', render: (r) => <span className="mono local-model-identity" data-semantic-concept={`model:${r.model_name}`} style={modelIdentityStyle(r.model_name)}>{/* The whole name, broken at its joins (Lakshman 2026-11-05, "fix this": it was cut to 20 characters). */}{breakableName(r.model_name)}</span> },
     { key: 'state', label: 'State', width: '120px', concept: 'run-outcome', tip: 'Whether the run passed or failed its quality gate.', render: (r) => <StateBadge passed={r.quality_gate_passed} /> },
     { key: 'tokens', label: 'Tokens', num: true, width: '112px', concept: 'tokens', tip: 'Tokens the run took to reach a compliant answer.', render: (r) => formatDashboardCount(r.tokens_to_compliance) },
     { key: 'latency_ms', label: 'Latency', num: true, width: '120px', concept: 'duration', tip: 'How long the run took, end to end.', render: (r) => fmtLatency(r.latency_ms) },
