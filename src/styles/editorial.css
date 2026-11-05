@@ -977,3 +977,11 @@ html body .local-dashboard-page [aria-selected="true"] > .local-tab-chip svg.luc
 html body .local-dashboard-page--overview .local-overview-charts-panel .local-dashboard-panel[data-slice] .ins-readout {
   position: static; max-width: none; min-height: 22px; line-height: 22px; margin: 0 0 12px; white-space: normal; }
 html body .local-dashboard-page--overview .local-overview-charts-panel .ins-readout .ins-readout-sep { margin: 0 6px; color: var(--ds-ink-3); }
+
+/* Overview check 2026-11-05: Model usage keeps wide columns and scrolls the extra models inside its panel (Lakshman
+   2026-11-04, "widen the model usage columns"), but on macOS the overlay scrollbar is hidden, so 13 models read as 11
+   with the last name cut. The scrollbar is always drawn, thin and in the line colour, so the reader sees there is more. */
+html body .local-dashboard-page .local-model-usage--upright { scrollbar-width: thin; scrollbar-color: var(--ds-ink-3) transparent; padding-bottom: 10px; }
+html body .local-dashboard-page .local-model-usage--upright::-webkit-scrollbar { height: 8px; }
+html body .local-dashboard-page .local-model-usage--upright::-webkit-scrollbar-thumb { background: color-mix(in oklab, var(--ds-ink-3) 70%, transparent); border-radius: 999px; }
+html body .local-dashboard-page .local-model-usage--upright::-webkit-scrollbar-track { background: color-mix(in oklab, var(--ds-line) 60%, transparent); border-radius: 999px; }
