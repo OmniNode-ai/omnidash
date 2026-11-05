@@ -75,9 +75,11 @@ function GroupsView({ decisionRows }: { decisionRows: readonly unknown[] }) {
     const order = typeof left === 'string' ? String(left).localeCompare(String(right)) : Number(left) - Number(right);
     return sort.dir === 'asc' ? order : -order;
   });
+  // Headers as the run table writes them: each in its column's colour with its glyph (Lakshman 2026-11-05).
+  const concept = (key: SortKey) => (key === 'name' ? NAME_CONCEPT[by] : SORT_CONCEPT[key] ?? 'count');
   const header = (key: SortKey, label: string) => (
-    <th scope="col" aria-sort={sort.key === key ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
-      <button type="button" onClick={() => setSort(sort.key === key ? { key, dir: sort.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: key === 'name' ? 'asc' : 'desc' })}>{label}</button>
+    <th scope="col" data-col={key} aria-sort={sort.key === key ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+      <button type="button" className="local-table-head" data-field-tone={concept(key)} onClick={() => setSort(sort.key === key ? { key, dir: sort.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: key === 'name' ? 'asc' : 'desc' })}><ConceptIcon concept={concept(key)} label={label} size={13} />{label}</button>
     </th>);
   const label = GROUPS.find(group => group.by === by)!.label;
   return <>
@@ -85,7 +87,7 @@ function GroupsView({ decisionRows }: { decisionRows: readonly unknown[] }) {
     <DataTable data-analysis-table aria-label={`Usage by ${label.toLowerCase()}`}>
         <thead><tr>{header('name', label)}{header('runs', 'Runs')}{header('spend', 'Spend')}
           {header('pass', 'Pass rate')}{header('p50', 'p50 latency')}{header('p95', 'p95 latency')}
-          {header('last', 'Last run')}<th scope="col">{`Runs per day (${SPARK_DAYS} days)`}</th></tr></thead>
+          {header('last', 'Last run')}<th scope="col" data-col="spark"><span className="local-table-head" data-field-tone="runs-daily"><ConceptIcon concept="runs-daily" label="Runs per day" size={13} />{`Runs per day (${SPARK_DAYS} days)`}</span></th></tr></thead>
         <tbody>{sorted.map(group => <tr key={group.name}>
           <th scope="row" data-model-name={by === 'model' && group.name !== NOT_RECORDED ? '' : undefined}
             data-semantic-concept={by === 'model' && group.name !== NOT_RECORDED ? `model:${group.name}` : undefined}
@@ -283,6 +285,10 @@ export function RunsTotals({ rows, sample, complete = false }: { rows: readonly 
     <span className="local-runs-totals-scope">{`current filter · ${complete ? 'all' : 'latest'} ${sample} served runs`}</span>
   </p>;
 }
+
+/** The groups table's glyph per column: its name column by what it groups, the rest by the figure each holds. */
+const NAME_CONCEPT: Readonly<Record<GroupBy, string>> = { model: 'model', tier: 'tier', task: 'task', backend: 'backend' };
+const SORT_CONCEPT: Readonly<Record<string, string>> = { runs: 'delegations', spend: 'cost', pass: 'run-outcome', p50: 'duration', p95: 'duration', last: 'age' };
 
 /** The routing table's columns: the concept each header's glyph and colour come from, and its label. */
 const ROUTING_HEADERS: ReadonlyArray<readonly [string, string]> = [

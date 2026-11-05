@@ -1724,3 +1724,38 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ds-accent); outline-o
 .local-dashboard-page :is(.ins-task-head, .ins-list-row.ins-task-row) { grid-template-columns: 26px minmax(9rem, 1fr) minmax(0, 1.6fr) 72px 88px 130px; }
 /* In the Tasks columns a pass-rate pill is as wide as its figure, not its column. */
 .local-dashboard-page .ins-task-row > [data-pass-band] { justify-self: start; }
+/* Usage (Lakshman 2026-11-05, "make all pages like overview and runs"): its tables written as the Runs tables are.
+   Groups: a model, tier, task or backend reads as the run table's model cell (no capitals); fixed columns, each as wide as
+   its header's longest word and its widest value, so spend, pass rate and last run keep one line. */
+.local-dashboard-page .usage-analysis table[data-analysis-table] tbody th[scope="row"] { text-transform: none; letter-spacing: 0; font-weight: 400; font-size: 13px; color: var(--ds-ink); }
+.local-dashboard-page .usage-analysis table[data-analysis-table] { table-layout: fixed; width: 100%; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="name"] { width: 211px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="runs"] { width: 85px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="spend"] { width: 197px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="pass"] { width: 150px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th:is([data-col="p50"], [data-col="p95"]) { width: 108px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="last"] { width: 128px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] th[data-col="spark"] { width: 122px; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] :is(td[data-cell="spend"], td[data-cell="pass"], td[data-cell="last"], td[data-cell="p50"], td[data-cell="p95"]) { white-space: nowrap; }
+.local-dashboard-page .usage-analysis table[data-analysis-table] thead .local-table-head { white-space: normal; text-align: left; }
+/* Usage by model and day: fixed columns, each its header's longest word or its widest value (measured in Chrome), a long
+   model name wrapping inside its column, figures on one line, the share of calls a meter beside its percent. */
+.local-dashboard-page table[aria-label="Usage by model and day"] { table-layout: fixed; width: 100%; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(1) { width: 96px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(2) { width: 190px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(3) { width: 101px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(4) { width: 101px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(5) { width: 134px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(6) { width: 146px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(7) { width: 110px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(8) { width: 90px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(9) { width: 140px; }
+.local-dashboard-page table[aria-label="Usage by model and day"] td:nth-child(2), .local-dashboard-page table[aria-label="Usage by model and day"] td:nth-child(2) * { white-space: normal !important; overflow-wrap: anywhere; }
+.local-dashboard-page table[aria-label="Usage by model and day"] thead .local-table-head { white-space: normal; }
+.local-dashboard-page table[aria-label="Usage by model and day"] :is(td:nth-child(1), td:nth-child(3), td:nth-child(4), td:nth-child(5), td:nth-child(7), td:nth-child(8), td:nth-child(9)) { white-space: nowrap; }
+.local-dashboard-page table[aria-label="Usage by model and day"] .local-share-meter { flex-basis: 48px; }
+/* Savings per day: day, saving and runs in fixed shares. */
+.local-dashboard-page table.local-savings-days, .local-dashboard-page .local-savings-days table { table-layout: fixed; width: 100%; }
+.local-dashboard-page .local-savings-days thead th:nth-child(1) { width: 25%; }
+.local-dashboard-page .local-savings-days thead th:nth-child(2) { width: 50%; }
+.local-dashboard-page .local-savings-days thead th:nth-child(3) { width: 25%; }

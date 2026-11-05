@@ -78,6 +78,12 @@ function tier(value: unknown): string {
 }
 
 /** OMN-21015: the served share of the day's calls (a fraction), shown as a percentage to two decimals at most. */
+/** The table's columns: the concept each header's glyph and colour come from, and its label. */
+const USAGE_HEADERS: ReadonlyArray<readonly [string, string]> = [
+  ['usage-day', 'Day'], ['model', 'Model'], ['tokens-in', 'Tokens in'], ['tokens-out', 'Tokens out'], ['cost', 'Cost (measured)'],
+  ['unavailable', 'Unmeasured'], ['tier', 'Tier'], ['calls', 'Calls'], ['routing', 'Share of calls'],
+];
+
 function callShare(value: unknown): string {
   const share = Number(value);
   if (isMissing(value) || !Number.isFinite(share)) return 'Not recorded';
@@ -120,8 +126,8 @@ export function UsageByModelDayTable({ rows, interactive = false }: { rows: read
     <DataTable aria-label="Usage by model and day">
         <thead>
           <tr>
-            <th>Day</th><th>Model</th><th>Tokens in</th><th>Tokens out</th><th>Cost (measured)</th><th>Unmeasured</th>
-            <th>Tier</th><th>Calls</th><th>Share of calls</th>
+            {/* Headers as the run table writes them (Lakshman 2026-11-05, "make all pages like overview and runs"). */}
+            {USAGE_HEADERS.map(([concept, label]) => <th key={label}><span className="local-table-head" data-field-tone={concept}><ConceptIcon concept={concept} label={label} size={13} />{label}</span></th>)}
           </tr>
         </thead>
         <tbody>{shown.map((row, index) => (
@@ -134,7 +140,8 @@ export function UsageByModelDayTable({ rows, interactive = false }: { rows: read
             <td data-label="Unmeasured">{unmeasured(row.unmeasured_call_count)}</td>
             <td data-label="Tier">{tier(row.cost_tier_name)}</td>
             <td data-label="Calls">{isMissing(row.call_count) ? 'Not recorded' : formatDashboardCount(row.call_count)}</td>
-            <td data-label="Share of calls">{callShare(row.call_share)}</td>
+            <td data-label="Share of calls"><span className="local-share-cell">{!isMissing(row.call_share) && Number.isFinite(Number(row.call_share))
+              && <span className="local-share-meter" aria-hidden="true"><i style={{ width: `${Math.min(Math.max(Number(row.call_share), 0), 1) * 100}%` }} /></span>}{callShare(row.call_share)}</span></td>
           </tr>
         ))}</tbody>
     </DataTable>

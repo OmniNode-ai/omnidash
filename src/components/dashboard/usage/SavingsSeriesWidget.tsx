@@ -1,3 +1,4 @@
+import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { formatDashboardCount } from '@/lib/dashboard-count';
 // OMN-20006 Amendment 1 (US-3): savings per UTC day against the one baseline, from metering-summary.v1.
 //
@@ -81,7 +82,12 @@ function SavingsDays({ baseline, days }: { baseline: string; days: MeteringSumma
             <span role="status">{start + 1}–{Math.min(start + DAYS_PER_PAGE, days.length)} of {formatDashboardCount(days.length)} days</span>
             <button type="button" className="local-filter-clear" aria-label={`Next savings days for ${baseline}`} disabled={page === last} onClick={() => setPage(page + 1)}>Next</button>
           </nav>}>
-            <thead><tr><th>Day</th><th>{`Savings vs ${baseline}`}</th><th>Runs</th></tr></thead>
+            {/* Headers as the run table writes them (Lakshman 2026-11-05, "make all pages like overview and runs"). */}
+            <thead><tr>
+              <th><span className="local-table-head" data-field-tone="usage-day"><ConceptIcon concept="usage-day" label="Day" size={13} />Day</span></th>
+              <th><span className="local-table-head" data-field-tone="savings"><ConceptIcon concept="savings" label="Savings" size={13} />{`Savings vs ${baseline}`}</span></th>
+              <th><span className="local-table-head" data-field-tone="delegations"><ConceptIcon concept="delegations" label="Runs" size={13} />Runs</span></th>
+            </tr></thead>
             <tbody>{days.slice(start, start + DAYS_PER_PAGE).map((row, index) => (
               <tr key={`${String(row.window_start)}-${index}`}>
                 <td data-label="Day">{isMissing(row.window_start) ? 'Not recorded' : String(row.window_start)}</td>
