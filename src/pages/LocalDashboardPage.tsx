@@ -2107,7 +2107,7 @@ export function OverviewTrendPanel({ rows, columns, window, now }: {
     <figure className="local-chart local-trend" aria-label="Daily trend">
       <p className="local-dashboard-caption">{visible.length === 1
         ? `${visible[0]!.header} per UTC day, on its real scale. Hover a day for its numbers.`
-        : 'Each UTC day, every line against its own busiest day. Point at a chip to bring its line forward; show one line for its real scale.'}</p>
+        : 'Each line is scaled to its own busiest UTC day. Point at a chip to bring it forward; show one line alone for its real scale.'}</p>
       <SeriesToggles label="Trend lines" onToggle={key => toggle(key)} onPreview={setPreview} focus={front}
         series={columns.map(column => ({ key: slug(column.header), label: column.header, color: TREND_TONES[column.header] ?? 'var(--ds-ink-2)',
           tone: TREND_FIELDS[column.header], shown: shown[slug(column.header)] ?? true }))} />

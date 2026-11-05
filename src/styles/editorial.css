@@ -733,6 +733,11 @@ html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-cha
   outline: 2px solid var(--tab-tone); outline-offset: 3px; }
 .local-tab-chip { display: inline-grid; place-items: center; flex: none; width: 42px; height: 42px; border-radius: 12px;
   background: color-mix(in oklab, var(--tab-tone) 16%, transparent); }
+/* Polish (Lakshman 2026-11-05, "polish existing"): an unchosen tab's glyph sat on a tint too faint to read on the dark
+   surface; its chip takes a stronger tint and a hairline in its tone, so every tab reads as its own colour. */
+html body .local-dashboard-page [role="tab"]:not([aria-selected="true"]) > .local-tab-chip {
+  background: color-mix(in oklab, var(--tab-tone) 24%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--tab-tone) 35%, transparent); }
 html body .local-dashboard-page .local-tab-chip svg.lucide { color: var(--tab-tone) !important; width: 20px; height: 20px; }
 [aria-selected="true"] > .local-tab-chip { background: var(--tab-tone); }
 html body .local-dashboard-page [aria-selected="true"] > .local-tab-chip svg.lucide { color: var(--ds-on-accent) !important; }
