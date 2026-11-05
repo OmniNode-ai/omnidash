@@ -991,3 +991,9 @@ html body .local-dashboard-page .local-model-usage--upright::-webkit-scrollbar-t
    ink beside its swatch, OMN-21970 option a). */
 html body .local-dashboard-page--overview .local-overview-charts-panel .rb-chart li[data-ranked-item] .rb-value {
   color: color-mix(in oklab, var(--rb-color, var(--ds-ink)) 75%, var(--ds-ink)) !important; font-weight: 600; }
+
+/* Lakshman 2026-11-05 ("gap between line and numbers"): the tallest bar's value sat on the plot's top gridline. The plot
+   keeps 14px above its first value, and the middle gridline moves down with the tracks so it stays at their middle (measured: tracks start 37px down, 300px tall). */
+html body .local-dashboard-page--overview .local-overview-charts-panel .rb-chart.rb-chart--vertical .rb-plot {
+  padding-top: 14px; background-position: 0 0, 0 187px; }
+@media (max-width: 700px) { html body .local-dashboard-page--overview .local-overview-charts-panel .rb-chart.rb-chart--vertical .rb-plot { background-position: 0 0, 0 147px; } }
