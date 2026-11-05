@@ -3,7 +3,7 @@ import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
 import { formatDashboardUsd } from '@/lib/dashboard-currency';
 import { formatDuration } from '@/components/format/duration';
 import { createContext, useContext, useId, useState, type CSSProperties, type ReactNode } from 'react';
-import { BarTrack, ChartCard, ChartEmpty, ChartReadout, CumulativeColumns, DayColumns, Histogram, HourHeatmap, LinePlot, NamedByPanel, RankedBars, SeriesLegend, SpendColumns, dayTicks } from '@/theme/design-system/charts';
+import { BarTrack, ChartCard, ChartEmpty, ChartReadout, CumulativeColumns, DayColumns, Histogram, HourHeatmap, LinePlot, NamedByPanel, RankedBars, SeriesLegend, SeriesToggles, SpendColumns, dayTicks } from '@/theme/design-system/charts';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { causeHref, useSharedRunFilter } from './run-filter';
 import { failureCauseLabel } from './plain-text';
@@ -116,10 +116,17 @@ function RunsPerDay({ days }: { days: InsightDay[] }) {
   const onRuns = location === '/runs';
   const openDay = (key: string) => navigate(`/runs?${writeRunsSearch(onRuns ? search : '', { ...(onRuns ? readRunsSearch(search) : DEFAULT_RUNS_VIEW), day: key, page: 1 })}`);
   const opensId = useId();
-  // One bar per day, its served run total (Lakshman 2026-11-05: one Runs bar per day); the verdicts read are in the readout.
-  const max = Math.max(1, ...days.map(day => day.runs));
+  // Lakshman 2026-11-05 ("one Runs bar per day", then "pass and failed"): each day draws its served run total and, beside
+  // it, the passed and failed runs read; a day with no verdict read draws its total only. Each series can be hidden; the
+  // last one shown stays on.
+  const [show, setShow] = useState({ runs: true, passed: true, failed: true });
+  const max = Math.max(1, ...days.flatMap(day => [show.runs ? day.runs : 0, show.passed ? day.passed : 0, show.failed ? day.failed : 0]));
   const active = hover === null ? null : days[hover]!;
   const ticks = dayTicks(days, onRuns ? 14 : 8);
+  const toggle = (key: 'runs' | 'passed' | 'failed') => setShow(current => {
+    const others = (['runs', 'passed', 'failed'] as const).filter(other => other !== key);
+    return current[key] && !others.some(other => current[other]) ? current : { ...current, [key]: !current[key] };
+  });
   return (
     <ChartCard title="Runs per day" concept="runs-daily" delay={0}>
       <ChartReadout testId="runs-per-day-readout" active={active !== null}
@@ -128,9 +135,20 @@ function RunsPerDay({ days }: { days: InsightDay[] }) {
         key: day.day,
         ariaLabel: `${dayLabel(day.day)}: ${dayCounts(day)}`,
         tick: ticks.has(index),
-        values: [{ key: 'runs', value: day.runs, color: RUNS, label: count(day.runs) }],
+        values: [
+          ...(show.runs ? [{ key: 'runs', value: day.runs, color: RUNS, label: count(day.runs) }] : []),
+          // A day with no verdict read keeps its passed and failed slots empty (no bar, never a 0), so every day's bars
+          // keep one width.
+          ...(show.passed ? [{ key: 'passed', value: day.passed + day.failed > 0 ? day.passed : null, color: PASS, label: count(day.passed) }] : []),
+          ...(show.failed ? [{ key: 'failed', value: day.passed + day.failed > 0 ? day.failed : null, color: FAIL, label: count(day.failed) }] : []),
+        ],
       }))} max={max} hover={hover} onHover={setHover} onOpen={openDay} describedBy={opensId} dayLabel={dayLabel} />
       <span id={opensId} hidden>Opens Runs for this day</span>
+      <SeriesToggles label="Series" onToggle={key => toggle(key as 'runs' | 'passed' | 'failed')} series={[
+        { key: 'runs', label: 'Runs', color: RUNS, tone: 'runs-daily', shown: show.runs },
+        { key: 'passed', label: 'Passed', color: PASS, tone: 'pass', shown: show.passed },
+        { key: 'failed', label: 'Failed', color: FAIL, tone: 'fail', shown: show.failed },
+      ]} />
     </ChartCard>
   );
 }

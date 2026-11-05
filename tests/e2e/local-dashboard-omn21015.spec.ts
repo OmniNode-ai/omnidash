@@ -175,17 +175,20 @@ const metering = [
 
 // OMN-22168 (Lakshman 2026-11-05, "one Runs bar per day"): Runs per day is one bar per day with no series legend; the
 // keyboard legend this test held lives on the Daily trend's chips, the same kit control (SeriesToggles).
-test('OMN-21015: a trend legend hides and shows a line from the keyboard; Runs per day draws one bar per day', async ({ page }) => {
+test('OMN-21015: a trend legend hides and shows a line from the keyboard; Runs per day draws runs, passed and failed', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   // The Daily trend draws metering-summary.v1's day rows; two served days give it lines to hide and show.
   await serve(page, { [DECISIONS]: firstScreenRuns, [METERING]: metering });
   await page.goto('/');
 
+  // OMN-22168 (Lakshman 2026-11-05, "pass and failed"): each day draws its run total with its passed and failed runs
+  // beside it, and the legend names all three.
   const runsChart = page.getByRole('figure', { name: 'Runs per day', exact: true });
   await expect(runsChart).toBeVisible();
-  await expect(runsChart.getByRole('group', { name: 'Series' })).toHaveCount(0);
+  await expect(runsChart.getByRole('group', { name: 'Series' }).getByRole('button')).toHaveText(['Runs', 'Passed', 'Failed']);
   await expect.poll(() => runsChart.locator('.gdb-col[data-series="runs"] .gdb-bar').count()).toBeGreaterThan(0);
-  await expect(runsChart.locator('.gdb-col[data-series="passed"], .gdb-col[data-series="failed"]')).toHaveCount(0);
+  await expect.poll(() => runsChart.locator('.gdb-col[data-series="passed"] .gdb-bar').count()).toBeGreaterThan(0);
+  await expect.poll(() => runsChart.locator('.gdb-col[data-series="failed"] .gdb-bar').count()).toBeGreaterThan(0);
 
   const trend = page.getByRole('figure', { name: 'Daily trend', exact: true });
   // Spend and Savings sit side by side in the legend, and the two served days carry both (no token counts).

@@ -109,8 +109,8 @@ dod_evidence:
   - id: "dod-omn22168-ac3-overview-polish"
     description: >-
       AC3, the 2026-11-05 Overview review only, not the whole criterion: Runs per day draws each day's served run
-      total as one bar per day (the day's passed and failed runs read named beside it), and the kit's series legend
-      still hides and shows a line from the keyboard on the Daily trend.
+      total with the day's passed and failed runs read beside it, and the kit's series legend still hides and shows a
+      line from the keyboard on the Daily trend.
     source: "manual"
     binds_ac: ["AC3"]
     checks:
