@@ -1831,7 +1831,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
           </ConfirmDialog>
           {/* Lakshman 2026-11-05 ("do all 12"): the run list opens on eight columns (run, time, status with its cause, model,
               tokens, cost, saving, duration); "Show all run fields" adds backend, host, task type, route tier and quality score,
-              and "Routing columns" adds finish reason and escalations, shown only when unusual. OMN-21166 AC27 P2: every
+              and "Routing columns" adds requested model, finish reason and escalations (the last two shown only when unusual). OMN-21166 AC27 P2: every
               field stays in the page in either view; the all-fields columns (data-extra) are drawn always and hidden by the
               layout until the switch is on, and that view also lists baseline model, basis and tokens to compliance. */}
           {(() => {
@@ -1844,7 +1844,8 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                 <tr>
                   {plainHeader('identity', 'Run')}{sortHeader('created', 'Time', 'age')}{plainHeader('run-outcome', 'Status')}
                   {plainHeader('model', 'Model')}{plainHeader('backend', 'Backend', true)}
-                  {showRouting && <>{plainHeader('completion', 'Finish reason')}{plainHeader('escalated', 'Escalations')}</>}
+                  {/* OMN-21166 AC206 D10: Routing columns adds requested model, finish reason and escalations. */}
+                  {showRouting && <>{plainHeader('routing-model', 'Requested model')}{plainHeader('completion', 'Finish reason')}{plainHeader('escalated', 'Escalations')}</>}
                   {plainHeader('host', 'Host', true)}
                   {plainHeader('tokens', 'Tokens')}{sortHeader('cost', 'Cost', 'cost')}
                   {/* The shared baseline is named in the header's tooltip and accessible name, not on the page. */}
@@ -1896,6 +1897,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                     </button>
                   </td>
                   {showRouting && <>
+                    <td className="local-dashboard-cell-token" data-cell="requested-model">{recorded(run.requested_model)}</td>
                     <td data-cell="finish-reason"><QuietUnlessUnusual value={run.finish_reason} usual={text => text === 'stop'} usualText="Finished normally (stop)" /></td>
                     <td data-cell="escalations" data-num=""><QuietUnlessUnusual value={run.escalation_count} usual={text => Number(text) === 0} usualText="No escalation" /></td>
                   </>}
@@ -2055,6 +2057,7 @@ const RUN_COLUMN_TIPS: Readonly<Record<string, string>> = {
   'run-outcome': 'Whether the run passed or failed its quality gate. A failed run shows why under its status.',
   model: 'The model that answered. If it differs from the model the run asked for, the requested one is shown above it. Click a model to show only its runs.',
   backend: 'The route that served the run. Click one to show only its runs.',
+  'routing-model': 'The model the run asked for, before routing. The Model column is the one that answered.',
   completion: 'Why the model stopped answering. A dash means it finished normally (stop).',
   escalated: 'How many times the run moved on to another model. A dash means none.',
   host: 'The address of the machine that served the run, as recorded.',

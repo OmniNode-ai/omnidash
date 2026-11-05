@@ -1088,3 +1088,5 @@ html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs
 /* A task type's icon and label are one block in its cell, so the label sits on the row's line (it was 2px high: an
    inline-flex box takes its baseline from the icon's bottom edge). */
 html body .local-dashboard-page .local-runs-wrap td .local-task-cell { display: flex; align-items: center; }
+/* With Routing columns on, the requested model has its own column, so the Model cell drops its "requested →" line. */
+html body .local-dashboard-page .local-runs-wrap--routing .local-run-requested { display: none; }

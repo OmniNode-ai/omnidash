@@ -35,14 +35,15 @@ test('long failures have keyboard-accessible full text and searches keep exact r
     { ...(chartRows[prefix + 'delegation.decisions.v1'][1] as object), quality_gate_detail: detail },
   ] });
   await page.goto('/runs');
-  const disclosure = page.locator('.local-runs-wrap details');
-  await expect(disclosure).toHaveCount(1);
-  await disclosure.locator('summary').focus();
-  await page.keyboard.press('Enter');
-  await expect(disclosure).toHaveAttribute('open', '');
-  await expect(disclosure).toContainText(detail);
+  // OMN-22168 (Lakshman 2026-11-05): the whole failure detail opens from the failed pill, on hover and keyboard focus.
+  const trigger = page.locator('.local-runs-wrap .local-run-status-trigger');
+  await expect(trigger).toHaveCount(1);
+  await trigger.focus();
+  await expect(page.getByRole('tooltip')).toContainText(detail.trim());
   await expect(page.locator('.local-runs-wrap a')).toHaveAttribute('href', '/workflow?correlation_id=chart-run-b');
   await page.screenshot({ path: info.outputPath('run-failure-details.png') });
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('tooltip')).toHaveCount(0);
 });
 
 test('Evidence has a named main landmark and explicitly modelled savings', async ({ page }, info) => {

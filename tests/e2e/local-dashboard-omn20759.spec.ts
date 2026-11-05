@@ -8,9 +8,10 @@ import { expect, test, type Page } from 'playwright/test';
 // own shape (2026-10-09): UUID run ids, microsecond timestamps and the Gemini host, the values that clipped.
 const DECISIONS = 'onex.snapshot.projection.delegation.decisions.v1';
 
+// OMN-22168 (Lakshman 2026-11-05): 16 columns; the cause sits on Status and tokens in and out share one cell.
 const RUNS_HEADERS = [
-  'Run', 'Created', 'Status', 'Cause', 'Model', 'Backend', 'Host', 'Tokens in', 'Tokens out', 'Cost', 'Modelled saving',
-  'Baseline model', 'Basis', 'Task type', 'Duration', 'Tokens to compliance', 'Route tier', 'Quality score',
+  'Run', 'Time', 'Status', 'Model', 'Backend', 'Host', 'Tokens', 'Cost', 'Saving',
+  'Baseline model', 'Basis', 'Duration', 'Task type', 'Tokens to compliance', 'Route tier', 'Quality score',
 ];
 // OMN-21166 AC86 (Lakshman 2026-10-25): Recent runs is deleted from Overview, so its table-fit case is removed; Runs keeps it.
 
