@@ -16,8 +16,8 @@ test('restores four exact legacy totals instead of unrelated metering values', a
     window_kind: 'all', as_of: '2026-10-19T16:01:00Z', spend_usd: 999, savings_usd: 999, runs_measured: 999, tokens_in: 999, tokens_out: 999,
   }] });
   await page.goto('/overview');
-  await expect(figure(page, 'overview-spend')).toHaveText('$3.392282');
-  await expect(figure(page, 'overview-savings')).toHaveText('$1,008.470913');
+  await expect(figure(page, 'overview-spend')).toHaveText('$3.39');
+  await expect(figure(page, 'overview-savings')).toHaveText('$1,008.47');
   await expect(figure(page, 'overview-measured')).toHaveText('49.14K');
   await expect(figure(page, 'overview-tokens')).toHaveText('183.69M');
   await expect(card(page, 'overview-savings')).toContainText('Modelled');
@@ -48,7 +48,7 @@ test('one absent or malformed total does not erase the other cards or borrow ano
   await page.goto('/overview');
   await expect(figure(page, 'overview-spend')).toHaveText('Not measured');
   await expect(figure(page, 'overview-tokens')).toHaveText('Not measured');
-  await expect(figure(page, 'overview-savings')).toHaveText('$1,008.470913');
+  await expect(figure(page, 'overview-savings')).toHaveText('$1,008.47');
   await expect(figure(page, 'overview-measured')).toHaveText('49.14K');
 });
 
@@ -74,8 +74,8 @@ test('served legacy totals remain visible when every other exposure is empty', a
   const empty = Object.fromEntries(Object.keys(chartRows).map(name => [name, []]));
   await serveCharts(page, { ...empty, [topic]: [legacy] });
   await page.goto('/overview');
-  await expect(figure(page, 'overview-spend')).toHaveText('$3.392282');
-  await expect(figure(page, 'overview-savings')).toHaveText('$1,008.470913');
+  await expect(figure(page, 'overview-spend')).toHaveText('$3.39');
+  await expect(figure(page, 'overview-savings')).toHaveText('$1,008.47');
   await expect(figure(page, 'overview-measured')).toHaveText('49.14K');
   await expect(figure(page, 'overview-tokens')).toHaveText('183.69M');
   await expect(page.locator('.local-dashboard-empty-state')).toHaveCount(0);
@@ -87,7 +87,7 @@ for (const total_savings_usd of [legacy.total_savings_usd, -legacy.total_savings
   await serveCharts(page, { ...chartRows, [topic]: [{ ...legacy, total_savings_usd }] });
   await page.goto('/overview');
   await expect(figure(page, 'overview-tokens')).toHaveText('183.69M');
-  await expect(figure(page, 'overview-savings')).toHaveText(total_savings_usd < 0 ? '-$1,008.470913' : '$1,008.470913');
+  await expect(figure(page, 'overview-savings')).toHaveText(total_savings_usd < 0 ? '-$1,008.47' : '$1,008.47');
   for (const width of [390, 320]) {
     await narrowTo(page, width, 844);
     const geometry = await page.locator('.local-overview-summary .local-dashboard-metric[data-measured="true"]').evaluateAll(nodes => nodes.map(el => {

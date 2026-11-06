@@ -243,15 +243,15 @@ test('Overview is the default page and fits 1440x900 with no unmeasured 0 (AC4)'
   // D1: Savings follows cost.savings-overview.v1, never a metering row.
   const savings = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Savings', exact: true }) });
   // D1: legacy 1.2252, never the conflicting metering 1.2184 (OMN-22168: every served digit is shown).
-  await expect(savings.getByText('$1.2252', { exact: true })).toBeVisible();
-  await expect(savings.getByText('$1.2184', { exact: true })).toHaveCount(0);
+  await expect(savings.getByText('$1.22', { exact: true })).toBeVisible();
+  await expect(savings.getByText('$1.21', { exact: true })).toHaveCount(0);
   // OMN-21166 (card basis in a tooltip): the basis line is in the card's tooltip, shown on keyboard focus of the card.
   // Part 29 AC191: the basis is the card's caption, always in the page; no About button to focus.
   await expect(savings.getByText('Modelled · vs cloud baseline', { exact: true })).toBeVisible();
   await expect(savings.getByText('$0.40', { exact: true })).toHaveCount(0);
   // D1: all four headline tiles follow the same legacy all row.
   const headline = (title: string) => page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: title, exact: true }) });
-  await expect(headline('Actual spend').getByText('$0.00686', { exact: true })).toBeVisible();
+  await expect(headline('Actual spend').getByText('$0.0068', { exact: true })).toBeVisible();
   await expect(headline('Agent calls').getByText('49', { exact: true })).toBeVisible();
   await expect(headline('Agent calls').getByText('46', { exact: true })).toHaveCount(0);
   // Part 29 AC191: the basis is the card's caption, always in the page; no About button to focus.
@@ -591,8 +591,8 @@ test('manual Refresh rereads local exposures and preserves the Runs filter', asy
   await page.goto('/');
   // D1: refresh rereads the legacy Overview total independently of metering.
   const savingsCard = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Savings', exact: true }) });
-  // OMN-22168: money shows every served digit, so the legacy total 1.2252 reads $1.2252.
-  await expect(savingsCard.getByText('$1.2252', { exact: true })).toBeVisible();
+  // OMN-22168 (Jonah 2026-11-06): money from $1 up shows two decimals, cut, so the legacy total 1.2252 reads $1.22.
+  await expect(savingsCard.getByText('$1.22', { exact: true })).toBeVisible();
   await page.getByTestId('nav-local-runs').click();
   await expect(page.getByText('Runs 1–2 of 2')).toBeVisible();
   await pickFilter(page, 'Status', 'passed');

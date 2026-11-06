@@ -212,7 +212,7 @@ describe('LocalDashboardPage widget states (F26, F27)', () => {
       : Promise.resolve(topic === DECISIONS ? [decisionRow('run-1')] : [{ sessions: [] }]);
     await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
     const spend = screen.getByRole('heading', { name: 'Actual spend' }).closest('article')!;
-    expect(within(spend).getByText('$0.00686')).toBeInTheDocument();
+    expect(within(spend).getByText('$0.0068')).toBeInTheDocument();
     expect(within(spend).getByRole('alert')).toHaveTextContent(/HTTP 503 Service Unavailable\)\.; last good 30s ago/);
   });
 });

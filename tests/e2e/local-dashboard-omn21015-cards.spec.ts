@@ -86,7 +86,7 @@ test(`organized cards across all seven MVP pages in ${theme}`, async ({ page }, 
         // keeps its two direction figures in view.
         expect(accents.filter(card => card.headline).length, 'Five headline cards').toBe(5);
         await expect(page.locator('[data-component="overview-tokens"] .local-token-direction')).toHaveCount(2);
-        await expect(page.locator('[data-component="overview-spend"] .local-dashboard-metric')).toHaveText('$3.5923');
+        await expect(page.locator('[data-component="overview-spend"] .local-dashboard-metric')).toHaveText('$3.59');
       }
       // Complex content gets its own row; metric headlines may stay compact.
       const spaciousLayouts = page.locator('.local-overview-focus, .local-run-charts, .workflow-analysis-grid, .workflow-record-grid, .usage-insight-grid, .ev-selected-run-layout, .ev-align-start');
