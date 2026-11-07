@@ -1487,8 +1487,8 @@ export function RecentRunsTable({ decisions, sessions, now = Date.now(), showCha
               <td data-label="Task type"><span className="local-recent-value">{isMissing(decision.task_type) ? recorded(decision.task_type) : taskLabel(decision.task_type)}</span></td>
               <td className="local-dashboard-cell-token" data-label="Backend"><span className="local-recent-value">{recorded(decision.backend_id)}</span></td>
               <td className="local-dashboard-cell-token" data-label="Host"><span className="local-recent-value">{recorded(decision.host)}</span></td>
-              <td data-label="Tokens in"><span className="local-recent-value">{recordedTokens(decision.tokens_input)}</span></td>
-              <td data-label="Tokens out"><span className="local-recent-value">{recordedTokens(decision.tokens_output)}</span></td>
+              <td data-label="Tokens in" data-field-tone="tokens-in" data-field-unavailable={isMissing(decision.tokens_input)}><span className="local-recent-value">{recordedTokens(decision.tokens_input)}</span></td>
+              <td data-label="Tokens out" data-field-tone="tokens-out" data-field-unavailable={isMissing(decision.tokens_output)}><span className="local-recent-value">{recordedTokens(decision.tokens_output)}</span></td>
               <td data-label="Basis"><span className="local-recent-value">{recorded(session?.usage_source)}</span></td>
               <td data-label="Route tier"><span className="local-recent-value">{tierOf(decision)}</span></td>
               <td data-label="Quality score"><span className="local-recent-value">{recorded(decision.actual_score)}</span></td>
@@ -1928,7 +1928,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                   {/* Item 4: tokens in and out in one cell; their total is the two added, so it is not a column of its own. */}
                   <td data-label="Tokens" data-num="" title={`${recordedTokens(run.tokens_input)} tokens in, ${recordedTokens(run.tokens_output)} tokens out`}>
                     {isMissing(run.tokens_input) && isMissing(run.tokens_output) ? 'Not recorded'
-                      : <><span data-field-tone="tokens-in">{recordedTokens(run.tokens_input)}</span><span className="local-run-quiet"> / </span><span data-field-tone="tokens-out">{recordedTokens(run.tokens_output)}</span></>}
+                      : <><span data-field-tone="tokens-in" data-field-unavailable={isMissing(run.tokens_input)}>{recordedTokens(run.tokens_input)}</span><span className="local-run-quiet"> / </span><span data-field-tone="tokens-out" data-field-unavailable={isMissing(run.tokens_output)}>{recordedTokens(run.tokens_output)}</span></>}
                   </td>
                   <td data-label="Cost" data-num=""><CostCell session={session} run={run} /></td>
                   {/* Items 1 and 2: the baseline is named once in the header when the rows share it; a basis other than
@@ -1968,8 +1968,8 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
               <Fact term="Route tier">{tierOf(selectedRun)}</Fact>
               <Fact term="Duration">{duration(selectedRun.latency_ms)}</Fact>
               <Fact term="Cost">{costOf(selectedSession, selectedRun)}</Fact>
-              <Fact term="Tokens in">{recordedTokens(selectedRun.tokens_input)}</Fact>
-              <Fact term="Tokens out">{recordedTokens(selectedRun.tokens_output)}</Fact>
+              <Fact term="Tokens in" data-field-tone="tokens-in" data-field-unavailable={isMissing(selectedRun.tokens_input)}>{recordedTokens(selectedRun.tokens_input)}</Fact>
+              <Fact term="Tokens out" data-field-tone="tokens-out" data-field-unavailable={isMissing(selectedRun.tokens_output)}>{recordedTokens(selectedRun.tokens_output)}</Fact>
               <Fact term="Modelled saving">{runModelledCell(selectedRun)}</Fact>
               <Fact term="Quality score">{recorded(selectedRun.actual_score)}
                 <Meter kind="selected-quality" label="Quality score versus required bar" min={0} max={1} now={selectedScore}

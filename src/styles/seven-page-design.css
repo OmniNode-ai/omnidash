@@ -292,7 +292,6 @@ main.ev-root[data-destination="delegation-evidence"] .note { color: var(--ds-ink
 /* "This week" and the other uppercase section labels share the monospace label style. */
 .local-dashboard-page .local-section-heading.local-dashboard-caption { font-family: var(--ds-font-mono); font-weight: 400; letter-spacing: .04em; text-transform: uppercase; }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-token-directions { color: var(--ds-ink-2); font-size: 12px; }
-:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-token-directions strong { color: var(--ds-ink) !important; }
 
 /* Overview › Quality and Last run side by side on wide screens (their declared half widths), so the newest run's
  * status, model and age sit in the first screen at 1440x900 (AC49) and the page reads as one dense summary. */

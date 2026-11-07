@@ -185,3 +185,22 @@ svg.field-icon[data-field-tone] { color: var(--field-ink); }
 [data-field-tone="run-routes"] { --field-ink: var(--ds-field-run-routes); }
 [data-field-tone="load-slow"] { --field-ink: var(--ds-field-load-slow); }
 [data-field-tone="load-error"] { --field-ink: var(--ds-field-load-error); }
+
+/* Lakshman 2026-11-07 ("token in and out should be different color and uniform in whole websites"): every figure of
+   tokens in wears --ds-field-tokens-in and every figure of tokens out wears --ds-field-tokens-out, on every page and in
+   both themes: the Overview and Usage token cards, the run tables, the run and selected-run facts, Workflow's summary,
+   Delegation Evidence's token usage and run details, and the chart readouts. A figure that is not recorded keeps the
+   unavailable ink. Only the figure is coloured; its label keeps the label ink. Page rules that set a figure's ink
+   (the Overview card's figures were forced to --ds-ink, Delegation Evidence's values are --ds-ink at
+   main.ev-root[data-destination]) are outranked: the scope list carries that selector, so this block is the most
+   specific. Tested by tests/e2e/design-system-dashboard-polish.omn22168.spec.ts L14. */
+html body :is(.local-dashboard-page, .ev-root, main.ev-root[data-destination]) :is(
+  [data-field-tone="tokens-in"] > :is(dd, .v, strong, .ev-token-num, .local-recent-value),
+  span[data-field-tone="tokens-in"], td[data-field-tone="tokens-in"]) { color: var(--ds-field-tokens-in) !important; }
+html body :is(.local-dashboard-page, .ev-root, main.ev-root[data-destination]) :is(
+  [data-field-tone="tokens-out"] > :is(dd, .v, strong, .ev-token-num, .local-recent-value),
+  span[data-field-tone="tokens-out"], td[data-field-tone="tokens-out"]) { color: var(--ds-field-tokens-out) !important; }
+html body :is(.local-dashboard-page, .ev-root, main.ev-root[data-destination]) :is(
+  [data-field-tone^="tokens-"][data-field-unavailable="true"] > :is(dd, .v, strong, .ev-token-num, .local-recent-value),
+  span[data-field-tone^="tokens-"][data-field-unavailable="true"],
+  td[data-field-tone^="tokens-"][data-field-unavailable="true"]) { color: var(--ds-field-unavailable) !important; }

@@ -168,8 +168,8 @@ export function UsageByModelDayTable({ rows, interactive = false }: { rows: read
             {/* The model's swatch beside its name, as Usage analysis and the decision matrix draw a model (Lakshman 2026-11-05). */}
             <td data-label="Model"><span className="usage-model-name">{!isMissing(row.model_id) && <span className="gdb-swatch" aria-hidden="true"
               data-model-id={model(row.model_id)} style={{ background: modelColor(model(row.model_id)) }} />}{model(row.model_id)}</span></td>
-            <td data-label="Tokens in">{isMissing(row.input_tokens) ? recorded(row.input_tokens) : groupedCount(row.input_tokens)}</td>
-            <td data-label="Tokens out">{isMissing(row.output_tokens) ? recorded(row.output_tokens) : groupedCount(row.output_tokens)}</td>
+            <td data-label="Tokens in" data-field-tone="tokens-in" data-field-unavailable={isMissing(row.input_tokens)}>{isMissing(row.input_tokens) ? recorded(row.input_tokens) : groupedCount(row.input_tokens)}</td>
+            <td data-label="Tokens out" data-field-tone="tokens-out" data-field-unavailable={isMissing(row.output_tokens)}>{isMissing(row.output_tokens) ? recorded(row.output_tokens) : groupedCount(row.output_tokens)}</td>
             <td data-label="Cost (measured)">{!isMissing(row.measured_cost_usd) && Number(row.measured_cost_usd) === 0
               ? <span className="local-cost-free" title={measuredCost(row.measured_cost_usd)}>{measuredCost(row.measured_cost_usd).replace(/\.0+$/, '')}</span>
               : measuredCost(row.measured_cost_usd)}</td>
