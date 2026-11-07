@@ -41,7 +41,7 @@ vi.mock('@/data-source/exposure-census', () => ({
   fetchExposureCensus: async () => ({ rows: [...harness.reachable].map((topic) => ({ topic, reachability: 'reachable' })) }),
 }));
 
-import { LocalDashboardPage } from './LocalDashboardPage';
+import { LocalDashboardPage } from '@/pages/LocalDashboardPage';
 
 const NOW = '2026-11-07T12:00:00Z';
 const DAY_MS = 86_400_000;
