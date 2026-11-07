@@ -22,6 +22,9 @@ import { chooseChartTab } from './chart-tabs';
  *      different color and different icons"), each its concept's canonical glyph and colour, never the interface grey.
  *   L11 each sidebar page has its own colour, and the page title's icon is that page's glyph in that colour, drawn big
  *      (Lakshman 2026-11-04, "side bar each page should have own color and icons ... icons should be Big in actual page").
+ *   L12 at 1440px every Runs header, model name and time stays on one line (Jonah 2026-11-06, "column wrapping when there is
+ *      plenty of room between the other columns"; dev's 252px model column broke a long name over two lines, and dev wrote
+ *      a day above its clock).
  */
 const LONG = 'nvidia/nemotron-3-ultra-550b-a55b:free';
 const template = chartRows[prefix + 'delegation.decisions.v1'][0] as Record<string, unknown>;
@@ -281,4 +284,23 @@ test('L11: each sidebar page has its own colour, and its title icon is big in th
       const value = getComputedStyle(probe).color; probe.remove(); return value; });
     expect(colours.filter(colour => colour === grey), `${theme}: no page icon is the interface grey`).toEqual([]);
   }
+});
+
+test('L12: at 1440px every Runs header, model name and time stays on one line', async ({ page }) => {
+  await page.goto('/runs');
+  const table = page.locator('.local-runs-wrap table').first();
+  await expect(table.locator('tbody tr').first()).toBeVisible();
+  await expect(table.locator('tbody td[data-label="Model"]').filter({ hasText: LONG }).first()).toBeVisible();
+  // A cell's text lines, counted from its text's line boxes: two boxes more than 8px apart vertically are two lines.
+  const wrapped = await table.locator('thead th, tbody td[data-label="Model"], tbody td[data-label="Time"]').evaluateAll(cells => cells
+    .filter(cell => getComputedStyle(cell).display !== 'none' && (cell.textContent ?? '').trim() !== '')
+    .map(cell => {
+      const range = document.createRange();
+      range.selectNodeContents(cell);
+      const tops = [...range.getClientRects()].filter(rect => rect.width > 0 && rect.height > 0).map(rect => rect.top).sort((a, b) => a - b);
+      const lines = tops.reduce((count, top, i) => count + (i > 0 && top - tops[i - 1]! > 8 ? 1 : 0), tops.length ? 1 : 0);
+      return { text: (cell.textContent ?? '').trim(), lines };
+    })
+    .filter(cell => cell.lines > 1));
+  expect(wrapped, 'no header, model name or time wraps').toEqual([]);
 });
