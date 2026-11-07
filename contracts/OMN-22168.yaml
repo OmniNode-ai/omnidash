@@ -275,3 +275,14 @@ dod_evidence:
       - check_type: "test_passes"
         check_value: "npm run test:run -- tests/design-system/token-directions-story.omn22168.test.tsx src/storybook-coverage-compliance.test.ts"
         cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn22168-ac4-usage-analysis-money"
+    description: >-
+      AC4, the 2026-11-07 money decision on the Usage page only, not the whole criterion: the Usage analysis formats
+      every dollar figure through the dashboard rule (two decimals from $1 up, up to four under $1, cut and never rounded
+      up) and no longer imports the six-decimal formatter or keeps its own three-decimal case.
+    source: "manual"
+    binds_ac: ["AC4"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm run test:run -- tests/pages/local/usage-analysis.money.omn22168.test.ts"
+        cwd: "${OMNI_HOME}/omnidash"
