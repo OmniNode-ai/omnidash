@@ -3044,10 +3044,11 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns, acti
   const meteringDays = snapshots.find(snapshot => snapshot.topic === METERING_SUMMARY_TOPIC);
   const tokenDays = servedDays ?? (!decisionsCompleteRead(snapshots) && meteringDays && !meteringDays.failure
     ? meteringFilledDays(meteringDays.rows, snapshots.find(snapshot => snapshot.topic === DELEGATION_DECISIONS_TOPIC)?.rows ?? []) : null);
-  // Runs per day spans the days with a verdict read, and draws only those verdicts (Lakshman 2026-11-05, "in bar graph
-  // passed and failed only", "only days with verdicts"): a day's runs are its passed and failed runs.
-  const runVerdictDays = tokenDays && !servedDays
-    ? tokenDays.map(day => ({ ...day, runs: day.passed + day.failed, unrecorded: 0 })) : null;
+  // OMN-21970 AC2 (Jonah 2026-11-07, "same time scale as the graph above"): Runs per day keeps each day's served run
+  // total, so its axis spans every served day, as the Daily trend and Tokens per day do. It still draws only the
+  // passed and failed runs read (Lakshman 2026-11-05, "in bar graph passed and failed only"): a day with no verdict
+  // read has no bar and reads "Verdicts not read", never a zero.
+  const runDays = servedDays ?? tokenDays;
   // OMN-21166 AC26: trends and breakdowns, counted from the served decision rows (rule change R-B, 2026-10-18).
   if (component.component_id === 'overview-insights') {
     // AC42: the metering KPIs for the selected window sit in this open panel, and their charts in its analysis,
@@ -3058,7 +3059,7 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns, acti
     // OMN-21166 part 13: Overview keeps the activity summary; the window's spend line sits in "More activity" with the
     // run counts, and the detailed analysis lives on Runs (its "Explore run analysis" link stays).
     if (slice) return rows.length === 0 ? <NoRunsYet /> : <InsightsSection decisions={rows} now={Date.now()} view={slice.key as 'runs' | 'tokens' | 'failures'} onInspectFailure={cause => navigate(causeHref(cause))}
-      servedDays={slice.key === 'tokens' ? tokenDays : servedDays ?? runVerdictDays} complete={decisionsComplete} />;
+      servedDays={slice.key === 'tokens' ? tokenDays : runDays} complete={decisionsComplete} />;
     return rows.length === 0 ? <NoRunsYet /> : <>
     <InsightsSection decisions={rows} now={Date.now()} view="summary" servedDays={servedDays} complete={decisionsComplete} more={meteringRows.length > 0
       ? <MeteringActivityInsights rows={meteringRows} now={Date.now()} window={activityWindow} unavailable={meteringUnavailable} display="kpis" />

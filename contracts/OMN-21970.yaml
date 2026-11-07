@@ -85,3 +85,11 @@ dod_evidence:
       - check_type: "test_passes"
         check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/pages/local/settings-providers.omn21970.test.tsx tests/pages/local/settings-sections.omn21970.test.tsx"
         cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn21970-ac2-runs-per-day-axis"
+    description: "AC2 (Jonah 2026-11-07): with All selected and the per-day totals not served, Runs per day spans every day metering-summary.v1 serves, the same axis as the Daily trend; a day whose verdicts the incomplete decisions read never reached draws no bar and reads Verdicts not read."
+    source: "manual"
+    binds_ac: ["AC2"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/LocalDashboardPage.omn21970.runs-axis.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"

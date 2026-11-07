@@ -87,9 +87,15 @@ function runsWord(value: number): string {
   return `${count(value)} ${value === 1 ? 'run' : 'runs'}`;
 }
 
+/** OMN-21970 AC2: a served day on the axis whose verdicts the decisions read never reached (no bar, no count). */
+function verdictsNotRead(day: InsightDay): boolean {
+  return day.runs > 0 && day.passed + day.failed === 0;
+}
+
 function dayCounts(day: InsightDay): string {
   // OMN-22168 (Lakshman 2026-11-04, "don't show anything if we don't have"; 2026-11-05, "passed and failed only"): a run
-  // without a verdict is not drawn or named.
+  // without a verdict is not drawn or named. A day on the axis with runs but no verdict read says so instead of "0 runs".
+  if (verdictsNotRead(day)) return 'Verdicts not read';
   return [runsWord(day.passed + day.failed), `${count(day.passed)} passed`, `${count(day.failed)} failed`].join(', ');
 }
 
@@ -128,7 +134,9 @@ function RunsPerDay({ days }: { days: InsightDay[] }) {
   return (
     <ChartCard title="Runs per day" concept="runs-daily" delay={0}>
       <ChartReadout testId="runs-per-day-readout" active={active !== null}
-        text={active ? <>{dayLabel(active.day)}<Sep /><span data-field-tone="count">{count(active.passed + active.failed)} runs</span><Sep /><span data-field-tone="pass">{count(active.passed)} passed</span><Sep /><span data-field-tone="fail">{count(active.failed)} failed</span></> : ''} />
+        text={active ? verdictsNotRead(active)
+          ? <>{dayLabel(active.day)}<Sep /><span data-field-tone="basis">Verdicts not read</span></>
+          : <>{dayLabel(active.day)}<Sep /><span data-field-tone="count">{count(active.passed + active.failed)} runs</span><Sep /><span data-field-tone="pass">{count(active.passed)} passed</span><Sep /><span data-field-tone="fail">{count(active.failed)} failed</span></> : ''} />
       <DayColumns label="Runs per day" days={days.map((day, index) => ({
         key: day.day,
         ariaLabel: `${dayLabel(day.day)}: ${dayCounts(day)}`,
