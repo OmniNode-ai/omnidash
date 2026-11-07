@@ -70,7 +70,11 @@ test('AC47 the metering aggregate serves no directions: both read Not measured, 
   // directions are one line in the card's hover ("<in> in · <out> out"), shown on keyboard focus of the card. The row
   // serves neither tokens_in nor tokens_out, so each reads "Not recorded", and nothing is borrowed from token-usage.
   // Part 29 AC191: the basis is the card's caption, always in the page; no About button to focus.
-  await expect(card.getByText('Not recorded in · Not recorded out', { exact: true })).toBeVisible(MISSING);
-  await expect(card.locator('.local-token-direction')).toHaveCount(0);
+  // Lakshman 2026-11-07 ("uniform in whole websites"): the metering path draws the same two arrow rows as every other
+  // source, each in the unavailable ink when its count is not served.
+  const rows = card.locator('.local-token-direction');
+  await expect(rows).toHaveCount(2, MISSING);
+  await expect(rows.locator('strong')).toHaveText(['Not measured', 'Not measured']);
+  await expect(rows.first()).toHaveAttribute('data-field-unavailable', 'true');
   await expect(card).not.toContainText(/7,?771|3,?331/);
 });

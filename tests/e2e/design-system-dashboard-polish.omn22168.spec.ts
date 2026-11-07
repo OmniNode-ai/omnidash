@@ -26,7 +26,7 @@ import { chooseChartTab } from './chart-tabs';
  *      plenty of room between the other columns"; dev's 252px model column broke a long name over two lines, and dev wrote
  *      a day above its clock).
  *   L13 at 1440px an unmeasured saving reads "Not measured" on one line, its reason the tooltip (live lab 2026-11-07:
- *      "Not measured: tokens not recorded" wrapped over three lines in a 132px Saving column).
+ *      "Not measured: tokens not recorded" wrapped over three lines in a 132px Saving column). *   L14, tokens in and out in two colours on every page, is tests/e2e/token-directions.omn22168.spec.ts.
  */
 const LONG = 'nvidia/nemotron-3-ultra-550b-a55b:free';
 const template = chartRows[prefix + 'delegation.decisions.v1'][0] as Record<string, unknown>;
@@ -325,3 +325,4 @@ test('L13: at 1440px an unmeasured saving is one line, with its reason as the to
   });
   expect(shown).toEqual({ lines: 1, text: 'Not measured' });
 });
+

@@ -9,6 +9,8 @@ import '@/styles/local-dashboard.css';
 import '@/styles/dashboard-cards.css';
 import '@/styles/seven-page-design.css';
 import '@/styles/editorial.css';
+// The field colours, the tokens-in and tokens-out figures among them, as every page loads them through FieldIcon.
+import '@/styles/field-identity.css';
 
 export function StorySection({ title, children }: { title: string; children: ReactNode }) {
   return (

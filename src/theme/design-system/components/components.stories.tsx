@@ -7,7 +7,7 @@ import { useState } from 'react';
 import { StoryPage, StorySection } from '../story-frame';
 import {
   Badge, Card, ColumnTip, ConfirmDialog, DashboardTabs, DashboardToggle, DataTable, Dropdown, EmptyState, Fact, FactList, Figure, InfoTip, KpiTile, Panel,
-  PanelTitle, StatusChip, Tooltip,
+  PanelTitle, StatusChip, TokenDirections, Tooltip,
 } from './index';
 import { FileSpreadsheet } from '../icons';
 
@@ -88,6 +88,13 @@ function Components() {
           <tr><td>glm-5.1</td><td>5</td><td>Not measured</td></tr>
         </tbody>
       </DataTable>
+    </StorySection>
+
+    <StorySection title="Token directions">
+      {/* Tokens in and tokens out in their two colours, arrows included, as every token card draws them; a count that
+          is not served keeps the unavailable ink (Lakshman 2026-11-07). */}
+      <TokenDirections input={2954602} output={1389124} />
+      <TokenDirections input={528485346} output={null} />
     </StorySection>
 
     <StorySection title="Empty state">

@@ -612,7 +612,7 @@ function DecisionDetail({ row }: { row: DelegationDecisionRow }) {
           { k: 'Task type', v: taskLabel(row.task_type) },
           { k: 'Model', v: row.model_name },
           { k: 'Quality detail', v: row.quality_gate_detail ? escalationReason(row.quality_gate_detail).text : '—' },
-          { k: 'Tokens in / out', v: `${row.tokens_input == null ? 'Not recorded' : formatFullCount(row.tokens_input)} / ${row.tokens_output == null ? 'Not recorded' : formatFullCount(row.tokens_output)}` },
+          { k: 'Tokens in / out', v: <><span data-field-tone="tokens-in" data-field-unavailable={row.tokens_input == null}>{row.tokens_input == null ? 'Not recorded' : formatFullCount(row.tokens_input)}</span>{' / '}<span data-field-tone="tokens-out" data-field-unavailable={row.tokens_output == null}>{row.tokens_output == null ? 'Not recorded' : formatFullCount(row.tokens_output)}</span></> },
           { k: 'Latency', v: fmtLatency(row.latency_ms) },
           { k: 'Created', v: readableTime(row.created_at) ?? row.created_at },
         ]}
