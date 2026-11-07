@@ -851,7 +851,13 @@ export function MeteringTotalCard({ component, config, rows, window = 'all', now
     const tokenChange = OVERVIEW_HEADLINE_CARDS.has(component.component_id) ? periodChangeLine(rows, window, TOKENS_IN_AND_OUT, row) : null;
     return <><Figure measured={total !== null}>{total !== null ? <CountUpText text={formatDashboardCount(total)} /> : formatDashboardCount(total)}</Figure>
       {tokenChange && <ChangeLine text={tokenChange} />}
-      <HeadlineHover label={component.title} lines={headlineHoverLines(component.component_id, row, null, window)} /></>;
+      {/* Lakshman 2026-11-07 ("token in and out should be different color and uniform in whole websites"): on every
+          source the card's directions are the arrow rows in their two colours, not a plain "<in> in · <out> out"
+          line; any further line (days with no runs) stays a caption. */}
+      <CardBasis label={component.title}>
+        <TokenDirections input={row.tokens_in} output={row.tokens_out} />
+        {headlineHoverLines(component.component_id, row, null, window).slice(1).map((line, index) => <p key={index} className="local-dashboard-caption">{line}</p>)}
+      </CardBasis></>;
   }
   const required = component.data_bindings?.[0]?.required_fields ?? [];
   // OMN-21304 AC4: Spend and Savings each name the baseline, the pricing version and the runs left unpriced.

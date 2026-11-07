@@ -76,7 +76,8 @@ test('metering-backed Overview uses the same compact total and arrow-only full d
   await expect(tokens.locator('.local-dashboard-metric')).toHaveText('6.13K');
   // OMN-21166 live review 2026-10-25: on the metering path the Tokens card is its compact total, and the full
   // directions (whole integers, never compacted) are its hover line, a tooltip that is the info button's description.
-  await expect(tokens.locator('.local-card-caption')).toHaveText('5,756 in · 378 out');
+  // Lakshman 2026-11-07: the directions are the two arrow rows in their colours, whole integers, never compacted.
+  await expect(tokens.locator('.local-card-caption .local-token-direction strong')).toHaveText(['5,756', '378']);
   await expect(tokens.getByRole('button', { name: 'About Tokens processed' })).toHaveCount(0);
   await expect(tokens).not.toContainText('Input');
   await expect(tokens).not.toContainText('Output');
