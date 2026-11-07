@@ -1,7 +1,7 @@
 import { useMemo, useState, type CSSProperties } from 'react';
 import { Link } from 'wouter';
 
-import { formatUsd } from '@/lib/currency';
+import { formatDashboardUsd } from '@/lib/dashboard-currency';
 import { ColumnTip, DashboardTabs, DashboardToggle, DataTable, EmptyState, InfoTip, Panel, PanelTitle } from '@/theme/design-system/components';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { tierLabel } from '@/pages/local/plain-text';
@@ -52,10 +52,11 @@ const toned = <T extends string>(value: T, label: string, concept: string) =>
 type SortKey = 'name' | 'runs' | 'spend' | 'pass' | 'p50' | 'p95' | 'last';
 
 const dayLabel = (day: string) => new Date(`${day}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
-const usd = (value: number) => (value > 0 && value < 0.01 ? `$${value.toFixed(3)}` : formatUsd(value));
+// OMN-22168 (Jonah 2026-11-06): every dollar figure follows the display rule (two decimals, up to four under $1, cut).
+const usd = (value: number) => formatDashboardUsd(value);
 const latency = (value: number | null) => (value === null ? 'Not recorded' : value >= 1000 ? `${(value / 1000).toFixed(1)} s` : `${Math.round(value)} ms`);
 const passText = (totals: Totals) => (totals.verdicts === 0 ? 'No verdicts' : `${((totals.passed / totals.verdicts) * 100).toFixed(1)}% (${totals.passed} of ${totals.verdicts})`);
-const money = (value: number | null, measured: number, runs: number) => (value === null ? 'Not measured' : `${formatUsd(value)} (${measured} of ${runs} measured)`);
+const money = (value: number | null, measured: number, runs: number) => (value === null ? 'Not measured' : `${formatDashboardUsd(value)} (${measured} of ${runs} measured)`);
 const lastText = (value: string | null) => (value === null ? 'Not recorded'
   : `${dayLabel(value.slice(0, 10))}, ${new Date(value).toISOString().slice(11, 16)} UTC`);
 
@@ -83,7 +84,7 @@ function QualityChart({ groups }: { groups: Group[] }) {
   const plotted = groups.filter(group => group.name !== NOT_RECORDED && group.spend !== null && group.spendMeasured > 0 && group.verdicts > 0);
   const unplotted = groups.filter(group => !plotted.includes(group));
   const perRun = (group: Group) => group.spend! / group.spendMeasured;
-  // usd(0) is formatUsd(0), so one formatter labels both ticks as the page did.
+  // usd(0) is formatDashboardUsd(0), so one formatter labels both ticks as the page did.
   return <CostQualityScatter label="Cost versus quality per model" formatCost={usd} unplotted={unplotted.map(group => group.name)}
     points={plotted.map(group => ({ key: group.name, name: group.name, cost: perRun(group), rate: group.passed / group.verdicts, runs: group.runs,
       color: modelColor(group.name),
@@ -128,8 +129,8 @@ function GroupsView({ decisionRows }: { decisionRows: readonly unknown[] }) {
               cell's text is unchanged. */}
           <td data-cell="spend" data-label="Spend">{group.spend === null ? money(group.spend, group.spendMeasured, group.runs) : <>
             {group.spend === 0
-              ? <span className="local-cost-free" title={formatUsd(group.spend)}>{formatUsd(group.spend).replace(/\.0+$/, '')}</span>
-              : <span className="local-cell-figure">{formatUsd(group.spend)}</span>}
+              ? <span className="local-cost-free" title={formatDashboardUsd(group.spend)}>{formatDashboardUsd(group.spend).replace(/\.0+$/, '')}</span>
+              : <span className="local-cell-figure">{formatDashboardUsd(group.spend)}</span>}
             <span className="local-cell-sub local-cell-sub--line">{` (${group.spendMeasured} of ${group.runs} measured)`}</span></>}</td>
           <td data-cell="pass" data-label="Pass rate" data-pass-band={passBand(group.passed, group.verdicts)}>{group.verdicts === 0
             ? <span className="local-pass-pill">{passText(group)}</span>
@@ -327,7 +328,7 @@ export function RunsTotals({ rows, sample, complete = false }: { rows: readonly 
   const totals = totalsOf(rows);
   return <p className="local-dashboard-caption local-runs-totals" data-runs-totals aria-live="polite">
     <span data-total="runs">{`${totals.runs} ${totals.runs === 1 ? 'run' : 'runs'}`}</span>{' · '}
-    <span data-total="spend">{totals.spend === null ? 'spend not measured' : `${formatUsd(totals.spend)} spend (${totals.spendMeasured} with a recorded cost)`}</span>{' · '}
+    <span data-total="spend">{totals.spend === null ? 'spend not measured' : `${formatDashboardUsd(totals.spend)} spend (${totals.spendMeasured} with a recorded cost)`}</span>{' · '}
     <span data-total="pass">{totals.verdicts === 0 ? 'no verdicts' : `${((totals.passed / totals.verdicts) * 100).toFixed(1)}% passed (${totals.passed} of ${totals.verdicts})`}</span>{' · '}
     <span data-total="p95">{totals.p95 === null ? 'p95 not recorded' : `p95 ${latency(totals.p95)}`}</span>{' · '}
     {/* "Measured" is Overview's word for runs with token counts and a cost; this counts runs with a recorded cost. */}
