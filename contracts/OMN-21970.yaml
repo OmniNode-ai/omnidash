@@ -9,14 +9,18 @@ summary: >-
   a day whose runs carry no token counts reads not recorded, every model is coloured by its tier with
   the product owner's palette, every summary card has its own concept colour and icon, the six sidebar
   pages are animated with reduced-motion fallbacks, and Settings spans the page with one card per
-  provider. AC1 and AC7 are proven in omnimarket, not in this repository.
+  provider. AC1's per-day totals are served by omnimarket and proven by omnibase_infra's real-Postgres
+  test of the vendored migrations, which this contract runs; AC7's cause, a 500-row read that held no
+  2026-10-28 runs, is fixed and tested here.
 is_seam_ticket: false
 interface_change: false
 interfaces_touched: []
 requirements:
   - id: "req-omnidash-acceptance"
-    statement: "The omnidash acceptance criteria of OMN-21970, copied from the live ticket on 2026-11-04. AC1 (served per-day totals) and AC7 (cause of the missing token counts) belong to omnimarket and are not listed here. The ticket remains the source."
+    statement: "The acceptance criteria of OMN-21970, copied from the live ticket on 2026-11-07. The ticket remains the source."
     acceptance:
+      - id: "AC1"
+        statement: "AC1: omnimarket serves per-day run and token totals for a requested UTC day range with no row cap, and for a range holding more than 500 runs the served run totals equal the full count"
       - id: "AC2"
         statement: "AC2: with All, 30 or 15 days selected, Overview's Runs per day and Tokens per day draw every day of the range from the served per-day totals, and the drawn runs sum to the headline total"
       - id: "AC3"
@@ -27,6 +31,8 @@ requirements:
         statement: "AC5: every chart or table that shows a model colours it by its tier with the palette above in light and dark, uses one colour per tier across all charts, and has a legend beside it"
       - id: "AC6"
         statement: "AC6: every served tier, including cheap_frontier and cheap_cloud which the palette does not name, resolves to a stated palette colour in light and dark, never a hash-derived colour, and the product owner confirms the mapping"
+      - id: "AC7"
+        statement: "AC7: the cause of the missing token counts on 2026-10-28 is found from the stored rows and recorded on this ticket, then fixed with a test that fails before the fix or filed as its own defect ticket"
       - id: "AC8"
         statement: "AC8: every summary card on Overview, Usage, Runs and Delegation Evidence has its own concept colour and its own Lucide icon; the twelve card concepts have twelve different colours, every pair on one page at least 0.10 apart in OKLab and every pair anywhere at least 0.07, in light and dark; no two cards on a page share an icon; a concept keeps one colour on its card and its charts; normal text keeps at least 4.5:1 against its actual background, large figures and graphical accents at least 3:1; an unmeasured figure keeps the unavailable ink; model and tier series keep the AC5 tier colours"
       - id: "AC9"
@@ -34,13 +40,21 @@ requirements:
       - id: "AC10"
         statement: "AC10: the Settings sections span the full width of the page (no 960px column, no table running past its section) and the page shows each user-facing field the backend serves for it and never a value it does not serve: one card per provider from /models with a short status (passed, failed with its failure class, not set up, not tested), its last test time, tested model, backend and endpoint, whether routing tries it first and its first model when served; the full failure text shows only when opened; a model list longer than three shows three and a count that expands; a provider not set up shows its set-up command; System status adds the store location and when the state last changed; a Pricing and routing section names the baseline model and pricing version served by metering-summary.v1; a section menu links the four sections; a provider the page does not know renders like the others; a null field is left out; each key keeps its Last used as OMN-19996 defines it (Never when unset), also when /models fails; the page stays read-only"
 dod_evidence:
+  - id: "dod-omn21970-ac1-served-daily-totals"
+    description: "AC1 on a real PostgreSQL: the per-day view and walk cursor, vendored into omnibase_infra byte for byte from omnimarket's node_projection_delegation (omnibase_infra#5585), serve 600 runs over 20 days as 20 days summing to 600, past the 500-row cap, beside a capped 500-row control that fails the same check. This is the same check omnibase_infra's own OMN-21970 contract runs."
+    source: "manual"
+    binds_ac: ["AC1"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "uv run pytest tests/integration/migrations/test_omn21970_daily_view_full_history.py tests/unit/migrations/test_omn21970_daily_view_cursor_vendor.py -q -n 0 --no-cov"
+        cwd: "${OMNI_HOME}/omnibase_infra"
   - id: "dod-omn21970-ac2-ac4-daily-charts"
     description: "AC2 and AC4 at the chart and series level: with All selected, 20 served days carrying 600 runs are all drawn and sum to 600, a served history longer than 30 days is drawn whole, a day with no runs is zero runs and zero tokens, and a day whose runs carry no token counts stays not recorded. Overview's page binding of the served per-day exposure (daily.v1) is held back until the lab serves it; until then the charts draw from the walked run records."
     source: "manual"
     binds_ac: ["AC2", "AC4"]
     checks:
       - check_type: "test_passes"
-        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/local/insight-charts.omn21970.test.tsx src/pages/local/insights.omn21970.test.ts"
+        check_value: "npm run test:run -- src/pages/local/insight-charts.omn21970.test.tsx src/pages/local/insights.omn21970.test.ts"
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn21970-ac3-every-run-read"
     description: "AC3: the local decisions read and Delegation Evidence's read walk every served page by cursor (600, 1,200 and a four-page 1,955-run store read whole), a stuck cursor or failed page keeps the runs read and marks the read incomplete, and after a complete read no Runs, Usage, Overview or Evidence caption calls the runs the latest returned ones."
@@ -48,7 +62,7 @@ dod_evidence:
     binds_ac: ["AC3"]
     checks:
       - check_type: "test_passes"
-        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/layout/local-page-loader.omn21970-walk.test.ts src/services/event-dash-api.omn21970-walk.test.ts src/pages/RunsKpis.omn21970.test.tsx src/pages/local/usage-analysis.omn21970-captions.test.tsx src/pages/DelegationEvidencePage.omn21970-caption.test.tsx"
+        check_value: "npm run test:run -- src/layout/local-page-loader.omn21970-walk.test.ts src/services/event-dash-api.omn21970-walk.test.ts src/pages/RunsKpis.omn21970.test.tsx src/pages/local/usage-analysis.omn21970-captions.test.tsx src/pages/DelegationEvidencePage.omn21970-caption.test.tsx"
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn21970-ac5-ac6-tier-colours"
     description: "AC5 and AC6: every tier in the served tier set resolves to the product owner's palette hex in light and dark, cheap_frontier and cheap_cloud to their stated family shades (light cheap_frontier the darker frontier shade #006541 the product owner chose 2026-11-04), each passing the palette's colour-blind floors in both themes, an unknown tier to none, never a hash colour; Model usage and Tier mix give a model and its tier the same colour. The product owner's confirmation of the light cheap_frontier shade is recorded on the ticket, not by this check."
@@ -56,7 +70,7 @@ dod_evidence:
     binds_ac: ["AC5", "AC6"]
     checks:
       - check_type: "test_passes"
-        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/lib/tier-colors.omn21970.test.ts"
+        check_value: "npm run test:run -- tests/lib/tier-colors.omn21970.test.ts"
         cwd: "${OMNI_HOME}/omnidash"
       - check_type: "test_passes"
         check_value: "npm test -- --run tests/lib/tier-colors.omn21970.test.ts"
@@ -67,7 +81,7 @@ dod_evidence:
     binds_ac: ["AC8"]
     checks:
       - check_type: "test_passes"
-        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/styles/card-palette.omn21970.test.tsx"
+        check_value: "npm run test:run -- src/styles/card-palette.omn21970.test.tsx"
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn21970-ac9-motion"
     description: "AC9: the rise-in and grow-in families run only under no-preference and switch off under reduced motion, every named keyframe is defined, and the count-up ends on the exact figure, shows a refreshed or mid-count figure at once, and shows the final figure at once under reduced motion or without matchMedia."
@@ -75,7 +89,7 @@ dod_evidence:
     binds_ac: ["AC9"]
     checks:
       - check_type: "test_passes"
-        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/styles/motion.omn21970.test.tsx src/components/dashboard/CountUpText.omn21970.test.tsx"
+        check_value: "npm run test:run -- src/styles/motion.omn21970.test.tsx src/components/dashboard/CountUpText.omn21970.test.tsx"
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn21970-ac10-settings"
     description: "AC10: one card per provider with only served fields, the full error inside a closed disclosure, 18 models shown as 3 and +15 more, null fields left out, Tried first only when served, the Pricing and routing section, System status store location and state time, and the section menu."
@@ -83,5 +97,13 @@ dod_evidence:
     binds_ac: ["AC10"]
     checks:
       - check_type: "test_passes"
-        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/pages/local/settings-providers.omn21970.test.tsx tests/pages/local/settings-sections.omn21970.test.tsx"
+        check_value: "npm run test:run -- tests/pages/local/settings-providers.omn21970.test.tsx tests/pages/local/settings-sections.omn21970.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn21970-ac7-empty-day-cause"
+    description: "AC7: the cause, recorded on the ticket on 2026-11-02 with per-day counts of runs with and without token counts for 2026-10-26 to 2026-11-01, was the 500-row read: the newest 500 runs held no 2026-10-28 run, so that day summed an empty list and read not recorded. The fix makes a day with no runs zero runs and zero tokens, while a day whose runs carry no token counts stays not recorded."
+    source: "manual"
+    binds_ac: ["AC7"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm run test:run -- src/pages/local/insights.omn21970.test.ts"
         cwd: "${OMNI_HOME}/omnidash"
