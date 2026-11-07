@@ -57,7 +57,7 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: >-
-          test -d node_modules || npm ci --no-audit --no-fund; npx vitest run
+          npm run test:run --
           tests/design-system/no-raw-colours.test.ts
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn22168-ac2-icon-registry"
@@ -70,7 +70,7 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: >-
-          test -d node_modules || npm ci --no-audit --no-fund; npx vitest run
+          npm run test:run --
           tests/design-system/lint-guards.test.ts
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn22168-ac3-chart-kit"
@@ -83,7 +83,7 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: >-
-          test -d node_modules || npm ci --no-audit --no-fund; npx vitest run
+          npm run test:run --
           tests/design-system/charts.test.tsx tests/design-system/chart-scan.test.ts
           tests/design-system/tooltip.test.tsx
         cwd: "${OMNI_HOME}/omnidash"
@@ -98,12 +98,12 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: >-
-          test -d node_modules || npm ci --no-audit --no-fund; npx vitest run
+          npm run test:run --
           tests/design-system/breakable-name.omn22168.test.tsx
         cwd: "${OMNI_HOME}/omnidash"
       - check_type: "test_passes"
         check_value: >-
-          test -d node_modules || npm ci --no-audit --no-fund; npx playwright test
+          npm run test:e2e --
           tests/e2e/design-system-dashboard-polish.omn22168.spec.ts --project=chromium --workers=1 --retries=0
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn22168-ac1-side-by-side-colours"
@@ -117,7 +117,7 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: >-
-          test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/styles/tab-hues.omn22168.test.ts
+          npm run test:run -- src/styles/tab-hues.omn22168.test.ts
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn22168-ac1-pass-band-tokens"
     description: >-
@@ -129,7 +129,7 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: >-
-          test -d node_modules || npm ci --no-audit --no-fund; npx vitest run
+          npm run test:run --
           tests/design-system/pass-bands.omn22168.test.ts
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn22168-ac4-component-kit"
@@ -142,7 +142,7 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: >-
-          test -d node_modules || npm ci --no-audit --no-fund; npx vitest run
+          npm run test:run --
           tests/design-system/components.test.tsx tests/design-system/dropdown.test.tsx
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn22168-ac4-evidence-uses-runs-exports"
@@ -155,7 +155,7 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: >-
-          test -d node_modules || npm ci --no-audit --no-fund; npx playwright test
+          npm run test:e2e --
           tests/e2e/design-system-dashboard-polish.omn22168.spec.ts --grep "L8b" --project=chromium --workers=1
           --retries=0
         cwd: "${OMNI_HOME}/omnidash"
@@ -169,7 +169,7 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: >-
-          test -d node_modules || npm ci --no-audit --no-fund; npx vitest run
+          npm run test:run --
           tests/design-system/token-seam.test.ts
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn22168-ac7-colour-identity"
@@ -183,7 +183,7 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: >-
-          test -d node_modules || npm ci --no-audit --no-fund; npx vitest run
+          npm run test:run --
           tests/design-system/colour-identity.test.ts
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn22168-ac4-run-table-money-and-dates"
@@ -196,7 +196,7 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: >-
-          test -d node_modules || npm ci --no-audit --no-fund; npx vitest run
+          npm run test:run --
           tests/design-system/run-table.omn22168.test.tsx
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn22168-ac4-run-table-no-wrap"
@@ -209,7 +209,7 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: >-
-          test -d node_modules || npm ci --no-audit --no-fund; npx playwright test
+          npm run test:e2e --
           tests/e2e/design-system-dashboard-polish.omn22168.spec.ts --grep "L12" --project=chromium --workers=1
           --retries=0
         cwd: "${OMNI_HOME}/omnidash"
@@ -223,7 +223,7 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: >-
-          test -d node_modules || npm ci --no-audit --no-fund; npx playwright test
+          npm run test:e2e --
           tests/e2e/local-dashboard-omn21166-evidence-revision7.spec.ts -g "Savings bridge" --project=chromium --workers=1
           --retries=0
         cwd: "${OMNI_HOME}/omnidash"
@@ -237,7 +237,7 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: >-
-          test -d node_modules || npm ci --no-audit --no-fund; npx playwright test
+          npm run test:e2e --
           tests/e2e/design-system-dashboard-polish.omn22168.spec.ts --grep "L13" --project=chromium --workers=1
           --retries=0
         cwd: "${OMNI_HOME}/omnidash"
@@ -251,6 +251,19 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: >-
-          test -d node_modules || npm ci --no-audit --no-fund; npx vitest run
+          npm run test:run --
           tests/pages/DelegationEvidencePage.omn22168.float-noise.test.ts
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn22168-ac6-storybook"
+    description: >-
+      AC6: the Storybook build exits 0 with the design-system stories (tokens and icons under src/theme/design-system),
+      and the Storybook coverage compliance test passes with them included.
+    source: "manual"
+    binds_ac: ["AC6"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm run build-storybook"
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:run -- src/storybook-coverage-compliance.test.ts"
         cwd: "${OMNI_HOME}/omnidash"
