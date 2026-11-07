@@ -264,3 +264,14 @@ dod_evidence:
       - check_type: "test_passes"
         check_value: "npm run test:e2e -- tests/e2e/token-directions.omn22168.spec.ts --project=chromium --workers=1 --retries=0"
         cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn22168-ac6-token-directions-story"
+    description: >-
+      AC6, the 2026-11-07 token colour decision only, not the whole criterion: the design system's Storybook page shows
+      the token direction rows as a kit component, measured and with a count that is not served, in light and dark, and
+      the story frame loads the field colours so the story draws tokens in and tokens out in the colours the pages use.
+    source: "manual"
+    binds_ac: ["AC6"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm run test:run -- tests/design-system/token-directions-story.omn22168.test.tsx src/storybook-coverage-compliance.test.ts"
+        cwd: "${OMNI_HOME}/omnidash"
