@@ -763,8 +763,8 @@ function moneyBasis(money: HeadlineMoney | null): string {
 }
 
 /**
- * A served dollar figure exactly as served (amendment 30b, AC207a): thousands separated, every served decimal kept, none
- * added or rounded away. A number is written in its shortest exact form, so a parsed 4.743332 never prints float noise.
+ * A served dollar figure exactly as served (amendment 30b, AC207a), now the bridge figure's hover title: thousands separated,
+ * every served decimal kept, none added or rounded away. A number is written in its shortest exact form, so a parsed 4.743332 never prints float noise.
  */
 function exactUsd(value: unknown): string {
   if (isUnavailableField(value)) return 'Not measured';
@@ -793,6 +793,16 @@ function expandExponent(text: string): string {
   return `${sign}${body.replace(/^0+(?=\d)/, '')}`;
 }
 
+/**
+ * One bridge figure as dashboard money, cut and never rounded up (Jonah 2026-11-06; Lakshman 2026-11-07 chose this over
+ * amendment 30b's every-digit display), with the exact served amount as its title, so the equation still adds up on hover.
+ */
+function BridgeFigure({ value }: { value: unknown }) {
+  const exact = exactUsd(value);
+  if (exact === 'Not measured') return <strong>Not measured</strong>;
+  return <strong title={`${exact} exactly, as served`}>{formatUsd(value)}</strong>;
+}
+
 /** AC207: the equation reads one all-time metering row, never the latest decision sample. */
 function SavingsBridge({ rows, loading }: { rows: readonly unknown[] | undefined; loading: boolean }) {
   const canonical = meteringHeadline(rows, loading);
@@ -802,13 +812,13 @@ function SavingsBridge({ rows, loading }: { rows: readonly unknown[] | undefined
       <p className="note">{moneyBasis(money)}</p>
       <div className="ev-savings-equation">
         {/* Each figure in its field's colour, as Overview's headline figures (OMN-22168). */}
-        <div data-field-tone="baseline"><span className="section-label">Baseline cost (modelled)</span><strong>{money ? exactUsd(money.cloud) : canonical.unavailable}</strong></div>
+        <div data-field-tone="baseline"><span className="section-label">Baseline cost (modelled)</span>{money ? <BridgeFigure value={money.cloud} /> : canonical.unavailable}</div>
         <span className="ev-savings-operator" aria-label="minus">−</span>
-        <div data-field-tone="cost"><span className="section-label">Actual spend</span><strong>{money ? exactUsd(money.local) : canonical.unavailable}</strong></div>
+        <div data-field-tone="cost"><span className="section-label">Actual spend</span>{money ? <BridgeFigure value={money.local} /> : canonical.unavailable}</div>
         <span className="ev-savings-operator" aria-label="equals">=</span>
-        <div data-field-tone="savings"><span className="section-label">Saving (modelled)</span><strong>{money ? exactUsd(money.saved) : canonical.unavailable}</strong></div>
+        <div data-field-tone="savings"><span className="section-label">Saving (modelled)</span>{money ? <BridgeFigure value={money.saved} /> : canonical.unavailable}</div>
       </div>
-      <p className="note">Each figure is shown exactly as served, so baseline cost minus actual spend equals the saving; headline cards round to cents.</p>
+      <p className="note">Figures are cut for display, never rounded up. Hover a figure for the exact amount served; the exact amounts add up.</p>
     </section>
   </Panel>;
 }
