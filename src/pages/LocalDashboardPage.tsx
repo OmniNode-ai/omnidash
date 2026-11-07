@@ -1091,6 +1091,12 @@ function newestFirst(decisions: readonly unknown[]): Row[] {
   return [...asRecords(decisions)].sort((a, b) => timeOf(b.written_at) - timeOf(a.written_at));
 }
 
+/** Runs newest first by the time the run table shows (created_at, else written_at), ties by written_at. */
+function byRunTime(decisions: readonly unknown[]): Row[] {
+  const shown = (row: Row) => timeOf(row.created_at ?? row.written_at);
+  return newestFirst(decisions).sort((a, b) => shown(b) - shown(a) || timeOf(b.written_at) - timeOf(a.written_at));
+}
+
 /** A served id to its row. A savings session's session_id is the decision's correlation_id (OMN-19981, aac9032d). */
 function indexBy(rows: readonly unknown[], key: string): Map<string, Row> {
   const index = new Map<string, Row>();
@@ -1617,7 +1623,10 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
   const { status, cause, model, backend, tier = 'all', span, day = '', task = 'all', query = '' } = view;
   const pageIndex = view.page - 1;
   const bySession = indexBy(sessions, 'session_id');
-  const runs = newestFirst(decisions);
+  // Lakshman 2026-11-07 (live lab: a Nov 5 15:32 run listed among Nov 7 05:47 runs): the table orders runs by the time
+  // its Time column shows, the run's created_at, newest first. The served page is still the newest by written_at; a run
+  // re-written later keeps its own place in the day it ran.
+  const runs = byRunTime(decisions);
   const models = [...new Set(runs.map((run) => modelOrUnknown(run.model_name)))].sort();
   const causes = [...new Set(runs.filter((run) => statusOf(run) === 'failed').map((run) => causeOf(run)))].sort();
   const backends = [...new Set(runs.map((run) => recorded(run.backend_id)))].sort();
@@ -1922,7 +1931,11 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                   <td data-label="Cost" data-num=""><CostCell session={session} run={run} /></td>
                   {/* Items 1 and 2: the baseline is named once in the header when the rows share it; a basis other than
                       measured is a tag beside the figure. */}
-                  <td data-label={sharedBaseline ? `Saving vs ${sharedBaseline}` : 'Saving'} data-num="" data-wrap={saving.startsWith('Not measured') ? '' : undefined}>{saving}{!isMissing(basis) && String(basis) !== 'measured' && !saving.startsWith('Not measured') && <span className="local-run-tag">{String(basis)}</span>}</td>
+                  {/* Lakshman 2026-11-07: an unmeasured saving reads "Not measured" on one line, muted; the reason is its
+                      tooltip and stays in the cell's text for assistive tech, so the row keeps one line's height. */}
+                  <td data-label={sharedBaseline ? `Saving vs ${sharedBaseline}` : 'Saving'} data-num="" data-unmeasured={saving.startsWith('Not measured') ? '' : undefined}
+                    title={saving.startsWith('Not measured: ') ? saving : undefined}>{saving.startsWith('Not measured: ')
+                      ? <>Not measured<span className="local-visually-hidden">{saving.slice('Not measured'.length)}</span></> : saving}{!isMissing(basis) && String(basis) !== 'measured' && !saving.startsWith('Not measured') && <span className="local-run-tag">{String(basis)}</span>}</td>
                   <td data-label="Baseline model" className="local-dashboard-cell-token" data-extra="">{recorded(baselineOf(run))}</td>
                   <td data-label="Basis" data-extra="">{recorded(basis)}</td>
                   <td data-label="Duration" data-num="" title={exactMs(run.latency_ms)}>{duration(run.latency_ms)}</td>
