@@ -227,3 +227,28 @@ dod_evidence:
           tests/e2e/local-dashboard-omn21166-evidence-revision7.spec.ts -g "Savings bridge" --project=chromium --workers=1
           --retries=0
         cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn22168-ac4-run-table-live-review"
+    description: >-
+      AC4, the 2026-11-07 live lab review of the run table only, not the whole criterion: rows run newest first by the
+      time the Time column shows (a run created Nov 5 but written Nov 7 sat among the Nov 7 runs), and an unmeasured
+      saving reads "Not measured" on one line at 1440px with its reason as the tooltip (it wrapped over three lines).
+    source: "manual"
+    binds_ac: ["AC4"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm run test:run -- tests/design-system/run-table.omn22168.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/design-system-dashboard-polish.omn22168.spec.ts --grep L13 --project=chromium --workers=1 --retries=0"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn22168-ac4-evidence-bridge-float-noise"
+    description: >-
+      AC4, the 2026-11-07 live lab review of the savings bridge only, not the whole criterion: a served amount spelled
+      past a double's precision (3.663405879999999993870909612) shows on hover in its shortest form, 3.66340588, the
+      shortest forms still add up, and an amount within a double's precision is shown exactly as served.
+    source: "manual"
+    binds_ac: ["AC4"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm run test:run -- tests/pages/DelegationEvidencePage.omn22168.float-noise.test.ts"
+        cwd: "${OMNI_HOME}/omnidash"

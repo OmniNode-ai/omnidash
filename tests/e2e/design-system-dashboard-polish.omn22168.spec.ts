@@ -25,6 +25,8 @@ import { chooseChartTab } from './chart-tabs';
  *   L12 at 1440px every Runs header, model name and time stays on one line (Jonah 2026-11-06, "column wrapping when there is
  *      plenty of room between the other columns"; dev's 252px model column broke a long name over two lines, and dev wrote
  *      a day above its clock).
+ *   L13 at 1440px an unmeasured saving reads "Not measured" on one line, its reason the tooltip (live lab 2026-11-07:
+ *      "Not measured: tokens not recorded" wrapped over three lines in a 132px Saving column).
  */
 const LONG = 'nvidia/nemotron-3-ultra-550b-a55b:free';
 const template = chartRows[prefix + 'delegation.decisions.v1'][0] as Record<string, unknown>;
@@ -33,7 +35,9 @@ const runs = [3, 2, 1, 0].flatMap((ago, d) => Array.from({ length: 6 }, (_, r) =
   const at = `${recentDay(ago)}T0${r}:1${d}:00Z`;
   return { ...template, correlation_id: `polish-${d}-${r}`, created_at: at, written_at: at,
     model_name: r % 2 ? LONG : 'model-a', quality_gate_passed: r < 5 - d, latency_ms: 4_000 + r * 5_000 + d * 1_000,
-    tokens_input: 400 + r * 100, tokens_output: 90 + r * 10 };
+    tokens_input: 400 + r * 100, tokens_output: 90 + r * 10,
+    // L13: the newest day's first run has no measured saving.
+    ...(ago === 0 && r === 5 ? { savings_measurement: 'unknown_tokens', modelled_savings_usd: null } : {}) };
 }));
 const rows = { ...chartRows, [prefix + 'delegation.decisions.v1']: runs };
 
@@ -303,4 +307,21 @@ test('L12: at 1440px every Runs header, model name and time stays on one line', 
     })
     .filter(cell => cell.lines > 1));
   expect(wrapped, 'no header, model name or time wraps').toEqual([]);
+});
+
+test('L13: at 1440px an unmeasured saving is one line, with its reason as the tooltip', async ({ page }) => {
+  await page.goto('/runs');
+  const cell = page.locator('.local-runs-wrap table').first().locator('tbody td[data-unmeasured]').first();
+  await expect(cell).toBeVisible();
+  await expect(cell).toHaveAttribute('title', 'Not measured: tokens not recorded');
+  // Lines of the visible text only: the reason kept for assistive tech is clipped to 1px and is not a line.
+  const shown = await cell.evaluate(td => {
+    const tops = [...td.childNodes]
+      .filter(node => !(node instanceof HTMLElement && node.classList.contains('local-visually-hidden')))
+      .flatMap(node => { const range = document.createRange(); range.selectNodeContents(node); return [...range.getClientRects()]; })
+      .filter(rect => rect.width > 0 && rect.height > 0).map(rect => rect.top).sort((a, b) => a - b);
+    const lines = tops.reduce((count, top, i) => count + (i > 0 && top - tops[i - 1]! > 8 ? 1 : 0), tops.length ? 1 : 0);
+    return { lines, text: [...td.childNodes].filter(n => !(n instanceof HTMLElement && n.classList.contains('local-visually-hidden'))).map(n => n.textContent).join('') };
+  });
+  expect(shown).toEqual({ lines: 1, text: 'Not measured' });
 });

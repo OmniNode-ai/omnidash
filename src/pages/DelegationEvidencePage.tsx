@@ -798,9 +798,24 @@ function expandExponent(text: string): string {
  * amendment 30b's every-digit display), with the exact served amount as its title, so the equation still adds up on hover.
  */
 function BridgeFigure({ value }: { value: unknown }) {
-  const exact = exactUsd(value);
+  const exact = exactUsd(withoutFloatNoise(value));
   if (exact === 'Not measured') return <strong>Not measured</strong>;
   return <strong title={`${exact} exactly, as served`}>{formatUsd(value)}</strong>;
+}
+
+/**
+ * A served decimal with more significant digits than a double carries (live lab 2026-11-07: actual spend served as
+ * 3.663405879999999993870909612, a float sum written out) is that double in its shortest form, 3.66340588. The digits
+ * past a double's precision are the sum's binary noise, not money anyone spent, and the shortest forms still add up:
+ * 1718.190534 - 3.66340588 = 1714.52712812. Any other value passes through unchanged.
+ */
+export function withoutFloatNoise(value: unknown): unknown {
+  if (typeof value !== 'string') return value;
+  const match = /^-?(\d+)(?:\.(\d+))?$/.exec(value.trim());
+  if (!match) return value;
+  const significant = `${match[1]}${match[2] ?? ''}`.replace(/^0+/, '').length;
+  const parsed = Number(value);
+  return significant > 15 && Number.isFinite(parsed) ? String(parsed) : value;
 }
 
 /** AC207: the equation reads one all-time metering row, never the latest decision sample. */

@@ -6,10 +6,16 @@
 //      first row of each day only), while a rule above a day's first run still groups the days.
 // J3, a long model name on one line at 1440px, is measured on the page in
 // tests/e2e/design-system-dashboard-polish.omn22168.spec.ts L12.
+// Found on the live lab dashboard, 2026-11-07 (Lakshman: "fix it"):
+//   J4 the rows run newest first by the time the Time column shows (a run created Nov 5 15:32 but written Nov 7 05:47
+//      was listed among the Nov 7 runs, under a day rule of its own).
+//   J5 an unmeasured saving reads "Not measured" with its reason as the tooltip (it wrapped to three lines); the reason
+//      stays in the cell's text. Its one line at 1440px is measured in L13.
+//   J6 the Model column fits the longest model name on the page, so short names leave no gap before Tokens.
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { formatDashboardUsd } from '@/lib/dashboard-currency';
-import { RunsTable } from '@/pages/LocalDashboardPage';
+import { RunsTable, runModelColumnWidth } from '@/pages/LocalDashboardPage';
 
 describe('J1: dashboard money is cut, never rounded up', () => {
   it.each([
@@ -40,6 +46,13 @@ describe('J1: dashboard money is cut, never rounded up', () => {
 });
 
 const NOW = Date.parse('2026-11-06T12:00:00Z');
+
+function timeCellsOf() {
+  const table = screen.getAllByRole('table').find(t => within(t).queryAllByRole('columnheader').some(h => h.textContent?.trim() === 'Time'))!;
+  const index = within(table).getAllByRole('columnheader').findIndex(h => h.textContent?.trim() === 'Time');
+  const rows = within(table).getAllByRole('row').slice(1);
+  return { rows, cells: rows.map(row => within(row).getAllByRole('cell')[index]!) };
+}
 function run(id: string, at: string): Record<string, unknown> {
   return {
     correlation_id: id, created_at: at, written_at: at, model_name: 'model-a', quality_gate_passed: true,
@@ -54,16 +67,9 @@ describe('J2: every run row shows its date', () => {
     run('j2-d', '2026-11-05T22:05:00Z'), run('j2-e', '2026-11-05T21:05:00Z'),
   ];
 
-  function timeCells() {
-    const table = screen.getAllByRole('table').find(t => within(t).queryAllByRole('columnheader').some(h => h.textContent?.trim() === 'Time'))!;
-    const index = within(table).getAllByRole('columnheader').findIndex(h => h.textContent?.trim() === 'Time');
-    const rows = within(table).getAllByRole('row').slice(1);
-    return { rows, cells: rows.map(row => within(row).getAllByRole('cell')[index]!) };
-  }
-
   it('each row writes its day beside its clock', () => {
     render(<RunsTable now={NOW} decisions={decisions} sessions={[]} />);
-    const { cells } = timeCells();
+    const { cells } = timeCellsOf();
     expect(cells).toHaveLength(5);
     const days = cells.map(cell => cell.querySelector('.local-run-day')?.textContent ?? null);
     expect(days).toEqual(['Nov 6', 'Nov 6', 'Nov 6', 'Nov 5', 'Nov 5']);
@@ -72,7 +78,88 @@ describe('J2: every run row shows its date', () => {
 
   it('control: the rule above a day still marks only each day\'s first run', () => {
     render(<RunsTable now={NOW} decisions={decisions} sessions={[]} />);
-    const { rows } = timeCells();
+    const { rows } = timeCellsOf();
     expect(rows.map(row => row.hasAttribute('data-day-start'))).toEqual([true, false, false, true, false]);
+  });
+});
+
+describe('J4: rows run by the time they show', () => {
+  // r-late ran on Nov 5 but its row was written on Nov 6 after the others, so written_at puts it first.
+  const decisions = [
+    { ...run('r-late', '2026-11-05T15:32:00Z'), written_at: '2026-11-06T11:00:00Z' },
+    run('r-a', '2026-11-06T10:05:00Z'), run('r-b', '2026-11-06T09:05:00Z'), run('r-c', '2026-11-05T08:05:00Z'),
+  ];
+
+  it('orders rows newest first by created_at, and the late-written run sits in its own day', () => {
+    render(<RunsTable now={NOW} decisions={decisions} sessions={[]} />);
+    const { cells } = timeCellsOf();
+    expect(cells.map(cell => [cell.querySelector('.local-run-day')?.textContent, cell.querySelector('.local-run-clock')?.textContent].join(' '))).toEqual(['Nov 6 10:05', 'Nov 6 09:05', 'Nov 5 15:32', 'Nov 5 08:05']);
+  });
+
+  it('control: each day still has exactly one rule, above its first run', () => {
+    render(<RunsTable now={NOW} decisions={decisions} sessions={[]} />);
+    const { rows } = timeCellsOf();
+    expect(rows.map(row => row.hasAttribute('data-day-start'))).toEqual([true, false, true, false]);
+  });
+});
+
+describe('J5: an unmeasured saving is one short line', () => {
+  const decisions = [
+    { ...run('s-none', '2026-11-06T10:05:00Z'), savings_measurement: 'unknown_tokens', modelled_savings_usd: null, savings_baseline_model: 'claude-sonnet-5-5' },
+    { ...run('s-some', '2026-11-06T09:05:00Z'), savings_measurement: 'measured', modelled_savings_usd: '0.0213', savings_baseline_model: 'claude-sonnet-5-5' },
+  ];
+
+  function savingCells() {
+    const table = screen.getAllByRole('table').find(t => within(t).queryAllByRole('columnheader').some(h => h.textContent?.trim() === 'Time'))!;
+    return [...table.querySelectorAll<HTMLElement>('tbody td[data-label^="Saving"]')];
+  }
+
+  it('shows "Not measured", gives the reason as its tooltip, and keeps the reason in its text', () => {
+    render(<RunsTable now={NOW} decisions={decisions} sessions={[]} />);
+    const [none] = savingCells();
+    const visible = [...none!.childNodes].filter(node => !(node instanceof HTMLElement && node.classList.contains('local-visually-hidden')))
+      .map(node => node.textContent).join('');
+    expect(visible).toBe('Not measured');
+    expect(none!.title).toBe('Not measured: tokens not recorded');
+    expect(none!.textContent).toBe('Not measured: tokens not recorded');
+    expect(none!.hasAttribute('data-unmeasured')).toBe(true);
+  });
+
+  it('control: a measured saving shows its figure, with no tooltip and no muting', () => {
+    render(<RunsTable now={NOW} decisions={decisions} sessions={[]} />);
+    const [, some] = savingCells();
+    expect(some!.textContent).toBe('$0.0213');
+    expect(some!.title).toBe('');
+    expect(some!.hasAttribute('data-unmeasured')).toBe(false);
+  });
+});
+
+// J6, Lakshman 2026-11-07 ("why gap?"): the Model column fits the longest model name on the page instead of a fixed
+// 330px, so a page of short names leaves no gap before Tokens, and the longest name still stays on one line.
+describe('J6: the Model column fits the page of runs it shows', () => {
+  function modelHeaderWidth(decisions: Record<string, unknown>[]) {
+    render(<RunsTable now={NOW} decisions={decisions} sessions={[]} />);
+    const table = screen.getAllByRole('table').find(t => within(t).queryAllByRole('columnheader').some(h => h.textContent?.trim() === 'Time'))!;
+    return Number.parseFloat((table.querySelector<HTMLElement>('th[data-column="model"]')!).style.width);
+  }
+
+  it('a page of short names gets a narrow column, never under 160px', () => {
+    expect(runModelColumnWidth([{ model_name: 'Qwen3.8-27B' }])).toBe(160);
+    expect(runModelColumnWidth([{ model_name: 'cohere/north-mini-code:free' }])).toBe(Math.ceil(27 * 7.8) + 24);
+    expect(modelHeaderWidth([{ ...run('w-a', '2026-11-06T10:05:00Z'), model_name: 'Qwen3.8-27B' }])).toBe(160);
+  });
+
+  it('a requested model written above the answer counts toward the width', () => {
+    expect(runModelColumnWidth([{ model_name: 'm', requested_model: 'cohere/north-mini-code:free' }])).toBe(Math.ceil(29 * 7.8) + 24);
+    expect(runModelColumnWidth([{ model_name: 'same', requested_model: 'same' }])).toBe(160);
+  });
+
+  it('control: the longest served name still gets the room it needs, capped at 330px', () => {
+    expect(runModelColumnWidth([{ model_name: 'nvidia/nemotron-3-ultra-550b-a55b:free' }])).toBe(Math.ceil(38 * 7.8) + 24);
+    expect(runModelColumnWidth([{ model_name: 'x'.repeat(80) }])).toBe(330);
+    expect(modelHeaderWidth([
+      { ...run('w-b', '2026-11-06T10:05:00Z'), model_name: 'Qwen3.8-27B' },
+      { ...run('w-c', '2026-11-06T09:05:00Z'), model_name: 'nvidia/nemotron-3-ultra-550b-a55b:free' },
+    ])).toBe(Math.ceil(38 * 7.8) + 24);
   });
 });
