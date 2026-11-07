@@ -11,10 +11,11 @@
 //      was listed among the Nov 7 runs, under a day rule of its own).
 //   J5 an unmeasured saving reads "Not measured" with its reason as the tooltip (it wrapped to three lines); the reason
 //      stays in the cell's text. Its one line at 1440px is measured in L13.
+//   J6 the Model column fits the longest model name on the page, so short names leave no gap before Tokens.
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { formatDashboardUsd } from '@/lib/dashboard-currency';
-import { RunsTable } from '@/pages/LocalDashboardPage';
+import { RunsTable, runModelColumnWidth } from '@/pages/LocalDashboardPage';
 
 describe('J1: dashboard money is cut, never rounded up', () => {
   it.each([
@@ -130,5 +131,35 @@ describe('J5: an unmeasured saving is one short line', () => {
     expect(some!.textContent).toBe('$0.0213');
     expect(some!.title).toBe('');
     expect(some!.hasAttribute('data-unmeasured')).toBe(false);
+  });
+});
+
+// J6, Lakshman 2026-11-07 ("why gap?"): the Model column fits the longest model name on the page instead of a fixed
+// 330px, so a page of short names leaves no gap before Tokens, and the longest name still stays on one line.
+describe('J6: the Model column fits the page of runs it shows', () => {
+  function modelHeaderWidth(decisions: Record<string, unknown>[]) {
+    render(<RunsTable now={NOW} decisions={decisions} sessions={[]} />);
+    const table = screen.getAllByRole('table').find(t => within(t).queryAllByRole('columnheader').some(h => h.textContent?.trim() === 'Time'))!;
+    return Number.parseFloat((table.querySelector<HTMLElement>('th[data-column="model"]')!).style.width);
+  }
+
+  it('a page of short names gets a narrow column, never under 160px', () => {
+    expect(runModelColumnWidth([{ model_name: 'Qwen3.8-27B' }])).toBe(160);
+    expect(runModelColumnWidth([{ model_name: 'cohere/north-mini-code:free' }])).toBe(Math.ceil(27 * 7.8) + 24);
+    expect(modelHeaderWidth([{ ...run('w-a', '2026-11-06T10:05:00Z'), model_name: 'Qwen3.8-27B' }])).toBe(160);
+  });
+
+  it('a requested model written above the answer counts toward the width', () => {
+    expect(runModelColumnWidth([{ model_name: 'm', requested_model: 'cohere/north-mini-code:free' }])).toBe(Math.ceil(29 * 7.8) + 24);
+    expect(runModelColumnWidth([{ model_name: 'same', requested_model: 'same' }])).toBe(160);
+  });
+
+  it('control: the longest served name still gets the room it needs, capped at 330px', () => {
+    expect(runModelColumnWidth([{ model_name: 'nvidia/nemotron-3-ultra-550b-a55b:free' }])).toBe(Math.ceil(38 * 7.8) + 24);
+    expect(runModelColumnWidth([{ model_name: 'x'.repeat(80) }])).toBe(330);
+    expect(modelHeaderWidth([
+      { ...run('w-b', '2026-11-06T10:05:00Z'), model_name: 'Qwen3.8-27B' },
+      { ...run('w-c', '2026-11-06T09:05:00Z'), model_name: 'nvidia/nemotron-3-ultra-550b-a55b:free' },
+    ])).toBe(Math.ceil(38 * 7.8) + 24);
   });
 });

@@ -1663,6 +1663,8 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
   const pages = Math.max(1, Math.ceil(shown.length / pageSize));
   const current = Math.min(pageIndex, pages - 1);
   const page = shown.slice(current * pageSize, (current + 1) * pageSize);
+  const modelWidth = runModelColumnWidth(page);
+  const columnWidth = (concept: string) => (concept === 'model' ? modelWidth : RUN_COLUMN_WIDTHS[concept]!);
   const canonicalSearch = writeRunsSearch(search, { ...view, page: current + 1 });
   useEffect(() => {
     if (syncUrl && canonicalSearch !== search.replace(/^\?/, '')) {
@@ -1708,13 +1710,13 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
   const headIcon = (concept: string, label: string) => <ConceptIcon concept={concept} label={label} size={13} />;
   // Lakshman 2026-11-05 ("in all columns add a tooltip so that when we hover it should tell about that column"): each header
   // explains its column on hover and on keyboard focus (the kit Tooltip), from RUN_COLUMN_TIPS.
-  const plainHeader = (concept: string, label: string, extra = false) => <th data-column={concept} data-extra={extra ? '' : undefined} style={{ width: RUN_COLUMN_WIDTHS[concept] }}>
+  const plainHeader = (concept: string, label: string, extra = false) => <th data-column={concept} data-extra={extra ? '' : undefined} style={{ width: columnWidth(concept) }}>
     <span className="local-runs-tip" data-field-tone={concept}><Tooltip text={RUN_COLUMN_TIPS[concept] ?? label} side="bottom"><span className="local-runs-head" tabIndex={0}>{headIcon(concept, label)}{label}</span></Tooltip></span>
   </th>;
   const sortHeader = (key: RunSortKey, label: string, concept: string) => {
     const active = view.sort === key;
     const direction = active ? view.dir ?? 'desc' : null;
-    return <th data-column={concept} style={{ width: RUN_COLUMN_WIDTHS[concept] }} aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}>
+    return <th data-column={concept} style={{ width: columnWidth(concept) }} aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}>
       <span className="local-runs-tip" data-field-tone={concept}><Tooltip text={RUN_COLUMN_TIPS[concept] ?? label} side="bottom">
       <button type="button" className="local-sort-header" data-sort-active={active ? '' : undefined}
         onClick={() => updateView({ sort: key, dir: active && direction === 'desc' ? 'asc' : 'desc', page: 1 })}>
@@ -1859,7 +1861,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
             const sharedBaseline = baselines.size === 1 ? [...baselines][0]! : null;
             const byDay = !view.sort || view.sort === 'created';
             const shownColumns = [...RUN_DEFAULT_COLUMNS, ...(showAllFields ? RUN_EXTRA_COLUMNS : []), ...(showRouting ? RUN_ROUTING_COLUMNS : [])];
-            const tableWidth = shownColumns.reduce((sum, concept) => sum + RUN_COLUMN_WIDTHS[concept]!, 0);
+            const tableWidth = shownColumns.reduce((sum, concept) => sum + columnWidth(concept), 0);
             return <DataTable fit className={`local-runs-wrap${showAllFields ? ' local-runs-wrap--all' : ''}${showRouting ? ' local-runs-wrap--routing' : ''}`} id={`${id}-table`} style={{ width: tableWidth }}>
               <thead>
                 <tr>
@@ -2109,6 +2111,26 @@ const RUN_COLUMN_WIDTHS: Readonly<Record<string, number>> = {
   escalated: 136, host: 190, tokens: 110, cost: 90, savings: 130, baseline: 170, basis: 100, duration: 100, task: 150,
   'tokens-completion': 210, tier: 136, score: 150,
 };
+/**
+ * Lakshman 2026-11-07 ("why gap?", live lab: Qwen3.8-27B left about 200px empty before Tokens in the fixed 330px column):
+ * the Model column is as wide as the longest model name on the page of runs shown, so that name stays on one line
+ * (Jonah 2026-11-06) and a page of short names leaves no gap. Names are drawn in the monospace face, measured in Chrome
+ * at 7.8px a character, plus the cell's 24px of padding; never under 160px or over the 330px the longest served name
+ * needs. Every other column keeps its standard width.
+ */
+const MODEL_CHAR_PX = 7.8;
+const MODEL_CELL_PADDING_PX = 24;
+const MODEL_COLUMN_MIN_PX = 160;
+export function runModelColumnWidth(runs: readonly Row[]): number {
+  // A run answered by another model than it asked for writes "<requested> →" on its own line above, so that line counts.
+  const longest = Math.max(0, ...runs.flatMap(run => {
+    const answered = modelOrUnknown(run.model_name);
+    const requested = isMissing(run.requested_model) ? null : String(run.requested_model);
+    return requested !== null && requested !== answered ? [answered.length, requested.length + 2] : [answered.length];
+  }));
+  const fit = Math.ceil(longest * MODEL_CHAR_PX) + MODEL_CELL_PADDING_PX;
+  return Math.min(RUN_COLUMN_WIDTHS.model!, Math.max(MODEL_COLUMN_MIN_PX, fit));
+}
 const RUN_DEFAULT_COLUMNS = ['identity', 'age', 'run-outcome', 'model', 'tokens', 'cost', 'savings', 'duration'];
 const RUN_EXTRA_COLUMNS = ['backend', 'host', 'baseline', 'basis', 'task', 'tokens-completion', 'tier', 'score'];
 const RUN_ROUTING_COLUMNS = ['routing-model', 'completion', 'escalated'];
