@@ -188,7 +188,7 @@ svg.field-icon[data-field-tone] { color: var(--field-ink); }
 
 /* Lakshman 2026-11-07 ("token in and out should be different color and uniform in whole websites"): every figure of
    tokens in wears --ds-field-tokens-in and every figure of tokens out wears --ds-field-tokens-out, on every page and in
-   both themes: the Overview and Usage token cards, the run tables, the run and selected-run facts, Workflow's summary,
+   both themes: the Overview and Usage token cards and their arrows, the run tables, the run and selected-run facts, Workflow's summary,
    Delegation Evidence's token usage and run details, and the chart readouts. A figure that is not recorded keeps the
    unavailable ink. Only the figure is coloured; its label keeps the label ink. Page rules that set a figure's ink
    (the Overview card's figures were forced to --ds-ink, Delegation Evidence's values are --ds-ink at
@@ -200,6 +200,11 @@ html body :is(.local-dashboard-page, .ev-root, main.ev-root[data-destination]) :
 html body :is(.local-dashboard-page, .ev-root, main.ev-root[data-destination]) :is(
   [data-field-tone="tokens-out"] > :is(dd, .v, strong, .ev-token-num, .local-recent-value),
   span[data-field-tone="tokens-out"], td[data-field-tone="tokens-out"]) { color: var(--ds-field-tokens-out) !important; }
+/* The token card's arrows wear their direction's colour too (Lakshman 2026-11-07, "arrow also be colored"); a broad
+   rule inks every page icon --ds-ink-3, so the arrow is named here. */
+html body :is(.local-dashboard-page, .ev-root, main.ev-root[data-destination]) .local-token-direction[data-field-tone="tokens-in"] > svg { color: var(--ds-field-tokens-in) !important; }
+html body :is(.local-dashboard-page, .ev-root, main.ev-root[data-destination]) .local-token-direction[data-field-tone="tokens-out"] > svg { color: var(--ds-field-tokens-out) !important; }
+html body :is(.local-dashboard-page, .ev-root, main.ev-root[data-destination]) .local-token-direction[data-field-tone^="tokens-"][data-field-unavailable="true"] > svg { color: var(--ds-field-unavailable) !important; }
 html body :is(.local-dashboard-page, .ev-root, main.ev-root[data-destination]) :is(
   [data-field-tone^="tokens-"][data-field-unavailable="true"] > :is(dd, .v, strong, .ev-token-num, .local-recent-value),
   span[data-field-tone^="tokens-"][data-field-unavailable="true"],

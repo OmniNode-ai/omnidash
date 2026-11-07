@@ -59,6 +59,9 @@ test('L14: tokens in and tokens out are two colours, the same on every page and 
           if (!figure || !(figure.textContent ?? '').trim()) continue;
           const key = `${el.dataset.fieldTone}${el.dataset.fieldUnavailable === 'true' ? ':unavailable' : ''}`;
           (figures[key] ??= []).push(getComputedStyle(figure).color);
+          // The token card's arrow wears its figure's colour.
+          const arrow = el.matches('.local-token-direction') ? el.querySelector<SVGElement>(':scope > svg') : null;
+          if (arrow) (figures[key] ??= []).push(getComputedStyle(arrow).color);
         }
         return { figures, expected: { in: ink('--ds-field-tokens-in'), out: ink('--ds-field-tokens-out'), none: ink('--ds-field-unavailable') } };
       });
