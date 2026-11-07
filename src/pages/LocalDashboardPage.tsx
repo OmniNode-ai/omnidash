@@ -1225,7 +1225,7 @@ const SERVED_DECIMAL = /^(-?)(\d+)(?:\.(\d+))?$/;
 /**
  * OMN-21015 AC3: one run's modelled saving as served on delegation.decisions.v1, named against the baseline it was priced
  * against. The page formats the served figure and computes nothing. A run that was not measured says why, never 0; a
- * measured zero is a zero. Decimal text is formatted with every served digit (OMN-22168, replacing the earlier two-decimal policy)
+ * measured zero is a zero. Decimal text is formatted as dashboard money: two decimals, up to four under $1 (OMN-22168)
  * without changing the source value; anything that is not a plain decimal is not shown as a figure.
  */
 export function runModelledCell(run: Row, withBaseline = true): string {
@@ -1539,10 +1539,11 @@ function NoFailure() {
 }
 
 /**
- * Lakshman 2026-11-05 (run table item 11): a row's time as the served clock (HH:MM), with the day written above it on
- * the first row of each day; the exact served time stays in the title and datetime. Any other form is shown as served.
+ * A row's time as its day and the served clock (HH:MM). Every row carries its day (Jonah 2026-11-06: "Only the first time
+ * column has a date"); a rule above a day's first run still groups the days. The exact served time stays in the title and
+ * datetime. Any other form is shown as served.
  */
-function RunTimeCell({ value, showDay }: { value: unknown; showDay: boolean }) {
+function RunTimeCell({ value }: { value: unknown }) {
   if (isMissing(value)) return <>{recorded(value)}</>;
   const text = String(value);
   const readable = readableTime(text);
@@ -1552,7 +1553,7 @@ function RunTimeCell({ value, showDay }: { value: unknown; showDay: boolean }) {
   const zone = rest.split(' ').slice(1).join(' ');
   // OMN-21166 R-A: the exact served text is the element's datetime and title.
   return <time className="local-cell-time local-run-time" dateTime={text} title={text}>
-    {showDay && <span className="local-run-day">{day}</span>}
+    <span className="local-run-day">{day}</span>
     <span className="local-run-clock">{zone === 'UTC' ? clock : `${clock} ${zone}`}</span>
   </time>;
 }
@@ -1876,14 +1877,14 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
               <tbody>{page.map((run, index) => {
                 const session = bySession.get(String(run.correlation_id));
                 const dayKey = runDayKey(run.created_at);
-                const showDay = !byDay || index === 0 || dayKey !== runDayKey(page[index - 1]!.created_at);
+                const dayStart = index === 0 || dayKey !== runDayKey(page[index - 1]!.created_at);
                 const requested = isMissing(run.requested_model) ? null : String(run.requested_model);
                 const answered = modelOrUnknown(run.model_name);
                 const basis = session?.usage_source;
                 const saving = runModelledCell(run, sharedBaseline === null);
                 const score = Number(run.actual_score);
                 return <tr key={String(run.correlation_id ?? index)} tabIndex={0} aria-selected={selectedRunId !== null && selectedRunId === run.correlation_id}
-                  data-day-start={byDay && showDay ? '' : undefined}
+                  data-day-start={byDay && dayStart ? '' : undefined}
                   onClick={event => { if ((event.target as HTMLElement).closest('a, button, input, select, summary')) return; setSelectedRunId(String(run.correlation_id ?? '')); }}
                   onKeyDown={event => { if ((event.key === 'Enter' || event.key === ' ') && !(event.target as HTMLElement).closest('a, button, input, select, summary')) { event.preventDefault(); setSelectedRunId(String(run.correlation_id ?? '')); } }}>
                   <td data-label="Run" className="local-dashboard-cell-token">
@@ -1891,7 +1892,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                     <RunRef id={run.correlation_id} short />
                     {isFixture(run) && <Badge>fixture</Badge>}
                   </td>
-                  <td data-label="Time" className="local-dashboard-cell-token local-dashboard-cell-time"><RunTimeCell value={run.created_at} showDay={showDay} /></td>
+                  <td data-label="Time" className="local-dashboard-cell-token local-dashboard-cell-time"><RunTimeCell value={run.created_at} /></td>
                   {/* Item 10: the status; on a run that failed, its cause and failure detail are the pill's tooltip. */}
                   <td data-label="Status" className="local-run-status-cell">{causeOf(run) !== 'none' ? <FailedStatus run={run} /> : <OutcomePill value={statusOf(run)} />}</td>
                   {/* A run's model sets that filter, as the selects above do. Item 3: a run answered by another model than it
@@ -2088,9 +2089,11 @@ function tierModelCost(model: Row): string {
  * out fixed at the sum of the columns shown, and fills its panel when that is wider.
  */
 // Duration 120 (its sort header measured 120px with the button's padding, 2026-11-05), taken from the model's 260.
+// Jonah 2026-11-06 ("column wrapping when there is plenty of room between the other columns (model → tokens for example)"):
+// the model column takes the room Tokens, Saving and Duration left empty, so a long model name stays on one line at 1440.
 const RUN_COLUMN_WIDTHS: Readonly<Record<string, number>> = {
-  identity: 140, age: 96, 'run-outcome': 104, model: 252, backend: 200, 'routing-model': 180, completion: 150,
-  escalated: 136, host: 190, tokens: 136, cost: 96, savings: 164, baseline: 170, basis: 100, duration: 120, task: 150,
+  identity: 120, age: 120, 'run-outcome': 96, model: 330, backend: 200, 'routing-model': 180, completion: 150,
+  escalated: 136, host: 190, tokens: 110, cost: 90, savings: 130, baseline: 170, basis: 100, duration: 100, task: 150,
   'tokens-completion': 210, tier: 136, score: 150,
 };
 const RUN_DEFAULT_COLUMNS = ['identity', 'age', 'run-outcome', 'model', 'tokens', 'cost', 'savings', 'duration'];
@@ -2100,7 +2103,7 @@ const RUN_ROUTING_COLUMNS = ['routing-model', 'completion', 'escalated'];
 /** What each run table column holds, shown when its header is hovered or focused (keyed by the header's concept). */
 const RUN_COLUMN_TIPS: Readonly<Record<string, string>> = {
   identity: 'The run\'s id. Click it to open the run\'s full path on Workflow.',
-  age: 'When the run started, in UTC. The day is written above its first run; hover a time for the exact second. Click to sort.',
+  age: 'When the run started, in UTC. Hover a time for the exact second. Click to sort.',
   'run-outcome': 'Whether the run passed or failed its quality gate. A failed run shows why under its status.',
   model: 'The model that answered. If it differs from the model the run asked for, the requested one is shown above it. Click a model to show only its runs.',
   backend: 'The route that served the run. Click one to show only its runs.',

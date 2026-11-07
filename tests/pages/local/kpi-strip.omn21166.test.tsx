@@ -70,7 +70,7 @@ describe('UsageKpis', () => {
     render(<UsageKpis rows={[ALL]} />);
     const strip = screen.getByRole('region', { name: 'Usage summary' });
     expect(cards(strip).map(card => card.querySelector('.local-dashboard-metric')?.textContent))
-      .toEqual(['$0.232022', '$3.997402', '$3.76538', '578,671', '284,006']);
+      .toEqual(['$0.232', '$3.99', '$3.76', '578,671', '284,006']);
   });
 
   it('K1: reads a spend the row does not serve as Not measured, never $0.00', () => {

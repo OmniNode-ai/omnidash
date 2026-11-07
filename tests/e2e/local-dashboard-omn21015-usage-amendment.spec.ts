@@ -72,8 +72,8 @@ test('Overview money cards truncate, preserve tiny nonzero and retain missing st
     runs_measured: 3, runs_total: 3, tokens_in: 123, tokens_out: 456,
   }] });
   await page.goto('/overview');
-  await expect(page.locator('[data-component="overview-spend"] .local-dashboard-metric')).toHaveText('$3.5923');
-  await expect(page.locator('[data-component="overview-savings"] .local-dashboard-metric')).toHaveText('$1,074.2157');
+  await expect(page.locator('[data-component="overview-spend"] .local-dashboard-metric')).toHaveText('$3.59');
+  await expect(page.locator('[data-component="overview-savings"] .local-dashboard-metric')).toHaveText('$1,074.21');
   // OMN-21166 AC86 (Lakshman 2026-10-25): the "Avg saving / call" card (overview-avg-saving-per-call) is deleted from Overview.
   await expect(page.locator('[data-component="overview-avg-saving-per-call"]')).toHaveCount(0);
   await page.screenshot({ path: info.outputPath('overview-money.png'), fullPage: true });

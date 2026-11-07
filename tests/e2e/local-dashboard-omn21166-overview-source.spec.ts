@@ -39,13 +39,13 @@ async function totals(page: Page, values: string[]) {
 }
 test('declared local-store absence selects metering before a savings read and restores exact all-time and Today figures', async ({ page }, info) => {
   const requests = await serve(page, 'not_in_local_store');
-  await totals(page, ['$12.30', '$2.992', '23', '6.13K']);
+  await totals(page, ['$12.30', '$2.99', '23', '6.13K']);
   for (const id of ids) await expect(card(page, id)).not.toContainText('Source:');
   await expect(card(page, 'overview-savings')).toContainText('42% below the baseline-current baseline (modelled)');
   await chooseWindow(page, 'Today (UTC)');
   await totals(page, ['$0.70', '$1.20', '3', '834']);
   await chooseWindow(page, 'All time');
-  await totals(page, ['$12.30', '$2.992', '23', '6.13K']);
+  await totals(page, ['$12.30', '$2.99', '23', '6.13K']);
   expect(requests).toContain(metering); expect(requests).not.toContain(overview);
   await page.screenshot({ path: info.outputPath('declared-sqlite-overview.png'), fullPage: true });
 });
@@ -57,7 +57,7 @@ test('served savings catalogue retains D1 despite conflicting metering and names
 });
 test('metering chooses newest all-time and day baseline and refuses ties on all four cards', async ({ page }) => {
   await serve(page, 'not_in_local_store', [{ ...all, baseline_model: 'old', as_of: today + 'T09:00:00Z', spend_usd: 77 }, all, day, { ...day, baseline_model: 'twin' }]);
-  await totals(page, ['$12.30', '$2.992', '23', '6.13K']);
+  await totals(page, ['$12.30', '$2.99', '23', '6.13K']);
   await chooseWindow(page, 'Today (UTC)');
   await totals(page, ids.map(() => 'Not measured: 2 baseline models'));
 });

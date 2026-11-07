@@ -1005,7 +1005,8 @@ html body .local-dashboard-page .local-runs-wrap :is(th, td)[data-num], html bod
 html body .local-dashboard-page .local-runs-wrap th:is([data-column="tokens"], [data-column="cost"], [data-column="savings"], [data-column="duration"], [data-column="score"], [data-column="escalated"], [data-column="tokens-completion"]) { text-align: right; }
 html body .local-dashboard-page .local-runs-wrap th:is([data-column="tokens"], [data-column="cost"], [data-column="savings"], [data-column="duration"], [data-column="score"], [data-column="escalated"], [data-column="tokens-completion"]) :is(.local-runs-head, .local-sort-header) { justify-content: flex-end; margin-left: auto; }
 /* Item 11: the day above the first row of each day, the clock on every row; the exact time is in the title. */
-html body .local-dashboard-page .local-run-time { display: inline-flex; flex-direction: column; gap: 2px; white-space: nowrap; }
+/* Jonah 2026-11-06: every run's day sits beside its clock on one line. */
+html body .local-dashboard-page .local-run-time { display: inline-flex; flex-direction: row; align-items: baseline; gap: 6px; white-space: nowrap; }
 html body .local-dashboard-page .local-run-day { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ds-ink-3); }
 html body .local-dashboard-page .local-run-clock { font-variant-numeric: tabular-nums; }
 html body .local-dashboard-page .local-runs-wrap tbody tr[data-day-start]:not(:first-child) td { border-top: 1px solid var(--ds-line-strong, var(--ds-line)); }

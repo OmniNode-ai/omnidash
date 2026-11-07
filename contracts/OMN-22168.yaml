@@ -186,3 +186,44 @@ dod_evidence:
           test -d node_modules || npm ci --no-audit --no-fund; npx vitest run
           tests/design-system/colour-identity.test.ts
         cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn22168-ac4-run-table-money-and-dates"
+    description: >-
+      AC4, Jonah's 2026-11-06 run table review only, not the whole criterion: the data table writes money cut, never
+      rounded up, two decimals from $1 and up to four under $1, with a non-zero amount never shown as $0, and every run
+      row shows its day beside its clock (only the first run of each day had a date), each beside a control.
+    source: "manual"
+    binds_ac: ["AC4"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          test -d node_modules || npm ci --no-audit --no-fund; npx vitest run
+          tests/design-system/run-table.omn22168.test.tsx
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn22168-ac4-run-table-no-wrap"
+    description: >-
+      AC4, Jonah's 2026-11-06 run table review only, not the whole criterion: at 1440px every Runs header, model name and
+      time stays on one line, measured on the page (the 252px model column broke a long name over two lines while
+      Tokens, Saving and Duration sat half empty).
+    source: "manual"
+    binds_ac: ["AC4"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          test -d node_modules || npm ci --no-audit --no-fund; npx playwright test
+          tests/e2e/design-system-dashboard-polish.omn22168.spec.ts --grep "L12" --project=chromium --workers=1
+          --retries=0
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn22168-ac4-evidence-bridge-money"
+    description: >-
+      AC4, the 2026-11-07 money decision only, not the whole criterion: Delegation Evidence's savings bridge writes each
+      figure as the dashboard money every other page uses, cut and never rounded up, and keeps the exact served amount
+      as the figure's title, where baseline cost minus actual spend still equals the saving (it printed every served digit).
+    source: "manual"
+    binds_ac: ["AC4"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          test -d node_modules || npm ci --no-audit --no-fund; npx playwright test
+          tests/e2e/local-dashboard-omn21166-evidence-revision7.spec.ts -g "Savings bridge" --project=chromium --workers=1
+          --retries=0
+        cwd: "${OMNI_HOME}/omnidash"

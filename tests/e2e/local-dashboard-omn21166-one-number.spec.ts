@@ -101,11 +101,11 @@ test('a run shows one modelled saving on Delegation Evidence and on Runs', async
   await expect(selected.locator('.kv')).toContainText(RUN);
   const evidenceSaving = selected.locator('.kv > div', { has: page.locator('.k', { hasText: 'Savings (modelled)' }) });
   // OMN-22168: money shows every served digit (0.012345), and both pages show the same number.
-  await expect(evidenceSaving.locator('.v')).toContainText('$0.012345');
+  await expect(evidenceSaving.locator('.v')).toContainText('$0.0123');
 
   await page.goto('/runs');
   // The rows share one baseline, so the Saving header names it (accessible name and tooltip) and the cell shows the figure.
   const runs = page.locator('[data-component="recent-runs"] table');
   await expect(runs.getByRole('columnheader', { name: 'Saving vs claude-sonnet-5-5' })).toHaveCount(1);
-  await expect(runs.locator('tbody')).toContainText('$0.012345');
+  await expect(runs.locator('tbody')).toContainText('$0.0123');
 });
