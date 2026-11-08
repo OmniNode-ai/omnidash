@@ -4,4 +4,4 @@
 # the shared receipt gate's sibling resolver. It must equal the core checkout
 # ref in check-handshake.yml; the core pin-bump bot rewrites both together.
 pins:
-  omnibase_core: 1adbf46062bd13e9fbbdb979df65328416e6e04f
+  omnibase_core: 2fe30fd9dc47fcf0e25bead887ea7505b39612b9
