@@ -12,6 +12,7 @@ export { Card } from './Card';
 export { DataTable } from './DataTable';
 // Lakshman 2026-11-07: tokens in and out, the arrow rows every token card draws, in their two colours (OMN-22168 AC6).
 export { TokenDirections } from '@/components/dashboard/usage/TokenDirections';
+export { TokenCount, exactTokens } from '@/components/dashboard/usage/TokenCount';
 export type { BadgeLook } from './Badge';
 export type { FactListLook } from './FactList';
 export type { DashboardTab, ToggleOption } from './Tabs';

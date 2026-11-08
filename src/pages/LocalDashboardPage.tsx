@@ -6,6 +6,7 @@ import { exactMs, formatDuration } from '@/components/format/duration';
 import { dailyMeteringTokens } from '@/lib/daily-metering-tokens';
 import { DailyMeteringTokens } from '@/components/dashboard/usage/DailyMeteringTokens';
 import { TokenDirections } from '@/components/dashboard/usage/TokenDirections';
+import { exactTokens } from '@/components/dashboard/usage/TokenCount';
 import { Fragment, createContext, useContext, useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { modelTiersFrom, tierColor, tierConcept } from '@/lib/dashboard-colors';
@@ -963,7 +964,7 @@ export function UsageKpis({ rows }: { rows: readonly unknown[] }) {
   // The day rows exist only for days with runs, so the scope names those days, not a calendar span.
   const scope = `Latest ${dayKeys.length} days with usage`;
   const usd = (value: number) => formatUsd(String(value));
-  const count = (value: number) => formatFullCount(String(value));
+  const count = (value: number) => formatDashboardCount(String(value));
   const items: KpiItem[] = [
     { label: 'You paid', value: money(row.spend_usd), unavailable: isMissing(row.spend_usd), accent: 'var(--ds-field-cost)', concept: 'cost',
       lines: ['Measured spend, all time'], trend: { days: dayKeys, values: series('spend_usd'), format: usd, scope } },
@@ -973,9 +974,11 @@ export function UsageKpis({ rows }: { rows: readonly unknown[] }) {
     { label: 'Saved', value: unresolved ? 'Baseline unresolved' : money(row.savings_usd), unavailable: unresolved || isMissing(row.savings_usd),
       accent: 'var(--ds-field-savings)', concept: 'savings', lines: ['Modelled · vs cloud baseline'],
       trend: unresolved ? null : { days: dayKeys, values: series('savings_usd'), format: usd, scope } },
-    { label: 'Tokens in', value: tokens.input === null ? 'Not measured' : formatFullCount(tokens.input.toString()), unavailable: tokens.input === null,
+    { label: 'Tokens in', value: tokens.input === null ? 'Not measured' : formatDashboardCount(tokens.input.toString()), unavailable: tokens.input === null,
+      title: tokens.input === null ? undefined : exactTokens(tokens.input.toString(), 'in'),
       accent: 'var(--ds-field-tokens-in)', concept: 'tokens-in', trend: { days: dayKeys, values: series('tokens_in'), format: count, scope } },
-    { label: 'Tokens out', value: tokens.output === null ? 'Not measured' : formatFullCount(tokens.output.toString()), unavailable: tokens.output === null,
+    { label: 'Tokens out', value: tokens.output === null ? 'Not measured' : formatDashboardCount(tokens.output.toString()), unavailable: tokens.output === null,
+      title: tokens.output === null ? undefined : exactTokens(tokens.output.toString(), 'out'),
       accent: 'var(--ds-field-tokens-out)', concept: 'tokens-out', trend: { days: dayKeys, values: series('tokens_out'), format: count, scope } },
   ];
   return <KpiStrip label="Usage summary" items={items} />;
@@ -1194,8 +1197,12 @@ function Readable({ value, kind }: { value: unknown; kind: 'percent' | 'decimal'
 function recordedCount(value: unknown): string {
   return isMissing(value) ? 'Not recorded' : formatDashboardCount(value);
 }
+// OMN-22168: a token count reads short by the dashboard count rule; its exact count is the hover title.
 function recordedTokens(value: unknown): string {
-  return isMissing(value) ? 'Not recorded' : formatFullCount(value);
+  return isMissing(value) ? 'Not recorded' : formatDashboardCount(value);
+}
+function tokensTitle(value: unknown, direction?: 'in' | 'out'): string | undefined {
+  return isMissing(value) ? undefined : exactTokens(value, direction);
 }
 
 function recorded(value: unknown): string {
@@ -1382,7 +1389,7 @@ export function LastRunCard({ decisions, sessions, now = Date.now(), compact = f
         <summary>Execution details</summary>
         <FactList>
           {fields.filter(([label]) => !['Status', 'Cause', 'Model', 'Age', 'Run', 'Duration', 'Cost'].includes(label))
-            .map(([label, value]) => <Fact term={<><FieldIcon label={label} value={value} />{label}</>} key={label} data-field={label} data-field-tone={fieldTone(label, value)} data-field-unavailable={isUnavailableField(value)} style={fieldTone(label, value) === 'model' && !isUnavailableField(value) ? modelIdentityStyle(value) : undefined}>{value}</Fact>)}
+            .map(([label, value]) => <Fact term={<><FieldIcon label={label} value={value} />{label}</>} key={label} data-field={label} data-field-tone={fieldTone(label, value)} data-field-unavailable={isUnavailableField(value)} style={fieldTone(label, value) === 'model' && !isUnavailableField(value) ? modelIdentityStyle(value) : undefined} valueTitle={label === 'Tokens in' ? tokensTitle(last.tokens_input, 'in') : label === 'Tokens out' ? tokensTitle(last.tokens_output, 'out') : undefined}>{value}</Fact>)}
         </FactList>
       </details>
       {compact && typeof last.correlation_id === 'string' && last.correlation_id !== '' && <p className="local-dashboard-caption local-recent-footer"><Link href={workflowHref(last.correlation_id)}>Open run details <ArrowUpRight size={12} aria-hidden="true" /></Link></p>}
@@ -1493,8 +1500,8 @@ export function RecentRunsTable({ decisions, sessions, now = Date.now(), showCha
               <td data-label="Task type"><span className="local-recent-value">{isMissing(decision.task_type) ? recorded(decision.task_type) : taskLabel(decision.task_type)}</span></td>
               <td className="local-dashboard-cell-token" data-label="Backend"><span className="local-recent-value">{recorded(decision.backend_id)}</span></td>
               <td className="local-dashboard-cell-token" data-label="Host"><span className="local-recent-value">{recorded(decision.host)}</span></td>
-              <td data-label="Tokens in" data-field-tone="tokens-in" data-field-unavailable={isMissing(decision.tokens_input)}><span className="local-recent-value">{recordedTokens(decision.tokens_input)}</span></td>
-              <td data-label="Tokens out" data-field-tone="tokens-out" data-field-unavailable={isMissing(decision.tokens_output)}><span className="local-recent-value">{recordedTokens(decision.tokens_output)}</span></td>
+              <td data-label="Tokens in" data-field-tone="tokens-in" data-field-unavailable={isMissing(decision.tokens_input)} title={tokensTitle(decision.tokens_input, 'in')}><span className="local-recent-value">{recordedTokens(decision.tokens_input)}</span></td>
+              <td data-label="Tokens out" data-field-tone="tokens-out" data-field-unavailable={isMissing(decision.tokens_output)} title={tokensTitle(decision.tokens_output, 'out')}><span className="local-recent-value">{recordedTokens(decision.tokens_output)}</span></td>
               <td data-label="Basis"><span className="local-recent-value">{recorded(session?.usage_source)}</span></td>
               <td data-label="Route tier"><span className="local-recent-value">{tierOf(decision)}</span></td>
               <td data-label="Quality score"><span className="local-recent-value">{recorded(decision.actual_score)}</span></td>
@@ -1932,7 +1939,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                   </>}
                   <td data-label="Host" className="local-dashboard-cell-token" data-extra="">{breakableHost(recorded(run.host))}</td>
                   {/* Item 4: tokens in and out in one cell; their total is the two added, so it is not a column of its own. */}
-                  <td data-label="Tokens" data-num="" title={`${recordedTokens(run.tokens_input)} tokens in, ${recordedTokens(run.tokens_output)} tokens out`}>
+                  <td data-label="Tokens" data-num="" title={`${tokensTitle(run.tokens_input, 'in') ?? 'Tokens in not recorded'}, ${tokensTitle(run.tokens_output, 'out') ?? 'tokens out not recorded'}`}>
                     {isMissing(run.tokens_input) && isMissing(run.tokens_output) ? 'Not recorded'
                       : <><span data-field-tone="tokens-in" data-field-unavailable={isMissing(run.tokens_input)}>{recordedTokens(run.tokens_input)}</span><span className="local-run-quiet"> / </span><span data-field-tone="tokens-out" data-field-unavailable={isMissing(run.tokens_output)}>{recordedTokens(run.tokens_output)}</span></>}
                   </td>
@@ -1948,7 +1955,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                   <td data-label="Basis" data-extra="">{recorded(basis)}</td>
                   <td data-label="Duration" data-num="" title={exactMs(run.latency_ms)}>{duration(run.latency_ms)}</td>
                   <td data-label="Task type" data-extra="">{isMissing(run.task_type) ? recorded(run.task_type) : <span className="local-task-cell"><TaskIcon task={String(run.task_type)} />{taskLabel(run.task_type)}</span>}</td>
-                  <td data-label="Tokens to compliance" data-extra="" data-num="">{recordedTokens(run.tokens_to_compliance)}</td>
+                  <td data-label="Tokens to compliance" data-extra="" data-num="" title={tokensTitle(run.tokens_to_compliance)}>{recordedTokens(run.tokens_to_compliance)}</td>
                   <td data-label="Route tier" data-extra="">{tierOf(run)}</td>
                   {/* Item 7: one form for every score, two decimals; the served value is in the title. */}
                   <td data-label="Quality score" data-extra="" data-num="" title={recorded(run.actual_score)}>{isMissing(run.actual_score) || !Number.isFinite(score) ? recorded(run.actual_score) : score.toFixed(2)}</td>
@@ -1974,8 +1981,8 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
               <Fact term="Route tier">{tierOf(selectedRun)}</Fact>
               <Fact term="Duration">{duration(selectedRun.latency_ms)}</Fact>
               <Fact term="Cost">{costOf(selectedSession, selectedRun)}</Fact>
-              <Fact term="Tokens in" data-field-tone="tokens-in" data-field-unavailable={isMissing(selectedRun.tokens_input)}>{recordedTokens(selectedRun.tokens_input)}</Fact>
-              <Fact term="Tokens out" data-field-tone="tokens-out" data-field-unavailable={isMissing(selectedRun.tokens_output)}>{recordedTokens(selectedRun.tokens_output)}</Fact>
+              <Fact term="Tokens in" data-field-tone="tokens-in" data-field-unavailable={isMissing(selectedRun.tokens_input)} valueTitle={tokensTitle(selectedRun.tokens_input, 'in')}>{recordedTokens(selectedRun.tokens_input)}</Fact>
+              <Fact term="Tokens out" data-field-tone="tokens-out" data-field-unavailable={isMissing(selectedRun.tokens_output)} valueTitle={tokensTitle(selectedRun.tokens_output, 'out')}>{recordedTokens(selectedRun.tokens_output)}</Fact>
               <Fact term="Modelled saving">{runModelledCell(selectedRun)}</Fact>
               <Fact term="Quality score">{recorded(selectedRun.actual_score)}
                 <Meter kind="selected-quality" label="Quality score versus required bar" min={0} max={1} now={selectedScore}
@@ -2576,7 +2583,7 @@ export function RunSummary({ decision, showAnalysis = false }: { decision: Row |
           <h3 className="local-dashboard-caption" id={`${sectionId}-${index}`}><ConceptIcon concept={concept} label={name} size={16} />{name}</h3>
           <FactList>
             {index === 0 && <Fact term={<><FieldIcon label="Status" value={status} />Status</>} data-field-tone={fieldTone('Status', status)}><OutcomePill value={status} /></Fact>}
-            {fields.filter(([label]) => labels.includes(label)).map(([label, value]) => <Fact key={label} term={<><FieldIcon label={label} value={value} />{label}</>} data-summary-field={label} data-field-tone={fieldTone(label, value)} data-field-unavailable={isUnavailableField(value)} style={fieldTone(label, value) === 'model' && !isUnavailableField(value) ? modelIdentityStyle(value) : undefined}>{label === 'Cause' && value.length > 120
+            {fields.filter(([label]) => labels.includes(label)).map(([label, value]) => <Fact key={label} term={<><FieldIcon label={label} value={value} />{label}</>} data-summary-field={label} data-field-tone={fieldTone(label, value)} data-field-unavailable={isUnavailableField(value)} style={fieldTone(label, value) === 'model' && !isUnavailableField(value) ? modelIdentityStyle(value) : undefined} valueTitle={label === 'Tokens in' ? tokensTitle(decision.tokens_input, 'in') : label === 'Tokens out' ? tokensTitle(decision.tokens_output, 'out') : undefined}>{label === 'Cause' && value.length > 120
               ? <details className="local-run-failure-details"><summary title={value}>Show failure reason</summary><p>{value}</p></details>
               // A model id breaks at its joins ("thinkingmachines/" then "inkling:free"), never mid-word (phone check 2026-11-05).
               : fieldTone(label, value) === 'model' && !isUnavailableField(value) ? breakableName(value) : value}</Fact>)}
@@ -2936,12 +2943,18 @@ export const RUN_MEASURED_FIELDS: ReadonlySet<string> = new Set([
  * A run-measured figure that is missing was not measured, whatever the baseline. Any other missing figure on an
  * unresolved-baseline row is missing because of the baseline.
  */
+/** OMN-22168: a token cell reads short, so its exact count is its hover title. */
+function declaredTitle(row: Row, column: DeclaredColumn): string | undefined {
+  if (column.key === 'tokens_in') return tokensTitle(row[column.key], 'in');
+  return column.key === 'tokens_out' ? tokensTitle(row[column.key], 'out') : undefined;
+}
+
 function declaredCell(row: Row, column: DeclaredColumn): string {
   const value = row[column.key];
   if (isMissing(value)) {
     return row.baseline_state === 'unresolved' && !RUN_MEASURED_FIELDS.has(column.key) ? 'Baseline unresolved' : 'Not measured';
   }
-  if (column.key === 'tokens_in' || column.key === 'tokens_out') return formatFullCount(value);
+  if (column.key === 'tokens_in' || column.key === 'tokens_out') return formatDashboardCount(value);
   if (column.key.startsWith('runs_') || column.key.endsWith('_count')) return formatDashboardCount(value);
   return column.format === 'currency' ? formatUsd(value) : String(value);
 }
@@ -2988,13 +3001,13 @@ export function MeteringDayTable({ title, rows, columns }: {
               <tbody>
                 {days.map((row, index) => (
                   <tr key={`${String(row.window_start)}-${index}`}>
-                    {columns.map((column) => <td key={column.key}>{declaredCell(row, column)}</td>)}
+                    {columns.map((column) => <td key={column.key} title={declaredTitle(row, column)}>{declaredCell(row, column)}</td>)}
                   </tr>
                 ))}
                 {allTime && (
                   <tr>
                     {columns.map((column) => (
-                      <td key={column.key}>{column.key === 'window_start' ? 'All time' : declaredCell(allTime, column)}</td>
+                      <td key={column.key} title={column.key === 'window_start' ? undefined : declaredTitle(allTime, column)}>{column.key === 'window_start' ? 'All time' : declaredCell(allTime, column)}</td>
                     ))}
                   </tr>
                 )}

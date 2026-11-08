@@ -1,4 +1,4 @@
-import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
+import { formatDashboardCount } from '@/lib/dashboard-count';
 /**
  * OMN-12943 — Delegation Evidence (ported from prototype view-delegation.jsx).
  *
@@ -13,7 +13,7 @@ import { formatUsd } from '@/components/dashboard/usage/UsageByModelDayWidget';
 import { isUnavailableField } from '@/components/dashboard/field-identity';
 import { EvPageShell } from '@/components/dashboard/event-dash/EvPageShell';
 import { KpiStrip } from '@/components/dashboard/KpiStrip';
-import { DashboardTabs } from '@/theme/design-system/components';
+import { DashboardTabs, TokenCount } from '@/theme/design-system/components';
 import { RankedBars, breakableName } from '@/theme/design-system/charts';
 import {
   Badge,
@@ -206,8 +206,8 @@ function SelectedRun({ correlationId, decision }: { correlationId: string | null
           { k: 'Task type', v: taskLabel(row.task_type) },
           { k: 'Model', v: row.model_name },
           { k: 'Latency', v: fmtLatency(row.latency_ms) },
-          { k: 'Tokens in', v: row.tokens_input == null ? 'Not recorded' : formatFullCount(row.tokens_input) },
-          { k: 'Tokens out', v: row.tokens_output == null ? 'Not recorded' : formatFullCount(row.tokens_output) },
+          { k: 'Tokens in', v: <TokenCount value={row.tokens_input} direction="in" /> },
+          { k: 'Tokens out', v: <TokenCount value={row.tokens_output} direction="out" /> },
           // A measured zero is the run table's muted "$0", the served text its title (OMN-22168, "full platform uniform").
           { k: 'Cost', v: recordedMoney(row.cost_usd) === formatUsd(0)
             ? <span className="local-cost-free" title={recordedMoney(row.cost_usd)}>{recordedMoney(row.cost_usd).replace(/\.0+$/, '')}</span>
@@ -329,7 +329,7 @@ const servedNumber = (value: unknown): number | null =>
   isUnavailableField(value) || !Number.isFinite(Number(value)) ? null : Number(value);
 const wholeTokens = (value: unknown) => {
   const n = servedNumber(value);
-  return n === null ? 'Not served' : formatFullCount(Math.round(n));
+  return n === null ? 'Not served' : <TokenCount value={Math.round(n)} missing="Not served" />;
 };
 const attempts = (value: unknown) => {
   const n = servedNumber(value);
@@ -582,8 +582,8 @@ function TokenUsage() {
   return (
     <Panel title="TOKEN USAGE" sub={`${formatDashboardCount(t.total_tokens)} total · ${formatUsd(t.total_estimated_cost_usd)}`}>
       <div className="ev-token-summary">
-        <div data-field-tone="tokens-in"><div className="note">Prompt</div><div className="mono ev-token-num">{formatFullCount(t.total_prompt_tokens)}</div></div>
-        <div data-field-tone="tokens-out"><div className="note">Completion</div><div className="mono ev-token-num">{formatFullCount(t.total_completion_tokens)}</div></div>
+        <div data-field-tone="tokens-in"><div className="note">Prompt</div><div className="mono ev-token-num"><TokenCount value={t.total_prompt_tokens} direction="in" /></div></div>
+        <div data-field-tone="tokens-out"><div className="note">Completion</div><div className="mono ev-token-num"><TokenCount value={t.total_completion_tokens} direction="out" /></div></div>
         <div data-field-tone="cost"><div className="note">Est. cost</div><div className="mono ev-token-num c-amber">{formatUsd(t.total_estimated_cost_usd)}</div></div>
       </div>
       {/* Part 16 AC97 (review fix): the hatched ranked bars of every other chart, whole model names, and whether each
@@ -592,7 +592,7 @@ function TokenUsage() {
         items={models.map(m => ({
           key: m.model_id, name: m.model_name, model: m.model_id, value: m.total_tokens, color: modelColor(m.model_id),
           basis: m.token_provenance === 'measured' ? 'measured' as const : 'estimated' as const,
-          display: `${formatFullCount(m.total_tokens)} tokens`,
+          display: `${formatDashboardCount(m.total_tokens)} tokens`,
         }))} />
       <TierLegend label="Token usage tier colours" models={models.map(m => m.model_id)} />
     </Panel>
@@ -612,7 +612,7 @@ function DecisionDetail({ row }: { row: DelegationDecisionRow }) {
           { k: 'Task type', v: taskLabel(row.task_type) },
           { k: 'Model', v: row.model_name },
           { k: 'Quality detail', v: row.quality_gate_detail ? escalationReason(row.quality_gate_detail).text : '—' },
-          { k: 'Tokens in / out', v: <><span data-field-tone="tokens-in" data-field-unavailable={row.tokens_input == null}>{row.tokens_input == null ? 'Not recorded' : formatFullCount(row.tokens_input)}</span>{' / '}<span data-field-tone="tokens-out" data-field-unavailable={row.tokens_output == null}>{row.tokens_output == null ? 'Not recorded' : formatFullCount(row.tokens_output)}</span></> },
+          { k: 'Tokens in / out', v: <><span data-field-tone="tokens-in" data-field-unavailable={row.tokens_input == null}><TokenCount value={row.tokens_input} direction="in" /></span>{' / '}<span data-field-tone="tokens-out" data-field-unavailable={row.tokens_output == null}><TokenCount value={row.tokens_output} direction="out" /></span></> },
           { k: 'Latency', v: fmtLatency(row.latency_ms) },
           { k: 'Created', v: readableTime(row.created_at) ?? row.created_at },
         ]}

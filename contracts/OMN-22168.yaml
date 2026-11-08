@@ -286,3 +286,16 @@ dod_evidence:
       - check_type: "test_passes"
         check_value: "npm run test:run -- tests/pages/local/usage-analysis.money.omn22168.test.ts"
         cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn22168-ac4-token-counts-short"
+    description: >-
+      AC4, the 2026-11-07 product-owner ask and Lakshman's 2026-11-08 "uniform in whole platform" ruling, not the whole
+      criterion: every token count the pages print (Usage token cards and their peak captions, the Tokens processed
+      in and out, the run tables, the per-model usage table, the metering table, Delegation Evidence) reads short by the
+      dashboard count rule (K, M, B, T, two decimals cut; past T stays T) and keeps its exact count on hover through the
+      kit's TokenCount and TokenDirections.
+    source: "manual"
+    binds_ac: ["AC4"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm run test:run -- tests/pages/local/big-token-numbers.omn22168.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"

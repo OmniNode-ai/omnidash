@@ -21,7 +21,7 @@ describe('AC6: the token direction rows are a kit component with a story in ligh
     const { container } = render(<TokenDirections input={2954602} output={null} />);
     const rows = [...container.querySelectorAll<HTMLElement>('.local-token-direction')];
     expect(rows.map(row => [row.dataset.fieldTone, row.dataset.fieldUnavailable, row.querySelector('strong')?.textContent]))
-      .toEqual([['tokens-in', 'false', '2,954,602'], ['tokens-out', 'true', 'Not measured']]);
+      .toEqual([['tokens-in', 'false', '2.95M'], ['tokens-out', 'true', 'Not measured']]);
     expect(rows.every(row => row.querySelector(':scope > svg'))).toBe(true);
   });
 

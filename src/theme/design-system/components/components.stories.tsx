@@ -7,7 +7,7 @@ import { useState } from 'react';
 import { StoryPage, StorySection } from '../story-frame';
 import {
   Badge, Card, ColumnTip, ConfirmDialog, DashboardTabs, DashboardToggle, DataTable, Dropdown, EmptyState, Fact, FactList, Figure, InfoTip, KpiTile, Panel,
-  PanelTitle, StatusChip, TokenDirections, Tooltip,
+  PanelTitle, StatusChip, TokenCount, TokenDirections, Tooltip,
 } from './index';
 import { FileSpreadsheet } from '../icons';
 
@@ -95,6 +95,11 @@ function Components() {
           is not served keeps the unavailable ink (Lakshman 2026-11-07). */}
       <TokenDirections input={2954602} output={1389124} />
       <TokenDirections input={528485346} output={null} />
+    </StorySection>
+
+    <StorySection title="Token count">
+      {/* OMN-22168: a token count reads short by the dashboard count rule, its exact count on hover. */}
+      <TokenCount value={535306002} direction="in" /> · <TokenCount value={66891210} direction="out" /> · <TokenCount value={null} />
     </StorySection>
 
     <StorySection title="Empty state">
