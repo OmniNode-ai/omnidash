@@ -27,6 +27,38 @@
         "missing-field",
         "no-data"
       ]
+    },
+    {
+      "component_id": "status-alerts",
+      "component_kind": "table",
+      "title": "Open alerts",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "status-alerts-local-alerts",
+          "projection_topic": "onex.snapshot.projection.local-alerts.v1",
+          "ordering_authority_field": "raised_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "code",
+            "subject",
+            "mode",
+            "service",
+            "state",
+            "severity",
+            "raised_at",
+            "cleared_at"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
     }
   ],
   "page_empty_state_reasons": []

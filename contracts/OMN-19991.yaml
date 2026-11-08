@@ -1,0 +1,41 @@
+---
+schema_version: "1.0.0"
+ticket_id: "OMN-19991"
+title: "Local alert transitions are published as an event and folded into node_projection_local_alerts keyed on tenant, code and subject"
+summary: "The omnidash half only. The ticket's premise is that without a reader the typed alerts the fold writes reach no page, and that is what had happened: node_projection_local_alerts declares `bus_backed: true` on onex.snapshot.projection.local-alerts.v1 and nothing in omnidash read it, so omnibase_infra's exposure-reader-coverage gate named the exposure `no_reader` on every open pull request there. This change places an Open alerts table on the shipped System status page, bound to the exposure and ordered as the exposure orders itself, and gives it a renderer of its own, because a table component omnidash does not name falls through to the Runs table. It proves the reader and its rendering; it proves nothing about the fold, the replay determinism of AC1 or the rule fixtures of AC2, which are the omnimarket half's and are evidenced in that repository's own contract."
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-omn19991-local-alerts-has-a-page-reader"
+    statement: |-
+      The shipped System status page places a component bound to onex.snapshot.projection.local-alerts.v1 and ordered by the exposure's own authority field, and a served alert row is drawn on that page with its code, subject and severity; an alert still open is drawn as not cleared rather than blank, and a served exposure holding no alert says so rather than rendering nothing.
+    acceptance:
+      - id: "AC3"
+        statement: |-
+          AC3 (this repository's own criterion; the ticket's AC1 and AC2 are the omnimarket half's): the exposure has a reader on a shipped page and a served alert is drawn there -- falsifier: the page document places no component bound to the topic, or a served row renders under another exposure's columns
+evidence_requirements:
+  - kind: "tests"
+    description: "AC3: the System status document places a component bound to the exposure, a served open alert is drawn by code, subject and severity with its blank cleared_at named, and an empty served exposure says so."
+    command: "npx vitest run src/pages/LocalDashboardPage.omn19991.alerts.test.tsx"
+dod_evidence:
+  - id: "dod-omn19991-omnidash-alerts-reader"
+    description: "AC3: the shipped System status document places a component bound to onex.snapshot.projection.local-alerts.v1, ordered by raised_at descending as the exposure orders itself, and a served open alert is drawn on the page with its code, subject and severity. It proves no fold, no replay and no rule fixture."
+    source: "manual"
+    binds_ac: ["AC3"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/LocalDashboardPage.omn19991.alerts.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn19991-alerts-not-the-runs-table"
+    description: "AC3, the part a declaration alone does not buy: a table component omnidash does not name falls through to the Runs table, so the alert first rendered as one run of \"Not recorded\" under the Runs columns and the run filters. This check fails if the alerts panel draws the run filters again."
+    source: "manual"
+    binds_ac: ["AC3"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/LocalDashboardPage.omn19991.alerts.test.tsx -t A2"
+        cwd: "${OMNI_HOME}/omnidash"
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""

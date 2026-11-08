@@ -2521,6 +2521,35 @@ export function CredentialsTable({ rows }: { rows: readonly unknown[] }) {
   );
 }
 
+/**
+ * OMN-19991: the alerts omnimarket's `local_alerts` exposure serves, on System status beside Environment. The rows
+ * are the writer's own alert transitions, newest raised first as the exposure orders them (`raised_at DESC`), and the
+ * columns are the ones the page declares. This table decides nothing: an alert is open or cleared because its own
+ * `state` field says so, and a field the writer recorded no value for says so rather than reading as all clear.
+ */
+export function AlertsTable({ rows, columns }: { rows: readonly unknown[]; columns: readonly DeclaredColumn[] }) {
+  const alerts = asRecords(rows);
+  // A served exposure with no rows is the healthy case, and it has to say which it is: an unread exposure is handled
+  // above this renderer, so reaching here with no rows means the store holds no alert.
+  if (alerts.length === 0) return <EmptyState>No alert has been raised on this machine</EmptyState>;
+  const cell = (alert: Row, column: DeclaredColumn) => {
+    const value = alert[column.key];
+    // An alert that is still open has no cleared_at, which is the one missing time that means something.
+    if (column.key === 'cleared_at' && isMissing(value)) return 'Not cleared';
+    return column.key.endsWith('_at') && !isMissing(value) ? <CellTime value={value} /> : recorded(value);
+  };
+  return (
+    <DataTable className="local-alerts-records" aria-label="Alerts raised on this machine">
+      <thead><tr>{columns.map(column => <th key={column.key}>{column.header}</th>)}</tr></thead>
+      <tbody>{alerts.map((alert, index) => (
+        <tr key={`${String(alert.code)}-${String(alert.subject)}-${index}`} data-alert-state={recorded(alert.state)}>
+          {columns.map(column => <td key={column.key} data-label={column.header}>{cell(alert, column)}</td>)}
+        </tr>
+      ))}</tbody>
+    </DataTable>
+  );
+}
+
 /** A served flag as a word. The stores serve it as 1 and 0 or as true and false; anything else is shown as served. */
 function yesOrNo(value: unknown): string {
   if (isMissing(value)) return recorded(value);
@@ -3168,6 +3197,10 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns, acti
     return <DashboardAccess rows={asRecords(rawRowsFor(component, snapshots, 0))}
       complete={!snapshots.some(snapshot => snapshot.topic === topic && snapshot.failure)} />;
   }
+  // OMN-19991: System status' alerts table. Without this branch a table component falls through to RunsTable,
+  // which draws the Runs columns and the run filters over whatever rows it was handed: an alert row rendered as
+  // one run of "Not recorded". A table that reads another exposure needs its own renderer named here.
+  if (component.component_id === 'status-alerts') return <AlertsTable rows={rows} columns={columns} />;
   return rows.length === 0 ? <NoRunsYet /> : <RunsTable decisions={rows} sessions={lookup} pageSize={pageSize} syncUrl={syncUrl}
     truncated={snapshots.find(snapshot => snapshot.topic === DELEGATION_DECISIONS_TOPIC)?.truncated} />;
 }
