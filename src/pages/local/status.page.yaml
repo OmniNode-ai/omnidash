@@ -26,6 +26,57 @@
         "show_labels": true,
         "compact": false
       }
+    },
+    {
+      "widget_id": "b17d4c05-9a2e-5f61-8d3c-7e0a9b42f618",
+      "title": "Open alerts",
+      "row": 4,
+      "col": 0,
+      "width": 12,
+      "height": 4,
+      "data_source": "status-alerts",
+      "config": {
+        "config_kind": "table",
+        "widget_type": "table",
+        "columns": [
+          {
+            "key": "code",
+            "header": "Alert"
+          },
+          {
+            "key": "subject",
+            "header": "Subject"
+          },
+          {
+            "key": "service",
+            "header": "Service"
+          },
+          {
+            "key": "mode",
+            "header": "Mode"
+          },
+          {
+            "key": "state",
+            "header": "State"
+          },
+          {
+            "key": "severity",
+            "header": "Severity"
+          },
+          {
+            "key": "raised_at",
+            "header": "Raised"
+          },
+          {
+            "key": "cleared_at",
+            "header": "Cleared"
+          }
+        ],
+        "page_size": 25,
+        "show_pagination": true,
+        "default_sort_key": "raised_at",
+        "default_sort_direction": "desc"
+      }
     }
   ]
 }
