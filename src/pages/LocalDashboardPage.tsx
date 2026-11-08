@@ -2118,18 +2118,19 @@ function tierModelCost(model: Row): string {
  */
 // Duration 120 (its sort header measured 120px with the button's padding, 2026-11-05), taken from the model's 260.
 // Jonah 2026-11-06 ("column wrapping when there is plenty of room between the other columns (model → tokens for example)"):
-// the model column takes the room Tokens, Saving and Duration left empty, so a long model name stays on one line at 1440.
+// the model column is at most 200px; a longer model name wraps at its joins (Lakshman 2026-11-08).
 const RUN_COLUMN_WIDTHS: Readonly<Record<string, number>> = {
-  identity: 120, age: 120, 'run-outcome': 96, model: 330, backend: 200, 'routing-model': 180, completion: 150,
+  identity: 120, age: 120, 'run-outcome': 96, model: 200, backend: 200, 'routing-model': 180, completion: 150,
   escalated: 136, host: 190, tokens: 110, cost: 90, savings: 130, baseline: 170, basis: 100, duration: 100, task: 150,
   'tokens-completion': 210, tier: 136, score: 150,
 };
 /**
  * Lakshman 2026-11-07 ("why gap?", live lab: Qwen3.8-27B left about 200px empty before Tokens in the fixed 330px column):
- * the Model column is as wide as the longest model name on the page of runs shown, so that name stays on one line
- * (Jonah 2026-11-06) and a page of short names leaves no gap. Names are drawn in the monospace face, measured in Chrome
- * at 7.8px a character, plus the cell's 24px of padding; never under 160px or over the 330px the longest served name
- * needs. Every other column keeps its standard width.
+ * the Model column is as wide as the longest model name on the page of runs shown, so a page of short names leaves no
+ * gap. Names are drawn in the monospace face, measured in Chrome at 7.8px a character, plus the cell's 24px of padding;
+ * never under 160px. Lakshman 2026-11-08 ("wrap it and save column space"): never over 200px, the Backend column's
+ * width, so a longer name wraps at its joins (breakableName) instead of widening the column; a short name still keeps
+ * one line (Jonah 2026-11-06). Every other column keeps its standard width.
  */
 const MODEL_CHAR_PX = 7.8;
 const MODEL_CELL_PADDING_PX = 24;

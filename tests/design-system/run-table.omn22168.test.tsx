@@ -135,7 +135,8 @@ describe('J5: an unmeasured saving is one short line', () => {
 });
 
 // J6, Lakshman 2026-11-07 ("why gap?"): the Model column fits the longest model name on the page instead of a fixed
-// 330px, so a page of short names leaves no gap before Tokens, and the longest name still stays on one line.
+// width, so a page of short names leaves no gap before Tokens. Lakshman 2026-11-08 ("wrap it and save column space"):
+// the column stops at 200px, the Backend column's width, and a longer name wraps at its joins (/ : _ -) instead.
 describe('J6: the Model column fits the page of runs it shows', () => {
   function modelHeaderWidth(decisions: Record<string, unknown>[]) {
     render(<RunsTable now={NOW} decisions={decisions} sessions={[]} />);
@@ -145,21 +146,30 @@ describe('J6: the Model column fits the page of runs it shows', () => {
 
   it('a page of short names gets a narrow column, never under 160px', () => {
     expect(runModelColumnWidth([{ model_name: 'Qwen3.8-27B' }])).toBe(160);
-    expect(runModelColumnWidth([{ model_name: 'cohere/north-mini-code:free' }])).toBe(Math.ceil(27 * 7.8) + 24);
+    expect(runModelColumnWidth([{ model_name: 'Qwen3.8-27B-Instruct' }])).toBe(Math.ceil(20 * 7.8) + 24);
     expect(modelHeaderWidth([{ ...run('w-a', '2026-11-06T10:05:00Z'), model_name: 'Qwen3.8-27B' }])).toBe(160);
   });
 
   it('a requested model written above the answer counts toward the width', () => {
-    expect(runModelColumnWidth([{ model_name: 'm', requested_model: 'cohere/north-mini-code:free' }])).toBe(Math.ceil(29 * 7.8) + 24);
+    expect(runModelColumnWidth([{ model_name: 'm', requested_model: 'Qwen3.8-27B-Instruct' }])).toBe(Math.ceil(22 * 7.8) + 24);
     expect(runModelColumnWidth([{ model_name: 'same', requested_model: 'same' }])).toBe(160);
   });
 
-  it('control: the longest served name still gets the room it needs, capped at 330px', () => {
-    expect(runModelColumnWidth([{ model_name: 'nvidia/nemotron-3-ultra-550b-a55b:free' }])).toBe(Math.ceil(38 * 7.8) + 24);
-    expect(runModelColumnWidth([{ model_name: 'x'.repeat(80) }])).toBe(330);
+  it('a name longer than 200px of column wraps instead of widening it', () => {
+    expect(runModelColumnWidth([{ model_name: 'nvidia/nemotron-3-ultra-550b-a55b:free' }])).toBe(200);
+    expect(runModelColumnWidth([{ model_name: 'cohere/north-mini-code:free' }])).toBe(200);
+    expect(runModelColumnWidth([{ model_name: 'm', requested_model: 'cohere/north-mini-code:free' }])).toBe(200);
+    expect(runModelColumnWidth([{ model_name: 'x'.repeat(80) }])).toBe(200);
     expect(modelHeaderWidth([
       { ...run('w-b', '2026-11-06T10:05:00Z'), model_name: 'Qwen3.8-27B' },
       { ...run('w-c', '2026-11-06T09:05:00Z'), model_name: 'nvidia/nemotron-3-ultra-550b-a55b:free' },
-    ])).toBe(Math.ceil(38 * 7.8) + 24);
+    ])).toBe(200);
+  });
+
+  it('a wrapped name breaks only at its joins: the model button carries a break after each / : _ -', () => {
+    render(<RunsTable now={NOW} decisions={[{ ...run('w-d', '2026-11-06T10:05:00Z'), model_name: 'nvidia/nemotron-3-ultra-550b-a55b:free' }]} sessions={[]} />);
+    const button = document.querySelector<HTMLElement>('td[data-label="Model"] .local-run-model')!;
+    expect(button.textContent).toBe('nvidia/nemotron-3-ultra-550b-a55b:free');
+    expect(button.querySelectorAll('wbr')).toHaveLength(6);
   });
 });
