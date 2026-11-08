@@ -299,3 +299,14 @@ dod_evidence:
       - check_type: "test_passes"
         check_value: "npm run test:run -- tests/pages/local/big-token-numbers.omn22168.test.tsx"
         cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn22168-ac4-run-model-column-wraps"
+    description: >-
+      AC4, Lakshman's 2026-11-08 ruling "wrap it and save column space" on the Runs table, not the whole criterion: the
+      Model column fits the page's longest name but stops at 200px, the Backend column's width; a longer name wraps
+      only at its joins (/ : _ -) over at most two lines, while a short name and every header and time keep one line.
+    source: "manual"
+    binds_ac: ["AC4"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm run test:run -- tests/design-system/run-table.omn22168.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"

@@ -22,9 +22,9 @@ import { chooseChartTab } from './chart-tabs';
  *      different color and different icons"), each its concept's canonical glyph and colour, never the interface grey.
  *   L11 each sidebar page has its own colour, and the page title's icon is that page's glyph in that colour, drawn big
  *      (Lakshman 2026-11-04, "side bar each page should have own color and icons ... icons should be Big in actual page").
- *   L12 at 1440px every Runs header, model name and time stays on one line (Jonah 2026-11-06, "column wrapping when there is
- *      plenty of room between the other columns"; dev's 252px model column broke a long name over two lines, and dev wrote
- *      a day above its clock).
+ *   L12 at 1440px every Runs header and time stays on one line (Jonah 2026-11-06, "column wrapping when there is plenty of
+ *      room between the other columns"; dev wrote a day above its clock). A model name wider than the 200px Model column
+ *      wraps at its joins, at most two lines (Lakshman 2026-11-08, "wrap it and save column space"); a short one does not.
  *   L13 at 1440px an unmeasured saving reads "Not measured" on one line, its reason the tooltip (live lab 2026-11-07:
  *      "Not measured: tokens not recorded" wrapped over three lines in a 132px Saving column). *   L14, tokens in and out in two colours on every page, is tests/e2e/token-directions.omn22168.spec.ts.
  */
@@ -290,13 +290,13 @@ test('L11: each sidebar page has its own colour, and its title icon is big in th
   }
 });
 
-test('L12: at 1440px every Runs header, model name and time stays on one line', async ({ page }) => {
+test('L12: at 1440px every Runs header and time stays on one line; a long model name wraps at its joins', async ({ page }) => {
   await page.goto('/runs');
   const table = page.locator('.local-runs-wrap table').first();
   await expect(table.locator('tbody tr').first()).toBeVisible();
   await expect(table.locator('tbody td[data-label="Model"]').filter({ hasText: LONG }).first()).toBeVisible();
   // A cell's text lines, counted from its text's line boxes: two boxes more than 8px apart vertically are two lines.
-  const wrapped = await table.locator('thead th, tbody td[data-label="Model"], tbody td[data-label="Time"]').evaluateAll(cells => cells
+  const lineCount = (locator: ReturnType<typeof table.locator>) => locator.evaluateAll(cells => cells
     .filter(cell => getComputedStyle(cell).display !== 'none' && (cell.textContent ?? '').trim() !== '')
     .map(cell => {
       const range = document.createRange();
@@ -305,8 +305,13 @@ test('L12: at 1440px every Runs header, model name and time stays on one line', 
       const lines = tops.reduce((count, top, i) => count + (i > 0 && top - tops[i - 1]! > 8 ? 1 : 0), tops.length ? 1 : 0);
       return { text: (cell.textContent ?? '').trim(), lines };
     })
-    .filter(cell => cell.lines > 1));
-  expect(wrapped, 'no header, model name or time wraps').toEqual([]);
+    );
+  const wrapped = (await lineCount(table.locator('thead th, tbody td[data-label="Time"]'))).filter(cell => cell.lines > 1);
+  expect(wrapped, 'no header or time wraps').toEqual([]);
+  const models = await lineCount(table.locator('tbody td[data-label="Model"]'));
+  expect(models.filter(cell => cell.text === 'model-a').every(cell => cell.lines === 1), 'a short name stays on one line').toBe(true);
+  expect(models.filter(cell => cell.text === LONG).map(cell => cell.lines), 'the long name wraps at its joins').toContain(2);
+  expect(models.every(cell => cell.lines <= 2), 'no name runs past two lines').toBe(true);
 });
 
 test('L13: at 1440px an unmeasured saving is one line, with its reason as the tooltip', async ({ page }) => {
@@ -325,4 +330,3 @@ test('L13: at 1440px an unmeasured saving is one line, with its reason as the to
   });
   expect(shown).toEqual({ lines: 1, text: 'Not measured' });
 });
-
