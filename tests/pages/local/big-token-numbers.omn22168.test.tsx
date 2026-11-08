@@ -12,6 +12,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { RecentRunsTable, RunsTable, UsageKpis } from '@/pages/LocalDashboardPage';
 import { TokenDirections } from '@/components/dashboard/usage/TokenDirections';
+import { TokenCount } from '@/components/dashboard/usage/TokenCount';
 import { UsageByModelDayTable } from '@/components/dashboard/usage/UsageByModelDayWidget';
 
 afterEach(cleanup);
@@ -86,6 +87,18 @@ describe('big token counts read short, exact on hover', () => {
     expect(figure('Tokens in').textContent).toBe('Not measured');
     const { container } = render(<TokenDirections input={null} output={0} />);
     expect([...container.querySelectorAll('.local-token-direction strong')].map(node => node.textContent)).toEqual(['Not measured', '0']);
+  });
+
+  // Lakshman 2026-11-08: "K / M / B / T / Qa / Qi". Past a trillion the rule goes on to Qa (10^15) and Qi (10^18);
+  // past Qi it stays Qi, grouped. Counts this large exceed a double, so they are served as decimal strings.
+  it('B7: past trillions the count reads Qa then Qi, never a long run of T, the exact count on hover', () => {
+    const { container } = render(<>
+      <TokenCount value="999999999999999" /> <TokenCount value="1234567890123456" /> <TokenCount value="5500000000000000000" />
+      <TokenCount value="1234000000000000000000" />
+    </>);
+    const counts = [...container.querySelectorAll<HTMLElement>('.ds-token-count')];
+    expect(counts.map(node => node.textContent)).toEqual(['999.99T', '1.23Qa', '5.5Qi', '1,234Qi']);
+    expect(counts[1]!.getAttribute('title')).toBe('1,234,567,890,123,456 tokens');
   });
 
   it('control: a count under a thousand is unchanged', () => {
