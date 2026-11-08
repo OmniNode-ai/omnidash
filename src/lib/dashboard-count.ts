@@ -23,16 +23,19 @@ export function wholeCount(value: unknown): bigint | null {
   return BigInt(value);
 }
 
+/** Short scales (Lakshman 2026-11-08: "K / M / B / T / Qa / Qi"); past Qi the count stays Qi, grouped. */
+const SCALES = ['', 'K', 'M', 'B', 'T', 'Qa', 'Qi'] as const;
+
 export function formatDashboardCount(value: unknown): string {
   const parsed = decimal(value);
   if (!parsed) return 'Not measured';
   const { whole, fraction, negative } = parsed;
-  const scale = Math.min(4, Math.floor((whole.length - 1) / 3));
+  const scale = Math.min(SCALES.length - 1, Math.floor((whole.length - 1) / 3));
   const split = whole.length - scale * 3;
   const head = whole.slice(0, split);
   const tail = (whole.slice(split) + fraction).slice(0, 2).replace(/0+$/, '');
   const zero = head === '0' && !/[1-9]/.test(tail);
-  return `${negative && !zero ? '-' : ''}${group(head)}${tail ? `.${tail}` : ''}${['', 'K', 'M', 'B', 'T'][scale]}`;
+  return `${negative && !zero ? '-' : ''}${group(head)}${tail ? `.${tail}` : ''}${SCALES[scale]}`;
 }
 
 /** Directional token counts are always full integers, including values beyond Number.MAX_SAFE_INTEGER. */

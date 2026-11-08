@@ -18,11 +18,11 @@ describe('OMN-21015 headline counts and directional tokens', () => {
     expect(container.querySelector('.local-dashboard-metric')?.textContent).toBe('59.18K');
     expect(container.querySelector('.local-dashboard-metric')?.getAttribute('title')).toBe('59188');
   });
-  it('keeps tokens total compact and directions full, distinct and labelled', () => {
+  it('keeps tokens total and directions compact (OMN-22168), distinct and labelled with the exact count', () => {
     const { container } = card('overview-tokens');
     expect(container.querySelector('.local-dashboard-metric')?.textContent).toBe('309.27M');
-    expect(container.querySelector('[data-field-tone="tokens-in"]')?.textContent).toBe('300,000,001');
-    expect(container.querySelector('[data-field-tone="tokens-out"]')?.textContent).toBe('9,271,490');
+    expect(container.querySelector('[data-field-tone="tokens-in"]')?.textContent).toBe('300M');
+    expect(container.querySelector('[data-field-tone="tokens-out"]')?.textContent).toBe('9.27M');
     expect(screen.getByLabelText('Input tokens: 300,000,001').getAttribute('title')).toBe('Input tokens: 300,000,001');
     expect(screen.getByLabelText('Output tokens: 9,271,490').getAttribute('title')).toBe('Output tokens: 9,271,490');
     expect(container.querySelectorAll('.local-token-direction svg')).toHaveLength(2);
@@ -34,7 +34,7 @@ describe('OMN-21015 headline counts and directional tokens', () => {
   it.each([null, undefined, false, 'bad', '1.25'])('refuses invalid input %s without hiding output', value => {
     const { container } = card('overview-tokens', { ...row, tokens_input_total: value });
     expect(container.querySelector('[data-field-tone="tokens-in"]')?.textContent).toMatch(/Not measured/);
-    expect(container.querySelector('[data-field-tone="tokens-out"]')?.textContent).toMatch(/9,271,490/);
+    expect(container.querySelector('[data-field-tone="tokens-out"]')?.textContent).toMatch(/9\.27M/);
   });
   it('never substitutes provenance subtotals for a missing call total', () => {
     card('overview-measured', { ...row, run_count: null, measured_run_count: 50398, unknown_run_count: 8929 });
@@ -43,6 +43,7 @@ describe('OMN-21015 headline counts and directional tokens', () => {
   it('does not mix all-time directions with an unavailable daily total', () => {
     const { container } = card('overview-tokens', row, 'today');
     expect(container.textContent).toContain('daily totals unavailable');
-    expect(container.textContent).not.toContain('300,000,001');
+    expect(container.textContent).not.toContain('300M');
+    expect(container.innerHTML).not.toContain('300,000,001');
   });
 });

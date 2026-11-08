@@ -33,10 +33,13 @@ const direction = (container: HTMLElement, tone: 'tokens-in' | 'tokens-out') =>
   container.querySelector(`[data-field-tone="${tone}"]`)?.textContent;
 
 describe('OMN-21015 Tokens processed reads the served token directions', () => {
-  it('shows the served input and output totals in full', () => {
+  // OMN-22168 (product owner 2026-11-07): the directions read short; the served totals stay whole on hover.
+  it('shows the served input and output totals short, in full on hover', () => {
     const { container } = tokensCard(served);
-    expect(direction(container, 'tokens-in')).toBe('300,000,001');
-    expect(direction(container, 'tokens-out')).toBe('9,271,490');
+    expect(direction(container, 'tokens-in')).toBe('300M');
+    expect(direction(container, 'tokens-out')).toBe('9.27M');
+    expect(container.querySelector('[data-field-tone="tokens-in"]')?.getAttribute('title')).toBe('Input tokens: 300,000,001');
+    expect(container.querySelector('[data-field-tone="tokens-out"]')?.getAttribute('title')).toBe('Output tokens: 9,271,490');
   });
 
   it('reads nothing the exposure does not serve: the old names alone leave both directions not measured', () => {
@@ -54,8 +57,9 @@ describe('OMN-21015 Tokens processed reads the served token directions', () => {
 
   it('never derives a missing direction from the total and the other direction', () => {
     const { container } = tokensCard(without(['tokens_output_total']));
-    expect(direction(container, 'tokens-in')).toBe('300,000,001');
+    expect(direction(container, 'tokens-in')).toBe('300M');
     expect(direction(container, 'tokens-out')).toMatch(/Not measured/);
-    expect(container.textContent).not.toContain('9,271,490');
+    // Not the derived 9,271,490 anywhere, hover titles included (309.27M is the served total, not a direction).
+    expect(container.innerHTML).not.toContain('9,271,490');
   });
 });
