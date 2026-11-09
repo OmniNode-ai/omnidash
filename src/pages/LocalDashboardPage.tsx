@@ -1629,7 +1629,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
   const [showRouting, setShowRouting] = useState(false);
   const modelColorOf = useModelColor();
   const search = useSearch();
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const [localView, setLocalView] = useState<RunsViewState>(DEFAULT_RUNS_VIEW);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const view = syncUrl ? readRunsSearch(search) : localView;
@@ -1679,11 +1679,13 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
   const modelWidth = runModelColumnWidth(page);
   const columnWidth = (concept: string) => (concept === 'model' ? modelWidth : RUN_COLUMN_WIDTHS[concept]!);
   const canonicalSearch = writeRunsSearch(search, { ...view, page: current + 1 });
+  // OMN-23309: useSearch reads whichever page is current, so a Runs table still mounted while the user leaves would
+  // send them back to /runs. The table canonicalises the URL only while the path is /runs.
   useEffect(() => {
-    if (syncUrl && canonicalSearch !== search.replace(/^\?/, '')) {
+    if (syncUrl && location === '/runs' && canonicalSearch !== search.replace(/^\?/, '')) {
       navigate(`/runs${canonicalSearch ? `?${canonicalSearch}` : ''}`, { replace: true });
     }
-  }, [canonicalSearch, navigate, search, syncUrl]);
+  }, [canonicalSearch, location, navigate, search, syncUrl]);
   useEffect(() => {
     if (selectedRunId !== null && !page.some(run => run.correlation_id === selectedRunId)) {
       setSelectedRunId(page[0] ? String(page[0].correlation_id ?? '') : null);
