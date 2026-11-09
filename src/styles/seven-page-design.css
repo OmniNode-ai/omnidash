@@ -1311,7 +1311,9 @@ html .app svg.field-icon.field-icon:is([data-field-icon^="tier-"], [data-semanti
    whatever each caption's length. Only the first basis line is drawn (two lines at most); the rest stay in the page for
    screen readers. */
 :is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel > .local-dashboard-metric { margin-top: 6px; }
-:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-caption { margin-top: auto; padding-top: 8px; }
+/* OMN-23330 AC28 (operator 2026-11-09, "overview should match style from delegeation eviandace"): the caption follows its
+   figure directly, as on Delegation Evidence; a card stretched by a taller neighbour keeps its spare height below. */
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-caption { margin-top: 0; padding-top: 8px; }
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-caption > * {
   margin: 0; font-size: 12px; line-height: 1.4; font-weight: 400; color: var(--ds-ink-2) !important;
 }
