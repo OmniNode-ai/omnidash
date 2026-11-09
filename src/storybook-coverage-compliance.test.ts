@@ -104,8 +104,6 @@ const STORY_FILES: Array<{ rel: string; id: string; widget: boolean }> = [
   { rel: 'src/components/dashboard/routing-decision/RoutingDecisionWidget.stories.tsx', id: 'RoutingDecisionWidget.stories', widget: true },
   { rel: 'src/components/dashboard/events/EventStream.stories.tsx', id: 'EventStream.stories', widget: true },
   { rel: 'src/components/dashboard/cost-trend/CostTrend2D.stories.tsx', id: 'CostTrend2D.stories', widget: true },
-  { rel: 'src/components/dashboard/cost-trend/CostTrend3DBars.stories.tsx', id: 'CostTrend3DBars.stories', widget: true },
-  { rel: 'src/components/dashboard/cost-trend/CostTrend3DArea.stories.tsx', id: 'CostTrend3DArea.stories', widget: true },
   { rel: 'src/components/dashboard/cost-by-model/CostByModelPie.stories.tsx', id: 'CostByModelPie.stories', widget: true },
   // CostByModelBars.stories.tsx deleted in OMN-10291 — 2D variant now dispatched via IBarChartAdapter manifest entry.
   // DoughnutChartAdapter stories cover the 3D variant.
