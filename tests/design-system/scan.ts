@@ -167,8 +167,6 @@ export const WIDGET_DASHBOARD_CHARTS: ReadonlySet<string> = new Set([
   'src/components/dashboard/ab-compare/AbCompareWidget.tsx',
   'src/components/dashboard/cost-by-model/CostByModelPie.tsx',
   'src/components/dashboard/cost-summary/CostSummaryAdapter.tsx',
-  'src/components/dashboard/cost-trend/CostTrend3DArea.tsx',
-  'src/components/dashboard/cost-trend/CostTrend3DBars.tsx',
   'src/components/dashboard/cost-trend/StackedChart.tsx',
   'src/components/dashboard/delegation/DoughnutChart.tsx',
   'src/components/dashboard/projection-container/visualizations/CostScatter.tsx',
