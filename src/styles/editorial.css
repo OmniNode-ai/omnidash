@@ -950,8 +950,8 @@ html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-e
   background: linear-gradient(155deg, color-mix(in oklab, var(--panel-accent, var(--ds-line)) 13%, var(--ds-surface)) 0%,
     var(--ds-surface) 62%) !important;
   /* The gradient shorthand leaves background-color transparent; the card keeps an opaque surface under its tint. */
-  background-color: var(--ds-surface) !important;
-  border-color: color-mix(in oklab, var(--panel-accent, var(--ds-line)) 38%, var(--ds-line)) !important; }
+  background-color: var(--ds-surface) !important; }
+/* OMN-23330 AC26: the card's border colour moved to seven-page-design.css, beside the hover that lights it. */
 html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-overview-summary > article.local-dashboard-panel.local-dashboard-panel::before {
   content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: var(--panel-accent, var(--ds-line)); opacity: 0.9; }
 html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-overview-summary > article.local-dashboard-panel.local-dashboard-panel > h2 svg {

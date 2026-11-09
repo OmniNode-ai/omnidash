@@ -66,12 +66,12 @@ describe('OMN-21970 AC9: CSS motion families', () => {
     expect(charts).not.toMatch(/className="od-draw"[^>]*pathLength/);
   });
 
-  // OMN-23330 AC26 (operator 2026-11-09, "these cards blink when hover", option A): a summary card neither lifts nor
-  // glows on hover; the lift flickered under a pointer near its edge and the glow blinked as the pointer crossed cards.
-  it('M1 hover: a summary card neither lifts nor glows on hover', () => {
-    expect(motion()).not.toMatch(/:hover \{[^}]*(transform: translateY|box-shadow:)/);
+  // OMN-23330 AC26 (operator 2026-11-09, "hover should light it and make it best please"): a summary card lights in its own
+  // colour on hover, inside the no-preference block only, and never lifts (the lift flickered under a pointer near its edge).
+  it('M1 hover: a summary card lights in its own colour on hover and never lifts', () => {
+    expect(motion()).toMatch(/:hover \{\s*border-color: var\(--card-accent\);[^}]*box-shadow: [^;]*var\(--card-accent\)/);
+    expect(motion()).not.toMatch(/:hover \{[^}]*transform: translateY/);
     expect(outsideBlocks()).not.toMatch(/:hover \{\s*transform: translateY/);
-    expect(motion()).toMatch(/AC26/);
   });
   it('M2 hover: reduced motion removes the lift and its transition', () => {
     expect(reduce()).toMatch(/:hover \{\s*transition: none !important;\s*transform: none !important;/);

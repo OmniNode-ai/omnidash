@@ -1566,9 +1566,29 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ds-accent); outline-o
   :is(.local-dashboard-page, .ev-root) .local-dashboard-tabpanel .local-dashboard-panel { animation: none; }
   :is(.local-dashboard-page, .ev-root) .local-dashboard-tabpanel .gdb-bar.ins-seg { animation-duration: 380ms; animation-delay: 0ms; }
 
-  /* OMN-23330 AC26 (operator 2026-11-09, option A): a summary card looks the same hovered and at rest. A 3px hover lift
-     made it flicker under a pointer near its edge, and the glow that replaced it faded out in the 12px gap and in on the
-     next card, which read as a blink on every move across the row. */
+  /* OMN-23330 AC26 (operator 2026-11-09: "hover should light it and make it best please"): a summary card lights up in its
+     own colour when hovered (accent border and a soft accent glow) and never moves. It lights in 110 ms and fades only
+     after a 90 ms hold, so crossing the 12px gap to the next card hands the light over with no moment where neither card
+     is lit. History: a 3px lift flickered under a pointer near the edge; a glow that faded at once blinked in the gap.
+     The resting rule's transition is the one used when the hover ends; the hovered rule's is the one used when it starts.
+     !important on box-shadow: editorial.css sets box-shadow: none !important on every hovered panel. */
+  :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel {
+    transition: border-color 220ms ease 90ms, box-shadow 220ms ease 90ms;
+  }
+  :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel:hover {
+    border-color: var(--card-accent);
+    /* editorial.css pins the card border with !important through --card-border, so the hover sets the variable. */
+    --card-border: var(--card-accent);
+    box-shadow: 0 10px 28px -14px color-mix(in srgb, var(--card-accent) 65%, transparent),
+      0 0 18px -6px color-mix(in srgb, var(--card-accent) 35%, transparent) !important;
+    transition: border-color 110ms ease 0ms, box-shadow 110ms ease 0ms;
+  }
+}
+/* OMN-23330 AC26: the headline card border, moved here from editorial.css (outside the motion block, so it holds under
+   reduced motion too): its tinted colour at rest, the hover's --card-border when lit. It keeps editorial.css's selector
+   and !important, so it still wins over the generic panel borders. */
+html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-overview-summary > article.local-dashboard-panel.local-dashboard-panel {
+  border-color: var(--card-border, color-mix(in oklab, var(--panel-accent, var(--ds-line)) 38%, var(--ds-line))) !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
