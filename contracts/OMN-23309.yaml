@@ -4,9 +4,9 @@ schema_version: "1.0.0"
 ticket_id: "OMN-23309"
 title: "The Runs table rewrites the URL only on /runs"
 summary: >-
-  Acceptance for OMN-23309, copied from the live ticket on 2026-11-09. AC1 and AC2 are bound to
-  tests/pages/local/runs-url-sync.test.tsx. AC3 (the served dashboard keeps each page reached from Runs) is proven by
-  the live browser readback recorded on the pull request, not by a check here.
+  Acceptance for OMN-23309, copied from the live ticket on 2026-11-09. AC1 and AC2 are declared here and bound to
+  tests/pages/local/runs-url-sync.test.tsx. The ticket's AC3 (the served dashboard keeps each page reached from Runs)
+  is a live browser readback recorded on the pull request, so it is not declared here and has no check.
 is_seam_ticket: false
 interface_change: false
 interfaces_touched: []
@@ -27,11 +27,6 @@ requirements:
           on /runs the table still replaces a non-canonical query with its canonical form (page clamped to the last
           page) -- falsifier: npx vitest run tests/pages/local/runs-url-sync.test.tsx with a case that asserts the
           replace, run on the lab host
-      - id: "AC3"
-        statement: >-
-          in the served dashboard with the fix, opening /runs and then choosing Overview, Usage and Settings in the
-          sidebar lands on each page and stays there -- falsifier: a live browser readback of each page's URL after the
-          switch, in light and dark at desktop and 390px width, recorded with screenshots on the pull request
 evidence_requirements: []
 emergency_bypass:
   enabled: false
