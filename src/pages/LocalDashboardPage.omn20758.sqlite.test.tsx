@@ -36,6 +36,11 @@ vi.mock('@/data-source/exposure-census', () => ({
 
 import { LocalDashboardPage } from './LocalDashboardPage';
 
+/** OMN-23330 AC27: a caption line's whole text; its figures and names are drawn as separate toned parts. */
+const caption = (text: string | RegExp) => (_content: string, element: Element | null) =>
+  element !== null && element.classList.contains('local-dashboard-caption')
+  && (typeof text === 'string' ? element.textContent === text : text.test(element.textContent ?? ''));
+
 // An all-time row shaped like the 2026-10-09 re-walk's: 23 runs, tokens and a spend the cards must show as served.
 const ALL_ROW = {
   window_kind: 'all', window_start: '', as_of: '2026-10-09T12:00:00Z', baseline_model: 'claude-sonnet-5-5',
@@ -91,6 +96,6 @@ describe('OMN-20758 Overview titles match the demo mockup', () => {
   it('T3: Agent calls keeps its run-class caption', async () => {
     await overview();
     // OMN-21166 live review 2026-10-25: the run-class line is in the card's hover.
-    expect(within(card('Agent calls')).getByText(/of 23 runs measured$/)).toBeInTheDocument();
+    expect(within(card('Agent calls')).getByText(caption(/of 23 runs measured$/))).toBeInTheDocument();
   });
 });

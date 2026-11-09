@@ -47,6 +47,7 @@ import { ChartReadout, Meter, MultiLinePlot, RankedBars, SeriesToggles, useSerie
 import { NO_RUNS_USD, sumDashboardUsd } from '@/lib/dashboard-money-total';
 import { KpiStrip, type KpiItem } from '@/components/dashboard/KpiStrip';
 import { CardBasis } from '@/components/dashboard/CardBasis';
+import { CaptionLine } from '@/components/dashboard/CaptionLine';
 import { AccessNotServed, DashboardAccess, dashboardAccessRow } from '@/pages/local/access';
 import { shortId } from '@/components/dashboard/event-dash/primitives';
 import { ConceptIcon, FieldIcon } from '@/components/dashboard/FieldIcon';
@@ -349,7 +350,8 @@ export function ChangeLine({ text }: { text: string }) {
 /** An Overview headline card's basis lines, drawn as its caption under the figure (part 29 AC191; was a hover). */
 function HeadlineHover({ label, lines }: { label: string; lines: readonly string[] }) {
   if (lines.length === 0) return null;
-  return <CardBasis label={label}>{lines.map((line, index) => <p key={index} className="local-dashboard-caption">{line}</p>)}</CardBasis>;
+  // OMN-23330 AC27: each figure and name in the caption wears its concept's colour.
+  return <CardBasis label={label}>{lines.map((line, index) => <CaptionLine key={index} line={line} />)}</CardBasis>;
 }
 
 // OMN-20009: waits on local_call_share in delegation.model-routing.v1.
@@ -857,7 +859,7 @@ export function MeteringTotalCard({ component, config, rows, window = 'all', now
           line; any further line (days with no runs) stays a caption. */}
       <CardBasis label={component.title}>
         <TokenDirections input={row.tokens_in} output={row.tokens_out} />
-        {headlineHoverLines(component.component_id, row, null, window).slice(1).map((line, index) => <p key={index} className="local-dashboard-caption">{line}</p>)}
+        {headlineHoverLines(component.component_id, row, null, window).slice(1).map((line, index) => <CaptionLine key={index} line={line} />)}
       </CardBasis></>;
   }
   const required = component.data_bindings?.[0]?.required_fields ?? [];

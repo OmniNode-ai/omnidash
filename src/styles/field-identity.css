@@ -34,6 +34,8 @@
 [data-field-tone="run-estimated"] { --field-ink: var(--ds-field-run-estimated); }
 [data-field-tone="run-unknown"] { --field-ink: var(--ds-field-unavailable); }
 .local-dashboard-page .local-run-classes > .local-run-class { color: var(--field-ink); }
+/* OMN-23330 AC27: a headline card caption's figures and names, each in its concept's colour (CaptionLine). */
+.local-card-caption .local-dashboard-caption > .local-caption-tone[data-field-tone] { color: var(--field-ink); font-weight: 600; }
 .local-dashboard-page [data-field-tone] > :is(dt, dd, .local-dashboard-metric),
 .ev-root [data-field-tone] > :is(.k, .v, .k-l, .k-v, .note, .mono, .big),
 .local-dashboard-page [data-field-tone] dd a,

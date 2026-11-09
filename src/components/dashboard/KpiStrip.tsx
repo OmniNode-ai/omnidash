@@ -7,6 +7,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { CardBasis } from '@/components/dashboard/CardBasis';
+import { CaptionLine } from '@/components/dashboard/CaptionLine';
 import { CountUpText } from '@/components/dashboard/CountUpText';
 import { Card, Figure } from '@/theme/design-system/components';
 
@@ -72,7 +73,8 @@ export function KpiStrip({ label, items }: { label: string; items: readonly KpiI
               accent={item.accent} unavailable={item.unavailable} data-kpi-card={item.label}>
               <Figure measured={!item.unavailable} title={item.title}
                 style={{ '--figure-chars': String(item.value).length } as CSSProperties}>{!item.unavailable && typeof item.value === 'string' ? <CountUpText text={item.value} /> : item.value}</Figure>
-              {lines.length > 0 && <CardBasis label={item.label}>{lines.map(line => <p key={line} className="local-dashboard-caption">{line}</p>)}</CardBasis>}
+              {/* OMN-23330 AC27: each figure and name in the caption wears its concept's colour. */}
+              {lines.length > 0 && <CardBasis label={item.label}>{lines.map(line => <CaptionLine key={line} line={line} />)}</CardBasis>}
             </Card>
           );
         })}
