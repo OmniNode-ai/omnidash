@@ -1,0 +1,48 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+schema_version: "1.0.0"
+ticket_id: "OMN-23309"
+title: "The Runs table rewrites the URL only on /runs"
+summary: >-
+  Acceptance for OMN-23309, copied from the live ticket on 2026-11-09. AC1 and AC2 are declared here and bound to
+  tests/pages/local/runs-url-sync.test.tsx. The ticket's AC3 (the served dashboard keeps each page reached from Runs)
+  is a live browser readback recorded on the pull request, so it is not declared here and has no check.
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-runs-url-sync"
+    statement: >-
+      The Runs table's URL-sync effect canonicalises the query only while the path is /runs, so a table still mounted
+      after the path changes never sends the browser back to /runs.
+    acceptance:
+      - id: "AC1"
+        statement: >-
+          leaving Runs for /overview?window=30d&page=8, /usage?page=8 or /settings?section=access&page=8 while the Runs
+          table is still mounted keeps the URL at that destination; the table rewrites the URL only while the path is
+          /runs -- falsifier: npx vitest run tests/pages/local/runs-url-sync.test.tsx, red on dev
+          a831cfe1d582c2c37f3974a251389990c844acd7 and green with the fix, run on the lab host
+      - id: "AC2"
+        statement: >-
+          on /runs the table still replaces a non-canonical query with its canonical form (page clamped to the last
+          page) -- falsifier: npx vitest run tests/pages/local/runs-url-sync.test.tsx with a case that asserts the
+          replace, run on the lab host
+evidence_requirements: []
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
+dod_evidence:
+  - id: "dod-omn23309-runs-url-sync"
+    description: >-
+      AC1 and AC2 in one file. AC1: three cases mount the Runs table at /runs, move the memory router to
+      /overview?window=30d&page=8, /usage?page=8 and /settings?section=access&page=8, and assert the URL stays there.
+      AC2: a case mounts the table at /runs?page=99 with three rows and asserts the URL is replaced with the canonical
+      /runs. On dev a831cfe1 the file fails 3 of 4 (/settings?section=access&page=8 became /runs?section=access) and the
+      AC2 case passes; with the fix all 4 pass, so the guard did not stop the table canonicalising its own page.
+    source: "manual"
+    binds_ac: ["AC1", "AC2"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm run test:run -- tests/pages/local/runs-url-sync.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
