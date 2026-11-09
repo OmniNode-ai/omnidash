@@ -1564,14 +1564,14 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ds-accent); outline-o
   :is(.local-dashboard-page, .ev-root) .local-dashboard-tabpanel .local-dashboard-panel { animation: none; }
   :is(.local-dashboard-page, .ev-root) .local-dashboard-tabpanel .gdb-bar.ins-seg { animation-duration: 380ms; animation-delay: 0ms; }
 
-  /* Hover: a summary card lifts and glows in its own colour. */
+  /* Hover: a summary card glows in its own colour. It never moves: a 3px lift took the card out from under a pointer
+     resting near its bottom edge, the hover ended, the card dropped back, and it flickered (OMN-23330 AC26). */
   :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel {
-    transition: transform 180ms ease, box-shadow 180ms ease;
+    transition: box-shadow 180ms ease;
   }
   /* !important: the 01+20 flat-card rule (editorial.css) sets box-shadow: none !important on every panel; this rule's
      higher specificity then wins only here, on a headline card's hover under normal motion (Codex review of 34cfb67b1). */
   :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel:hover {
-    transform: translateY(-3px);
     box-shadow: 0 14px 30px -16px color-mix(in srgb, var(--card-accent) 70%, transparent),
       0 0 0 1px color-mix(in srgb, var(--card-accent) 40%, transparent) !important;
   }
