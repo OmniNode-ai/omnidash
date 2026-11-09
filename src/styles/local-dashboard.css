@@ -1316,7 +1316,7 @@
 .ins-bar[data-dim="true"] { opacity: 0.4; }
 .ins-bar:focus-visible { outline: 2px solid var(--ins-accent); outline-offset: 2px; }
 .ins-seg { display: block; width: 100%; border-radius: var(--ds-radius-bar) var(--ds-radius-bar) 0 0; }
-.ins-axis { display: flex; justify-content: space-between; font-size: 12px; color: var(--ds-ink-2); }
+.ins-value-axis { display: flex; justify-content: space-between; font-size: 12px; color: var(--ds-ink-2); }
 .ins-plot { position: relative; height: 120px; }
 .ins-plot svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .ins-marker { position: absolute; top: 0; bottom: 0; width: 1px; background: color-mix(in oklch, var(--ins-accent) 60%, transparent); pointer-events: none; }
@@ -2256,7 +2256,7 @@ figure.local-chart.usage-insight { min-width: 0; margin: 0; padding: 14px; }
   .ins-section--summary .overview-chart-row > figure.local-chart.ins-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-content: start; }
   .ins-section--summary .ins-card-head { grid-column: 1; grid-row: 1; }
   .ins-section--summary :is(.ins-toggles, .ins-token-legend) { grid-column: 2; grid-row: 1; margin: 0; align-self: center; }
-  .ins-section--summary :is(.ins-readout, .ins-bars, .ins-axis) { grid-column: 1 / -1; }
+  .ins-section--summary :is(.ins-readout, .ins-bars, .ins-value-axis, .ds-day-axis) { grid-column: 1 / -1; }
 }
 
 /* Preserve complete measured totals at phone widths, including negative money. */

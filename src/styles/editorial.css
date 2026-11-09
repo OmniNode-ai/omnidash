@@ -112,7 +112,7 @@ html body .local-dashboard-page .local-window-list [role="radio"][aria-checked="
 html body .local-dashboard-page .local-window-list [role="radio"][aria-checked="true"] svg { color: var(--ds-ink); }
 /* OMN-21970 (Lakshman 2026-11-03, option a): model and tier names read in ink, so they keep 4.5:1 contrast, and a small
    square beside each carries the bar's exact colour, so colour still identifies the tier but is never the only label. */
-.rb-chart .rb-name, .gdb-day-label { color: var(--ds-ink) !important; }
+.rb-chart .rb-name, .gdb-name-label { color: var(--ds-ink) !important; }
 /* The same on Workflow's routing flow: the Model node's label and name in ink, its identity colour on a swatch. */
 .workflow-flow-node[data-field-tone="model"] > span, .workflow-flow-node[data-field-tone="model"] > strong { color: var(--ds-ink) !important; }
 .workflow-flow-node[data-field-tone="model"] > strong::before { content: ""; display: inline-block; width: 0.7em; height: 0.7em; border-radius: 2px;
@@ -696,10 +696,7 @@ html body .local-dashboard-page .local-window-menu svg.lucide.local-window-icon 
 .local-dashboard-page .local-trend .ins-plot {
   background-image: linear-gradient(to bottom, var(--ds-line) 1px, transparent 1px);
   background-size: 100% 50%; background-repeat: repeat-y; border-bottom: 1px solid var(--ds-line); }
-.local-trend-ticks { position: relative; height: 20px; margin-top: 6px; font-size: 12px; color: var(--ds-ink-3); }
-.local-trend-ticks > span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
-.local-trend-ticks > span:first-child { transform: none; }
-.local-trend-ticks > span:last-child { transform: translateX(-100%); }
+/* OMN-23330 AC31: the Daily trend's day labels are the kit's DayAxis (src/theme/design-system/charts/day-axis.css). */
 /* No frame inside the tab panel: the chart sits straight in the "Activity breakdown" panel. */
 html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"]) :is(figure.local-chart, .ins-card, .rb-chart) {
   border: 0 !important; background: transparent !important; box-shadow: none !important; padding-left: 0 !important; padding-right: 0 !important; }

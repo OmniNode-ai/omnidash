@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Link } from 'wouter';
 
 import { formatDashboardUsd } from '@/lib/dashboard-currency';
@@ -12,7 +12,7 @@ import {
   type Group, type GroupBy, type Totals, type TrendDay, type TrendSeriesBy,
 } from './decision-analysis';
 import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
-import { BarSparkline, CostQualityScatter, breakableName } from '@/theme/design-system/charts';
+import { BarSparkline, CostQualityScatter, DayAxis, breakableName } from '@/theme/design-system/charts';
 import { ChartLine, Gauge, Layers, LayoutGrid } from '@/theme/design-system/icons';
 
 /**
@@ -250,6 +250,8 @@ function QualityTrend({ decisionRows }: { decisionRows: readonly unknown[] }) {
   const height = (day: TrendDay): number | null => (metric === 'pass'
     ? (day.state === 'value' ? day.passed / day.verdicts : null) : (day.state === 'not-covered' || day.p95 === null ? null : day.p95 / peak));
   const days = series[0]?.days ?? [];
+  // OMN-23330 AC31: the day labels are the kit's DayAxis, under the first series' measured day columns (AC5).
+  const firstRow = useRef<HTMLOListElement>(null);
   return <figure className="local-chart usage-trend" data-quality-trend data-metric={metric} aria-label="Quality over time">
     <div className="local-dashboard-toggles">
       <DashboardToggle label="Trend metric" options={[toned('pass' as const, 'Pass rate', 'pass'), toned('p95' as const, 'p95 latency', 'duration-p95')]} value={metric} onChange={setMetric} />
@@ -259,12 +261,12 @@ function QualityTrend({ decisionRows }: { decisionRows: readonly unknown[] }) {
       ? 'Pass rate per UTC day over runs with a verdict; an outlined day is before the sample, a dashed one has runs but no verdicts.'
       : `p95 latency per UTC day from recorded latencies; the tallest bar is ${latency(peak)}.`}</figcaption>
     <div className="usage-trend-rows">
-      {series.map(line => <div key={line.name} className="usage-trend-row" data-series={line.name}
+      {series.map((line, lineIndex) => <div key={line.name} className="usage-trend-row" data-series={line.name}
         style={by === 'model' && line.filter && line.name !== NOT_RECORDED ? { '--model-color': modelColor(line.name) } as CSSProperties : undefined}>
         <span className="usage-trend-name" data-model-name={by === 'model' && line.filter && line.name !== NOT_RECORDED ? '' : undefined}
           data-semantic-concept={by === 'model' && line.filter && line.name !== NOT_RECORDED ? `model:${line.name}` : undefined}
           style={by === 'model' && line.filter && line.name !== NOT_RECORDED ? { '--model-color': modelColor(line.name) } as CSSProperties : undefined}>{line.name}</span>
-        <ol className="usage-trend-days" aria-label={`${line.name}, ${metric === 'pass' ? 'pass rate' : 'p95 latency'} per day`}>
+        <ol ref={lineIndex === 0 ? firstRow : undefined} className="usage-trend-days" aria-label={`${line.name}, ${metric === 'pass' ? 'pass rate' : 'p95 latency'} per day`}>
           {line.days.map(day => {
             const label = trendLabel(day, metric);
             const value = height(day);
@@ -283,10 +285,11 @@ function QualityTrend({ decisionRows }: { decisionRows: readonly unknown[] }) {
           })}
         </ol>
       </div>)}
-      <div className="usage-trend-row usage-trend-axis" aria-hidden="true">
+      <div className="usage-trend-row usage-trend-labels" aria-hidden="true">
         <span className="usage-trend-name" />
-        <ol className="usage-trend-days">{days.map((day, index) => <li key={day.day}>
-          <span className="usage-trend-date">{index % 2 === days.length % 2 ? '' : dayLabel(day.day)}</span></li>)}</ol>
+        {/* Every other day, ending on the last, as before; DayAxis keeps the ends inside and hides a label with no room. */}
+        <DayAxis days={days.map(day => day.day)} ticks={new Set(days.flatMap((_, index) => (index % 2 === days.length % 2 ? [] : [index])))}
+          columns={firstRow} format={dayLabel} />
       </div>
     </div>
     {by === 'model' && <TierLegend label="Quality over time tier colours" models={series.map(line => line.name)} />}

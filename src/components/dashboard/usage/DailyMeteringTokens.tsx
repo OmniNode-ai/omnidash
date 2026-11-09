@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight } from '@/theme/design-system/icons';
 import { formatFullCount } from '@/lib/dashboard-count';
 import type { DailyMeteringTokenData } from '@/lib/daily-metering-tokens';
 import { TokenDirections } from './TokenDirections';
 import { EmptyState } from '@/theme/design-system/components';
+import { DayAxis } from '@/theme/design-system/charts';
 
 const dayLabel = (day: string) => new Date(`${day}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 
@@ -11,6 +12,8 @@ const dayLabel = (day: string) => new Date(`${day}T00:00:00Z`).toLocaleDateStrin
 export function DailyMeteringTokens({ data }: { data: DailyMeteringTokenData }) {
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
+  // OMN-23330 AC31: the day labels are the kit's DayAxis, under each day's measured column (AC5).
+  const bars = useRef<HTMLDivElement>(null);
   if (data.days.length === 0) return <EmptyState status={false}>{data.reason}</EmptyState>;
   const lastPage = Math.floor((data.days.length - 1) / 7);
   const currentPage = Math.min(page, lastPage);
@@ -25,16 +28,17 @@ export function DailyMeteringTokens({ data }: { data: DailyMeteringTokenData }) 
   const direction = (value: string | null) => value === null ? 'not recorded' : formatFullCount(value);
   return <figure aria-label="Daily metering token totals" className="daily-metering-tokens">
     <figcaption><span>Daily metering totals · UTC</span><span>Model breakdown unavailable</span></figcaption>
-    <div className="daily-metering-bars" role="group" aria-label="Daily metering tokens">
+    <div ref={bars} className="daily-metering-bars" role="group" aria-label="Daily metering tokens">
       {days.map(day => <button type="button" key={day.day}
         aria-label={`${dayLabel(day.day)}: ${direction(day.input)} in, ${direction(day.output)} out`}
         onFocus={() => setSelected(day.day)} onMouseEnter={() => setSelected(day.day)} onClick={() => setSelected(day.day)}>
         <span className="daily-metering-stack" aria-hidden="true">
           {day.output !== null && <span data-field-tone="tokens-out" style={{ height: `${height(day.output)}px`, minHeight: BigInt(day.output) > 0n ? 2 : 0 }} />}
           {day.input !== null && <span data-field-tone="tokens-in" style={{ height: `${height(day.input)}px`, minHeight: BigInt(day.input) > 0n ? 2 : 0 }} />}
-        </span><span>{dayLabel(day.day)}</span>
+        </span>
       </button>)}
     </div>
+    <DayAxis days={days.map(day => day.day)} columns={bars} format={dayLabel} />
     <div role="status" className="daily-metering-readout">
       <strong>{dayLabel(active.day)}</strong><TokenDirections input={active.input} output={active.output} />
       <span>{stamp}</span>

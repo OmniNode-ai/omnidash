@@ -43,7 +43,7 @@ import { SettingsEmptyState } from '@/components/dashboard/SettingsEmptyState';
 import { failureCauseLabel, failureDetailText, notAvailableYet, plainFailureMessage, taskLabel, tierLabel } from '@/pages/local/plain-text';
 import { RunFilterProvider, causeHref, causeLabelOf, useRunFilter } from '@/pages/local/run-filter';
 import { dailySeries, meteringFilledDays, servedDailyDays, summary as runSummary, toInsightRuns, typedFailureCauseOf } from '@/pages/local/insights';
-import { ChartReadout, Meter, MultiLinePlot, RankedBars, SeriesToggles, useSeriesToggles } from '@/theme/design-system/charts';
+import { ChartReadout, DayAxis, Meter, MultiLinePlot, RankedBars, SeriesToggles, useSeriesToggles } from '@/theme/design-system/charts';
 import { NO_RUNS_USD, sumDashboardUsd } from '@/lib/dashboard-money-total';
 import { KpiStrip, type KpiItem } from '@/components/dashboard/KpiStrip';
 import { CardBasis } from '@/components/dashboard/CardBasis';
@@ -2372,9 +2372,8 @@ export function OverviewTrendPanel({ rows, columns, window, now }: {
           <div className="local-trend-plot">
             <MultiLinePlot label="Daily trend" lines={lines} keys={days} hover={hover} onHover={setHover} focus={front}
               labels={days.map(day => `${label(day)}: ${dayText(day, false)}`)} />
-            <div className="local-trend-ticks" aria-hidden="true">
-              {ticks.map(({ day, index }) => <span key={day} style={{ left: `${days.length > 1 ? (index / (days.length - 1)) * 100 : 50}%` }}>{label(day)}</span>)}
-            </div>
+            {/* OMN-23330 AC31: the kit's one DayAxis, on the lines' points (first day at the left edge, last at the right). */}
+            <DayAxis days={days} ticks={new Set(ticks.map(({ index }) => index))} place="point" format={label} />
           </div>
         </div>;
       })()}

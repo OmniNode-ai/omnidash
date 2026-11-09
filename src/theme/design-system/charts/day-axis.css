@@ -1,0 +1,4 @@
+/* OMN-23330 AC31: the one day axis under every daily chart. DayAxis places each label (centred on its day, pulled inside
+   at the ends, hidden where it has no room); this file only gives the row its size and the labels their type. */
+.ds-day-axis { position: relative; height: 18px; margin-top: 6px; font-size: 12px; line-height: 18px; color: var(--ds-ink-2); }
+.ds-day-axis-label { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }

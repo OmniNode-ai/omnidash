@@ -5,7 +5,7 @@ import { formatDuration } from '@/components/format/duration';
 import { createContext, useContext, useId, useState, type CSSProperties, type ReactNode } from 'react';
 import { millisecondsAxisLabel } from '@/theme/design-system/charts/bar-charts';
 import { passBand } from '@/pages/local/plain-text';
-import { BarTrack, ChartCard, ChartEmpty, ChartReadout, CumulativeColumns, DayColumns, Histogram, HourHeatmap, LinePlot, NamedByPanel, RankedBars, SeriesLegend, SeriesToggles, SpendColumns, dayTicks } from '@/theme/design-system/charts';
+import { BarTrack, ChartCard, ChartEmpty, ChartReadout, CumulativeColumns, DayAxis, DayColumns, Histogram, HourHeatmap, LinePlot, NamedByPanel, RankedBars, SeriesLegend, SeriesToggles, SpendColumns, dayTicks } from '@/theme/design-system/charts';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { causeHref, useSharedRunFilter } from './run-filter';
 import { failureCauseLabel } from './plain-text';
@@ -168,7 +168,8 @@ function PassRateTrend({ days }: { days: InsightDay[] }) {
       <ChartReadout active={active !== null} text={active ? <>{dayLabel(active.day)} · <span data-field-tone="pass" data-field-unavailable={active.passRate === null}>{active.passRate === null ? 'no verdicts' : `${active.passRate.toFixed(1)}% passed`}</span> · <span data-field-tone="basis">{verdictCoverage(active.passed + active.failed, active.runs)}</span></> : `Scale from ${min}% to 100%`} />
       <LinePlot label="Pass rate per day" values={rates} keys={days.map(day => day.day)} labels={labels} min={min} max={100}
         hover={hover} onHover={setHover} color={PASS} />
-      <div className="ins-axis"><span>{dayLabel(days[0]!.day)}</span><span>{dayLabel(days[days.length - 1]!.day)}</span></div>
+      {/* OMN-23330 AC31: the kit's one DayAxis, first and last day on the line's end points. */}
+      <DayAxis days={days.map(day => day.day)} ticks={new Set([0, days.length - 1])} place="point" format={dayLabel} />
     </ChartCard>
   );
 }
@@ -242,7 +243,7 @@ function DurationHistogram({ runs }: { runs: InsightRun[] }) {
       <Histogram label="Duration buckets" hover={hover} onHover={setHover} color="var(--ds-field-duration)"
         buckets={buckets.map((runsInBucket, index) => ({ key: String(index), ariaLabel: `${name(index)}: ${runsWord(runsInBucket)}`, value: runsInBucket }))} />
       {/* The axis ends name whole units, as the chart axes do ("1 min+", not "1 min 0 s+"). */}
-      <div className="ins-axis"><span>{duration(edges[0]!)}</span><span>{millisecondsAxisLabel(edges[edges.length - 2]!)}+</span></div>
+      <div className="ins-value-axis"><span>{duration(edges[0]!)}</span><span>{millisecondsAxisLabel(edges[edges.length - 2]!)}+</span></div>
     </ChartCard>
   );
 }

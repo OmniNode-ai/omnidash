@@ -68,7 +68,7 @@ export function GroupedBars({ label, groups, legend, wrapNames = false, extraLeg
               })}
             </span>
             {/* OMN-21970 (Lakshman 2026-11-03, option a): ink name for contrast; the swatch carries the model's colour. */}
-            <span className="gdb-day-label" aria-hidden="true">{group.nameColor && <span className="gdb-swatch" data-model-id={group.model} style={{ background: group.nameColor }} />}{group.name}</span>
+            <span className="gdb-name-label" aria-hidden="true">{group.nameColor && <span className="gdb-swatch" data-model-id={group.model} style={{ background: group.nameColor }} />}{group.name}</span>
           </li>
         ))}
       </ul>

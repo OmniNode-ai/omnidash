@@ -130,8 +130,8 @@ describe('daily bars', () => {
     expect(onHover).toHaveBeenLastCalledWith(0);
     fireEvent.mouseLeave(screen.getByRole('group', { name: 'Runs per day' }));
     expect(onHover).toHaveBeenLastCalledWith(null);
-    expect(first!.querySelector('.gdb-day-label')).toHaveTextContent('10-01');
-    expect(second!.querySelector('.gdb-day-label')).toHaveTextContent('');
+    // OMN-23330 AC31: the day labels are the kit's DayAxis under the columns; only the ticked days get one.
+    expect([...document.querySelectorAll('.ds-day-axis .ds-day-axis-label')].map(label => label.textContent)).toEqual(['10-01']);
     expect(second).toHaveAttribute('data-dim', 'true');
     fireEvent.click(second!);
     expect(onOpen).toHaveBeenCalledWith('2026-10-02');

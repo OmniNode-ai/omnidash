@@ -803,6 +803,9 @@ main.ev-root .ev-maple-grid { align-items: start; }
 
 /* ── Live review 2026-10-25 ("all graphs this style"): grouped dotted bars, value above, day below, legend under ── */
 .ins-bars.gdb-plot { display: flex; align-items: stretch; gap: 6px; height: 240px; padding: 0; border-bottom: 1px solid var(--ds-line); margin-bottom: 26px; }
+/* OMN-23330 AC31: a day chart's labels are the DayAxis row under the plot, so the plot keeps no room for labels inside it;
+   GroupedBars (a list) still draws its model names under its columns. */
+.ins-bars.gdb-plot:not(.gdb-plot--list) { margin-bottom: 0; }
 .ins-bars.gdb-plot > .ins-bar.gdb-day {
   flex: 1 1 0; min-width: 0; height: 100%; padding: 0; border: 0; background: none; position: relative;
   display: flex; flex-direction: column; justify-content: flex-end; cursor: default; box-shadow: none;
@@ -814,7 +817,7 @@ main.ev-root .ev-maple-grid { align-items: start; }
 .gdb-bar.ins-seg {
   display: block; width: 100%; min-height: 0; border-radius: var(--ds-radius-bar) var(--ds-radius-bar) 0 0; animation: none; background: none !important;
 }
-.gdb-day-label { position: absolute; top: calc(100% + 6px); left: -4px; right: -4px; text-align: center; font-size: 12px; color: var(--ds-ink-3); white-space: nowrap; }
+.gdb-name-label { position: absolute; top: calc(100% + 6px); left: -4px; right: -4px; text-align: center; font-size: 12px; color: var(--ds-ink-3); white-space: nowrap; }
 .gdb-legend { display: flex; flex-wrap: wrap; gap: 16px; margin: 4px 0 0; padding: 0; list-style: none; }
 .gdb-legend .ins-toggle { border: 0; background: none; box-shadow: none; padding: 0 2px; font-size: 13px; min-height: 32px; }
 .gdb-legend .ins-toggle[aria-pressed="false"] { opacity: .45; }
@@ -964,7 +967,7 @@ main.ev-root .bar-track.ev-qg-bar { height: 14px; background: none; gap: 2px; }
 ul.gdb-plot--list { list-style: none; margin: 0 0 26px; }
 .gdb-plot--list > .ins-bar.gdb-day:focus-visible { outline: 2px solid var(--ds-accent); outline-offset: 2px; }
 ul.gdb-plot--names { margin-bottom: 48px; }
-.gdb-plot--names .gdb-day-label { white-space: normal; line-height: 1.25; overflow-wrap: anywhere; }
+.gdb-plot--names .gdb-name-label { white-space: normal; line-height: 1.25; overflow-wrap: anywhere; }
 /* Part 18 AC124: no card inside a card. A chart inside a panel draws no box of its own; its title row is the Overview
    one (icon, then a neutral title). */
 .local-dashboard-panel .local-chart:not(.ins-card) { border: 0; padding: 0; border-radius: 0; background: none; box-shadow: none; }
@@ -1035,7 +1038,7 @@ ul.gdb-plot--names { margin-bottom: 48px; }
 }
 .local-dashboard-page--overview .local-dashboard-panel[data-slice] .ins-bars.gdb-plot { background: none; border-radius: 0; }
 /* OMN-21166 part 21 AC139: a day label stays inside its own slot, so the last one never passes the panel edge. */
-.local-dashboard-page--overview .gdb-day-label { left: 0; right: 0; }
+.local-dashboard-page--overview .gdb-name-label { left: 0; right: 0; }
 
 /* OMN-21166 part 21 AC143 (onex delegate run 1b283439): each day keeps its spacing inside its own slot, so bars span 72%
    of a day at any day count (fixed 8px gaps left 1px bars at 30 days in a half-width panel). */
@@ -1046,9 +1049,9 @@ ul.gdb-plot--names { margin-bottom: 48px; }
 .local-dashboard-page--overview .gdb-val { display: none; }
 /* OMN-21166 part 21 AC139: a day label is as wide as its text and centred on its day; the first and last align to the
    chart's edges, so no label passes the panel. */
-.local-dashboard-page--overview .gdb-day-label { left: 50%; right: auto; transform: translateX(-50%); }
-.local-dashboard-page--overview .gdb-day:first-child .gdb-day-label { left: 0; transform: none; text-align: left; }
-.local-dashboard-page--overview .gdb-day:last-child .gdb-day-label { left: auto; right: 0; transform: none; text-align: right; }
+.local-dashboard-page--overview .gdb-name-label { left: 50%; right: auto; transform: translateX(-50%); }
+.local-dashboard-page--overview .gdb-day:first-child .gdb-name-label { left: 0; transform: none; text-align: left; }
+.local-dashboard-page--overview .gdb-day:last-child .gdb-name-label { left: auto; right: 0; transform: none; text-align: right; }
 /* OMN-21166 part 21 AC140: upright bars 115px tall, so the Model usage and Tier mix row stays within 340px, including the
    "All time: this panel does not follow the window above" caption a 7, 15 or 30 day window adds (130px measured 349px). */
 .local-dashboard-page--overview .rb-chart.rb-chart--vertical .rb-track { height: 115px; }
@@ -1059,13 +1062,13 @@ ul.gdb-plot--names { margin-bottom: 48px; }
 /* AC139: a day chart under 420px wide labels only its first and last day, so phone labels never overlap. */
 .local-dashboard-page--overview .ins-bars.gdb-plot { container-type: inline-size; }
 @container (max-width: 420px) {
-  .local-dashboard-page--overview .gdb-day:not(:first-child):not(:last-child) .gdb-day-label { visibility: hidden; }
+  .local-dashboard-page--overview .gdb-day:not(:first-child):not(:last-child) .gdb-name-label { visibility: hidden; }
 }
 /* Lakshman 2026-11-05 ("Nov 5 should be in middle"): on a chart wider than a phone the first and last day's labels are
    centred on their day like every other; a day there is wide enough to hold its label, so it stays inside the panel.
    Under 420px they keep to the chart's edges. */
 @container (min-width: 421px) {
-  .local-dashboard-page--overview .gdb-day:is(:first-child, :last-child) .gdb-day-label { left: 50%; right: auto; transform: translateX(-50%); text-align: center; }
+  .local-dashboard-page--overview .gdb-day:is(:first-child, :last-child) .gdb-name-label { left: 50%; right: auto; transform: translateX(-50%); text-align: center; }
 }
 /* An upright bar chart under 400px wide runs sideways (name and value above each bar), as the 'auto' charts do under
    560px, so six long model names fit a phone. */
@@ -1451,7 +1454,6 @@ html .app svg.field-icon.field-icon:is([data-field-icon^="tier-"], [data-semanti
 .usage-trend-name[data-model-name] { color: var(--model-color); }
 .usage-trend-days { display: grid; grid-template-columns: repeat(14, minmax(0, 1fr)); gap: 3px; list-style: none; margin: 0; padding: 0;
   height: 56px; align-items: end; }
-.usage-trend-axis .usage-trend-days { height: auto; }
 .usage-trend-days > li { height: 100%; display: flex; align-items: flex-end; min-width: 0; }
 .usage-trend-day { display: flex; align-items: flex-end; width: 100%; height: 100%; border-radius: 2px; }
 a.usage-trend-day:hover { background: var(--ds-surface-2); }
@@ -1461,7 +1463,6 @@ a.usage-trend-day:focus-visible { outline: 2px solid var(--ds-accent); outline-o
 .usage-trend-day[data-state="not-covered"] .usage-trend-bar { height: 100%; background: transparent; box-shadow: inset 0 0 0 1px var(--ds-line); }
 [data-metric="pass"] .usage-trend-day[data-state="no-verdicts"] .usage-trend-bar { height: 100%; background: transparent; border: 1px dashed var(--ds-line); box-sizing: border-box; }
 .usage-trend-day[data-state="no-runs"] .usage-trend-bar { height: 1px; background: var(--ds-line); }
-.usage-trend-date { font-size: 11px; color: var(--ds-ink-2); white-space: nowrap; font-family: var(--ds-font-mono); }
 /* AC206: Runs' routing groups; a reroute is named beside the routed model. */
 [data-routing-table] .local-route-changed { margin-left: 6px; font-size: 11px; padding: 0 6px; border: 1px solid var(--ds-line); border-radius: 4px; color: var(--ds-ink-2); }
 /* Routing groups fits its panel (it ran 110px past it at 1440, cutting off Pass rate): names wrap at their joins, the
@@ -1849,7 +1850,7 @@ html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-e
 .local-dashboard-page ul.gdb-plot--list .gdb-bar { max-width: 44px; }
 .local-dashboard-page ul.gdb-plot--list > .ins-bar.gdb-day { transition: opacity 0.15s; }
 .local-dashboard-page ul.gdb-plot--list > .ins-bar.gdb-day[data-dim="true"] { opacity: 0.45; }
-.local-dashboard-page ul.gdb-plot--list > .ins-bar.gdb-day:is(:hover, :focus-visible) .gdb-day-label { color: var(--ds-ink) !important; }
+.local-dashboard-page ul.gdb-plot--list > .ins-bar.gdb-day:is(:hover, :focus-visible) .gdb-name-label { color: var(--ds-ink) !important; }
 .local-dashboard-page .gdb-legends { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px; }
 .local-dashboard-page .gdb-legends > ul { margin: 0 !important; }
 @media (max-width: 700px) {
