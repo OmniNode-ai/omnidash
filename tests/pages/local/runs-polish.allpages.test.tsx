@@ -33,7 +33,9 @@ describe('OMN-23330 AC9: Runs reads cleanly', () => {
     const css = readFileSync(path.join(ROOT, 'src/styles/seven-page-design.css'), 'utf8');
     const found: string[] = [];
     postcss.parse(css).walkAtRules('media', (media) => {
-      if (!/min-width:\s*1200px/.test(media.params)) return;
+      // The rule may start at any width up to 1440 px, the width AC9 names.
+      const from = /min-width:\s*(\d+)px/.exec(media.params);
+      if (!from || Number(from[1]) > 1440) return;
       media.walkDecls('white-space', (decl) => {
         const selector = (decl.parent as postcss.Rule).selector;
         if (/\.local-overview-summary/.test(selector) && /h2/.test(selector) && decl.value === 'nowrap') found.push(selector);

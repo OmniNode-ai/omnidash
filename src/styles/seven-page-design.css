@@ -2186,7 +2186,19 @@ html body .local-dashboard-page section.workflow-record-group[data-field-tone] >
 .local-dashboard-page table[aria-label="Usage by model and day"] .local-share-meter { flex-basis: 36px; }
 
 /* OMN-23330 AC9 (the operator's 2026-11-09 review): at a wide window every headline card label keeps to one line; at
-   1440 px "Median duration" wrapped although it fits (measured 0 px over with nowrap). Narrow cards still wrap. */
-@media (min-width: 1200px) {
+   1440 px "Median duration" wrapped although it fits (measured 0 px over with nowrap). Narrow cards still wrap: from
+   1400 px, since at 1280 px five Overview cards are 187 px and "Delegation Quality" ran 4 px past its card. */
+@media (min-width: 1400px) {
   .local-overview-summary > article > h2 { white-space: nowrap; }
 }
+
+/* The operator, 2026-11-10 ("in overview all 5 cards in a row"): at a desktop width (901 px and up) every Overview headline
+   card shares one row, however many there are; each figure is sized to its card and a caption may break inside a long
+   name, so nothing is clipped. Below 901 px the two-to-a-row and phone layouts stay. */
+@media (min-width: 901px) {
+  .local-dashboard-page--overview .local-overview-surface > .local-overview-summary { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+  .local-dashboard-page--overview .local-overview-summary > :last-child:nth-child(odd) { grid-column: auto; }
+}
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-caption { overflow-wrap: anywhere; }
+/* A toned name in a caption (the baseline model) may wrap there too; it kept to one line and ran past a 136 px card. */
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-caption .local-caption-tone { white-space: normal; }

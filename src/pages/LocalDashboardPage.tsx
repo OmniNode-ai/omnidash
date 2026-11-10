@@ -765,7 +765,9 @@ export function MeteringTotalCard({ component, config, rows, window = 'all', now
     const total = noRunsAtAll ? Number(row.tokens_in) + Number(row.tokens_out) : meteringTokens(row).total;
     // Live review 2026-10-25: the card shows its figure; its hover says tokens in and out in one line.
     const tokenChange = OVERVIEW_HEADLINE_CARDS.has(component.component_id) ? periodChangeLine(rows, window, TOKENS_IN_AND_OUT, row) : null;
-    return <><Figure measured={total !== null}>{total !== null ? <CountUpText text={formatDashboardCount(total)} /> : formatDashboardCount(total)}</Figure>
+    // Sized to its card by its length, as every headline figure is (it was the one left at 32px, clipped in a narrow card).
+    return <><Figure measured={total !== null} style={{ '--figure-chars': formatDashboardCount(total).length } as CSSProperties}>
+      {total !== null ? <CountUpText text={formatDashboardCount(total)} /> : formatDashboardCount(total)}</Figure>
       {tokenChange && <ChangeLine text={tokenChange} />}
       {/* Lakshman 2026-11-07 ("token in and out should be different color and uniform in whole websites"): on every
           source the card's directions are the arrow rows in their two colours, not a plain "<in> in · <out> out"
