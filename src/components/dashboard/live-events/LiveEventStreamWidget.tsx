@@ -9,6 +9,7 @@ import type { NodeKind } from '@/components/primitives';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 import { formatRedactedEventPayload } from '@/utils/redact-event-payload';
 import { localeString as fmtLocaleString } from '@/lib/format';
+import { refreshInterval } from '@/lib/refresh';
 
 // ── Data type ───────────────────────────────────────────────────────
 
@@ -23,7 +24,7 @@ interface LiveEvent {
   correlation_id?: string;
 }
 
-export const SYSTEM_EVENT_REFRESH_INTERVAL_MS = 2_000;
+export const SYSTEM_EVENT_REFRESH_INTERVAL_MS = refreshInterval('live-event-stream');
 export const LIVE_EVENT_FILTERS_STORAGE_KEY = 'omnidash:system-event-stream:filters:v1';
 
 interface LiveEventFilters {
@@ -167,7 +168,7 @@ export default function LiveEventStreamWidget() {
   const { data, isLoading, error } = useProjectionQuery<LiveEvent>({
     topic: TOPICS.liveEvents,
     queryKey: ['live-event-stream'],
-    refetchInterval: SYSTEM_EVENT_REFRESH_INTERVAL_MS,
+    refetchInterval: refreshInterval('live-event-stream'),
   });
   const [filters, setFilters] = useState<LiveEventFilters>(loadFilters);
   const dataSourceMode = useDataSourceMode();

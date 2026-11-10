@@ -9,6 +9,7 @@ import {
   type SkillAdoptionRow,
   type SkillExecutionRow,
 } from '@/services/skill-adoption-service';
+import { refreshInterval } from '@/lib/refresh';
 
 // ── Config ────────────────────────────────────────────────────────────
 
@@ -115,7 +116,7 @@ export default function SkillAdoptionWidget(props: { config: SkillAdoptionWidget
   const { data, isLoading, error } = useProjectionQuery<SkillExecutionRow>({
     queryKey: ['skill-executions', TOPICS.skillExecutions],
     topic: TOPICS.skillExecutions,
-    refetchInterval: 30_000,
+    refetchInterval: refreshInterval(),
   });
 
   const summary = useMemo(() => aggregateSkillAdoption(data ?? []), [data]);

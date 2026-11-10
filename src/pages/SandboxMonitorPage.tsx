@@ -4,6 +4,7 @@ import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 import { fixed as fmtFixed, localeTime as fmtLocaleTime } from '@/lib/format';
+import { refreshInterval } from '@/lib/refresh';
 
 interface SandboxDecision {
   decision_id: string;
@@ -69,7 +70,7 @@ export function SandboxMonitorPage() {
   const { data: decisions, isLoading, error } = useProjectionQuery<SandboxDecision>({
     topic: TOPICS.sandboxDecisions,
     queryKey: ['sandbox-decisions'],
-    refetchInterval: 5_000,
+    refetchInterval: refreshInterval(),
   });
 
   const sorted = useMemo(() => {

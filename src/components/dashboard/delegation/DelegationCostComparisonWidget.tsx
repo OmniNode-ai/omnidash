@@ -8,6 +8,7 @@ import { useDelegationRunContextOptional } from '@/components/dashboard/delegati
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 import type { DelegationSavingsProjection, DelegationSavingsSession } from './delegation-savings.types';
 import { fixed as fmtFixed } from '@/lib/format';
+import { refreshInterval } from '@/lib/refresh';
 
 // ── Config ────────────────────────────────────────────────────────────
 
@@ -166,7 +167,7 @@ export default function DelegationCostComparisonWidget({
   const { data, isLoading: queryLoading, error: queryError } = useProjectionQuery<DelegationSavingsProjection>({
     queryKey: ['delegation-cost-comparison', TOPICS.delegationSavings],
     topic: TOPICS.delegationSavings,
-    refetchInterval: 10_000,
+    refetchInterval: refreshInterval(),
     enabled: !runCtx,
   });
 

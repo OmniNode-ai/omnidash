@@ -10,6 +10,7 @@ import { Text } from '@/components/ui/typography';
 import { zonedComponents } from '@/lib/zonedComponents';
 import { StackedChart, type StackedSlice, type ChartType } from './StackedChart';
 import { useTokenColors } from '@/theme/design-system/useTokenColors';
+import { refreshInterval } from '@/lib/refresh';
 
 export interface CostDataPoint {
   bucket_time: string;
@@ -94,7 +95,7 @@ export default function CostTrendPanel({ config }: { config: CostTrendConfig }) 
   const { data, isLoading, error } = useProjectionQuery<CostDataPoint>({
     topic: TOPICS.llmCost,
     queryKey: ['cost-trends', granularity],
-    refetchInterval: 60_000,
+    refetchInterval: refreshInterval(),
   });
 
   // Dashboard-level time range. Widget declares supports_time_range: true

@@ -10,6 +10,7 @@ import type { DataTableColumnConfig } from '@shared/types/chart-config';
 import { Text } from '@/components/ui/typography';
 import { FreshnessLine } from '@/components/dashboard/lab/FreshnessLine';
 import { fixed as fmtFixed } from '@/lib/format';
+import { refreshInterval } from '@/lib/refresh';
 
 /**
  * RoutingDecision row shape from the `delegationDecisions` projection.
@@ -126,7 +127,7 @@ export default function RoutingDecisionTable({ config }: { config: Record<string
   const query = useProjectionSnapshotQuery<RoutingDecision>({
     topic: TOPICS.delegationDecisions,
     queryKey: ['routing-decisions'],
-    refetchInterval: 60_000,
+    refetchInterval: refreshInterval(),
   });
   const data = useMemo(() => query.data?.rows ?? [], [query.data]);
 

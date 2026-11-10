@@ -15,6 +15,7 @@ import { formatDashboardUsd as formatUsd } from '@/lib/format';
 import { useState } from 'react';
 import { ChevronLeft, ChevronRight } from '@/theme/design-system/icons';
 import { ColumnTip, DataTable, EmptyState } from '@/theme/design-system/components';
+import { refreshInterval } from '@/lib/refresh';
 
 /** The subset of metering-summary.v1 columns the series renders. */
 export interface MeteringSummaryRow {
@@ -122,7 +123,7 @@ export default function SavingsSeriesWidget() {
   const query = useProjectionSnapshotQuery<MeteringSummaryRow>({
     queryKey: ['savings-series-widget', TOPICS.meteringSummary],
     topic: TOPICS.meteringSummary,
-    refetchInterval: 30_000,
+    refetchInterval: refreshInterval(),
   });
   const rows = query.data?.rows ?? [];
   return (

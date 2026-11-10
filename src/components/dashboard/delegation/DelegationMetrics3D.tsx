@@ -6,6 +6,7 @@ import { Text } from '@/components/ui/typography';
 import { DoughnutChart, type DoughnutSlice } from './DoughnutChart';
 import { useDelegationRunContextOptional } from '@/components/dashboard/delegation-control-plane/DelegationRunContext';
 import { fixed as fmtFixed } from '@/lib/format';
+import { refreshInterval } from '@/lib/refresh';
 
 const DOUGHNUT_PANEL_MAX_WIDTH = 240;
 const MODEL_LABEL_MAX_WIDTH = 220;
@@ -36,7 +37,7 @@ export default function DelegationMetrics({ config }: { config: Record<string, u
   const { data: dataArr, isLoading: queryLoading, error: queryError } = useProjectionQuery<DelegationSummary>({
     topic: TOPICS.delegationSummary,
     queryKey: ['delegation-summary'],
-    refetchInterval: 60_000,
+    refetchInterval: refreshInterval(),
     enabled: !runCtx,
   });
 

@@ -16,8 +16,9 @@ import type { ProjectionSnapshot } from '@/data-source';
 import { isTenantNotConfiguredError } from '@/data-source/projection-tenant';
 import { TenantNotConfiguredState } from '../TenantNotConfiguredState';
 import { fixed as fmtFixed, localeTime as fmtLocaleTime } from '@/lib/format';
+import { refreshInterval } from '@/lib/refresh';
 
-export const EVENT_TRACE_REFRESH_INTERVAL_MS = 2_000;
+export const EVENT_TRACE_REFRESH_INTERVAL_MS = refreshInterval('trace-explorer');
 
 export interface LiveEventRow {
   id: string;

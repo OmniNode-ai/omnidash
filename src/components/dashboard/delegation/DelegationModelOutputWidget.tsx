@@ -5,6 +5,7 @@ import { TOPICS } from '@shared/types/topics';
 import { Text } from '@/components/ui/typography';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/lib/format';
+import { refreshInterval } from '@/lib/refresh';
 
 // ── Projection types (OMN-12745) ──────────────────────────────────────
 //
@@ -198,7 +199,7 @@ export default function DelegationModelOutputWidget(props: {
   const { data, isLoading, error } = useProjectionQuery<InferenceResponseProjection>({
     queryKey: ['delegation-model-output', TOPICS.inferenceResponseText],
     topic: TOPICS.inferenceResponseText,
-    refetchInterval: 5_000,
+    refetchInterval: refreshInterval(),
   });
 
   const projection = useMemo<InferenceResponseProjection | null>(

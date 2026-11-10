@@ -8,6 +8,7 @@ import { useDelegationRunContextOptional } from '@/components/dashboard/delegati
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 import { useTokenColors } from '@/theme/design-system/useTokenColors';
 import { fixed as fmtFixed } from '@/lib/format';
+import { refreshInterval } from '@/lib/refresh';
 
 // ── Projection types (from delegation_events SQLite table, OMN-10623) ─
 
@@ -253,7 +254,7 @@ export default function DelegationModelRoutingWidget(props: { config: Delegation
   const { data, isLoading: queryLoading, error: queryError } = useProjectionQuery<DelegationModelRoutingProjection>({
     queryKey: ['delegation-model-routing', TOPICS.delegationModelRouting],
     topic: TOPICS.delegationModelRouting,
-    refetchInterval: 5_000,
+    refetchInterval: refreshInterval(),
     enabled: !runCtx,
   });
 

@@ -9,6 +9,7 @@ import { useDelegationRunContextOptional } from '@/components/dashboard/delegati
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 import type { DelegationDecisionProjectionRow } from '@/components/dashboard/delegation-control-plane/delegation-control-plane.types';
 import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/lib/format';
+import { refreshInterval } from '@/lib/refresh';
 
 // ── Projection types (from delegation_events SQLite table, OMN-10623) ─
 
@@ -388,7 +389,7 @@ export default function DelegationQualityGateWidget(props: { config: DelegationQ
   const { data, isLoading: queryLoading, error: queryError } = useProjectionQuery<DelegationQualityGateProjection>({
     queryKey: ['delegation-quality-gate', TOPICS.delegationQualityGate],
     topic: TOPICS.delegationQualityGate,
-    refetchInterval: 5_000,
+    refetchInterval: refreshInterval(),
     enabled: !runCtx,
   });
 
@@ -396,7 +397,7 @@ export default function DelegationQualityGateWidget(props: { config: DelegationQ
   const { data: decisionsData } = useProjectionQuery<DelegationDecisionRow>({
     queryKey: ['delegation-decisions', TOPICS.delegationDecisions],
     topic: TOPICS.delegationDecisions,
-    refetchInterval: 10_000,
+    refetchInterval: refreshInterval(),
     enabled: !runCtx,
   });
 

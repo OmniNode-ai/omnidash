@@ -45,6 +45,7 @@ import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
 import { ColumnTip, DataTable, Dropdown, EmptyState, TokenCount } from '@/theme/design-system/components';
 import { ChartReadout } from '@/theme/design-system/charts/frame';
 import { localeDate as fmtLocaleDate, localeString as fmtLocaleString } from '@/lib/format';
+import { refreshInterval } from '@/lib/refresh';
 
 export const NO_USAGE_ROWS = 'No usage rows yet';
 /** The series' own empty text, so a page that mounts the table and the series does not say one sentence twice. */
@@ -204,7 +205,7 @@ export default function UsageByModelDayWidget() {
   const query = useProjectionSnapshotQuery<UsageByModelDayRow>({
     queryKey: ['usage-by-model-day-widget', TOPICS.usageByModelDay],
     topic: TOPICS.usageByModelDay,
-    refetchInterval: 30_000,
+    refetchInterval: refreshInterval(),
   });
   const rows = query.data?.rows ?? [];
   return (

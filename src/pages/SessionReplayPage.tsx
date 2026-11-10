@@ -4,6 +4,7 @@ import { Text, Heading } from '@/components/ui/typography';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { localeTime as fmtLocaleTime } from '@/lib/format';
+import { refreshInterval } from '@/lib/refresh';
 
 interface ReplaySnapshot {
   snapshot_id: string;
@@ -131,7 +132,7 @@ export function SessionReplayPage() {
   const { data: snapshots, isLoading, error } = useProjectionQuery<ReplaySnapshot>({
     topic: TOPICS.sessionReplay,
     queryKey: ['session-replay'],
-    refetchInterval: 30_000,
+    refetchInterval: refreshInterval(),
   });
 
   const [selectedSession, setSelectedSession] = useState<string | null>(null);

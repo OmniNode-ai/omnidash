@@ -5,6 +5,7 @@ import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { Text, type TextColor } from '@/components/ui/typography';
 import { KPI } from '@/components/primitives';
+import { refreshInterval } from '@/lib/refresh';
 
 // ── Projection types (from dep_health_findings table, OMN-11042) ──────
 
@@ -116,7 +117,7 @@ export default function DepHealthWidget(props: { config: DepHealthWidgetConfig }
   const { data, isLoading, error } = useProjectionQuery<DepHealthFindingRow>({
     queryKey: ['dep-health-findings', TOPICS.depHealthFindings],
     topic: TOPICS.depHealthFindings,
-    refetchInterval: 30_000,
+    refetchInterval: refreshInterval(),
   });
 
   const findings = useMemo<DepHealthFindingRow[]>(() => {

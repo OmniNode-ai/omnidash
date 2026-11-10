@@ -7,6 +7,7 @@ import type { ColumnDef } from '@/components/primitives';
 import { Text } from '@/components/ui/typography';
 import { formatUsd, usdFractionDigits } from '@/lib/format';
 import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/lib/format';
+import { refreshInterval } from '@/lib/refresh';
 
 // ── Projection row shape ─────────────────────────────────────────────
 //
@@ -84,7 +85,7 @@ export default function DelegationCostBreakdownWidget(props: { config: Delegatio
   const { data, isLoading, error } = useProjectionQuery<CostAggregateRow>({
     queryKey: ['delegation-cost-breakdown', TOPICS.costSummary],
     topic: TOPICS.costSummary,
-    refetchInterval: 5_000,
+    refetchInterval: refreshInterval(),
   });
 
   const rows = useMemo(() => data ?? [], [data]);

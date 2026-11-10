@@ -11,6 +11,7 @@ import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 import { formatUsd, usdFractionDigits } from '@/lib/format';
 import { useTokenColors } from '@/theme/design-system/useTokenColors';
 import { fixed as fmtFixed } from '@/lib/format';
+import { refreshInterval } from '@/lib/refresh';
 
 // ── Projection types (from llm_call_metrics SQLite table, OMN-10623) ─
 
@@ -220,7 +221,7 @@ export default function DelegationTokenUsageWidget(props: { config: DelegationTo
   const { data, isLoading: queryLoading, error: queryError } = useProjectionQuery<DelegationTokenUsageProjection>({
     queryKey: ['delegation-token-usage', TOPICS.delegationTokenUsage],
     topic: TOPICS.delegationTokenUsage,
-    refetchInterval: 5_000,
+    refetchInterval: refreshInterval(),
     enabled: !runCtx,
   });
 

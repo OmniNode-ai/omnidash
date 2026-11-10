@@ -18,6 +18,7 @@ import {
   type ProjectionEnvelope,
 } from '@/services/evidence-pipeline-service';
 import { localeString as fmtLocaleString } from '@/lib/format';
+import { refreshInterval } from '@/lib/refresh';
 
 type StreamState = 'unavailable' | 'connected' | 'error';
 
@@ -372,7 +373,7 @@ export default function EvidencePipelineFlow({ config: _config }: { config: Reco
   const { data, isLoading, error } = useQuery({
     queryKey: ['evidence-pipeline-flow'],
     queryFn: () => fetchEvidencePipelineSnapshot(),
-    refetchInterval: 15_000,
+    refetchInterval: refreshInterval(),
   });
 
   useEffect(() => {

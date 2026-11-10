@@ -10,6 +10,7 @@ import { TOPICS } from '@shared/types/topics';
 import { formatAge } from '@/utils/time-format';
 import { FreshnessLine } from '@/components/dashboard/lab/FreshnessLine';
 import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/lib/format';
+import { refreshInterval } from '@/lib/refresh';
 
 export interface TopicActivityRow {
   topic: string;
@@ -203,7 +204,7 @@ export default function TopicActivityWidget() {
     topic: TOPICS.topicActivity,
     queryKey: ['lab-topic-activity'],
     enabled: availability === 'available',
-    refetchInterval: 5_000,
+    refetchInterval: refreshInterval(),
   });
 
   return (

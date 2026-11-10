@@ -15,8 +15,8 @@ import type {
   DelegationProjectionProbe,
   DelegationRun,
 } from './delegation-control-plane.types';
+import { refreshInterval } from '@/lib/refresh';
 
-const REFRESH_INTERVAL_MS = 5_000;
 
 function first<T>(rows: T[] | undefined): T | null {
   return rows?.[0] ?? null;
@@ -172,32 +172,32 @@ export function useDelegationEvidenceSnapshot(): DelegationEvidenceSnapshot {
   const summaryQuery = useProjectionQuery<DelegationSummary>({
     queryKey: ['delegation-control-plane', 'summary'],
     topic: TOPICS.delegationSummary,
-    refetchInterval: REFRESH_INTERVAL_MS,
+    refetchInterval: refreshInterval(),
   });
   const decisionsQuery = useProjectionQuery<DelegationDecisionProjectionRow>({
     queryKey: ['delegation-control-plane', 'decisions'],
     topic: TOPICS.delegationDecisions,
-    refetchInterval: REFRESH_INTERVAL_MS,
+    refetchInterval: refreshInterval(),
   });
   const savingsQuery = useProjectionQuery<DelegationSavingsProjection>({
     queryKey: ['delegation-control-plane', 'savings'],
     topic: TOPICS.delegationSavings,
-    refetchInterval: REFRESH_INTERVAL_MS,
+    refetchInterval: refreshInterval(),
   });
   const routingQuery = useProjectionQuery<DelegationModelRoutingProjection>({
     queryKey: ['delegation-control-plane', 'model-routing'],
     topic: TOPICS.delegationModelRouting,
-    refetchInterval: REFRESH_INTERVAL_MS,
+    refetchInterval: refreshInterval(),
   });
   const qualityQuery = useProjectionQuery<DelegationQualityGateProjection>({
     queryKey: ['delegation-control-plane', 'quality-gate'],
     topic: TOPICS.delegationQualityGate,
-    refetchInterval: REFRESH_INTERVAL_MS,
+    refetchInterval: refreshInterval(),
   });
   const tokenQuery = useProjectionQuery<DelegationTokenUsageProjection>({
     queryKey: ['delegation-control-plane', 'token-usage'],
     topic: TOPICS.delegationTokenUsage,
-    refetchInterval: REFRESH_INTERVAL_MS,
+    refetchInterval: refreshInterval(),
   });
 
   return useMemo(() => {

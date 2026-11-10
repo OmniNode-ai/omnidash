@@ -3,6 +3,7 @@ import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { Text } from '@/components/ui/typography';
 import { TOPICS } from '@shared/types/topics';
 import { localeString as fmtLocaleString } from '@/lib/format';
+import { refreshInterval } from '@/lib/refresh';
 
 export interface BaselinesSummary {
   snapshotId: string;
@@ -34,7 +35,7 @@ export default function BaselinesROICard({ config: _config }: { config: Record<s
   const { data: dataArr, isLoading, error } = useProjectionQuery<BaselinesSummary>({
     topic: TOPICS.baselinesRoi,
     queryKey: ['baselines-summary'],
-    refetchInterval: 120_000,
+    refetchInterval: refreshInterval(),
   });
   const data = dataArr?.[0] ?? null;
 

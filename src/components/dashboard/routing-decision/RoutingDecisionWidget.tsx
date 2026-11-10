@@ -4,6 +4,7 @@ import { ComponentWrapper } from '../ComponentWrapper';
 import { NodePill, CardHeader, Price } from '@/components/primitives';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
+import { refreshInterval } from '@/lib/refresh';
 
 // ── Projection types ─────────────────────────────────────────────────
 
@@ -216,7 +217,7 @@ export default function RoutingDecisionWidget() {
   const { data, isLoading, error } = useProjectionQuery<RoutingDecisionProjection>({
     queryKey: ['routing-decision-widget', TOPICS.routingDecision],
     topic: TOPICS.routingDecision,
-    refetchInterval: 30_000,
+    refetchInterval: refreshInterval(),
   });
 
   const projection = useMemo<RoutingDecisionProjection | null>(() => {

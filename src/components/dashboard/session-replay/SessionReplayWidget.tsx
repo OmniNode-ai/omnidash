@@ -23,6 +23,7 @@ import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { Text, type TextColor } from '@/components/ui/typography';
+import { refreshInterval } from '@/lib/refresh';
 
 // Row shape mirrors the contract's projection_api.columns for
 // onex.snapshot.projection.session.replay.v1, in declaration order.
@@ -183,7 +184,7 @@ export default function SessionReplayWidget(props: { config?: SessionReplayWidge
   const { data, isLoading, error } = useProjectionQuery<SessionReplayRow>({
     queryKey: ['session-replay-widget', TOPICS.sessionReplay],
     topic: TOPICS.sessionReplay,
-    refetchInterval: 30_000,
+    refetchInterval: refreshInterval(),
   });
 
   const ordered = useMemo(() => newestFirst(data ?? []), [data]);

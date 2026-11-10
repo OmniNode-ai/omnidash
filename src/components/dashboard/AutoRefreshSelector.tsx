@@ -24,19 +24,17 @@ import {
 } from '@/components/ui/positioned-menu';
 import { Text } from '@/components/ui/typography';
 import { useFrameStore } from '@/store/store';
+import { VIEWER_REFRESH_CHOICES } from '@/lib/refresh';
 
 interface IntervalPreset {
   label: string;
   value: number | null; // ms, or null for off
 }
 
+// OMN-23330 AC21: the choices come from the one refresh setting's module, which declares why two sit under it.
 const PRESETS: IntervalPreset[] = [
   { label: 'Off', value: null },
-  { label: '5s', value: 5_000 },
-  { label: '10s', value: 10_000 },
-  { label: '30s', value: 30_000 },
-  { label: '1m', value: 60_000 },
-  { label: '5m', value: 5 * 60_000 },
+  ...VIEWER_REFRESH_CHOICES.map(({ label, ms }) => ({ label, value: ms })),
 ];
 
 // OMN-17188 (CodeQL #13 js/unneeded-defensive-code): the `interval === null`

@@ -84,6 +84,7 @@ import {
 import { TierLegend, ModelTiersContext, useModelColor, useModelIdentityStyle } from '@/components/dashboard/model-tiers';
 import { fixed as fmtFixed, localeDate as fmtLocaleDate, localeString as fmtLocaleString } from '@/lib/format';
 import { formatShare } from '@/lib/format';
+import { pageRefreshMs } from '@/lib/refresh';
 
 interface LocalDashboardPageProps {
   pageName: LocalPageName;
@@ -3497,8 +3498,9 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
     }
     const unsubscribeRefresh = subscribeLocalPageRefresh(() => { void load(); });
     void load();
-    // The page's declared refresh interval (requirements: the dashboard shows the runtime's data as it changes).
-    const timer = setInterval(() => { void load(); }, (document.dashboard.refresh_interval_seconds ?? 30) * 1000);
+    // The page's declared refresh interval (requirements: the dashboard shows the runtime's data as it changes), never under
+    // the one refresh setting (OMN-23330 AC21).
+    const timer = setInterval(() => { void load(); }, pageRefreshMs(document.dashboard.refresh_interval_seconds));
     return () => {
       active = false;
       clearInterval(timer);
@@ -3508,7 +3510,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
 
   const emptyState = page ? resolveLocalPageEmptyState(page, snapshots) : null;
   const now = Date.now();
-  const interval = page?.dashboard.refresh_interval_seconds ?? 30;
+  const interval = pageRefreshMs(page?.dashboard.refresh_interval_seconds) / 1000;
 
   const renderComponent = (component: LocalPageDocument['components'][number], meteringView: 'all' | 'kpis' | 'daily' = 'all', slice?: PanelSlice, fullView = false) => {
     if (!page) return null;

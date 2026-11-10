@@ -6,6 +6,7 @@ import { TOPICS } from '@shared/types/topics';
 import { CountUp } from '@/components/primitives';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 import { fixed as fmtFixed } from '@/lib/format';
+import { refreshInterval } from '@/lib/refresh';
 
 // ── Data types ──────────────────────────────────────────────────────
 
@@ -514,7 +515,7 @@ export default function AbCompareWidget({
   const { data, isLoading, error } = useProjectionQuery<AbCompareRow>({
     topic: TOPICS.abCompare,
     queryKey: ['ab-compare'],
-    refetchInterval: 10_000,
+    refetchInterval: refreshInterval(),
   });
 
   // Build tasks from projection data. Storybook owns demo fixture seeding; the

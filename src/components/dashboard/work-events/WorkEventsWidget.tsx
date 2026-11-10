@@ -34,6 +34,7 @@ import { Text, type TextColor } from '@/components/ui/typography';
 import { FreshnessLine } from '@/components/dashboard/lab/FreshnessLine';
 import { formatAge } from '@/utils/time-format';
 import type { ProjectionSnapshot } from '@/data-source';
+import { refreshInterval } from '@/lib/refresh';
 
 // Row shape mirrors the contract's projection_api.columns for
 // onex.snapshot.projection.work.events.v1, in declaration order.
@@ -277,7 +278,7 @@ export default function WorkEventsWidget(props: { config?: WorkEventsWidgetConfi
   const query = useProjectionSnapshotQuery<WorkEventRow>({
     queryKey: ['work-events-widget', TOPICS.workEvents],
     topic: TOPICS.workEvents,
-    refetchInterval: 30_000,
+    refetchInterval: refreshInterval(),
   });
 
   const snapshot = query.data ?? {

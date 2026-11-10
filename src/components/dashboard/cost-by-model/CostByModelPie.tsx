@@ -24,6 +24,7 @@ import { useFrameStore } from '@/store/store';
 import { useTokenColors } from '@/theme/design-system/useTokenColors';
 import { colorToNumber, tokenNumber } from '@/theme/design-system/color';
 import { fixed as fmtFixed } from '@/lib/format';
+import { refreshInterval } from '@/lib/refresh';
 
 interface CostDataPoint {
   bucket_time: string;
@@ -475,7 +476,7 @@ export default function CostByModelPie({ config: _config }: { config: Record<str
   const { data, isLoading, error } = useProjectionQuery<CostDataPoint>({
     topic: TOPICS.llmCost,
     queryKey: ['cost-by-model'],
-    refetchInterval: 60_000,
+    refetchInterval: refreshInterval(),
   });
 
   // Dashboard-level time range (supports_time_range: true).

@@ -5,6 +5,7 @@ import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 import { fixed as fmtFixed, localeTime as fmtLocaleTime } from '@/lib/format';
+import { refreshInterval } from '@/lib/refresh';
 
 interface VoiceSession {
   session_id: string;
@@ -168,7 +169,7 @@ export function VoiceSessionPage() {
   const { data: sessions, isLoading, error } = useProjectionQuery<VoiceSession>({
     topic: TOPICS.voiceSessions,
     queryKey: ['voice-sessions'],
-    refetchInterval: 10_000,
+    refetchInterval: refreshInterval(),
   });
 
   const [selectedId, setSelectedId] = useState<string | null>(null);

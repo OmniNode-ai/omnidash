@@ -4,6 +4,7 @@ import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { Text } from '@/components/ui/typography';
 import { fixed as fmtFixed } from '@/lib/format';
+import { refreshInterval } from '@/lib/refresh';
 
 // Raw projection row (onex.snapshot.projection.intent-classification.v1);
 // grouping happens client-side per the node_projection_intent_classification
@@ -48,7 +49,7 @@ export default function IntentDistributionWidget() {
   const { data, isLoading, error } = useProjectionQuery<IntentEventRow>({
     topic: TOPICS.intentClassification,
     queryKey: ['intent-distribution'],
-    refetchInterval: 30_000,
+    refetchInterval: refreshInterval(),
   });
 
   const sorted = useMemo<IntentBucket[]>(() => {

@@ -8,6 +8,7 @@ import { useProjectionSnapshotQuery } from '@/hooks/useProjectionSnapshotQuery';
 import { useDataSourceMode } from '@/hooks/useDataSourceMode';
 import { TOPICS } from '@shared/types/topics';
 import { FreshnessLine } from '@/components/dashboard/lab/FreshnessLine';
+import { refreshInterval } from '@/lib/refresh';
 
 /**
  * OMN-18773 — C6: the Runners widget.
@@ -272,7 +273,7 @@ export default function LabRunnersWidget() {
     topic: TOPICS.runnerFleet,
     queryKey: ['lab-runner-fleet'],
     enabled: availability === 'available',
-    refetchInterval: 15_000,
+    refetchInterval: refreshInterval(),
   });
 
   return (

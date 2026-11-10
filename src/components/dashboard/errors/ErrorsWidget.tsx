@@ -9,6 +9,7 @@ import type { ProjectionSnapshot } from '@/data-source';
 import type { ConsumerFlowRow } from '@/components/dashboard/consumer-flow/ConsumerFlowWidget';
 import type { LiveEventRow } from '@/components/dashboard/trace-explorer/TraceExplorerWidget';
 import { FreshnessLine } from '@/components/dashboard/lab/FreshnessLine';
+import { refreshInterval } from '@/lib/refresh';
 
 export interface RuntimeErrorFingerprintRow {
   fingerprint: string;
@@ -248,17 +249,17 @@ export default function ErrorsWidget({ config = {} }: { config?: ErrorsWidgetCon
   const consumer = useProjectionSnapshotQuery<ConsumerFlowRow>({
     topic: TOPICS.consumerFlow,
     queryKey: ['lab-errors', 'consumer-flow'],
-    refetchInterval: 5_000,
+    refetchInterval: refreshInterval(),
   });
   const events = useProjectionSnapshotQuery<LiveEventRow>({
     topic: TOPICS.liveEvents,
     queryKey: ['lab-errors', 'live-events'],
-    refetchInterval: 5_000,
+    refetchInterval: refreshInterval(),
   });
   const fingerprints = useProjectionSnapshotQuery<RuntimeErrorFingerprintRow>({
     topic: TOPICS.runtimeErrorFingerprints,
     queryKey: ['lab-errors', 'runtime-error-fingerprints'],
-    refetchInterval: 15_000,
+    refetchInterval: refreshInterval(),
   });
 
   return (

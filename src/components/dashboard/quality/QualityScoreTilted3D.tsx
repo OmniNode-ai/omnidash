@@ -23,6 +23,7 @@ import { useThemeName } from '@/theme';
 import { Text, Heading } from '@/components/ui/typography';
 import { tokenNumber } from '@/theme/design-system/color';
 import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/lib/format';
+import { refreshInterval } from '@/lib/refresh';
 
 export interface QualityDistributionBucket {
   bucket: string;
@@ -546,7 +547,7 @@ export default function QualityScorePanel({ config }: { config: QualityScoreConf
   const { data: dataArr, isLoading, error } = useProjectionQuery<QualitySummary>({
     topic: TOPICS.baselinesQuality,
     queryKey: ['quality-summary'],
-    refetchInterval: 60_000,
+    refetchInterval: refreshInterval(),
   });
   const data = dataArr?.[0];
 

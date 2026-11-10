@@ -19,6 +19,7 @@ import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { Text, type TextColor } from '@/components/ui/typography';
+import { refreshInterval } from '@/lib/refresh';
 
 // Row shape mirrors the contract's projection_api.columns for
 // onex.snapshot.projection.consumer-flow.v1.
@@ -204,7 +205,7 @@ export default function ConsumerFlowWidget(props: { config?: ConsumerFlowWidgetC
   const { data, isLoading, error } = useProjectionQuery<ConsumerFlowRow>({
     queryKey: ['consumer-flow', TOPICS.consumerFlow],
     topic: TOPICS.consumerFlow,
-    refetchInterval: 30_000,
+    refetchInterval: refreshInterval(),
   });
 
   const all = useMemo(() => latestWindowPerConsumer(data ?? []), [data]);

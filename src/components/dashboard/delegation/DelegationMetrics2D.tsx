@@ -14,6 +14,7 @@ import { useDelegationRunContextOptional } from '@/components/dashboard/delegati
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 import { useTokenColors } from '@/theme/design-system/useTokenColors';
 import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/lib/format';
+import { refreshInterval } from '@/lib/refresh';
 
 // avgLatencyMs is not in every projection snapshot (the file-source
 // fixture omits it); treat it and the per-model breakdown as optional so
@@ -152,7 +153,7 @@ export default function DelegationMetrics2D({ config }: { config: Record<string,
   const { data: dataArr, isLoading: queryLoading, error: queryError } = useProjectionQuery<Summary>({
     topic: TOPICS.delegationSummary,
     queryKey: ['delegation-summary'],
-    refetchInterval: 60_000,
+    refetchInterval: refreshInterval(),
     enabled: !runCtx,
   });
 

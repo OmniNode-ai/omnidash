@@ -6,6 +6,7 @@ import { TOPICS } from '@shared/types/topics';
 import { useTimezone } from '@/hooks/useTimezone';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 import { localeTime as fmtLocaleTime } from '@/lib/format';
+import { refreshInterval } from '@/lib/refresh';
 
 // STAY-BESPOKE (OMN-10295): This widget renders a status-pill HTML table with
 // per-dimension tri-state rows plus freshness downgrade semantics. It does not
@@ -85,7 +86,7 @@ export default function ReadinessGate({ config: _config }: { config: Record<stri
   const { data: dataArr, isLoading, error } = useProjectionQuery<ReadinessSummary>({
     topic: TOPICS.overnightReadiness,
     queryKey: ['readiness-summary'],
-    refetchInterval: 120_000,
+    refetchInterval: refreshInterval(),
   });
   const data = dataArr?.[0];
   const tz = useTimezone();

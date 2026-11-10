@@ -5,6 +5,7 @@ import { CardHeader } from '@/components/primitives';
 import { useProjectionQueryWithContract } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { Text } from '@/components/ui/typography';
+import { refreshInterval } from '@/lib/refresh';
 
 // ── Projection row shape ─────────────────────────────────────────────
 
@@ -92,7 +93,7 @@ export default function ReceiptGateWidget() {
   const { data, is_degraded, freshness, isLoading, error } = useProjectionQueryWithContract<ReceiptGateRow>({
     topic: TOPICS.receiptGate,
     contract: RECEIPT_GATE_CONTRACT,
-    refetchInterval: 30_000,
+    refetchInterval: refreshInterval(),
   });
 
   const gates = useMemo(() => data, [data]);
