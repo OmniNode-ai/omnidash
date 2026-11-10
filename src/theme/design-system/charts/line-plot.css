@@ -1,0 +1,28 @@
+/*
+ * OMN-23330 AC7: each line's peak label in the kit's multi-line plot. The label sits just above its line's busiest point
+ * in the line's colour; labels close together take rows above one another (--ins-peak-row), and the plot makes room
+ * above itself for the rows it draws (--ins-peak-rows). A label on the first or last day is anchored inward.
+ */
+.ins-plot--multi {
+  margin-top: calc(var(--ins-peak-rows, 0) * 16px);
+}
+
+.ins-plot--multi .ins-peak {
+  position: absolute;
+  z-index: 2;
+  transform: translate(-50%, calc(-100% - 6px - var(--ins-peak-row, 0) * 16px));
+  font-family: var(--ds-font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 14px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.ins-plot--multi .ins-peak[data-align="start"] {
+  transform: translate(0, calc(-100% - 6px - var(--ins-peak-row, 0) * 16px));
+}
+
+.ins-plot--multi .ins-peak[data-align="end"] {
+  transform: translate(-100%, calc(-100% - 6px - var(--ins-peak-row, 0) * 16px));
+}

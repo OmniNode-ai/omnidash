@@ -2246,8 +2246,13 @@ export function OverviewTrendPanel({ rows, columns, window, now }: {
   const say = (value: number | null, column: DeclaredColumn, compact: boolean) => (value === null ? 'not recorded'
     : `${column.format === 'currency' ? formatUsd(value) : compact ? formatDashboardCount(value) : formatFullCount(String(value))} ${column.header.toLowerCase()}`);
   const visible = columns.filter(column => shown[slug(column.header)]);
-  const lines = visible.map(column => ({ key: slug(column.header), color: TREND_TONES[column.header] ?? 'var(--ds-ink-2)',
-    values: days.map(day => valueOf(day, column)) }));
+  const lines = visible.map(column => {
+    const values = days.map(day => valueOf(day, column));
+    const known = values.filter((value): value is number => value !== null);
+    // OMN-23330 AC7: each line's busiest day is labelled with its value, in the line's own unit.
+    return { key: slug(column.header), color: TREND_TONES[column.header] ?? 'var(--ds-ink-2)', values,
+      peak: known.length === 0 ? undefined : say(Math.max(...known), column, true) };
+  });
   const dayText = (day: string, compact: boolean) => (byDay.has(day) ? twice(day) ? 'not recorded (two rows for this day)'
     : visible.map(column => say(valueOf(day, column), column, compact)).join(', ') : 'not recorded');
   const active = hover === null ? undefined : days[hover];
