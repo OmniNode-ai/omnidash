@@ -1137,11 +1137,11 @@ ul.gdb-plot--names { margin-bottom: 48px; }
   border-bottom: 1px solid color-mix(in srgb, var(--panel-accent, var(--ds-ink-3)) 55%, var(--ds-line));
 }
 
-/* The seven-model plot stays upright at every width. A narrow panel scrolls within itself, keeping long names intact
-   and the document free of horizontal scroll. The expanded panel gives each bar more space. */
-:is(.local-dashboard-page, .ev-root) .local-model-usage--upright { overflow-x: auto; padding-bottom: 7px; }
+/* The seven-model plot stays upright at every width. A narrow panel scrolls its plot in the kit's scroll container
+   (OMN-23330 AC4: the scrollbar is always drawn), keeping long names intact and the document free of horizontal scroll.
+   The expanded panel gives each bar more space. */
 /* Part 27 round 1: 64px columns let seven models fit a half-width panel at 1440 without a scrollbar or a cut name. */
-:is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart { min-width: max(100%, calc(7 /* OMN-22168: --rb-model-count was never set, so this was always 7 */ * 70px)); }
+:is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart .ds-chart-scroll > .rb-plot { min-width: max(100%, calc(7 /* OMN-22168: --rb-model-count was never set, so this was always 7 */ * 70px)); }
 :is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart.rb-chart--vertical .rb-plot {
   /* Lakshman 2026-11-04, "widen the model usage columns so names don't break": a column is at least as wide as its
      name's longest part between joins (96px at the least), so a name wraps only at a slash, colon, hyphen or underscore;
@@ -1196,7 +1196,7 @@ ul.gdb-plot--names { margin-bottom: 48px; }
 .local-dashboard-page--overview .local-chart-dialog .local-dashboard-panel--full-chart:hover { border: 0; padding: 0; background: transparent; }
 .local-dashboard-page--overview .local-dashboard-panel--full-chart .ins-bars.gdb-plot { height: 300px; }
 .local-dashboard-page--overview .local-dashboard-panel--full-chart .rb-track { height: 260px; }
-.local-dashboard-page--overview .local-dashboard-panel--full-chart .local-model-usage--upright .rb-chart { min-width: max(100%, calc(7 /* OMN-22168: --rb-model-count was never set, so this was always 7 */ * 110px)); }
+.local-dashboard-page--overview .local-dashboard-panel--full-chart .local-model-usage--upright .rb-chart .ds-chart-scroll > .rb-plot { min-width: max(100%, calc(7 /* OMN-22168: --rb-model-count was never set, so this was always 7 */ * 110px)); }
 .local-dashboard-page--overview .local-dashboard-panel--full-chart .local-model-usage--upright .rb-chart.rb-chart--vertical .rb-track { height: 260px; }
 /* Part 27 round 1: Delegation Evidence's title is the page title of every other page (AC168). */
 main.ev-root[data-destination="delegation-evidence"] .ev-page-head .ev-title { font-size: 28px; font-weight: 500; letter-spacing: -0.015em; }

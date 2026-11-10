@@ -1,0 +1,36 @@
+/*
+ * OMN-23330 AC4: the chart kit's one horizontal scroll container. A chart whose content is wider than its box (ranked
+ * bars past ten, grouped bars with many groups) scrolls here, and the scrollbar is always drawn: macOS draws overlay
+ * scrollbars only while scrolling unless the bar is styled with ::-webkit-scrollbar, and Chrome ignores those rules once
+ * the standard scrollbar-width or scrollbar-color is set, so those two are given only to engines without the pseudo.
+ */
+.ds-chart-scroll {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding-bottom: 6px;
+}
+
+.ds-chart-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+
+.ds-chart-scroll::-webkit-scrollbar-track {
+  background: color-mix(in oklab, var(--ds-line) 45%, transparent);
+  border-radius: 4px;
+}
+
+.ds-chart-scroll::-webkit-scrollbar-thumb {
+  background: var(--ds-line-strong);
+  border-radius: 4px;
+}
+
+.ds-chart-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--ds-ink-2);
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  .ds-chart-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--ds-line-strong) transparent;
+  }
+}
