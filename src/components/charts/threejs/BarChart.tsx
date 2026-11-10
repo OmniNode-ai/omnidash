@@ -17,6 +17,7 @@ import type { StackedSlice } from '@/components/dashboard/cost-trend/StackedChar
 import { Text } from '@/components/ui/typography';
 import type { IBarChartAdapter, BarChartAdapterProps } from '@shared/types/chart-adapter-bar';
 import type { EmptyStateReason } from '@shared/types/chart-config';
+import { localeDate as fmtLocaleDate } from '@/lib/format';
 
 const DEFAULT_EMPTY_MESSAGES: Record<EmptyStateReason, string> = {
   'no-data': 'No data available',
@@ -173,7 +174,7 @@ export function BarChart<T extends Record<string, unknown> = Record<string, unkn
     // Attempt ISO date parse for friendly labels; fall back to raw string.
     const d = new Date(bucket);
     if (!isNaN(d.getTime())) {
-      return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      return fmtLocaleDate(d, undefined, { month: 'short', day: 'numeric' });
     }
     return bucket;
   };

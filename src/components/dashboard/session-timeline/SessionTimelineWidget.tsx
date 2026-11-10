@@ -4,6 +4,7 @@ import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { Text } from '@/components/ui/typography';
+import { fixed as fmtFixed, localeDate as fmtLocaleDate, localeTime as fmtLocaleTime } from '@/lib/format';
 
 interface TimelineEvent {
   intent_id: string;
@@ -48,13 +49,13 @@ function formatCategory(category: string): string {
 function formatTime(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '--';
-  return d.toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  return fmtLocaleTime(d, [], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '--';
-  return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  return fmtLocaleDate(d, [], { month: 'short', day: 'numeric' });
 }
 
 // ── Scatter Chart ────────────────────────────────────────────────────
@@ -121,7 +122,7 @@ function ScatterChart({ events }: { events: TimelineEvent[] }) {
             fill={confidenceColor(ev.confidence)}
             opacity={0.4 + ev.confidence * 0.6}
           >
-            <title>{`${ev.intent_category} (${(ev.confidence * 100).toFixed(0)}%) ${formatTime(ev.created_at)}`}</title>
+            <title>{`${ev.intent_category} (${fmtFixed((ev.confidence * 100), 0)}%) ${formatTime(ev.created_at)}`}</title>
           </circle>
         );
       })}
@@ -193,7 +194,7 @@ function TimelineList({ events }: { events: TimelineEvent[] }) {
                   </span>
                 )}
                 <span className="mono tnum" style={{ color: confColor, "fontWeight": 600 }}>
-                  {(ev.confidence * 100).toFixed(0)}%
+                  {fmtFixed((ev.confidence * 100), 0)}%
                 </span>
                 <span className="mono tnum" style={{ "color": 'var(--ds-ink-3)' }}>
                   {formatDate(ev.created_at)} {formatTime(ev.created_at)}

@@ -4,6 +4,7 @@ import { Text } from '@/components/ui/typography';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { useTimezone } from '@/hooks/useTimezone';
+import { localeTime as fmtLocaleTime } from '@/lib/format';
 
 export interface McpToolRow {
   name: string;
@@ -68,7 +69,7 @@ export default function McpToolsWidget({ config: _config }: { config: Record<str
                   </td>
                   <td style={tdStyle}>
                     <Text size="sm" color="tertiary">
-                      {new Date(tool.registeredAt).toLocaleTimeString(undefined, { timeZone: tz })}
+                      {fmtLocaleTime(new Date(tool.registeredAt), undefined, { timeZone: tz })}
                     </Text>
                   </td>
                   <td style={tdStyle}>

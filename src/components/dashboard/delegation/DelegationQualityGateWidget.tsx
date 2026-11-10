@@ -8,6 +8,7 @@ import { KPI } from '@/components/primitives';
 import { useDelegationRunContextOptional } from '@/components/dashboard/delegation-control-plane/DelegationRunContext';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 import type { DelegationDecisionProjectionRow } from '@/components/dashboard/delegation-control-plane/delegation-control-plane.types';
+import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/lib/format';
 
 // ── Projection types (from delegation_events SQLite table, OMN-10623) ─
 
@@ -126,7 +127,7 @@ function CheckTypeRow({ row, passThreshold }: { row: QualityGateCheckRow; passTh
           />
         </div>
         <Text as="span" size="sm" family="mono" tabularNums style={{ textAlign: 'right', color: passColor }}>
-          {(row.pass_rate * 100).toFixed(1)}%
+          {fmtFixed((row.pass_rate * 100), 1)}%
         </Text>
         {/* Inline pass / fail fraction: "N pass / M fail" */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 4, alignItems: 'center' }}>
@@ -359,10 +360,10 @@ function TokensToComplianceByModel({ rows }: { rows: TokensToComplianceByModelRo
             {row.model_name}
           </Text>
           <Text as="span" size="sm" family="mono" tabularNums style={{ textAlign: 'right' }}>
-            {Math.round(row.avg_tokens).toLocaleString()}
+            {fmtLocaleString(Math.round(row.avg_tokens))}
           </Text>
           <Text as="span" size="sm" family="mono" tabularNums style={{ textAlign: 'right' }}>
-            {row.avg_attempts.toFixed(2)}
+            {fmtFixed(row.avg_attempts, 2)}
           </Text>
           <Text as="span" size="xs" family="mono" tabularNums color="tertiary" style={{ textAlign: 'right' }}>
             {row.sample_count}
@@ -473,7 +474,7 @@ export default function DelegationQualityGateWidget(props: { config: DelegationQ
                 label="Avg attempts"
                 value={
                   projection.avg_compliance_attempts != null
-                    ? Number(projection.avg_compliance_attempts.toFixed(2))
+                    ? Number(fmtFixed(projection.avg_compliance_attempts, 2))
                     : 0
                 }
                 tone={
@@ -508,7 +509,7 @@ export default function DelegationQualityGateWidget(props: { config: DelegationQ
                 </Text>
               </div>
               <Text as="span" size="sm" family="mono" tabularNums weight="semibold" style={{ color: 'var(--ds-warn)' }}>
-                {(projection.escalation_rate * 100).toFixed(1)}% rate
+                {fmtFixed((projection.escalation_rate * 100), 1)}% rate
               </Text>
             </div>
           )}

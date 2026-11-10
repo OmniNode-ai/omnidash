@@ -6,6 +6,7 @@ import { TOPICS } from '@shared/types/topics';
 import { useTimezone } from '@/hooks/useTimezone';
 import { Text } from '@/components/ui/typography';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
+import { localeString as fmtLocaleString, localeTime as fmtLocaleTime } from '@/lib/format';
 
 export interface StreamEvent {
   id: string;
@@ -41,7 +42,7 @@ function formatEventTime(iso: string, timeZone: string): string {
   if (Number.isNaN(d.getTime())) return '—';
   const ageMs = Date.now() - d.getTime();
   if (ageMs < 24 * 60 * 60 * 1000) {
-    return d.toLocaleTimeString([], { timeZone, hour12: false });
+    return fmtLocaleTime(d, [], { timeZone, hour12: false });
   }
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone,
@@ -239,7 +240,7 @@ export default function EventStream({ config }: { config: EventStreamConfig }) {
                 <div
                   key={ev.id}
                   data-testid="event-row"
-                  title={`${ev.event_type}\nsource: ${ev.source}\ncorrelation: ${ev.correlation_id}\n${new Date(ev.timestamp).toLocaleString(undefined, { timeZone: tz })}`}
+                  title={`${ev.event_type}\nsource: ${ev.source}\ncorrelation: ${ev.correlation_id}\n${fmtLocaleString(new Date(ev.timestamp), undefined, { timeZone: tz })}`}
                   style={{
                     display: 'grid',
                     gridTemplateColumns: ROW_COLUMNS,

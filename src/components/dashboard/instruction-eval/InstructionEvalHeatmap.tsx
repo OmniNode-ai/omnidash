@@ -14,6 +14,7 @@ import type {
   EvalSignal,
   InstructionEvalConfig,
 } from './instruction-eval.types';
+import { localeString as fmtLocaleString } from '@/lib/format';
 
 // ── Color helpers (shared vocabulary with ContextEffectivenessHeatmap) ─────────
 
@@ -100,7 +101,7 @@ function PassRateCell({ result }: { result: EvalResult | undefined }) {
   return (
     <td style={cellTd}>
       <div
-        title={`${result.model} · ${fmtTask(result.task)} · ${CONTEXT_MODE_LABELS[result.context_mode]}\n${pct}% pass · ${Math.round(result.output_tokens).toLocaleString()} out tokens · ${result.runs} runs`}
+        title={`${result.model} · ${fmtTask(result.task)} · ${CONTEXT_MODE_LABELS[result.context_mode]}\n${pct}% pass · ${fmtLocaleString(Math.round(result.output_tokens))} out tokens · ${result.runs} runs`}
         style={{
           ...cellBox,
           border: `1px solid ${signalBorder(signal)}`,
@@ -111,7 +112,7 @@ function PassRateCell({ result }: { result: EvalResult | undefined }) {
           {pct}%
         </Text>
         <Text as="span" size="xs" color="tertiary">
-          {Math.round(result.output_tokens).toLocaleString()}t
+          {fmtLocaleString(Math.round(result.output_tokens))}t
         </Text>
       </div>
     </td>
@@ -303,7 +304,7 @@ export default function InstructionEvalHeatmap({ config: _config = {} }: { confi
             </div>
 
             <Text as="div" size="xs" color="tertiary">
-              {(rawRows ?? []).length} aggregated cells · {totalRuns.toLocaleString()} eval runs ·
+              {(rawRows ?? []).length} aggregated cells · {fmtLocaleString(totalRuns)} eval runs ·
               {' '}{models.length} models × {tasks.length} tasks × {CONTEXT_MODES.length} context modes
             </Text>
           </>

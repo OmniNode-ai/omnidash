@@ -1,6 +1,7 @@
 import { Text } from '@/components/ui/typography';
 import type { VisualizationContract } from '@shared/types/visualization-contract';
 import { registerViz } from '../viz-registry';
+import { fixed as fmtFixed } from '@/lib/format';
 
 type CostTier = 'free' | 'cheap' | 'expensive';
 
@@ -81,11 +82,11 @@ export function CostBarChart({ data, contract }: CostBarChartProps) {
             </Text>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
               <Text as="span" size="sm" family="mono" tabularNums>
-                ${row.cost.toFixed(4)}
+                ${fmtFixed(row.cost, 4)}
               </Text>
               {row.savingsVsMax !== null && (
                 <Text as="span" size="xs" family="mono" color="secondary">
-                  saves ${row.savingsVsMax.toFixed(4)}
+                  saves ${fmtFixed(row.savingsVsMax, 4)}
                 </Text>
               )}
             </div>

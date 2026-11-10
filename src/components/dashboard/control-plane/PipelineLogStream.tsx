@@ -1,5 +1,6 @@
 import { Text } from '@/components/ui/typography';
 import { formatRedactedEventPayload } from '@/utils/redact-event-payload';
+import { localeTime as fmtLocaleTime } from '@/lib/format';
 
 export interface PipelineEvent {
   id: string;
@@ -35,7 +36,7 @@ const TYPE_COLORS: Record<PipelineEvent['type'], string> = {
 function formatTime(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '--:--:--';
-  return d.toLocaleTimeString(undefined, {
+  return fmtLocaleTime(d, undefined, {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',

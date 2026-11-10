@@ -2,6 +2,7 @@ import { Text } from '@/components/ui/typography';
 import type { SwarmRunRow } from './swarm-control-plane.types';
 import { normalizeStatus } from './swarm-control-plane.types';
 import { fmtMs, fmtUsd } from './format';
+import { fixed as fmtFixed } from '@/lib/format';
 
 function StatusBadge({ status }: { status: string }) {
   const color = status === 'succeeded' ? 'ok'
@@ -83,7 +84,7 @@ export function SwarmSubtaskCard({ run }: { run: SwarmRunRow }) {
         <MetricPair label="savings" value={run.savings_usd > 0 ? fmtUsd(run.savings_usd) : '-'} />
         <MetricPair
           label="speedup"
-          value={run.parallelism_speedup_ratio > 1 ? `${run.parallelism_speedup_ratio.toFixed(2)}×` : '-'}
+          value={run.parallelism_speedup_ratio > 1 ? `${fmtFixed(run.parallelism_speedup_ratio, 2)}×` : '-'}
         />
       </div>
 

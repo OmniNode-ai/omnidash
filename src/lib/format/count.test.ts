@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDashboardCount, formatFullCount } from './dashboard-count';
+import { formatDashboardCount, formatFullCount } from './count';
 
 // Failure modes: rounding across a scale boundary, binary precision loss, malformed/missing
 // values displayed as zero, exponent overflow and compacting an explicitly directional token count.

@@ -1,5 +1,5 @@
 import { latestAllRow } from '@/pages/local/insight-aggregates';
-import { wholeCount } from './dashboard-count';
+import { wholeCount } from '@/lib/format';
 
 export interface DailyMeteringTokenRow {
   day: string;

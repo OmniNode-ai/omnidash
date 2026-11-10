@@ -5,6 +5,7 @@ import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { CountUp, SortableTable } from '@/components/primitives';
 import type { ColumnDef } from '@/components/primitives';
+import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/lib/format';
 
 // ── Data types ──────────────────────────────────────────────────────
 
@@ -111,8 +112,8 @@ function CostLineChart({ data }: { data: typeof COST_TREND }) {
   const x = (i: number) => padL + (i / (data.length - 1)) * innerW;
   const y = (v: number) => padT + (1 - v / yMax) * innerH;
 
-  const baselinePath = baseline.map((v, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(' ');
-  const actualPath = data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(d.cloud).toFixed(1)}`).join(' ');
+  const baselinePath = baseline.map((v, i) => `${i === 0 ? 'M' : 'L'} ${fmtFixed(x(i), 1)} ${fmtFixed(y(v), 1)}`).join(' ');
+  const actualPath = data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${fmtFixed(x(i), 1)} ${fmtFixed(y(d.cloud), 1)}`).join(' ');
 
   const yTicks = [0, 0.05, 0.10, 0.15, 0.20].filter((t) => t <= yMax);
 
@@ -126,7 +127,7 @@ function CostLineChart({ data }: { data: typeof COST_TREND }) {
       {/* y-axis labels */}
       {yTicks.map((t) => (
         <text key={`y-${t}`} x={padL - 6} y={y(t) + 3} fontSize="9" fill="var(--ds-ink-3)" fontFamily="var(--ds-font-mono)" textAnchor="end">
-          ${t.toFixed(2)}
+          ${fmtFixed(t, 2)}
         </text>
       ))}
 
@@ -333,25 +334,25 @@ function PerModelView({ models, totalSaved }: { models: PerModelRow[]; totalSave
         <span className="mono" style={{ "fontSize": 10, color: m.tier === 'local' ? 'var(--ds-ok)' : 'var(--ds-link)', "textTransform": 'uppercase', "letterSpacing": '0.06em', "fontWeight": 600 }}>{m.tier}</span>
       ),
     },
-    { key: 'tasks', label: 'Tasks', width: '56px', align: 'right', mono: true, render: (m) => m.tasks.toLocaleString() },
-    { key: 'tokensM', label: 'Tokens', width: '62px', align: 'right', mono: true, render: (m) => `${m.tokensM.toFixed(1)}M` },
+    { key: 'tasks', label: 'Tasks', width: '56px', align: 'right', mono: true, render: (m) => fmtLocaleString(m.tasks) },
+    { key: 'tokensM', label: 'Tokens', width: '62px', align: 'right', mono: true, render: (m) => `${fmtFixed(m.tokensM, 1)}M` },
     {
       key: 'p50', label: 'p50', width: '56px', align: 'right', mono: true,
-      render: (m) => <span style={{ color: m.p50 < 3 ? 'var(--ds-ok)' : m.p50 < 10 ? 'var(--ds-ink)' : 'var(--ds-bad)' }}>{m.p50.toFixed(1)}s</span>,
+      render: (m) => <span style={{ color: m.p50 < 3 ? 'var(--ds-ok)' : m.p50 < 10 ? 'var(--ds-ink)' : 'var(--ds-bad)' }}>{fmtFixed(m.p50, 1)}s</span>,
     },
-    { key: 'p95', label: 'p95', width: '56px', align: 'right', mono: true, render: (m) => `${m.p95.toFixed(1)}s` },
+    { key: 'p95', label: 'p95', width: '56px', align: 'right', mono: true, render: (m) => `${fmtFixed(m.p95, 1)}s` },
     {
       key: 'accuracy', label: 'Acc', width: '60px', align: 'right', mono: true,
       sortValue: (m) => m.accuracy,
       render: (m) => (
         <span style={{ color: m.accuracy >= 0.93 ? 'var(--ds-ok)' : m.accuracy >= 0.88 ? 'var(--ds-ink)' : 'var(--ds-warn)', "fontWeight": 600 }}>
-          {(m.accuracy * 100).toFixed(1)}%
+          {fmtFixed((m.accuracy * 100), 1)}%
         </span>
       ),
     },
     {
       key: 'spent', label: 'Spent', width: '62px', align: 'right', mono: true,
-      render: (m) => `$${m.spent.toFixed(2)}`,
+      render: (m) => `$${fmtFixed(m.spent, 2)}`,
     },
     {
       key: 'savings', label: 'Saved', width: '72px', align: 'right', mono: true,
@@ -360,7 +361,7 @@ function PerModelView({ models, totalSaved }: { models: PerModelRow[]; totalSave
         const saved = m.wouldHaveCost - m.spent;
         return (
           <span style={{ "fontWeight": 700, color: m.tier === 'local' ? 'var(--ds-ok)' : 'var(--ds-ink-3)' }}>
-            {m.tier === 'local' ? `+$${saved.toFixed(2)}` : '—'}
+            {m.tier === 'local' ? `+$${fmtFixed(saved, 2)}` : '—'}
           </span>
         );
       },
@@ -372,7 +373,7 @@ function PerModelView({ models, totalSaved }: { models: PerModelRow[]; totalSave
         const wouldPct = (m.wouldHaveCost / max) * 100;
         const spentPct = (m.spent / max) * 100;
         return (
-          <div style={{ position: 'relative', height: 8, background: 'var(--ds-inset)', borderRadius: 999, overflow: 'hidden' }} title={`would have cost $${m.wouldHaveCost.toFixed(2)} · actual $${m.spent.toFixed(2)}`}>
+          <div style={{ position: 'relative', height: 8, background: 'var(--ds-inset)', borderRadius: 999, overflow: 'hidden' }} title={`would have cost $${fmtFixed(m.wouldHaveCost, 2)} · actual $${fmtFixed(m.spent, 2)}`}>
             <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${wouldPct}%`, background: m.tier === 'local' ? 'var(--ds-ok-soft)' : 'var(--ds-brand-soft)' }} />
             <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${spentPct}%`, background: 'var(--ds-brand)' }} />
           </div>

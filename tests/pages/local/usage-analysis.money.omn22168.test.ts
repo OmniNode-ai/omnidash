@@ -6,14 +6,14 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { formatDashboardUsd } from '@/lib/dashboard-currency';
+import { formatDashboardUsd } from '@/lib/format';
 
 describe('OMN-22168: Usage analysis money follows the two-decimal rule', () => {
   it('U1: usage-analysis.tsx formats money only through the dashboard rule', () => {
     const source = readFileSync(resolve(process.cwd(), 'src/pages/local/usage-analysis.tsx'), 'utf8');
     expect(source).not.toContain('@/lib/currency');
     expect(source).not.toContain('toFixed(3)');
-    expect(source).toContain("from '@/lib/dashboard-currency'");
+    expect(source).toContain("from '@/lib/format'");
     // No call to the old formatter is left: every money call is the dashboard rule.
     expect(source.match(/\bformatUsd\(/g)).toBeNull();
   });

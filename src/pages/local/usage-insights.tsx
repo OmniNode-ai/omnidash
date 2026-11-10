@@ -2,15 +2,17 @@ import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { ChartNotRecorded, RankedBars } from '@/theme/design-system/charts';
 import { UsageAnalysis } from './usage-analysis';
 import { DEFAULT_RUNS_VIEW, writeRunsSearch } from '@/navigation/runs-url-state';
-import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
+import { formatDashboardCount, formatFullCount } from '@/lib/format';
 import { tierColor } from '@/lib/dashboard-colors';
-import { formatDashboardUsd } from '@/lib/dashboard-currency';
+import { formatDashboardUsd } from '@/lib/format';
 import { sumDashboardUsd } from '@/lib/dashboard-money-total';
 import { GroupedBars } from '@/theme/design-system/charts';
 import { aggregateUsageRows, type UsageAggregates } from './insight-aggregates';
 import { tierLabel } from './plain-text';
 import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
 import { EmptyState } from '@/theme/design-system/components';
+import { localeDate as fmtLocaleDate } from '@/lib/format';
+import { formatShare } from '@/lib/format';
 
 const USAGE_WINDOW_DAYS = 30;
 
@@ -29,7 +31,7 @@ function count(value: number | null): string {
 }
 
 function share(value: number | null): string {
-  return value === null ? 'Not recorded' : `${(value * 100).toFixed(1)}%`;
+  return formatShare(value);
 }
 
 /**
@@ -108,7 +110,7 @@ function SpendByModel({ data }: { data: UsageAggregates }) {
  * (cost per call and unmeasured calls); a day with no measured call draws no bar.
  */
 function CostPerRun({ data, titled }: { data: UsageAggregates; titled: boolean }) {
-  const date = (day: string) => new Date(`${day}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  const date = (day: string) => fmtLocaleDate(new Date(`${day}T00:00:00Z`), 'en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
   const text = (day: UsageAggregates['days'][number]) => `${day.day} · measured cost per call ${money(day.measuredCostPerCallUsd)} · ${count(day.unmeasuredCalls)} unmeasured calls`;
   const shown = data.days.filter(day => day.measuredCalls !== null || day.unmeasuredCalls !== null);
   const value = (day: UsageAggregates['days'][number]) => {

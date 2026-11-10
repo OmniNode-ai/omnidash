@@ -5,7 +5,8 @@ import { TOPICS } from '@shared/types/topics';
 import { KPI, SortableTable } from '@/components/primitives';
 import type { ColumnDef } from '@/components/primitives';
 import { Text } from '@/components/ui/typography';
-import { formatUsd, usdFractionDigits } from '@/lib/currency';
+import { formatUsd, usdFractionDigits } from '@/lib/format';
+import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/lib/format';
 
 // ── Projection row shape ─────────────────────────────────────────────
 //
@@ -50,8 +51,8 @@ export interface DelegationCostBreakdownConfig {
 // between the headline number and its own detail rows.
 
 function fmtTokens(v: number): string {
-  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
-  if (v >= 1_000) return `${(v / 1_000).toFixed(1)}K`;
+  if (v >= 1_000_000) return `${fmtFixed((v / 1_000_000), 1)}M`;
+  if (v >= 1_000) return `${fmtFixed((v / 1_000), 1)}K`;
   return String(v);
 }
 
@@ -142,7 +143,7 @@ export default function DelegationCostBreakdownWidget(props: { config: Delegatio
       align: 'right',
       mono: true,
       sortValue: (r) => r.call_count ?? 0,
-      render: (r) => (r.call_count ?? 0).toLocaleString(),
+      render: (r) => fmtLocaleString((r.call_count ?? 0)),
     },
   ];
 

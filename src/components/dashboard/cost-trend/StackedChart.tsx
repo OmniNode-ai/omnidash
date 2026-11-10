@@ -19,6 +19,7 @@ import { useTimezone } from '@/hooks/useTimezone';
 import { Text } from '@/components/ui/typography';
 import { useTokenColors } from '@/theme/design-system/useTokenColors';
 import { colorToNumber, tokenNumber } from '@/theme/design-system/color';
+import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/lib/format';
 
 // ---------- Types ----------
 
@@ -558,7 +559,7 @@ export function StackedChart({
                 whiteSpace: 'nowrap',
               }}
             >
-              {`$${t.value.toFixed(t.value >= 1 ? 2 : 4)}`}
+              {`$${fmtFixed(t.value, t.value >= 1 ? 2 : 4)}`}
             </Text>
           ))}
         {xTickLabels.map((t) => (
@@ -614,7 +615,7 @@ export function StackedChart({
               }}
             >
               <Text as="div" family="mono" size="sm" color="secondary" style={{ marginBottom: 6 }}>
-                {new Date(tooltip.bucket).toLocaleString(undefined, { timeZone: tz })}
+                {fmtLocaleString(new Date(tooltip.bucket), undefined, { timeZone: tz })}
               </Text>
               {/* Stack-order (top-to-bottom visually). We render the
                   rows in reverse so the top of the stacked graph is
@@ -634,7 +635,7 @@ export function StackedChart({
                     {row.model}
                   </Text>
                   <Text family="mono" size="sm" color="primary" leading="normal" tabularNums>
-                    ${row.cost.toFixed(4)}
+                    ${fmtFixed(row.cost, 4)}
                   </Text>
                 </div>
               ))}
@@ -646,7 +647,7 @@ export function StackedChart({
               >
                 <Text family="mono" size="sm" color="secondary">total</Text>
                 <Text family="mono" size="sm" color="primary" weight="semibold">
-                  ${tooltip.total.toFixed(4)}
+                  ${fmtFixed(tooltip.total, 4)}
                 </Text>
               </div>
             </div>

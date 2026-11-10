@@ -9,5 +9,6 @@ module.exports = {
     'no-untyped-empty-state': require('./no-untyped-empty-state.cjs'),
     'no-non-authoritative-read-source': require('./no-non-authoritative-read-source.cjs'),
     'no-fetch-header-overwrite': require('./no-fetch-header-overwrite.cjs'),
+    'no-adhoc-format': require('./no-adhoc-format.cjs'),
   },
 };

@@ -18,6 +18,7 @@ import {
   StackedChart,
   type StackedSlice,
 } from '../../dashboard/cost-trend/StackedChart';
+import { localeDate as fmtLocaleDate, localeTime as fmtLocaleTime } from '@/lib/format';
 
 // ---------- Empty state ----------
 
@@ -165,13 +166,13 @@ function formatBucketTick(iso: string, granularity: TrendChartFieldMapping['gran
   const d = new Date(iso);
   if (isNaN(d.getTime())) return iso;
   if (granularity === 'week') {
-    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    return fmtLocaleDate(d, undefined, { month: 'short', day: 'numeric' });
   }
   if (granularity === 'day') {
-    return d.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' });
+    return fmtLocaleDate(d, undefined, { month: 'numeric', day: 'numeric' });
   }
   // hour
-  return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  return fmtLocaleTime(d, undefined, { hour: '2-digit', minute: '2-digit' });
 }
 
 export function TrendChart({

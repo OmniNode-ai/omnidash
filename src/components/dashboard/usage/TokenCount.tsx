@@ -1,4 +1,4 @@
-import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
+import { formatDashboardCount, formatFullCount } from '@/lib/format';
 
 /**
  * OMN-22168 (product owner 2026-11-07; Lakshman 2026-11-08 "uniform in whole platform"): a token count reads short by

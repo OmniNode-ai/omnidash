@@ -15,6 +15,7 @@ import {
 import type { ProjectionSnapshot } from '@/data-source';
 import { isTenantNotConfiguredError } from '@/data-source/projection-tenant';
 import { TenantNotConfiguredState } from '../TenantNotConfiguredState';
+import { fixed as fmtFixed, localeTime as fmtLocaleTime } from '@/lib/format';
 
 export const EVENT_TRACE_REFRESH_INTERVAL_MS = 2_000;
 
@@ -111,7 +112,7 @@ export function eventRatePerSecond(events: LiveEventRow[]): number {
 
 function formatTimestamp(iso: string): string {
   const value = new Date(iso);
-  return Number.isFinite(value.getTime()) ? value.toLocaleTimeString() : 'invalid time';
+  return Number.isFinite(value.getTime()) ? fmtLocaleTime(value) : 'invalid time';
 }
 
 function shortId(value: string): string {
@@ -340,7 +341,7 @@ export function TraceExplorerView({
             </select>
           </label>
           <Text as="span" size="xs" family="mono" color="tertiary">
-            {filtered.length} visible · {rate.toFixed(2)}/s filtered rate · newest {formatAge(newest?.timestamp, new Date(eventSnapshot.readAt).getTime())} old at read
+            {filtered.length} visible · {fmtFixed(rate, 2)}/s filtered rate · newest {formatAge(newest?.timestamp, new Date(eventSnapshot.readAt).getTime())} old at read
           </Text>
         </div>
 

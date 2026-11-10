@@ -23,6 +23,7 @@ import type {
   DoughnutChartAdapterProps,
 } from '@shared/types/chart-adapter-doughnut';
 import { useTokenColors } from '@/theme/design-system/useTokenColors';
+import { fixed as fmtFixed } from '@/lib/format';
 
 function toFiniteNumber(v: unknown): number | null {
   if (typeof v === 'number') return Number.isFinite(v) ? v : null;
@@ -164,7 +165,7 @@ export function DoughnutChartAdapter<T extends Record<string, unknown> = Record<
                   {s.model}
                 </Text>
                 <Text as="span" size="xs" family="mono" color="secondary" tabularNums>
-                  {s.percentage.toFixed(1)}%
+                  {fmtFixed(s.percentage, 1)}%
                 </Text>
               </div>
             );
@@ -181,7 +182,7 @@ export function DoughnutChartAdapter<T extends Record<string, unknown> = Record<
             >
               <Text as="span" size="sm" family="mono" color="secondary">total</Text>
               <Text as="span" size="sm" family="mono" weight="semibold" tabularNums>
-                ${total.toFixed(2)}
+                ${fmtFixed(total, 2)}
               </Text>
             </div>
           )}

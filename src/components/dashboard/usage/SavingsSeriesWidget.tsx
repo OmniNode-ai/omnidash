@@ -1,5 +1,5 @@
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
-import { formatDashboardCount } from '@/lib/dashboard-count';
+import { formatDashboardCount } from '@/lib/format';
 // OMN-20006 Amendment 1 (US-3): savings per UTC day against the one baseline, from metering-summary.v1.
 //
 // node_projection_metering_summary serves one `day` row per UTC day and one `all` row per baseline model, from one
@@ -11,7 +11,7 @@ import { formatDashboardCount } from '@/lib/dashboard-count';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionSnapshotQuery } from '@/hooks/useProjectionSnapshotQuery';
 import { TOPICS } from '@shared/types/topics';
-import { formatUsd } from './UsageByModelDayWidget';
+import { formatDashboardUsd as formatUsd } from '@/lib/format';
 import { useState } from 'react';
 import { ChevronLeft, ChevronRight } from '@/theme/design-system/icons';
 import { ColumnTip, DataTable, EmptyState } from '@/theme/design-system/components';

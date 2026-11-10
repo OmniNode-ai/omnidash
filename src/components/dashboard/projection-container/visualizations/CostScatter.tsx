@@ -1,6 +1,7 @@
 import { Text } from '@/components/ui/typography';
 import type { VisualizationContract } from '@shared/types/visualization-contract';
 import { registerViz } from '../viz-registry';
+import { fixed as fmtFixed } from '@/lib/format';
 
 type CostTier = 'free' | 'cheap' | 'expensive';
 
@@ -78,11 +79,11 @@ function buildPoints(data: unknown[], contract: VisualizationContract): ScatterP
 }
 
 function formatCost(v: number): string {
-  return `$${v.toFixed(4)}`;
+  return `$${fmtFixed(v, 4)}`;
 }
 
 function formatLatency(v: number): string {
-  return v >= 1000 ? `${(v / 1000).toFixed(1)}s` : `${v.toFixed(0)}ms`;
+  return v >= 1000 ? `${fmtFixed((v / 1000), 1)}s` : `${fmtFixed(v, 0)}ms`;
 }
 
 interface CostScatterProps {

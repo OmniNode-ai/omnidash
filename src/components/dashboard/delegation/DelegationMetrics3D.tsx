@@ -5,6 +5,7 @@ import { TOPICS } from '@shared/types/topics';
 import { Text } from '@/components/ui/typography';
 import { DoughnutChart, type DoughnutSlice } from './DoughnutChart';
 import { useDelegationRunContextOptional } from '@/components/dashboard/delegation-control-plane/DelegationRunContext';
+import { fixed as fmtFixed } from '@/lib/format';
 
 const DOUGHNUT_PANEL_MAX_WIDTH = 240;
 const MODEL_LABEL_MAX_WIDTH = 220;
@@ -90,7 +91,7 @@ export default function DelegationMetrics({ config }: { config: Record<string, u
             )}
             {showSavings && (
               <div>
-                <Text as="div" size="4xl" weight="bold" color="primary">${data.totalSavingsUsd.toFixed(2)}</Text>
+                <Text as="div" size="4xl" weight="bold" color="primary">${fmtFixed(data.totalSavingsUsd, 2)}</Text>
                 <Text as="div" size="md" color="primary">Cost Savings</Text>
               </div>
             )}

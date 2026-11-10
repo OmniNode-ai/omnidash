@@ -22,6 +22,7 @@ import { TOPICS } from '@shared/types/topics';
 import { useThemeName } from '@/theme';
 import { Text, Heading } from '@/components/ui/typography';
 import { tokenNumber } from '@/theme/design-system/color';
+import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/lib/format';
 
 export interface QualityDistributionBucket {
   bucket: string;
@@ -468,7 +469,7 @@ function ThreeBarChart({
           family="mono"
           transform="uppercase"
         >
-          Pass ≥ {passThreshold.toFixed(2)}
+          Pass ≥ {fmtFixed(passThreshold, 2)}
         </Text>
       </div>
 
@@ -496,7 +497,7 @@ function ThreeBarChart({
             transform="uppercase"
             style={{ color: 'var(--ds-brand-ink, var(--ds-ink))' }}
           >
-            Mean {meanScore.toFixed(2)}
+            Mean {fmtFixed(meanScore, 2)}
           </Text>
         </div>
       )}
@@ -523,13 +524,13 @@ function ThreeBarChart({
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
             <Text size="sm" family="mono" color="secondary">count</Text>
             <Text size="sm" family="mono" weight="semibold" tabularNums>
-              {hoverInfo.bucket.count.toLocaleString()}
+              {fmtLocaleString(hoverInfo.bucket.count)}
             </Text>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
             <Text size="sm" family="mono" color="secondary">share</Text>
             <Text size="sm" family="mono" tabularNums>
-              {hoverInfo.pct.toFixed(1)}%
+              {fmtFixed(hoverInfo.pct, 1)}%
             </Text>
           </div>
         </div>
@@ -655,11 +656,11 @@ export default function QualityScorePanel({ config }: { config: QualityScoreConf
                 weight="semibold"
                 tabularNums
               >
-                {stats.meanScore.toFixed(2)}
+                {fmtFixed(stats.meanScore, 2)}
               </Text>
             </Text>
             <Text as="div" size="sm" color="tertiary" family="mono">
-              {stats.totalMeasurements.toLocaleString()} measurements
+              {fmtLocaleString(stats.totalMeasurements)} measurements
             </Text>
           </div>
 

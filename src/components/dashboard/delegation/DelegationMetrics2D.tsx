@@ -13,6 +13,7 @@ import type { DelegationSummary } from './DelegationMetrics3D';
 import { useDelegationRunContextOptional } from '@/components/dashboard/delegation-control-plane/DelegationRunContext';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 import { useTokenColors } from '@/theme/design-system/useTokenColors';
+import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/lib/format';
 
 // avgLatencyMs is not in every projection snapshot (the file-source
 // fixture omits it); treat it and the per-model breakdown as optional so
@@ -28,8 +29,8 @@ type Summary = Omit<DelegationSummary, 'byTaskType'> & {
 };
 
 function fmtMs(ms: number): string {
-  if (ms >= 1000) return `${(ms / 1000).toFixed(2)}s`;
-  return `${ms.toFixed(0)}ms`;
+  if (ms >= 1000) return `${fmtFixed((ms / 1000), 2)}s`;
+  return `${fmtFixed(ms, 0)}ms`;
 }
 
 // Model IDs arrive fully-qualified (e.g. "cyankiwi/Qwen3-Coder-30B-A3B").
@@ -95,7 +96,7 @@ function BreakdownRow({ seg, dimmed, onHover }: { seg: Segment; dimmed: boolean;
   return (
     <div
       onPointerEnter={onHover}
-      title={`${seg.fullLabel}: ${seg.count} (${seg.pct.toFixed(1)}%)`}
+      title={`${seg.fullLabel}: ${seg.count} (${fmtFixed(seg.pct, 1)}%)`}
       style={{
         display: 'grid',
         gridTemplateColumns: '1fr 2.5rem 2.75rem',
@@ -133,7 +134,7 @@ function BreakdownRow({ seg, dimmed, onHover }: { seg: Segment; dimmed: boolean;
         {seg.count}
       </Text>
       <Text as="span" size="sm" family="mono" color="secondary" tabularNums style={{ textAlign: 'right' }}>
-        {seg.pct.toFixed(0)}%
+        {fmtFixed(seg.pct, 0)}%
       </Text>
     </div>
   );
@@ -216,7 +217,7 @@ export default function DelegationMetrics2D({ config }: { config: Record<string,
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
           {/* KPI header row */}
           <div style={{ display: 'flex', gap: 8 }}>
-            <StatTile label="Delegations" value={data.totalDelegations.toLocaleString()} />
+            <StatTile label="Delegations" value={fmtLocaleString(data.totalDelegations)} />
             {showQualityGates && (
               <StatTile
                 label="Local Success"
@@ -226,7 +227,7 @@ export default function DelegationMetrics2D({ config }: { config: Record<string,
               />
             )}
             {data.avgLatencyMs != null && <StatTile label="Avg Latency" value={fmtMs(data.avgLatencyMs)} />}
-            {showSavings && <StatTile label="Savings" value={`$${data.totalSavingsUsd.toFixed(2)}`} />}
+            {showSavings && <StatTile label="Savings" value={`$${fmtFixed(data.totalSavingsUsd, 2)}`} />}
           </div>
 
           {/* Model distribution — stacked bar + legend (replaces donut) */}
@@ -254,7 +255,7 @@ export default function DelegationMetrics2D({ config }: { config: Record<string,
                 {modelSegments.map((seg, i) => (
                   <div
                     key={seg.fullLabel}
-                    title={`${seg.fullLabel}: ${seg.count} (${seg.pct.toFixed(1)}%)`}
+                    title={`${seg.fullLabel}: ${seg.count} (${fmtFixed(seg.pct, 1)}%)`}
                     onPointerEnter={() => setHoverModel(i)}
                     style={{
                       width: `${seg.pct}%`,
@@ -291,7 +292,7 @@ export default function DelegationMetrics2D({ config }: { config: Record<string,
                       {seg.label}
                     </Text>
                     <Text as="span" size="sm" family="mono" color="secondary" tabularNums>
-                      {seg.pct.toFixed(0)}%
+                      {fmtFixed(seg.pct, 0)}%
                     </Text>
                   </div>
                 ))}

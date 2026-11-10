@@ -5,6 +5,7 @@ import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { useTimezone } from '@/hooks/useTimezone';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
+import { localeTime as fmtLocaleTime } from '@/lib/format';
 
 // STAY-BESPOKE (OMN-10295): This widget renders a status-pill HTML table with
 // per-dimension tri-state rows plus freshness downgrade semantics. It does not
@@ -111,7 +112,7 @@ export default function ReadinessGate({ config: _config }: { config: Record<stri
             <span data-testid="overall-status-pill"><StatusPill status={effectiveStatus} /></span>
             {showCheckedAt ? (
               <Text size="sm" color="tertiary" style={{ marginLeft: 'auto' }}>
-                Checked {new Date(data.lastCheckedAt).toLocaleTimeString(undefined, { timeZone: tz })}
+                Checked {fmtLocaleTime(new Date(data.lastCheckedAt), undefined, { timeZone: tz })}
               </Text>
             ) : (
               <Text size="sm" color="tertiary" style={{ marginLeft: 'auto' }}>

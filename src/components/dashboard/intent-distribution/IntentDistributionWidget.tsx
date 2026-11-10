@@ -3,6 +3,7 @@ import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { Text } from '@/components/ui/typography';
+import { fixed as fmtFixed } from '@/lib/format';
 
 // Raw projection row (onex.snapshot.projection.intent-classification.v1);
 // grouping happens client-side per the node_projection_intent_classification
@@ -136,7 +137,7 @@ export default function IntentDistributionWidget() {
                   }}
                 >
                   <Text size="sm" weight="semibold" style={{ color: widthPct > 30 ? 'var(--ds-page)' : 'var(--ds-ink)' }}>
-                    {row.percentage.toFixed(1)}%
+                    {fmtFixed(row.percentage, 1)}%
                   </Text>
                 </div>
               </div>

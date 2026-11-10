@@ -1,12 +1,13 @@
 import { useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight } from '@/theme/design-system/icons';
-import { formatFullCount } from '@/lib/dashboard-count';
+import { formatFullCount } from '@/lib/format';
 import type { DailyMeteringTokenData } from '@/lib/daily-metering-tokens';
 import { TokenDirections } from './TokenDirections';
 import { EmptyState } from '@/theme/design-system/components';
 import { DayAxis } from '@/theme/design-system/charts';
+import { localeDate as fmtLocaleDate } from '@/lib/format';
 
-const dayLabel = (day: string) => new Date(`${day}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+const dayLabel = (day: string) => fmtLocaleDate(new Date(`${day}T00:00:00Z`), 'en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 
 /** Exact served daily totals, separately labelled when no model series is available. */
 export function DailyMeteringTokens({ data }: { data: DailyMeteringTokenData }) {

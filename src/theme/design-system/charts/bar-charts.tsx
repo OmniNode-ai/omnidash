@@ -1,6 +1,6 @@
-import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
-import { formatDashboardUsd } from '@/lib/dashboard-currency';
-import { formatDuration } from '@/components/format/duration';
+import { formatDashboardCount, formatFullCount } from '@/lib/format';
+import { formatDashboardUsd } from '@/lib/format';
+import { formatDuration } from '@/lib/format';
 import { shortId } from '@/components/dashboard/event-dash/primitives';
 import { useEffect, useId, useState } from 'react';
 import { ChartEmpty, ChartHeading } from './frame';
@@ -14,6 +14,8 @@ import { AriaComponent, GridComponent, TooltipComponent } from 'echarts/componen
 import { SVGRenderer } from 'echarts/renderers';
 import { useThemeName } from '@/theme';
 import { colorToNumber, tokenHex, tokenValue, type TokenName } from '@/theme/design-system/color';
+import { localeDate as fmtLocaleDate, localeString as fmtLocaleString } from '@/lib/format';
+import { exactMs } from '@/lib/format';
 
 echarts.use([BarChart, GridComponent, TooltipComponent, AriaComponent, SVGRenderer]);
 
@@ -64,7 +66,7 @@ function barTrack(direction: 'vertical' | 'horizontal' = 'vertical') {
 /** A served UTC day (YYYY-MM-DD) as every day axis names it, e.g. Oct 13 (part 28 AC185); any other text is kept. */
 export function dayAxisLabel(day: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(day)
-    ? new Date(`${day}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+    ? fmtLocaleDate(new Date(`${day}T00:00:00Z`), 'en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
     : day;
 }
 
@@ -390,8 +392,9 @@ function timingOption(bars: readonly RunTimingBar[], colours: readonly string[],
   const text = tone('--ds-ink-2');
   const line = tone('--ds-line');
   const fontFamily = typeof document === 'undefined' ? '' : getComputedStyle(document.body).fontFamily;
-  // The tooltip writes the served text exactly; the label at a bar's end reads it as a duration (OMN-21166 AC55).
-  const servedText = (index: number) => `${bars[index]?.served ?? ''} ms`;
+  // The tooltip writes the exact duration to the whole millisecond (OMN-23330 AC9, superseding OMN-21166 AC55's raw
+  // served text); the label at a bar's end reads it as a duration.
+  const servedText = (index: number) => exactMs(bars[index]?.served) ?? 'Not recorded';
   const labelText = (index: number) => formatDuration(bars[index]?.served);
   return {
     animationDuration: 250,
@@ -492,7 +495,7 @@ function statusColour(status: string): string {
 /** A tick of a count axis; the origin carries no label, as on the money axis. */
 export function countAxisLabel(value: number): string {
   // Axis coordinates can be fractional even when every recorded count is an integer.
-  return value === 0 ? '' : value.toLocaleString('en-US');
+  return value === 0 ? '' : fmtLocaleString(value, 'en-US');
 }
 
 /** What both run charts share: the page's text colours and font, the runs along the bottom, the value axis. */
@@ -563,7 +566,7 @@ export function RunDurationChart({ runs, onOpen, title = 'Duration per run' }: {
       formatter: (params: Array<{ dataIndex: number; marker: string }>) => {
         const index = params[0]?.dataIndex ?? 0;
         const served = points[index]?.served;
-        return [...runTooltipHead(runs[index]), `${params[0]?.marker ?? ''}Duration: ${served === null || served === undefined ? 'Not recorded' : `${asText(served)} ms`}`].join('<br/>');
+        return [...runTooltipHead(runs[index]), `${params[0]?.marker ?? ''}Duration: ${served === null || served === undefined ? 'Not recorded' : exactMs(served) ?? 'Not recorded'}`].join('<br/>');
       },
     },
     series: [{
@@ -586,7 +589,8 @@ export function RunDurationChart({ runs, onOpen, title = 'Duration per run' }: {
         ? <ChartEmpty status>{EVERY_SERIES_HIDDEN}</ChartEmpty>
         : <ReactEChartsCore echarts={echarts} option={option} notMerge opts={{ renderer: 'svg' }} className="local-chart-canvas" onEvents={openOnClick(runs, onOpen)} />}
       <RunInspector runs={runs} />
-      <figcaption>Duration of each listed run, in the list&apos;s order, in milliseconds as served. A bar opens its run.</figcaption>
+      {/* OMN-23330 AC9: the axis reads ms, s or min as the values need, so the caption names the axis, not one unit. */}
+      <figcaption>Duration of each listed run, in the list&apos;s order, in the units on the axis. A bar opens its run.</figcaption>
     </figure>
   );
 }

@@ -23,6 +23,7 @@ import { useThemeName } from '@/theme';
 import { useFrameStore } from '@/store/store';
 import { useTokenColors } from '@/theme/design-system/useTokenColors';
 import { colorToNumber, tokenNumber } from '@/theme/design-system/color';
+import { fixed as fmtFixed } from '@/lib/format';
 
 interface CostDataPoint {
   bucket_time: string;
@@ -453,13 +454,13 @@ export function ThreePieChart({ slices, chartColors, themeName }: ThreePieChartP
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
             <Text as="span" size="sm" family="mono" color="secondary">cost</Text>
             <Text as="span" size="sm" family="mono" tabularNums>
-              ${hoverInfo.cost.toFixed(4)}
+              ${fmtFixed(hoverInfo.cost, 4)}
             </Text>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
             <Text as="span" size="sm" family="mono" color="secondary">share</Text>
             <Text as="span" size="sm" family="mono" weight="semibold" tabularNums>
-              {hoverInfo.percentage.toFixed(1)}%
+              {fmtFixed(hoverInfo.percentage, 1)}%
             </Text>
           </div>
         </div>
@@ -617,7 +618,7 @@ export default function CostByModelPie({ config: _config }: { config: Record<str
                     color="secondary"
                     tabularNums
                   >
-                    {s.percentage.toFixed(1)}%
+                    {fmtFixed(s.percentage, 1)}%
                   </Text>
                 </div>
               );
@@ -642,7 +643,7 @@ export default function CostByModelPie({ config: _config }: { config: Record<str
                   weight="semibold"
                   tabularNums
                 >
-                  ${total.toFixed(2)}
+                  ${fmtFixed(total, 2)}
                 </Text>
               </div>
             )}

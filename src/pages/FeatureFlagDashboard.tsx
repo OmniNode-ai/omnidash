@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Text, Heading } from '@/components/ui/typography';
 import { fetchFeatureFlags } from '@/services/feature-flag-service';
 import '@/styles/feature-flags.css';
+import { localeTime as fmtLocaleTime } from '@/lib/format';
 
 export interface FeatureFlag {
   name: string;
@@ -235,7 +236,7 @@ export function FeatureFlagDashboard() {
             </Text>
             {fetchedAt && (
               <Text size="sm" color="tertiary">
-                · {new Date(fetchedAt).toLocaleTimeString()}
+                · {fmtLocaleTime(new Date(fetchedAt))}
               </Text>
             )}
           </div>

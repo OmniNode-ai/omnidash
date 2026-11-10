@@ -4,6 +4,7 @@ import { Text, Heading } from '@/components/ui/typography';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
+import { fixed as fmtFixed, localeTime as fmtLocaleTime } from '@/lib/format';
 
 interface VoiceSession {
   session_id: string;
@@ -35,7 +36,7 @@ function formatDuration(ms: number): string {
 function formatTimestamp(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '--';
-  return d.toLocaleTimeString(undefined, { hour12: false });
+  return fmtLocaleTime(d, undefined, { hour12: false });
 }
 
 function AudioTimeline({
@@ -151,7 +152,7 @@ function TranscriptPanel({ turns, activeTurnId }: { turns: TranscriptTurn[]; act
             >
               <Text size="xs" color="tertiary" family="mono" style={{ marginBottom: 4, display: 'block' }}>
                 {turn.speaker} · {formatDuration(turn.start_ms)}
-                {turn.confidence !== null && ` · ${(turn.confidence * 100).toFixed(0)}% conf`}
+                {turn.confidence !== null && ` · ${fmtFixed((turn.confidence * 100), 0)}% conf`}
               </Text>
               <Text size="sm" color="primary">{turn.text}</Text>
             </div>

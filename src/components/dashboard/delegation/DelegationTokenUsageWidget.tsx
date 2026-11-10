@@ -8,8 +8,9 @@ import { KPI } from '@/components/primitives';
 
 import { useDelegationRunContextOptional } from '@/components/dashboard/delegation-control-plane/DelegationRunContext';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
-import { formatUsd, usdFractionDigits } from '@/lib/currency';
+import { formatUsd, usdFractionDigits } from '@/lib/format';
 import { useTokenColors } from '@/theme/design-system/useTokenColors';
+import { fixed as fmtFixed } from '@/lib/format';
 
 // ── Projection types (from llm_call_metrics SQLite table, OMN-10623) ─
 
@@ -85,9 +86,9 @@ function ProvenanceBadge({ provenance }: { provenance: TokenProvenance }) {
 // ── Token formatters ──────────────────────────────────────────────────
 
 function fmtTokens(n: number): string {
-  if (n >= 1e9) return `${(n / 1e9).toFixed(1)}B`;
-  if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
-  if (n >= 1e3) return `${(n / 1e3).toFixed(0)}K`;
+  if (n >= 1e9) return `${fmtFixed((n / 1e9), 1)}B`;
+  if (n >= 1e6) return `${fmtFixed((n / 1e6), 1)}M`;
+  if (n >= 1e3) return `${fmtFixed((n / 1e3), 0)}K`;
   return String(n);
 }
 
@@ -197,7 +198,7 @@ function ProvenanceSummary({ summary }: { summary: Record<TokenProvenance, numbe
           <div key={p} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <ProvenanceBadge provenance={p} />
             <Text as="span" size="xs" family="mono" tabularNums color="secondary">
-              {((count / total) * 100).toFixed(0)}%
+              {fmtFixed(((count / total) * 100), 0)}%
             </Text>
           </div>
         );

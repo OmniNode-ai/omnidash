@@ -7,7 +7,7 @@
  * serve is drawn as unknown under its own word, never as one of the four.
  */
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
-import { readableTime } from '@/components/format/readable-time';
+import { readableTime } from '@/lib/format';
 import { SettingsEmptyState } from '@/components/dashboard/SettingsEmptyState';
 import { AlertBanner } from '@/components/dashboard/alert-banner/AlertBanner';
 import { StatusGrid } from '@/components/dashboard/status-grid/StatusGrid';

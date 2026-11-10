@@ -7,6 +7,7 @@ import { Text } from '@/components/ui/typography';
 import { useDelegationRunContextOptional } from '@/components/dashboard/delegation-control-plane/DelegationRunContext';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 import { useTokenColors } from '@/theme/design-system/useTokenColors';
+import { fixed as fmtFixed } from '@/lib/format';
 
 // ── Projection types (from delegation_events SQLite table, OMN-10623) ─
 
@@ -64,12 +65,12 @@ export interface DelegationModelRoutingConfig {
 // ── Formatters ────────────────────────────────────────────────────────
 
 function fmtMs(ms: number): string {
-  if (ms >= 1000) return `${(ms / 1000).toFixed(2)}s`;
-  return `${ms.toFixed(0)}ms`;
+  if (ms >= 1000) return `${fmtFixed((ms / 1000), 2)}s`;
+  return `${fmtFixed(ms, 0)}ms`;
 }
 
 function fmtPct(v: number): string {
-  return `${(v * 100).toFixed(1)}%`;
+  return `${fmtFixed((v * 100), 1)}%`;
 }
 
 // ── Frequency bar ─────────────────────────────────────────────────────
@@ -136,7 +137,7 @@ function TaskBreakdown({ rows, modelName, colors }: { rows: ModelRoutingRow[]; m
           </Text>
           <FrequencyBar pct={r.pct_of_model * 100} color={colors[i % colors.length]} />
           <Text as="span" size="xs" family="mono" tabularNums color="secondary" style={{ textAlign: 'right' }}>
-            {(r.pct_of_model * 100).toFixed(0)}%
+            {fmtFixed((r.pct_of_model * 100), 0)}%
           </Text>
         </div>
       ))}
@@ -408,7 +409,7 @@ export default function DelegationModelRoutingWidget(props: { config: Delegation
                   </Text>
                   <FrequencyBar pct={s.pct_of_total * 100} color={colors.chart[i % colors.chart.length]} />
                   <Text as="span" size="sm" family="mono" tabularNums color="secondary" style={{ textAlign: 'right' }}>
-                    {(s.pct_of_total * 100).toFixed(0)}%
+                    {fmtFixed((s.pct_of_total * 100), 0)}%
                   </Text>
                 </div>
                 {showTaskBreakdown && hoveredModel === s.model_name && (

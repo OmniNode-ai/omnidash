@@ -7,6 +7,7 @@ import { KPI } from '@/components/primitives';
 import { useDelegationRunContextOptional } from '@/components/dashboard/delegation-control-plane/DelegationRunContext';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 import type { DelegationSavingsProjection, DelegationSavingsSession } from './delegation-savings.types';
+import { fixed as fmtFixed } from '@/lib/format';
 
 // ── Config ────────────────────────────────────────────────────────────
 
@@ -19,19 +20,19 @@ export interface DelegationCostComparisonConfig {
 
 function fmtUsd(v: number | undefined): string {
   if (v == null || !Number.isFinite(v)) return '—';
-  return `$${v.toFixed(2)}`;
+  return `$${fmtFixed(v, 2)}`;
 }
 
 function fmtTokens(v: number | undefined): string {
   if (v == null || v === 0) return '—';
-  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
-  if (v >= 1_000) return `${(v / 1_000).toFixed(1)}K`;
+  if (v >= 1_000_000) return `${fmtFixed((v / 1_000_000), 1)}M`;
+  if (v >= 1_000) return `${fmtFixed((v / 1_000), 1)}K`;
   return String(v);
 }
 
 function fmtMs(v: number | undefined): string {
   if (v == null || !Number.isFinite(v)) return '—';
-  if (v >= 1000) return `${(v / 1000).toFixed(2)}s`;
+  if (v >= 1000) return `${fmtFixed((v / 1000), 2)}s`;
   return `${Math.round(v)}ms`;
 }
 

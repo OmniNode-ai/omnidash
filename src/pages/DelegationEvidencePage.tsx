@@ -1,4 +1,4 @@
-import { formatDashboardCount } from '@/lib/dashboard-count';
+import { formatDashboardCount } from '@/lib/format';
 /**
  * OMN-12943 — Delegation Evidence (ported from prototype view-delegation.jsx).
  *
@@ -9,7 +9,7 @@ import { formatDashboardCount } from '@/lib/dashboard-count';
  */
 
 import { type ReactNode, type CSSProperties } from 'react';
-import { formatUsd } from '@/components/dashboard/usage/UsageByModelDayWidget';
+import { formatDashboardUsd as formatUsd } from '@/lib/format';
 import { isUnavailableField } from '@/components/dashboard/field-identity';
 import { EvPageShell } from '@/components/dashboard/event-dash/EvPageShell';
 import { KpiStrip } from '@/components/dashboard/KpiStrip';
@@ -51,13 +51,14 @@ import {
   captionText, meteringMoneyBasis, meteringTokens, pickMeteringRow, runModelledCell,
 } from '@/pages/LocalDashboardPage';
 
-import { formatDuration } from '@/components/format/duration';
+import { formatDuration } from '@/lib/format';
 import { percent as sharePercent } from '@/theme/design-system/charts';
 import { escalationReason, taskLabel } from '@/pages/local/plain-text';
-import { readableTime } from '@/components/format/readable-time';
+import { readableTime } from '@/lib/format';
 import { ModelTiersContext, TierLegend, useModelColor, useModelIdentityStyle } from '@/components/dashboard/model-tiers';
 import { modelTiersFrom } from '@/lib/dashboard-colors';
 import { Bot, FileJson, FileSpreadsheet, ListChecks, TriangleAlert } from '@/theme/design-system/icons';
+import { fixed as fmtFixed } from '@/lib/format';
 
 /**
  * OMN-21166 AC72 pass 1: a rate on Evidence reads to one decimal, as Overview writes the same served rate (91.6%, not
@@ -317,7 +318,7 @@ const wholeTokens = (value: unknown) => {
 };
 const attempts = (value: unknown) => {
   const n = servedNumber(value);
-  return n === null ? 'Not served' : n.toFixed(1);
+  return n === null ? 'Not served' : fmtFixed(n, 1);
 };
 
 /**
@@ -406,7 +407,7 @@ export function TriageRows({ rows, denominator, kind }: {
         <span className="mono">{row.count === null ? 'Not served' : formatDashboardCount(row.count)} · {share === null ? 'Share not served' : sharePercent(share)}</span>
         {/* OMN-22168 (Lakshman 2026-11-04, "make it modern"): the share drawn as a bar; none where the share is not served. */}
         {share !== null && <span className="ev-triage-share" aria-hidden="true" data-identity-decoration="share-bar"
-          style={{ '--share': `${Number((share * 100).toFixed(3))}%` } as CSSProperties} />}
+          style={{ '--share': `${Number(fmtFixed((share * 100), 3))}%` } as CSSProperties} />}
       </li>;
     })}
   </ol>;

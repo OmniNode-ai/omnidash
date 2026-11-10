@@ -39,7 +39,8 @@ describe('formatDuration', () => {
 describe('exactMs', () => {
   it('keeps the exact served milliseconds, grouped', () => {
     expect(exactMs(12181)).toBe('12,181 ms');
-    expect(exactMs('132.5')).toBe('132.5 ms');
+    // OMN-23330 AC9 supersedes the served fraction: the exact figure is the whole millisecond.
+    expect(exactMs('132.5')).toBe('133 ms');
   });
 
   it('gives no title for a missing value', () => {

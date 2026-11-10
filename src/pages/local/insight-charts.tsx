@@ -1,7 +1,7 @@
-import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
+import { formatDashboardCount, formatFullCount } from '@/lib/format';
 
-import { formatDashboardUsd } from '@/lib/dashboard-currency';
-import { formatDuration } from '@/components/format/duration';
+import { formatDashboardUsd } from '@/lib/format';
+import { formatDuration } from '@/lib/format';
 import { createContext, useContext, useId, useState, type CSSProperties, type ReactNode } from 'react';
 import { millisecondsAxisLabel } from '@/theme/design-system/charts/bar-charts';
 import { passBand } from '@/pages/local/plain-text';
@@ -22,6 +22,7 @@ import {
 import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
 import { DashboardTabs, EmptyState, KpiTile } from '@/theme/design-system/components';
 import { Bot, CircleCheck, Clock3, ListChecks, Timer, TriangleAlert } from '@/theme/design-system/icons';
+import { fixed as fmtFixed, localeDate as fmtLocaleDate, localeString as fmtLocaleString } from '@/lib/format';
 
 /**
  * OMN-21166 AC26 (mockup build; rule change R-B, Lakshman 2026-10-18): the Overview's trends and breakdowns, counted
@@ -71,11 +72,11 @@ function verdictCoverage(withVerdict: number, runs: number): string {
 const duration = (ms: number): string => formatDuration(ms);
 
 function dayLabel(day: string): string {
-  return new Date(`${day}T00:00:00Z`).toLocaleString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  return fmtLocaleString(new Date(`${day}T00:00:00Z`), 'en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 }
 
 function weekday(day: string): string {
-  return new Date(`${day}T00:00:00Z`).toLocaleString('en-US', { weekday: 'short', timeZone: 'UTC' });
+  return fmtLocaleString(new Date(`${day}T00:00:00Z`), 'en-US', { weekday: 'short', timeZone: 'UTC' });
 }
 
 function readable(key: string): string {
@@ -102,8 +103,8 @@ function dayCounts(day: InsightDay): string {
 /** A short label above a token bar ("2.9K", "206K"); the exact count is in the day's readout and accessible name. */
 function shortCount(value: number | null): string {
   if (value === null) return '';
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(value >= 10_000_000 ? 0 : 1)}M`;
-  if (value >= 1_000) return `${(value / 1_000).toFixed(value >= 100_000 ? 0 : 1)}K`;
+  if (value >= 1_000_000) return `${fmtFixed((value / 1_000_000), value >= 10_000_000 ? 0 : 1)}M`;
+  if (value >= 1_000) return `${fmtFixed((value / 1_000), value >= 100_000 ? 0 : 1)}K`;
   return String(value);
 }
 
@@ -170,11 +171,11 @@ function PassRateTrend({ days }: { days: InsightDay[] }) {
   const rates = days.map(day => day.passRate);
   const known = rates.filter((rate): rate is number => rate !== null);
   const min = known.length ? Math.max(0, Math.floor(Math.min(...known) / 10) * 10 - 10) : 0;
-  const labels = days.map(day => `${dayLabel(day.day)}: ${day.passRate === null ? 'no verdicts' : `${day.passRate.toFixed(1)}% passed`} (${verdictCoverage(day.passed + day.failed, day.runs)})`);
+  const labels = days.map(day => `${dayLabel(day.day)}: ${day.passRate === null ? 'no verdicts' : `${fmtFixed(day.passRate, 1)}% passed`} (${verdictCoverage(day.passed + day.failed, day.runs)})`);
   const active = hover === null ? null : days[hover]!;
   return (
     <ChartCard title="Pass rate per day" concept="pass-rate-daily" delay={60}>
-      <ChartReadout active={active !== null} text={active ? <>{dayLabel(active.day)} · <span data-field-tone="pass" data-field-unavailable={active.passRate === null}>{active.passRate === null ? 'no verdicts' : `${active.passRate.toFixed(1)}% passed`}</span> · <span data-field-tone="basis">{verdictCoverage(active.passed + active.failed, active.runs)}</span></> : `Scale from ${min}% to 100%`} />
+      <ChartReadout active={active !== null} text={active ? <>{dayLabel(active.day)} · <span data-field-tone="pass" data-field-unavailable={active.passRate === null}>{active.passRate === null ? 'no verdicts' : `${fmtFixed(active.passRate, 1)}% passed`}</span> · <span data-field-tone="basis">{verdictCoverage(active.passed + active.failed, active.runs)}</span></> : `Scale from ${min}% to 100%`} />
       <LinePlot label="Pass rate per day" values={rates} keys={days.map(day => day.day)} labels={labels} min={min} max={100}
         hover={hover} onHover={setHover} color={PASS} />
       {/* OMN-23330 AC31: the kit's one DayAxis, first and last day on the line's end points. */}
@@ -387,13 +388,13 @@ export function PassRateSparkline({ part = 'all' }: { part?: 'all' | 'headline' 
   const comparisonDays = window.kind === 'days' ? window.days : MAX_ALL_TIME_DAYS;
   const comparison = window.kind === 'days' ? compareWindow(context.decisions, context.now, window.days) : null;
   const current = summary(currentRuns);
-  const rate = current.passRate === null ? 'Not recorded' : `${current.passRate.toFixed(1)}%`;
+  const rate = current.passRate === null ? 'Not recorded' : `${fmtFixed(current.passRate, 1)}%`;
   const deltaText = comparison === null ? null
     : comparison.passRateDeltaPoints === null
       ? comparison.previousComplete
         ? `Previous ${comparisonDays === 1 ? 'day' : `${comparisonDays} days`} has no recorded verdicts to compare`
         : `Previous ${comparisonDays === 1 ? 'day' : `${comparisonDays} days`} not fully returned`
-      : `${comparison.passRateDeltaPoints > 0 ? '▲' : comparison.passRateDeltaPoints < 0 ? '▼' : '—'} ${Math.abs(comparison.passRateDeltaPoints).toFixed(1)} percentage points vs previous ${comparisonDays === 1 ? 'day' : `${comparisonDays} days`} (${verdictCoverage(comparison.previousVerdicts, comparison.previousRuns)})`;
+      : `${comparison.passRateDeltaPoints > 0 ? '▲' : comparison.passRateDeltaPoints < 0 ? '▼' : '—'} ${fmtFixed(Math.abs(comparison.passRateDeltaPoints), 1)} percentage points vs previous ${comparisonDays === 1 ? 'day' : `${comparisonDays} days`} (${verdictCoverage(comparison.previousVerdicts, comparison.previousRuns)})`;
   // OMN-21166 part 11: this rate is over the latest returned runs, not every check the meter above counts, so its
   // label names that population beside the figure.
   const trend = <PassRateTrend days={seriesForDays(currentRuns, plottedDays(runs, context.now, window))} />;
@@ -504,7 +505,7 @@ function RunWindowKpis({ runs, decisions, label, comparisonEnabled, now, days }:
       ? delta(comparison.runsDelta, value => `${value} runs`) : 'Previous window not fully returned';
   const medianDelta = !comparisonEnabled ? null
     : comparison?.previousComplete && comparison.medianLatencyDelta !== null
-      ? delta(comparison.medianLatencyDelta, value => `${(value / 1000).toFixed(2)} s`) : 'Previous window not fully returned';
+      ? delta(comparison.medianLatencyDelta, value => `${fmtFixed((value / 1000), 2)} s`) : 'Previous window not fully returned';
   const median = summaryNow.medianLatency === null ? 'Not recorded' : duration(summaryNow.medianLatency);
   return (
     <section className="ins-window-kpis ins-window-kpis--runs" aria-label={`Runs in ${selectedLabel}`}>
@@ -523,7 +524,7 @@ function MeteringWindowKpis({ current, previous, days, label, comparisonEnabled,
   const savedReady = unavailable === null && current.available && current.saved !== null;
   const servedDayCount = current.days.filter(day => day.served).length;
   const savedPct = current.saved !== null && current.counterfactual !== null && current.counterfactual > 0
-    ? `${(current.saved / current.counterfactual * 100).toFixed(1)}% below ${current.baseline ?? 'the served baseline'}` : 'Baseline comparison not recorded';
+    ? `${fmtFixed((current.saved / current.counterfactual * 100), 1)}% below ${current.baseline ?? 'the served baseline'}` : 'Baseline comparison not recorded';
   const paidNote = unavailable ?? current.reason ?? (!current.windowComplete
     ? `${servedDayCount} of ${days} daily rows served; the selected window is incomplete.`
     : current.spend === null ? 'One or more daily spend values are not recorded; paid total unavailable.'
@@ -573,7 +574,7 @@ function MoneyWindowCharts({ rows, now, days, unavailable }: { rows: readonly un
   const cumulativeValues = data.cumulativeSaved.filter((value): value is number => value !== null);
   const cumulativeMax = Math.max(0.01, ...cumulativeValues);
   const selected = activeSpend === null ? null : data.days[activeSpend]!;
-  const dateLabel = (day: string) => new Date(`${day}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  const dateLabel = (day: string) => fmtLocaleDate(new Date(`${day}T00:00:00Z`), 'en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
   const detail = (day: typeof data.days[number]) => `${dateLabel(day.day)} · Paid ${usd(day.spend)} · Saved ${usd(day.saved)} · All-cloud ${usd(day.counterfactual)}`;
   return (
     <ChartSection concept="spend-daily" title="Daily paid vs all-cloud">

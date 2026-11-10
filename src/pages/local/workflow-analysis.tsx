@@ -1,13 +1,13 @@
-import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
+import { formatDashboardCount, formatFullCount } from '@/lib/format';
 import { useId, useState, type CSSProperties, type ReactNode } from 'react';
 import { ComparisonTrack } from '@/theme/design-system/charts';
 import { ConceptIcon, FieldIcon } from '@/components/dashboard/FieldIcon';
 import { fieldTone, isUnavailableField } from '@/components/dashboard/field-identity';
-import { formatUsd } from '@/components/dashboard/usage/UsageByModelDayWidget';
+import { formatDashboardUsd as formatUsd } from '@/lib/format';
 import type { BoundProjectionSnapshot } from '@/layout/local-page-loader';
 import { plainFailureMessage } from './plain-text';
 import { useModelIdentityStyle } from '@/components/dashboard/model-tiers';
-import { readableTime } from '@/components/format/readable-time';
+import { readableTime } from '@/lib/format';
 import { ChevronRight } from '@/theme/design-system/icons';
 import { EmptyState, Fact, FactList } from '@/theme/design-system/components';
 

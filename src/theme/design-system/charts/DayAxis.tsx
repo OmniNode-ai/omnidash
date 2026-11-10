@@ -13,9 +13,10 @@
  */
 import { useLayoutEffect, useRef, type RefObject } from 'react';
 import './day-axis.css';
+import { localeDate as fmtLocaleDate } from '@/lib/format';
 
 const DEFAULT_FORMAT = (day: string) =>
-  new Date(`${day}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  fmtLocaleDate(new Date(`${day}T00:00:00Z`), 'en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 
 /** The least space between two labels, in pixels. */
 const LABEL_GAP = 4;

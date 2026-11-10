@@ -10,6 +10,7 @@ import { CardBasis } from '@/components/dashboard/CardBasis';
 import { CaptionLine } from '@/components/dashboard/CaptionLine';
 import { CountUpText } from '@/components/dashboard/CountUpText';
 import { Card, Figure } from '@/theme/design-system/components';
+import { localeDate as fmtLocaleDate } from '@/lib/format';
 
 /** A figure's served value per UTC day (oldest first), and how to write one value. */
 export interface KpiTrend {
@@ -35,7 +36,7 @@ export interface KpiItem {
   trend?: KpiTrend | null;
 }
 
-const dayName = (day: string) => new Date(`${day}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+const dayName = (day: string) => fmtLocaleDate(new Date(`${day}T00:00:00Z`), 'en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 
 /**
  * What a sparkline used to show, in words: the peak and the latest served day. A day with no served value is skipped,

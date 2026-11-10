@@ -4,6 +4,7 @@ import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { Text } from '@/components/ui/typography';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
+import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/lib/format';
 
 // ── Projection types (OMN-12745) ──────────────────────────────────────
 //
@@ -50,8 +51,8 @@ export interface DelegationModelOutputConfig {
 // ── Formatters ────────────────────────────────────────────────────────
 
 function fmtMs(ms: number): string {
-  if (ms >= 1000) return `${(ms / 1000).toFixed(2)}s`;
-  return `${ms.toFixed(0)}ms`;
+  if (ms >= 1000) return `${fmtFixed((ms / 1000), 2)}s`;
+  return `${fmtFixed(ms, 0)}ms`;
 }
 
 // ── Response card ─────────────────────────────────────────────────────
@@ -118,7 +119,7 @@ function ResponseCard({
           ·
         </Text>
         <Text as="span" size="xs" family="mono" tabularNums color="tertiary">
-          {(row.prompt_tokens + row.completion_tokens).toLocaleString()} tokens
+          {fmtLocaleString((row.prompt_tokens + row.completion_tokens))} tokens
         </Text>
       </div>
 

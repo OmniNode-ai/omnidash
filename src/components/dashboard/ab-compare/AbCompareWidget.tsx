@@ -5,6 +5,7 @@ import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { CountUp } from '@/components/primitives';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
+import { fixed as fmtFixed } from '@/lib/format';
 
 // ── Data types ──────────────────────────────────────────────────────
 
@@ -330,7 +331,7 @@ function LedgerDetail({
               {free ? '+ $0.118' : '—'}
             </div>
             <div className="mono tnum" style={{ "fontSize": 11, color: free ? 'var(--ds-ink-4)' : 'var(--ds-bad)', textAlign: 'right' }}>
-              {free ? '—' : `– $${m.cost.toFixed(3)}`}
+              {free ? '—' : `– $${fmtFixed(m.cost, 3)}`}
             </div>
           </div>
         );
@@ -352,7 +353,7 @@ function LedgerDetail({
         </div>
         <div />
         <div className="mono tnum" style={{ "fontSize": 13, "fontWeight": 700, color: 'var(--ds-ok)', textAlign: 'right' }}>
-          + ${dollars.toFixed(3)}
+          + ${fmtFixed(dollars, 3)}
         </div>
       </div>
     </div>
@@ -362,7 +363,7 @@ function LedgerDetail({
 // ── Task list item ──────────────────────────────────────────────────
 
 function formatLatency(ms: number): string {
-  if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
+  if (ms >= 1000) return `${fmtFixed((ms / 1000), 1)}s`;
   return `${ms}ms`;
 }
 
@@ -381,8 +382,8 @@ function TaskListItem({
   const maxCost = Math.max(...task.models.map((m) => m.cost));
   const minCost = Math.min(...task.models.map((m) => m.cost));
   const costRange = minCost === maxCost
-    ? (minCost === 0 ? 'FREE' : `$${minCost.toFixed(3)}`)
-    : `${minCost === 0 ? '$0' : `$${minCost.toFixed(3)}`} – $${maxCost.toFixed(3)}`;
+    ? (minCost === 0 ? 'FREE' : `$${fmtFixed(minCost, 3)}`)
+    : `${minCost === 0 ? '$0' : `$${fmtFixed(minCost, 3)}`} – $${fmtFixed(maxCost, 3)}`;
 
   return (
     <div

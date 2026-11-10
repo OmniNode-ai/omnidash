@@ -9,6 +9,7 @@ import { useDataSourceMode } from '@/hooks/useDataSourceMode';
 import { TOPICS } from '@shared/types/topics';
 import { formatAge } from '@/utils/time-format';
 import { FreshnessLine } from '@/components/dashboard/lab/FreshnessLine';
+import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/lib/format';
 
 export interface TopicActivityRow {
   topic: string;
@@ -35,7 +36,7 @@ const TOPIC_ACTIVITY_EMPTY_REASON: EmptyStateReason = 'upstream-blocked';
 // Format only served finite numbers; null or malformed values are never zero.
 function measuredNumber(value: unknown, decimals?: number): string {
   if (typeof value !== 'number' || !Number.isFinite(value)) return 'Not measured';
-  return decimals === undefined ? value.toLocaleString() : value.toFixed(decimals);
+  return decimals === undefined ? fmtLocaleString(value) : fmtFixed(value, decimals);
 }
 
 function emptySnapshot(): ProjectionSnapshot<TopicActivityRow> {

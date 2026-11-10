@@ -27,5 +27,6 @@ export function formatDuration(value: unknown): string {
 /** The exact served value for a title attribute ("12,181 ms"), or undefined when there is none. */
 export function exactMs(value: unknown): string | undefined {
   const ms = servedMs(value);
-  return ms === null ? undefined : `${ms.toLocaleString('en-US')} ms`;
+  // OMN-23330 AC9 (superseding OMN-21166 AC55's served fraction): the exact figure is the whole millisecond.
+  return ms === null ? undefined : `${Math.round(ms).toLocaleString('en-US')} ms`;
 }

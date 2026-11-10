@@ -26,6 +26,7 @@ import { Text } from '@/components/ui/typography';
 import { useThemeName } from '@/theme';
 import { useTokenColors } from '@/theme/design-system/useTokenColors';
 import { colorToNumber, tokenNumber } from '@/theme/design-system/color';
+import { fixed as fmtFixed } from '@/lib/format';
 
 export interface DoughnutSlice {
   label: string;
@@ -444,7 +445,7 @@ export function DoughnutChart({ slices, height = 200 }: DoughnutChartProps) {
       // positioning the object at the top of the skewer puts the
       // line tip at the bottom of the text. A tiny world-space gap
       // keeps the line from visually touching the descenders.
-      const labelText = `${s.label}  ${s.percentage.toFixed(0)}%`;
+      const labelText = `${s.label}  ${fmtFixed(s.percentage, 0)}%`;
       const label = makeLabelObject(labelText, theme.labelTextColor);
       label.position.set(
         skewerX,
@@ -576,7 +577,7 @@ export function DoughnutChart({ slices, height = 200 }: DoughnutChartProps) {
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
             <Text as="span" size="sm" family="mono" color="secondary">share</Text>
             <Text as="span" size="sm" family="mono" weight="semibold" tabularNums>
-              {hoverInfo.percentage.toFixed(1)}%
+              {fmtFixed(hoverInfo.percentage, 1)}%
             </Text>
           </div>
         </div>

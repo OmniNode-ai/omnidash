@@ -6,7 +6,7 @@
  * served; a value the row does not carry reads "Not recorded", and with no such row the card says what it waits on.
  */
 import { SettingsEmptyState } from '@/components/dashboard/SettingsEmptyState';
-import { readableTime } from '@/components/format/readable-time';
+import { readableTime } from '@/lib/format';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { Fact, FactList } from '@/theme/design-system/components';
 

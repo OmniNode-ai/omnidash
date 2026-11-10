@@ -3,6 +3,7 @@ import { Play, Pause, SkipBack, SkipForward, RotateCcw } from '@/theme/design-sy
 import { Text, Heading } from '@/components/ui/typography';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
+import { localeTime as fmtLocaleTime } from '@/lib/format';
 
 interface ReplaySnapshot {
   snapshot_id: string;
@@ -19,7 +20,7 @@ interface ReplaySnapshot {
 function formatTimestamp(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '--:--:--';
-  return d.toLocaleTimeString(undefined, { hour12: false });
+  return fmtLocaleTime(d, undefined, { hour12: false });
 }
 
 function EventTypeTag({ type }: { type: string }) {

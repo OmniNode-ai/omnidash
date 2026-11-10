@@ -2160,3 +2160,9 @@ html body .local-dashboard-page section.workflow-record-group[data-field-tone] >
 .local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(5) { width: 84px; }
 .local-dashboard-page table[aria-label="Usage by model and day"] thead th:nth-child(9) { width: 118px; }
 .local-dashboard-page table[aria-label="Usage by model and day"] .local-share-meter { flex-basis: 36px; }
+
+/* OMN-23330 AC9 (the operator's 2026-11-09 review): at a wide window every headline card label keeps to one line; at
+   1440 px "Median duration" wrapped although it fits (measured 0 px over with nowrap). Narrow cards still wrap. */
+@media (min-width: 1200px) {
+  .local-overview-summary > article > h2 { white-space: nowrap; }
+}

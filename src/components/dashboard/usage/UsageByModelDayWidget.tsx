@@ -1,6 +1,6 @@
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { passBand, tierLabel } from '@/pages/local/plain-text';
-import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
+import { formatDashboardCount, formatFullCount } from '@/lib/format';
 
 // OMN-20006: tokens in, tokens out and measured cost per model per UTC day, from usage-by-model-day.v1.
 //
@@ -40,11 +40,11 @@ export interface UsageByModelDayRow {
   updated_at?: string;
 }
 
-import { formatDashboardUsd as formatUsd } from '@/lib/dashboard-currency';
+import { formatDashboardUsd as formatUsd } from '@/lib/format';
 import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
 import { ColumnTip, DataTable, Dropdown, EmptyState, TokenCount } from '@/theme/design-system/components';
 import { ChartReadout } from '@/theme/design-system/charts/frame';
-export { formatDashboardUsd as formatUsd } from '@/lib/dashboard-currency';
+import { localeDate as fmtLocaleDate, localeString as fmtLocaleString } from '@/lib/format';
 
 export const NO_USAGE_ROWS = 'No usage rows yet';
 /** The series' own empty text, so a page that mounts the table and the series does not say one sentence twice. */
@@ -101,7 +101,7 @@ const USAGE_HEADERS: ReadonlyArray<readonly [string, string]> = [
 function callShare(value: unknown): string {
   const share = Number(value);
   if (isMissing(value) || !Number.isFinite(share)) return 'Not recorded';
-  return share.toLocaleString('en-US', { style: 'percent', maximumFractionDigits: 2 });
+  return fmtLocaleString(share, 'en-US', { style: 'percent', maximumFractionDigits: 2 });
 }
 
 function asRows(rows: readonly unknown[]): UsageByModelDayRow[] {
@@ -246,7 +246,7 @@ export function UsageTokensChart({ rows, days = 14 }: { rows: readonly unknown[]
   const total = (day: string) => [...byDay.get(day)!.values()].reduce((sum, cell) => sum + cell.value, 0);
   const max = Math.max(0, ...shown.map(total));
   if (shown.length === 0) return <EmptyState>{NO_TOKEN_ROWS}</EmptyState>;
-  const short = (day: string) => new Date(`${day}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  const short = (day: string) => fmtLocaleDate(new Date(`${day}T00:00:00Z`), 'en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
   return (
     <figure className="utc-chart" aria-label={`Tokens ${direction} per day by model`}>
       <div className="utc-tools">

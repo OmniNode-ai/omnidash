@@ -1,5 +1,6 @@
 import { useId, type CSSProperties } from 'react';
 import './line-plot.css';
+import { fixed as fmtFixed } from '@/lib/format';
 /**
  * OMN-22168 AC3: the line chart of the local pages (Pass rate per day). Moved from src/pages/local/insight-charts.tsx.
  * A day without a value breaks the line rather than drawing a 0, and gets no dot; every day is a focusable column.
@@ -13,7 +14,7 @@ export function linePath(values: ReadonlyArray<number | null>, min: number, max:
     if (value === null) { drawing = false; return; }
     const x = values.length > 1 ? (index / (values.length - 1)) * width : width / 2;
     const y = height - 6 - ((value - min) / span) * (height - 12);
-    path += `${drawing ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)} `;
+    path += `${drawing ? 'L' : 'M'}${fmtFixed(x, 1)} ${fmtFixed(y, 1)} `;
     drawing = true;
   });
   return path.trim();
@@ -38,7 +39,7 @@ export function smoothPath(values: ReadonlyArray<number | null>, max: number, wi
     run.push([values.length > 1 ? index * step : width / 2, height - 6 - (value / span) * (height - 12)]);
   });
   if (run.length) runs.push(run);
-  const f = (n: number) => n.toFixed(1);
+  const f = (n: number) => fmtFixed(n, 1);
   return runs.map(points => {
     let d = `M${f(points[0]![0])} ${f(points[0]![1])}`;
     if (points.length === 2) return `${d} L${f(points[1]![0])} ${f(points[1]![1])}`;
@@ -161,7 +162,7 @@ export function MultiLinePlot({ label, lines, keys, labels, hover, onHover, focu
         {front && smoothPath(front.values, peak(front.values), W, H).split(/ (?=M)/).filter(part => part.includes('C') || part.includes('L')).map((part, index) => {
           const xs = [...part.matchAll(/(-?[\d.]+) (-?[\d.]+)/g)].map(match => Number(match[1]));
           return <path key={index} className="ins-area" aria-hidden="true" fill={`url(#${fillId})`} stroke="none"
-            d={`${part} L${Math.max(...xs).toFixed(1)} ${H} L${Math.min(...xs).toFixed(1)} ${H} Z`} />;
+            d={`${part} L${fmtFixed(Math.max(...xs), 1)} ${H} L${fmtFixed(Math.min(...xs), 1)} ${H} Z`} />;
         })}
         {order.map(line => (
           <path key={line.key} className="od-draw" data-line={line.key} data-front={front ? String(line === front) : undefined}

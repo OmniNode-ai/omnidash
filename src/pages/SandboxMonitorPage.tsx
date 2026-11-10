@@ -3,6 +3,7 @@ import { Text, Heading } from '@/components/ui/typography';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
+import { fixed as fmtFixed, localeTime as fmtLocaleTime } from '@/lib/format';
 
 interface SandboxDecision {
   decision_id: string;
@@ -19,7 +20,7 @@ interface SandboxDecision {
 function formatTimestamp(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '--:--:--';
-  return d.toLocaleTimeString(undefined, { hour12: false });
+  return fmtLocaleTime(d, undefined, { hour12: false });
 }
 
 function VerdictBadge({ verdict }: { verdict: 'allow' | 'deny' }) {
@@ -57,7 +58,7 @@ function DenyRateBar({ denyRate }: { denyRate: number }) {
         />
       </div>
       <Text size="xs" family="mono" style={{ color, minWidth: 38 }}>
-        {pct.toFixed(1)}%
+        {fmtFixed(pct, 1)}%
       </Text>
     </div>
   );

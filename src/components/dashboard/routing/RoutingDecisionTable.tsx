@@ -9,6 +9,7 @@ import { DataTableThreeJs } from '@/components/charts/threejs/DataTable';
 import type { DataTableColumnConfig } from '@shared/types/chart-config';
 import { Text } from '@/components/ui/typography';
 import { FreshnessLine } from '@/components/dashboard/lab/FreshnessLine';
+import { fixed as fmtFixed } from '@/lib/format';
 
 /**
  * RoutingDecision row shape from the `delegationDecisions` projection.
@@ -97,7 +98,7 @@ function formatTimestamp(iso: string, timeZone: string): string {
  * (which took the whole Lab page down).
  */
 function formatPercent(value: unknown): string {
-  return typeof value === 'number' ? `${(value * 100).toFixed(0)}%` : 'not emitted';
+  return typeof value === 'number' ? `${fmtFixed((value * 100), 0)}%` : 'not emitted';
 }
 
 function toDisplayRow(row: RoutingDecision, tz: string): Record<string, unknown> {
@@ -107,7 +108,7 @@ function toDisplayRow(row: RoutingDecision, tz: string): Record<string, unknown>
     agreement: row.agreement ? 'Agree' : 'Disagree',
     llm_confidence: formatPercent(row.llm_confidence),
     fuzzy_confidence: formatPercent(row.fuzzy_confidence),
-    cost_usd: typeof row.cost_usd === 'number' ? `$${row.cost_usd.toFixed(4)}` : 'not emitted',
+    cost_usd: typeof row.cost_usd === 'number' ? `$${fmtFixed(row.cost_usd, 4)}` : 'not emitted',
   };
 }
 

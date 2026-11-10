@@ -17,6 +17,7 @@ import {
   type EvidenceSwimlane,
   type ProjectionEnvelope,
 } from '@/services/evidence-pipeline-service';
+import { localeString as fmtLocaleString } from '@/lib/format';
 
 type StreamState = 'unavailable' | 'connected' | 'error';
 
@@ -37,14 +38,14 @@ const AUTHORITY_COLOR: Record<EvidenceAuthority, 'ok' | 'secondary' | 'tertiary'
 
 function formatNumber(value: number | null): string {
   if (typeof value !== 'number' || Number.isNaN(value)) return '--';
-  return value.toLocaleString();
+  return fmtLocaleString(value);
 }
 
 function formatDateTime(value: string | null): string {
   if (!value) return '--';
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return '--';
-  return d.toLocaleString();
+  return fmtLocaleString(d);
 }
 
 function redactPayloadSummary(value: string): string {

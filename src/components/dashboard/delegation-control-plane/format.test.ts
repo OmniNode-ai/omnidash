@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { usdFractionDigits } from '@/lib/currency';
+import { usdFractionDigits } from '@/lib/format';
 import { fmtUsd } from './format';
 
 describe('fmtUsd', () => {

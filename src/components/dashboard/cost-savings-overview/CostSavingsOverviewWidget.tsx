@@ -6,6 +6,7 @@ import { TOPICS } from '@shared/types/topics';
 import { KPI, SortableTable } from '@/components/primitives';
 import type { ColumnDef } from '@/components/primitives';
 import { Heading, Text } from '@/components/ui/typography';
+import { fixed as fmtFixed, localeString as fmtLocaleString, localeTime as fmtLocaleTime } from '@/lib/format';
 
 // ── View model types (OMN-10346 dashboard view contract) ─────────────
 
@@ -83,29 +84,29 @@ const MODE_COLOR: Record<ExecutionMode, string> = {
 };
 
 function fmtUsd(v: number): string {
-  return `$${v.toFixed(2)}`;
+  return `$${fmtFixed(v, 2)}`;
 }
 
 function fmtPct(v: number): string {
-  return `${(v * 100).toFixed(1)}%`;
+  return `${fmtFixed((v * 100), 1)}%`;
 }
 
 function fmtTokens(n: number): string {
-  if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
-  if (n >= 1e3) return `${(n / 1e3).toFixed(0)}K`;
+  if (n >= 1e6) return `${fmtFixed((n / 1e6), 1)}M`;
+  if (n >= 1e3) return `${fmtFixed((n / 1e3), 0)}K`;
   return String(n);
 }
 
 function fmtMs(ms: number | null): string {
   if (ms == null || !Number.isFinite(ms)) return '-';
-  if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
+  if (ms >= 1000) return `${fmtFixed((ms / 1000), 1)}s`;
   return `${Math.round(ms)}ms`;
 }
 
 function fmtRunTime(value: string): string {
   const parsed = Date.parse(value);
   if (Number.isNaN(parsed)) return value || '-';
-  return new Date(parsed).toLocaleTimeString(undefined, {
+  return fmtLocaleTime(new Date(parsed), undefined, {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
@@ -158,7 +159,7 @@ function KPIBar({ overview }: { overview: CostSavingsOverviewProjection }) {
         value={overview.tokens_total}
         tone={localPct >= 50 ? 'good' : 'warn'}
         caption={complianceTokens != null && complianceTokens > 0
-          ? `${complianceTokens.toLocaleString()} to compliance`
+          ? `${fmtLocaleString(complianceTokens)} to compliance`
           : undefined}
       />
     </div>

@@ -8,6 +8,7 @@ import { Text } from '@/components/ui/typography';
 import type { NodeKind } from '@/components/primitives';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 import { formatRedactedEventPayload } from '@/utils/redact-event-payload';
+import { localeString as fmtLocaleString } from '@/lib/format';
 
 // ── Data type ───────────────────────────────────────────────────────
 
@@ -235,9 +236,9 @@ export default function LiveEventStreamWidget() {
           }}
         >
           {[
-            ['Messages', events.length.toLocaleString()],
-            ['Visible', filteredEvents.length.toLocaleString()],
-            ['Sources', sourceCount.toLocaleString()],
+            ['Messages', fmtLocaleString(events.length)],
+            ['Visible', fmtLocaleString(filteredEvents.length)],
+            ['Sources', fmtLocaleString(sourceCount)],
             ['Newest', newestLabel],
           ].map(([label, value]) => (
             <div key={label} style={{ border: '1px solid var(--ds-line)', borderRadius: 6, padding: '8px 10px', background: 'var(--ds-surface-2)' }}>
@@ -318,7 +319,7 @@ export default function LiveEventStreamWidget() {
           </label>
           {!filters.includeHeartbeats && heartbeatCount > 0 && (
             <Text as="span" size="xs" color="tertiary" family="mono">
-              {heartbeatCount.toLocaleString()} {heartbeatCount === 1 ? 'heartbeat' : 'heartbeats'} hidden
+              {fmtLocaleString(heartbeatCount)} {heartbeatCount === 1 ? 'heartbeat' : 'heartbeats'} hidden
             </Text>
           )}
         </div>

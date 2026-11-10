@@ -4,6 +4,7 @@ import { Text } from '@/components/ui/typography';
 import { useContextHeatmap } from './useContextHeatmap';
 import { classifyCell } from './context-heatmap.types';
 import type { HeatmapCell, ContextHeatmapConfig, HeatmapSignal } from './context-heatmap.types';
+import { localeString as fmtLocaleString } from '@/lib/format';
 
 // ── Color helpers ────────────────────────────────────────────────────────────
 
@@ -109,9 +110,9 @@ function ExamplesPanel({ cell, segmentLabel }: { cell: HeatmapCell; segmentLabel
   const signal = classifyCell(cell);
   const tokenDeltaStr = cell.tokenDelta != null
     ? cell.tokenDelta > 0
-      ? `saved ${Math.round(cell.tokenDelta).toLocaleString()} tokens avg`
+      ? `saved ${fmtLocaleString(Math.round(cell.tokenDelta))} tokens avg`
       : cell.tokenDelta < 0
-      ? `added ${Math.round(-cell.tokenDelta).toLocaleString()} tokens avg`
+      ? `added ${fmtLocaleString(Math.round(-cell.tokenDelta))} tokens avg`
       : 'no token impact'
     : null;
 
@@ -169,7 +170,7 @@ function ExamplesPanel({ cell, segmentLabel }: { cell: HeatmapCell; segmentLabel
         <div>
           <Text as="div" size="xs" color="tertiary">Avg tokens</Text>
           <Text as="div" size="xs" color="secondary">
-            {avgTokens.toLocaleString()}
+            {fmtLocaleString(avgTokens)}
           </Text>
         </div>
         {cell.tokenDelta != null && (
@@ -180,7 +181,7 @@ function ExamplesPanel({ cell, segmentLabel }: { cell: HeatmapCell; segmentLabel
               size="xs"
               color={cell.tokenDelta > 0 ? 'ok' : cell.tokenDelta < 0 ? 'bad' : 'secondary'}
             >
-              {cell.tokenDelta > 0 ? '−' : '+'}{Math.abs(Math.round(cell.tokenDelta)).toLocaleString()}
+              {cell.tokenDelta > 0 ? '−' : '+'}{fmtLocaleString(Math.abs(Math.round(cell.tokenDelta)))}
             </Text>
           </div>
         )}

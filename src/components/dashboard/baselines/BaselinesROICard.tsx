@@ -2,6 +2,7 @@ import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { Text } from '@/components/ui/typography';
 import { TOPICS } from '@shared/types/topics';
+import { localeString as fmtLocaleString } from '@/lib/format';
 
 export interface BaselinesSummary {
   snapshotId: string;
@@ -15,7 +16,7 @@ export interface BaselinesSummary {
 
 function DeltaMetric({ label, value, unit }: { label: string; value: number; unit?: string }) {
   const improved = value <= 0;
-  const formatted = value.toLocaleString();
+  const formatted = fmtLocaleString(value);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
       <Text as="div" size="3xl" weight="bold" color={improved ? 'ok' : 'warn'}>

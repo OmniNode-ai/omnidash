@@ -1,8 +1,8 @@
-import { formatDashboardCount, formatFullCount, wholeCount } from '@/lib/dashboard-count';
+import { formatDashboardCount, formatFullCount, wholeCount } from '@/lib/format';
 import { PricingFacts } from './local/pricing';
 import { WindowMenu } from './local/window-menu';
-import { readableTime } from '@/components/format/readable-time';
-import { exactMs, formatDuration } from '@/components/format/duration';
+import { readableTime } from '@/lib/format';
+import { exactMs, formatDuration } from '@/lib/format';
 import { dailyMeteringTokens } from '@/lib/daily-metering-tokens';
 import { DailyMeteringTokens } from '@/components/dashboard/usage/DailyMeteringTokens';
 import { TokenDirections } from '@/components/dashboard/usage/TokenDirections';
@@ -20,7 +20,8 @@ import { createSnapshotSource } from '@/data-source';
 import { fetchExposureCensus } from '@/data-source/exposure-census';
 import { resolveEffectiveDataSource } from '@/data-source/data-source-override';
 import { resolveConfiguredTenant } from '@/data-source/projection-tenant';
-import { UsageByModelDayTable, UsageTokensChart, formatUsd } from '@/components/dashboard/usage/UsageByModelDayWidget';
+import { UsageByModelDayTable, UsageTokensChart } from '@/components/dashboard/usage/UsageByModelDayWidget';
+import { formatDashboardUsd as formatUsd } from '@/lib/format';
 import { MeteringDaySeries, meteringDaysByBaseline } from '@/components/dashboard/usage/SavingsSeriesWidget';
 import { TenantNotConfiguredState } from '@/components/dashboard/TenantNotConfiguredState';
 import { latestServedRead, publishLocalPageRead, requestLocalPageRefresh, subscribeLocalPageRefresh } from '@/services/local-page-refresh';
@@ -81,6 +82,8 @@ import {
   type LocalPageName,
 } from '@/layout/local-page-loader';
 import { TierLegend, ModelTiersContext, useModelColor, useModelIdentityStyle } from '@/components/dashboard/model-tiers';
+import { fixed as fmtFixed, localeDate as fmtLocaleDate, localeString as fmtLocaleString } from '@/lib/format';
+import { formatShare } from '@/lib/format';
 
 interface LocalDashboardPageProps {
   pageName: LocalPageName;
@@ -113,7 +116,7 @@ function formatMetric(value: unknown, config: MetricCardConfig): string {
   if (config.format === 'currency') return formatUsd(value);
   if (config.format === 'number' && (config.precision ?? 0) === 0) return formatDashboardCount(value);
   const digits = config.precision ?? 0;
-  const grouped = Number(value).toLocaleString('en-US', {
+  const grouped = fmtLocaleString(Number(value), 'en-US', {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   });
@@ -311,8 +314,8 @@ export function qualityChangeLine(decisions: readonly unknown[], window: Activit
   if (previous === null) return 'No earlier data';
   const points = (current - previous) * 100;
   const span = `vs previous ${window.days} days`;
-  if (Math.abs(points).toFixed(1) === '0.0') return `Last ${window.days} days: no change ${span}`;
-  return `Last ${window.days} days: ${points > 0 ? '+' : '\u2212'}${Math.abs(points).toFixed(1)} pts ${span}`;
+  if (fmtFixed(Math.abs(points), 1) === '0.0') return `Last ${window.days} days: no change ${span}`;
+  return `Last ${window.days} days: ${points > 0 ? '+' : '\u2212'}${fmtFixed(Math.abs(points), 1)} pts ${span}`;
 }
 
 export function QualityCard({ row, change = null }: { row: Row | null; change?: string | null }) {
@@ -321,7 +324,7 @@ export function QualityCard({ row, change = null }: { row: Row | null; change?: 
   }
   const count = (value: unknown) => (isMissing(value) || !Number.isFinite(Number(value)) ? 'Not recorded' : formatFullCount(String(value)));
   return <>
-    <Figure measured><CountUpText text={`${(Number(row.overall_pass_rate) * 100).toFixed(1)}%`} /></Figure>
+    <Figure measured><CountUpText text={`${fmtFixed((Number(row.overall_pass_rate) * 100), 1)}%`} /></Figure>
     {change && <ChangeLine text={change} />}
     <HeadlineHover label="Delegation Quality" lines={[`${count(row.total_passed)} of ${count(row.total_checks)} runs passed the quality gate`,
       `${count(row.total_failed)} failed · deterministic checks`, 'All time: the window above does not change this figure']} />
@@ -373,7 +376,7 @@ export function RunLocallyCard({ row }: { row: Record<string, unknown> | null })
   }
   const share = byTier.local_call_share;
   if (typeof share !== 'number' || !Number.isFinite(share) || share < 0 || share > 1) return <Figure measured={false}>Not measured</Figure>;
-  const text = share.toLocaleString('en-US', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  const text = fmtLocaleString(share, 'en-US', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 });
   return (
     <div className="local-routing-summary">
       <div className="local-routing-share">
@@ -559,7 +562,7 @@ export function periodChangeLine(rows: readonly unknown[], window: string, metri
   const span = `vs previous ${days} days`;
   if (before === 0) return now > 0 ? 'New this period' : `No change ${span}`;
   const pct = ((now - before) / Math.abs(before)) * 100;
-  const size = Math.abs(pct) < 10 ? Math.abs(pct).toFixed(1) : String(Math.round(Math.abs(pct)));
+  const size = Math.abs(pct) < 10 ? fmtFixed(Math.abs(pct), 1) : String(Math.round(Math.abs(pct)));
   if (Number(size) === 0) return `No change ${span}`;
   return `${pct > 0 ? '+' : '\u2212'}${size}% ${span}`;
 }
@@ -640,7 +643,7 @@ export function servedMeteringDays(rows: readonly unknown[]): string[] {
   return [...days].sort().reverse();
 }
 
-const shortDay = (date: string) => new Date(`${date}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+const shortDay = (date: string) => fmtLocaleDate(new Date(`${date}T00:00:00Z`), 'en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 
 /**
  * Live review 2026-10-25 ("open the full calendar"): the calendar of Overview's window control, a month grid. Any past
@@ -663,7 +666,7 @@ export function OverviewDayPicker({ days, value, onChange, now = Date.now() }: {
   const daysInMonth = new Date(Date.UTC(year, monthIndex, 0)).getUTCDate();
   const lead = (first.getUTCDay() + 6) % 7; // weeks start on Monday
   const shift = (by: number) => setMonth(new Date(Date.UTC(year, monthIndex - 1 + by, 1)).toISOString().slice(0, 7));
-  const title = first.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  const title = fmtLocaleDate(first, 'en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
   const titleId = useId();
   return (
     <div className="local-day-picker" onKeyDown={event => { if (event.key === 'Escape') setOpen(false); }}>
@@ -835,10 +838,10 @@ export function RunsKpis({ rows, now, complete = false }: { rows: readonly unkno
       // OMN-21970 AC3: a read that walked every page holds every served run, so the caption does not call them the latest.
       lines: [complete ? `All ${formatDashboardCount(totals.runs)} served runs` : `Latest ${formatDashboardCount(totals.runs)} returned runs`],
       trend: { days: dayKeys, values: days.map(day => (day.runs > 0 ? day.runs : null)), format: value => formatDashboardCount(value) } },
-    { label: 'Pass rate', value: totals.passRate === null ? 'Not recorded' : `${totals.passRate.toFixed(1)}%`, unavailable: totals.passRate === null,
+    { label: 'Pass rate', value: totals.passRate === null ? 'Not recorded' : `${fmtFixed(totals.passRate, 1)}%`, unavailable: totals.passRate === null,
       accent: 'var(--ds-field-pass)', concept: 'pass',
       lines: [`${formatDashboardCount(totals.passed + totals.failed)} of ${formatDashboardCount(totals.runs)} runs have a verdict`],
-      trend: { days: dayKeys, values: days.map(day => day.passRate), format: value => `${value.toFixed(1)}%` } },
+      trend: { days: dayKeys, values: days.map(day => day.passRate), format: value => `${fmtFixed(value, 1)}%` } },
     { label: 'Median duration', value: totals.medianLatency === null ? 'Not recorded' : formatDuration(totals.medianLatency), unavailable: totals.medianLatency === null,
       title: totals.medianLatency === null ? undefined : exactMs(totals.medianLatency), accent: 'var(--ds-field-duration)', concept: 'duration',
       lines: [totals.medianLatency === null ? null : `Exactly ${exactMs(totals.medianLatency)}`, `${formatDashboardCount(runs.length - latencies.length)} without a duration`] },
@@ -963,7 +966,7 @@ function pctAgainstBaseline(ratio: unknown, baselineModel: unknown): string | nu
   if (typeof ratio !== 'number' && (typeof ratio !== 'string' || ratio.trim() === '')) return null;
   const value = Number(ratio);
   if (!Number.isFinite(value)) return null;
-  const pct = value.toLocaleString('en-US', { style: 'percent', maximumFractionDigits: 0, signDisplay: 'never' });
+  const pct = fmtLocaleString(value, 'en-US', { style: 'percent', maximumFractionDigits: 0, signDisplay: 'never' });
   return `${pct} ${value < 0 ? 'above' : 'below'} the ${String(baselineModel)} baseline (modelled)`;
 }
 
@@ -1104,8 +1107,8 @@ function Readable({ value, kind }: { value: unknown; kind: 'percent' | 'decimal'
   if (kind === 'count') return <span className="local-readable" title={String(value)}>{formatDashboardCount(value)}</span>;
   if (!Number.isFinite(number)) return <>{String(value)}</>;
   const text = kind === 'percent'
-    ? number.toLocaleString('en-US', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 })
-    : number.toLocaleString('en-US', { maximumFractionDigits: 2 });
+    ? formatShare(number)
+    : fmtLocaleString(number, 'en-US', { maximumFractionDigits: 2 });
   return <span className="local-readable" title={String(value)}>{text}</span>;
 }
 
@@ -1632,7 +1635,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
   const selectedScore = selectedRun && !isMissing(selectedRun.actual_score) ? Number(selectedRun.actual_score) : Number.NaN;
   const selectedRequiredBar = selectedRun && !isMissing(selectedRun.required_bar) ? Number(selectedRun.required_bar) : Number.NaN;
   const selectedDay = week.find(item => item.day === day);
-  const weekLabel = (value: string) => value === today ? `Today ${value}` : `${new Date(`${value}T00:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })} ${value}`;
+  const weekLabel = (value: string) => value === today ? `Today ${value}` : `${fmtLocaleDate(new Date(`${value}T00:00:00Z`), 'en-US', { weekday: 'short', timeZone: 'UTC' })} ${value}`;
   // OMN-21166 AC75: a sortable header names its order for assistive tech; the first click puts the largest or newest
   // first, the next reverses it.
   // Lakshman 2026-11-04, "all should be in different color and different icons": each column header carries its
@@ -1875,7 +1878,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                   <td data-label="Tokens to compliance" data-extra="" data-num="" title={tokensTitle(run.tokens_to_compliance)}>{recordedTokens(run.tokens_to_compliance)}</td>
                   <td data-label="Route tier" data-extra="">{tierOf(run)}</td>
                   {/* Item 7: one form for every score, two decimals; the served value is in the title. */}
-                  <td data-label="Quality score" data-extra="" data-num="" title={recorded(run.actual_score)}>{isMissing(run.actual_score) || !Number.isFinite(score) ? recorded(run.actual_score) : score.toFixed(2)}</td>
+                  <td data-label="Quality score" data-extra="" data-num="" title={recorded(run.actual_score)}>{isMissing(run.actual_score) || !Number.isFinite(score) ? recorded(run.actual_score) : fmtFixed(score, 2)}</td>
                 </tr>;
               })}</tbody>
           </DataTable>;
@@ -2121,7 +2124,7 @@ export function ModelUsagePanel({ row }: { row: Row | null }) {
           const href = isMissing(model.model_name) ? undefined : `/runs?${writeRunsSearch('', { ...DEFAULT_RUNS_VIEW, model: name })}`;
           return { key: `${name}-${index}`, name, model: isMissing(model.model_name) ? undefined : name, value: runs, basis: 'measured' as const, color: modelColor(name), href, opensLabel: `Opens Runs filtered to ${name}`,
             display: runs === null ? 'Not recorded'
-              : `${recordedCount(model.total_count)}${pct === null ? '' : ` · ${pct > 0 && pct * 100 < 0.1 ? '<0.1' : (pct * 100).toFixed(1)}%`}` };
+              : `${recordedCount(model.total_count)}${pct === null ? '' : ` · ${formatShare(pct)}`}` };
         })} />
       <TierLegend label="Model usage tier colours" models={models.map(model => (isMissing(model.model_name) ? '' : String(model.model_name)))} />
       <p className="local-dashboard-caption">{`${recordedCount(row?.total_delegations)} runs · ${models.length} ${models.length === 1 ? 'model' : 'models'}`}</p>
@@ -2170,7 +2173,7 @@ export function OverviewStatusStrip({ env, decisions, routing, now, window = 'al
   const latencies = inWindow.map(run => run.latencyMs).filter((value): value is number => value !== null).sort((a, b) => a - b);
   const median = latencies.length === 0 ? null : latencies[Math.floor((latencies.length - 1) / 2)]!;
   // Lakshman 2026-11-04 ("colourful and remove 500 latest runs text"): the median reads plainly, without the read's size.
-  const speed = median === null ? null : `Median run ${(median / 1000).toFixed(1)} s`;
+  const speed = median === null ? null : `Median run ${fmtFixed((median / 1000), 1)} s`;
   const reason = state === 'attention' && env && !isMissing(env.reason) ? String(env.reason) : null;
   return (
     <div className="local-overview-status" role="status" aria-label="Runtime status" data-state={state}>
@@ -2235,7 +2238,7 @@ export function OverviewTrendPanel({ rows, columns, window, now }: {
   }
   if (byDay.size === 0 || columns.length === 0) return <EmptyState>No day rows served yet</EmptyState>;
   const days = trendDays(window, [...byDay.keys()].sort(), now);
-  const label = (day: string) => new Date(`${day}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  const label = (day: string) => fmtLocaleDate(new Date(`${day}T00:00:00Z`), 'en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
   const twice = (day: string) => (byDay.get(day) ?? []).length > 1;
   const valueOf = (day: string, column: DeclaredColumn) => {
     const served = byDay.get(day) ?? [];
@@ -2330,7 +2333,7 @@ export function TierMixPanel({ row, compact = false }: { row: Row | null; compac
             const href = isMissing(tier.cost_tier_name) ? undefined : `/runs?${writeRunsSearch('', { ...DEFAULT_RUNS_VIEW, tier: name })}`;
             return { key: `${name}-${index}`, name: tierLabel(name), value: pct === null ? null : pct * 100, basis: 'measured' as const, color: tierColor(name), href, opensLabel: `Opens Runs filtered to ${tierLabel(name)}`,
               // A served share above zero but under 0.1% reads "<0.1%", never a rounded 0.0% that hides a real tier.
-              display: pct === null ? 'Not recorded' : `${recordedCount(tier.count)} · ${pct > 0 && pct * 100 < 0.1 ? '<0.1' : (pct * 100).toFixed(1)}%` };
+              display: pct === null ? 'Not recorded' : `${recordedCount(tier.count)} · ${formatShare(pct)}` };
           })} />
         <p className="local-dashboard-caption">{`${recordedCount(byTier.tier_routed_total)} tier-routed · ${recordedCount(byTier.not_tier_routed_count)} not tier-routed · ${recordedCount(byTier.total_tasks)} runs`}</p>
       </section>
