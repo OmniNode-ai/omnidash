@@ -109,6 +109,21 @@ describe('OMN-19980 AC2b: a run shows its cost, never a per-run saving', () => {
     expect(resolveLocalPageEmptyState(page, [read(DECISIONS, []), read(METERING, [meteringRow({})])])).toBe('NO_RUNS_YET');
   });
 
+  // OMN-23330 AC1 (lab, 2026-11-10): the cards read metering-summary.v1, so only NO_RUNS_YET keeps a metering figure
+  // off a page with no runs. A store that does not serve one exposure (the per-day totals, delegation.daily.v1, on a
+  // store that predates it) says nothing about whether runs exist; a store whose run exposure failed or is not served
+  // still cannot say "no runs".
+  it('B4b: an exposure the store does not serve never hides NO_RUNS_YET, but no row source read is never NO_RUNS_YET', () => {
+    const page = loadLocalPageConfig('overview');
+    const DAILY = 'onex.snapshot.projection.delegation.daily.v1';
+    const notServed = (topic: string) => ({ ...read(topic, []), failure: { kind: 'not-served' as const, message: `Not served: ${topic}` } });
+    const failed = (topic: string) => ({ ...read(topic, []), failure: { kind: 'error' as const, message: `${topic}: HTTP 503` } });
+    expect(resolveLocalPageEmptyState(page, [read(DECISIONS, []), notServed(DAILY), read(METERING, [meteringRow({})])])).toBe('NO_RUNS_YET');
+    expect(resolveLocalPageEmptyState(page, [read(DECISIONS, []), failed(DAILY), read(METERING, [meteringRow({})])])).toBeNull();
+    expect(resolveLocalPageEmptyState(page, [notServed(DECISIONS), read(METERING, [meteringRow({})])])).toBeNull();
+    expect(resolveLocalPageEmptyState(page, [read(DECISIONS, [{ correlation_id: 'c', created_at: '2026-10-05T12:00:00Z' }]), notServed(DAILY)])).toBeNull();
+  });
+
   it('B5: a metering row with a null saving and an unresolved baseline never flips the whole page', () => {
     const page = loadLocalPageConfig('overview');
     const decision = { correlation_id: 'corr-19980', created_at: '2026-10-05T12:00:00Z' };
