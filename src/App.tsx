@@ -5,12 +5,21 @@ import { Header } from './components/frame/Header';
 import { useFrameStore } from './store/store';
 import { CommandPalette, useCommandPalette } from './components/dashboard/command-dispatch/CommandPalette';
 import type { AppPage } from './store/types';
-import { LocalDashboardPage, type LocalDashboardCache } from './pages/LocalDashboardPage';
-import { SettingsPage } from './pages/SettingsPage';
+import type { LocalDashboardCache } from './pages/LocalDashboardPage';
+// OMN-23330 AC22: the local pages' code loads lazily, but these stylesheets also style the app frame (sidebar, top bar),
+// so they stay in the entry, in the order the pages imported them, until AC23 moves the frame's rules out of them.
+import '@/styles/local-dashboard.css';
+import '@/styles/dashboard-cards.css';
+import '@/styles/seven-page-design.css';
+import '@/styles/editorial.css';
 import { DestinationIcon } from './navigation/destination-icons';
 import { PAGE_LABELS, PAGE_PATHS, pageForPath } from './navigation/page-routes';
 
 // Deferred destinations must not delay the six local pages at startup.
+// OMN-23330 AC22: the local pages and Settings load with their own bundle too, so the entry carries none of their code
+// (charts, echarts, stylesheets); the entry was 1.43 MB (428 KB gzipped) with them.
+const LocalDashboardPage = lazy(() => import('./pages/LocalDashboardPage').then(module => ({ default: module.LocalDashboardPage })));
+const SettingsPage = lazy(() => import('./pages/SettingsPage').then(module => ({ default: module.SettingsPage })));
 const DashboardView = lazy(() => import('./pages/DashboardView').then(module => ({ default: module.DashboardView })));
 const FeatureFlagDashboard = lazy(() => import('./pages/FeatureFlagDashboard').then(module => ({ default: module.FeatureFlagDashboard })));
 const InstructionEvalPage = lazy(() => import('./pages/InstructionEvalPage').then(module => ({ default: module.InstructionEvalPage })));
@@ -45,11 +54,11 @@ function PageContent({ page, navigationCache }: { page: AppPage; navigationCache
     case 'experiments':         return <Suspense fallback={<LoadingPage page={page} />}><ExperimentsPage /></Suspense>;
     case 'sea-control':         return <Suspense fallback={<LoadingPage page={page} />}><SeaControlPage /></Suspense>;
     case 'lab':                 return <Suspense fallback={<LoadingPage page={page} />}><LabPage /></Suspense>;
-    case 'local-overview':      return <LocalDashboardPage pageName="overview" navigationCache={navigationCache} />;
-    case 'local-runs':          return <LocalDashboardPage pageName="runs" syncUrl navigationCache={navigationCache} />;
-    case 'local-workflow':      return <LocalDashboardPage pageName="workflow" syncUrl navigationCache={navigationCache} />;
-    case 'local-usage':         return <LocalDashboardPage pageName="usage" navigationCache={navigationCache} />;
-    case 'local-settings':      return <SettingsPage navigationCache={navigationCache} />;
+    case 'local-overview':      return <Suspense fallback={<LoadingPage page={page} />}><LocalDashboardPage pageName="overview" navigationCache={navigationCache} /></Suspense>;
+    case 'local-runs':          return <Suspense fallback={<LoadingPage page={page} />}><LocalDashboardPage pageName="runs" syncUrl navigationCache={navigationCache} /></Suspense>;
+    case 'local-workflow':      return <Suspense fallback={<LoadingPage page={page} />}><LocalDashboardPage pageName="workflow" syncUrl navigationCache={navigationCache} /></Suspense>;
+    case 'local-usage':         return <Suspense fallback={<LoadingPage page={page} />}><LocalDashboardPage pageName="usage" navigationCache={navigationCache} /></Suspense>;
+    case 'local-settings':      return <Suspense fallback={<LoadingPage page={page} />}><SettingsPage navigationCache={navigationCache} /></Suspense>;
     default:        return <Suspense fallback={<LoadingPage page={page} />}><DashboardView /></Suspense>;
   }
 }

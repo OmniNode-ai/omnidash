@@ -76,6 +76,8 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      // OMN-23330 AC22: unit tests draw charts in one pass; the built app loads echarts lazily (echarts-lazy.tsx).
+      './echarts-lazy': path.resolve(__dirname, 'src/theme/design-system/charts/echarts-sync.tsx'),
       '@': path.resolve(__dirname, 'src'),
       '@shared': path.resolve(__dirname, 'shared'),
     },

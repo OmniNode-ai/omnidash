@@ -7,17 +7,12 @@ import { ChartEmpty, ChartHeading } from './frame';
 import { SwatchToggles } from './legend';
 import { Link } from 'wouter';
 import { workflowHref } from '@/navigation/workflow-url-state';
-import ReactEChartsCore from 'echarts-for-react/lib/core';
-import * as echarts from 'echarts/core';
-import { BarChart } from 'echarts/charts';
-import { AriaComponent, GridComponent, TooltipComponent } from 'echarts/components';
-import { SVGRenderer } from 'echarts/renderers';
 import { useThemeName } from '@/theme';
+import { EChart } from './echarts-lazy';
 import { colorToNumber, tokenHex, tokenValue, type TokenName } from '@/theme/design-system/color';
 import { localeDate as fmtLocaleDate, localeString as fmtLocaleString } from '@/lib/format';
 import { exactMs, formatShortDay } from '@/lib/format';
 
-echarts.use([BarChart, GridComponent, TooltipComponent, AriaComponent, SVGRenderer]);
 
 /** Motion is a rendering preference, not a CSS-only effect: ECharts also obeys it. */
 function useChartMotion() {
@@ -304,7 +299,7 @@ function SpendChartFigure({ group, title, colourPlaces }: { group: SpendByDayGro
         series={all.map(({ series, colour }) => ({ key: series.key, label: series.name, color: colour, shown: !hidden.has(series.key) }))} />
       {shown.length === 0
         ? <ChartEmpty status>{EVERY_SERIES_HIDDEN}</ChartEmpty>
-        : <ReactEChartsCore echarts={echarts} option={{ ...optionFor(group, shown), ...motion.option }} notMerge opts={{ renderer: 'svg' }} className="local-chart-canvas" />}
+        : <EChart option={{ ...optionFor(group, shown), ...motion.option }} />}
       <div className="local-chart-inspector"><label htmlFor={dayId}>Inspect day</label>
         <select id={dayId} value={selectedDay === null ? '' : day} onChange={event => setDay(event.target.value)}>
           <option value="">Choose a served day</option>
@@ -455,7 +450,7 @@ export function RunTimingChart({ timings, title = 'Run timing', compact = false,
   });
   return (
     <figure className="local-chart local-chart--timing" aria-label={title}>
-      <ReactEChartsCore echarts={echarts} option={{ ...timingOption(bars, colours, compact), ...motion.option }} notMerge opts={{ renderer: 'svg' }} className="local-chart-canvas" />
+      <EChart option={{ ...timingOption(bars, colours, compact), ...motion.option }} />
       <figcaption>
         {`${bars.map((bar) => bar.label).join(', ')} of this run, ${bars.length === 1 ? 'as served.' : 'each as served, side by side and not added together.'}`}
         {unmeasured.length > 0 && ` No measured value to draw for: ${unmeasured.join(', ')}.`}
@@ -588,7 +583,7 @@ export function RunDurationChart({ runs, onOpen, title = 'Duration per run' }: {
           tone: status === 'passed' ? 'pass' : status === 'failed' ? 'fail' : undefined }))} />
       {statuses.every((status) => hidden.has(status))
         ? <ChartEmpty status>{EVERY_SERIES_HIDDEN}</ChartEmpty>
-        : <ReactEChartsCore echarts={echarts} option={option} notMerge opts={{ renderer: 'svg' }} className="local-chart-canvas" onEvents={openOnClick(runs, onOpen)} />}
+        : <EChart option={option} onEvents={openOnClick(runs, onOpen)} />}
       <RunInspector runs={runs} />
       {/* OMN-23330 AC9: the axis reads ms, s or min as the values need, so the caption names the axis, not one unit. */}
       <figcaption>Duration of each listed run, in the list&apos;s order, in the units on the axis. A bar opens its run.</figcaption>
@@ -652,7 +647,7 @@ export function RunTokensChart({ runs, onOpen, title = 'Tokens per run' }: { run
         series={all.map(series => ({ key: series.key, label: series.name, color: series.colour, tone: series.key === 'tokensIn' ? 'tokens-in' : 'tokens-out', shown: !hidden.has(series.key) }))} />
       {shown.length === 0
         ? <ChartEmpty status>{EVERY_SERIES_HIDDEN}</ChartEmpty>
-        : <ReactEChartsCore echarts={echarts} option={option} notMerge opts={{ renderer: 'svg' }} className="local-chart-canvas" onEvents={openOnClick(runs, onOpen)} />}
+        : <EChart option={option} onEvents={openOnClick(runs, onOpen)} />}
       <RunInspector runs={runs} />
       <figcaption>Tokens in and out of each listed run, in the list&apos;s order, as served. A bar opens its run.</figcaption>
     </figure>
@@ -700,7 +695,7 @@ export function RunMetricChart({ runs, onOpen, metric }: {
       {recordedCount < runs.length && <span>{formatDashboardCount(runs.length - recordedCount)} not recorded</span>}
       {allRecordedZero && <strong>{cost ? 'Recorded costs are $0.00' : 'Recorded scores are 0'}</strong>}
     </div>
-    {measured ? <ReactEChartsCore echarts={echarts} option={option} notMerge opts={{ renderer: 'svg' }} className="local-chart-canvas" onEvents={openOnClick(runs, onOpen)} />
+    {measured ? <EChart option={option} onEvents={openOnClick(runs, onOpen)} />
       : <p className="local-dashboard-empty local-chart-unmeasured">No recorded values for these runs</p>}
     <RunInspector runs={runs} describe={valueText} />
     <figcaption>{cost ? 'Session cost when served, otherwise the run’s recorded cost. USD, with no estimates.' : 'The run’s recorded score, without averaging or inferring a pass threshold.'} Current table page and filters; missing values remain gaps.</figcaption>

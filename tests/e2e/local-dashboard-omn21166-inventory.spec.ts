@@ -99,6 +99,8 @@ test('chart marks remain distinguishable against their actual surfaces', async (
   const results: Record<string,unknown>[]=[];
   for (const route of ['overview','runs','usage']) {
     await page.goto('/'+route);
+    // OMN-23330 AC22: the page loads lazily; its placeholder shares the title, so read only once it is no longer busy.
+    await expect(page.locator('main[aria-busy="true"]')).toHaveCount(0);
     await expect(page.locator('.main')).not.toContainText(/Loading(?: runtime exposures| census|…|\.\.\.)/);
     if (route === 'runs') await revealRunFields(page);
     // OMN-21166 AC86 (Lakshman 2026-10-25): Overview has no Recent runs field view and no "Additional runtime metrics"

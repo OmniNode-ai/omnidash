@@ -608,6 +608,8 @@ test('sidebar surfaces and controls follow the theme in expanded and collapsed l
   await serveFixtures(page);
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
+  // OMN-23330 AC22: the page loads lazily; its placeholder shares the title, so read only once it is no longer busy.
+  await expect(page.locator('main[aria-busy="true"]')).toHaveCount(0);
   // OMN-21166 AC86 (Lakshman 2026-10-25): Overview has no Recent runs field view to reveal.
   await page.locator('.local-dashboard-page').evaluate(el => { el.scrollTop = 0; });
   // Compare rendered colors, not equivalent hex/rgb/oklch serializations.

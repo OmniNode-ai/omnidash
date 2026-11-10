@@ -149,7 +149,8 @@ test('AC208 Settings has no Appearance section; the header toggle switches the t
   await page.goto('/settings');
   await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
   // OMN-21970 AC10 added Pricing and routing; still no Appearance section.
-  expect(await page.locator('main section.local-settings-section > h2').allTextContents()).toEqual(['Model providers', 'Access', 'Pricing and routing', 'System status']);
+  // OMN-23330 AC22: the page loads lazily; its placeholder shares the title, so read only once it is no longer busy.
+  await expect(page.locator('main section.local-settings-section > h2')).toHaveText(['Model providers', 'Access', 'Pricing and routing', 'System status']);
   await expect(page.getByRole('heading', { name: 'Appearance' })).toHaveCount(0);
   await expect(page.getByRole('radiogroup', { name: 'Theme' })).toHaveCount(0);
   // Positive control: the header toggle still switches the theme, both ways, and the choice survives a reload.
