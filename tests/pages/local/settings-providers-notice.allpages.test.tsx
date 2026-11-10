@@ -4,7 +4,7 @@
 // no provider row is served, never above a served provider table.
 // Failure modes:
 //   N1  the provider list cannot be read but keys are served, and the page still shows the empty-state notice above them;
-//   N2  the served keys are drawn in a second, different table instead of the provider list every provider uses;
+//   N2  the served keys vanish with the unread list, or lose a column (they stay in their table, Last used included);
 //   N3  the failed read is hidden altogether: its reason and the terminal command must still be said, once, below;
 //   N4  nothing is served and the list cannot be read, and the page shows no notice (the one case it belongs to);
 //   N5  the list reads fine and a notice shows anyway.
@@ -26,25 +26,26 @@ const served = (rows: ModelProviderRow[]): ModelKeysClient => ({ list: vi.fn(asy
 const section = () => screen.getByRole('region', { name: 'Model providers' });
 
 describe('OMN-23330 AC3: the providers notice shows only when no provider row is served', () => {
-  it('N1, N2: an unread list with served keys draws the keys as provider cards, with no notice above them', async () => {
+  it('N1, N2: an unread list with served keys shows the keys first, with no notice above them', async () => {
     render(<ModelKeys client={failing()} keys={KEYS} />);
-    await screen.findByRole('article', { name: 'Gemini' });
+    // The keys show while the list is read too; wait for the failed read, then read the table it leaves.
+    await screen.findByText(REASON);
+    const table = screen.getByRole('table', { name: 'Provider key references' });
     expect(within(section()).queryByText(NOTICE)).toBeNull();
-    expect(within(screen.getByRole('article', { name: 'Gemini' })).getByText('llm.gemini.api_key')).toBeInTheDocument();
-    expect(within(screen.getByRole('article', { name: 'OpenRouter' })).getByText('llm.openrouter.api_key')).toBeInTheDocument();
-    // One provider list, not a second table of key references.
-    expect(within(section()).queryByRole('table', { name: 'Provider key references' })).toBeNull();
+    expect(within(table).getByRole('row', { name: /llm\.gemini\.api_key/ })).toBeInTheDocument();
+    expect(within(table).getByRole('row', { name: /llm\.openrouter\.api_key/ })).toBeInTheDocument();
+    expect(within(table).getAllByRole('columnheader').map(header => header.textContent)).toContain('Last used');
   });
 
   it('N3: the unread list still says why, once, after the providers, with the terminal command', async () => {
     render(<ModelKeys client={failing()} keys={KEYS} />);
-    await screen.findByRole('article', { name: 'Gemini' });
+    await screen.findByText(REASON);
+    const table = screen.getByRole('table', { name: 'Provider key references' });
     const reason = within(section()).getAllByText((_, el) => el?.tagName === 'P' && (el.textContent ?? '').includes(REASON));
     expect(reason).toHaveLength(1);
     expect(reason[0]!.textContent).toContain('onex models list');
-    // After the cards, never above them.
-    const card = screen.getByRole('article', { name: 'OpenRouter' });
-    expect(card.compareDocumentPosition(reason[0]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // After the served keys, never above them.
+    expect(table.compareDocumentPosition(reason[0]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('N4: nothing served and the list unread: the notice is the page\'s one statement', async () => {
@@ -52,6 +53,7 @@ describe('OMN-23330 AC3: the providers notice shows only when no provider row is
     expect(await within(section()).findByText(NOTICE)).toBeInTheDocument();
     expect(section().textContent).toContain(REASON);
     expect(screen.queryByRole('article')).toBeNull();
+    expect(screen.queryByRole('table')).toBeNull();
   });
 
   it('N5 control: a list that reads shows its providers and no notice', async () => {
