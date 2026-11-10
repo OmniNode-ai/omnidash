@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { DestinationIcon } from '@/navigation/destination-icons';
 import { LocalDashboardPage, type LocalDashboardCache } from './LocalDashboardPage';
@@ -41,8 +41,28 @@ function useSectionHash(): SectionHash {
   return current;
 }
 
+/**
+ * OMN-23330 AC12: a section tab is a "#access" link that no element carries as its id, so switching sections kept the
+ * scroll, and when the page was scrolled the new section opened with its top under the stuck tabs. On a switch, a section
+ * whose top sits above the tabs' bottom is brought to just below them; one already in view is left where it is.
+ */
+function useSectionInView(current: SectionHash) {
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) { first.current = false; return; }
+    const menu = document.querySelector('.local-settings-menu');
+    const section = document.getElementById(SETTINGS_SECTIONS.find(entry => entry.hash === current)!.id);
+    if (!menu || !section) return;
+    const tabs = menu.getBoundingClientRect();
+    if (section.getBoundingClientRect().top >= tabs.bottom) return;
+    section.style.scrollMarginTop = `${tabs.height + 12}px`;
+    section.scrollIntoView?.({ block: 'start' });
+  }, [current]);
+}
+
 export function SettingsPage({ navigationCache }: { navigationCache: LocalDashboardCache }) {
   const current = useSectionHash();
+  useSectionInView(current);
   return <main data-destination="local-settings" aria-label="Settings page" className="local-dashboard-page local-dashboard-page--settings">
     <header className="local-dashboard-header">
       <div className="local-dashboard-title">
