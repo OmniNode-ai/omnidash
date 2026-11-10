@@ -46,7 +46,8 @@
 }
 /* OMN-23330 AC32: event-dash.css gives these Event-page elements the same selectors, and on dev it won only because it
    loaded after this sheet; with the pages lazy (AC22) the order varies by chunk, so the Event-page parts are no longer named
-   here: their fact-grid gap (12 px) and badge and outcome colours (status ok and bad) are event-dash's in any order. */
+   here: their fact-grid gap (12 px) and badge and outcome colours are event-dash's in any order (badges take the field pass
+   and fail colours there, operator 2026-11-10). */
 .ev-root .kpi[data-tone][data-field-tone][data-field-unavailable] { --kpi-accent: var(--field-ink); }
 .local-last-run .local-run-more > summary { color: var(--ds-field-task); }
 .local-dashboard-page .workflow-comparison-row[data-field-tone] .workflow-comparison-track > span { background: var(--field-ink); }

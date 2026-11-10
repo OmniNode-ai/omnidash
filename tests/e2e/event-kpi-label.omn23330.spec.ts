@@ -8,8 +8,9 @@
 //   K1  a label's name sits off its icon's centre line by more than 1 px;
 //   K2  the row's gap is not event-dash's 7 px;
 //   K3  the instrument is blind: no label row, or a row without an icon, is measured;
-//   K4  the other rules both stylesheets give one selector win by load order too: a passed or failed badge must wear
-//       event-dash's status colour (--ds-ok, --ds-bad), and a fact grid event-dash's 12 px gap, as on dev.
+//   K4  the other rules both stylesheets give one selector win by load order too: a fact grid must keep event-dash's
+//       12 px gap, as on dev, and a passed or failed badge must wear the field pass or fail colour (--ds-field-pass,
+//       --ds-field-fail; operator, 2026-11-10) whatever the order.
 import { expect, test } from 'playwright/test';
 import { chartRows, serveCharts } from './omn21166-chart-fixtures';
 
@@ -38,7 +39,7 @@ for (const name of ['event-bus', 'agent-workbench']) {
 }
 
 for (const name of ['event-bus', 'delegation-evidence']) {
-  test(`${name}: badges wear the status colours and fact grids keep a 12 px gap, as on dev`, async ({ page }) => {
+  test(`${name}: badges wear the field pass and fail colours and fact grids keep a 12 px gap`, async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await serveCharts(page, chartRows);
     await page.goto(`/${name}`);
@@ -46,7 +47,7 @@ for (const name of ['event-bus', 'delegation-evidence']) {
     const measured = await page.evaluate(() => {
       const probe = document.createElement('span'); document.body.append(probe);
       const token = (name: string) => { probe.style.color = `var(${name})`; return getComputedStyle(probe).color; };
-      const expected = { ok: token('--ds-ok'), bad: token('--ds-bad') };
+      const expected = { ok: token('--ds-field-pass'), bad: token('--ds-field-fail') };
       probe.remove();
       const colours = (selector: string) => [...document.querySelectorAll(selector)].filter(el => (el as HTMLElement).checkVisibility()).map(el => getComputedStyle(el).color);
       return { expected, ok: colours('.ev-root .badge.ok'), fail: colours('.ev-root .badge.fail'),

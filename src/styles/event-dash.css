@@ -105,8 +105,9 @@
 /* badges */
 .ev-root .badge { display: inline-flex; align-items: center; gap: 5px; font-family: var(--ds-font-mono); font-size: 12px; font-weight: 500;
   padding: 2px 7px; border-radius: 5px; border: 1px solid; white-space: nowrap; }
-.ev-root .badge.ok { color: var(--ds-ok); border-color: color-mix(in srgb, var(--ds-ok) 35%, transparent); background: color-mix(in srgb, var(--ds-ok) 8%, transparent); }
-.ev-root .badge.fail { color: var(--ds-bad); border-color: color-mix(in srgb, var(--ds-hue-orange) 35%, transparent); background: color-mix(in srgb, var(--ds-hue-orange) 8%, transparent); }
+/* OMN-23330 (operator, 2026-11-10): passed and failed badges wear the field palette's pass and fail colours. */
+.ev-root .badge.ok { color: var(--ds-field-pass); border-color: color-mix(in srgb, var(--ds-ok) 35%, transparent); background: color-mix(in srgb, var(--ds-ok) 8%, transparent); }
+.ev-root .badge.fail { color: var(--ds-field-fail); border-color: color-mix(in srgb, var(--ds-hue-orange) 35%, transparent); background: color-mix(in srgb, var(--ds-hue-orange) 8%, transparent); }
 .ev-root .badge.warn { color: var(--ds-warn); border-color: color-mix(in srgb, var(--ds-warn) 32%, transparent); background: color-mix(in srgb, var(--ds-warn) 8%, transparent); }
 .ev-root .badge.info { color: var(--ds-info); border-color: color-mix(in srgb, var(--ds-info) 32%, transparent); background: color-mix(in srgb, var(--ds-info) 8%, transparent); }
 .ev-root .badge.muted { color: var(--ds-ink-3); border-color: var(--ds-line); background: var(--ds-surface-2); }

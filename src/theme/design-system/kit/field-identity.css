@@ -6,5 +6,5 @@
 .local-dashboard-page [data-field-tone] > :is(span:not([aria-hidden]), strong) { color: var(--field-ink); }
 .local-dashboard-page [data-field-tone] > .local-dashboard-metric[data-measured="false"] { color: var(--ds-field-unavailable); }
 .local-dashboard-page .local-run-pill:is([data-outcome="passed"], [data-outcome="succeeded"]) { color: var(--ds-field-pass); }
-/* OMN-23330 AC32: Event-page badges take event-dash.css's status colours, as on dev (see src/styles/field-identity.css). */
+/* OMN-23330: Event-page badges are coloured in event-dash.css alone (see src/styles/field-identity.css). */
 .local-dashboard-page .local-run-pill[data-outcome="failed"] { color: var(--ds-field-fail); }
