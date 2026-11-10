@@ -330,7 +330,8 @@ test('Usage shows measured cost beside unmeasured runs, never 0 for unmeasured, 
   // Part 29 AC194: Usage analysis also lists models; these rows are the usage-by-model-day records.
   const records = page.getByRole('table', { name: 'Usage by model and day' });
   const mixed = records.getByRole('row').filter({ hasText: 'Qwen3.8-27B' });
-  for (const value of ['2026-10-02', '162', '52', '$0.25', '1 unmeasured', '2']) {
+  // OMN-23330 AC10: the day reads in the short form ("Oct 2").
+  for (const value of ['Oct 2', '162', '52', '$0.25', '1 unmeasured', '2']) {
     await expect(mixed.getByText(value, { exact: true })).toBeVisible();
   }
   const unmeasured = records.getByRole('row').filter({ hasText: 'glm-4.6' });
@@ -341,8 +342,9 @@ test('Usage shows measured cost beside unmeasured runs, never 0 for unmeasured, 
   // OMN-22168: Savings per day is a tab of "Savings and spend"; its own heading is hidden inside the tab, which names it.
   const savings = await chartTabPanel(page, 'Savings per day');
   const series = savings.getByRole('table', { name: 'Savings per day vs claude-sonnet-5-5' });
-  const day = series.getByRole('row').filter({ hasText: '2026-10-02' });
-  for (const value of ['2026-10-02', '$0.40', '46']) await expect(day.getByText(value, { exact: true })).toBeVisible();
+  // OMN-23330 AC10: the day reads in the short form ("Oct 2"); the pattern keeps it from matching "Oct 20".
+  const day = series.getByRole('row').filter({ hasText: /^Oct 2(?!\d)/ });
+  for (const value of ['Oct 2', '$0.40', '46']) await expect(day.getByText(value, { exact: true })).toBeVisible();
   await expect(series.getByRole('row')).toHaveCount(2);
   await expect(savings.getByText('$1.21')).toHaveCount(0);
   await expect(savings.getByText(/Not available yet/)).toHaveCount(0);
