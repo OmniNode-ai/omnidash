@@ -7,6 +7,8 @@ import { DoughnutChart, type DoughnutSlice } from './DoughnutChart';
 import { useDelegationRunContextOptional } from '@/components/dashboard/delegation-control-plane/DelegationRunContext';
 import { fixed as fmtFixed } from '@/lib/format';
 import { refreshInterval } from '@/lib/refresh';
+// OMN-23330 AC25: this file's fixed inline styles are classes in DelegationMetrics3D.static.css.
+import './DelegationMetrics3D.static.css';
 
 const DOUGHNUT_PANEL_MAX_WIDTH = 240;
 const MODEL_LABEL_MAX_WIDTH = 220;
@@ -73,8 +75,8 @@ export default function DelegationMetrics({ config }: { config: Record<string, u
       emptyHint="Delegation events appear when tasks are delegated to agents"
     >
       {data && !isEmpty && (
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', minHeight: 0 }}>
-          <div style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '0.5rem 0' }}>
+        <div className="delegation-metrics3-d-sd51208">
+          <div className="delegation-metrics3-d-s729c12">
             <div>
               <Text as="div" size="4xl" weight="bold" color="primary">{data.totalDelegations}</Text>
               <Text as="div" size="md" color="primary">Total Delegations</Text>
@@ -116,7 +118,7 @@ export default function DelegationMetrics({ config }: { config: Record<string, u
           >
             <DoughnutChart slices={slices} height={140} />
             {data.byModel.length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', justifyContent: 'center', paddingTop: 4, borderTop: '1px solid var(--ds-line-soft)' }}>
+              <div className="delegation-metrics3-d-sfe13e7">
                 {data.byModel.map((m) => (
                   <Text
                     key={m.model}

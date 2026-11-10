@@ -27,6 +27,8 @@ import { useThemeName } from '@/theme';
 import { useTokenColors } from '@/theme/design-system/useTokenColors';
 import { colorToNumber, tokenNumber } from '@/theme/design-system/color';
 import { fixed as fmtFixed } from '@/lib/format';
+// OMN-23330 AC25: this file's fixed inline styles are classes in DoughnutChart.static.css.
+import './DoughnutChart.static.css';
 
 export interface DoughnutSlice {
   label: string;
@@ -567,14 +569,14 @@ export function DoughnutChart({ slices, height = 200 }: DoughnutChartProps) {
             zIndex: 1000,
           }}
         >
-          <Text as="div" size="sm" family="mono" color="secondary" weight="semibold" style={{ marginBottom: 2 }}>
+          <Text className="doughnut-chart-scdbb71" as="div" size="sm" family="mono" color="secondary" weight="semibold">
             {hoverInfo.label}
           </Text>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+          <div className="doughnut-chart-seafffa">
             <Text as="span" size="sm" family="mono" color="secondary">count</Text>
             <Text as="span" size="sm" family="mono" tabularNums>{hoverInfo.value}</Text>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+          <div className="doughnut-chart-seafffa">
             <Text as="span" size="sm" family="mono" color="secondary">share</Text>
             <Text as="span" size="sm" family="mono" weight="semibold" tabularNums>
               {fmtFixed(hoverInfo.percentage, 1)}%

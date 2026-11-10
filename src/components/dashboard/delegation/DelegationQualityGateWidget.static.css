@@ -1,0 +1,24 @@
+/* OMN-23330 AC25: the fixed inline styles of DelegationQualityGateWidget.tsx, moved into classes with nothing else changed. Each selector
+   repeats its class so it keeps the weight the inline style had over the stylesheet rules around it. */
+.delegation-quality-gate-widget-scdb164.delegation-quality-gate-widget-scdb164.delegation-quality-gate-widget-scdb164 { padding: 6px 0; border-bottom: 1px solid var(--ds-line-soft); }
+.delegation-quality-gate-widget-sd62558.delegation-quality-gate-widget-sd62558.delegation-quality-gate-widget-sd62558 { display: grid; grid-template-columns: 120px 1fr 60px 80px 60px; gap: 8px; align-items: center; }
+.delegation-quality-gate-widget-sf8a772.delegation-quality-gate-widget-sf8a772.delegation-quality-gate-widget-sf8a772 { height: 8px; border-radius: 4px; background: var(--ds-surface-2); overflow: hidden; display: flex; }
+.delegation-quality-gate-widget-sa1385d.delegation-quality-gate-widget-sa1385d.delegation-quality-gate-widget-sa1385d { display: flex; justify-content: flex-end; gap: 4px; align-items: center; }
+.delegation-quality-gate-widget-sda39a3.delegation-quality-gate-widget-sda39a3.delegation-quality-gate-widget-sda39a3 {  }
+.delegation-quality-gate-widget-s13cbe0.delegation-quality-gate-widget-s13cbe0.delegation-quality-gate-widget-s13cbe0 { text-align: right; }
+.delegation-quality-gate-widget-s9c9cee.delegation-quality-gate-widget-s9c9cee.delegation-quality-gate-widget-s9c9cee { margin-top: 12px; }
+.delegation-quality-gate-widget-s4feedf.delegation-quality-gate-widget-s4feedf.delegation-quality-gate-widget-s4feedf { margin-bottom: 6px; }
+.delegation-quality-gate-widget-s021c02.delegation-quality-gate-widget-s021c02.delegation-quality-gate-widget-s021c02 { display: grid; grid-template-columns: 1fr 40px 80px; gap: 8px; padding: 3px 0; align-items: center; }
+.delegation-quality-gate-widget-s6d812f.delegation-quality-gate-widget-s6d812f.delegation-quality-gate-widget-s6d812f { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.delegation-quality-gate-widget-s77bcbd.delegation-quality-gate-widget-s77bcbd.delegation-quality-gate-widget-s77bcbd { height: 6px; border-radius: 3px; background: var(--ds-surface-2); overflow: hidden; }
+.delegation-quality-gate-widget-s3a72b7.delegation-quality-gate-widget-s3a72b7.delegation-quality-gate-widget-s3a72b7 { display: grid; grid-template-columns: 24px 1fr 1fr 1fr; gap: 4px 8px; padding-bottom: 4px; border-bottom: 1px solid var(--ds-line); }
+.delegation-quality-gate-widget-s32de6d.delegation-quality-gate-widget-s32de6d.delegation-quality-gate-widget-s32de6d { display: grid; grid-template-columns: 24px 1fr 1fr 1fr; gap: 4px 8px; padding: 4px 0; border-bottom: 1px solid var(--ds-line-soft); align-items: center; }
+.delegation-quality-gate-widget-s339fc8.delegation-quality-gate-widget-s339fc8.delegation-quality-gate-widget-s339fc8 { margin-top: 6px; background: none; border: none; color: var(--ds-link, var(--ds-ink-2)); cursor: pointer; padding: 2px 0; }
+.delegation-quality-gate-widget-s5a59a6.delegation-quality-gate-widget-s5a59a6.delegation-quality-gate-widget-s5a59a6 { display: grid; grid-template-columns: 1fr 80px 80px 60px; gap: 8px; padding-bottom: 4px; border-bottom: 1px solid var(--ds-line); }
+.delegation-quality-gate-widget-s167f5c.delegation-quality-gate-widget-s167f5c.delegation-quality-gate-widget-s167f5c { display: grid; grid-template-columns: 1fr 80px 80px 60px; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--ds-line-soft); align-items: center; }
+.delegation-quality-gate-widget-s930d87.delegation-quality-gate-widget-s930d87.delegation-quality-gate-widget-s930d87 { display: flex; flex-direction: column; gap: 12px; }
+.delegation-quality-gate-widget-s6e5610.delegation-quality-gate-widget-s6e5610.delegation-quality-gate-widget-s6e5610 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--ds-line); }
+.delegation-quality-gate-widget-s92f19a.delegation-quality-gate-widget-s92f19a.delegation-quality-gate-widget-s92f19a { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: color-mix(in srgb, var(--ds-warn) 12%, transparent); border: 1px solid color-mix(in srgb, var(--ds-warn) 35%, transparent); border-radius: 6px; }
+.delegation-quality-gate-widget-s3088da.delegation-quality-gate-widget-s3088da.delegation-quality-gate-widget-s3088da { display: flex; align-items: center; gap: 8px; }
+.delegation-quality-gate-widget-s546187.delegation-quality-gate-widget-s546187.delegation-quality-gate-widget-s546187 { display: grid; grid-template-columns: 120px 1fr 60px 80px 60px; gap: 8px; padding-bottom: 4px; border-bottom: 1px solid var(--ds-line); }
+.delegation-quality-gate-widget-s0934b3.delegation-quality-gate-widget-s0934b3.delegation-quality-gate-widget-s0934b3 { margin-top: 4px; font-style: italic; }

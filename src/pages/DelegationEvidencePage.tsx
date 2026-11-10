@@ -59,6 +59,8 @@ import { ModelTiersContext, TierLegend, useModelColor, useModelIdentityStyle } f
 import { modelTiersFrom } from '@/lib/dashboard-colors';
 import { Bot, FileJson, FileSpreadsheet, ListChecks, TriangleAlert } from '@/theme/design-system/icons';
 import { fixed as fmtFixed } from '@/lib/format';
+// OMN-23330 AC25: this file's fixed inline styles are classes in DelegationEvidencePage.static.css.
+import './DelegationEvidencePage.static.css';
 
 /**
  * OMN-21166 AC72 pass 1: a rate on Evidence reads to one decimal, as Overview writes the same served rate (91.6%, not
@@ -268,9 +270,9 @@ function QualityGate() {
   return (
     <Panel title="QUALITY GATE" sub="All quality checks served · deterministic checks">
       <div className="ev-qg-stats">
-        <span className="stat-inline"><span className="big c-amber" style={{ color: 'var(--ds-field-pass)' }}>{servedNumber(q.overall_pass_rate) === null ? 'Not served' : passRate(q.overall_pass_rate)}</span><span className="note">pass rate</span></span>
-        <span className="stat-inline" data-field-tone="pass"><span className="big c-green" style={{ color: 'var(--ds-field-pass)' }}>{passed === null ? 'Not served' : formatDashboardCount(passed)}</span><span className="note">pass</span></span>
-        <span className="stat-inline" data-field-tone="fail"><span className="big c-red" style={{ color: 'var(--ds-field-fail)' }}>{failed === null ? 'Not served' : formatDashboardCount(failed)}</span><span className="note">fail</span></span>
+        <span className="stat-inline"><span className="big c-amber delegation-evidence-page-s2424da">{servedNumber(q.overall_pass_rate) === null ? 'Not served' : passRate(q.overall_pass_rate)}</span><span className="note">pass rate</span></span>
+        <span className="stat-inline" data-field-tone="pass"><span className="big c-green delegation-evidence-page-s2424da">{passed === null ? 'Not served' : formatDashboardCount(passed)}</span><span className="note">pass</span></span>
+        <span className="stat-inline" data-field-tone="fail"><span className="big c-red delegation-evidence-page-s5c8ea5">{failed === null ? 'Not served' : formatDashboardCount(failed)}</span><span className="note">fail</span></span>
         <span className="stat-inline"><span className="big">{servedNumber(q.escalation_rate) === null ? 'Not served' : passRate(q.escalation_rate)}</span><span className="note">escalation rate</span></span>
       </div>
       <div className="bar-track ev-qg-bar">

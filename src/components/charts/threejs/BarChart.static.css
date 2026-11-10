@@ -1,0 +1,5 @@
+/* OMN-23330 AC25: the fixed inline styles of BarChart.tsx, moved into classes with nothing else changed. Each selector
+   repeats its class so it keeps the weight the inline style had over the stylesheet rules around it. */
+.bar-chart-s447571.bar-chart-s447571.bar-chart-s447571 { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; gap: 8px; }
+.bar-chart-sbfc11c.bar-chart-sbfc11c.bar-chart-sbfc11c { opacity: 0.6; }
+.bar-chart-s69d66e.bar-chart-s69d66e.bar-chart-s69d66e { width: 100%; }

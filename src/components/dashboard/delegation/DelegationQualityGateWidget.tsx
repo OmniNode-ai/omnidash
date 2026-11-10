@@ -1,4 +1,3 @@
-/* eslint-disable local/no-typography-inline -- OMN-10624 prototype widget */
 import { useMemo, useState } from 'react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
@@ -10,6 +9,8 @@ import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 import type { DelegationDecisionProjectionRow } from '@/components/dashboard/delegation-control-plane/delegation-control-plane.types';
 import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/lib/format';
 import { refreshInterval } from '@/lib/refresh';
+// OMN-23330 AC25: this file's fixed inline styles are classes in DelegationQualityGateWidget.static.css.
+import './DelegationQualityGateWidget.static.css';
 
 // ── Projection types (from delegation_events SQLite table, OMN-10623) ─
 
@@ -98,20 +99,14 @@ function CheckTypeRow({ row, passThreshold }: { row: QualityGateCheckRow; passTh
   const passPct = row.pass_rate * 100;
 
   return (
-    <div style={{ padding: '6px 0', borderBottom: '1px solid var(--ds-line-soft)' }}>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '120px 1fr 60px 80px 60px',
-          gap: 8,
-          alignItems: 'center',
-        }}
+    <div className="delegation-quality-gate-widget-scdb164">
+      <div className="delegation-quality-gate-widget-sd62558"
       >
         <Text as="span" size="sm" weight="semibold" color="primary">
           {CHECK_TYPE_LABEL[row.check_type]}
         </Text>
         {/* Pass/fail stacked bar */}
-        <div style={{ height: 8, borderRadius: 4, background: 'var(--ds-surface-2)', overflow: 'hidden', display: 'flex' }}>
+        <div className="delegation-quality-gate-widget-sf8a772">
           <div
             style={{
               width: `${passPct}%`,
@@ -131,16 +126,16 @@ function CheckTypeRow({ row, passThreshold }: { row: QualityGateCheckRow; passTh
           {fmtFixed((row.pass_rate * 100), 1)}%
         </Text>
         {/* Inline pass / fail fraction: "N pass / M fail" */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 4, alignItems: 'center' }}>
-          <Text as="span" size="xs" family="mono" tabularNums style={{ color: 'var(--ds-ok)' }}>
+        <div className="delegation-quality-gate-widget-sa1385d">
+          <Text color="ok" as="span" size="xs" family="mono" tabularNums>
             {row.passed}✓
           </Text>
           <Text as="span" size="xs" color="tertiary">/</Text>
-          <Text as="span" size="xs" family="mono" tabularNums style={{ color: 'var(--ds-bad, var(--ds-warn))' }}>
+          <Text color="bad" as="span" size="xs" family="mono" tabularNums>
             {row.failed}✗
           </Text>
         </div>
-        <Text as="span" size="xs" family="mono" tabularNums color="tertiary" style={{ textAlign: 'right' }}>
+        <Text className="delegation-quality-gate-widget-s13cbe0" as="span" size="xs" family="mono" tabularNums color="tertiary">
           {row.total}
         </Text>
       </div>
@@ -153,29 +148,22 @@ function CheckTypeRow({ row, passThreshold }: { row: QualityGateCheckRow; passTh
 function FailureCategories({ categories }: { categories: FailureCategoryRow[] }) {
   if (categories.length === 0) return null;
   return (
-    <div style={{ marginTop: 12 }}>
-      <Text as="div" size="xs" color="tertiary" weight="semibold" style={{ marginBottom: 6 }}>
+    <div className="delegation-quality-gate-widget-s9c9cee">
+      <Text className="delegation-quality-gate-widget-s4feedf" as="div" size="xs" color="tertiary" weight="semibold">
         Escalation reasons
       </Text>
       {categories.map((c) => (
-        <div
+        <div className="delegation-quality-gate-widget-s021c02"
           key={c.category}
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 40px 80px',
-            gap: 8,
-            padding: '3px 0',
-            alignItems: 'center',
-          }}
         >
-          <Text as="span" size="sm" family="mono" color="primary" title={c.category} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <Text className="delegation-quality-gate-widget-s6d812f" as="span" size="sm" family="mono" color="primary" title={c.category}>
             {humanizeCategory(c.category)}
           </Text>
-          <Text as="span" size="sm" family="mono" tabularNums style={{ textAlign: 'right' }}>
+          <Text className="delegation-quality-gate-widget-s13cbe0" as="span" size="sm" family="mono" tabularNums>
             {c.count}
           </Text>
           {/* Proportion bar */}
-          <div style={{ height: 6, borderRadius: 3, background: 'var(--ds-surface-2)', overflow: 'hidden' }}>
+          <div className="delegation-quality-gate-widget-s77bcbd">
             <div
               style={{
                 height: '100%',
@@ -214,18 +202,11 @@ function RecentChecks({ rows }: { rows: DelegationDecisionRow[] }) {
   const hasMore = rows.length > RECENT_CHECKS_PAGE_SIZE;
 
   return (
-    <div style={{ marginTop: 12 }}>
-      <Text as="div" size="xs" color="tertiary" weight="semibold" style={{ marginBottom: 6 }}>
+    <div className="delegation-quality-gate-widget-s9c9cee">
+      <Text className="delegation-quality-gate-widget-s4feedf" as="div" size="xs" color="tertiary" weight="semibold">
         Recent delegations ({rows.length})
       </Text>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '24px 1fr 1fr 1fr',
-          gap: '4px 8px',
-          paddingBottom: 4,
-          borderBottom: '1px solid var(--ds-line)',
-        }}
+      <div className="delegation-quality-gate-widget-s3a72b7"
       >
         <Text as="span" size="xs" color="tertiary">{' '}</Text>
         <Text as="span" size="xs" color="tertiary">Task</Text>
@@ -237,16 +218,8 @@ function RecentChecks({ rows }: { rows: DelegationDecisionRow[] }) {
         const model = row.model_name || row.delegated_to || 'local';
         const detail = row.quality_gate_detail || '—';
         return (
-          <div
+          <div className="delegation-quality-gate-widget-s32de6d"
             key={`${row.id}-${i}`}
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '24px 1fr 1fr 1fr',
-              gap: '4px 8px',
-              padding: '4px 0',
-              borderBottom: '1px solid var(--ds-line-soft)',
-              alignItems: 'center',
-            }}
           >
             <Text
               as="span"
@@ -255,30 +228,27 @@ function RecentChecks({ rows }: { rows: DelegationDecisionRow[] }) {
             >
               {passed ? '✓' : '✗'}
             </Text>
-            <Text
+            <Text className="delegation-quality-gate-widget-s6d812f"
               as="span"
               size="sm"
               family="mono"
               color="primary"
-              style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
             >
               {row.task_type || 'unknown'}
             </Text>
-            <Text
+            <Text className="delegation-quality-gate-widget-s6d812f"
               as="span"
               size="sm"
               family="mono"
               color="secondary"
-              style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
             >
               {model}
             </Text>
-            <Text
+            <Text className="delegation-quality-gate-widget-s6d812f"
               as="span"
               size="xs"
               family="mono"
               color="tertiary"
-              style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
             >
               {detail}
             </Text>
@@ -286,17 +256,9 @@ function RecentChecks({ rows }: { rows: DelegationDecisionRow[] }) {
         );
       })}
       {hasMore && (
-        <button
+        <button className="delegation-quality-gate-widget-s339fc8"
           type="button"
           onClick={() => setShowAll((v) => !v)}
-          style={{
-            marginTop: 6,
-            background: 'none',
-            border: 'none',
-            color: 'var(--ds-link, var(--ds-ink-2))',
-            cursor: 'pointer',
-            padding: '2px 0',
-          }}
         >
           <Text as="span" size="xs" color="secondary">
             {showAll ? 'Show less' : `Show all ${rows.length} delegations`}
@@ -314,18 +276,11 @@ function TokensToComplianceByModel({ rows }: { rows: TokensToComplianceByModelRo
   // Sort by avg_tokens ascending (most efficient model first).
   const sorted = [...rows].sort((a, b) => a.avg_tokens - b.avg_tokens);
   return (
-    <div style={{ marginTop: 12 }}>
-      <Text as="div" size="xs" color="tertiary" weight="semibold" style={{ marginBottom: 6 }}>
+    <div className="delegation-quality-gate-widget-s9c9cee">
+      <Text className="delegation-quality-gate-widget-s4feedf" as="div" size="xs" color="tertiary" weight="semibold">
         Tokens-to-compliance by model
       </Text>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 80px 80px 60px',
-          gap: 8,
-          paddingBottom: 4,
-          borderBottom: '1px solid var(--ds-line)',
-        }}
+      <div className="delegation-quality-gate-widget-s5a59a6"
       >
         {(['Model', 'Avg Tokens', 'Avg Attempts', 'Samples'] as const).map((h, i) => (
           <Text
@@ -340,33 +295,24 @@ function TokensToComplianceByModel({ rows }: { rows: TokensToComplianceByModelRo
         ))}
       </div>
       {sorted.map((row) => (
-        <div
+        <div className="delegation-quality-gate-widget-s167f5c"
           key={row.model_name}
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 80px 80px 60px',
-            gap: 8,
-            padding: '4px 0',
-            borderBottom: '1px solid var(--ds-line-soft)',
-            alignItems: 'center',
-          }}
         >
-          <Text
+          <Text className="delegation-quality-gate-widget-s6d812f"
             as="span"
             size="sm"
             family="mono"
             color="primary"
-            style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
           >
             {row.model_name}
           </Text>
-          <Text as="span" size="sm" family="mono" tabularNums style={{ textAlign: 'right' }}>
+          <Text className="delegation-quality-gate-widget-s13cbe0" as="span" size="sm" family="mono" tabularNums>
             {fmtLocaleString(Math.round(row.avg_tokens))}
           </Text>
-          <Text as="span" size="sm" family="mono" tabularNums style={{ textAlign: 'right' }}>
+          <Text className="delegation-quality-gate-widget-s13cbe0" as="span" size="sm" family="mono" tabularNums>
             {fmtFixed(row.avg_attempts, 2)}
           </Text>
-          <Text as="span" size="xs" family="mono" tabularNums color="tertiary" style={{ textAlign: 'right' }}>
+          <Text className="delegation-quality-gate-widget-s13cbe0" as="span" size="xs" family="mono" tabularNums color="tertiary">
             {row.sample_count}
           </Text>
         </div>
@@ -450,17 +396,10 @@ export default function DelegationQualityGateWidget(props: { config: DelegationQ
       fileMode={!isLiveDataSource(dataSourceMode)}
     >
       {projection && !isEmpty && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="delegation-quality-gate-widget-s930d87">
           {/* Tokens-to-compliance KPIs (OMN-10795) — only shown when projection carries the fields */}
           {hasComplianceMetrics && (
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(2, 1fr)',
-                gap: 12,
-                paddingBottom: 12,
-                borderBottom: '1px solid var(--ds-line)',
-              }}
+            <div className="delegation-quality-gate-widget-s6e5610"
             >
               <KPI
                 label="Avg tokens to compliance"
@@ -490,26 +429,17 @@ export default function DelegationQualityGateWidget(props: { config: DelegationQ
 
           {/* Escalation banner — only shown when escalation_count > 0 */}
           {projection.escalation_count > 0 && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '8px 12px',
-                background: 'color-mix(in srgb, var(--ds-warn) 12%, transparent)',
-                border: '1px solid color-mix(in srgb, var(--ds-warn) 35%, transparent)',
-                borderRadius: 6,
-              }}
+            <div className="delegation-quality-gate-widget-s92f19a"
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Text as="span" size="sm" weight="semibold" style={{ color: 'var(--ds-warn)' }}>
+              <div className="delegation-quality-gate-widget-s3088da">
+                <Text color="warn" as="span" size="sm" weight="semibold">
                   ⚠ Escalations
                 </Text>
                 <Text as="span" size="xs" color="secondary">
                   {projection.escalation_count} delegation{projection.escalation_count !== 1 ? 's' : ''} required human escalation
                 </Text>
               </div>
-              <Text as="span" size="sm" family="mono" tabularNums weight="semibold" style={{ color: 'var(--ds-warn)' }}>
+              <Text color="warn" as="span" size="sm" family="mono" tabularNums weight="semibold">
                 {fmtFixed((projection.escalation_rate * 100), 1)}% rate
               </Text>
             </div>
@@ -517,14 +447,7 @@ export default function DelegationQualityGateWidget(props: { config: DelegationQ
 
           {/* Per-check-type breakdown */}
           <div>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '120px 1fr 60px 80px 60px',
-                gap: 8,
-                paddingBottom: 4,
-                borderBottom: '1px solid var(--ds-line)',
-              }}
+            <div className="delegation-quality-gate-widget-s546187"
             >
               {(['Type', 'Local / Escalated', 'Rate', 'Local / Escalated', 'Total'] as const).map((h, i) => (
                 <Text
@@ -559,7 +482,7 @@ export default function DelegationQualityGateWidget(props: { config: DelegationQ
           )}
 
           {!projection.provisioned && (
-            <Text as="div" size="xs" color="tertiary" style={{ marginTop: 4, fontStyle: 'italic' }}>
+            <Text className="delegation-quality-gate-widget-s0934b3" as="div" size="xs" color="tertiary">
               Projection upstream-blocked — displaying contract-valid fixtures (OMN-10623).
             </Text>
           )}

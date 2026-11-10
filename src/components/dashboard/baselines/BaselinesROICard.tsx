@@ -4,6 +4,8 @@ import { Text } from '@/components/ui/typography';
 import { TOPICS } from '@shared/types/topics';
 import { localeString as fmtLocaleString } from '@/lib/format';
 import { refreshInterval } from '@/lib/refresh';
+// OMN-23330 AC25: this file's fixed inline styles are classes in BaselinesROICard.static.css.
+import './BaselinesROICard.static.css';
 
 export interface BaselinesSummary {
   snapshotId: string;
@@ -19,7 +21,7 @@ function DeltaMetric({ label, value, unit }: { label: string; value: number; uni
   const improved = value <= 0;
   const formatted = fmtLocaleString(value);
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
+    <div className="baselines-roicard-s51a6fe">
       <Text as="div" size="3xl" weight="bold" color={improved ? 'ok' : 'warn'}>
         {value > 0 ? '+' : ''}{formatted}{unit ?? ''}
       </Text>
@@ -49,17 +51,17 @@ export default function BaselinesROICard({ config: _config }: { config: Record<s
       emptyHint="Baselines appear after snapshot comparisons are recorded"
     >
       {data && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+        <div className="baselines-roicard-s25d6a4">
+          <div className="baselines-roicard-s64891b">
             <DeltaMetric label="Token Delta" value={data.tokenDelta} />
             <DeltaMetric label="Time Delta" value={data.timeDeltaMs} unit="ms" />
             <DeltaMetric label="Retry Delta" value={data.retryDelta} />
           </div>
-          <div style={{ borderTop: '1px solid var(--ds-line)', paddingTop: '0.75rem' }}>
-            <div style={{ marginBottom: '0.5rem' }}>
+          <div className="baselines-roicard-s2c9932">
+            <div className="baselines-roicard-s1c09f0">
               <Text as="div" size="md" color="secondary">Recommendations</Text>
             </div>
-            <div style={{ display: 'flex', gap: '1rem' }}>
+            <div className="baselines-roicard-s366990">
               {Object.entries(data.recommendations).map(([k, v]) => (
                 <div key={k}>
                   <Text as="div" size="2xl" weight="bold">{v}</Text>

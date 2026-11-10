@@ -3,6 +3,8 @@ import { Text, Heading } from '@/components/ui/typography';
 import { fetchFeatureFlags } from '@/services/feature-flag-service';
 import '@/styles/feature-flags.css';
 import { localeTime as fmtLocaleTime } from '@/lib/format';
+// OMN-23330 AC25: this file's fixed inline styles are classes in FeatureFlagDashboard.static.css.
+import './FeatureFlagDashboard.static.css';
 
 export interface FeatureFlag {
   name: string;
@@ -74,17 +76,11 @@ function StateBadge({ state }: { state: 'on' | 'off' | 'migration' }) {
 
 function ServiceTag({ service }: { service: 'omniclaude' | 'omnidash' }) {
   return (
-    <Text
+    <Text className="feature-flag-dashboard-s73678e"
       as="span"
       size="xs"
       color="tertiary"
       family="mono"
-      style={{
-        padding: '2px 6px',
-        borderRadius: 4,
-        background: 'var(--ds-surface-2, var(--ds-surface))',
-        whiteSpace: 'nowrap',
-      }}
     >
       {service}
     </Text>
@@ -100,7 +96,7 @@ function FlagTableRow({ flag }: { flag: FeatureFlag }) {
       <td className="flag-td">
         {flag.value !== null
           ? <Text size="sm" color="tertiary" family="mono">{flag.value}</Text>
-          : <Text size="sm" color="tertiary" family="mono"><em style={{ opacity: 0.5 }}>unset</em></Text>}
+          : <Text size="sm" color="tertiary" family="mono"><em className="feature-flag-dashboard-sdb9ab8">unset</em></Text>}
       </td>
       <td className="flag-td"><ServiceTag service={flag.service} /></td>
       <td className="flag-td"><Text size="sm" color="secondary">{flag.description}</Text></td>
@@ -144,9 +140,9 @@ function FlagTable({ flags, title }: { flags: FeatureFlag[]; title: string }) {
 
       {/* ≥768px: original table */}
       <div className="flag-desktop-table">
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <table className="feature-flag-dashboard-s0bc69d">
           <thead>
-            <tr style={{ borderBottom: '1px solid var(--ds-line, var(--ds-line-soft))' }}>
+            <tr className="feature-flag-dashboard-s99d8eb">
               {['Flag', 'State', 'Value', 'Service', 'Description'].map((h) => (
                 <th key={h} className="flag-th">
                   <Text size="xs" color="tertiary" weight="semibold" transform="uppercase">{h}</Text>
@@ -226,7 +222,7 @@ export function FeatureFlagDashboard() {
       <div className="dash-header">
         <div className="dash-title-wrap">
           <div className="dash-title">Feature Flags</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+          <div className="feature-flag-dashboard-s636ba8">
             <Text size="sm" color="secondary">
               {loading
                 ? 'Loading…'
@@ -241,7 +237,7 @@ export function FeatureFlagDashboard() {
             )}
           </div>
         </div>
-        <div className="header-actions" style={{ gap: 12 }}>
+        <div className="header-actions feature-flag-dashboard-sb6e62f">
           <Text size="sm" color="ok">{totalOn} active</Text>
           {totalMigration > 0 && (
             <Text size="sm" color="warn">{totalMigration} migration</Text>
@@ -249,7 +245,7 @@ export function FeatureFlagDashboard() {
         </div>
       </div>
 
-      <div className="dash-body" style={{ overflowY: 'auto' }}>
+      <div className="dash-body feature-flag-dashboard-sdb6e0e">
         <FlagTable
           flags={omnidashFlags}
           title="omnidash"
@@ -263,14 +259,7 @@ export function FeatureFlagDashboard() {
         )}
 
         {omniclaudeFlags.length === 0 && !loading && (
-          <div
-            style={{
-              background: 'var(--ds-surface, var(--ds-page))',
-              border: '1px solid var(--ds-line, var(--ds-line-soft))',
-              borderRadius: 8,
-              padding: '24px',
-              textAlign: 'center',
-            }}
+          <div className="feature-flag-dashboard-sa09116"
           >
             <Text color="tertiary" size="sm">
               omniclaude flags unavailable · flag server not connected.

@@ -9,6 +9,8 @@ import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 import { useTokenColors } from '@/theme/design-system/useTokenColors';
 import { fixed as fmtFixed } from '@/lib/format';
 import { refreshInterval } from '@/lib/refresh';
+// OMN-23330 AC25: this file's fixed inline styles are classes in DelegationModelRoutingWidget.static.css.
+import './DelegationModelRoutingWidget.static.css';
 
 // ── Projection types (from delegation_events SQLite table, OMN-10623) ─
 
@@ -78,14 +80,7 @@ function fmtPct(v: number): string {
 
 function FrequencyBar({ pct, color }: { pct: number; color: string }) {
   return (
-    <div
-      style={{
-        height: 6,
-        borderRadius: 3,
-        background: 'var(--ds-surface-2)',
-        overflow: 'hidden',
-        flex: '0 0 80px',
-      }}
+    <div className="delegation-model-routing-widget-s841bd1"
     >
       <div
         style={{
@@ -107,37 +102,23 @@ function TaskBreakdown({ rows, modelName, colors }: { rows: ModelRoutingRow[]; m
   if (modelRows.length === 0) return null;
   const sorted = [...modelRows].sort((a, b) => b.count - a.count);
   return (
-    <div
-      style={{
-        marginTop: 4,
-        padding: '8px 10px',
-        background: 'var(--ds-surface-2)',
-        border: '1px solid var(--ds-line-soft)',
-        borderRadius: 6,
-      }}
+    <div className="delegation-model-routing-widget-s58c811"
     >
-      <Text as="div" size="xs" color="secondary" weight="semibold" style={{ marginBottom: 6 }}>
+      <Text className="delegation-model-routing-widget-s4feedf" as="div" size="xs" color="secondary" weight="semibold">
         {modelName} — task type breakdown
       </Text>
       {sorted.map((r, i) => (
-        <div
+        <div className="delegation-model-routing-widget-s9aa2f8"
           key={r.task_type}
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 40px 80px 40px',
-            gap: 8,
-            padding: '3px 0',
-            alignItems: 'center',
-          }}
         >
           <Text as="span" size="xs" family="mono" color="primary">
             {r.task_type}
           </Text>
-          <Text as="span" size="xs" family="mono" tabularNums style={{ textAlign: 'right' }}>
+          <Text className="delegation-model-routing-widget-s13cbe0" as="span" size="xs" family="mono" tabularNums>
             {r.count}
           </Text>
           <FrequencyBar pct={r.pct_of_model * 100} color={colors[i % colors.length]} />
-          <Text as="span" size="xs" family="mono" tabularNums color="secondary" style={{ textAlign: 'right' }}>
+          <Text className="delegation-model-routing-widget-s13cbe0" as="span" size="xs" family="mono" tabularNums color="secondary">
             {fmtFixed((r.pct_of_model * 100), 0)}%
           </Text>
         </div>
@@ -159,8 +140,8 @@ function ConfidencePip({ confidence }: { confidence: number | null }) {
   const pct = Math.round(confidence * 100);
   const color = confidence >= 0.75 ? 'var(--ds-ok)' : confidence >= 0.5 ? 'var(--ds-warn)' : 'var(--ds-bad, var(--ds-warn))';
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-      <div style={{ width: 32, height: 4, borderRadius: 2, background: 'var(--ds-surface-2)', overflow: 'hidden' }}>
+    <div className="delegation-model-routing-widget-sdf7e07">
+      <div className="delegation-model-routing-widget-s9ab908">
         <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 2 }} />
       </div>
       <Text as="span" size="xs" family="mono" tabularNums style={{ color }}>{pct}%</Text>
@@ -173,18 +154,11 @@ function DecisionTracePanel({ traces }: { traces: RoutingDecisionTrace[] }) {
   const visible = expanded ? traces : traces.slice(0, 5);
 
   return (
-    <div style={{ marginTop: 12, borderTop: '1px solid var(--ds-line)', paddingTop: 10 }}>
-      <Text as="div" size="xs" color="secondary" weight="semibold" style={{ marginBottom: 8 }}>
+    <div className="delegation-model-routing-widget-s17ee95">
+      <Text className="delegation-model-routing-widget-s7f3cba" as="div" size="xs" color="secondary" weight="semibold">
         Decision Trace — per delegation
       </Text>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '80px 1fr 1fr 72px',
-          gap: 8,
-          paddingBottom: 4,
-          borderBottom: '1px solid var(--ds-line-soft)',
-        }}
+      <div className="delegation-model-routing-widget-s90d64c"
       >
         {(['Task', 'Rule fired', 'Confidence', 'Model'] as const).map((h) => (
           <Text key={h} as="span" size="xs" color="tertiary">
@@ -196,16 +170,8 @@ function DecisionTracePanel({ traces }: { traces: RoutingDecisionTrace[] }) {
         const ruleInfo = t.routing_rule ? (RULE_LABELS[t.routing_rule] ?? { label: t.routing_rule, color: 'var(--ds-brand)' }) : null;
         const shortModel = t.model_name.split('/').pop() ?? t.model_name;
         return (
-          <div
+          <div className="delegation-model-routing-widget-s0f43aa"
             key={t.id}
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '80px 1fr 1fr 72px',
-              gap: 8,
-              padding: '4px 0',
-              borderBottom: '1px solid var(--ds-line-soft)',
-              alignItems: 'center',
-            }}
           >
             <Text as="span" size="xs" family="mono" color="primary">{t.task_type}</Text>
             {ruleInfo ? (
@@ -214,23 +180,16 @@ function DecisionTracePanel({ traces }: { traces: RoutingDecisionTrace[] }) {
               <Text as="span" size="xs" color="tertiary">—</Text>
             )}
             <ConfidencePip confidence={t.routing_confidence} />
-            <Text as="span" size="xs" family="mono" color="secondary" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <Text className="delegation-model-routing-widget-s6d812f" as="span" size="xs" family="mono" color="secondary">
               {shortModel}
             </Text>
           </div>
         );
       })}
       {traces.length > 5 && (
-        <button
+        <button className="delegation-model-routing-widget-s81e9a6"
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          style={{
-            marginTop: 6,
-            background: 'none',
-            border: 'none',
-            padding: 0,
-            cursor: 'pointer',
-          }}
         >
           <Text as="span" size="xs" color="secondary">
             {expanded ? 'Show less' : `Show all ${traces.length} delegations`}
@@ -288,24 +247,16 @@ export default function DelegationModelRoutingWidget(props: { config: Delegation
       fileMode={!isLiveDataSource(dataSourceMode)}
     >
       {projection && !isEmpty && (
-        <div
-          style={{ display: 'flex', flexDirection: 'column', gap: 0 }}
+        <div className="delegation-model-routing-widget-s30160b"
           onPointerLeave={() => setHoveredModel(null)}
         >
-          <div style={{ marginBottom: 8 }}>
+          <div className="delegation-model-routing-widget-s7f3cba">
             <Text as="span" size="sm" color="secondary">
               {projection.total_delegations} total delegations across {sorted.length} models
             </Text>
           </div>
 
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 44px 1fr 72px 60px 80px 36px',
-              gap: 8,
-              paddingBottom: 4,
-              borderBottom: '1px solid var(--ds-line)',
-            }}
+          <div className="delegation-model-routing-widget-s0898f4"
           >
             {(['Model', 'N', 'Task Types', 'Latency', 'Local Rate', 'Frequency', '%'] as const).map((h) => (
               <Text key={h} as="span" size="xs" color="tertiary" style={{ textAlign: h === 'Model' || h === 'Task Types' ? 'left' : 'right' }}>
@@ -340,7 +291,7 @@ export default function DelegationModelRoutingWidget(props: { config: Delegation
                     cursor: 'pointer',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                  <div className="delegation-model-routing-widget-s5f3741">
                     <span
                       aria-hidden
                       style={{
@@ -352,33 +303,22 @@ export default function DelegationModelRoutingWidget(props: { config: Delegation
                         flex: '0 0 auto',
                       }}
                     />
-                    <Text as="span" size="sm" family="mono" color="primary" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <Text className="delegation-model-routing-widget-s6d812f" as="span" size="sm" family="mono" color="primary">
                       {s.model_name}
                     </Text>
                   </div>
-                  <Text as="span" size="sm" family="mono" tabularNums style={{ textAlign: 'right' }}>
+                  <Text className="delegation-model-routing-widget-s13cbe0" as="span" size="sm" family="mono" tabularNums>
                     {s.total_count}
                   </Text>
                   {/* Task types: comma-separated chips */}
-                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', overflow: 'hidden' }}>
+                  <div className="delegation-model-routing-widget-s4e75c6">
                     {taskTypeList.slice(0, 3).map((tt) => (
-                      <Text
+                      <Text className="delegation-model-routing-widget-sfb7313"
                         key={tt}
                         as="span"
                         size="xs"
                         family="mono"
                         color="secondary"
-                        style={{
-                          display: 'inline-block',
-                          padding: '1px 5px',
-                          borderRadius: 3,
-                          background: 'var(--ds-surface-2)',
-                          border: '1px solid var(--ds-line-soft)',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          maxWidth: 90,
-                        }}
                       >
                         {tt}
                       </Text>
@@ -387,15 +327,14 @@ export default function DelegationModelRoutingWidget(props: { config: Delegation
                       <Text as="span" size="xs" color="tertiary">+{taskTypeList.length - 3}</Text>
                     )}
                   </div>
-                  <Text as="span" size="sm" family="mono" tabularNums color="secondary" style={{ textAlign: 'right' }}>
+                  <Text className="delegation-model-routing-widget-s13cbe0" as="span" size="sm" family="mono" tabularNums color="secondary">
                     {s.avg_latency_ms != null ? fmtMs(s.avg_latency_ms) : '—'}
                   </Text>
-                  <Text
+                  <Text className="delegation-model-routing-widget-s13cbe0"
                     as="span"
                     size="sm"
                     family="mono"
                     tabularNums
-                    style={{ textAlign: 'right' }}
                     color={
                       s.qg_pass_rate == null
                         ? 'tertiary'
@@ -409,7 +348,7 @@ export default function DelegationModelRoutingWidget(props: { config: Delegation
                     {s.qg_pass_rate != null ? fmtPct(s.qg_pass_rate) : '—'}
                   </Text>
                   <FrequencyBar pct={s.pct_of_total * 100} color={colors.chart[i % colors.chart.length]} />
-                  <Text as="span" size="sm" family="mono" tabularNums color="secondary" style={{ textAlign: 'right' }}>
+                  <Text className="delegation-model-routing-widget-s13cbe0" as="span" size="sm" family="mono" tabularNums color="secondary">
                     {fmtFixed((s.pct_of_total * 100), 0)}%
                   </Text>
                 </div>
@@ -429,7 +368,7 @@ export default function DelegationModelRoutingWidget(props: { config: Delegation
           )}
 
           {!projection.provisioned && (
-            <Text as="em" size="xs" color="tertiary" style={{ marginTop: 8, display: 'block' }}>
+            <Text className="delegation-model-routing-widget-s9b2b6d" as="em" size="xs" color="tertiary">
               Projection upstream-blocked — displaying contract-valid fixtures (OMN-10623).
             </Text>
           )}

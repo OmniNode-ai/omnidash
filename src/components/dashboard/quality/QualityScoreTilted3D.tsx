@@ -24,6 +24,8 @@ import { Text, Heading } from '@/components/ui/typography';
 import { tokenNumber } from '@/theme/design-system/color';
 import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/lib/format';
 import { refreshInterval } from '@/lib/refresh';
+// OMN-23330 AC25: this file's fixed inline styles are classes in QualityScoreTilted3D.static.css.
+import './QualityScoreTilted3D.static.css';
 
 export interface QualityDistributionBucket {
   bucket: string;
@@ -456,13 +458,7 @@ function ThreeBarChart({
       {/* Threshold label — small annotation anchored to top-right of
           the canvas so the user knows what the translucent wall means
           without hovering anything. */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 6,
-          right: 8,
-          pointerEvents: 'none',
-        }}
+      <div className="quality-score-tilted3-d-s389e80"
       >
         <Text
           size="xs"
@@ -492,11 +488,10 @@ function ThreeBarChart({
             whiteSpace: 'nowrap',
           }}
         >
-          <Text
+          <Text color="brand"
             size="xs"
             family="mono"
             transform="uppercase"
-            style={{ color: 'var(--ds-brand-ink, var(--ds-ink))' }}
           >
             Mean {fmtFixed(meanScore, 2)}
           </Text>
@@ -519,16 +514,16 @@ function ThreeBarChart({
             zIndex: 1000,
           }}
         >
-          <Text as="div" size="sm" family="mono" color="secondary" style={{ marginBottom: 2 }}>
+          <Text className="quality-score-tilted3-d-scdbb71" as="div" size="sm" family="mono" color="secondary">
             Score {hoverInfo.bucket.bucket}
           </Text>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+          <div className="quality-score-tilted3-d-seafffa">
             <Text size="sm" family="mono" color="secondary">count</Text>
             <Text size="sm" family="mono" weight="semibold" tabularNums>
               {fmtLocaleString(hoverInfo.bucket.count)}
             </Text>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+          <div className="quality-score-tilted3-d-seafffa">
             <Text size="sm" family="mono" color="secondary">share</Text>
             <Text size="sm" family="mono" tabularNums>
               {fmtFixed(hoverInfo.pct, 1)}%
@@ -591,24 +586,11 @@ export default function QualityScorePanel({ config }: { config: QualityScoreConf
       emptyHint="Quality scores appear after pattern evaluations are recorded"
     >
       {data && !isEmpty && stats && (
-        <div
-          style={{
-            display: 'flex',
-            gap: 16,
-            alignItems: 'stretch',
-            width: '100%',
-          }}
+        <div className="quality-score-tilted3-d-s20c727"
         >
           {/* Stats pane. Pass rate as the headline — it's the
               actionable signal; mean and count are supporting. */}
-          <div
-            style={{
-              flex: '0 0 130px',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              padding: '6px 2px',
-            }}
+          <div className="quality-score-tilted3-d-s46d0d8"
           >
             <Heading
               level={1}
@@ -622,31 +604,24 @@ export default function QualityScorePanel({ config }: { config: QualityScoreConf
                 {Math.round(stats.passRate * 100)}%
               </Text>
             </Heading>
-            <Text
+            <Text className="quality-score-tilted3-d-saeb83f"
               as="div"
               size="xs"
               color="tertiary"
               family="mono"
               transform="uppercase"
-              style={{ marginTop: 2 }}
             >
               Pass Rate
             </Text>
 
-            <div
-              style={{
-                height: 1,
-                background: 'var(--ds-line-soft)',
-                margin: '12px 0',
-              }}
+            <div className="quality-score-tilted3-d-sa91624"
             />
 
-            <Text
+            <Text className="quality-score-tilted3-d-s3eaa7b"
               as="div"
               size="lg"
               color="secondary"
               family="mono"
-              style={{ marginBottom: 4 }}
             >
               Mean{' '}
               <Text
@@ -666,7 +641,7 @@ export default function QualityScorePanel({ config }: { config: QualityScoreConf
           </div>
 
           {/* Chart pane. */}
-          <div style={{ flex: '1 1 auto', minWidth: 0 }}>
+          <div className="quality-score-tilted3-d-s64cee2">
             <ThreeBarChart
               distribution={data.distribution}
               meanScore={data.meanScore}

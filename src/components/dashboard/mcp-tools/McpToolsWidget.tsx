@@ -6,6 +6,8 @@ import { TOPICS } from '@shared/types/topics';
 import { useTimezone } from '@/hooks/useTimezone';
 import { localeTime as fmtLocaleTime } from '@/lib/format';
 import { refreshInterval } from '@/lib/refresh';
+// OMN-23330 AC25: this file's fixed inline styles are classes in McpToolsWidget.static.css.
+import './McpToolsWidget.static.css';
 
 export interface McpToolRow {
   name: string;
@@ -40,13 +42,13 @@ export default function McpToolsWidget({ config: _config }: { config: Record<str
       emptyHint="Tools appear after a successful generation + registration pipeline run"
     >
       {data && data.length > 0 && (
-        <div style={{ border: '1px solid var(--ds-line-soft)', borderRadius: 6, overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+        <div className="mcp-tools-widget-s5375b8">
+          <table className="mcp-tools-widget-sfdb3d2">
             <colgroup>
-              <col style={{ width: '30%' }} />
+              <col className="mcp-tools-widget-safc576" />
               <col />
-              <col style={{ width: 100 }} />
-              <col style={{ width: 60 }} />
+              <col className="mcp-tools-widget-s807e51" />
+              <col className="mcp-tools-widget-sd4260d" />
             </colgroup>
             <thead>
               <tr>
@@ -61,7 +63,7 @@ export default function McpToolsWidget({ config: _config }: { config: Record<str
             </thead>
             <tbody>
               {data.map((tool) => (
-                <tr key={tool.name} style={{ borderTop: '1px solid var(--ds-line-soft)' }}>
+                <tr className="mcp-tools-widget-s2102bd" key={tool.name}>
                   <td style={tdStyle}>
                     <Text size="lg" weight="semibold" color="primary">{tool.name}</Text>
                   </td>
@@ -79,13 +81,7 @@ export default function McpToolsWidget({ config: _config }: { config: Record<str
                         size="xs"
                         weight="bold"
                         color="ok"
-                        className="text-tracked"
-                        style={{
-                          display: 'inline-block',
-                          padding: '2px 8px',
-                          borderRadius: 4,
-                          border: '1px solid var(--ds-status-ok)',
-                        }}
+                        className="text-tracked mcp-tools-widget-s106067"
                       >
                         NEW
                       </Text>

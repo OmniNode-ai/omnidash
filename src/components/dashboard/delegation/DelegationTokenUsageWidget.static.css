@@ -1,0 +1,13 @@
+/* OMN-23330 AC25: the fixed inline styles of DelegationTokenUsageWidget.tsx, moved into classes with nothing else changed. Each selector
+   repeats its class so it keeps the weight the inline style had over the stylesheet rules around it. */
+.delegation-token-usage-widget-scdb164.delegation-token-usage-widget-scdb164.delegation-token-usage-widget-scdb164 { padding: 6px 0; border-bottom: 1px solid var(--ds-line-soft); }
+.delegation-token-usage-widget-s5f3741.delegation-token-usage-widget-s5f3741.delegation-token-usage-widget-s5f3741 { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.delegation-token-usage-widget-s6d812f.delegation-token-usage-widget-s6d812f.delegation-token-usage-widget-s6d812f { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.delegation-token-usage-widget-s13cbe0.delegation-token-usage-widget-s13cbe0.delegation-token-usage-widget-s13cbe0 { text-align: right; }
+.delegation-token-usage-widget-s3088da.delegation-token-usage-widget-s3088da.delegation-token-usage-widget-s3088da { display: flex; align-items: center; gap: 8px; }
+.delegation-token-usage-widget-s48c82d.delegation-token-usage-widget-s48c82d.delegation-token-usage-widget-s48c82d { flex: 1; height: 6px; border-radius: 3px; background: var(--ds-surface-2); overflow: hidden; }
+.delegation-token-usage-widget-s4bd6de.delegation-token-usage-widget-s4bd6de.delegation-token-usage-widget-s4bd6de { flex: 0 0 52px; text-align: right; }
+.delegation-token-usage-widget-s9841a1.delegation-token-usage-widget-s9841a1.delegation-token-usage-widget-s9841a1 { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
+.delegation-token-usage-widget-sdf7e07.delegation-token-usage-widget-sdf7e07.delegation-token-usage-widget-sdf7e07 { display: flex; align-items: center; gap: 4px; }
+.delegation-token-usage-widget-s930d87.delegation-token-usage-widget-s930d87.delegation-token-usage-widget-s930d87 { display: flex; flex-direction: column; gap: 12px; }
+.delegation-token-usage-widget-s0934b3.delegation-token-usage-widget-s0934b3.delegation-token-usage-widget-s0934b3 { margin-top: 4px; font-style: italic; }

@@ -9,6 +9,8 @@ import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 import type { DelegationSavingsProjection, DelegationSavingsSession } from './delegation-savings.types';
 import { fixed as fmtFixed } from '@/lib/format';
 import { refreshInterval } from '@/lib/refresh';
+// OMN-23330 AC25: this file's fixed inline styles are classes in DelegationCostComparisonWidget.static.css.
+import './DelegationCostComparisonWidget.static.css';
 
 // ── Config ────────────────────────────────────────────────────────────
 
@@ -99,10 +101,10 @@ function SessionRow({
       <Text as="span" size="xs" family="mono" color="secondary" title={session.session_id}>
         {shortSession(session.session_id)}
       </Text>
-      <Text as="span" size="xs" family="mono" color="secondary" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <Text className="delegation-cost-comparison-widget-s6d812f" as="span" size="xs" family="mono" color="secondary">
         {session.task_type ?? '—'}
       </Text>
-      <Text as="span" size="xs" family="mono" color="secondary" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <Text className="delegation-cost-comparison-widget-s6d812f" as="span" size="xs" family="mono" color="secondary">
         {session.model_name ?? '—'}
       </Text>
       <Text as="span" size="xs" family="mono" color="secondary">
@@ -140,7 +142,7 @@ function SummaryBar({ projection }: { projection: DelegationSavingsProjection })
   const estimatedCount = projection.sessions.length - measuredCount;
 
   return (
-    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
+    <div className="delegation-cost-comparison-widget-s56274d">
       <KPI label="Cumulative savings" value={projection.cumulative_savings_usd} prefix="$" decimals={2} tone="good" />
       <KPI label="Local cost" value={projection.cumulative_local_cost_usd} prefix="$" decimals={2} />
       <KPI label="Cloud baseline" value={projection.cumulative_cloud_cost_usd} prefix="$" decimals={2} />
@@ -204,10 +206,10 @@ export default function DelegationCostComparisonWidget({
       isLive={isLiveDataSource(dataSourceMode)}
     >
       {projection && !isEmpty && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+        <div className="delegation-cost-comparison-widget-s30160b">
           <SummaryBar projection={projection} />
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+          <div className="delegation-cost-comparison-widget-sd1ab3f">
             <Text as="span" size="xs" color="tertiary">Sort by:</Text>
             {(['date', 'savings', 'tokens'] as const).map((k) => (
               <button
@@ -226,7 +228,7 @@ export default function DelegationCostComparisonWidget({
                 <Text as="span" size="xs" color={sortKey === k ? 'primary' : 'tertiary'}>{k}</Text>
               </button>
             ))}
-            <Text as="span" size="xs" family="mono" color="tertiary" style={{ marginLeft: 'auto' }}>
+            <Text className="delegation-cost-comparison-widget-s538764" as="span" size="xs" family="mono" color="tertiary">
               baseline: {projection.baseline_model} · manifest: {projection.pricing_manifest_version}
             </Text>
           </div>
@@ -251,13 +253,13 @@ export default function DelegationCostComparisonWidget({
           ))}
 
           {projection.sessions.length > maxRows && (
-            <Text as="div" size="xs" color="tertiary" style={{ marginTop: 6 }}>
+            <Text className="delegation-cost-comparison-widget-s082f6e" as="div" size="xs" color="tertiary">
               Showing {maxRows} of {projection.sessions.length}; increase maxRows in config.
             </Text>
           )}
 
           {showProvenance && (
-            <div style={{ display: 'flex', gap: 12, marginTop: 10, paddingTop: 8, borderTop: '1px solid var(--ds-line-soft)' }}>
+            <div className="delegation-cost-comparison-widget-s3ca963">
               <Text as="span" size="xs" color="tertiary">Provenance:</Text>
               <ProvenanceBadge kind="measured" />
               <Text as="span" size="xs" color="tertiary">— token counts from llm_call_metrics</Text>

@@ -7,6 +7,8 @@ import { useTimezone } from '@/hooks/useTimezone';
 import { Text } from '@/components/ui/typography';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 import { localeString as fmtLocaleString, localeTime as fmtLocaleTime } from '@/lib/format';
+// OMN-23330 AC25: this file's fixed inline styles are classes in EventStream.static.css.
+import './EventStream.static.css';
 
 export interface StreamEvent {
   id: string;
@@ -172,38 +174,23 @@ export default function EventStream({ config }: { config: EventStreamConfig }) {
       isLive={isLiveDataSource(dataSourceMode)}
       fileMode={!isLiveDataSource(dataSourceMode)}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+      <div className="event-stream-s8d40ed">
         {/* Search input — filters event_type, source, correlation_id. */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            padding: '0.375rem 0.625rem',
-            border: '1px solid var(--ds-line)',
-            borderRadius: 6,
-            background: 'var(--ds-surface-2)',
-          }}
+        <div className="event-stream-s80ff12"
         >
-          <Search size={14} style={{ color: 'var(--ds-ink-3)', flexShrink: 0 }} />
+          <Search className="event-stream-sf6885f" size={14} />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Filter events…"
             aria-label="Filter event stream"
-            className="text-input-md"
-            style={{
-              flex: 1,
-              border: 0,
-              outline: 0,
-              background: 'transparent',
-            }}
+            className="text-input-md event-stream-sd4d4d7"
           />
         </div>
 
         {/* Scroll region with sticky column header. */}
-        <div style={{ position: 'relative' }}>
+        <div className="event-stream-s50666a">
           <div
             ref={scrollRef}
             onScroll={handleScroll}
@@ -277,11 +264,7 @@ export default function EventStream({ config }: { config: EventStreamConfig }) {
             })}
 
             {filtered.length === 0 && events.length > 0 && (
-              <div
-                style={{
-                  padding: '2rem 0.5rem',
-                  textAlign: 'center',
-                }}
+              <div className="event-stream-sb59b94"
               >
                 <Text size="lg" color="tertiary">No events match "{query}"</Text>
               </div>
@@ -292,25 +275,9 @@ export default function EventStream({ config }: { config: EventStreamConfig }) {
               scrolled up and events have arrived since then. Click to
               jump back to top and resume auto-scroll. */}
           {newSincePause > 0 && (
-            <button
+            <button className="event-stream-s6d87f6"
               type="button"
               onClick={jumpToTop}
-              style={{
-                position: 'absolute',
-                top: 40,
-                left: '50%',
-                transform: 'translateX(-50%)',
-                padding: '4px 10px',
-                background: 'var(--ds-brand-soft)',
-                color: 'var(--ds-brand-ink)',
-                border: '1px solid var(--ds-brand)',
-                borderRadius: 12,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-                boxShadow: 'var(--ds-shadow-sm)',
-              }}
             >
               <ArrowUp size={12} />
               <Text size="sm">{newSincePause} new {newSincePause === 1 ? 'event' : 'events'}</Text>
@@ -319,12 +286,7 @@ export default function EventStream({ config }: { config: EventStreamConfig }) {
         </div>
 
         {/* Status row — buffer usage + search-filter info. */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
+        <div className="event-stream-sc2bcea"
         >
           <Text size="sm" family="mono" color="secondary">
             {filtered.length === events.length

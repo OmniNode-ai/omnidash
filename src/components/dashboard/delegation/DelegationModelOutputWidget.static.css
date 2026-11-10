@@ -1,0 +1,16 @@
+/* OMN-23330 AC25: the fixed inline styles of DelegationModelOutputWidget.tsx, moved into classes with nothing else changed. Each selector
+   repeats its class so it keeps the weight the inline style had over the stylesheet rules around it. */
+.delegation-model-output-widget-s1767a6.delegation-model-output-widget-s1767a6.delegation-model-output-widget-s1767a6 { border: 1px solid var(--ds-line); border-radius: 8px; padding: 12px 14px; background: var(--ds-surface); }
+.delegation-model-output-widget-sf626e8.delegation-model-output-widget-sf626e8.delegation-model-output-widget-sf626e8 { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+.delegation-model-output-widget-sc3e065.delegation-model-output-widget-sc3e065.delegation-model-output-widget-sc3e065 { display: inline-block; padding: 1px 5px; border-radius: 3px; background: var(--ds-surface-2); border: 1px solid var(--ds-line-soft); }
+.delegation-model-output-widget-sbc3045.delegation-model-output-widget-sbc3045.delegation-model-output-widget-sbc3045 { margin: 0; white-space: pre-wrap; word-break: break-word; }
+.delegation-model-output-widget-sf4c96e.delegation-model-output-widget-sf4c96e.delegation-model-output-widget-sf4c96e { display: grid; grid-template-columns: 100px 80px 1fr; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--ds-line-soft); align-items: start; }
+.delegation-model-output-widget-s6d812f.delegation-model-output-widget-s6d812f.delegation-model-output-widget-s6d812f { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.delegation-model-output-widget-scdca35.delegation-model-output-widget-scdca35.delegation-model-output-widget-scdca35 { display: inline-block; padding: 1px 4px; border-radius: 3px; background: var(--ds-surface-2); border: 1px solid var(--ds-line-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.delegation-model-output-widget-s517194.delegation-model-output-widget-s517194.delegation-model-output-widget-s517194 { word-break: break-word; }
+.delegation-model-output-widget-s930d87.delegation-model-output-widget-s930d87.delegation-model-output-widget-s930d87 { display: flex; flex-direction: column; gap: 12px; }
+.delegation-model-output-widget-sc779fa.delegation-model-output-widget-sc779fa.delegation-model-output-widget-sc779fa { display: flex; align-items: center; gap: 6px; }
+.delegation-model-output-widget-sc71373.delegation-model-output-widget-sc71373.delegation-model-output-widget-sc71373 { margin-top: 4px; }
+.delegation-model-output-widget-s4feedf.delegation-model-output-widget-s4feedf.delegation-model-output-widget-s4feedf { margin-bottom: 6px; }
+.delegation-model-output-widget-s5bbe8b.delegation-model-output-widget-s5bbe8b.delegation-model-output-widget-s5bbe8b { display: grid; grid-template-columns: 100px 80px 1fr; gap: 8px; padding-bottom: 4px; border-bottom: 1px solid var(--ds-line); }
+.delegation-model-output-widget-s1e7785.delegation-model-output-widget-s1e7785.delegation-model-output-widget-s1e7785 { display: block; margin-top: 4px; }

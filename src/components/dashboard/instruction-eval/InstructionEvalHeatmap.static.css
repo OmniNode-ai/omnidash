@@ -1,0 +1,8 @@
+/* OMN-23330 AC25: the fixed inline styles of InstructionEvalHeatmap.tsx, moved into classes with nothing else changed. Each selector
+   repeats its class so it keeps the weight the inline style had over the stylesheet rules around it. */
+.instruction-eval-heatmap-s76cf35.instruction-eval-heatmap-s76cf35.instruction-eval-heatmap-s76cf35 { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+.instruction-eval-heatmap-s3e64da.instruction-eval-heatmap-s3e64da.instruction-eval-heatmap-s3e64da { display: flex; align-items: center; gap: 5px; }
+.instruction-eval-heatmap-s911fe9.instruction-eval-heatmap-s911fe9.instruction-eval-heatmap-s911fe9 { padding: 24px 0; text-align: center; }
+.instruction-eval-heatmap-sb0831f.instruction-eval-heatmap-sb0831f.instruction-eval-heatmap-sb0831f { display: flex; flex-direction: column; gap: 14px; }
+.instruction-eval-heatmap-s42d445.instruction-eval-heatmap-s42d445.instruction-eval-heatmap-s42d445 { overflow-x: auto; }
+.instruction-eval-heatmap-s83a5a3.instruction-eval-heatmap-s83a5a3.instruction-eval-heatmap-s83a5a3 { border-collapse: separate; border-spacing: 3px; }

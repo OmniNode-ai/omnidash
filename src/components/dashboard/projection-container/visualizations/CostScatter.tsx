@@ -2,6 +2,8 @@ import { Text } from '@/components/ui/typography';
 import type { VisualizationContract } from '@shared/types/visualization-contract';
 import { registerViz } from '../viz-registry';
 import { fixed as fmtFixed } from '@/lib/format';
+// OMN-23330 AC25: this file's fixed inline styles are classes in CostScatter.static.css.
+import './CostScatter.static.css';
 
 type CostTier = 'free' | 'cheap' | 'expensive';
 
@@ -115,13 +117,12 @@ export function CostScatter({ data, contract }: CostScatterProps) {
   }));
 
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <svg
+    <div className="cost-scatter-s42d445">
+      <svg className="cost-scatter-s3ac248"
         width={SVG_W}
         height={SVG_H}
         role="img"
         aria-label="Cost vs Latency scatter plot"
-        style={{ display: 'block', maxWidth: '100%' }}
       >
         <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
           {/* Grid lines */}

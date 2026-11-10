@@ -11,6 +11,8 @@ import { Text } from '@/components/ui/typography';
 import { FreshnessLine } from '@/components/dashboard/lab/FreshnessLine';
 import { fixed as fmtFixed } from '@/lib/format';
 import { refreshInterval } from '@/lib/refresh';
+// OMN-23330 AC25: this file's fixed inline styles are classes in RoutingDecisionTable.static.css.
+import './RoutingDecisionTable.static.css';
 
 /**
  * RoutingDecision row shape from the `delegationDecisions` projection.
@@ -161,8 +163,8 @@ export default function RoutingDecisionTable({ config }: { config: Record<string
           />
         ) : null}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '150px 130px minmax(150px, 1fr) 110px minmax(160px, 1fr)', gap: 8, padding: '5px 0', borderBottom: '1px solid var(--ds-line)' }}>
+        <div className="routing-decision-table-s30160b">
+          <div className="routing-decision-table-s2ef91c">
             {['Timestamp', 'Provider / delegate', 'Model', 'Outcome', 'Correlation'].map((label) => (
               <Text key={label} as="span" size="xs" weight="semibold" color="tertiary">{label}</Text>
             ))}
@@ -174,7 +176,7 @@ export default function RoutingDecisionTable({ config }: { config: Record<string
               ? 'passed'
               : row.quality_gate_passed === false ? 'failed' : 'not emitted');
             return (
-              <div key={row.id} data-testid="delegation-run-row" style={{ display: 'grid', gridTemplateColumns: '150px 130px minmax(150px, 1fr) 110px minmax(160px, 1fr)', gap: 8, padding: '7px 0', borderBottom: '1px solid var(--ds-line-soft)', alignItems: 'center' }}>
+              <div className="routing-decision-table-se91ef4" key={row.id} data-testid="delegation-run-row">
                 <Text as="span" size="xs" family="mono" color="tertiary">{formatTimestamp(row.created_at, tz)}</Text>
                 <Text as="span" size="xs" family="mono" color="secondary">{provider}</Text>
                 <Text as="span" size="xs" family="mono" color="primary" truncate title={model}>{model}</Text>

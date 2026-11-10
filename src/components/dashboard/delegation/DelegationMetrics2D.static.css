@@ -1,0 +1,15 @@
+/* OMN-23330 AC25: the fixed inline styles of DelegationMetrics2D.tsx, moved into classes with nothing else changed. Each selector
+   repeats its class so it keeps the weight the inline style had over the stylesheet rules around it. */
+.delegation-metrics2-d-sf79405.delegation-metrics2-d-sf79405.delegation-metrics2-d-sf79405 { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; background: var(--ds-surface-2); border: 1px solid var(--ds-line-soft); border-radius: 6px; }
+.delegation-metrics2-d-sbb20bd.delegation-metrics2-d-sbb20bd.delegation-metrics2-d-sbb20bd { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.delegation-metrics2-d-sb6f5d2.delegation-metrics2-d-sb6f5d2.delegation-metrics2-d-sb6f5d2 { height: 4px; border-radius: 2px; background: var(--ds-surface-2); overflow: hidden; }
+.delegation-metrics2-d-s13cbe0.delegation-metrics2-d-s13cbe0.delegation-metrics2-d-s13cbe0 { text-align: right; }
+.delegation-metrics2-d-s658dc5.delegation-metrics2-d-s658dc5.delegation-metrics2-d-s658dc5 { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.delegation-metrics2-d-s693434.delegation-metrics2-d-s693434.delegation-metrics2-d-s693434 { display: flex; gap: 8px; }
+.delegation-metrics2-d-s9808a2.delegation-metrics2-d-s9808a2.delegation-metrics2-d-s9808a2 { display: flex; flex-direction: column; gap: 6px; }
+.delegation-metrics2-d-sbcda9e.delegation-metrics2-d-sbcda9e.delegation-metrics2-d-sbcda9e { display: flex; justify-content: space-between; align-items: baseline; }
+.delegation-metrics2-d-sa327ad.delegation-metrics2-d-sa327ad.delegation-metrics2-d-sa327ad { display: flex; height: 14px; border-radius: 4px; overflow: hidden; border: 1px solid var(--ds-line-soft); background: var(--ds-surface-2); }
+.delegation-metrics2-d-s3eee60.delegation-metrics2-d-s3eee60.delegation-metrics2-d-s3eee60 { display: flex; flex-wrap: wrap; gap: 2px 14px; }
+.delegation-metrics2-d-sa4a90c.delegation-metrics2-d-sa4a90c.delegation-metrics2-d-sa4a90c { max-width: 150px; }
+.delegation-metrics2-d-sd8963c.delegation-metrics2-d-sd8963c.delegation-metrics2-d-sd8963c { display: flex; flex-direction: column; gap: 5px; }
+.delegation-metrics2-d-s35516d.delegation-metrics2-d-s35516d.delegation-metrics2-d-s35516d { display: flex; height: 10px; border-radius: 4px; overflow: hidden; border: 1px solid var(--ds-line-soft); background: var(--ds-surface-2); }

@@ -24,6 +24,8 @@ import { TierLegend, useModelColor, useModelIdentityStyle } from '@/components/d
 import { fixed as fmtFixed, localeDate as fmtLocaleDate, localeString as fmtLocaleString } from '@/lib/format';
 import { type Row, asRecord, asRecords, countOf, isMissing, recordedCount, servedBoolean, timeOf, utcDay } from '@/pages/local/page-shared';
 import { NoRunsYet } from '@/pages/local/page-runs';
+// OMN-23330 AC25: this file's fixed inline styles are classes in page-headline.static.css.
+import './page-headline.static.css';
 
 export interface MetricCardConfig {
   metric_key: string;
@@ -587,7 +589,7 @@ export function OverviewDayPicker({ days, value, onChange, now = Date.now() }: {
       {open && (
         <div className="local-day-pop local-calendar" role="dialog" aria-labelledby={titleId}>
           <div className="local-calendar-head">
-            <button type="button" aria-label="Previous month" onClick={() => shift(-1)}><ChevronRight size={16} aria-hidden="true" style={{ transform: 'rotate(180deg)' }} /></button>
+            <button type="button" aria-label="Previous month" onClick={() => shift(-1)}><ChevronRight className="page-headline-sb3bf48" size={16} aria-hidden="true" /></button>
             <h3 id={titleId}>{title}</h3>
             <button type="button" aria-label="Next month" disabled={month >= today.slice(0, 7)} onClick={() => shift(1)}><ChevronRight size={16} aria-hidden="true" /></button>
           </div>

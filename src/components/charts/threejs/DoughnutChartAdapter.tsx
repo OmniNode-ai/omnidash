@@ -24,6 +24,8 @@ import type {
 } from '@shared/types/chart-adapter-doughnut';
 import { useTokenColors } from '@/theme/design-system/useTokenColors';
 import { fixed as fmtFixed } from '@/lib/format';
+// OMN-23330 AC25: this file's fixed inline styles are classes in DoughnutChartAdapter.static.css.
+import './DoughnutChartAdapter.static.css';
 
 function toFiniteNumber(v: unknown): number | null {
   if (typeof v === 'number') return Number.isFinite(v) ? v : null;
@@ -86,30 +88,16 @@ export function DoughnutChartAdapter<T extends Record<string, unknown> = Record<
       isEmpty={isEmpty}
       emptyMessage={emptyMessage}
     >
-      <div
-        style={{
-          display: 'flex',
-          gap: 16,
-          alignItems: 'stretch',
-          width: '100%',
-        }}
+      <div className="doughnut-chart-adapter-s20c727"
       >
-        <div style={{ flex: '1 1 auto', minWidth: 0, position: 'relative' }}>
+        <div className="doughnut-chart-adapter-sa33155">
           <ThreePieChart
             slices={slices}
             chartColors={colors.chart}
             themeName={themeName}
           />
           {slices.length === 0 && rows.length > 0 && (
-            <div
-              style={{
-                position: 'absolute',
-                inset: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                pointerEvents: 'none',
-              }}
+            <div className="doughnut-chart-adapter-sacccc4"
             >
               <Text size="lg" color="tertiary">No data in the selected range</Text>
             </div>
@@ -117,32 +105,22 @@ export function DoughnutChartAdapter<T extends Record<string, unknown> = Record<
         </div>
 
         {/* Legend */}
-        <div
-          style={{
-            flex: '0 0 180px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 4,
-            padding: '4px 2px',
-            minWidth: 0,
-          }}
+        <div className="doughnut-chart-adapter-s305b44"
         >
-          <Text
+          <Text className="doughnut-chart-adapter-s3eaa7b"
             as="div"
             size="xs"
             family="mono"
             color="tertiary"
             transform="uppercase"
-            style={{ marginBottom: 4 }}
           >
             Models
           </Text>
           {slices.map((s) => {
             const color = colors.chart[s.colorIdx % colors.chart.length];
             return (
-              <div
+              <div className="doughnut-chart-adapter-s4363d3"
                 key={s.model}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0' }}
               >
                 <span
                   style={{
@@ -154,12 +132,11 @@ export function DoughnutChartAdapter<T extends Record<string, unknown> = Record<
                     flexShrink: 0,
                   }}
                 />
-                <Text
+                <Text className="doughnut-chart-adapter-see3d55"
                   as="span"
                   size="sm"
                   family="mono"
                   truncate
-                  style={{ flex: 1 }}
                   title={s.model}
                 >
                   {s.model}
@@ -171,14 +148,7 @@ export function DoughnutChartAdapter<T extends Record<string, unknown> = Record<
             );
           })}
           {total > 0 && (
-            <div
-              style={{
-                marginTop: 8,
-                paddingTop: 6,
-                borderTop: '1px solid var(--ds-line-soft)',
-                display: 'flex',
-                justifyContent: 'space-between',
-              }}
+            <div className="doughnut-chart-adapter-s7856ab"
             >
               <Text as="span" size="sm" family="mono" color="secondary">total</Text>
               <Text as="span" size="sm" family="mono" weight="semibold" tabularNums>

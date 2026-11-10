@@ -1,0 +1,12 @@
+/* OMN-23330 AC25: the fixed inline styles of SwarmSubtaskCard.tsx, moved into classes with nothing else changed. Each selector
+   repeats its class so it keeps the weight the inline style had over the stylesheet rules around it. */
+.swarm-subtask-card-sb6d841.swarm-subtask-card-sb6d841.swarm-subtask-card-sb6d841 { display: flex; flex-direction: column; gap: 1px; }
+.swarm-subtask-card-sb78a29.swarm-subtask-card-sb78a29.swarm-subtask-card-sb78a29 { border: 1px solid var(--ds-line); border-radius: 8px; padding: 12px; background: var(--ds-surface); display: flex; flex-direction: column; gap: 10px; }
+.swarm-subtask-card-sd74d06.swarm-subtask-card-sd74d06.swarm-subtask-card-sd74d06 { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.swarm-subtask-card-s2cd52a.swarm-subtask-card-s2cd52a.swarm-subtask-card-s2cd52a { min-width: 0; }
+.swarm-subtask-card-s0eca93.swarm-subtask-card-s0eca93.swarm-subtask-card-s0eca93 { overflow-wrap: break-word; }
+.swarm-subtask-card-saeb83f.swarm-subtask-card-saeb83f.swarm-subtask-card-saeb83f { margin-top: 2px; }
+.swarm-subtask-card-s0896aa.swarm-subtask-card-s0896aa.swarm-subtask-card-s0896aa { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.swarm-subtask-card-s3eaa7b.swarm-subtask-card-s3eaa7b.swarm-subtask-card-s3eaa7b { margin-bottom: 4px; }
+.swarm-subtask-card-s5404ea.swarm-subtask-card-s5404ea.swarm-subtask-card-s5404ea { display: flex; flex-wrap: wrap; gap: 4px; }
+.swarm-subtask-card-s38fb0f.swarm-subtask-card-s38fb0f.swarm-subtask-card-s38fb0f { padding: 2px 6px; border: 1px solid var(--ds-line-soft); border-radius: 4px; background: var(--ds-surface-2); }

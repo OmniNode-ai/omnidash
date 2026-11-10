@@ -5,6 +5,8 @@ import { TOPICS } from '@shared/types/topics';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 import { fixed as fmtFixed, localeTime as fmtLocaleTime } from '@/lib/format';
 import { refreshInterval } from '@/lib/refresh';
+// OMN-23330 AC25: this file's fixed inline styles are classes in SandboxMonitorPage.static.css.
+import './SandboxMonitorPage.static.css';
 
 interface SandboxDecision {
   decision_id: string;
@@ -52,8 +54,8 @@ function DenyRateBar({ denyRate }: { denyRate: number }) {
   const pct = Math.min(100, Math.max(0, denyRate * 100));
   const color = pct > 30 ? 'var(--ds-bad, var(--ds-hue-red))' : pct > 10 ? 'var(--ds-warn)' : 'var(--ds-ok)';
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-      <div style={{ flex: 1, height: 6, background: 'var(--ds-line, var(--ds-surface))', borderRadius: 3, overflow: 'hidden' }}>
+    <div className="sandbox-monitor-page-sfb9057">
+      <div className="sandbox-monitor-page-s3c30dd">
         <div
           style={{ height: '100%', width: `${pct}%`, background: color, transition: 'width 0.3s ease' }}
         />
@@ -100,34 +102,28 @@ export function SandboxMonitorPage() {
       <div className="dash-header">
         <div className="dash-title-wrap">
           <div className="dash-title">Sandbox Monitor</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+          <div className="sandbox-monitor-page-s636ba8">
             <Text size="sm" color="secondary">
               {isLoading ? 'Loading…' : error ? 'Server unavailable' : isLiveDataSource(dataSourceMode) ? 'LIVE' : 'Fixture data'}
             </Text>
           </div>
         </div>
-        <div className="header-actions" style={{ gap: 12 }}>
+        <div className="header-actions sandbox-monitor-page-sb6e62f">
           <Text size="sm" color="ok">{allowCount} allowed</Text>
-          <Text size="sm" style={{ color: 'var(--ds-bad, var(--ds-hue-red))' }}>{denyCount} denied</Text>
+          <Text color="bad" size="sm">{denyCount} denied</Text>
         </div>
       </div>
 
-      <div className="dash-body" style={{ padding: '24px 28px', overflowY: 'auto' }}>
+      <div className="dash-body sandbox-monitor-page-sea0c4d">
         {/* KPI row */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
+        <div className="sandbox-monitor-page-s4dd6d5">
           {([
             { label: 'Total Decisions', value: String(total), color: undefined as string | undefined },
             { label: 'Allowed', value: String(allowCount), color: 'var(--ds-status-ok)' as string | undefined },
             { label: 'Denied', value: String(denyCount), color: 'var(--ds-bad, var(--ds-hue-red))' as string | undefined },
           ]).map(({ label, value, color }) => (
-            <div
+            <div className="sandbox-monitor-page-s6bf4d6"
               key={label}
-              style={{
-                background: 'var(--ds-surface, var(--ds-page))',
-                border: '1px solid var(--ds-line, var(--ds-line-soft))',
-                borderRadius: 8,
-                padding: '16px 20px',
-              }}
             >
               <Text size="xs" color="tertiary" transform="uppercase" weight="semibold">{label}</Text>
               <Text size="xl" weight="bold" family="mono" style={{ marginTop: 4, ...(color ? { color } : {}) }}>
@@ -138,16 +134,9 @@ export function SandboxMonitorPage() {
         </div>
 
         {/* Deny rate bar */}
-        <div
-          style={{
-            background: 'var(--ds-surface, var(--ds-page))',
-            border: '1px solid var(--ds-line, var(--ds-line-soft))',
-            borderRadius: 8,
-            padding: '16px 20px',
-            marginBottom: 24,
-          }}
+        <div className="sandbox-monitor-page-s88d796"
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <div className="sandbox-monitor-page-s6ddf48">
             <Heading level={3} size="sm">Deny Rate</Heading>
           </div>
           <DenyRateBar denyRate={denyRate} />
@@ -155,23 +144,16 @@ export function SandboxMonitorPage() {
 
         {/* By policy breakdown */}
         {byPolicy.length > 0 && (
-          <div
-            style={{
-              background: 'var(--ds-surface, var(--ds-page))',
-              border: '1px solid var(--ds-line, var(--ds-line-soft))',
-              borderRadius: 8,
-              overflow: 'hidden',
-              marginBottom: 24,
-            }}
+          <div className="sandbox-monitor-page-sae8498"
           >
-            <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--ds-line, var(--ds-line-soft))' }}>
+            <div className="sandbox-monitor-page-s52a6b6">
               <Heading level={3} size="sm">By Policy Rule</Heading>
             </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table className="sandbox-monitor-page-s0bc69d">
               <thead>
-                <tr style={{ borderBottom: '1px solid var(--ds-line, var(--ds-line-soft))' }}>
+                <tr className="sandbox-monitor-page-s99d8eb">
                   {(['Policy Rule', 'Allowed', 'Denied', 'Deny Rate'] as const).map((h) => (
-                    <th key={h} style={{ padding: '8px 12px', textAlign: 'left' }}>
+                    <th className="sandbox-monitor-page-sf7aca1" key={h}>
                       <Text size="xs" color="tertiary" weight="semibold" transform="uppercase">{h}</Text>
                     </th>
                   ))}
@@ -182,11 +164,11 @@ export function SandboxMonitorPage() {
                   const rowTotal = counts.allow + counts.deny;
                   const rowDenyRate = rowTotal > 0 ? counts.deny / rowTotal : 0;
                   return (
-                    <tr key={rule} style={{ borderBottom: '1px solid var(--ds-line, var(--ds-line-soft))' }}>
-                      <td style={{ padding: '10px 12px' }}><Text size="sm" family="mono">{rule}</Text></td>
-                      <td style={{ padding: '10px 12px' }}><Text size="sm" color="ok">{counts.allow}</Text></td>
-                      <td style={{ padding: '10px 12px' }}><Text size="sm" style={{ color: 'var(--ds-bad, var(--ds-hue-red))' }}>{counts.deny}</Text></td>
-                      <td style={{ padding: '10px 12px', minWidth: 160 }}><DenyRateBar denyRate={rowDenyRate} /></td>
+                    <tr className="sandbox-monitor-page-s99d8eb" key={rule}>
+                      <td className="sandbox-monitor-page-s96bfe9"><Text size="sm" family="mono">{rule}</Text></td>
+                      <td className="sandbox-monitor-page-s96bfe9"><Text size="sm" color="ok">{counts.allow}</Text></td>
+                      <td className="sandbox-monitor-page-s96bfe9"><Text color="bad" size="sm">{counts.deny}</Text></td>
+                      <td className="sandbox-monitor-page-sb7087d"><DenyRateBar denyRate={rowDenyRate} /></td>
                     </tr>
                   );
                 })}
@@ -196,36 +178,30 @@ export function SandboxMonitorPage() {
         )}
 
         {/* Live event stream */}
-        <div
-          style={{
-            background: 'var(--ds-surface, var(--ds-page))',
-            border: '1px solid var(--ds-line, var(--ds-line-soft))',
-            borderRadius: 8,
-            overflow: 'hidden',
-          }}
+        <div className="sandbox-monitor-page-s543027"
         >
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--ds-line, var(--ds-line-soft))', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div className="sandbox-monitor-page-s20f44e">
             <Heading level={3} size="sm">Decision Stream</Heading>
             <Text size="xs" color="tertiary">most recent first</Text>
           </div>
           {isLoading && (
-            <div style={{ padding: 24, textAlign: 'center' }}>
+            <div className="sandbox-monitor-page-s0830bd">
               <Text size="sm" color="tertiary">Loading decisions…</Text>
             </div>
           )}
           {!isLoading && sorted.length === 0 && (
-            <div style={{ padding: 24, textAlign: 'center' }}>
+            <div className="sandbox-monitor-page-s0830bd">
               <Text size="sm" color="tertiary">
                 {error ? 'Server unavailable — no sandbox data' : 'No sandbox decisions recorded'}
               </Text>
             </div>
           )}
           {!isLoading && sorted.length > 0 && (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table className="sandbox-monitor-page-s0bc69d">
               <thead>
-                <tr style={{ borderBottom: '1px solid var(--ds-line, var(--ds-line-soft))' }}>
+                <tr className="sandbox-monitor-page-s99d8eb">
                   {(['Time', 'Node', 'Action', 'Resource', 'Verdict', 'Policy Rule'] as const).map((h) => (
-                    <th key={h} style={{ padding: '8px 12px', textAlign: 'left' }}>
+                    <th className="sandbox-monitor-page-sf7aca1" key={h}>
                       <Text size="xs" color="tertiary" weight="semibold" transform="uppercase">{h}</Text>
                     </th>
                   ))}
@@ -233,26 +209,25 @@ export function SandboxMonitorPage() {
               </thead>
               <tbody>
                 {sorted.slice(0, 100).map((d) => (
-                  <tr
+                  <tr className="sandbox-monitor-page-s99d8eb"
                     key={d.decision_id}
-                    style={{ borderBottom: '1px solid var(--ds-line, var(--ds-line-soft))' }}
                   >
-                    <td style={{ padding: '8px 12px' }}>
+                    <td className="sandbox-monitor-page-s966836">
                       <Text size="xs" family="mono" color="tertiary">{formatTimestamp(d.timestamp)}</Text>
                     </td>
-                    <td style={{ padding: '8px 12px' }}>
+                    <td className="sandbox-monitor-page-s966836">
                       <Text size="sm" family="mono" truncate>{d.node_name}</Text>
                     </td>
-                    <td style={{ padding: '8px 12px' }}>
+                    <td className="sandbox-monitor-page-s966836">
                       <Text size="sm" color="secondary" truncate>{d.action}</Text>
                     </td>
-                    <td style={{ padding: '8px 12px' }}>
+                    <td className="sandbox-monitor-page-s966836">
                       <Text size="sm" color="tertiary">{d.resource_type}</Text>
                     </td>
-                    <td style={{ padding: '8px 12px' }}>
+                    <td className="sandbox-monitor-page-s966836">
                       <VerdictBadge verdict={d.verdict} />
                     </td>
-                    <td style={{ padding: '8px 12px' }}>
+                    <td className="sandbox-monitor-page-s966836">
                       <Text size="sm" color="tertiary" family="mono" truncate>{d.policy_rule}</Text>
                     </td>
                   </tr>

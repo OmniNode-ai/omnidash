@@ -1,0 +1,12 @@
+/* OMN-23330 AC25: the fixed inline styles of QualityScoreTilted3D.tsx, moved into classes with nothing else changed. Each selector
+   repeats its class so it keeps the weight the inline style had over the stylesheet rules around it. */
+.quality-score-tilted3-d-s389e80.quality-score-tilted3-d-s389e80.quality-score-tilted3-d-s389e80 { position: absolute; top: 6px; right: 8px; pointer-events: none; }
+.quality-score-tilted3-d-sda39a3.quality-score-tilted3-d-sda39a3.quality-score-tilted3-d-sda39a3 {  }
+.quality-score-tilted3-d-scdbb71.quality-score-tilted3-d-scdbb71.quality-score-tilted3-d-scdbb71 { margin-bottom: 2px; }
+.quality-score-tilted3-d-seafffa.quality-score-tilted3-d-seafffa.quality-score-tilted3-d-seafffa { display: flex; justify-content: space-between; gap: 10px; }
+.quality-score-tilted3-d-s20c727.quality-score-tilted3-d-s20c727.quality-score-tilted3-d-s20c727 { display: flex; gap: 16px; align-items: stretch; width: 100%; }
+.quality-score-tilted3-d-s46d0d8.quality-score-tilted3-d-s46d0d8.quality-score-tilted3-d-s46d0d8 { flex: 0 0 130px; display: flex; flex-direction: column; justify-content: center; padding: 6px 2px; }
+.quality-score-tilted3-d-saeb83f.quality-score-tilted3-d-saeb83f.quality-score-tilted3-d-saeb83f { margin-top: 2px; }
+.quality-score-tilted3-d-sa91624.quality-score-tilted3-d-sa91624.quality-score-tilted3-d-sa91624 { height: 1px; background: var(--ds-line-soft); margin: 12px 0; }
+.quality-score-tilted3-d-s3eaa7b.quality-score-tilted3-d-s3eaa7b.quality-score-tilted3-d-s3eaa7b { margin-bottom: 4px; }
+.quality-score-tilted3-d-s64cee2.quality-score-tilted3-d-s64cee2.quality-score-tilted3-d-s64cee2 { flex: 1 1 auto; min-width: 0; }

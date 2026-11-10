@@ -1,0 +1,25 @@
+/* OMN-23330 AC25: the fixed inline styles of CostSummaryAdapter.tsx, moved into classes with nothing else changed. Each selector
+   repeats its class so it keeps the weight the inline style had over the stylesheet rules around it. */
+.cost-summary-adapter-sd5faf9.cost-summary-adapter-sd5faf9.cost-summary-adapter-sd5faf9 { font-size: 10px; color: var(--ds-ink-3); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 4px; font-weight: 500; }
+.cost-summary-adapter-s048b9a.cost-summary-adapter-s048b9a.cost-summary-adapter-s048b9a { display: block; }
+.cost-summary-adapter-s50666a.cost-summary-adapter-s50666a.cost-summary-adapter-s50666a { position: relative; }
+.cost-summary-adapter-sb7b9d2.cost-summary-adapter-sb7b9d2.cost-summary-adapter-sb7b9d2 { position: absolute; right: 0; top: 30px; z-index: 10; background: var(--ds-surface); border: 1px solid var(--ds-line); border-radius: 8px; padding: 8px; box-shadow: var(--ds-shadow-md); min-width: 160px; }
+.cost-summary-adapter-s4feedf.cost-summary-adapter-s4feedf.cost-summary-adapter-s4feedf { margin-bottom: 6px; }
+.cost-summary-adapter-s9ffbf7.cost-summary-adapter-s9ffbf7.cost-summary-adapter-s9ffbf7 { display: flex; align-items: center; gap: 8px; padding: 5px 4px; cursor: pointer; font-size: 12px; color: var(--ds-ink-2); border-radius: 4px; }
+.cost-summary-adapter-saece64.cost-summary-adapter-saece64.cost-summary-adapter-saece64 { accent-color: var(--ds-brand); }
+.cost-summary-adapter-se5e1c3.cost-summary-adapter-se5e1c3.cost-summary-adapter-se5e1c3 { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+.cost-summary-adapter-scaa4fc.cost-summary-adapter-scaa4fc.cost-summary-adapter-scaa4fc { font-size: 38px; font-weight: 800; color: var(--ds-ok); line-height: 1; letter-spacing: -0.02em; }
+.cost-summary-adapter-s15fa32.cost-summary-adapter-s15fa32.cost-summary-adapter-s15fa32 { flex: 1; min-width: 0; }
+.cost-summary-adapter-s9a3dee.cost-summary-adapter-s9a3dee.cost-summary-adapter-s9a3dee { font-size: 12px; font-weight: 500; color: var(--ds-ink-2); }
+.cost-summary-adapter-s2ee8e7.cost-summary-adapter-s2ee8e7.cost-summary-adapter-s2ee8e7 { font-size: 11px; color: var(--ds-ink-3); margin-top: 2px; }
+.cost-summary-adapter-sfe5717.cost-summary-adapter-sfe5717.cost-summary-adapter-sfe5717 { display: flex; height: 22px; border-radius: 3px; overflow: hidden; }
+.cost-summary-adapter-sab1c0b.cost-summary-adapter-sab1c0b.cost-summary-adapter-sab1c0b { display: flex; justify-content: space-between; margin-top: 6px; font-size: 10px; color: var(--ds-ink-3); }
+.cost-summary-adapter-see3746.cost-summary-adapter-see3746.cost-summary-adapter-see3746 { margin: 16px 0; }
+.cost-summary-adapter-s373c5c.cost-summary-adapter-s373c5c.cost-summary-adapter-s373c5c { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.cost-summary-adapter-s8de070.cost-summary-adapter-s8de070.cost-summary-adapter-s8de070 { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--ds-line-soft); }
+.cost-summary-adapter-s8d7976.cost-summary-adapter-s8d7976.cost-summary-adapter-s8d7976 { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.cost-summary-adapter-sa29e5a.cost-summary-adapter-sa29e5a.cost-summary-adapter-sa29e5a { font-size: 9px; color: var(--ds-ink-3); }
+.cost-summary-adapter-sbdd4c6.cost-summary-adapter-sbdd4c6.cost-summary-adapter-sbdd4c6 { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.cost-summary-adapter-se13d16.cost-summary-adapter-se13d16.cost-summary-adapter-se13d16 { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cost-summary-adapter-s15eec4.cost-summary-adapter-s15eec4.cost-summary-adapter-s15eec4 { position: relative; height: 8px; background: var(--ds-inset); border-radius: 999px; overflow: hidden; }
+.cost-summary-adapter-sdedd55.cost-summary-adapter-sdedd55.cost-summary-adapter-sdedd55 { font-size: 32px; font-weight: 800; color: var(--ds-ok); line-height: 1; letter-spacing: -0.02em; }

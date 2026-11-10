@@ -17,6 +17,8 @@ import { isTenantNotConfiguredError } from '@/data-source/projection-tenant';
 import { TenantNotConfiguredState } from '../TenantNotConfiguredState';
 import { fixed as fmtFixed, localeTime as fmtLocaleTime } from '@/lib/format';
 import { refreshInterval } from '@/lib/refresh';
+// OMN-23330 AC25: this file's fixed inline styles are classes in TraceExplorerWidget.static.css.
+import './TraceExplorerWidget.static.css';
 
 export const EVENT_TRACE_REFRESH_INTERVAL_MS = refreshInterval('trace-explorer');
 
@@ -168,12 +170,12 @@ function LaneActivityPane({
   }, [correlationId, rows, sessionIds]);
 
   return (
-    <section style={{ border: '1px solid var(--ds-line)', borderRadius: 6, padding: 10, minWidth: 0 }}>
+    <section className="trace-explorer-widget-s859c1d">
       <Text as="div" size="sm" weight="semibold" color="primary">Lane activity</Text>
-      <Text as="div" size="xs" color="tertiary" style={{ marginTop: 3 }}>
+      <Text className="trace-explorer-widget-s45f395" as="div" size="xs" color="tertiary">
         work.events has no top-level correlation_id; rows join through the delegation session id and work actor_id.
       </Text>
-      <div style={{ marginTop: 6 }}>
+      <div className="trace-explorer-widget-s082f6e">
         <FreshnessLine
           freshness={snapshot.dataFreshness}
           latestEventAt={snapshot.latestEventAt}
@@ -181,17 +183,17 @@ function LaneActivityPane({
         />
       </div>
       {error && (
-        <Text as="div" size="xs" color="warn" style={{ marginTop: 8 }}>
+        <Text className="trace-explorer-widget-s36ca0a" as="div" size="xs" color="warn">
           Work-event projection unreadable: {error.message}
         </Text>
       )}
       {!error && visible.length === 0 && (
-        <Text as="div" size="xs" color="tertiary" style={{ marginTop: 8 }}>
+        <Text className="trace-explorer-widget-s36ca0a" as="div" size="xs" color="tertiary">
           {correlationId ? 'No work rows joined to this correlation session.' : 'No work-event rows read.'}
         </Text>
       )}
       {visible.map((row) => (
-        <div key={row.event_id} style={{ padding: '7px 0', borderBottom: '1px solid var(--ds-line-soft)' }}>
+        <div className="trace-explorer-widget-s0bff55" key={row.event_id}>
           <Text as="div" size="xs" family="mono" color="primary">{row.event_kind}</Text>
           <Text as="div" size="xs" color="secondary" truncate title={row.summary ?? undefined}>
             {row.summary === null || row.summary === undefined || row.summary === ''
@@ -292,11 +294,11 @@ export function TraceExplorerView({
         />
       )}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 1.4fr) minmax(150px, 1fr) minmax(150px, 1fr)', gap: 8 }}>
+      <div className="trace-explorer-widget-sfce391">
+        <div className="trace-explorer-widget-sdc1707">
           <label>
             <Text as="span" size="xs" color="tertiary">Search event type, source, topic, summary</Text>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div className="trace-explorer-widget-sc779fa">
               <Search size={13} aria-hidden="true" />
               <input aria-label="Search events" className="text-input-md" value={filters.query} onChange={(event) => updateFilter('query', event.target.value)} />
             </div>
@@ -326,16 +328,16 @@ export function TraceExplorerView({
           </label>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+        <div className="trace-explorer-widget-saf15e3">
           <button type="button" className="btn" onClick={() => onPausedChange(!paused)}>
             {paused ? <Play size={13} aria-hidden="true" /> : <Pause size={13} aria-hidden="true" />}
             <Text as="span" size="xs">{paused ? 'Resume' : 'Pause'}</Text>
           </button>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <label className="trace-explorer-widget-s23b34f">
             <input type="checkbox" aria-label="Include heartbeats" checked={filters.includeHeartbeats} onChange={(event) => updateFilter('includeHeartbeats', event.target.checked)} />
             <Text as="span" size="xs" color="secondary">Include heartbeats</Text>
           </label>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+          <label className="trace-explorer-widget-s372f70">
             <Text as="span" size="xs" color="tertiary">Display cap</Text>
             <select aria-label="Display cap" className="text-input-md" value={displayCap} onChange={(event) => { setDisplayCap(Number(event.target.value)); setOffset(0); }}>
               {[10, 25, 50, 100].map((cap) => <option key={cap} value={cap}>{cap}</option>)}
@@ -347,30 +349,30 @@ export function TraceExplorerView({
         </div>
 
         {activeChips.length > 0 && (
-          <div data-testid="active-filter-chips" style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          <div className="trace-explorer-widget-sd6ed84" data-testid="active-filter-chips">
             {activeChips.map((chip) => (
               <FilterChip key={chip.key} label={chip.label} onRemove={() => updateFilter(chip.key, chip.clear as never)} />
             ))}
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(260px, 1fr)', gap: 10, alignItems: 'start' }}>
-          <section style={{ border: '1px solid var(--ds-line)', borderRadius: 6, overflow: 'hidden', minWidth: 0 }}>
+        <div className="trace-explorer-widget-sd33c41">
+          <section className="trace-explorer-widget-s8861ff">
             {page.length === 0 && (
-              <Text as="div" size="sm" color="tertiary" align="center" style={{ padding: 16 }}>No matching events</Text>
+              <Text className="trace-explorer-widget-s872b66" as="div" size="sm" color="tertiary" align="center">No matching events</Text>
             )}
             {page.map((event) => {
               const decision = event.correlation_id ? decisionsByCorrelation.get(event.correlation_id) : undefined;
               return (
-                <details key={event.event_id || event.id} data-testid="trace-event-row" style={{ borderBottom: '1px solid var(--ds-line-soft)' }}>
-                  <summary style={{ display: 'grid', gridTemplateColumns: '90px 150px minmax(150px, 1fr) minmax(160px, 1.4fr)', gap: 8, alignItems: 'center', padding: '8px 10px', cursor: 'pointer' }}>
+                <details className="trace-explorer-widget-sc6072a" key={event.event_id || event.id} data-testid="trace-event-row">
+                  <summary className="trace-explorer-widget-sbaf642">
                     <Text size="xs" family="mono" color="tertiary">{formatTimestamp(event.timestamp)}</Text>
                     <Text size="xs" family="mono" color={event.type === 'ERROR' ? 'bad' : 'primary'} truncate title={event.type}>{event.type}</Text>
                     <Text size="xs" family="mono" color="secondary" truncate title={event.topic}>{event.topic}</Text>
                     <Text size="xs" color="secondary" truncate title={event.summary}>{event.summary}</Text>
                   </summary>
-                  <div style={{ padding: '8px 10px 12px', background: 'var(--ds-inset)' }}>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 7 }}>
+                  <div className="trace-explorer-widget-sb458b9">
+                    <div className="trace-explorer-widget-s622922">
                       <Text as="span" size="xs" family="mono" color="tertiary">source: {event.source}</Text>
                       {event.correlation_id && (
                         <button type="button" className="chip" onClick={() => setTraceFilter(event.correlation_id || null)}>
@@ -379,27 +381,27 @@ export function TraceExplorerView({
                       )}
                     </div>
                     {decision && (
-                      <Text as="div" size="xs" color="secondary" style={{ marginBottom: 7 }}>
+                      <Text className="trace-explorer-widget-s452e12" as="div" size="xs" color="secondary">
                         Delegation join: {decision.delegated_to || 'provider not emitted'} · {decision.model_name || 'model not emitted'} · {decision.outcome || (decision.quality_gate_passed === true ? 'passed' : decision.quality_gate_passed === false ? 'failed' : 'outcome not emitted')}
                       </Text>
                     )}
-                    <Text as="pre" size="xs" family="mono" color="secondary" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0, maxHeight: 220, overflow: 'auto' }}>
+                    <Text className="trace-explorer-widget-s5ff1fe" as="pre" size="xs" family="mono" color="secondary">
                       {formatRedactedEventPayload(event.payload)}
                     </Text>
                   </div>
                 </details>
               );
             })}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 8 }}>
+            <div className="trace-explorer-widget-sc466cc">
               <button type="button" className="btn" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - displayCap))}>Previous</button>
               <Text as="span" size="xs" family="mono" color="tertiary">offset {offset} · limit {displayCap}</Text>
               <button type="button" className="btn" disabled={offset + displayCap >= filtered.length} onClick={() => setOffset(offset + displayCap)}>Next</button>
             </div>
             {decisionError && (
               isTenantNotConfiguredError(decisionError)
-                ? <div style={{ padding: '0 8px 8px' }}><TenantNotConfiguredState /></div>
+                ? <div className="trace-explorer-widget-sdd9e1a"><TenantNotConfiguredState /></div>
                 : (
-                  <Text as="div" size="xs" color="warn" style={{ padding: '0 8px 8px' }}>
+                  <Text className="trace-explorer-widget-sdd9e1a" as="div" size="xs" color="warn">
                     Delegation correlation join unavailable: {decisionError.message}
                   </Text>
                 )

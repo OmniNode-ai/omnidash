@@ -6,6 +6,8 @@ import { TOPICS } from '@shared/types/topics';
 import { Text, type TextColor } from '@/components/ui/typography';
 import { KPI } from '@/components/primitives';
 import { refreshInterval } from '@/lib/refresh';
+// OMN-23330 AC25: this file's fixed inline styles are classes in DepHealthWidget.static.css.
+import './DepHealthWidget.static.css';
 
 // ── Projection types (from dep_health_findings table, OMN-11042) ──────
 
@@ -53,33 +55,23 @@ function severityColor(severity: DepHealthSeverity): TextColor {
 function FindingRow({ row }: { row: DepHealthFindingRow }) {
   const color = severityColor(row.severity);
   return (
-    <div
-      style={{
-        padding: '6px 0',
-        borderBottom: '1px solid var(--ds-line-soft)',
-        display: 'grid',
-        gridTemplateColumns: '80px 120px 1fr',
-        gap: 8,
-        alignItems: 'start',
-      }}
+    <div className="dep-health-widget-sf6ca22"
     >
       <Text as="span" size="xs" family="mono" color={color}>
         {row.severity}
       </Text>
-      <Text
+      <Text className="dep-health-widget-s6d812f"
         as="span"
         size="xs"
         family="mono"
         color="secondary"
-        style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
       >
         {row.repo}
       </Text>
-      <Text
+      <Text className="dep-health-widget-s6d812f"
         as="span"
         size="xs"
         color="primary"
-        style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
       >
         {row.detail}
       </Text>
@@ -91,13 +83,12 @@ function FindingRow({ row }: { row: DepHealthFindingRow }) {
 
 function RepoGroup({ repo, rows }: { repo: string; rows: DepHealthFindingRow[] }) {
   return (
-    <div style={{ marginBottom: 12 }}>
-      <Text
+    <div className="dep-health-widget-s72d6c3">
+      <Text className="dep-health-widget-s140416"
         as="div"
         size="xs"
         color="tertiary"
         weight="semibold"
-        style={{ marginBottom: 4, paddingBottom: 2, borderBottom: '1px solid var(--ds-line)' }}
       >
         {repo} ({rows.length})
       </Text>
@@ -156,16 +147,9 @@ export default function DepHealthWidget(props: { config: DepHealthWidgetConfig }
       emptyHint="Findings appear once a dep-health sweep has run and projected results"
     >
       {!isEmpty && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="dep-health-widget-s930d87">
           {/* KPI row */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
-              gap: 12,
-              paddingBottom: 12,
-              borderBottom: '1px solid var(--ds-line)',
-            }}
+          <div className="dep-health-widget-s90575b"
           >
             <KPI label="Total findings" value={findings.length} />
             <KPI

@@ -25,6 +25,8 @@ import {
 import { Text } from '@/components/ui/typography';
 import { useFrameStore } from '@/store/store';
 import { VIEWER_REFRESH_CHOICES } from '@/lib/refresh';
+// OMN-23330 AC25: this file's fixed inline styles are classes in AutoRefreshSelector.static.css.
+import './AutoRefreshSelector.static.css';
 
 interface IntervalPreset {
   label: string;
@@ -117,18 +119,17 @@ export function AutoRefreshSelector() {
     <>
       <button
         type="button"
-        className="btn ghost"
+        className="btn ghost auto-refresh-selector-s23b34f"
         onClick={menu.open}
         aria-label="Auto-refresh"
         aria-haspopup="menu"
         aria-expanded={menu.isOpen}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
       >
         <RefreshCw size={14} />
         <Text size="md" family="mono" color={isActive ? 'ok' : 'secondary'}>
           {label}
         </Text>
-        <ChevronDown size={12} style={{ opacity: 0.7 }} />
+        <ChevronDown className="auto-refresh-selector-sf91366" size={12} />
       </button>
       {menu.isOpen && (
         <PositionedMenu

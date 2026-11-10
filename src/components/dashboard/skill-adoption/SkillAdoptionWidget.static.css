@@ -1,0 +1,7 @@
+/* OMN-23330 AC25: the fixed inline styles of SkillAdoptionWidget.tsx, moved into classes with nothing else changed. Each selector
+   repeats its class so it keeps the weight the inline style had over the stylesheet rules around it. */
+.skill-adoption-widget-se34a59.skill-adoption-widget-se34a59.skill-adoption-widget-se34a59 { padding: 6px 0; border-bottom: 1px solid var(--ds-line-soft); display: grid; grid-template-columns: 1fr 70px 70px 130px 70px; gap: 8px; align-items: center; }
+.skill-adoption-widget-s6d812f.skill-adoption-widget-s6d812f.skill-adoption-widget-s6d812f { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.skill-adoption-widget-s7d437f.skill-adoption-widget-s7d437f.skill-adoption-widget-s7d437f { padding: 4px 0; border-bottom: 1px solid var(--ds-line); display: grid; grid-template-columns: 1fr 70px 70px 130px 70px; gap: 8px; align-items: center; }
+.skill-adoption-widget-s930d87.skill-adoption-widget-s930d87.skill-adoption-widget-s930d87 { display: flex; flex-direction: column; gap: 12px; }
+.skill-adoption-widget-s1e8560.skill-adoption-widget-s1e8560.skill-adoption-widget-s1e8560 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--ds-line); }

@@ -7,6 +7,8 @@ import { KPI, SortableTable } from '@/components/primitives';
 import type { ColumnDef } from '@/components/primitives';
 import { Heading, Text } from '@/components/ui/typography';
 import { fixed as fmtFixed, localeString as fmtLocaleString, localeTime as fmtLocaleTime } from '@/lib/format';
+// OMN-23330 AC25: this file's fixed inline styles are classes in CostSavingsOverviewWidget.static.css.
+import './CostSavingsOverviewWidget.static.css';
 
 // ── View model types (OMN-10346 dashboard view contract) ─────────────
 
@@ -125,14 +127,7 @@ function KPIBar({ overview }: { overview: CostSavingsOverviewProjection }) {
   const complianceTokens = overview.tokens_to_compliance;
 
   return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(4, 1fr)',
-        gap: 12,
-        padding: '12px 0 16px',
-        borderBottom: '1px solid var(--ds-line)',
-      }}
+    <div className="cost-savings-overview-widget-s27f192"
     >
       <KPI
         label="Cloud Spend"
@@ -171,13 +166,13 @@ function KPIBar({ overview }: { overview: CostSavingsOverviewProjection }) {
 function SplitBar({ localPct }: { localPct: number }) {
   const cloudPct = 100 - localPct;
   return (
-    <div style={{ marginBottom: 16 }}>
+    <div className="cost-savings-overview-widget-s045aac">
       <div
         style={{ "fontSize": 10, "color": 'var(--ds-ink-3)', "letterSpacing": '0.1em', "textTransform": 'uppercase' as const, marginBottom: 6, "fontWeight": 600 }}
       >
         Delegated token split
       </div>
-      <div style={{ display: 'flex', height: 20, borderRadius: 3, overflow: 'hidden', gap: 1 }}>
+      <div className="cost-savings-overview-widget-s4667e8">
         <div
           style={{
             width: `${localPct}%`,
@@ -283,7 +278,7 @@ const COLUMNS: ColumnDef<CostSavingsRow>[] = [
     mono: true,
     sortValue: (r) => r.baseline_cost_usd,
     render: (row) => (
-      <span style={{ color: 'var(--ds-warn)' }}>{fmtUsd(row.baseline_cost_usd)}</span>
+      <span className="cost-savings-overview-widget-s4f4bdb">{fmtUsd(row.baseline_cost_usd)}</span>
     ),
   },
   {
@@ -320,14 +315,13 @@ const COLUMNS: ColumnDef<CostSavingsRow>[] = [
     render: (row) =>
       row.evidence_ref ? (
         <span
-          className="mono"
-          style={{ "fontSize": 9, color: 'var(--ds-brand)', cursor: 'help' }}
+          className="mono cost-savings-overview-widget-s15ce1c"
           title={row.evidence_ref}
         >
           ref
         </span>
       ) : (
-        <span style={{ "fontSize": 9, "color": 'var(--ds-ink-4)' }}>provisional</span>
+        <span className="cost-savings-overview-widget-sddd5ec">provisional</span>
       ),
   },
 ];
@@ -337,26 +331,18 @@ function RecentRunsSection({ overview }: { overview: CostSavingsOverviewProjecti
   if (runs.length === 0) return null;
 
   return (
-    <div style={{ marginTop: 16 }}>
+    <div className="cost-savings-overview-widget-sd265a6">
       <Heading
         level={4}
         size="xs"
         color="tertiary"
         weight="semibold"
         transform="uppercase"
-        className="text-tracked"
-        style={{ margin: '0 0 6px' }}
+        className="text-tracked cost-savings-overview-widget-s41bd2e"
       >
         Recent delegation runs
       </Heading>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '76px minmax(72px, 1fr) minmax(120px, 2fr) 64px 80px 64px 72px',
-          gap: 8,
-          paddingBottom: 4,
-          borderBottom: '1px solid var(--ds-line)',
-        }}
+      <div className="cost-savings-overview-widget-s7ff708"
       >
         {(['Run', 'Task', 'Model', 'Tokens', 'Saved', 'Latency', 'Time'] as const).map((h, i) => (
           <Text
@@ -370,16 +356,8 @@ function RecentRunsSection({ overview }: { overview: CostSavingsOverviewProjecti
         ))}
       </div>
       {runs.map((run) => (
-        <div
+        <div className="cost-savings-overview-widget-s507219"
           key={run.session_id}
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '76px minmax(72px, 1fr) minmax(120px, 2fr) 64px 80px 64px 72px',
-            gap: 8,
-            padding: '5px 0',
-            borderBottom: '1px solid var(--ds-line-soft)',
-            alignItems: 'center',
-          }}
         >
           <Text family="mono" size="sm" color="brand" title={run.session_id}>
             {shortRunId(run.session_id)}
@@ -418,7 +396,7 @@ function RecentRunsSection({ overview }: { overview: CostSavingsOverviewProjecti
         </div>
       ))}
       {(overview.zero_token_run_count ?? 0) > 0 && (
-        <Text as="div" size="xs" color="tertiary" style={{ marginTop: 6 }}>
+        <Text className="cost-savings-overview-widget-s082f6e" as="div" size="xs" color="tertiary">
           Showing measured runs only; {overview.zero_token_run_count} older rows have no token metrics.
         </Text>
       )}
@@ -431,17 +409,7 @@ function RecentRunsSection({ overview }: { overview: CostSavingsOverviewProjecti
 function WarningsStrip({ warnings }: { warnings: string[] }) {
   if (!warnings.length) return null;
   return (
-    <div
-      style={{
-        marginTop: 12,
-        padding: '8px 12px',
-        background: 'color-mix(in srgb, var(--ds-warn) 10%, transparent)',
-        border: '1px solid color-mix(in srgb, var(--ds-warn) 30%, transparent)',
-        borderRadius: 6,
-        "fontSize": 11,
-        color: 'var(--ds-warn)',
-        "lineHeight": 1.5,
-      }}
+    <div className="cost-savings-overview-widget-s8d8b48"
     >
       {warnings.map((w, i) => (
         <div key={i}>⚠ {w}</div>
@@ -454,20 +422,10 @@ function WarningsStrip({ warnings }: { warnings: string[] }) {
 
 function EmptyState() {
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '100%',
-        minHeight: 160,
-        gap: 8,
-        "color": 'var(--ds-ink-3)',
-      }}
+    <div className="cost-savings-overview-widget-s8d1ff9"
     >
-      <div style={{ "fontSize": 13, "fontWeight": 500 }}>No cost savings data available</div>
-      <div style={{ "fontSize": 11, "color": 'var(--ds-ink-4)', textAlign: 'center', maxWidth: 300 }}>
+      <div className="cost-savings-overview-widget-sefda14">No cost savings data available</div>
+      <div className="cost-savings-overview-widget-s2fe05b">
         Cost savings overview appears once the projection emitter lands.
         Upstream-blocked until node_dashboard_view_composer is deployed (OMN-10346).
       </div>
@@ -503,10 +461,10 @@ export default function CostSavingsOverviewWidget(props: { config: CostSavingsOv
       {!overview ? (
         <EmptyState />
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+        <div className="cost-savings-overview-widget-s30160b">
           <KPIBar overview={overview} />
 
-          <div style={{ marginTop: 16 }}>
+          <div className="cost-savings-overview-widget-sd265a6">
             <SplitBar localPct={localPct} />
           </div>
 
@@ -537,13 +495,7 @@ export default function CostSavingsOverviewWidget(props: { config: CostSavingsOv
           {showWarnings && <WarningsStrip warnings={overview.warnings} />}
 
           {!overview.provisioned && (
-            <div
-              style={{
-                marginTop: 8,
-                "fontSize": 10,
-                "color": 'var(--ds-ink-4)',
-                fontStyle: 'italic',
-              }}
+            <div className="cost-savings-overview-widget-s8df0a1"
             >
               Projection upstream-blocked — displaying contract-valid fixtures (OMN-10346).
             </div>

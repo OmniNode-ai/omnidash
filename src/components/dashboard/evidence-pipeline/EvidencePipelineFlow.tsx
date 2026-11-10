@@ -19,6 +19,8 @@ import {
 } from '@/services/evidence-pipeline-service';
 import { localeString as fmtLocaleString } from '@/lib/format';
 import { refreshInterval } from '@/lib/refresh';
+// OMN-23330 AC25: this file's fixed inline styles are classes in EvidencePipelineFlow.static.css.
+import './EvidencePipelineFlow.static.css';
 
 type StreamState = 'unavailable' | 'connected' | 'error';
 
@@ -72,19 +74,13 @@ function FreshnessPill({ state }: { state: EvidenceFreshnessState }) {
 
 function AuthorityBadge({ authority }: { authority: EvidenceAuthority }) {
   return (
-    <Text
+    <Text className="evidence-pipeline-flow-s9bf617"
       as="span"
       size="xs"
       weight="bold"
       color={AUTHORITY_COLOR[authority]}
       family="mono"
       transform="uppercase"
-      style={{
-        border: '1px solid var(--ds-line)',
-        borderRadius: 4,
-        padding: '2px 6px',
-        background: 'var(--ds-surface-2)',
-      }}
     >
       {authority}
     </Text>
@@ -96,13 +92,7 @@ function ProjectionFreshnessBanner({ envelopes }: { envelopes: ProjectionEnvelop
   if (!stale) return null;
   const reason = envelopes.find((env) => env.degraded_reason)?.degraded_reason;
   return (
-    <div
-      style={{
-        border: '1px solid var(--ds-warn)',
-        borderRadius: 6,
-        padding: '8px 10px',
-        background: 'var(--ds-surface-2)',
-      }}
+    <div className="evidence-pipeline-flow-s987253"
     >
       <Text size="sm" color="warn" weight="semibold">
         Projection freshness requires attention{reason ? `: ${reason}` : ''}
@@ -113,7 +103,7 @@ function ProjectionFreshnessBanner({ envelopes }: { envelopes: ProjectionEnvelop
 
 function SectionTitle({ icon, title }: { icon: ReactNode; title: string }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+    <div className="evidence-pipeline-flow-s3088da">
       {icon}
       <Text size="md" weight="bold" color="primary">
         {title}
@@ -129,39 +119,33 @@ function StageFlow({ rows }: { rows: EvidenceStageRow[] }) {
   ];
 
   return (
-    <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <section className="evidence-pipeline-flow-s464b28">
       <SectionTitle icon={<GitBranch size={16} />} title="Stage flow" />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="evidence-pipeline-flow-s930d87">
         {swimlaneRows.map(([swimlane, label]) => {
           const stages = rows.filter((row) => row.swimlane === swimlane);
           return (
-            <div key={swimlane} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div className="evidence-pipeline-flow-s355eed" key={swimlane}>
               <Text size="xs" weight="bold" color="tertiary" family="mono" transform="uppercase">
                 {label}
               </Text>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(128px, 1fr))', gap: 8 }}>
+              <div className="evidence-pipeline-flow-s002b99">
                 {stages.map((stage) => (
-                  <div
+                  <div className="evidence-pipeline-flow-sf8c555"
                     key={`${stage.swimlane}-${stage.stage_id}`}
                     data-testid="evidence-stage-node"
-                    style={{
-                      border: '1px solid var(--ds-line)',
-                      borderRadius: 6,
-                      padding: 10,
-                      background: 'var(--ds-surface-2)',
-                    }}
                   >
                     <Text as="div" size="sm" weight="bold" color="primary" truncate>
                       {stage.stage_label}
                     </Text>
-                    <Text as="div" size="xl" weight="bold" color="primary" family="mono" style={{ marginTop: 4 }}>
+                    <Text className="evidence-pipeline-flow-sc71373" as="div" size="xl" weight="bold" color="primary" family="mono">
                       {formatNumber(stage.count)}
                     </Text>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                    <div className="evidence-pipeline-flow-sefda42">
                       <FreshnessPill state={stage.freshness_state} />
                       <AuthorityBadge authority={stage.authority} />
                     </div>
-                    <Text as="div" size="xs" color="tertiary" family="mono" style={{ marginTop: 8 }}>
+                    <Text className="evidence-pipeline-flow-s36ca0a" as="div" size="xs" color="tertiary" family="mono">
                       seq {formatNumber(stage.latest_ingest_sequence)}
                     </Text>
                   </div>
@@ -191,21 +175,13 @@ function CorrelationTrace({ rows }: { rows: EvidenceCorrelationTraceRow[] }) {
     : orderedRows;
 
   return (
-    <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <section className="evidence-pipeline-flow-s464b28">
       <SectionTitle icon={<Activity size={16} />} title="Correlation trace" />
-      <div style={{ border: '1px solid var(--ds-line)', borderRadius: 6, overflow: 'hidden' }}>
+      <div className="evidence-pipeline-flow-s322450">
         {visibleRows.slice(0, 12).map((row) => (
-          <div
+          <div className="evidence-pipeline-flow-s905bf6"
             key={row.event_id}
             data-testid="evidence-trace-row"
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '72px minmax(120px, 1fr) 110px minmax(160px, 2fr)',
-              gap: 10,
-              padding: '8px 10px',
-              borderBottom: '1px solid var(--ds-line-soft)',
-              alignItems: 'center',
-            }}
           >
             <Text size="xs" color="tertiary" family="mono">
               #{row.ingest_sequence}
@@ -227,7 +203,7 @@ function CorrelationTrace({ rows }: { rows: EvidenceCorrelationTraceRow[] }) {
           </div>
         ))}
         {visibleRows.length === 0 && (
-          <div style={{ padding: 10 }}>
+          <div className="evidence-pipeline-flow-s801160">
             <Text size="sm" color="tertiary">No correlation projection rows</Text>
           </div>
         )}
@@ -238,33 +214,27 @@ function CorrelationTrace({ rows }: { rows: EvidenceCorrelationTraceRow[] }) {
 
 function ReadinessAggregate({ rows }: { rows: EvidenceReadinessRow[] }) {
   return (
-    <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <section className="evidence-pipeline-flow-s464b28">
       <SectionTitle icon={<ShieldCheck size={16} />} title="Readiness aggregate" />
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 8 }}>
+      <div className="evidence-pipeline-flow-scb6b1a">
         {rows.slice(0, 6).map((row) => (
-          <div
+          <div className="evidence-pipeline-flow-sf8c555"
             key={row.deployment_id}
             data-testid="evidence-readiness-card"
-            style={{
-              border: '1px solid var(--ds-line)',
-              borderRadius: 6,
-              padding: 10,
-              background: 'var(--ds-surface-2)',
-            }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
+            <div className="evidence-pipeline-flow-s6d9e63">
               <Text size="sm" weight="bold" color="primary" truncate>
                 {row.deployment_id}
               </Text>
               <FreshnessPill state={row.freshness_state} />
             </div>
-            <Text as="div" size="lg" weight="bold" color={row.readiness_state === 'READY' ? 'ok' : 'warn'} transform="uppercase" style={{ marginTop: 8 }}>
+            <Text className="evidence-pipeline-flow-s36ca0a" as="div" size="lg" weight="bold" color={row.readiness_state === 'READY' ? 'ok' : 'warn'} transform="uppercase">
               {row.readiness_state}
             </Text>
-            <Text as="div" size="xs" color="tertiary" family="mono" style={{ marginTop: 4 }}>
+            <Text className="evidence-pipeline-flow-sc71373" as="div" size="xs" color="tertiary" family="mono">
               Evidence: {row.evidence_pipeline_state}
             </Text>
-            <Text as="div" size="xs" color="secondary" style={{ marginTop: 8 }}>
+            <Text className="evidence-pipeline-flow-s36ca0a" as="div" size="xs" color="secondary">
               {row.blocking_reasons.length > 0 ? row.blocking_reasons.join(', ') : 'No blocking reasons in projection'}
             </Text>
           </div>
@@ -297,37 +267,23 @@ function ObservationalEventStream({ rows }: { rows: EvidenceLiveEventRow[] }) {
   });
 
   return (
-    <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <section className="evidence-pipeline-flow-s464b28">
       <SectionTitle icon={<Radio size={16} />} title="Observational event stream" />
       <Text size="xs" color="tertiary">
         Observational/debugging surface only - authoritative state remains reducer-backed projections.
       </Text>
       <input
         aria-label="Filter evidence event stream"
-        className="text-input-md"
+        className="text-input-md evidence-pipeline-flow-s85c820"
         value={filter}
         onChange={(event) => setFilter(event.target.value)}
         placeholder="Filter topic, correlation, ticket, lifecycle, severity"
-        style={{
-          border: '1px solid var(--ds-line)',
-          borderRadius: 6,
-          padding: '8px 10px',
-          background: 'var(--ds-surface)',
-        }}
       />
-      <div style={{ border: '1px solid var(--ds-line)', borderRadius: 6, overflow: 'hidden', maxHeight: 320, overflowY: 'auto' }}>
+      <div className="evidence-pipeline-flow-s872826">
         {filteredRows.slice(0, 50).map((row) => (
-          <div
+          <div className="evidence-pipeline-flow-s78af44"
             key={row.event_id}
             data-testid="evidence-live-event-row"
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '72px minmax(160px, 1fr) 100px minmax(180px, 2fr)',
-              gap: 10,
-              padding: '8px 10px',
-              borderBottom: '1px solid var(--ds-line-soft)',
-              alignItems: 'center',
-            }}
           >
             <Text size="xs" color="tertiary" family="mono">
               #{row.ingest_sequence}
@@ -349,7 +305,7 @@ function ObservationalEventStream({ rows }: { rows: EvidenceLiveEventRow[] }) {
           </div>
         ))}
         {filteredRows.length === 0 && (
-          <div style={{ padding: 10 }}>
+          <div className="evidence-pipeline-flow-s801160">
             <Text size="sm" color="tertiary">No matching event projection rows</Text>
           </div>
         )}
@@ -400,7 +356,7 @@ export default function EvidencePipelineFlow({ config: _config }: { config: Reco
       emptyHint="Stage, trace, readiness, and event rows appear after projection API snapshots are emitted"
       isLive={streamState === 'connected'}
       headerExtra={
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+        <span className="evidence-pipeline-flow-s3e5458">
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: STATE_COLOR[streamState] }} />
           <Text size="xs" color="tertiary" family="mono">
             SSE {streamState} · snapshot {formatDateTime(observedAt)}
@@ -409,7 +365,7 @@ export default function EvidencePipelineFlow({ config: _config }: { config: Reco
       }
     >
       {data && (
-        <div style={{ display: 'grid', gap: 18 }}>
+        <div className="evidence-pipeline-flow-sb31902">
           <ProjectionFreshnessBanner envelopes={envelopes} />
           <StageFlow rows={data.stages.rows} />
           <CorrelationTrace rows={data.correlations.rows} />

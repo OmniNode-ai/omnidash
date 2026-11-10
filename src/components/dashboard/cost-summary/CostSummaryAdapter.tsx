@@ -6,6 +6,8 @@ import { TOPICS } from '@shared/types/topics';
 import { CountUp, SortableTable } from '@/components/primitives';
 import type { ColumnDef } from '@/components/primitives';
 import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/lib/format';
+// OMN-23330 AC25: this file's fixed inline styles are classes in CostSummaryAdapter.static.css.
+import './CostSummaryAdapter.static.css';
 
 // ── Data types ──────────────────────────────────────────────────────
 
@@ -86,7 +88,7 @@ function SmallKPI({ label, value, prefix = '', suffix = '', decimals = 0, tone =
       <div className="mono tnum" style={{ "fontSize": 18, "fontWeight": 700, color: c, "lineHeight": 1 }}>
         <CountUp value={value} prefix={prefix} suffix={suffix} decimals={decimals} />
       </div>
-      <div style={{ "fontSize": 10, "color": 'var(--ds-ink-3)', "letterSpacing": '0.1em', "textTransform": 'uppercase', marginTop: 4, "fontWeight": 500 }}>
+      <div className="cost-summary-adapter-sd5faf9">
         {label}
       </div>
     </div>
@@ -118,7 +120,7 @@ function CostLineChart({ data }: { data: typeof COST_TREND }) {
   const yTicks = [0, 0.05, 0.10, 0.15, 0.20].filter((t) => t <= yMax);
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: 'block' }}>
+    <svg className="cost-summary-adapter-s048b9a" viewBox={`0 0 ${W} ${H}`} width="100%">
       {/* horizontal gridlines */}
       {yTicks.map((t) => (
         <line key={t} x1={padL} x2={W - padR} y1={y(t)} y2={y(t)} stroke="var(--ds-ink-4)" strokeWidth="0.5" />
@@ -176,7 +178,7 @@ function ColumnPicker({ open, onToggle, options, visible, setVisible }: {
   setVisible: (fn: (v: Record<string, boolean>) => Record<string, boolean>) => void;
 }) {
   return (
-    <div style={{ position: 'relative' }}>
+    <div className="cost-summary-adapter-s50666a">
       <button
         type="button"
         onClick={onToggle}
@@ -205,40 +207,17 @@ function ColumnPicker({ open, onToggle, options, visible, setVisible }: {
         Columns
       </button>
       {open && (
-        <div
-          style={{
-            position: 'absolute',
-            right: 0,
-            top: 30,
-            zIndex: 10,
-            background: 'var(--ds-surface)',
-            border: '1px solid var(--ds-line)',
-            borderRadius: 8,
-            padding: 8,
-            boxShadow: 'var(--ds-shadow-md)',
-            minWidth: 160,
-          }}
+        <div className="cost-summary-adapter-sb7b9d2"
         >
-          <div className="eyebrow" style={{ marginBottom: 6 }}>show columns</div>
+          <div className="eyebrow cost-summary-adapter-s4feedf">show columns</div>
           {options.map((opt) => (
-            <label
+            <label className="cost-summary-adapter-s9ffbf7"
               key={opt.key}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '5px 4px',
-                cursor: 'pointer',
-                "fontSize": 12,
-                "color": 'var(--ds-ink-2)',
-                borderRadius: 4,
-              }}
             >
-              <input
+              <input className="cost-summary-adapter-saece64"
                 type="checkbox"
                 checked={!!visible[opt.key]}
                 onChange={() => setVisible((v) => ({ ...v, [opt.key]: !v[opt.key] }))}
-                style={{ accentColor: 'var(--ds-brand)' }}
               />
               {opt.label}
             </label>
@@ -260,18 +239,18 @@ function TotalView({ k, trend, localPctDeg, cloudPctDeg }: {
   return (
     <>
       {/* Hero */}
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 14 }}>
-        <div className="mono tnum" style={{ "fontSize": 38, "fontWeight": 800, color: 'var(--ds-ok)', "lineHeight": 1, "letterSpacing": '-0.02em' }}>
+      <div className="cost-summary-adapter-se5e1c3">
+        <div className="mono tnum cost-summary-adapter-scaa4fc">
           <CountUp value={localPctDeg} suffix="%" />
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ "fontSize": 12, "fontWeight": 500, "color": 'var(--ds-ink-2)' }}>tokens routed locally</div>
-          <div style={{ "fontSize": 11, "color": 'var(--ds-ink-3)', marginTop: 2 }}>$0 marginal cost {'·'} 4 hosts on-prem</div>
+        <div className="cost-summary-adapter-s15fa32">
+          <div className="cost-summary-adapter-s9a3dee">tokens routed locally</div>
+          <div className="cost-summary-adapter-s2ee8e7">$0 marginal cost {'·'} 4 hosts on-prem</div>
         </div>
       </div>
 
       {/* Split bar */}
-      <div style={{ display: 'flex', height: 22, borderRadius: 3, overflow: 'hidden' }}>
+      <div className="cost-summary-adapter-sfe5717">
         <div style={{ width: `${localPctDeg}%`, background: 'var(--ds-ok)', display: 'flex', alignItems: 'center', paddingLeft: 10, color: 'var(--ds-on-inverse)', "fontSize": 10, "fontWeight": 600, "letterSpacing": '0.08em', transition: 'width .9s cubic-bezier(.2,.7,.3,1)' }}>
           {localPctDeg}% LOCAL
         </div>
@@ -279,24 +258,24 @@ function TotalView({ k, trend, localPctDeg, cloudPctDeg }: {
           {cloudPctDeg}% CLOUD
         </div>
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, "fontSize": 10, "color": 'var(--ds-ink-3)' }}>
+      <div className="cost-summary-adapter-sab1c0b">
         <span>Routed to local models</span>
         <span className="mono">$<CountUp value={k.cloudAvoided} decimals={2} /> avoided</span>
       </div>
 
-      <hr className="hr" style={{ margin: '16px 0' }} />
+      <hr className="hr cost-summary-adapter-see3746" />
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+      <div className="cost-summary-adapter-s373c5c">
         <SmallKPI label="Cloud spend" value={k.totalCloudSpend} prefix="$" decimals={2} />
         <SmallKPI label="Avoided" value={k.cloudAvoided} prefix="$" decimals={2} tone="good" />
         <SmallKPI label="Tokens" value={k.tokensProcessed / 1e6} suffix="M" decimals={1} />
       </div>
 
       {/* Line chart */}
-      <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--ds-line-soft)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+      <div className="cost-summary-adapter-s8de070">
+        <div className="cost-summary-adapter-s8d7976">
           <div className="eyebrow">cost per minute {'·'} last 30 min</div>
-          <div className="mono" style={{ "fontSize": 9, "color": 'var(--ds-ink-3)' }}>{'↓'} 87% vs cloud-only</div>
+          <div className="mono cost-summary-adapter-sa29e5a">{'↓'} 87% vs cloud-only</div>
         </div>
         <CostLineChart data={trend} />
       </div>
@@ -322,9 +301,9 @@ function PerModelView({ models, totalSaved }: { models: PerModelRow[]; totalSave
       key: 'name', label: 'Model', width: 'minmax(120px, 1.4fr)',
       sortValue: (r) => r.name,
       render: (m) => (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+        <span className="cost-summary-adapter-sbdd4c6">
           <span style={{ width: 7, height: 7, borderRadius: 2, background: m.color, flexShrink: 0 }} />
-          <span style={{ "fontWeight": 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</span>
+          <span className="cost-summary-adapter-se13d16">{m.name}</span>
         </span>
       ),
     },
@@ -373,7 +352,7 @@ function PerModelView({ models, totalSaved }: { models: PerModelRow[]; totalSave
         const wouldPct = (m.wouldHaveCost / max) * 100;
         const spentPct = (m.spent / max) * 100;
         return (
-          <div style={{ position: 'relative', height: 8, background: 'var(--ds-inset)', borderRadius: 999, overflow: 'hidden' }} title={`would have cost $${fmtFixed(m.wouldHaveCost, 2)} · actual $${fmtFixed(m.spent, 2)}`}>
+          <div className="cost-summary-adapter-s15eec4" title={`would have cost $${fmtFixed(m.wouldHaveCost, 2)} · actual $${fmtFixed(m.spent, 2)}`}>
             <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${wouldPct}%`, background: m.tier === 'local' ? 'var(--ds-ok-soft)' : 'var(--ds-brand-soft)' }} />
             <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${spentPct}%`, background: 'var(--ds-brand)' }} />
           </div>
@@ -399,13 +378,13 @@ function PerModelView({ models, totalSaved }: { models: PerModelRow[]; totalSave
   return (
     <>
       {/* Hero */}
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 14 }}>
-        <div className="mono tnum" style={{ "fontSize": 32, "fontWeight": 800, color: 'var(--ds-ok)', "lineHeight": 1, "letterSpacing": '-0.02em' }}>
+      <div className="cost-summary-adapter-se5e1c3">
+        <div className="mono tnum cost-summary-adapter-sdedd55">
           $<CountUp value={totalSaved} decimals={2} />
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ "fontSize": 12, "fontWeight": 500, "color": 'var(--ds-ink-2)' }}>saved {'·'} routed to local models</div>
-          <div style={{ "fontSize": 11, "color": 'var(--ds-ink-3)', marginTop: 2 }}>{local.length} local {'·'} {cloud.length} cloud {'·'} last 7 days</div>
+        <div className="cost-summary-adapter-s15fa32">
+          <div className="cost-summary-adapter-s9a3dee">saved {'·'} routed to local models</div>
+          <div className="cost-summary-adapter-s2ee8e7">{local.length} local {'·'} {cloud.length} cloud {'·'} last 7 days</div>
         </div>
         <ColumnPicker open={pickerOpen} onToggle={() => setPickerOpen((o) => !o)} options={colOptions} visible={visible} setVisible={setVisible} />
       </div>

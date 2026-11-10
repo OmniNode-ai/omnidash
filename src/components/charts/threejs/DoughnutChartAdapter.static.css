@@ -1,0 +1,10 @@
+/* OMN-23330 AC25: the fixed inline styles of DoughnutChartAdapter.tsx, moved into classes with nothing else changed. Each selector
+   repeats its class so it keeps the weight the inline style had over the stylesheet rules around it. */
+.doughnut-chart-adapter-s20c727.doughnut-chart-adapter-s20c727.doughnut-chart-adapter-s20c727 { display: flex; gap: 16px; align-items: stretch; width: 100%; }
+.doughnut-chart-adapter-sa33155.doughnut-chart-adapter-sa33155.doughnut-chart-adapter-sa33155 { flex: 1 1 auto; min-width: 0; position: relative; }
+.doughnut-chart-adapter-sacccc4.doughnut-chart-adapter-sacccc4.doughnut-chart-adapter-sacccc4 { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+.doughnut-chart-adapter-s305b44.doughnut-chart-adapter-s305b44.doughnut-chart-adapter-s305b44 { flex: 0 0 180px; display: flex; flex-direction: column; gap: 4px; padding: 4px 2px; min-width: 0; }
+.doughnut-chart-adapter-s3eaa7b.doughnut-chart-adapter-s3eaa7b.doughnut-chart-adapter-s3eaa7b { margin-bottom: 4px; }
+.doughnut-chart-adapter-s4363d3.doughnut-chart-adapter-s4363d3.doughnut-chart-adapter-s4363d3 { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
+.doughnut-chart-adapter-see3d55.doughnut-chart-adapter-see3d55.doughnut-chart-adapter-see3d55 { flex: 1; }
+.doughnut-chart-adapter-s7856ab.doughnut-chart-adapter-s7856ab.doughnut-chart-adapter-s7856ab { margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--ds-line-soft); display: flex; justify-content: space-between; }

@@ -8,6 +8,8 @@ import { Text } from '@/components/ui/typography';
 import { formatUsd, usdFractionDigits } from '@/lib/format';
 import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/lib/format';
 import { refreshInterval } from '@/lib/refresh';
+// OMN-23330 AC25: this file's fixed inline styles are classes in DelegationCostBreakdownWidget.static.css.
+import './DelegationCostBreakdownWidget.static.css';
 
 // ── Projection row shape ─────────────────────────────────────────────
 //
@@ -114,7 +116,7 @@ export default function DelegationCostBreakdownWidget(props: { config: Delegatio
       width: 'minmax(140px, 2fr)',
       sortValue: (r) => r.aggregation_key,
       render: (r) => (
-        <span title={r.aggregation_key} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <span className="delegation-cost-breakdown-widget-s6d812f" title={r.aggregation_key}>
           {formatAggregationKey(r.aggregation_key)}
         </span>
       ),
@@ -167,7 +169,7 @@ export default function DelegationCostBreakdownWidget(props: { config: Delegatio
       emptyMessage="No cost data"
       emptyHint="Cost breakdown appears once llm_cost_aggregates is populated (OMN-14896)."
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="delegation-cost-breakdown-widget-s930d87">
         {/* Window selector — the only time-period dimension llm_cost_aggregates
             carries. Always rendered (as long as ANY window has data) so the user
             can switch away from an empty window instead of hitting a dead end. */}
@@ -192,14 +194,7 @@ export default function DelegationCostBreakdownWidget(props: { config: Delegatio
           </Text>
         ) : (
           <>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-                gap: 12,
-                paddingBottom: 12,
-                borderBottom: '1px solid var(--ds-line)',
-              }}
+            <div className="delegation-cost-breakdown-widget-s918bb8"
             >
               <KPI
                 label="Total cost"

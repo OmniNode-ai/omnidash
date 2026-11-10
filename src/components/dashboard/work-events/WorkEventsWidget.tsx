@@ -35,6 +35,8 @@ import { FreshnessLine } from '@/components/dashboard/lab/FreshnessLine';
 import { formatAge } from '@/utils/time-format';
 import type { ProjectionSnapshot } from '@/data-source';
 import { refreshInterval } from '@/lib/refresh';
+// OMN-23330 AC25: this file's fixed inline styles are classes in WorkEventsWidget.static.css.
+import './WorkEventsWidget.static.css';
 
 // Row shape mirrors the contract's projection_api.columns for
 // onex.snapshot.projection.work.events.v1, in declaration order.
@@ -155,14 +157,13 @@ function EventRow({ row }: { row: WorkEventRow }) {
         alignItems: 'center',
       }}
     >
-      <Text
+      <Text className="work-events-widget-s6d812f"
         as="span"
         size="xs"
         family="mono"
         color="primary"
         title={row.actor_id ?? ''}
         data-testid="work-events-actor"
-        style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
       >
         {row.actor_id ?? ''}
       </Text>
@@ -175,14 +176,13 @@ function EventRow({ row }: { row: WorkEventRow }) {
       >
         {row.event_kind}
       </Text>
-      <Text
+      <Text className="work-events-widget-s6d812f"
         as="span"
         size="xs"
         family="mono"
         color="secondary"
         title={row.source_topic ?? ''}
         data-testid="work-events-summary"
-        style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
       >
         {formatSummary(row.summary)}
       </Text>
@@ -248,7 +248,7 @@ export function HookCaptureView({
         />
       )}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div className="work-events-widget-s355eed">
         <Text as="div" size="sm" weight="semibold" color={state === 'CAPTURING' ? 'ok' : state === 'QUIET' ? 'tertiary' : 'warn'} data-testid="hook-capture-state">
           {state}
         </Text>
@@ -260,7 +260,7 @@ export function HookCaptureView({
               : `work.events is unreadable: ${error?.message || 'unknown read failure'}`}
         </Text>
         {grouped.map(([type, value]) => (
-          <div key={type} data-testid="hook-capture-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 1fr) 80px 120px', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--ds-line-soft)' }}>
+          <div className="work-events-widget-s535d45" key={type} data-testid="hook-capture-row">
             <Text as="span" size="xs" family="mono" color="primary">{type}</Text>
             <Text as="span" size="xs" family="mono" color="secondary">{value.count} read</Text>
             <Text as="span" size="xs" family="mono" color="tertiary">newest {formatAge(value.newest, new Date(snapshot.readAt).getTime())} old</Text>
@@ -318,7 +318,7 @@ export default function WorkEventsWidget(props: { config?: WorkEventsWidgetConfi
       emptyHint="Rows appear once session lifecycle events reach node_projection_work_events and it republishes each materialized row onto the snapshot topic (OMN-17772). Hook traffic publishes on the stability lane while this consumer runs on dev, which OMN-17034 tracks."
     >
       {!isEmpty && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="work-events-widget-s355eed">
           <Text as="div" size="xs" color="tertiary" data-testid="work-events-summary-line">
             {ordered.length} work event{ordered.length === 1 ? '' : 's'} across {actorCount} actor
             {actorCount === 1 ? '' : 's'}

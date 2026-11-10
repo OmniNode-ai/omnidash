@@ -1,0 +1,25 @@
+/* OMN-23330 AC25: the fixed inline styles of TraceExplorerWidget.tsx, moved into classes with nothing else changed. Each selector
+   repeats its class so it keeps the weight the inline style had over the stylesheet rules around it. */
+.trace-explorer-widget-s859c1d.trace-explorer-widget-s859c1d.trace-explorer-widget-s859c1d { border: 1px solid var(--ds-line); border-radius: 6px; padding: 10px; min-width: 0; }
+.trace-explorer-widget-s45f395.trace-explorer-widget-s45f395.trace-explorer-widget-s45f395 { margin-top: 3px; }
+.trace-explorer-widget-s082f6e.trace-explorer-widget-s082f6e.trace-explorer-widget-s082f6e { margin-top: 6px; }
+.trace-explorer-widget-s36ca0a.trace-explorer-widget-s36ca0a.trace-explorer-widget-s36ca0a { margin-top: 8px; }
+.trace-explorer-widget-s0bff55.trace-explorer-widget-s0bff55.trace-explorer-widget-s0bff55 { padding: 7px 0; border-bottom: 1px solid var(--ds-line-soft); }
+.trace-explorer-widget-sfce391.trace-explorer-widget-sfce391.trace-explorer-widget-sfce391 { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.trace-explorer-widget-sdc1707.trace-explorer-widget-sdc1707.trace-explorer-widget-sdc1707 { display: grid; grid-template-columns: minmax(180px, 1.4fr) minmax(150px, 1fr) minmax(150px, 1fr); gap: 8px; }
+.trace-explorer-widget-sc779fa.trace-explorer-widget-sc779fa.trace-explorer-widget-sc779fa { display: flex; align-items: center; gap: 6px; }
+.trace-explorer-widget-saf15e3.trace-explorer-widget-saf15e3.trace-explorer-widget-saf15e3 { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.trace-explorer-widget-s23b34f.trace-explorer-widget-s23b34f.trace-explorer-widget-s23b34f { display: inline-flex; align-items: center; gap: 6px; }
+.trace-explorer-widget-s372f70.trace-explorer-widget-s372f70.trace-explorer-widget-s372f70 { display: inline-flex; align-items: center; gap: 5px; }
+.trace-explorer-widget-sd6ed84.trace-explorer-widget-sd6ed84.trace-explorer-widget-sd6ed84 { display: flex; flex-wrap: wrap; gap: 6px; }
+.trace-explorer-widget-sd33c41.trace-explorer-widget-sd33c41.trace-explorer-widget-sd33c41 { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 10px; align-items: start; }
+.trace-explorer-widget-s8861ff.trace-explorer-widget-s8861ff.trace-explorer-widget-s8861ff { border: 1px solid var(--ds-line); border-radius: 6px; overflow: hidden; min-width: 0; }
+.trace-explorer-widget-s872b66.trace-explorer-widget-s872b66.trace-explorer-widget-s872b66 { padding: 16px; }
+.trace-explorer-widget-sc6072a.trace-explorer-widget-sc6072a.trace-explorer-widget-sc6072a { border-bottom: 1px solid var(--ds-line-soft); }
+.trace-explorer-widget-sbaf642.trace-explorer-widget-sbaf642.trace-explorer-widget-sbaf642 { display: grid; grid-template-columns: 90px 150px minmax(150px, 1fr) minmax(160px, 1.4fr); gap: 8px; align-items: center; padding: 8px 10px; cursor: pointer; }
+.trace-explorer-widget-sb458b9.trace-explorer-widget-sb458b9.trace-explorer-widget-sb458b9 { padding: 8px 10px 12px; background: var(--ds-inset); }
+.trace-explorer-widget-s622922.trace-explorer-widget-s622922.trace-explorer-widget-s622922 { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 7px; }
+.trace-explorer-widget-s452e12.trace-explorer-widget-s452e12.trace-explorer-widget-s452e12 { margin-bottom: 7px; }
+.trace-explorer-widget-s5ff1fe.trace-explorer-widget-s5ff1fe.trace-explorer-widget-s5ff1fe { white-space: pre-wrap; word-break: break-word; margin: 0; max-height: 220px; overflow: auto; }
+.trace-explorer-widget-sc466cc.trace-explorer-widget-sc466cc.trace-explorer-widget-sc466cc { display: flex; justify-content: space-between; align-items: center; padding: 8px; }
+.trace-explorer-widget-sdd9e1a.trace-explorer-widget-sdd9e1a.trace-explorer-widget-sdd9e1a { padding: 0 8px 8px; }

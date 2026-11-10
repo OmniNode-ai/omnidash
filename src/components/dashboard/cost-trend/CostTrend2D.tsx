@@ -11,6 +11,8 @@ import { zonedComponents } from '@/lib/zonedComponents';
 import { StackedChart, type StackedSlice, type ChartType } from './StackedChart';
 import { useTokenColors } from '@/theme/design-system/useTokenColors';
 import { refreshInterval } from '@/lib/refresh';
+// OMN-23330 AC25: this file's fixed inline styles are classes in CostTrend2D.static.css.
+import './CostTrend2D.static.css';
 
 export interface CostDataPoint {
   bucket_time: string;
@@ -190,7 +192,7 @@ export default function CostTrendPanel({ config }: { config: CostTrendConfig }) 
     >
       {hasAnyData && (
         <div>
-          <div style={{ position: 'relative' }}>
+          <div className="cost-trend2-d-s50666a">
             {stacked ? (
               <StackedChart
                 stacked={stacked}
@@ -200,21 +202,11 @@ export default function CostTrendPanel({ config }: { config: CostTrendConfig }) 
                 height={320}
               />
             ) : (
-              <div
-                style={{
-                  height: 320,
-                  borderRadius: 6,
-                  background: 'var(--ds-surface-2)',
-                  border: '1px solid var(--ds-line-soft)',
-                }}
+              <div className="cost-trend2-d-scd0385"
               />
             )}
             {showNoDataInRange && (
-              <div
-                style={{
-                  position: 'absolute', inset: 0,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}
+              <div className="cost-trend2-d-sdc3d6a"
               >
                 <Text size="lg" color="tertiary">
                   {rangeActive
@@ -229,27 +221,13 @@ export default function CostTrendPanel({ config }: { config: CostTrendConfig }) 
               legend so the two Cost Trend widgets read as a set. Plain
               click toggles visibility; shift-click solos the model
               (same semantics as shift-click on a bar in the 3D widget). */}
-          <div
-            style={{
-              marginTop: 8,
-              padding: '10px 12px',
-              display: 'flex',
-              alignItems: 'flex-start',
-              alignContent: 'flex-start',
-              flexWrap: 'wrap',
-              gap: 8,
-              minHeight: 48,
-              background: 'var(--ds-surface-2)',
-              border: '1px solid var(--ds-line)',
-              borderRadius: 6,
-            }}
+          <div className="cost-trend2-d-s0f7beb"
           >
-            <Text
+            <Text className="cost-trend2-d-sa8dd3e"
               size="xs"
               color="tertiary"
               family="mono"
               transform="uppercase"
-              style={{ marginRight: 4, alignSelf: 'center' }}
             >
               Models
             </Text>

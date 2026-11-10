@@ -7,6 +7,8 @@ import { useTimezone } from '@/hooks/useTimezone';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 import { localeTime as fmtLocaleTime } from '@/lib/format';
 import { refreshInterval } from '@/lib/refresh';
+// OMN-23330 AC25: this file's fixed inline styles are classes in ReadinessGate.static.css.
+import './ReadinessGate.static.css';
 
 // STAY-BESPOKE (OMN-10295): This widget renders a status-pill HTML table with
 // per-dimension tri-state rows plus freshness downgrade semantics. It does not
@@ -107,32 +109,27 @@ export default function ReadinessGate({ config: _config }: { config: Record<stri
       fileMode={!isLiveDataSource(dataSourceMode)}
     >
       {data && effectiveStatus && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div className="readiness-gate-s8d40ed">
+          <div className="readiness-gate-s85056b">
             <Text size="md" color="secondary">Overall</Text>
             <span data-testid="overall-status-pill"><StatusPill status={effectiveStatus} /></span>
             {showCheckedAt ? (
-              <Text size="sm" color="tertiary" style={{ marginLeft: 'auto' }}>
+              <Text className="readiness-gate-s538764" size="sm" color="tertiary">
                 Checked {fmtLocaleTime(new Date(data.lastCheckedAt), undefined, { timeZone: tz })}
               </Text>
             ) : (
-              <Text size="sm" color="tertiary" style={{ marginLeft: 'auto' }}>
+              <Text className="readiness-gate-s538764" size="sm" color="tertiary">
                 Fixture data
               </Text>
             )}
           </div>
 
-          <div style={{ border: '1px solid var(--ds-line-soft)', borderRadius: 6, overflow: 'hidden' }}>
-            <table
-              style={{
-                width: '100%',
-                borderCollapse: 'collapse',
-                tableLayout: 'fixed',
-              }}
+          <div className="readiness-gate-s5375b8">
+            <table className="readiness-gate-sfdb3d2"
             >
               <colgroup>
-                <col style={{ width: 72 }} />
-                <col style={{ width: '40%' }} />
+                <col className="readiness-gate-sf77879" />
+                <col className="readiness-gate-sbc0eb5" />
                 <col />
               </colgroup>
               <thead>
@@ -150,7 +147,7 @@ export default function ReadinessGate({ config: _config }: { config: Record<stri
               </thead>
               <tbody>
                 {data.dimensions.map((dim) => (
-                  <tr key={dim.name} style={{ borderTop: '1px solid var(--ds-line-soft)' }}>
+                  <tr className="readiness-gate-s2102bd" key={dim.name}>
                     <td style={tdStyle}>
                       <StatusPill status={dim.status} />
                     </td>
