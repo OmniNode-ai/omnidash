@@ -97,32 +97,10 @@ async function basisOf(page: Page, card: string, line = '.local-card-basis') {
   return basis;
 }
 
-// The default Overview source, cost.savings-overview.v1, serves no baseline model, pricing manifest version or unpriced
-// count, so those read not recorded. Its money totals sum measured-provenance rows only, so the estimated and
-// unknown-provenance runs are named as what each total leaves out.
-for (const scenario of [
-  { name: 'two runs of unknown provenance', unknown: 2, expected: 'Not in this total: 1 estimated run, 2 unknown-provenance runs' },
-  { name: 'none of unknown provenance (control)', unknown: 0, expected: 'Not in this total: 1 estimated run, 0 unknown-provenance runs' },
-]) {
-  test(`AC4 spend and savings each name their baseline, pricing version and the runs left out (savings overview): ${scenario.name}`, async ({ page }) => {
-    await serveCharts(page, { ...chartRows, [OVERVIEW]: [{ window: 'all', captured_at: hourAgo(0),
-      total_cost_usd: 0.25, total_baseline_cost_usd: 1, total_savings_usd: 0.75, tokens_total: 100, run_count: 11,
-      measured_run_count: 9, estimated_run_count: 1, unknown_run_count: scenario.unknown }] });
-    await page.goto('/');
-    for (const card of ['overview-spend', 'overview-savings']) {
-      const details = await basisOf(page, card);
-      await expect(details).toContainText(scenario.expected);
-      await expect(details).toContainText('Baseline model not recorded');
-      await expect(details).toContainText('Pricing manifest not recorded');
-      await expect(details).toContainText('Unpriced runs not recorded');
-    }
-    // Spend and savings stay two figures, never one.
-    await expect(page.locator('[data-component="overview-spend"] .local-dashboard-metric')).toHaveText('$0.25');
-    await expect(page.locator('[data-component="overview-savings"] .local-dashboard-metric')).toHaveText('$0.75');
-  });
-}
-
-// With no savings table in the local store the Overview reads metering-summary.v1. The fold classes a run with no token
+// OMN-23330 AC1/AC2 (Lakshman 2026-11-10, "All on metering"): the cost.savings-overview.v1 scenarios that stood here are
+// retired with that source; the metering scenarios below are AC4 for the one source the cards read, and
+// local-dashboard-omn21166-overview-source.spec.ts holds that the aggregate is never read.
+// The Overview reads metering-summary.v1 (here with the aggregate's table also missing). The fold classes a run with no token
 // counts before it looks at spend, so both classes are named; the one with no token counts is never hidden behind a 0.
 for (const scenario of [
   { name: 'two runs with no spend', unpriced: 2, expected: 'Not counted: 1 run without token counts, 2 runs without spend', spendNamed: true },

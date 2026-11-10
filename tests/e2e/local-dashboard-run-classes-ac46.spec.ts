@@ -3,111 +3,81 @@ import { chartRows, prefix, serveCharts, keepRealClock } from './omn21166-chart-
 // This spec dates its rows from the real clock, so the browser keeps it (see FIXTURE_NOW).
 test.beforeEach(({ page }) => keepRealClock(page));
 
-// OMN-21166 part 9 AC46: the run breakdown under Measured runs shows measured, estimated and unknown as separate
-// labelled counts, each in its own colour from the shared field identity (OMN-21308), in both themes. Unknown means no
-// measurement, so it reads in the not-measured tone and never in the failed tone; the label carries the meaning, not
-// the colour. Visibility is unchanged: the line appears only when an estimated or unknown run is served, a zero
-// estimated or unknown class is left out, and a measured 0 is a value.
+// OMN-21166 part 9 AC46 asked that each run class under the run figure be its own labelled count in its own shared
+// colour, with unknown never in the failed tone. Since OMN-23330 AC1/AC2 (Lakshman 2026-11-10, "All on metering") the
+// card reads metering-summary.v1, whose classes are the measured runs, every run, and the runs left out for having no
+// token counts or no spend; OMN-23330 AC27 colours each in its own tone. Failure modes, carried over:
+//   C1  two classes share one colour, or a left-out run reads in the failed tone (in either theme);
+//   C2  a zero left-out class is still drawn ("0 runs without spend");
+//   C3  a missing count is drawn as a number instead of "Not recorded";
+//   C4  a measured 0 is dropped instead of drawn as a value.
 const MISSING = { timeout: 3000 };
+const METERING = prefix + 'metering-summary.v1';
 
-const OVERVIEW = prefix + 'cost.savings-overview.v1';
-
-function overviewRow(counts: Record<string, unknown>) {
-  return [{ window: 'all', captured_at: new Date().toISOString(), total_cost_usd: 0.25, total_baseline_cost_usd: 1,
-    total_savings_usd: 0.75, tokens_total: 120, run_count: 14, ...counts }];
+function meteringRow(counts: Record<string, unknown>) {
+  return [{ window_kind: 'all', window_start: '', as_of: new Date().toISOString(), baseline_model: 'baseline-a',
+    pricing_manifest_version: 'fixture-1', baseline_state: 'resolved', spend_usd: '0.25', counterfactual_usd: '1.00',
+    savings_usd: '0.75', tokens_in: 100, tokens_out: 20, runs_total: 14, runs_measured: 9, runs_unknown_tokens: 3,
+    runs_unknown_spend: 2, ...counts }];
 }
 
-async function classes(page: Page, counts: Record<string, unknown>) {
-  await serveCharts(page, { ...chartRows, [OVERVIEW]: overviewRow(counts) });
+async function card(page: Page, counts: Record<string, unknown>) {
+  await serveCharts(page, { ...chartRows, [METERING]: meteringRow(counts) });
   await page.goto('/');
-  const card = page.locator('[data-component="overview-measured"]');
-  await expect(card.locator('.local-dashboard-metric')).toBeVisible();
-  return { card, spans: card.locator('[data-run-class]') };
+  const measured = page.locator('[data-component="overview-measured"]');
+  await expect(measured.locator('.local-dashboard-metric')).toBeVisible();
+  return measured;
 }
 
-/** Each class span's label and computed colour, plus the failed tone's colour under the same theme. */
+/** Each toned caption part of the Agent calls card, with its computed colour, and the failed tone's colour. */
 async function paint(page: Page) {
   return page.evaluate(() => {
-    const spans = [...document.querySelectorAll<HTMLElement>('[data-component="overview-measured"] [data-run-class]')];
+    const parts = [...document.querySelectorAll<HTMLElement>('[data-component="overview-measured"] .local-caption-tone[data-field-tone]')];
     const fail = getComputedStyle(document.documentElement).getPropertyValue('--field-fail').trim();
     const probe = document.createElement('span');
     probe.style.color = fail;
     document.body.append(probe);
     const failColour = getComputedStyle(probe).color;
     probe.remove();
-    return { failColour, spans: spans.map(s => ({ run: s.dataset.runClass, text: s.textContent, colour: getComputedStyle(s).color })) };
+    return { failColour, parts: parts.map(p => ({ tone: p.dataset.fieldTone, text: p.textContent, colour: getComputedStyle(p).color })) };
   });
 }
 
-test('AC46 all three classes served: three labelled spans, three colours, unknown never in the failed tone, both themes', async ({ page }) => {
-  const { card, spans } = await classes(page, { measured_run_count: 9, estimated_run_count: 2, unknown_run_count: 3 });
-  await expect(spans).toHaveCount(3, MISSING);
-  await expect(card).toContainText('9 measured · 2 estimated · 3 unknown');
+test('C1: measured, every run and the runs left out wear three colours, never the failed one, in both themes', async ({ page }) => {
+  const measured = await card(page, {});
+  await expect(measured).toContainText('9 of 14 runs measured');
+  await expect(measured).toContainText('Not counted: 3 runs without token counts, 2 runs without spend');
   for (const theme of ['light', 'dark']) {
     if ((await page.locator('html').getAttribute('data-theme') ?? 'light') !== theme) {
       await page.getByRole('button', { name: 'Toggle theme', exact: true }).click();
     }
-    const { failColour, spans: drawn } = await paint(page);
-    expect(drawn.map(s => [s.run, s.text])).toEqual([['measured', '9 measured'], ['estimated', '2 estimated'], ['unknown', '3 unknown']]);
-    expect(new Set(drawn.map(s => s.colour)).size, `${theme}: one colour per class`).toBe(3);
-    expect(drawn.find(s => s.run === 'unknown')?.colour, `${theme}: unknown is not a failure`).not.toBe(failColour);
+    const { failColour, parts } = await paint(page);
+    expect(parts.map(p => [p.tone, p.text])).toEqual(expect.arrayContaining([['calls', '9'], ['count', '14'], ['run-unknown', '3'], ['run-unknown', '2']]));
+    const colour = (tone: string) => parts.find(p => p.tone === tone)?.colour;
+    expect(new Set(['calls', 'count', 'run-unknown'].map(colour)).size, `${theme}: one colour per class`).toBe(3);
+    expect(colour('run-unknown'), `${theme}: a left-out run is not a failure`).not.toBe(failColour);
   }
 });
 
-test('AC46 estimated absent: measured and unknown only', async ({ page }) => {
-  const { spans } = await classes(page, { measured_run_count: 9, unknown_run_count: 3 });
-  await expect(spans).toHaveCount(2, MISSING);
-  await expect(spans.nth(0)).toHaveText('9 measured');
-  await expect(spans.nth(1)).toHaveText('3 unknown');
+test('C2: a zero left-out class is not drawn', async ({ page }) => {
+  const measured = await card(page, { runs_unknown_spend: 0 });
+  await expect(measured).toContainText('Not counted: 3 runs without token counts', MISSING);
+  await expect(measured).not.toContainText('without spend');
 });
 
-test('AC46 measured absent: estimated and unknown only', async ({ page }) => {
-  const { card, spans } = await classes(page, { estimated_run_count: 2, unknown_run_count: 3 });
-  await expect(spans).toHaveCount(2, MISSING);
-  await expect(spans.nth(0)).toHaveText('2 estimated');
-  await expect(spans.nth(1)).toHaveText('3 unknown');
-  await expect(card.locator('[data-run-class="measured"]')).toHaveCount(0);
+test('C2 control: with nothing left out there is no Not counted line', async ({ page }) => {
+  const measured = await card(page, { runs_measured: 14, runs_unknown_tokens: 0, runs_unknown_spend: 0 });
+  await expect(measured).toContainText('14 of 14 runs measured', MISSING);
+  await expect(measured).not.toContainText('Not counted');
 });
 
-test('AC46 unknown absent: measured and estimated only', async ({ page }) => {
-  const { card, spans } = await classes(page, { measured_run_count: 9, estimated_run_count: 2 });
-  await expect(spans).toHaveCount(2, MISSING);
-  await expect(spans.nth(0)).toHaveText('9 measured');
-  await expect(spans.nth(1)).toHaveText('2 estimated');
-  await expect(card.locator('[data-run-class="unknown"]')).toHaveCount(0);
+test('C3: a missing count reads Not recorded, never a number', async ({ page }) => {
+  const measured = await card(page, { runs_unknown_spend: null });
+  await expect(measured).toContainText('runs without spend: Not recorded', MISSING);
 });
 
-test('AC46 measured absent and estimated 0: a zero estimated is still left out', async ({ page }) => {
-  const { card, spans } = await classes(page, { estimated_run_count: 0, unknown_run_count: 3 });
-  await expect(spans).toHaveCount(1, MISSING);
-  await expect(spans.nth(0)).toHaveText('3 unknown');
-  await expect(card).not.toContainText('0 estimated');
-});
-
-test('AC46 unknown 0: measured and estimated only, no 0 unknown', async ({ page }) => {
-  const { card, spans } = await classes(page, { measured_run_count: 9, estimated_run_count: 2, unknown_run_count: 0 });
-  await expect(spans).toHaveCount(2, MISSING);
-  await expect(spans.nth(1)).toHaveText('2 estimated');
-  await expect(card).not.toContainText('0 unknown');
-});
-
-test('AC46 measured 0 is a value beside a served unknown', async ({ page }) => {
-  const { spans } = await classes(page, { measured_run_count: 0, estimated_run_count: 0, unknown_run_count: 3 });
-  await expect(spans).toHaveCount(2, MISSING);
-  await expect(spans.nth(0)).toHaveText('0 measured');
-  await expect(spans.nth(1)).toHaveText('3 unknown');
-});
-
-test('AC46 a malformed count is left out, never shown as a number', async ({ page }) => {
-  const { card, spans } = await classes(page, { measured_run_count: 9, estimated_run_count: 'abc', unknown_run_count: 3 });
-  await expect(spans).toHaveCount(2, MISSING);
-  await expect(card.locator('[data-run-class="estimated"]')).toHaveCount(0);
-  await expect(card).not.toContainText('NaN');
-});
-
-test('AC46 only measured runs served: no breakdown line (control)', async ({ page }) => {
-  const { card, spans } = await classes(page, { measured_run_count: 9, estimated_run_count: 0, unknown_run_count: 0 });
-  await expect(card.locator('.local-dashboard-metric')).not.toHaveText('');
-  await expect(spans).toHaveCount(0);
-  await expect(card).not.toContainText('estimated');
+test('C4: a measured 0 is a value', async ({ page }) => {
+  const measured = await card(page, { runs_measured: 0, runs_total: 3, runs_unknown_tokens: 3, runs_unknown_spend: 0 });
+  await expect(measured.locator('.local-dashboard-metric')).toHaveText('0');
+  await expect(measured).toContainText('0 of 3 runs measured', MISSING);
 });

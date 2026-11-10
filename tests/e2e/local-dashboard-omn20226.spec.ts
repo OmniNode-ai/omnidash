@@ -60,7 +60,7 @@ const SUMMARY_CARDS = ['overview-spend', 'overview-savings', 'overview-measured'
 
 test('OMN-20226: on a fresh store the deleted cards stay gone and the headline cards read the fresh row and fit, at 1440x900', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  // The all-time spend and savings cards read cost.savings-overview.v1 beside the metering row (as on dev).
+  // OMN-23330 AC1/AC2: the cards read the metering row; the retired aggregate is served beside it and never shown.
   await serve(page, { [METERING]: [freshAllRow], 'onex.snapshot.projection.cost.savings-overview.v1': [{
     window: 'all', captured_at: '2026-10-07T06:00:57Z', total_cost_usd: '0.0', total_savings_usd: '0.003134', run_count: 3 }] });
   await page.goto('/');

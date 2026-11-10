@@ -12,7 +12,7 @@ test('missing spend is a compact notice, while measured charts and run identity 
   // compact notice on its headline card, never a chart-sized blank, and the measured quality card and the run charts
   // beside it are untouched.
   const spend = page.locator('[data-component="overview-spend"]');
-  await expect(spend).toContainText('Not measured: overview totals unavailable');
+  await expect(spend).toContainText('Not measured: no all-time row');
   expect(await spend.evaluate(el => el.getBoundingClientRect().height)).toBeLessThanOrEqual(150);
   await expect(page.locator('[data-component="overview-quality"][data-slice="card"] .local-dashboard-metric')).toHaveText('75.0%');
   await expect(page.getByRole('figure', { name: 'Runs per day', exact: true }).getByRole('button', { name: /^Oct 17: 3 runs/ })).toBeVisible();

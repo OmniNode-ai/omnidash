@@ -27,6 +27,8 @@ export const chartRows: Record<string, unknown[]> = {
     backend_id: 'local', task_type: 'summarization', cost_tier_name: 'local', actual_score: '1.000', data_source: 'fixture',
   })),
   [prefix + 'delegation.savings.v1']: [],
+  // No all-time row: specs built on this fixture show the headline cards' honest "Not measured" state; a spec that needs
+  // headline figures serves its own all-time row (meteringAll below, OMN-23330 AC1/AC2).
   [prefix + 'metering-summary.v1']: [1, 2, 3].map((day, i) => ({
     tenant_id: 'chart-fixture-tenant', window_kind: 'day', window_start: `2026-10-0${day}`,
     as_of: '2026-10-17T10:00:00Z', baseline_model: 'baseline-a', baseline_state: 'resolved',
@@ -83,4 +85,23 @@ export async function narrowTo(page: Page, width: number, height: number) {
   const sidebar = page.locator('aside.sidebar');
   if (await sidebar.count() === 0) return;
   await expect(sidebar).toHaveClass(/(^|\s)collapsed(\s|$)/);
+}
+
+/**
+ * OMN-23330 AC1/AC2 (Lakshman 2026-11-10, "All on metering"): the headline cards read metering-summary.v1's all-time row.
+ * A spec written against the retired cost.savings-overview.v1 row keeps its figures by serving the same totals as that
+ * metering row: spend, savings and baseline cost, every run and the measured ones, and tokens in and out (the total in
+ * when the old row served no directions).
+ */
+export function meteringAll(row: Record<string, unknown>): Record<string, unknown> {
+  const runs = row.run_count ?? row.measured_run_count ?? null;
+  return {
+    tenant_id: 'chart-fixture-tenant', window_kind: 'all', window_start: '', as_of: row.captured_at ?? FIXTURE_NOW,
+    baseline_model: 'baseline-a', pricing_manifest_version: 'fixture-1', baseline_state: 'resolved',
+    spend_usd: row.total_cost_usd ?? null, savings_usd: row.total_savings_usd ?? null,
+    counterfactual_usd: row.total_baseline_cost_usd ?? null,
+    runs_total: runs, runs_measured: row.measured_run_count ?? runs, runs_unknown_tokens: row.unknown_run_count ?? 0, runs_unknown_spend: 0,
+    tokens_in: row.tokens_input_total ?? row.tokens_input ?? row.tokens_total ?? null,
+    tokens_out: row.tokens_output_total ?? row.tokens_output ?? (row.tokens_total === undefined ? null : 0),
+  };
 }

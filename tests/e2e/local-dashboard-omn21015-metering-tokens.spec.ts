@@ -28,7 +28,8 @@ for (const theme of ['light', 'dark']) {
     await expect(chart.getByRole('button')).toHaveCount(7);
     const newest = chart.getByRole('button', { name: /Oct 22: 9,007,199,254,740,993 in, 514,634 out/ });
     await newest.focus();
-    await expect(panel.getByRole('status')).toContainText('9,007,199,254,740,993');
+    // OMN-22168 (omnidash#496): the readout reads short; the exact count stays in the day's accessible name above.
+    await expect(panel.getByRole('status')).toContainText('9Qa');
     await expect(panel.getByRole('status')).toContainText('2026-10-22 09:47:13 UTC');
     await expect(panel.getByRole('status')).toContainText('2 runs with unrecorded tokens');
     await expect(chart.getByRole('button', { name: /^Oct 14:/ })).toHaveCount(0);

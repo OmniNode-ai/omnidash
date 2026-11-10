@@ -65,7 +65,7 @@ test('phone Usage records retain every labelled value and the model legend ident
   // OMN-22168: Tokens per day and Tokens by model are tabs of Usage's "Tokens" panel; the legend above is read on the
   // first, the pair's name on the second.
   await chooseChartTab(page, 'Tokens by model');
-  const name = page.getByRole('figure', { name: 'Tokens in vs out by model', exact: true }).locator('li.gdb-day[aria-label^="model-alpha:"] .gdb-day-label');
+  const name = page.getByRole('figure', { name: 'Tokens in vs out by model', exact: true }).locator('li.gdb-day[aria-label^="model-alpha:"] .gdb-name-label');
   // OMN-21970 option a (Lakshman 2026-11-03): the name reads in ink; the swatch beside it carries the model's colour.
   expect(await name.locator('.gdb-swatch').evaluate(element => getComputedStyle(element).backgroundColor)).toBe(swatch);
   await page.screenshot({ path: info.outputPath('usage-records-phone.png'), fullPage: true, animations: 'disabled' });

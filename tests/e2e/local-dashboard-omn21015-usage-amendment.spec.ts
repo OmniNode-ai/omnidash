@@ -67,7 +67,7 @@ for (const theme of ['light', 'dark']) {
 
 test('Overview money cards truncate, preserve tiny nonzero and retain missing states', async ({ page }, info) => {
   await serveCharts(page, { ...chartRows, [prefix + 'cost.savings-overview.v1']: [{ window: 'all', captured_at: '2026-10-22T10:00:00Z', total_cost_usd: '3.5923', total_savings_usd: '1074.2157', run_count: 3 }], [prefix + 'metering-summary.v1']: [{
-    ...days[0], window_kind: 'all', window_start: '', spend_usd: '3.5923',
+    ...days[0], window_kind: 'all', window_start: '', spend_usd: '3.5923', pricing_manifest_version: '1',
     savings_usd: '1074.2157', savings_per_measured_run_usd: '0.009',
     runs_measured: 3, runs_total: 3, tokens_in: 123, tokens_out: 456,
   }] });

@@ -1,6 +1,6 @@
 import { writeFileSync } from 'node:fs';
 import { expect, test } from 'playwright/test';
-import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chartRows, prefix, serveCharts, meteringAll } from './omn21166-chart-fixtures';
 
 // Realistic failures: Evidence's legacy quality palette disagrees with shared
 // pass/fail identities; baseline and actual spend use unrelated colours; saved
@@ -8,9 +8,9 @@ import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
 // Finite, nonzero fixtures make every bar visible. Inspect actual legacy DOM
 // labels/paint, not new semantic metadata that could merely assert correctness.
 const rows = { ...chartRows,
-  [prefix + 'cost.savings-overview.v1']: [{ window: 'all', captured_at: '2026-10-23T10:00:00Z',
+  [prefix + 'metering-summary.v1']: [meteringAll({ window: 'all', captured_at: '2026-10-23T10:00:00Z',
     total_baseline_cost_usd: 10, total_cost_usd: 2, total_savings_usd: 8,
-    run_count: 8, measured_run_count: 8, unknown_run_count: 0, tokens_total: 100 }],
+    run_count: 8, measured_run_count: 8, unknown_run_count: 0, tokens_total: 100 })],
   [prefix + 'delegation.savings.v1']: [{ baseline_model: 'baseline-a', pricing_manifest_version: 'fixture-v1' }],
 };
 

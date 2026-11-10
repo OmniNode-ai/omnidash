@@ -5,7 +5,7 @@ import { icons } from 'lucide-react';
 import { expect, test, type Page } from 'playwright/test';
 import { PAGE_LABELS, PAGE_PATHS } from '../../src/navigation/page-routes';
 import type { AppPage } from '../../src/store/types';
-import { chartRows, prefix, revealRunFields, serveCharts, keepRealClock } from './omn21166-chart-fixtures';
+import { chartRows, prefix, revealRunFields, serveCharts, keepRealClock, meteringAll } from './omn21166-chart-fixtures';
 import { resolveCensusSourceSha } from './census-source.mjs';
 // This spec dates its rows from the real clock, so the browser keeps it (see FIXTURE_NOW).
 test.beforeEach(({ page }) => keepRealClock(page));
@@ -22,10 +22,10 @@ const destinations: AppPage[] = ['local-overview', 'local-runs', 'local-workflow
   'local-usage', 'local-settings', 'delegation-evidence',
   'experiments', 'sea-control', 'event-bus', 'lab'];
 const routing = chartRows[prefix + 'delegation.model-routing.v1'][0] as Record<string, unknown>;
-const rows = { ...chartRows, [prefix + 'cost.savings-overview.v1']: [{ window: 'all', captured_at: '2026-10-17T10:00:00Z',
+const rows = { ...chartRows, [prefix + 'metering-summary.v1']: [meteringAll({ window: 'all', captured_at: '2026-10-17T10:00:00Z',
   total_baseline_cost_usd: '10.0000', total_cost_usd: '2.0000', total_savings_usd: '8.0000',
   run_count: 10, measured_run_count: 10, tokens_total: 1000,
-}], [prefix + 'delegation.model-routing.v1']: [{ ...routing,
+})], [prefix + 'delegation.model-routing.v1']: [{ ...routing,
   by_tier: { ...routing.by_tier as object, local_call_share: .6, local_call_count: 6, total_call_count: 10 },
 }], [prefix + 'topic-activity.v1']: [{
   topic: 'onex.evt.identity.sample.v1', sampled_at: '2026-10-17T10:00:00Z',

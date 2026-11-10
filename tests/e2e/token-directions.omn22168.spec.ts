@@ -1,5 +1,5 @@
 import { expect, test, type Page } from 'playwright/test';
-import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chartRows, prefix, serveCharts, meteringAll } from './omn21166-chart-fixtures';
 
 /**
  * OMN-22168 L14 (Lakshman 2026-11-07: "token in and out should be different color and uniform in whole websites"; the
@@ -9,11 +9,11 @@ import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
  */
 const rows: Record<string, unknown[]> = {
   ...chartRows,
-  [prefix + 'cost.savings-overview.v1']: [{
+  [prefix + 'metering-summary.v1']: [meteringAll({
     window: 'all', captured_at: '2026-10-20T15:14:51Z', total_cost_usd: 3.39, total_savings_usd: 1030.76,
     total_baseline_cost_usd: 1034.15, tokens_total: 190842392, tokens_input_total: 150000000, tokens_output_total: 40842392,
     run_count: 54228, measured_run_count: 46241, estimated_run_count: 0, unknown_run_count: 7987,
-  }],
+  })],
   [prefix + 'delegation.token-usage.v1']: [{
     total_tokens: 190842392, total_prompt_tokens: 150000000, total_completion_tokens: 40842392,
     total_estimated_cost_usd: 3.39, by_model: [],

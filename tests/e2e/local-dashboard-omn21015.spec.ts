@@ -19,6 +19,10 @@ const usage = [
 ];
 
 async function serve(page: Page, served: Record<string, unknown[]> = { [USAGE]: usage }) {
+  // The rows are dated October 2026 and the pages read the latest 30 UTC days from the browser's clock; on 2026-11-10 the
+  // Oct 11 run aged out and the legend test drew [0, 1]. The browser's date is frozen where the fixtures were written,
+  // as serveCharts does (omn21166-chart-fixtures.ts, FIXTURE_NOW).
+  await page.clock.setFixedTime(new Date('2026-10-30T12:00:00Z'));
   await page.addInitScript(() => {
     localStorage.clear();
     localStorage.setItem('omnidash.dataSourceOverride.v1', JSON.stringify({ mode: 'live', baseUrl: window.location.origin }));
@@ -236,7 +240,7 @@ const firstScreenRuns = [
 // D1/D2 explicitly replace the older spend-first composition. Keep the first-screen KPI limits and the charts' drawing
 // limits. OMN-21166 AC86 (Lakshman 2026-10-25): the newest run (Q2 waived), Recent runs, Last run and the Spend per day
 // chart with its table are deleted from Overview, so their first-screen and in-view checks are removed with them.
-test('OMN-21166: the Overview first screen holds exact legacy tiles and the activity charts', async ({ page }) => {
+test('OMN-21166: the Overview first screen holds exact metering tiles and the activity charts', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await serve(page, {
     [METERING]: [{ ...meteringAll, runs_measured: 2, runs_unknown_tokens: 0, runs_unknown_spend: 0, tokens_in: 512, tokens_out: 20, pricing_manifest_version: '1.0.0' }, ...metering],
@@ -254,7 +258,7 @@ test('OMN-21166: the Overview first screen holds exact legacy tiles and the acti
     await expect(panel(title).locator('.local-dashboard-metric')).toHaveText(value);
     await onFirstScreen(panel(title).locator('.local-dashboard-metric'), title);
   }
-  await expect(panel('Savings')).toContainText('Modelled · vs cloud baseline');
+  await expect(panel('Savings')).toContainText('Modelled vs');
   // The visible activity plots retain the original >120px, no-scroll drawing limits.
   await test.info().attach('first-screen-layout', { body: JSON.stringify(await page.locator('.local-dashboard-header, .local-overview-summary, .maple-cell, .ins-bars, .rb-chart').evaluateAll(nodes => nodes.map(el => { const r=el.getBoundingClientRect(); const css=getComputedStyle(el); return {element:el.className,field:el.getAttribute('data-field'),x:r.x,y:r.y,height:r.height,width:r.width,columns:css.gridTemplateColumns}; }))), contentType: 'application/json' });
   console.log('FIRST-SCREEN-GEOMETRY', JSON.stringify(await page.locator('.local-dashboard-header, .maple-cell, .ins-bars').evaluateAll(nodes => nodes.map(el => { const r=el.getBoundingClientRect();return {element:el.className,field:el.getAttribute('data-field'),y:r.y,height:r.height,width:r.width,columns:getComputedStyle(el).gridTemplateColumns}; }))));

@@ -3,10 +3,11 @@ import { chartRows, prefix, serveCharts, keepRealClock } from './omn21166-chart-
 // This spec dates its rows from the real clock, so the browser keeps it (see FIXTURE_NOW).
 test.beforeEach(({ page }) => keepRealClock(page));
 
-// OMN-21166 part 9 AC47: under Tokens processed, input and output come only from fields the Overview aggregate itself
-// serves for the same row as its total. A direction the aggregate does not serve reads Not measured, and nothing is
-// borrowed from delegation.token-usage, which counts a different population. Behaviour already on dev, so each case
-// pins it beside a control and fails on a lab mutant.
+// OMN-21166 part 9 AC47: under Tokens processed, input and output come only from fields the headline's own row serves
+// beside its total. A direction that row does not serve reads Not measured, and nothing is borrowed from
+// delegation.token-usage, which counts a different population. Since OMN-23330 AC1/AC2 (Lakshman 2026-11-10, "All on
+// metering") that row is metering-summary.v1's (tokens_in, tokens_out); the old aggregate's own direction names are
+// served beside it here and must not be borrowed either.
 const MISSING = { timeout: 3000 };
 
 const OVERVIEW = prefix + 'cost.savings-overview.v1';
@@ -18,13 +19,15 @@ const now = () => new Date().toISOString();
 /** A token-usage row whose counts must never appear under Tokens processed: 7,771 in and 3,331 out. */
 const INCOMPATIBLE_USAGE = [{ tokens_input: 7771, tokens_output: 3331, total_tokens: 11102, prompt_tokens: 7771,
   completion_tokens: 3331, delegation_count: 4 }];
+/** The retired aggregate, serving its own directions (4,441 in and 5,551 out): they must never appear either. */
+const AGGREGATE = [{ window: 'all', captured_at: now(), total_cost_usd: 0.25, total_baseline_cost_usd: 1, total_savings_usd: 0.75,
+  tokens_total: 9992, tokens_input_total: 4441, tokens_output_total: 5551, run_count: 3, measured_run_count: 3 }];
 
-// cost.savings-overview.v1 serves the directions as tokens_input_total and tokens_output_total (omnimarket#4341);
-// omnidash#462 moved the card onto those names, so the fixture serves them too (the 10-25 closer found this control
-// serving the old names and failing on dev b101e493).
-function overviewRow(directions: { tokens_input_total?: number; tokens_output_total?: number }) {
-  return [{ window: 'all', captured_at: now(), total_cost_usd: 0.25, total_baseline_cost_usd: 1, total_savings_usd: 0.75,
-    tokens_total: 120, run_count: 3, measured_run_count: 3, estimated_run_count: 0, unknown_run_count: 0, ...directions }];
+function meteringRow(directions: { tokens_in?: number; tokens_out?: number }) {
+  return [{ tenant_id: 'chart-fixture-tenant', window_kind: 'all', window_start: '', as_of: now(), baseline_model: 'baseline-a',
+    baseline_state: 'resolved', pricing_manifest_version: '7', spend_usd: '0.250000', counterfactual_usd: '1.000000',
+    savings_usd: '0.750000', savings_pct_of_counterfactual: 0.75, runs_total: 3, runs_measured: 3, runs_unknown_tokens: 0,
+    runs_unknown_spend: 0, ...directions }];
 }
 
 async function tokenDirections(page: Page) {
@@ -33,33 +36,19 @@ async function tokenDirections(page: Page) {
   return { card, directions: card.locator('.local-token-direction') };
 }
 
-test('AC47 the aggregate serves a total but no directions: both read Not measured, none borrowed from token-usage', async ({ page }) => {
-  await serveCharts(page, { ...chartRows, [OVERVIEW]: overviewRow({}), [TOKEN_USAGE]: INCOMPATIBLE_USAGE });
-  await page.goto('/');
-  const { card, directions } = await tokenDirections(page);
-  await expect(card.locator('.local-dashboard-metric')).toHaveText('120');
-  await expect(directions).toHaveCount(2);
-  await expect(directions.nth(0)).toHaveText('Not measured', MISSING);
-  await expect(directions.nth(1)).toHaveText('Not measured');
-  await expect(card).not.toContainText(/7,?771|3,?331/);
-});
-
-test('AC47 the aggregate serves its directions: each shows its own value (control)', async ({ page }) => {
-  await serveCharts(page, { ...chartRows, [OVERVIEW]: overviewRow({ tokens_input_total: 100, tokens_output_total: 20 }),
+test('AC47 the row serves its directions: each shows its own value, and the total is their sum (control)', async ({ page }) => {
+  await serveCharts(page, { ...chartRows, [METERING]: meteringRow({ tokens_in: 100, tokens_out: 20 }), [OVERVIEW]: AGGREGATE,
     [TOKEN_USAGE]: INCOMPATIBLE_USAGE });
   await page.goto('/');
   const { card, directions } = await tokenDirections(page);
+  await expect(card.locator('.local-dashboard-metric')).toHaveText('120');
   await expect(directions.nth(0)).toHaveText('100', MISSING);
   await expect(directions.nth(1)).toHaveText('20');
-  await expect(card).not.toContainText(/7,?771|3,?331/);
+  await expect(card).not.toContainText(/7,?771|3,?331|4,?441|5,?551/);
 });
 
 test('AC47 the metering aggregate serves no directions: both read Not measured, none borrowed from token-usage', async ({ page }) => {
-  await serveCharts(page, { ...chartRows, [OVERVIEW]: [], [TOKEN_USAGE]: INCOMPATIBLE_USAGE, [METERING]: [{
-    tenant_id: 'chart-fixture-tenant', window_kind: 'all', window_start: '', as_of: now(), baseline_model: 'baseline-a',
-    baseline_state: 'resolved', pricing_manifest_version: '7', spend_usd: '0.250000', counterfactual_usd: '1.000000',
-    savings_usd: '0.750000', savings_pct_of_counterfactual: 0.75, runs_total: 3, runs_measured: 3, runs_unknown_tokens: 0,
-    runs_unknown_spend: 0 }] });
+  await serveCharts(page, { ...chartRows, [OVERVIEW]: AGGREGATE, [TOKEN_USAGE]: INCOMPATIBLE_USAGE, [METERING]: meteringRow({}) });
   await page.route('**/projections', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ topics:
     Object.keys(chartRows).concat(TOKEN_USAGE).map(topic => topic === OVERVIEW
       ? { topic, status: 'degraded', backing: 'not_in_local_store', bus_backed: false, degraded_reason: 'projection_table_missing' }
@@ -76,5 +65,5 @@ test('AC47 the metering aggregate serves no directions: both read Not measured, 
   await expect(rows).toHaveCount(2, MISSING);
   await expect(rows.locator('strong')).toHaveText(['Not measured', 'Not measured']);
   await expect(rows.first()).toHaveAttribute('data-field-unavailable', 'true');
-  await expect(card).not.toContainText(/7,?771|3,?331/);
+  await expect(card).not.toContainText(/7,?771|3,?331|4,?441|5,?551/);
 });

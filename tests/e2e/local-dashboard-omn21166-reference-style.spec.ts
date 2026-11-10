@@ -256,13 +256,14 @@ test('R7 a long full count stays on one line inside its headline card, and short
   await expect(figures.first()).toBeVisible();
   // OMN-21970 AC9 (Lakshman 2026-11-02): card figures count up to the served figure; the measurement is of the final
   // text, so wait for the long count's last frame (every card's count starts together and runs the same 800 ms).
-  await expect(figures.filter({ hasText: /^409,870,123$/ }), 'the long count is drawn in full').toHaveCount(1);
+  // OMN-22168 (product owner 2026-11-07, omnidash#496): a token count reads short (409.87M), the exact count on hover.
+  await expect(figures.filter({ hasText: /^409\.87M$/ }), 'the long count is drawn, short').toHaveCount(1);
   const read = await figures.evaluateAll(els => els.map(el => {
     const css = getComputedStyle(el);
     return { text: el.textContent, size: parseFloat(css.fontSize), lines: Math.round(el.getBoundingClientRect().height / parseFloat(css.lineHeight)),
       over: el.scrollWidth - el.clientWidth };
   }));
-  expect(read.some(figure => figure.text === '409,870,123'), 'the long count is drawn in full').toBe(true);
+  expect(read.some(figure => figure.text === '409.87M'), 'the long count is drawn, short').toBe(true);
   for (const figure of read) {
     expect([figure.text, figure.lines, figure.over <= 0], 'one line, nothing cut').toEqual([figure.text, 1, true]);
     expect(figure.size, figure.text ?? '').toBeLessThanOrEqual(32);

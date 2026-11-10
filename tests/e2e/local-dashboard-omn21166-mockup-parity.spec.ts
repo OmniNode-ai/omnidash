@@ -28,7 +28,8 @@ const decisions = [
 ];
 
 const meteringDays = [
-  { tenant_id: 'mock-tenant', window_kind: 'all', window_start: null, as_of: at(0, '12:00'), baseline_model: 'baseline-a', baseline_state: 'resolved', spend_usd: '0.25', counterfactual_usd: '0.65', savings_usd: '0.40', runs_total: 2 },
+  // OMN-23330 AC1/AC2: the all-time row differs from the one served day, so a window that showed the all-time figure fails.
+  { tenant_id: 'mock-tenant', window_kind: 'all', window_start: null, as_of: at(0, '12:00'), baseline_model: 'baseline-a', baseline_state: 'resolved', spend_usd: '1.25', counterfactual_usd: '2.65', savings_usd: '1.40', runs_total: 4 },
   { tenant_id: 'mock-tenant', window_kind: 'day', window_start: utcDay(-1), baseline_model: 'baseline-a', baseline_state: 'resolved', spend_usd: '0.25', counterfactual_usd: '0.65', savings_usd: '0.40', runs_total: 2 },
 ];
 const usageRows = [
@@ -72,9 +73,12 @@ test('AC26 Overview applies the selected window to cards and charts and never in
   // cards and Median duration), Cumulative savings and Spend vs all-cloud are deleted from Overview, so the complete-
   // period comparison checks on them are retired. What stays: the window drives the cards and the Runs per day chart,
   // a card never shows an all-time or served-elsewhere figure as a daily one, and Quality says it is all time.
-  for (const id of ['overview-spend', 'overview-savings', 'overview-measured', 'overview-tokens']) {
-    await expect(page.locator(`[data-component="${id}"] .local-dashboard-metric`)).toHaveText('Not measured: daily totals unavailable (UTC)');
-  }
+  // OMN-23330 AC1/AC2 (Lakshman 2026-11-10, "All on metering"): the cards read metering-summary.v1, so the window
+  // shows the sum of its served day rows (yesterday's $0.25 spend and $0.40 saving), never the all-time row's.
+  await expect(page.locator('[data-component="overview-spend"] .local-dashboard-metric')).toHaveText('$0.25');
+  // The day rows serve no pricing version, so the window's saving has no price basis and stays unmeasured.
+  await expect(page.locator('[data-component="overview-savings"] .local-dashboard-metric')).toHaveText(/^Not measured/);
+  await expect(page.locator('.local-overview-summary')).not.toContainText(/1\.25|1\.40/);
   await expect(page.locator('[data-component="overview-quality"] .local-dashboard-metric')).toHaveText('75.0%');
   await expect(page.locator('[data-component="overview-quality"] .local-card-caption')).toContainText('All time: the window above does not change this figure');
   // OMN-21166 part 21 AC142: the window is no longer repeated under the chart; the chart draws the window's seven days.
@@ -98,8 +102,8 @@ test('AC26 Overview applies the selected window to cards and charts and never in
   ] }));
   await page.goto('/overview');
   await chooseWindow(page, 'Last 7 days (UTC)');
-  // An all-time row serves no day, so the 7-day cards stay unmeasured and none of its figures leaks in.
-  await expect(page.locator('[data-component="overview-savings"] .local-dashboard-metric')).toHaveText('Not measured: daily totals unavailable (UTC)');
+  // An all-time row serves no day: the 7 days read as days with no runs (Lakshman 2026-10-25), and none of its figures leaks in.
+  await expect(page.locator('[data-component="overview-savings"] .local-dashboard-metric')).not.toHaveText(/8\.88/);
   await expect(page.locator('.local-overview-summary')).not.toContainText('8.88');
   await expect(page.locator('.local-overview-summary')).not.toContainText('9.99');
   await page.screenshot({ path: info.outputPath('overview-truncated-previous-and-unserved.png'), fullPage: true });

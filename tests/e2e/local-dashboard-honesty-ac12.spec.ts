@@ -4,7 +4,8 @@ import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
 // OMN-21304 AC1 and AC2. Both were met on dev f466f2eb before #431, so these pin the behaviour: each fails when it is
 // removed, and each failure case has a positive control beside it.
 const RUN_TRACE = prefix + 'run-trace.v1';
-const OVERVIEW_MONEY = prefix + 'cost.savings-overview.v1';
+// OMN-23330 AC1/AC2 (Lakshman 2026-11-10, "All on metering"): Overview's money cards read metering-summary.v1.
+const OVERVIEW_MONEY = prefix + 'metering-summary.v1';
 const DECISIONS = prefix + 'delegation.decisions.v1';
 const ANSWERS = prefix + 'delegation.correlation-trace.v1';
 const answerOf = (run: string, text: string) => [{ correlation_id: run, response_text: text, data_source: 'fixture' }];
@@ -20,8 +21,9 @@ const RUNS = [
   { correlation_id: 'chart-run-b', created_at: '2026-10-12T09:00:00Z', written_at: '2026-10-12T09:00:00Z', model_name: 'model-beta',
     quality_gate_passed: 0, actual_score: 0.42, required_bar: 0.8, queue_wait_ms: null, execution_ms: null, latency_ms: 0, task_type: 'document' },
 ];
-const MONEY = [{ window: 'all', captured_at: '2026-10-12T10:07:00Z', total_cost_usd: '0.2300', total_savings_usd: '0.7000',
-  run_count: 2, measured_run_count: 2, unknown_run_count: 0, estimated_run_count: 0, tokens_total: 532 }];
+const MONEY = [{ window_kind: 'all', window_start: '', as_of: '2026-10-12T10:07:00Z', baseline_model: 'baseline-a',
+  pricing_manifest_version: 'fixture-1', baseline_state: 'resolved', spend_usd: '0.2300', counterfactual_usd: '0.9300',
+  savings_usd: '0.7000', runs_total: 2, runs_measured: 2, runs_unknown_tokens: 0, runs_unknown_spend: 0, tokens_in: 512, tokens_out: 20 }];
 
 const savingsFigure = (page: Page) => page.locator('.local-dashboard-panel')
   .filter({ has: page.getByRole('heading', { name: 'Savings', exact: true }) }).locator('.local-dashboard-metric');

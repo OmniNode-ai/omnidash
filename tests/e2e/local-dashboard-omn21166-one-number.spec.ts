@@ -1,9 +1,10 @@
 import { expect, test, type Page } from 'playwright/test';
-import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chartRows, prefix, serveCharts, meteringAll } from './omn21166-chart-fixtures';
 
 // OMN-21166 AC37 (one number everywhere). One served response set for both pages. The views behind
 // Delegation Evidence's old cards (delegation.savings.v1, delegation.summary.v1, delegation.token-usage.v1)
-// deliberately disagree with cost.savings-overview.v1 here, as they did on the dev lane on 2026-10-20 15:42Z
+// deliberately disagree with the shared all-time row here (metering-summary.v1's since OMN-23330 AC1/AC2, Lakshman
+// 2026-11-10 "All on metering"; it carries the same totals the retired aggregate row served), as they did on the dev lane on 2026-10-20 15:42Z
 // ($1,030.76 vs $952.29 vs $951.72; 54,228 runs vs 46,241 measured vs 54,225 events). A page that reads its
 // own view instead of the one shared field shows a different headline and fails.
 const RUN = 'one-number-run-a';
@@ -13,7 +14,7 @@ const overview = {
 };
 const rows: Record<string, unknown[]> = {
   ...chartRows,
-  [prefix + 'cost.savings-overview.v1']: [overview],
+  [prefix + 'metering-summary.v1']: [meteringAll(overview)],
   [prefix + 'delegation.savings.v1']: [{
     cumulative_savings_usd: 951.72, cumulative_local_cost_usd: 3.39, cumulative_cloud_cost_usd: 955.11,
     baseline_model: 'claude-sonnet-5-5', pricing_manifest_version: '7', session_count: 54225, sessions: [],
@@ -72,7 +73,8 @@ test('Overview and Delegation Evidence show one savings, tokens and runs figure 
   const overviewSavings = await overviewFigure(page, 'overview-savings');
   const overviewTokens = await overviewFigure(page, 'overview-tokens');
   const overviewRuns = await overviewFigure(page, 'overview-measured');
-  await expect(page.locator('[data-component="overview-measured"]')).toContainText('46.24K measured');
+  // Agent calls is the measured count; every run is its caption.
+  await expect(page.locator('[data-component="overview-measured"]')).toContainText('46,241 of 54,228 runs measured');
   await page.screenshot({ path: info.outputPath('overview.png') });
 
   await page.goto('/delegation-evidence');
@@ -84,9 +86,9 @@ test('Overview and Delegation Evidence show one savings, tokens and runs figure 
   // Each concept: both pages equal, and equal to the shared served field.
   expect([amount(overviewSavings), amount(evidenceSavings.value)]).toEqual([1030.76, 1030.76]);
   expect([overviewTokens, evidenceTokens.value]).toEqual(['287.2M', '287.2M']);
-  expect([overviewRuns, evidenceRuns.value]).toEqual(['54.22K', '54.22K']);
-  // The second population is a labelled breakdown, never a second headline.
-  expect(evidenceRuns.sub).toContain('46.24K measured');
+  expect([overviewRuns, evidenceRuns.value]).toEqual(['46.24K', '46.24K']);
+  // The second population (every run) is a labelled caption, never a second headline.
+  expect(evidenceRuns.sub).toContain('Of 54.22K runs');
   // No other savings total appears anywhere on Evidence: not the savings view's, not the summary's.
   const evidenceText = (await page.locator('.ev-root').textContent()) ?? '';
   expect(evidenceText).not.toMatch(/951\.72|952\.29/);
