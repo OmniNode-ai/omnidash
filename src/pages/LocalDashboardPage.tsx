@@ -2644,17 +2644,20 @@ export function RunTimeline({ steps, run, stepText }: {
         const failing = !isMissing(named) && row.step_sequence === named;
         const candidates = Array.isArray(row.candidates) ? row.candidates.map(String) : [];
         // OMN-21304 AC3: a routing decision's reason, candidates and confidence are what the step is for, so when the
-        // row records none of them they read not recorded rather than vanish; a measured confidence of 0 stays a value.
-        // Other steps keep leaving an absent detail out.
+        // row records none of them they are named as not recorded rather than vanish; a measured confidence of 0 stays a
+        // value. Other steps keep leaving an absent detail out. OMN-23330 AC13 (the operator's 2026-11-09 review): a step
+        // says "not recorded" once, naming every missing fact, where it said it up to six times (its duration, its start,
+        // under its bar and in each routing chip).
         const routing = kind === 'routing_decision';
-        const unrecordedRouting: Array<[string, string]> = routing ? [
-          ...(isMissing(row.reason) ? [['reason', 'not recorded'] as [string, string]] : []),
-          ...(candidates.length === 0 ? [['candidates', 'not recorded'] as [string, string]] : []),
-          ...(isMissing(row.confidence) ? [['confidence', 'not recorded'] as [string, string]] : []),
-        ] : [];
+        const missingFacts = [
+          ...(isMissing(row.started_at) ? ['start'] : []),
+          ...(isMissing(row.duration_ms) ? ['duration'] : []),
+          ...(routing && isMissing(row.reason) ? ['reason'] : []),
+          ...(routing && candidates.length === 0 ? ['candidates'] : []),
+          ...(routing && isMissing(row.confidence) ? ['confidence'] : []),
+        ];
         // Each served detail under its own name; a detail the row does not carry is left out, never shown empty.
         const details: Array<[string, string]> = [
-          ...unrecordedRouting,
           ...(routing && !isMissing(row.confidence) ? [['confidence', String(row.confidence)] as [string, string]] : []),
           ...(isMissing(row.failure_cause) ? [] : [['cause', failureCauseLabel(row.failure_cause)] as [string, string]]),
           ...(isMissing(row.backend_id) || (run && String(row.backend_id) === String(run.backend_id)) ? [] : [['backend', String(row.backend_id)] as [string, string]]),
@@ -2679,11 +2682,11 @@ export function RunTimeline({ steps, run, stepText }: {
               <strong data-field-tone={STEP_CONCEPTS[kind] ?? 'step-other'}>{RUN_STEP_LABELS[kind] ?? recorded(row.step_kind)}</strong>
               <OutcomePill value={row.outcome} />
               {failing && <Badge>Failed here</Badge>}
-              <span className="local-run-step-duration" data-measured={isMissing(row.duration_ms) ? 'false' : 'true'}>
+              {!isMissing(row.duration_ms) && <span className="local-run-step-duration" data-measured="true">
                 <span>Duration</span> {duration(row.duration_ms)}
-              </span>
+              </span>}
             </div>
-            <ServedTime value={row.started_at} />
+            {!isMissing(row.started_at) && <ServedTime value={row.started_at} />}
             {(() => {
               const at = timed[index];
               return <div className="local-run-waterfall" data-waterfall data-positioned={at ? 'true' : 'false'}>
@@ -2691,9 +2694,11 @@ export function RunTimeline({ steps, run, stepText }: {
                 {at ? <span data-waterfall-bar data-instant={at.end === at.start ? 'true' : undefined}
                   data-field-tone={String(row.outcome) === 'failed' ? undefined : STEP_CONCEPTS[kind] ?? 'step-other'} title={`${duration(row.duration_ms)} from ${duration(at.start - origin)}`}
                   style={{ '--wf-left': `${((at.start - origin) / span) * 100}%`, '--wf-width': `${((at.end - at.start) / span) * 100}%` } as CSSProperties} />
-                  : <span className="local-run-waterfall-missing">start or duration not recorded</span>}
+                  : <span className="local-run-waterfall-missing" aria-hidden="true" />}
               </div>;
             })()}
+            {missingFacts.length > 0 && <p className="local-run-step-missing local-dashboard-caption" data-not-recorded>
+              {`Not recorded: ${missingFacts.join(', ')}`}</p>}
             {details.length > 0 && (
               <div className="local-run-chips">
                 {details.map(([name, value]) => (

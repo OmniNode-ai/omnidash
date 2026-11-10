@@ -46,7 +46,8 @@ test('AC3 a routing step served with a null confidence reads confidence: not rec
   const steps = page.locator('ol.local-dashboard-steps > li');
   await expect(steps).toHaveCount(2);
   await expect(steps.nth(1)).toContainText('cheapest tier passes');
-  await expect(steps.nth(1)).toContainText('confidence: not recorded', MISSING);
+  // OMN-23330 AC13: a step says "not recorded" once, naming each missing fact.
+  await expect(steps.nth(1).locator('[data-not-recorded]')).toContainText(/Not recorded: .*confidence/, MISSING);
   await expect(steps.nth(1)).not.toContainText('0%');
 });
 
@@ -56,6 +57,7 @@ test('AC3 a routing step with a measured confidence of 0 shows 0, not not record
   const steps = page.locator('ol.local-dashboard-steps > li');
   await expect(steps).toHaveCount(2);
   await expect(steps.nth(1)).toContainText('confidence: 0', MISSING);
-  await expect(steps.nth(1)).not.toContainText('confidence: not recorded');
+  // OMN-23330 AC13: a fully recorded step (a measured 0 included) has no not-recorded statement at all.
+  await expect(steps.nth(1).locator('[data-not-recorded]')).toHaveCount(0);
   await expect(steps.nth(1)).not.toContainText('0%');
 });

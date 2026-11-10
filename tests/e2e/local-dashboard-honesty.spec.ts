@@ -75,8 +75,9 @@ test('AC3 a routing step with no recorded reason or candidates says not recorded
   await page.goto(`/workflow?correlation_id=${runId}`);
   const steps = page.locator('ol.local-dashboard-steps > li');
   await expect(steps).toHaveCount(3);
-  await expect(steps.nth(1)).toContainText('reason: not recorded', MISSING);
-  await expect(steps.nth(1)).toContainText('candidates: not recorded');
+  // OMN-23330 AC13: a step says "not recorded" once, naming each missing fact.
+  await expect(steps.nth(1).locator('[data-not-recorded]')).toContainText(/Not recorded: .*reason/, MISSING);
+  await expect(steps.nth(1).locator('[data-not-recorded]')).toContainText('candidates');
   await expect(steps.nth(2)).toContainText('cheapest tier passes');
   // OMN-21166 AC54: recorded candidates read as words ("Model a"), the served list kept in order.
   await expect(steps.nth(2)).toContainText('candidates: Model a, Model b');
