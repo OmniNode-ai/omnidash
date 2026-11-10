@@ -1596,7 +1596,17 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
   const current = Math.min(pageIndex, pages - 1);
   const page = shown.slice(current * pageSize, (current + 1) * pageSize);
   const modelWidth = runModelColumnWidth(page);
-  const columnWidth = (concept: string) => (concept === 'model' ? modelWidth : RUN_COLUMN_WIDTHS[concept]!);
+  const fixedWidth = (concept: string) => (concept === 'model' ? modelWidth : RUN_COLUMN_WIDTHS[concept]!);
+  // The operator, 2026-11-10 ("in column why gap - make it dynamic"): the table fills its panel with a fixed layout, which
+  // stretched every column by the same factor (Model 160 px drew 269 px at 1920). Each column now keeps its own width and
+  // only the last shown column (Duration, or Score with every field shown) takes the room left, after the last value.
+  // A fixed layout spreads any width it has left over every column, so the last column is given exactly what is left:
+  // its own width, or the panel's width less the other shown columns when that is more.
+  const lastColumn = showAllFields ? 'score' : 'duration';
+  const shownNow = [...RUN_DEFAULT_COLUMNS, ...(showAllFields ? RUN_EXTRA_COLUMNS : []), ...(showRouting ? RUN_ROUTING_COLUMNS : [])];
+  const othersWidth = shownNow.filter(concept => concept !== lastColumn).reduce((sum, concept) => sum + fixedWidth(concept), 0);
+  const columnWidth = (concept: string) => (concept === lastColumn
+    ? `max(${fixedWidth(concept)}px, calc(100% - ${othersWidth}px))` : fixedWidth(concept));
   const canonicalSearch = writeRunsSearch(search, { ...view, page: current + 1 });
   // OMN-23309: useSearch reads whichever page is current, so a Runs table still mounted while the user leaves would
   // send them back to /runs. The table canonicalises the URL only while the path is /runs.
@@ -1795,8 +1805,10 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
             const sharedBaseline = baselines.size === 1 ? [...baselines][0]! : null;
             const byDay = !view.sort || view.sort === 'created';
             const shownColumns = [...RUN_DEFAULT_COLUMNS, ...(showAllFields ? RUN_EXTRA_COLUMNS : []), ...(showRouting ? RUN_ROUTING_COLUMNS : [])];
-            const tableWidth = shownColumns.reduce((sum, concept) => sum + columnWidth(concept), 0);
-            return <DataTable fit className={`local-runs-wrap${showAllFields ? ' local-runs-wrap--all' : ''}${showRouting ? ' local-runs-wrap--routing' : ''}`} id={`${id}-table`} style={{ width: tableWidth }}>
+            // The table is as wide as its panel, or its columns when they need more. Its own width (not a min-width that
+            // forces it wider) lets the browser give the room left to the one column with no width, not to every column.
+            const tableWidth = shownColumns.reduce((sum, concept) => sum + fixedWidth(concept), 0);
+            return <DataTable fit className={`local-runs-wrap${showAllFields ? ' local-runs-wrap--all' : ''}${showRouting ? ' local-runs-wrap--routing' : ''}`} id={`${id}-table`} style={{ width: `max(100%, ${tableWidth}px)` }}>
               <thead>
                 <tr>
                   {plainHeader('identity', 'Run')}{sortHeader('created', 'Time', 'age')}{plainHeader('run-outcome', 'Status')}
@@ -2042,7 +2054,7 @@ function tierModelCost(model: Row): string {
 // the model column is at most 200px; a longer model name wraps at its joins (Lakshman 2026-11-08).
 const RUN_COLUMN_WIDTHS: Readonly<Record<string, number>> = {
   identity: 120, age: 120, 'run-outcome': 96, model: 200, backend: 200, 'routing-model': 180, completion: 150,
-  escalated: 136, host: 190, tokens: 110, cost: 90, savings: 130, baseline: 170, basis: 100, duration: 100, task: 150,
+  escalated: 136, host: 190, tokens: 110, cost: 90, savings: 130, baseline: 170, basis: 100, duration: 120, task: 150,
   'tokens-completion': 210, tier: 136, score: 150,
 };
 /**

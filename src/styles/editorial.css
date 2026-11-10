@@ -510,11 +510,8 @@ html body .app svg.field-icon.field-icon[data-field-icon="usage-day"]:not([data-
 .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap thead :is(.local-runs-head, .local-sort-header) {
   display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap thead .field-icon { flex: none; }
-/* The last default column, Duration, needs 120px for its glyph, word and sort arrow, or the table runs past its panel
-   at 1440 (contracts: Runs fits with nothing to scroll sideways); the other columns give up a few pixels. */
-@media (min-width: 1025px) {
-  .local-dashboard-page--runs .local-dashboard-table-wrap--fit th[data-column="duration"] { width: 120px !important; }
-}
+/* OMN-23330 (the operator 2026-11-10, "in column why gap - make it dynamic"): Duration's 120px (its glyph, word and sort
+   arrow) is now its own width in RUN_COLUMN_WIDTHS, and as the last shown column it takes the room the panel has left. */
 
 /* OMN-22168 (Lakshman 2026-11-04, chosen over the 10-27 one grey for these icons): each sidebar page's icon and its page
    title's icon draw that page's own colour (--ds-destination-accent), and the title icon is big: a 28px glyph on a 48px
@@ -1361,3 +1358,12 @@ html body :is(main.local-dashboard-page, main.ev-root) .local-dashboard-tablist 
 }
 /* No text under 12px: the newest-run tag on Workflow was 11px. */
 html body main.local-dashboard-page .local-run-tag { font-size: 12px !important; }
+
+/* OMN-23330 (the operator 2026-11-10, "in column why gap - make it dynamic"): the Runs table's last shown column (Duration,
+   or Score with every field shown) takes the room the panel has left, so it reads from its left edge: the spare room sits
+   after the last value, never between two columns. */
+html body .local-dashboard-page .local-runs-wrap:not(.local-runs-wrap--all) :is(th[data-column="duration"], td[data-label="Duration"]),
+html body .local-dashboard-page .local-runs-wrap.local-runs-wrap--all :is(th[data-column="score"], td[data-label="Score"]) { text-align: left; }
+html body .local-dashboard-page .local-runs-wrap:not(.local-runs-wrap--all) thead th[data-column="duration"] :is(.local-runs-head, .local-sort-header, .local-runs-tip),
+html body .local-dashboard-page .local-runs-wrap.local-runs-wrap--all thead th[data-column="score"] :is(.local-runs-head, .local-sort-header, .local-runs-tip) {
+  justify-content: flex-start; margin-left: 0; }
