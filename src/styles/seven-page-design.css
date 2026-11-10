@@ -57,10 +57,20 @@
   :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel:nth-child(n + 3) { border-top: 1px solid var(--ds-line); }
 }
 @media (max-width: 600px) {
-  :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary { grid-template-columns: minmax(0, 1fr); }
+  /* OMN-23330 AC14 (the operator's 2026-11-09 review): at the narrowest desktop window the headline cards keep two to a
+     row, so none sits alone on its row; an odd last card spans the row. Below 481 px (phones) one column stays: two
+     136 px cards there broke the earlier phone rules (an 18 px whole figure, 12 px text, no clipped card), measured on
+     the lab 2026-11-10 at 390 px. */
+  :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  :is(.local-dashboard-page, .ev-root) .local-overview-summary > :last-child:nth-child(odd) { grid-column: 1 / -1; }
   :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel { border-inline-end: 0; border-top: 1px solid var(--ds-line); }
   :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel:first-child { border-top: 0; }
+}@media (max-width: 480px) {
+  :is(.local-dashboard-page, .ev-root) .local-overview-summary,
+  :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary { grid-template-columns: minmax(0, 1fr); }
+  :is(.local-dashboard-page, .ev-root) .local-overview-summary > :last-child:nth-child(odd) { grid-column: auto; }
 }
+
 
 /* ── Panels: quiet surfaces, mono section labels, no hover lift ─────────────────────────────────────────── */
 .local-dashboard-page .local-dashboard-panel,

@@ -146,7 +146,7 @@ main.ev-root[data-destination="delegation-evidence"] :is(.ev-selected-run-layout
 }
 main.ev-root[data-destination="delegation-evidence"] .ev-selected-run-layout > :first-child { grid-row: auto; }
 @media(max-width:600px) {
-  .local-dashboard-page .local-overview-summary { grid-template-columns: minmax(0,1fr); }
+  .local-dashboard-page .local-overview-summary { grid-template-columns: repeat(2, minmax(0,1fr)); } /* OMN-23330 AC14: one column only at phone widths (seven-page-design.css) */
   .local-dashboard-page .local-dashboard-panel,
   .local-dashboard-page .local-dashboard-panel:hover,
   .local-dashboard-page :is(.local-overview-summary,.local-overview-focus,.local-overview-lower) > .local-dashboard-panel,
