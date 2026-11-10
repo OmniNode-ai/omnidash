@@ -3265,6 +3265,8 @@ export const PANEL_CONCEPTS: Readonly<Record<string, string>> = {
   'api-keys-local-identity': 'local-identity', 'api-keys-access': 'local-access', 'api-keys-cloud': 'cloud-keys',
   // OMN-21970 AC10: Settings' Pricing and routing panel, the one panel title on the six pages that had no icon.
   'pricing-baseline': 'baseline',
+  // OMN-23330 (Playwright omn21015-cards, red on dev too): Settings' Open alerts title had no icon; it takes the alert glyph.
+  'status-alerts': 'failures',
 };
 /** Compatibility inventory, derived from the shared canonical identity rather than a second icon map. */
 export const PANEL_ICONS: Record<string, LucideIcon> = Object.fromEntries(
