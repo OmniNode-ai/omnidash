@@ -29,8 +29,8 @@ describe('OMN-21015 headline counts and directional tokens', () => {
     expect(container.querySelector('.local-dashboard-metric')?.textContent).toBe('309.27M');
     expect(container.querySelector('[data-field-tone="tokens-in"]')?.textContent).toBe('300M');
     expect(container.querySelector('[data-field-tone="tokens-out"]')?.textContent).toBe('9.27M');
-    expect(screen.getByLabelText('Input tokens: 300,000,001').getAttribute('title')).toBe('Input tokens: 300,000,001');
-    expect(screen.getByLabelText('Output tokens: 9,271,490').getAttribute('title')).toBe('Output tokens: 9,271,490');
+    expect(screen.getByLabelText('Input tokens: 300M, exactly 300,000,001').getAttribute('title')).toBe('Input tokens: 300,000,001');
+    expect(screen.getByLabelText('Output tokens: 9.27M, exactly 9,271,490').getAttribute('title')).toBe('Output tokens: 9,271,490');
     expect(container.querySelectorAll('.local-token-direction svg')).toHaveLength(2);
   });
   it('keeps a true zero direction', () => {
