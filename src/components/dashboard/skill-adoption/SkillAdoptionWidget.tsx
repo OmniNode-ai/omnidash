@@ -9,7 +9,7 @@ import {
   type SkillAdoptionRow,
   type SkillExecutionRow,
 } from '@/services/skill-adoption-service';
-import { refreshInterval } from '@/lib/refresh';
+import { refreshInterval } from '@/theme/refresh';
 // OMN-23330 AC25: this file's fixed inline styles are classes in SkillAdoptionWidget.static.css.
 import './SkillAdoptionWidget.static.css';
 

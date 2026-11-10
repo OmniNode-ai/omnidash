@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/positioned-menu';
 import { Text } from '@/components/ui/typography';
 import { useFrameStore } from '@/store/store';
-import { VIEWER_REFRESH_CHOICES } from '@/lib/refresh';
+import { VIEWER_REFRESH_CHOICES } from '@/theme/refresh';
 // OMN-23330 AC25: this file's fixed inline styles are classes in AutoRefreshSelector.static.css.
 import './AutoRefreshSelector.static.css';
 

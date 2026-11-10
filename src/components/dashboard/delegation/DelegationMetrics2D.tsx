@@ -13,8 +13,8 @@ import type { DelegationSummary } from './DelegationMetrics3D';
 import { useDelegationRunContextOptional } from '@/components/dashboard/delegation-control-plane/DelegationRunContext';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 import { useTokenColors } from '@/theme/design-system/useTokenColors';
-import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/lib/format';
-import { refreshInterval } from '@/lib/refresh';
+import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/theme/format';
+import { refreshInterval } from '@/theme/refresh';
 // OMN-23330 AC25: this file's fixed inline styles are classes in DelegationMetrics2D.static.css.
 import './DelegationMetrics2D.static.css';
 

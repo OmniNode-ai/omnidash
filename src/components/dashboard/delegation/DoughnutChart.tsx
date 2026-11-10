@@ -26,7 +26,7 @@ import { Text } from '@/components/ui/typography';
 import { useThemeName } from '@/theme';
 import { useTokenColors } from '@/theme/design-system/useTokenColors';
 import { colorToNumber, tokenNumber } from '@/theme/design-system/color';
-import { fixed as fmtFixed } from '@/lib/format';
+import { fixed as fmtFixed } from '@/theme/format';
 // OMN-23330 AC25: this file's fixed inline styles are classes in DoughnutChart.static.css.
 import './DoughnutChart.static.css';
 

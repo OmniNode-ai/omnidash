@@ -9,8 +9,8 @@ import { DataTableThreeJs } from '@/components/charts/threejs/DataTable';
 import type { DataTableColumnConfig } from '@shared/types/chart-config';
 import { Text } from '@/components/ui/typography';
 import { FreshnessLine } from '@/components/dashboard/lab/FreshnessLine';
-import { fixed as fmtFixed } from '@/lib/format';
-import { refreshInterval } from '@/lib/refresh';
+import { fixed as fmtFixed } from '@/theme/format';
+import { refreshInterval } from '@/theme/refresh';
 // OMN-23330 AC25: this file's fixed inline styles are classes in RoutingDecisionTable.static.css.
 import './RoutingDecisionTable.static.css';
 

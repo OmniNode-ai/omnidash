@@ -8,7 +8,7 @@ import { useProjectionSnapshotQuery } from '@/hooks/useProjectionSnapshotQuery';
 import { useDataSourceMode } from '@/hooks/useDataSourceMode';
 import { TOPICS } from '@shared/types/topics';
 import { FreshnessLine } from '@/components/dashboard/lab/FreshnessLine';
-import { refreshInterval } from '@/lib/refresh';
+import { refreshInterval } from '@/theme/refresh';
 // OMN-23330 AC25: this file's fixed inline styles are classes in LabRunnersWidget.static.css.
 import './LabRunnersWidget.static.css';
 

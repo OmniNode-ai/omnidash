@@ -23,7 +23,7 @@ const captured: ChartOption[] = [];
 vi.mock('echarts-for-react/lib/core', () => ({ default: (props: { option: ChartOption }) => { captured.push(props.option); return <div />; } }));
 
 import { RunDurationChart, RunTimingChart } from '@/theme/design-system/charts';
-import { exactMs, formatShare } from '@/lib/format';
+import { exactMs, formatShare } from '@/theme/format';
 
 const ROOT = path.resolve(__dirname, '../../..');
 const strip = (html: string) => html.replace(/<[^>]+>/g, ' ');

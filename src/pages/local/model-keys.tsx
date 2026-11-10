@@ -12,7 +12,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { ChevronRight } from '@/theme/design-system/icons';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { SettingsEmptyState } from '@/components/dashboard/SettingsEmptyState';
-import { readableTime } from '@/lib/format';
+import { readableTime } from '@/theme/format';
 import { ModelKeysError, listModelKeys, type ModelProviderId, type ModelProviderRow } from '@/services/models-api';
 import { Badge, DataTable, EmptyState, Fact, FactList } from '@/theme/design-system/components';
 

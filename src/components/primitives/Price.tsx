@@ -1,4 +1,4 @@
-import { fixed as fmtFixed } from '@/lib/format';
+import { fixed as fmtFixed } from '@/theme/format';
 /* eslint-disable local/no-typography-inline -- OMN-10509 keeps prototype primitive layout while source-level typography compliance is enforced separately. */
 export interface PriceProps {
   value: number;

@@ -1,4 +1,4 @@
-import { formatDashboardCount } from '@/lib/format';
+import { formatDashboardCount } from '@/theme/format';
 /**
  * OMN-12943 — Delegation Evidence (ported from prototype view-delegation.jsx).
  *
@@ -9,7 +9,7 @@ import { formatDashboardCount } from '@/lib/format';
  */
 
 import { type ReactNode, type CSSProperties } from 'react';
-import { formatDashboardUsd as formatUsd } from '@/lib/format';
+import { formatDashboardUsd as formatUsd } from '@/theme/format';
 import { isUnavailableField } from '@/components/dashboard/field-identity';
 import { EvPageShell } from '@/components/dashboard/event-dash/EvPageShell';
 import { KpiStrip } from '@/components/dashboard/KpiStrip';
@@ -51,14 +51,14 @@ import {
   captionText, meteringMoneyBasis, meteringTokens, pickMeteringRow, runModelledCell,
 } from '@/pages/LocalDashboardPage';
 
-import { formatDuration } from '@/lib/format';
+import { formatDuration } from '@/theme/format';
 import { percent as sharePercent } from '@/theme/design-system/charts';
 import { escalationReason, taskLabel } from '@/pages/local/plain-text';
-import { readableTime } from '@/lib/format';
+import { readableTime } from '@/theme/format';
 import { ModelTiersContext, TierLegend, useModelColor, useModelIdentityStyle } from '@/components/dashboard/model-tiers';
 import { modelTiersFrom } from '@/lib/dashboard-colors';
 import { Bot, FileJson, FileSpreadsheet, ListChecks, TriangleAlert } from '@/theme/design-system/icons';
-import { fixed as fmtFixed } from '@/lib/format';
+import { fixed as fmtFixed } from '@/theme/format';
 // OMN-23330 AC25: this file's fixed inline styles are classes in DelegationEvidencePage.static.css.
 import './DelegationEvidencePage.static.css';
 

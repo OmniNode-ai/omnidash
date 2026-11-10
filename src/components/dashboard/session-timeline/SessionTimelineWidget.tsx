@@ -4,7 +4,7 @@ import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { Text } from '@/components/ui/typography';
-import { fixed as fmtFixed, localeDate as fmtLocaleDate, localeTime as fmtLocaleTime } from '@/lib/format';
+import { fixed as fmtFixed, localeDate as fmtLocaleDate, localeTime as fmtLocaleTime } from '@/theme/format';
 // OMN-23330 AC25: this file's fixed inline styles are classes in SessionTimelineWidget.static.css.
 import './SessionTimelineWidget.static.css';
 

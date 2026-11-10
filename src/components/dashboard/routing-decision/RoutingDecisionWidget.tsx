@@ -4,7 +4,7 @@ import { ComponentWrapper } from '../ComponentWrapper';
 import { NodePill, CardHeader, Price } from '@/components/primitives';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
-import { refreshInterval } from '@/lib/refresh';
+import { refreshInterval } from '@/theme/refresh';
 // OMN-23330 AC25: this file's fixed inline styles are classes in RoutingDecisionWidget.static.css.
 import './RoutingDecisionWidget.static.css';
 

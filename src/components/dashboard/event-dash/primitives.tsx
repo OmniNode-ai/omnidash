@@ -1,5 +1,5 @@
-import { formatDashboardCount } from '@/lib/format';
-import { formatDuration } from '@/lib/format';
+import { formatDashboardCount } from '@/theme/format';
+import { formatDuration } from '@/theme/format';
 /**
  * OMN-12943 — shared UI primitives for the ported event-dash views.
  *
@@ -22,7 +22,7 @@ import { TenantNotConfiguredState } from '../TenantNotConfiguredState';
 import { ConceptIcon, FieldIcon } from '../FieldIcon';
 import { fieldTone, isUnavailableField } from '../field-identity';
 import { useModelIdentityStyle } from '@/components/dashboard/model-tiers';
-import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/lib/format';
+import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/theme/format';
 
 // ── formatting helpers ───────────────────────────────────────────────────────
 

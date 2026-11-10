@@ -15,8 +15,8 @@ import {
 import type { ProjectionSnapshot } from '@/data-source';
 import { isTenantNotConfiguredError } from '@/data-source/projection-tenant';
 import { TenantNotConfiguredState } from '../TenantNotConfiguredState';
-import { fixed as fmtFixed, localeTime as fmtLocaleTime } from '@/lib/format';
-import { refreshInterval } from '@/lib/refresh';
+import { fixed as fmtFixed, localeTime as fmtLocaleTime } from '@/theme/format';
+import { refreshInterval } from '@/theme/refresh';
 // OMN-23330 AC25: this file's fixed inline styles are classes in TraceExplorerWidget.static.css.
 import './TraceExplorerWidget.static.css';
 

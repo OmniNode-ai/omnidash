@@ -1,7 +1,7 @@
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import type { SwarmRunRow } from './swarm-control-plane.types';
-import { refreshInterval } from '@/lib/refresh';
+import { refreshInterval } from '@/theme/refresh';
 
 
 export interface SwarmSnapshot {

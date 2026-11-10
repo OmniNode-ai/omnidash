@@ -1,6 +1,6 @@
 import { Text } from '@/components/ui/typography';
 import { formatRedactedEventPayload } from '@/utils/redact-event-payload';
-import { localeTime as fmtLocaleTime } from '@/lib/format';
+import { localeTime as fmtLocaleTime } from '@/theme/format';
 // OMN-23330 AC25: this file's fixed inline styles are classes in PipelineLogStream.static.css.
 import './PipelineLogStream.static.css';
 

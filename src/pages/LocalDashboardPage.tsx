@@ -1,9 +1,9 @@
 // OMN-23330 AC23: the page stylesheets first, before any component's own (as when they loaded from the entry).
-import '@/styles/page-sheets';
-import { formatDashboardCount } from '@/lib/format';
+import '@/theme/design-system/page-sheets';
+import { formatDashboardCount } from '@/theme/format';
 import { PricingFacts } from '@/pages/local/pricing';
 import { WindowMenu } from '@/pages/local/window-menu';
-import { readableTime } from '@/lib/format';
+import { readableTime } from '@/theme/format';
 import { dailyMeteringTokens } from '@/lib/daily-metering-tokens';
 import { DailyMeteringTokens } from '@/components/dashboard/usage/DailyMeteringTokens';
 import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
@@ -31,7 +31,7 @@ import { DestinationIcon } from '@/navigation/destination-icons';
 import type { AppPage } from '@/store/types';
 import { loadLocalPageConfig, loadLocalPageSnapshots, rowsForLocalComponent, resolveLocalPageEmptyState, withLastGood, newestRunId as newestWorkflowRunId, DELEGATION_DECISIONS_TOPIC, METERING_SUMMARY_TOPIC, RUN_TRACE_TOPIC, isPerRunTopic, LOCAL_READ_TIMEOUT_MS, type BoundProjectionSnapshot, type LocalPageDocument, type LocalPageName } from '@/layout/local-page-loader';
 import { ModelTiersContext } from '@/components/dashboard/model-tiers';
-import { pageRefreshMs } from '@/lib/refresh';
+import { pageRefreshMs } from '@/theme/refresh';
 import { CARD_LINKS, MAPLE_WIDTHS, MeteringTotalCard, MetricCard, OUTSIDE_WINDOW_NOTE, OverviewDayPicker, type OverviewWindow, PendingState, RUNS_SECONDARY, RunChartsSlot, RunLocallyCard, RunRoutingSlot, RunsKpis, UsageKpis, captionRowFor, meteringRangeFor, meteringTokens, pickMeteringRow, readOverviewWindow, servedMeteringDays, writeOverviewWindow } from '@/pages/local/page-headline';
 import { type DeclaredColumn, PAGE_TITLES, PANEL_CONCEPTS, type PanelSlice, ReadFailureNotice, TableComponent, WidgetReadState, bindingFailedEmpty, notServedTopic, rawRowsFor } from '@/pages/local/page-tables';
 import { type Row, asRecord, asRecords, isMissing, metricConfigFor, timeOf } from '@/pages/local/page-shared';

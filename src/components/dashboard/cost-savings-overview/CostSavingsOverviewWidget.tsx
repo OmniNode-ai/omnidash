@@ -6,7 +6,7 @@ import { TOPICS } from '@shared/types/topics';
 import { KPI, SortableTable } from '@/components/primitives';
 import type { ColumnDef } from '@/components/primitives';
 import { Heading, Text } from '@/components/ui/typography';
-import { fixed as fmtFixed, localeString as fmtLocaleString, localeTime as fmtLocaleTime } from '@/lib/format';
+import { fixed as fmtFixed, localeString as fmtLocaleString, localeTime as fmtLocaleTime } from '@/theme/format';
 // OMN-23330 AC25: this file's fixed inline styles are classes in CostSavingsOverviewWidget.static.css.
 import './CostSavingsOverviewWidget.static.css';
 

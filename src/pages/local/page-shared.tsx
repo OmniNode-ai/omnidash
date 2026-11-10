@@ -1,21 +1,21 @@
 // OMN-23330 AC24: part of the local pages, split out of LocalDashboardPage.tsx (3,926 lines) with no change to what
 // any page draws. Shared helpers of the local pages: rows, times, run status and cause, served cells.
-import { formatDashboardCount } from '@/lib/format';
-import { readableTime } from '@/lib/format';
-import { formatDuration } from '@/lib/format';
+import { formatDashboardCount } from '@/theme/format';
+import { readableTime } from '@/theme/format';
+import { formatDuration } from '@/theme/format';
 import { exactTokens } from '@/components/dashboard/usage/TokenCount';
 import { useRef, useState } from 'react';
 import { Link } from 'wouter';
 import { Check, Copy } from '@/theme/design-system/icons';
-import { formatDashboardUsd as formatUsd } from '@/lib/format';
+import { formatDashboardUsd as formatUsd } from '@/theme/format';
 import { workflowHref } from '@/navigation/workflow-url-state';
 import { failureCauseLabel, failureDetailText, tierLabel } from '@/pages/local/plain-text';
 import { causeLabelOf } from '@/pages/local/run-filter';
 import { typedFailureCauseOf } from '@/pages/local/insights';
 import { shortId } from '@/components/dashboard/event-dash/primitives';
 import { type LocalPageDocument } from '@/layout/local-page-loader';
-import { localeString as fmtLocaleString } from '@/lib/format';
-import { formatShare } from '@/lib/format';
+import { localeString as fmtLocaleString } from '@/theme/format';
+import { formatShare } from '@/theme/format';
 import { type MetricCardConfig } from '@/pages/local/page-headline';
 
 export function isMissing(value: unknown): boolean {

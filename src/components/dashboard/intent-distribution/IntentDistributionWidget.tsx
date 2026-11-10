@@ -3,8 +3,8 @@ import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { Text } from '@/components/ui/typography';
-import { fixed as fmtFixed } from '@/lib/format';
-import { refreshInterval } from '@/lib/refresh';
+import { fixed as fmtFixed } from '@/theme/format';
+import { refreshInterval } from '@/theme/refresh';
 // OMN-23330 AC25: this file's fixed inline styles are classes in IntentDistributionWidget.static.css.
 import './IntentDistributionWidget.static.css';
 

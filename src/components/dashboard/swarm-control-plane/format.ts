@@ -1,4 +1,4 @@
-import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/lib/format';
+import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/theme/format';
 export function fmtMs(ms: number): string {
   if (ms >= 60_000) return `${fmtFixed((ms / 60_000), 1)}m`;
   if (ms >= 1_000) return `${fmtFixed((ms / 1_000), 1)}s`;

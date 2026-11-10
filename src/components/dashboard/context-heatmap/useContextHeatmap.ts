@@ -4,7 +4,7 @@ import { useFrameStore } from '@/store/store';
 import { fetchContextExperimentScores } from '@/services/event-dash-api';
 import type { ContextExperimentScoreRow } from '@/services/event-dash-api';
 import type { HeatmapCell, ContextSegment } from './context-heatmap.types';
-import { refreshInterval } from '@/lib/refresh';
+import { refreshInterval } from '@/theme/refresh';
 
 // Fallback poll cadence when no dashboard-level auto-refresh preference is set.
 

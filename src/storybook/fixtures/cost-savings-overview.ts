@@ -3,7 +3,7 @@ import type {
   CostSavingsRow,
   ExecutionMode,
 } from '@/components/dashboard/cost-savings-overview/CostSavingsOverviewWidget';
-import { fixed as fmtFixed } from '@/lib/format';
+import { fixed as fmtFixed } from '@/theme/format';
 
 export interface BuildCostSavingsOverviewOptions {
   window?: '24h' | '7d' | '30d';

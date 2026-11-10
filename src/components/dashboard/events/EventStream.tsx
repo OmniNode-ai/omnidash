@@ -6,7 +6,7 @@ import { TOPICS } from '@shared/types/topics';
 import { useTimezone } from '@/hooks/useTimezone';
 import { Text } from '@/components/ui/typography';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
-import { localeString as fmtLocaleString, localeTime as fmtLocaleTime } from '@/lib/format';
+import { localeString as fmtLocaleString, localeTime as fmtLocaleTime } from '@/theme/format';
 // OMN-23330 AC25: this file's fixed inline styles are classes in EventStream.static.css.
 import './EventStream.static.css';
 

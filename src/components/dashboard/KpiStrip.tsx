@@ -10,7 +10,7 @@ import { CardBasis } from '@/components/dashboard/CardBasis';
 import { CaptionLine } from '@/components/dashboard/CaptionLine';
 import { CountUpText } from '@/components/dashboard/CountUpText';
 import { Card, Figure } from '@/theme/design-system/components';
-import { localeDate as fmtLocaleDate } from '@/lib/format';
+import { localeDate as fmtLocaleDate } from '@/theme/format';
 
 /** A figure's served value per UTC day (oldest first), and how to write one value. */
 export interface KpiTrend {

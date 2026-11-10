@@ -4,7 +4,7 @@ import { Text } from '@/components/ui/typography';
 import { useContextHeatmap } from './useContextHeatmap';
 import { classifyCell } from './context-heatmap.types';
 import type { HeatmapCell, ContextHeatmapConfig, HeatmapSignal } from './context-heatmap.types';
-import { localeString as fmtLocaleString } from '@/lib/format';
+import { localeString as fmtLocaleString } from '@/theme/format';
 // OMN-23330 AC25: this file's fixed inline styles are classes in ContextEffectivenessHeatmap.static.css.
 import './ContextEffectivenessHeatmap.static.css';
 

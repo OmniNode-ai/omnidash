@@ -9,7 +9,7 @@
  * counting from zero again, and under prefers-reduced-motion the figure is shown at once.
  */
 import { useEffect, useRef, useState } from 'react';
-import { localeString as fmtLocaleString } from '@/lib/format';
+import { localeString as fmtLocaleString } from '@/theme/format';
 
 export const COUNT_UP_MS = 800;
 

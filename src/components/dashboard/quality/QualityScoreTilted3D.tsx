@@ -22,8 +22,8 @@ import { TOPICS } from '@shared/types/topics';
 import { useThemeName } from '@/theme';
 import { Text, Heading } from '@/components/ui/typography';
 import { tokenNumber } from '@/theme/design-system/color';
-import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/lib/format';
-import { refreshInterval } from '@/lib/refresh';
+import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/theme/format';
+import { refreshInterval } from '@/theme/refresh';
 // OMN-23330 AC25: this file's fixed inline styles are classes in QualityScoreTilted3D.static.css.
 import './QualityScoreTilted3D.static.css';
 

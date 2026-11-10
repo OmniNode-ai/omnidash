@@ -1,10 +1,10 @@
-// OMN-23330 AC20: no toFixed, toLocaleString, toLocaleDateString or toLocaleTimeString call sits outside src/lib/format,
+// OMN-23330 AC20: no toFixed, toLocaleString, toLocaleDateString or toLocaleTimeString call sits outside src/theme/format,
 // and an ESLint rule (local/no-adhoc-format) refuses a new one. Measured 2026-11-10 before the change: 214 such calls in
 // about 70 files, each free to round, group and date its own way.
 // Failure modes:
 //   L1  a call survives somewhere in src (the rule runs over the whole tree with the repo's own config);
 //   L2  the rule does not fire on a planted call, through optional chaining or a computed name;
-//   L3  the rule fires inside src/lib/format, the one place these calls belong, or on a test or story;
+//   L3  the rule fires inside src/theme/format, the one place these calls belong, or on a test or story;
 //   L4  the rule is not switched on for src in the repo's config.
 import path from 'node:path';
 import { ESLint } from 'eslint';
@@ -19,7 +19,7 @@ async function hits(code: string, file: string): Promise<number> {
   return result!.messages.filter((message) => message.ruleId === RULE).length;
 }
 
-describe('OMN-23330 AC20: formatting calls live only in src/lib/format', () => {
+describe('OMN-23330 AC20: formatting calls live only in src/theme/format', () => {
   it('L1: no call sits anywhere else in src', async () => {
     const results = await eslint.lintFiles(['src/**/*.{ts,tsx}']);
     const found = results.flatMap((result) => result.messages.filter((message) => message.ruleId === RULE)
@@ -38,9 +38,9 @@ describe('OMN-23330 AC20: formatting calls live only in src/lib/format', () => {
     for (const code of planted) expect({ code, hits: await hits(code, 'src/pages/planted.ts') }).toEqual({ code, hits: 1 });
   });
 
-  it('L3: inside src/lib/format, and in tests and stories, the same calls are allowed', async () => {
+  it('L3: inside src/theme/format, and in tests and stories, the same calls are allowed', async () => {
     const code = 'export const a = (n: number) => n.toFixed(2);';
-    expect(await hits(code, 'src/lib/format/planted.ts')).toBe(0);
+    expect(await hits(code, 'src/theme/format/planted.ts')).toBe(0);
     expect(await hits(code, 'src/pages/planted.test.ts')).toBe(0);
     expect(await hits(code, 'src/pages/planted.stories.tsx')).toBe(0);
   });

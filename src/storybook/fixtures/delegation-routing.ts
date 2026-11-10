@@ -3,7 +3,7 @@ import type { DelegationModelRoutingProjection } from '@/components/dashboard/de
 import type { DelegationQualityGateProjection } from '@/components/dashboard/delegation/DelegationQualityGateWidget';
 import type { DelegationTokenUsageProjection, TokenProvenance } from '@/components/dashboard/delegation/DelegationTokenUsageWidget';
 import type { InferenceResponseProjection } from '@/components/dashboard/delegation/DelegationModelOutputWidget';
-import { fixed as fmtFixed } from '@/lib/format';
+import { fixed as fmtFixed } from '@/theme/format';
 
 // ── Savings fixtures ──────────────────────────────────────────────────
 

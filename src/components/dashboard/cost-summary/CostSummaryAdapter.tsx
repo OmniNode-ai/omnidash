@@ -5,7 +5,7 @@ import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { CountUp, SortableTable } from '@/components/primitives';
 import type { ColumnDef } from '@/components/primitives';
-import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/lib/format';
+import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/theme/format';
 // OMN-23330 AC25: this file's fixed inline styles are classes in CostSummaryAdapter.static.css.
 import './CostSummaryAdapter.static.css';
 

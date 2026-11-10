@@ -23,8 +23,8 @@ import { useThemeName } from '@/theme';
 import { useFrameStore } from '@/store/store';
 import { useTokenColors } from '@/theme/design-system/useTokenColors';
 import { colorToNumber, tokenNumber } from '@/theme/design-system/color';
-import { fixed as fmtFixed } from '@/lib/format';
-import { refreshInterval } from '@/lib/refresh';
+import { fixed as fmtFixed } from '@/theme/format';
+import { refreshInterval } from '@/theme/refresh';
 // OMN-23330 AC25: this file's fixed inline styles are classes in CostByModelPie.static.css.
 import './CostByModelPie.static.css';
 

@@ -8,8 +8,8 @@ import { Text } from '@/components/ui/typography';
 import type { NodeKind } from '@/components/primitives';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 import { formatRedactedEventPayload } from '@/utils/redact-event-payload';
-import { localeString as fmtLocaleString } from '@/lib/format';
-import { refreshInterval } from '@/lib/refresh';
+import { localeString as fmtLocaleString } from '@/theme/format';
+import { refreshInterval } from '@/theme/refresh';
 // OMN-23330 AC25: this file's fixed inline styles are classes in LiveEventStreamWidget.static.css.
 import './LiveEventStreamWidget.static.css';
 

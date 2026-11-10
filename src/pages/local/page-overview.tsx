@@ -1,10 +1,10 @@
 // OMN-23330 AC24: part of the local pages, split out of LocalDashboardPage.tsx (3,926 lines) with no change to what
 // any page draws. Overview panels: model usage, the status strip, the Daily trend and the tier mix.
-import { formatDashboardCount, formatFullCount } from '@/lib/format';
+import { formatDashboardCount, formatFullCount } from '@/theme/format';
 import { useId, useState, type CSSProperties } from 'react';
 import { tierColor, tierConcept } from '@/lib/dashboard-colors';
 import { Link } from 'wouter';
-import { formatDashboardUsd as formatUsd } from '@/lib/format';
+import { formatDashboardUsd as formatUsd } from '@/theme/format';
 import { DEFAULT_RUNS_VIEW, writeRunsSearch } from '@/navigation/runs-url-state';
 import { TIER_TONES } from '@/theme/design-system/charts';
 import { ColumnTip, DataTable, EmptyState, Fact, FactList } from '@/theme/design-system/components';
@@ -14,8 +14,8 @@ import { toInsightRuns } from '@/pages/local/insights';
 import { ChartReadout, DayAxis, MultiLinePlot, RankedBars, SeriesToggles, useSeriesToggles } from '@/theme/design-system/charts';
 import { ConceptIcon, FieldIcon } from '@/components/dashboard/FieldIcon';
 import { TierLegend, useModelColor, useModelIdentityStyle } from '@/components/dashboard/model-tiers';
-import { fixed as fmtFixed, localeDate as fmtLocaleDate } from '@/lib/format';
-import { formatShare } from '@/lib/format';
+import { fixed as fmtFixed, localeDate as fmtLocaleDate } from '@/theme/format';
+import { formatShare } from '@/theme/format';
 import { type Row, asRecords, isMissing, recorded, recordedCount, utcDay } from '@/pages/local/page-shared';
 import { type OverviewWindow, pickMeteringRow } from '@/pages/local/page-headline';
 import { type DeclaredColumn } from '@/pages/local/page-tables';

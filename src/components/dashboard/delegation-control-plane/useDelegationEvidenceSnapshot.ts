@@ -15,7 +15,7 @@ import type {
   DelegationProjectionProbe,
   DelegationRun,
 } from './delegation-control-plane.types';
-import { refreshInterval } from '@/lib/refresh';
+import { refreshInterval } from '@/theme/refresh';
 
 
 function first<T>(rows: T[] | undefined): T | null {

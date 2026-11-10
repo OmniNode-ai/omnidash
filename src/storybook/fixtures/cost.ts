@@ -1,5 +1,5 @@
 import type { CostDataPoint } from '@/components/dashboard/cost-trend/CostTrend2D';
-import { fixed as fmtFixed } from '@/lib/format';
+import { fixed as fmtFixed } from '@/theme/format';
 
 export interface BuildCostDataPointsOptions {
   /** Specific list of model names to use. Default: 4 representative models. */

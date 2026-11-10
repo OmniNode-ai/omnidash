@@ -17,8 +17,8 @@ import {
   type EvidenceSwimlane,
   type ProjectionEnvelope,
 } from '@/services/evidence-pipeline-service';
-import { localeString as fmtLocaleString } from '@/lib/format';
-import { refreshInterval } from '@/lib/refresh';
+import { localeString as fmtLocaleString } from '@/theme/format';
+import { refreshInterval } from '@/theme/refresh';
 // OMN-23330 AC25: this file's fixed inline styles are classes in EvidencePipelineFlow.static.css.
 import './EvidencePipelineFlow.static.css';
 

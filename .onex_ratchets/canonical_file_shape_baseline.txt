@@ -106,13 +106,9 @@ src/events/types.ts
 src/hint/hint-matcher.ts
 src/layout/layout-persistence.ts
 src/layout/local-page-loader.ts
-src/lib/currency.ts
 src/lib/daily-metering-tokens.ts
 src/lib/dashboard-colors.ts
-src/lib/dashboard-count.ts
-src/lib/dashboard-currency.ts
 src/lib/dashboard-money-total.ts
-src/lib/dashboard-overview-count.ts
 src/lib/queryClient.ts
 src/lib/utils.ts
 src/lib/zonedComponents.ts

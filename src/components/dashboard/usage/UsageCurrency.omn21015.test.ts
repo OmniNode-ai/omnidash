@@ -3,7 +3,7 @@
 // OMN-22168 (Jonah 2026-11-06, replacing "show full don't cut"): two decimals from $1 up, up to four below $1 with
 // trailing zeros trimmed to two; digits past that are cut, never rounded up, and a tiny nonzero amount is never zero.
 import { describe, expect, it } from 'vitest';
-import { formatDashboardUsd as formatUsd } from '@/lib/format';
+import { formatDashboardUsd as formatUsd } from '@/theme/format';
 
 describe('OMN-21015 monetary display amendment', () => {
   it.each([

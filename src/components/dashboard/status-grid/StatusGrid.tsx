@@ -11,7 +11,7 @@
  *
  * The grid maps an upstream verdict to presentation. It never computes one.
  */
-import { readableTime } from '@/lib/format';
+import { readableTime } from '@/theme/format';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { Text } from '@/components/ui/typography';
 import { validateStatusGridRow, type StatusGridRow } from '@shared/types/component-manifest';

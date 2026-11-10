@@ -1,6 +1,6 @@
-import { formatDashboardCount, formatFullCount } from '@/lib/format';
-import { formatDashboardUsd } from '@/lib/format';
-import { formatDuration } from '@/lib/format';
+import { formatDashboardCount, formatFullCount } from '@/theme/format';
+import { formatDashboardUsd } from '@/theme/format';
+import { formatDuration } from '@/theme/format';
 import { shortId } from '@/components/dashboard/event-dash/primitives';
 import { useEffect, useId, useState } from 'react';
 import { ChartEmpty, ChartHeading } from './frame';
@@ -10,8 +10,8 @@ import { workflowHref } from '@/navigation/workflow-url-state';
 import { useThemeName } from '@/theme';
 import { EChart } from './echarts-lazy';
 import { colorToNumber, tokenHex, tokenValue, type TokenName } from '@/theme/design-system/color';
-import { localeDate as fmtLocaleDate, localeString as fmtLocaleString } from '@/lib/format';
-import { exactMs, formatShortDay } from '@/lib/format';
+import { localeDate as fmtLocaleDate, localeString as fmtLocaleString } from '@/theme/format';
+import { exactMs, formatShortDay } from '@/theme/format';
 
 
 /** Motion is a rendering preference, not a CSS-only effect: ECharts also obeys it. */

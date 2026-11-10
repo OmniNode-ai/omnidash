@@ -4,14 +4,14 @@
  * served rows (tierShares), and this module draws exactly the shares it is handed.
  */
 import { useEffect, useState, type CSSProperties } from 'react';
-import { formatDashboardCount } from '@/lib/format';
+import { formatDashboardCount } from '@/theme/format';
 import { tierColor } from '@/lib/dashboard-colors';
-import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/lib/format';
-import { formatShare } from '@/lib/format';
+import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/theme/format';
+import { formatShare } from '@/theme/format';
 
 /** A served share as a percent; a share that is not 0 or 1 never reads as 0.0% or 100.0%. */
 export function percent(share: number): string {
-  // OMN-23330 AC19: the one share formatter, from src/lib/format.
+  // OMN-23330 AC19: the one share formatter, from src/theme/format.
   return formatShare(share);
 }
 

@@ -3,8 +3,8 @@ import { Text, Heading } from '@/components/ui/typography';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
-import { fixed as fmtFixed, localeTime as fmtLocaleTime } from '@/lib/format';
-import { refreshInterval } from '@/lib/refresh';
+import { fixed as fmtFixed, localeTime as fmtLocaleTime } from '@/theme/format';
+import { refreshInterval } from '@/theme/refresh';
 // OMN-23330 AC25: this file's fixed inline styles are classes in SandboxMonitorPage.static.css.
 import './SandboxMonitorPage.static.css';
 

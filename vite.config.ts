@@ -177,7 +177,7 @@ export default defineConfig(({ command, mode }) => {
             const sheet = /src\/(?:styles|theme\/design-system\/kit)\/(local-dashboard|dashboard-cards|seven-page-design|editorial)\.css$/.exec(id);
             if (sheet) return `sheet-${sheet[1]}`;
             // The module that imports them is a chunk of its own, loaded before a page (App.tsx), never part of the entry.
-            return /src\/styles\/page-sheets\.ts$/.test(id) ? 'page-sheets' : undefined;
+            return /src\/theme\/design-system\/page-sheets\.ts$/.test(id) ? 'page-sheets' : undefined;
           },
         },
       },

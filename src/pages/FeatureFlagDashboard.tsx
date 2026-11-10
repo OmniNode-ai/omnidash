@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Text, Heading } from '@/components/ui/typography';
 import { fetchFeatureFlags } from '@/services/feature-flag-service';
 import '@/styles/feature-flags.css';
-import { localeTime as fmtLocaleTime } from '@/lib/format';
+import { localeTime as fmtLocaleTime } from '@/theme/format';
 // OMN-23330 AC25: this file's fixed inline styles are classes in FeatureFlagDashboard.static.css.
 import './FeatureFlagDashboard.static.css';
 

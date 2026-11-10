@@ -1,7 +1,7 @@
-import { formatDashboardCount, formatFullCount } from '@/lib/format';
+import { formatDashboardCount, formatFullCount } from '@/theme/format';
 
-import { formatDashboardUsd } from '@/lib/format';
-import { formatDuration } from '@/lib/format';
+import { formatDashboardUsd } from '@/theme/format';
+import { formatDuration } from '@/theme/format';
 import { createContext, useContext, useId, useState, type CSSProperties, type ReactNode } from 'react';
 import { millisecondsAxisLabel } from '@/theme/design-system/charts/bar-charts';
 import { passBand } from '@/pages/local/plain-text';
@@ -22,7 +22,7 @@ import {
 import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
 import { DashboardTabs, EmptyState, KpiTile } from '@/theme/design-system/components';
 import { Bot, CircleCheck, Clock3, ListChecks, Timer, TriangleAlert } from '@/theme/design-system/icons';
-import { fixed as fmtFixed, localeDate as fmtLocaleDate, localeString as fmtLocaleString } from '@/lib/format';
+import { fixed as fmtFixed, localeDate as fmtLocaleDate, localeString as fmtLocaleString } from '@/theme/format';
 
 /**
  * OMN-21166 AC26 (mockup build; rule change R-B, Lakshman 2026-10-18): the Overview's trends and breakdowns, counted

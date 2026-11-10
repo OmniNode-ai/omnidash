@@ -17,7 +17,7 @@ import type { StackedSlice } from '@/components/dashboard/cost-trend/StackedChar
 import { Text } from '@/components/ui/typography';
 import type { IBarChartAdapter, BarChartAdapterProps } from '@shared/types/chart-adapter-bar';
 import type { EmptyStateReason } from '@shared/types/chart-config';
-import { localeDate as fmtLocaleDate } from '@/lib/format';
+import { localeDate as fmtLocaleDate } from '@/theme/format';
 // OMN-23330 AC25: this file's fixed inline styles are classes in BarChart.static.css.
 import './BarChart.static.css';
 

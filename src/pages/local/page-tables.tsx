@@ -1,11 +1,11 @@
 // OMN-23330 AC24: part of the local pages, split out of LocalDashboardPage.tsx (3,926 lines) with no change to what
 // any page draws. Declared tables and read states shared by every local page.
-import { formatDashboardCount } from '@/lib/format';
+import { formatDashboardCount } from '@/theme/format';
 import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { type LucideIcon } from '@/theme/design-system/icons';
 import { UsageByModelDayTable, UsageTokensChart } from '@/components/dashboard/usage/UsageByModelDayWidget';
-import { formatDashboardUsd as formatUsd } from '@/lib/format';
+import { formatDashboardUsd as formatUsd } from '@/theme/format';
 import { MeteringDaySeries, meteringDaysByBaseline } from '@/components/dashboard/usage/SavingsSeriesWidget';
 import { TenantNotConfiguredState } from '@/components/dashboard/TenantNotConfiguredState';
 import { requestLocalPageRefresh } from '@/services/local-page-refresh';

@@ -1,10 +1,10 @@
-import { formatDashboardCount } from '@/lib/format';
+import { formatDashboardCount } from '@/theme/format';
 import { useEffect, useState } from 'react';
 import { BellRing } from '@/theme/design-system/icons';
 import { toInsightRuns } from './insights';
 import { useSharedRunFilter } from './run-filter';
 import { Badge } from '@/theme/design-system/components';
-import { localeString as fmtLocaleString } from '@/lib/format';
+import { localeString as fmtLocaleString } from '@/theme/format';
 
 /**
  * OMN-21166 AC26 (mockup build, 2026-10-18): "Since your last visit" on the Overview header. The last visit is a

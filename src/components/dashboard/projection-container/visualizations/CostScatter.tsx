@@ -1,7 +1,7 @@
 import { Text } from '@/components/ui/typography';
 import type { VisualizationContract } from '@shared/types/visualization-contract';
 import { registerViz } from '../viz-registry';
-import { fixed as fmtFixed } from '@/lib/format';
+import { fixed as fmtFixed } from '@/theme/format';
 // OMN-23330 AC25: this file's fixed inline styles are classes in CostScatter.static.css.
 import './CostScatter.static.css';
 

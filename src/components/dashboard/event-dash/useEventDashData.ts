@@ -35,7 +35,7 @@ import {
   type ContextExperimentScoreRow,
 } from '@/services/event-dash-api';
 import { fetchExposureCensus, type ExposureCensus } from '@/data-source/exposure-census';
-import { refreshInterval } from '@/lib/refresh';
+import { refreshInterval } from '@/theme/refresh';
 
 // Live ticker poll cadence (ms). The bus view polls newest rows so the
 // "now on bus" surface tracks real event arrival, never a simulated playback.

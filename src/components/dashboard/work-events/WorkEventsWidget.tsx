@@ -34,7 +34,7 @@ import { Text, type TextColor } from '@/components/ui/typography';
 import { FreshnessLine } from '@/components/dashboard/lab/FreshnessLine';
 import { formatAge } from '@/utils/time-format';
 import type { ProjectionSnapshot } from '@/data-source';
-import { refreshInterval } from '@/lib/refresh';
+import { refreshInterval } from '@/theme/refresh';
 // OMN-23330 AC25: this file's fixed inline styles are classes in WorkEventsWidget.static.css.
 import './WorkEventsWidget.static.css';
 

@@ -1,4 +1,4 @@
-import { localeDate as fmtLocaleDate } from '@/lib/format';
+import { localeDate as fmtLocaleDate } from '@/theme/format';
 /** Refresh the mounted local page without replacing its filters or last good rows. */
 const listeners = new Set<() => void>();
 

@@ -1,5 +1,5 @@
-import { formatUsd } from '@/lib/format';
-import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/lib/format';
+import { formatUsd } from '@/theme/format';
+import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/theme/format';
 
 export function fmtDate(value: string | undefined): string {
   if (!value) return 'pending';

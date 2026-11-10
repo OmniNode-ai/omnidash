@@ -7,8 +7,8 @@ import { KPI } from '@/components/primitives';
 import { useDelegationRunContextOptional } from '@/components/dashboard/delegation-control-plane/DelegationRunContext';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 import type { DelegationDecisionProjectionRow } from '@/components/dashboard/delegation-control-plane/delegation-control-plane.types';
-import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/lib/format';
-import { refreshInterval } from '@/lib/refresh';
+import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/theme/format';
+import { refreshInterval } from '@/theme/refresh';
 // OMN-23330 AC25: this file's fixed inline styles are classes in DelegationQualityGateWidget.static.css.
 import './DelegationQualityGateWidget.static.css';
 

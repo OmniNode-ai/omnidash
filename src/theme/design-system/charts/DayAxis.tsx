@@ -13,7 +13,7 @@
  */
 import { useLayoutEffect, useRef, type RefObject } from 'react';
 import './day-axis.css';
-import { localeDate as fmtLocaleDate } from '@/lib/format';
+import { localeDate as fmtLocaleDate } from '@/theme/format';
 
 const DEFAULT_FORMAT = (day: string) =>
   fmtLocaleDate(new Date(`${day}T00:00:00Z`), 'en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });

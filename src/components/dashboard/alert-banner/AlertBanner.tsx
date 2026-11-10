@@ -12,7 +12,7 @@
  */
 import { useState } from 'react';
 import { Text } from '@/components/ui/typography';
-import { readableTime } from '@/lib/format';
+import { readableTime } from '@/theme/format';
 import { validateAlertBannerRow, type AlertBannerRow } from '@shared/types/component-manifest';
 import { SEVERITY_ORDER, SEVERITY_ROLES, SeverityIcon } from '../status-grid/severity';
 // OMN-23330 AC25: this file's fixed inline styles are classes in AlertBanner.static.css.

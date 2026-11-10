@@ -10,7 +10,7 @@ import { Text } from '@/components/ui/typography';
 import { zonedComponents } from '@/lib/zonedComponents';
 import { StackedChart, type StackedSlice, type ChartType } from './StackedChart';
 import { useTokenColors } from '@/theme/design-system/useTokenColors';
-import { refreshInterval } from '@/lib/refresh';
+import { refreshInterval } from '@/theme/refresh';
 // OMN-23330 AC25: this file's fixed inline styles are classes in CostTrend2D.static.css.
 import './CostTrend2D.static.css';
 

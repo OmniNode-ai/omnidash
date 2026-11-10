@@ -18,7 +18,7 @@ import { PAGE_LABELS, PAGE_PATHS, pageForPath } from './navigation/page-routes';
 // (charts, echarts, stylesheets); the entry was 1.43 MB (428 KB gzipped) with them.
 // OMN-23330 AC23: the page stylesheets load before a page's own chunk, so their links come ahead of the components'
 // stylesheets, as when they were part of the entry (a page chunk alone linked them last, after Tooltip and DataTable).
-const withPageSheets = <T,>(load: () => Promise<T>) => () => import('./styles/page-sheets').then(load);
+const withPageSheets = <T,>(load: () => Promise<T>) => () => import('./theme/design-system/page-sheets').then(load);
 const LocalDashboardPage = lazy(withPageSheets(() => import('./pages/LocalDashboardPage').then((m) => ({ default: m.LocalDashboardPage }))));
 const SettingsPage = lazy(withPageSheets(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage }))));
 const DashboardView = lazy(() => import('./pages/DashboardView').then(module => ({ default: module.DashboardView })));

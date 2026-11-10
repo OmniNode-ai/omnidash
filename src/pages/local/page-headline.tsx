@@ -1,12 +1,12 @@
 // OMN-23330 AC24: part of the local pages, split out of LocalDashboardPage.tsx (3,926 lines) with no change to what
 // any page draws. Headline cards: the metric card, the Overview window and range, metering totals and the KPI rows.
-import { formatDashboardCount, formatFullCount, wholeCount } from '@/lib/format';
-import { exactMs, formatDuration } from '@/lib/format';
+import { formatDashboardCount, formatFullCount, wholeCount } from '@/theme/format';
+import { exactMs, formatDuration } from '@/theme/format';
 import { TokenDirections } from '@/components/dashboard/usage/TokenDirections';
 import { exactTokens } from '@/components/dashboard/usage/TokenCount';
 import { createContext, useId, useState, type CSSProperties, type ReactNode } from 'react';
 import { CalendarDays, ChevronRight } from '@/theme/design-system/icons';
-import { formatDashboardUsd as formatUsd } from '@/lib/format';
+import { formatDashboardUsd as formatUsd } from '@/theme/format';
 import { DEFAULT_RUNS_VIEW, writeRunsSearch } from '@/navigation/runs-url-state';
 import { type ActivityWindow } from '@/pages/local/insight-charts';
 import { EmptyState, Fact, FactList, Figure } from '@/theme/design-system/components';
@@ -21,7 +21,7 @@ import { ConceptIcon, FieldIcon } from '@/components/dashboard/FieldIcon';
 import { CountUpText } from '@/components/dashboard/CountUpText';
 import { type BoundProjectionSnapshot, type LocalPageDocument } from '@/layout/local-page-loader';
 import { TierLegend, useModelColor, useModelIdentityStyle } from '@/components/dashboard/model-tiers';
-import { fixed as fmtFixed, localeDate as fmtLocaleDate, localeString as fmtLocaleString } from '@/lib/format';
+import { fixed as fmtFixed, localeDate as fmtLocaleDate, localeString as fmtLocaleString } from '@/theme/format';
 import { type Row, asRecord, asRecords, countOf, isMissing, recordedCount, servedBoolean, timeOf, utcDay } from '@/pages/local/page-shared';
 import { NoRunsYet } from '@/pages/local/page-runs';
 // OMN-23330 AC25: this file's fixed inline styles are classes in page-headline.static.css.

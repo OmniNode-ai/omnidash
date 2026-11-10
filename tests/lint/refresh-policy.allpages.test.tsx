@@ -1,5 +1,5 @@
 // OMN-23330 AC21 (the operator's 2026-11-09 code review: "polling from 5 s to 120 s"): every page and widget refreshes
-// from one declared setting, src/lib/refresh.ts, and none polls faster than 30 s unless that file declares why.
+// from one declared setting, src/theme/refresh.ts, and none polls faster than 30 s unless that file declares why.
 // Measured 2026-11-10 before the change: about 40 refetchInterval values and named constants across src, from 2 s to
 // 60 s (six delegation widgets at 5 s, three at 10 s, the Evidence page's reads at 15 s), each chosen where it was used.
 // Failure modes:
@@ -10,10 +10,10 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { FASTER_REFRESH, REFRESH_INTERVAL_MS, VIEWER_REFRESH_CHOICES, VIEWER_REFRESH_WHY, pageRefreshMs, refreshInterval } from '@/lib/refresh';
+import { FASTER_REFRESH, REFRESH_INTERVAL_MS, VIEWER_REFRESH_CHOICES, VIEWER_REFRESH_WHY, pageRefreshMs, refreshInterval } from '@/theme/refresh';
 
 const ROOT = path.resolve(__dirname, '../..');
-const SKIP = /(\.test\.|\.stories\.|__tests__|src\/lib\/refresh\.ts$|src\/storybook\/)/;
+const SKIP = /(\.test\.|\.stories\.|__tests__|src\/theme\/refresh\.ts$|src\/storybook\/)/;
 
 function sources(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {

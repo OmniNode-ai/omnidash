@@ -1,6 +1,6 @@
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { passBand, tierLabel } from '@/pages/local/plain-text';
-import { formatDashboardCount, formatFullCount } from '@/lib/format';
+import { formatDashboardCount, formatFullCount } from '@/theme/format';
 
 // OMN-20006: tokens in, tokens out and measured cost per model per UTC day, from usage-by-model-day.v1.
 //
@@ -40,12 +40,12 @@ export interface UsageByModelDayRow {
   updated_at?: string;
 }
 
-import { formatDashboardUsd as formatUsd, formatShortDay } from '@/lib/format';
+import { formatDashboardUsd as formatUsd, formatShortDay } from '@/theme/format';
 import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
 import { ColumnTip, DataTable, Dropdown, EmptyState, TokenCount } from '@/theme/design-system/components';
 import { ChartReadout } from '@/theme/design-system/charts/frame';
-import { localeDate as fmtLocaleDate, localeString as fmtLocaleString } from '@/lib/format';
-import { refreshInterval } from '@/lib/refresh';
+import { localeDate as fmtLocaleDate, localeString as fmtLocaleString } from '@/theme/format';
+import { refreshInterval } from '@/theme/refresh';
 
 export const NO_USAGE_ROWS = 'No usage rows yet';
 /** The series' own empty text, so a page that mounts the table and the series does not say one sentence twice. */

@@ -7,8 +7,8 @@ import { KPI } from '@/components/primitives';
 import { useDelegationRunContextOptional } from '@/components/dashboard/delegation-control-plane/DelegationRunContext';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 import type { DelegationSavingsProjection, DelegationSavingsSession } from './delegation-savings.types';
-import { fixed as fmtFixed } from '@/lib/format';
-import { refreshInterval } from '@/lib/refresh';
+import { fixed as fmtFixed } from '@/theme/format';
+import { refreshInterval } from '@/theme/refresh';
 // OMN-23330 AC25: this file's fixed inline styles are classes in DelegationCostComparisonWidget.static.css.
 import './DelegationCostComparisonWidget.static.css';
 

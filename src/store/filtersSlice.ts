@@ -1,6 +1,6 @@
 import type { StateCreator } from 'zustand';
 import type { FrameStore, FiltersSlice } from './types';
-import { REFRESH_INTERVAL_MS } from '@/lib/refresh';
+import { REFRESH_INTERVAL_MS } from '@/theme/refresh';
 
 // OMN-126: default the dashboard-level auto-refresh to 30s. The
 // existing `AutoRefreshSelector` placeholder displayed "30s" as a

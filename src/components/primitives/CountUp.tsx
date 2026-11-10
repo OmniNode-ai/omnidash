@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/lib/format';
+import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/theme/format';
 
 /**
  * useCountUp -- animates 0 -> value on mount, then animates between

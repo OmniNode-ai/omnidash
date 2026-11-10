@@ -9,8 +9,8 @@ import { useDataSourceMode } from '@/hooks/useDataSourceMode';
 import { TOPICS } from '@shared/types/topics';
 import { formatAge } from '@/utils/time-format';
 import { FreshnessLine } from '@/components/dashboard/lab/FreshnessLine';
-import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/lib/format';
-import { refreshInterval } from '@/lib/refresh';
+import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/theme/format';
+import { refreshInterval } from '@/theme/refresh';
 // OMN-23330 AC25: this file's fixed inline styles are classes in TopicActivityWidget.static.css.
 import './TopicActivityWidget.static.css';
 

@@ -23,7 +23,7 @@ import type {
   DoughnutChartAdapterProps,
 } from '@shared/types/chart-adapter-doughnut';
 import { useTokenColors } from '@/theme/design-system/useTokenColors';
-import { fixed as fmtFixed } from '@/lib/format';
+import { fixed as fmtFixed } from '@/theme/format';
 // OMN-23330 AC25: this file's fixed inline styles are classes in DoughnutChartAdapter.static.css.
 import './DoughnutChartAdapter.static.css';
 

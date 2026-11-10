@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Link } from 'wouter';
 
-import { formatDashboardUsd } from '@/lib/format';
+import { formatDashboardUsd } from '@/theme/format';
 import { ColumnTip, DashboardTabs, DashboardToggle, DataTable, EmptyState, InfoTip, Panel, PanelTitle } from '@/theme/design-system/components';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { tierLabel } from '@/pages/local/plain-text';
@@ -14,7 +14,7 @@ import {
 import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
 import { BarSparkline, CostQualityScatter, DayAxis, breakableName } from '@/theme/design-system/charts';
 import { ChartLine, Gauge, Layers, LayoutGrid } from '@/theme/design-system/icons';
-import { fixed as fmtFixed, localeDate as fmtLocaleDate } from '@/lib/format';
+import { fixed as fmtFixed, localeDate as fmtLocaleDate } from '@/theme/format';
 
 /**
  * OMN-21166 part 29 (revision 6) AC194 and AC195: Usage analysis, read from the latest N served decisions (Langfuse's

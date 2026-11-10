@@ -1,5 +1,5 @@
 import { ArrowDown, ArrowUp } from '@/theme/design-system/icons';
-import { formatDashboardCount, formatFullCount, wholeCount } from '@/lib/format';
+import { formatDashboardCount, formatFullCount, wholeCount } from '@/theme/format';
 
 /** One display for directional counts: short by the dashboard count rule (OMN-22168), the exact count on focus and hover. */
 export function TokenDirections({ input, output }: { input: unknown; output: unknown }) {

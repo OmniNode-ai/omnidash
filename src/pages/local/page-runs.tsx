@@ -1,14 +1,14 @@
 // OMN-23330 AC24: part of the local pages, split out of LocalDashboardPage.tsx (3,926 lines) with no change to what
 // any page draws. The Runs page: the run list, its table, filters and column widths.
-import { formatDashboardCount } from '@/lib/format';
-import { readableTime } from '@/lib/format';
-import { exactMs } from '@/lib/format';
+import { formatDashboardCount } from '@/theme/format';
+import { readableTime } from '@/theme/format';
+import { exactMs } from '@/theme/format';
 import { useContext, useEffect, useId, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { tierColor } from '@/lib/dashboard-colors';
 import { Link, useLocation, useSearch } from 'wouter';
 import { CalendarDays, ArrowUpRight, ChevronRight } from '@/theme/design-system/icons';
-import { formatDashboardUsd as formatUsd } from '@/lib/format';
+import { formatDashboardUsd as formatUsd } from '@/theme/format';
 import { DEFAULT_RUNS_VIEW, readRunsSearch, writeRunsSearch, type RunsViewState } from '@/navigation/runs-url-state';
 import { runsToCsv, runsToJson, sortRuns, type RunSortKey } from '@/pages/local/runs-sort-export';
 import { PAGE_PATHS } from '@/navigation/page-routes';
@@ -26,7 +26,7 @@ import { Meter } from '@/theme/design-system/charts';
 import { ConceptIcon, FieldIcon } from '@/components/dashboard/FieldIcon';
 import { fieldTone, isUnavailableField } from '@/components/dashboard/field-identity';
 import { useModelColor, useModelIdentityStyle } from '@/components/dashboard/model-tiers';
-import { fixed as fmtFixed, localeDate as fmtLocaleDate } from '@/lib/format';
+import { fixed as fmtFixed, localeDate as fmtLocaleDate } from '@/theme/format';
 import { CellTime, CopyButton, CostCell, FIRST_RUN_COMMAND, Readable, type Row, RunRef, type RunViewProps, age, asRecords, byRunTime, causeOf, causeTextOf, costOf, displayCauseOf, duration, failureDetailOf, indexBy, isMissing, modelOrUnknown, newestFirst, recorded, recordedTokens, runModelledCell, statusOf, tierOf, timeOf, tokensTitle, utcDay } from '@/pages/local/page-shared';
 import { OutcomePill } from '@/pages/local/page-workflow';
 import { RunChartsSlot, RunRoutingSlot } from '@/pages/local/page-headline';

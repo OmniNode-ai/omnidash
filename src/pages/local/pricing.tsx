@@ -4,7 +4,7 @@ import { ConceptIcon } from '@/components/dashboard/FieldIcon';
  * against and the pricing manifest version, both as metering-summary.v1 serves them on its all-time row. Nothing here
  * is computed: a value the row leaves empty is left out, and no row at all says so.
  */
-import { readableTime } from '@/lib/format';
+import { readableTime } from '@/theme/format';
 import { EmptyState, Fact, FactList } from '@/theme/design-system/components';
 
 const text = (value: unknown) => (value === null || value === undefined ? '' : String(value).trim());

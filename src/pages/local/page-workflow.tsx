@@ -1,7 +1,7 @@
 // OMN-23330 AC24: part of the local pages, split out of LocalDashboardPage.tsx (3,926 lines) with no change to what
 // any page draws. The Workflow page: one run, its summary, neighbours and timeline.
-import { formatDashboardCount } from '@/lib/format';
-import { readableTime } from '@/lib/format';
+import { formatDashboardCount } from '@/theme/format';
+import { readableTime } from '@/theme/format';
 import { useId, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link } from 'wouter';
 import { normaliseRunId, workflowHref } from '@/navigation/workflow-url-state';

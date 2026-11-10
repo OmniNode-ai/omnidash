@@ -2,17 +2,17 @@ import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { ChartNotRecorded, RankedBars } from '@/theme/design-system/charts';
 import { UsageAnalysis } from './usage-analysis';
 import { DEFAULT_RUNS_VIEW, writeRunsSearch } from '@/navigation/runs-url-state';
-import { formatDashboardCount, formatFullCount } from '@/lib/format';
+import { formatDashboardCount, formatFullCount } from '@/theme/format';
 import { tierColor } from '@/lib/dashboard-colors';
-import { formatDashboardUsd } from '@/lib/format';
+import { formatDashboardUsd } from '@/theme/format';
 import { sumDashboardUsd } from '@/lib/dashboard-money-total';
 import { GroupedBars } from '@/theme/design-system/charts';
 import { aggregateUsageRows, type UsageAggregates } from './insight-aggregates';
 import { tierLabel } from './plain-text';
 import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
 import { EmptyState } from '@/theme/design-system/components';
-import { localeDate as fmtLocaleDate } from '@/lib/format';
-import { formatShare } from '@/lib/format';
+import { localeDate as fmtLocaleDate } from '@/theme/format';
+import { formatShare } from '@/theme/format';
 
 const USAGE_WINDOW_DAYS = 30;
 

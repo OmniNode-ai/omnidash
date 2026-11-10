@@ -1,5 +1,5 @@
 import { useId } from 'react';
-import { fixed as fmtFixed } from '@/lib/format';
+import { fixed as fmtFixed } from '@/theme/format';
 /**
  * OMN-22168 AC3: the line chart of the local pages (Pass rate per day). Moved from src/pages/local/insight-charts.tsx.
  * A day without a value breaks the line rather than drawing a 0, and gets no dot; every day is a focusable column.

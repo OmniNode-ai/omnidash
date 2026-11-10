@@ -1,4 +1,4 @@
-// OMN-23330 AC19: money, count, percent, date and duration are formatted by one module, src/lib/format, and every page
+// OMN-23330 AC19: money, count, percent, date and duration are formatted by one module, src/theme/format, and every page
 // reads them from there. AC9's two formatting fixes live in it: a duration never shows a fraction of a millisecond, and
 // a nonzero share under 0.05% reads "<0.1%" rather than a rounded "0.0%" that hides it (seen live 2026-11-10 on Runs:
 // a model with 1 of 2,893 calls read 0.0%).
@@ -10,7 +10,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { exactMs, formatDashboardCount, formatDashboardUsd, formatDuration, formatFullCount, formatShare, formatShortDay } from '@/lib/format';
+import { exactMs, formatDashboardCount, formatDashboardUsd, formatDuration, formatFullCount, formatShare, formatShortDay } from '@/theme/format';
 
 const ROOT = path.resolve(__dirname, '../..');
 

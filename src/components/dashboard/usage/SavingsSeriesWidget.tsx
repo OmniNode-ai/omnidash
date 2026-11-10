@@ -1,5 +1,5 @@
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
-import { formatDashboardCount, formatShortDay } from '@/lib/format';
+import { formatDashboardCount, formatShortDay } from '@/theme/format';
 // OMN-20006 Amendment 1 (US-3): savings per UTC day against the one baseline, from metering-summary.v1.
 //
 // node_projection_metering_summary serves one `day` row per UTC day and one `all` row per baseline model, from one
@@ -11,11 +11,11 @@ import { formatDashboardCount, formatShortDay } from '@/lib/format';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionSnapshotQuery } from '@/hooks/useProjectionSnapshotQuery';
 import { TOPICS } from '@shared/types/topics';
-import { formatDashboardUsd as formatUsd } from '@/lib/format';
+import { formatDashboardUsd as formatUsd } from '@/theme/format';
 import { useState } from 'react';
 import { ChevronLeft, ChevronRight } from '@/theme/design-system/icons';
 import { ColumnTip, DataTable, EmptyState } from '@/theme/design-system/components';
-import { refreshInterval } from '@/lib/refresh';
+import { refreshInterval } from '@/theme/refresh';
 
 /** The subset of metering-summary.v1 columns the series renders. */
 export interface MeteringSummaryRow {

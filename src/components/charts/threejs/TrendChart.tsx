@@ -18,7 +18,7 @@ import {
   StackedChart,
   type StackedSlice,
 } from '../../dashboard/cost-trend/StackedChart';
-import { localeDate as fmtLocaleDate, localeTime as fmtLocaleTime } from '@/lib/format';
+import { localeDate as fmtLocaleDate, localeTime as fmtLocaleTime } from '@/theme/format';
 // OMN-23330 AC25: this file's fixed inline styles are classes in TrendChart.static.css.
 import './TrendChart.static.css';
 
