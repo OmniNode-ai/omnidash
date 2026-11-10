@@ -1,6 +1,6 @@
 {
   "source": "GET /projections on the .201 dev-lane projection API, read-only",
-  "captured_at": "2026-10-24T05:54:57.950190+00:00",
+  "captured_at": "2026-11-10T03:42:45.286114+00:00",
   "exposures": [
     {
       "topic": "delegation",
@@ -488,7 +488,9 @@
         "tenant_id",
         "estimated_run_count",
         "unknown_run_count",
-        "run_count"
+        "run_count",
+        "tokens_input_total",
+        "tokens_output_total"
       ]
     },
     {
@@ -532,6 +534,9 @@
         "gate_version",
         "rater_role",
         "rubric_version",
+        "harness",
+        "model",
+        "configuration",
         "total_n",
         "accepted_n",
         "false_pass_count",
@@ -550,6 +555,10 @@
         "false_refusal_line_verdict",
         "undetermined_n",
         "undetermined_share",
+        "flip_rate",
+        "flip_rate_wilson_low",
+        "flip_rate_wilson_high",
+        "flip_measured_backend_id",
         "observed_at",
         "projection_cursor"
       ]
@@ -666,7 +675,8 @@
         "execution_ms",
         "tenant_id",
         "writer_identity",
-        "written_at"
+        "written_at",
+        "projection_cursor"
       ]
     },
     {
@@ -1465,7 +1475,9 @@
         "fingerprint",
         "set_at",
         "expires_at",
-        "bound_host"
+        "bound_host",
+        "workspace_id",
+        "last_used_at"
       ]
     },
     {
@@ -1605,6 +1617,141 @@
         "report_id",
         "updated_at",
         "projection_cursor"
+      ]
+    },
+    {
+      "topic": "onex.snapshot.projection.compaction-receipts.v1",
+      "status": "ok",
+      "degraded_reason": null,
+      "columns": [
+        "session_id",
+        "receipt_key",
+        "boundary_uuid",
+        "boundary_kind",
+        "activation_id",
+        "verdict",
+        "reason",
+        "installed_messages_hash",
+        "observed_hash",
+        "source_topic",
+        "projection_cursor",
+        "projected_at"
+      ]
+    },
+    {
+      "topic": "onex.snapshot.projection.delegation.daily.v1",
+      "status": "ok",
+      "degraded_reason": null,
+      "columns": [
+        "tenant_id",
+        "days",
+        "total_runs",
+        "latest_projection_updated_at"
+      ]
+    },
+    {
+      "topic": "onex.snapshot.projection.local-alerts.v1",
+      "status": "ok",
+      "degraded_reason": null,
+      "columns": [
+        "tenant_id",
+        "code",
+        "subject",
+        "mode",
+        "service",
+        "state",
+        "severity",
+        "raised_at",
+        "cleared_at",
+        "evidence",
+        "last_transition_id",
+        "last_transition_at",
+        "updated_at",
+        "projection_cursor"
+      ]
+    },
+    {
+      "topic": "onex.snapshot.projection.pr-state.v1",
+      "status": "ok",
+      "degraded_reason": null,
+      "columns": [
+        "repo",
+        "pr_number",
+        "state",
+        "head_sha",
+        "base",
+        "head_ref",
+        "title",
+        "draft",
+        "author",
+        "author_is_bot",
+        "labels",
+        "armed",
+        "queued",
+        "watcher_class",
+        "ci_verdict",
+        "red_contexts",
+        "pending_contexts",
+        "ci_read_at",
+        "merged_at",
+        "observed_at"
+      ]
+    },
+    {
+      "topic": "onex.evt.omnimarket.tenant-credential-state.v1",
+      "status": "ok",
+      "degraded_reason": null,
+      "columns": [
+        "api_key_ref",
+        "tenant_id",
+        "name",
+        "provider",
+        "created_at",
+        "revoked_at",
+        "fingerprint",
+        "set_at",
+        "expires_at",
+        "bound_host",
+        "workspace_id",
+        "models",
+        "version"
+      ]
+    },
+    {
+      "topic": "onex.evt.omnimarket.tenant-routing-overlay-state.v1",
+      "status": "ok",
+      "degraded_reason": null,
+      "columns": [
+        "id",
+        "tenant_id",
+        "task_type",
+        "backend_id",
+        "provider",
+        "endpoint_url",
+        "model_name",
+        "secret_ref",
+        "timeout_ms",
+        "max_tokens",
+        "models",
+        "version",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    {
+      "topic": "onex.snapshot.projection.view-seam-readings.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed",
+      "columns": [
+        "seam_id",
+        "window_start",
+        "window_end",
+        "state",
+        "crossings",
+        "mismatched",
+        "unreadable",
+        "examples",
+        "read_at"
       ]
     }
   ]

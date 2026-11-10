@@ -138,10 +138,7 @@ describe('LocalDashboardPage widget states (F26, F27)', () => {
     render(<LocalDashboardPage pageName="overview" />);
     await settle();
     const runsPerDay = screen.getByRole('heading', { name: 'Runs per day' }).closest('article')!;
-    // The delegation.daily.v1 binding is held back until the lab dev lane serves it (Lakshman 2026-11-03), so the page
-    // never asks for it and names nothing missing. When the binding returns this line goes back to expecting
-    // "Not available yet: daily run totals", and fails until it does.
-    expect(within(runsPerDay).queryByText(/Not available yet: daily run totals/)).not.toBeInTheDocument();
+    expect(within(runsPerDay).getByText(/Not available yet: daily run totals/)).toBeInTheDocument();
     expect(within(runsPerDay).getByRole('group', { name: 'Runs per day' })).toBeInTheDocument();
     expect(within(runsPerDay).getAllByRole('button', { name: /: 1 run,/ }).length).toBe(1);
   });

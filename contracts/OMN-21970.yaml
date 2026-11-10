@@ -93,3 +93,11 @@ dod_evidence:
       - check_type: "test_passes"
         check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/pages/LocalDashboardPage.omn21970.runs-axis.test.tsx"
         cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn21970-ac2-daily-binding"
+    description: "AC2 (2026-11-10): the Overview's activity charts bind the served per-day totals, delegation.daily.v1, with the fields the charts read, and the captured lab catalogue marks it served."
+    source: "manual"
+    binds_ac: ["AC2"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/pages/local/overview-daily-binding.omn21970.test.ts"
+        cwd: "${OMNI_HOME}/omnidash"
