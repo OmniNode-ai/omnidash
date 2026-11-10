@@ -107,12 +107,21 @@ function shortCount(value: number | null): string {
   return String(value);
 }
 
+/**
+ * OMN-23330 AC8: the day a readout shows while nothing is pointed at: the newest day that served something, so no blank
+ * row sits above the chart. A window that served nothing has none, and the readout names no day.
+ */
+function latestServed(days: readonly InsightDay[], served: (day: InsightDay) => boolean): InsightDay | null {
+  for (let index = days.length - 1; index >= 0; index -= 1) if (served(days[index]!)) return days[index]!;
+  return null;
+}
+
 /** A readout's separator: the same text (" · ") in its own span, so it can take room on either side in the quiet ink. */
 function Sep() {
   return <span className="ins-readout-sep">{' · '}</span>;
 }
 
-function RunsPerDay({ days }: { days: InsightDay[] }) {
+export function RunsPerDay({ days }: { days: InsightDay[] }) {
   const [hover, setHover] = useState<number | null>(null);
   // OMN-21166 AC78: a day opens Runs filtered to that UTC day (the day key is already the UTC date).
   // On Runs itself the filters already chosen stay; only the day changes.
@@ -125,7 +134,7 @@ function RunsPerDay({ days }: { days: InsightDay[] }) {
   // series can be hidden; the last one shown stays on.
   const [show, setShow] = useState({ passed: true, failed: true });
   const max = Math.max(1, ...days.flatMap(day => [show.passed ? day.passed : 0, show.failed ? day.failed : 0]));
-  const active = hover === null ? null : days[hover]!;
+  const active = hover === null ? latestServed(days, day => day.runs > 0) : days[hover]!;
   const ticks = dayTicks(days, onRuns ? 14 : 8);
   const toggle = (key: 'passed' | 'failed') => setShow(current => {
     const other = key === 'passed' ? 'failed' : 'passed';
@@ -133,7 +142,7 @@ function RunsPerDay({ days }: { days: InsightDay[] }) {
   });
   return (
     <ChartCard title="Runs per day" concept="runs-daily" delay={0}>
-      <ChartReadout testId="runs-per-day-readout" active={active !== null}
+      <ChartReadout testId="runs-per-day-readout" active={hover !== null}
         text={active ? verdictsNotRead(active)
           ? <>{dayLabel(active.day)}<Sep /><span data-field-tone="basis">Verdicts not read</span></>
           : <>{dayLabel(active.day)}<Sep /><span data-field-tone="count">{count(active.passed + active.failed)} runs</span><Sep /><span data-field-tone="pass">{count(active.passed)} passed</span><Sep /><span data-field-tone="fail">{count(active.failed)} failed</span></> : ''} />
@@ -319,18 +328,18 @@ function ChartSection({ title, children }: { title: string; concept?: string; ch
   return <section className="overview-chart-section" aria-label={title}><div className="overview-chart-row">{children}</div></section>;
 }
 
-function TokensPerDay({ days }: { days: InsightDay[] }) {
+export function TokensPerDay({ days }: { days: InsightDay[] }) {
   const [hover, setHover] = useState<number | null>(null);
   // The scale comes from the days that recorded tokens; a day without a count draws no bar.
   const max = Math.max(1, ...days.flatMap(day => [day.tokensIn, day.tokensOut]).filter((value): value is number => value !== null));
   const side = (value: number | null, missing: number, direction: 'in' | 'out') => `${value === null ? 'not recorded' : formatFullCount(value)} ${direction}${value !== null && missing > 0 ? ` (partial: ${count(missing)} ${missing === 1 ? 'run' : 'runs'} not recorded)` : ''}`;
   const label = (day: InsightDay) => `${dayLabel(day.day)}: ${side(day.tokensIn, day.tokensInUnmeasured, 'in')}, ${side(day.tokensOut, day.tokensOutUnmeasured, 'out')}`;
-  const active = hover === null ? null : days[hover]!;
+  const active = hover === null ? latestServed(days, day => day.tokensIn !== null || day.tokensOut !== null) : days[hover]!;
   const [location] = useLocation();
   const ticks = dayTicks(days, location === '/runs' ? 14 : 8);
   return (
     <ChartCard title="Tokens per day" concept="tokens-daily" delay={420}>
-      <ChartReadout active={active !== null} text={active ? <>{dayLabel(active.day)}<Sep /><span data-field-tone="tokens-in" data-field-unavailable={active.tokensIn === null}>{side(active.tokensIn, active.tokensInUnmeasured, 'in')}</span>, <span data-field-tone="tokens-out" data-field-unavailable={active.tokensOut === null}>{side(active.tokensOut, active.tokensOutUnmeasured, 'out')}</span></> : ''} />
+      <ChartReadout active={hover !== null} text={active ? <>{dayLabel(active.day)}<Sep /><span data-field-tone="tokens-in" data-field-unavailable={active.tokensIn === null}>{side(active.tokensIn, active.tokensInUnmeasured, 'in')}</span>, <span data-field-tone="tokens-out" data-field-unavailable={active.tokensOut === null}>{side(active.tokensOut, active.tokensOutUnmeasured, 'out')}</span></> : ''} />
       <DayColumns label="Tokens per day" days={days.map((day, index) => ({
         key: day.day,
         ariaLabel: label(day),

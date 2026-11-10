@@ -279,7 +279,8 @@ test('E6 keyboard: focus walks the days, the readout follows, and clears when fo
   await days.last().focus();
   await page.keyboard.press('Tab');
   await expect(days.last()).not.toBeFocused();
-  await expect(readout).toHaveText('');
+  // OMN-23330 AC8: leaving the chart brings back the newest served day, never a blank readout.
+  await expect(readout).toHaveText(/ · \d+ runs?/);
   await expect(runsPanel(page).locator('.gdb-day[data-dim="true"]')).toHaveCount(0);
 });
 

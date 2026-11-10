@@ -2255,7 +2255,8 @@ export function OverviewTrendPanel({ rows, columns, window, now }: {
   });
   const dayText = (day: string, compact: boolean) => (byDay.has(day) ? twice(day) ? 'not recorded (two rows for this day)'
     : visible.map(column => say(valueOf(day, column), column, compact)).join(', ') : 'not recorded');
-  const active = hover === null ? undefined : days[hover];
+  // OMN-23330 AC8: with nothing pointed at, the readout shows the newest served day, so no blank row sits above the chart.
+  const active = hover === null ? [...days].reverse().find(day => byDay.has(day)) : days[hover];
   // Lakshman 2026-11-05 ("this look congested and bad"): one line is in front (the legend chip under the pointer, else
   // the first line shown), bold with a soft fill; the rest are thinner behind it. Every line and value is still drawn.
   const front = lines.some(line => line.key === preview) ? preview : lines[0]?.key ?? null;
@@ -2267,7 +2268,7 @@ export function OverviewTrendPanel({ rows, columns, window, now }: {
       <SeriesToggles label="Trend lines" onToggle={key => toggle(key)} onPreview={setPreview} focus={front}
         series={columns.map(column => ({ key: slug(column.header), label: column.header, color: TREND_TONES[column.header] ?? 'var(--ds-ink-2)',
           tone: TREND_FIELDS[column.header], shown: shown[slug(column.header)] ?? true }))} />
-      <ChartReadout active={active !== undefined}
+      <ChartReadout active={hover !== null}
         // Lakshman 2026-11-05 ("this also should be colorful"): each value in the readout wears its own line's colour.
         text={active !== undefined ? <>{label(active)}{byDay.has(active) && !twice(active)
           ? visible.map(column => <span key={column.key}><span className="ins-readout-sep">{' · '}</span><span data-field-tone={TREND_FIELDS[column.header]}>{say(valueOf(active, column), column, true)}</span></span>)

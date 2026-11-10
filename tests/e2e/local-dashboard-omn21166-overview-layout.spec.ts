@@ -99,13 +99,16 @@ test('AC139 AC140 AC143: the four Overview charts are full-width tabs of one hei
   // the numbers show in the readout on the legend row, not above each bar (a 30-day bar is too narrow for them).
   const readout = page.getByTestId('runs-per-day-readout');
   await expect(page.locator('.local-dashboard-page--overview .gdb-val:visible')).toHaveCount(0);
-  await expect(readout).toHaveText('');
+  // OMN-23330 AC8 (the operator's 2026-11-09 review, superseding part 21 AC143's empty readout at rest): the readout
+  // shows the newest served day at rest, the focused day while a day has focus, and the newest day again after.
+  const atRest = (await readout.textContent()) ?? '';
+  expect(atRest).toMatch(/ · \d+ runs?/);
   const lastDay = chartPanels(page).first().locator('.gdb-day').last();
   await lastDay.focus();
   await expect(readout).toContainText(/runs/);
   await lastDay.blur();
-  // Focus leaving the chart clears the readout and the dimming (part 21 AC143: values only on hover or focus).
-  await expect(readout).toHaveText('');
+  // Focus leaving the chart brings the newest day back and clears the dimming.
+  await expect(readout).toHaveText(atRest);
   await expect(chartPanels(page).first().locator('.gdb-day[data-dim="true"]')).toHaveCount(0);
   await page.screenshot({ path: info.outputPath('overview-1440.png'), fullPage: true });
   writeFileSync(info.outputPath('overview-layout.json'), JSON.stringify({ placed, plots }, null, 2));
