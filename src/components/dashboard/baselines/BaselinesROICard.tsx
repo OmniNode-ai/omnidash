@@ -4,8 +4,8 @@ import { Text } from '@/components/ui/typography';
 import { TOPICS } from '@shared/types/topics';
 import { localeString as fmtLocaleString } from '@/theme/format';
 import { refreshInterval } from '@/theme/refresh';
-// OMN-23330 AC25: this file's fixed inline styles are classes in BaselinesROICard.static.css.
-import './BaselinesROICard.static.css';
+// OMN-23330 AC25: this file's fixed inline styles are classes in RoiCard.static.css.
+import './RoiCard.static.css';
 
 export interface BaselinesSummary {
   snapshotId: string;
