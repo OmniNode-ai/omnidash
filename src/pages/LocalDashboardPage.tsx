@@ -1,3 +1,5 @@
+// OMN-23330 AC23: the page stylesheets first, before any component's own (as when they loaded from the entry).
+import '@/styles/page-sheets';
 import { formatDashboardCount } from '@/lib/format';
 import { PricingFacts } from '@/pages/local/pricing';
 import { WindowMenu } from '@/pages/local/window-menu';
@@ -25,14 +27,6 @@ import { RunFilterProvider } from '@/pages/local/run-filter';
 import { AccessNotServed } from '@/pages/local/access';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { fieldTone } from '@/components/dashboard/field-identity';
-import '@/theme/design-system/kit/local-dashboard.css';
-import '@/styles/local-dashboard.css';
-import '@/theme/design-system/kit/dashboard-cards.css';
-import '@/styles/dashboard-cards.css';
-import '@/theme/design-system/kit/seven-page-design.css';
-import '@/styles/seven-page-design.css';
-import '@/theme/design-system/kit/editorial.css';
-import '@/styles/editorial.css';
 import { DestinationIcon } from '@/navigation/destination-icons';
 import type { AppPage } from '@/store/types';
 import { loadLocalPageConfig, loadLocalPageSnapshots, rowsForLocalComponent, resolveLocalPageEmptyState, withLastGood, newestRunId as newestWorkflowRunId, DELEGATION_DECISIONS_TOPIC, METERING_SUMMARY_TOPIC, RUN_TRACE_TOPIC, isPerRunTopic, LOCAL_READ_TIMEOUT_MS, type BoundProjectionSnapshot, type LocalPageDocument, type LocalPageName } from '@/layout/local-page-loader';

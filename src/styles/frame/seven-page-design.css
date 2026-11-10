@@ -1,0 +1,8 @@
+/*  OMN-23330 AC23: the app frame's rules (sidebar, top bar, app shell) from src/styles/seven-page-design.css, in their order with
+   their media conditions, so the entry loads the frame and seven-page-design.css loads with the pages.  */
+
+/* AC77: the served read time sits just before Refresh in the top bar, muted, never wrapping. */
+.topbar-updated { font-size: 12px; color: var(--ds-ink-3); white-space: nowrap; margin-right: 4px; font-variant-numeric: tabular-nums; }
+@media (max-width: 480px) { .topbar-updated { display: none; } }
+/* Specificity (0,4,2) on purpose: it must outrank the page-scoped grey rule above (0,3,2), or tier and model icons turn grey. */
+html .app svg.field-icon.field-icon:is([data-field-icon^="tier-"], [data-semantic-concept^="model:"]):not(#ds-important) { color: var(--field-ink, currentColor); }

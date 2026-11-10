@@ -6,38 +6,35 @@ import { useFrameStore } from './store/store';
 import { CommandPalette, useCommandPalette } from './components/dashboard/command-dispatch/CommandPalette';
 import type { AppPage } from './store/types';
 import type { LocalDashboardCache } from './pages/LocalDashboardPage';
-// OMN-23330 AC22: the local pages' code loads lazily, but these stylesheets also style the app frame (sidebar, top bar),
-// so they stay in the entry, in the order the pages imported them, until AC23 moves the frame's rules out of them.
-import '@/theme/design-system/kit/local-dashboard.css';
-import '@/styles/local-dashboard.css';
-import '@/theme/design-system/kit/dashboard-cards.css';
-import '@/styles/dashboard-cards.css';
-import '@/theme/design-system/kit/seven-page-design.css';
-import '@/styles/seven-page-design.css';
-import '@/theme/design-system/kit/editorial.css';
-import '@/styles/editorial.css';
+// OMN-23330 AC23: the entry loads the app frame's rules (sidebar, top bar, app shell), in the order their page stylesheets
+// had them; the page stylesheets themselves load with the pages that use them.
+import '@/styles/frame/seven-page-design.css';
+import '@/styles/frame/editorial.css';
 import { DestinationIcon } from './navigation/destination-icons';
 import { PAGE_LABELS, PAGE_PATHS, pageForPath } from './navigation/page-routes';
 
 // Deferred destinations must not delay the six local pages at startup.
 // OMN-23330 AC22: the local pages and Settings load with their own bundle too, so the entry carries none of their code
 // (charts, echarts, stylesheets); the entry was 1.43 MB (428 KB gzipped) with them.
-const LocalDashboardPage = lazy(() => import('./pages/LocalDashboardPage').then(module => ({ default: module.LocalDashboardPage })));
-const SettingsPage = lazy(() => import('./pages/SettingsPage').then(module => ({ default: module.SettingsPage })));
+// OMN-23330 AC23: the page stylesheets load before a page's own chunk, so their links come ahead of the components'
+// stylesheets, as when they were part of the entry (a page chunk alone linked them last, after Tooltip and DataTable).
+const withPageSheets = <T,>(load: () => Promise<T>) => () => import('./styles/page-sheets').then(load);
+const LocalDashboardPage = lazy(withPageSheets(() => import('./pages/LocalDashboardPage').then((m) => ({ default: m.LocalDashboardPage }))));
+const SettingsPage = lazy(withPageSheets(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage }))));
 const DashboardView = lazy(() => import('./pages/DashboardView').then(module => ({ default: module.DashboardView })));
 const FeatureFlagDashboard = lazy(() => import('./pages/FeatureFlagDashboard').then(module => ({ default: module.FeatureFlagDashboard })));
 const InstructionEvalPage = lazy(() => import('./pages/InstructionEvalPage').then(module => ({ default: module.InstructionEvalPage })));
 
 // OMN-12943 — ported event-dash views, lazily loaded so they add zero weight to
 // the default dashboard bundle. Existing static page imports above are untouched.
-const DelegationEvidencePage = lazy(() =>
+const DelegationEvidencePage = lazy(withPageSheets(() =>
   import('./pages/DelegationEvidencePage').then((m) => ({ default: m.DelegationEvidencePage })),
-);
-const EventBusPage = lazy(() => import('./pages/EventBusPage').then((m) => ({ default: m.EventBusPage })));
-const ExperimentsPage = lazy(() => import('./pages/ExperimentsPage').then((m) => ({ default: m.ExperimentsPage })));
-const SeaControlPage = lazy(() => import('./pages/SeaControlPage').then((m) => ({ default: m.SeaControlPage })));
+));
+const EventBusPage = lazy(withPageSheets(() => import('./pages/EventBusPage').then((m) => ({ default: m.EventBusPage }))));
+const ExperimentsPage = lazy(withPageSheets(() => import('./pages/ExperimentsPage').then((m) => ({ default: m.ExperimentsPage }))));
+const SeaControlPage = lazy(withPageSheets(() => import('./pages/SeaControlPage').then((m) => ({ default: m.SeaControlPage }))));
 // OMN-18771 — Lab observability tab (C4), lazily loaded on the same seam.
-const LabPage = lazy(() => import('./pages/LabPage').then((m) => ({ default: m.LabPage })));
+const LabPage = lazy(withPageSheets(() => import('./pages/LabPage').then((m) => ({ default: m.LabPage }))));
 
 /** Keep the destination recognizable while its deferred bundle is loading. */
 function LoadingPage({ page }: { page: AppPage }) {

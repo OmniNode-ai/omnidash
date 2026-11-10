@@ -18,16 +18,6 @@ body:not(#ds-important),
 .app:not(#ds-important),
 .main:not(#ds-important),
 :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]):not(#ds-important) { background: var(--ds-page); }
-.sidebar:not(#ds-important) { background: var(--ds-page); border-right: 1px solid var(--ds-line); box-shadow: none; }
-.sidebar :is(a, button):not(#ds-important) { border-radius: var(--ds-radius-control); }
-.sidebar .mvp-nav-item.active, .sidebar [aria-current="page"] { font-weight: 600; }
-.sidebar .mvp-nav-item.active:not(#ds-important),
-.sidebar [aria-current="page"]:not(#ds-important) { background: var(--ds-surface-2); color: var(--ds-ink); box-shadow: none; }
-.sidebar .mvp-nav-item.active svg:not(#ds-important),
-.sidebar [aria-current="page"] svg:not(#ds-important) { color: var(--ds-ink); }
-.topbar:not(#ds-important),
-header.topbar:not(#ds-important) { background: var(--ds-page); border-bottom: 1px solid var(--ds-line); box-shadow: none; }
-.topbar :is(button, a):not(#ds-important) { border-radius: var(--ds-radius-control); }
 
 /* Page titles: Geist, semibold, tight. */
 :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) h1 {
@@ -117,8 +107,6 @@ html body .local-dashboard-page .local-window-list [role="radio"][aria-checked="
 .workflow-flow-node[data-field-tone="model"] > strong:not(#ds-important) { color: var(--ds-ink); }
 .workflow-flow-node[data-field-tone="model"] > strong::before { content: ""; display: inline-block; width: 0.7em; height: 0.7em; border-radius: 2px;
   margin-right: 0.35em; vertical-align: -0.05em; background: var(--model-identity-color, currentColor); }
-@media (prefers-reduced-motion: reduce) { .sidebar *:not(#ds-important),
-.topbar *:not(#ds-important) { transition: none; } }
 
 /* Settings in the 01 + 20 look (Lakshman 2026-11-02): tabs as a segmented control, every group a rounded card, status
    shown by a tinted pill and a round dot instead of a filled name cell, small things on 8px corners. */
@@ -172,149 +160,6 @@ html body :is(.local-dashboard-page, .ev-root) .local-model-identity:not(#ds-imp
 html body :is(.local-dashboard-page, .ev-root) .local-model-identity::before {
   content: ""; display: inline-block; flex: none; width: 0.7em; height: 0.7em; margin-right: 0.45em; vertical-align: -0.05em;
   border-radius: 2px; background: var(--model-identity-color, currentColor); }
-
-/* The sidebar in the 01 + 20 look (Lakshman 2026-11-02, "needs improvements?"): the chosen page is a soft fill only, no
-   edge bar or outline; quieter section labels and product line; tighter rows with a hover fill. */
-html body .sidebar .mvp-nav-item, html body .sidebar nav a { min-height: 36px; font-weight: 500; outline: 0; transition: background 120ms ease, color 120ms ease; }
-html body .sidebar .mvp-nav-item:not(#ds-important),
-html body .sidebar nav a:not(#ds-important) { padding-block: 8px; font-size: 14px; color: var(--ds-ink-3);
-  border: 0; }
-html body .sidebar .mvp-nav-item svg:not(#ds-important),
-html body .sidebar nav a svg:not(#ds-important) { color: var(--ds-ink-3); }
-html body .sidebar .mvp-nav-item:hover:not(#ds-important),
-html body .sidebar nav a:hover:not(#ds-important) { background: var(--ds-surface-2); color: var(--ds-ink); }
-html body .sidebar .mvp-nav-item:is(.active, [aria-current="page"]), html body .sidebar nav a[aria-current="page"] { font-weight: 600; }
-html body .sidebar .mvp-nav-item:is(.active, [aria-current="page"]):not(#ds-important),
-html body .sidebar nav a[aria-current="page"]:not(#ds-important) {
-  background: var(--ds-surface-2); color: var(--ds-ink); border: 0; box-shadow: none; }
-html body .sidebar .mvp-nav-item:is(.active, [aria-current="page"]):not(#ds-important)::before,
-html body .sidebar .mvp-nav-item:is(.active, [aria-current="page"]):not(#ds-important)::after,
-html body .sidebar nav a[aria-current="page"]:not(#ds-important)::before,
-html body .sidebar nav a[aria-current="page"]:not(#ds-important)::after { display: none; content: none; }
-html body .sidebar .mvp-nav-item:is(.active, [aria-current="page"]) svg:not(#ds-important),
-html body .sidebar nav a[aria-current="page"] svg:not(#ds-important) { color: var(--ds-ink); }
-html body .sidebar .mvp-nav-item:focus-visible, html body .sidebar nav a:focus-visible { outline-offset: -2px; }
-html body .sidebar .mvp-nav-item:focus-visible:not(#ds-important),
-html body .sidebar nav a:focus-visible:not(#ds-important) { outline: 2px solid var(--ds-ink); }
-html body .sidebar .mvp-nav-title, html body .sidebar .mvp-nav-title * { text-transform: uppercase; }
-html body .sidebar .mvp-nav-title:not(#ds-important),
-html body .sidebar .mvp-nav-title *:not(#ds-important) { font-family: var(--ds-font-sans); font-size: 12px; font-weight: 500;
-  letter-spacing: .04em; color: var(--ds-ink-3); }
-html body .sidebar .brand .parent:not(#ds-important),
-html body .sidebar .parent:not(#ds-important) { font-family: var(--ds-font-sans); font-size: 12px; letter-spacing: 0;
-  text-transform: none; color: var(--ds-ink-3); }
-html body aside.sidebar .sidebar-bottom-title, html body aside.sidebar .sidebar-bottom-title * { text-transform: uppercase; }
-html body aside.sidebar .sidebar-bottom-title:not(#ds-important),
-html body aside.sidebar .sidebar-bottom-title *:not(#ds-important) { font-family: var(--ds-font-sans); font-size: 12px;
-  font-weight: 500; letter-spacing: .04em; color: var(--ds-ink-3); }
-
-/* One colour per concept on every page (Lakshman 2026-11-03: "colorful", "unique colors", "all pages should follow same
-   type of things"). A concept icon draws its own --field-<concept> colour wherever it appears, as the headline cards
-   already did (OMN-21970 AC8), so no concept is drawn in two colours (the OMN-21308 census); icons that name no concept
-   (chevrons, close, the sidebar's destinations) keep the one interface grey. Tier and model icons keep their identity
-   colour by the rule above. Generated from field-identity.css's --field-* tokens and FieldIcon's FIELD_ICONS. */
-html body .app svg.field-icon.field-icon[data-field-icon="activity"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-activity); }
-html body .app svg.field-icon.field-icon[data-field-icon="activity-hourly"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-activity-hourly); }
-html body .app svg.field-icon.field-icon[data-field-icon="age"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-age); }
-html body .app svg.field-icon.field-icon[data-field-icon="analysis"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-analysis); }
-html body .app svg.field-icon.field-icon[data-field-icon="answer"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-answer); }
-html body .app svg.field-icon.field-icon[data-field-icon="prompt"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-prompt); }
-html body .app svg.field-icon.field-icon[data-field-icon="truncated"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-truncated); }
-html body .app svg.field-icon.field-icon[data-field-icon="written"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-written); }
-html body .app svg.field-icon.field-icon[data-field-icon="writer"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-writer); }
-html body .app svg.field-icon.field-icon[data-field-icon="backend"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-backend); }
-html body .app svg.field-icon.field-icon[data-field-icon="baseline"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-baseline); }
-html body .app svg.field-icon.field-icon[data-field-icon="basis"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-basis); }
-html body .app svg.field-icon.field-icon[data-field-icon="cache"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-cache); }
-html body .app svg.field-icon.field-icon[data-field-icon="calls"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-calls); }
-html body .app svg.field-icon.field-icon[data-field-icon="cloud-keys"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-cloud-keys); }
-html body .app svg.field-icon.field-icon[data-field-icon="completion"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-completion); }
-html body .app svg.field-icon.field-icon[data-field-icon="compression"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-compression); }
-html body .app svg.field-icon.field-icon[data-field-icon="contract"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-contract); }
-html body .app svg.field-icon.field-icon[data-field-icon="cost"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-cost); }
-html body .app svg.field-icon.field-icon[data-field-icon="cost-per-run"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-cost-per-run); }
-html body .app svg.field-icon.field-icon[data-field-icon="cost-route"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-cost-route); }
-html body .app svg.field-icon.field-icon[data-field-icon="count"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-count); }
-html body .app svg.field-icon.field-icon[data-field-icon="credentials"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-credentials); }
-html body .app svg.field-icon.field-icon[data-field-icon="delegations"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-delegations); }
-html body .app svg.field-icon.field-icon[data-field-icon="duration"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-duration); }
-html body .app svg.field-icon.field-icon[data-field-icon="duration-p95"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-duration-p95); }
-html body .app svg.field-icon.field-icon[data-field-icon="escalated"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-escalated); }
-html body .app svg.field-icon.field-icon[data-field-icon="events"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-events); }
-html body .app svg.field-icon.field-icon[data-field-icon="execution"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-execution); }
-html body .app svg.field-icon.field-icon[data-field-icon="fail"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-fail); }
-html body .app svg.field-icon.field-icon[data-field-icon="failures"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-failures); }
-html body .app svg.field-icon.field-icon[data-field-icon="generation"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-generation); }
-html body .app svg.field-icon.field-icon[data-field-icon="host"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-host); }
-html body .app svg.field-icon.field-icon[data-field-icon="identity"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-identity); }
-html body .app svg.field-icon.field-icon[data-field-icon="last"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-last); }
-html body .app svg.field-icon.field-icon[data-field-icon="load-error"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-load-error); }
-html body .app svg.field-icon.field-icon[data-field-icon="load-slow"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-load-slow); }
-html body .app svg.field-icon.field-icon[data-field-icon="local-access"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-local-access); }
-html body .app svg.field-icon.field-icon[data-field-icon="local-identity"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-local-identity); }
-html body .app svg.field-icon.field-icon[data-field-icon="local-run"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-local-run); }
-html body .app svg.field-icon.field-icon[data-field-icon="model"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-model); }
-html body .app svg.field-icon.field-icon[data-field-icon="pass"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-pass); }
-html body .app svg.field-icon.field-icon[data-field-icon="pass-rate-daily"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-pass-rate-daily); }
-html body .app svg.field-icon.field-icon[data-field-icon="path"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-path); }
-html body .app svg.field-icon.field-icon[data-field-icon="performance-model"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-performance-model); }
-html body .app svg.field-icon.field-icon[data-field-icon="quality"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-quality); }
-html body .app svg.field-icon.field-icon[data-field-icon="quality-comparison"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-quality-comparison); }
-html body .app svg.field-icon.field-icon[data-field-icon="quality-model"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-quality-model); }
-html body .app svg.field-icon.field-icon[data-field-icon="quality-outcomes"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-quality-outcomes); }
-html body .app svg.field-icon.field-icon[data-field-icon="queue"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-queue); }
-html body .app svg.field-icon.field-icon[data-field-icon="recent"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-recent); }
-html body .app svg.field-icon.field-icon[data-field-icon="recorded-rows"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-recorded-rows); }
-html body .app svg.field-icon.field-icon[data-field-icon="routing"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-routing); }
-html body .app svg.field-icon.field-icon[data-field-icon="routing-flow"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-routing-flow); }
-html body .app svg.field-icon.field-icon[data-field-icon="routing-model"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-routing-model); }
-html body .app svg.field-icon.field-icon[data-field-icon="routing-workload"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-routing-workload); }
-html body .app svg.field-icon.field-icon[data-field-icon="run-details"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-run-details); }
-html body .app svg.field-icon.field-icon[data-field-icon="run-outcome"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-run-outcome); }
-html body .app svg.field-icon.field-icon[data-field-icon="run-routes"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-run-routes); }
-html body .app svg.field-icon.field-icon[data-field-icon="runs-analysis"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-runs-analysis); }
-html body .app svg.field-icon.field-icon[data-field-icon="runs-daily"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-runs-daily); }
-html body .app svg.field-icon.field-icon[data-field-icon="runs-model"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-runs-model); }
-html body .app svg.field-icon.field-icon[data-field-icon="runs-tier"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-runs-tier); }
-html body .app svg.field-icon.field-icon[data-field-icon="saving-average"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-saving-average); }
-html body .app svg.field-icon.field-icon[data-field-icon="savings"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-savings); }
-html body .app svg.field-icon.field-icon[data-field-icon="savings-daily"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-savings-daily); }
-html body .app svg.field-icon.field-icon[data-field-icon="score"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-score); }
-html body .app svg.field-icon.field-icon[data-field-icon="selected"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-selected); }
-html body .app svg.field-icon.field-icon[data-field-icon="session"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-session); }
-html body .app svg.field-icon.field-icon[data-field-icon="spend-daily"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-spend-daily); }
-html body .app svg.field-icon.field-icon[data-field-icon="spend-model"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-spend-model); }
-html body .app svg.field-icon.field-icon[data-field-icon="stage-timing"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-stage-timing); }
-html body .app svg.field-icon.field-icon[data-field-icon="step-other"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-step-other); }
-html body .app svg.field-icon.field-icon[data-field-icon="step-provider-call"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-step-provider-call); }
-html body .app svg.field-icon.field-icon[data-field-icon="step-quality"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-step-quality); }
-html body .app svg.field-icon.field-icon[data-field-icon="step-request"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-step-request); }
-html body .app svg.field-icon.field-icon[data-field-icon="step-routing"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-step-routing); }
-html body .app svg.field-icon.field-icon[data-field-icon="step-terminal"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-step-terminal); }
-html body .app svg.field-icon.field-icon[data-field-icon="task"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-task); }
-html body .app svg.field-icon.field-icon[data-field-icon="task-code-generation"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-task-code-generation); }
-html body .app svg.field-icon.field-icon[data-field-icon="task-code-review"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-task-code-review); }
-html body .app svg.field-icon.field-icon[data-field-icon="task-document"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-task-document); }
-html body .app svg.field-icon.field-icon[data-field-icon="task-other"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-task-other); }
-html body .app svg.field-icon.field-icon[data-field-icon="task-research"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-task-research); }
-html body .app svg.field-icon.field-icon[data-field-icon="task-summarization"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-task-summarization); }
-html body .app svg.field-icon.field-icon[data-field-icon="task-test"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-task-test); }
-html body .app svg.field-icon.field-icon[data-field-icon="tenant"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-tenant); }
-html body .app svg.field-icon.field-icon[data-field-icon="threshold"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-threshold); }
-html body .app svg.field-icon.field-icon[data-field-icon="tier"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-tier); }
-html body .app svg.field-icon.field-icon[data-field-icon="timing"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-timing); }
-html body .app svg.field-icon.field-icon[data-field-icon="token-flow"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-token-flow); }
-html body .app svg.field-icon.field-icon[data-field-icon="tokens"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-tokens); }
-html body .app svg.field-icon.field-icon[data-field-icon="tokens-completion"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-tokens-completion); }
-html body .app svg.field-icon.field-icon[data-field-icon="tokens-daily"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-tokens-daily); }
-html body .app svg.field-icon.field-icon[data-field-icon="tokens-in"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-tokens-in); }
-html body .app svg.field-icon.field-icon[data-field-icon="tokens-model"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-tokens-model); }
-html body .app svg.field-icon.field-icon[data-field-icon="tokens-out"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-tokens-out); }
-html body .app svg.field-icon.field-icon[data-field-icon="transport"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-transport); }
-html body .app svg.field-icon.field-icon[data-field-icon="unavailable"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-unavailable); }
-html body .app svg.field-icon.field-icon[data-field-icon="unrouted"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-unrouted); }
-html body .app svg.field-icon.field-icon[data-field-icon="usage-analysis"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-usage-analysis); }
-html body .app svg.field-icon.field-icon[data-field-icon="usage-day"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-usage-day); }
 
 /* ============================================================================
    OMN-22168 (Lakshman 2026-11-04, "make it modern"): the Recent runs panel on Runs. Markup and behaviour are unchanged;
@@ -477,12 +322,6 @@ html body .app svg.field-icon.field-icon[data-field-icon="usage-day"]:not([data-
 .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap thead .field-icon { flex: none; }
 /* OMN-23330 (the operator 2026-11-10, "in column why gap - make it dynamic"): Duration's 120px (its glyph, word and sort
    arrow) is now its own width in RUN_COLUMN_WIDTHS, and as the last shown column it takes the room the panel has left. */
-
-/* OMN-22168 (Lakshman 2026-11-04, chosen over the 10-27 one grey for these icons): each sidebar page's icon and its page
-   title's icon draw that page's own colour (--ds-destination-accent), and the title icon is big: a 28px glyph on a 48px
-   tile tinted in the same colour. Specificity above the page-scoped grey rule in seven-page-design.css. */
-.app .sidebar .mvp-nav-item .dash-marker svg.destination-icon:not(#ds-important),
-.app .sidebar a[data-destination] svg.destination-icon:not(#ds-important) { color: var(--ds-destination-accent); }
 .app main :is(.local-dashboard-page-icon, .ev-title-icon) svg.destination-icon:not(#ds-important) { color: var(--ds-destination-accent);
   width: 28px; height: 28px; }
 .app main .local-dashboard-header .local-dashboard-page-icon,

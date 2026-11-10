@@ -170,6 +170,16 @@ export default defineConfig(({ command, mode }) => {
         // better-sqlite3 and pg are server-side modules. They must never
         // be bundled by Vite — only server/routes.ts uses them at runtime.
         external: ['better-sqlite3', 'pg'],
+        output: {
+          // OMN-23330 AC23: each page stylesheet, with its kit part, is its own chunk, so no CSS file passes 150 KB (one
+          // shared chunk held all four at 408 KB); they still load together, in order, with the pages that use them.
+          manualChunks(id) {
+            const sheet = /src\/(?:styles|theme\/design-system\/kit)\/(local-dashboard|dashboard-cards|seven-page-design|editorial)\.css$/.exec(id);
+            if (sheet) return `sheet-${sheet[1]}`;
+            // The module that imports them is a chunk of its own, loaded before a page (App.tsx), never part of the entry.
+            return /src\/styles\/page-sheets\.ts$/.test(id) ? 'page-sheets' : undefined;
+          },
+        },
       },
     },
     optimizeDeps: {

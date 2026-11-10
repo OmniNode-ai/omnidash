@@ -10,7 +10,13 @@
 //   B2  echarts or three.js is reachable from the entry through static imports (it would load on every page);
 //   B3  echarts is reachable from the local pages' chunk through static imports (it would load on a page with no chart);
 //   B4  the check is blind: no chunk holds echarts or three.js at all (a renamed marker would pass B2 and B3 vacuously).
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+// OMN-23330 AC23: each page loads only its own stylesheet chunk, and no CSS file is over 150 KB. Measured on the lab
+// 2026-11-10: the entry's CSS held all four page stylesheets (500 KB in one file); now the entry holds the app frame
+// (94 KB) and the page stylesheets are four chunks of their own (sheet-*, largest 145 KB) that load with the pages.
+//   S1  a CSS file exceeds the 150 KB limit;
+//   S2  the entry loads a page stylesheet, or page-scoped rules (.local-dashboard-page--<page>, .ev-root) reach its CSS;
+//   S3  the page stylesheet chunks are not built, or no page chunk loads them, so the check is blind.
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { build } from 'vite';
@@ -71,5 +77,31 @@ describe('OMN-23330 AC22: the entry bundle and where the chart libraries load', 
     expect(page).toBeDefined();
     expect(existsSync(path.join(ASSETS, page!))).toBe(true);
     expect([...closure(page!)].filter((name) => isEcharts(read(name)))).toEqual([]);
+  });
+
+  it('S1: no CSS file is over 150 KB', () => {
+    const sheets = readdirSync(ASSETS).filter((name) => name.endsWith('.css'));
+    expect(sheets.length).toBeGreaterThan(3);
+    expect(sheets.map((name) => ({ name, bytes: statSync(path.join(ASSETS, name)).size })).filter((sheet) => sheet.bytes > 150 * 1024)).toEqual([]);
+  });
+
+  it('S2: the entry loads no page stylesheet and no page-scoped rule', () => {
+    const html = readFileSync(path.join(OUT, 'index.html'), 'utf8');
+    const linked = [...html.matchAll(/href="\/assets\/([\w.-]+\.css)"/g)].map((match) => match[1]!);
+    expect(linked.length).toBeGreaterThan(0);
+    expect(linked.filter((name) => name.startsWith('sheet-'))).toEqual([]);
+    // A frame rule may ask which page is open (.app:has(.ev-root) restyles the shell); a page's own rule names the page
+    // class outside :has().
+    const pageRule = (css: string) => /\.local-dashboard-page--[a-z]|\.ev-root\b/.test(css.replace(/:has\((?:[^()]|\([^()]*\))*\)/g, ''));
+    expect(pageRule('.app:has(.ev-root[data-destination=x]) { color: red }')).toBe(false);
+    expect(pageRule('.ev-root .row-main { display: grid }')).toBe(true);
+    for (const name of linked) expect({ name, page: pageRule(read(name)) }).toEqual({ name, page: false });
+  });
+
+  it('S3: the four page stylesheets are their own chunks, and the page chunks load them', () => {
+    const sheets = readdirSync(ASSETS).filter((name) => /^sheet-[\w-]+\.css$/.test(name));
+    expect(sheets).toHaveLength(4);
+    const code = readdirSync(ASSETS).filter((name) => name.endsWith('.js')).map(read).join('\n');
+    for (const sheet of sheets) expect({ sheet, loaded: code.includes(sheet) }).toEqual({ sheet, loaded: true });
   });
 });

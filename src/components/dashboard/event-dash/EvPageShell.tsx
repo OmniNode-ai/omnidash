@@ -3,17 +3,13 @@
  * (scopes all event-dash.css rules) plus a header and scroll body.
  */
 
+// OMN-23330 AC23: the page stylesheets first (as when they loaded from the entry), then event-dash's own.
+import '@/styles/page-sheets';
 import { type ReactNode } from 'react';
 import type { AppPage } from '@/store/types';
 import { DestinationIcon } from '@/navigation/destination-icons';
 import '@/theme/design-system/kit/event-dash.css';
 import '@/styles/event-dash.css';
-import '@/theme/design-system/kit/dashboard-cards.css';
-import '@/styles/dashboard-cards.css';
-import '@/theme/design-system/kit/seven-page-design.css';
-import '@/styles/seven-page-design.css';
-import '@/theme/design-system/kit/editorial.css';
-import '@/styles/editorial.css';
 
 export function EvPageShell({
   crumb,
