@@ -31,8 +31,8 @@ html body .local-dashboard-page.local-dashboard-page--settings .local-settings-s
 html body .local-dashboard-page .local-dashboard-filters.local-window-switch:not(#ds-important),
 html body .local-dashboard-page .local-window-switch .local-window-options:not(#ds-important) {
   border: 0; background: transparent; padding: 0; box-shadow: none; }
-html body .local-dashboard-page--settings :is(.local-provider-figures, .local-provider-list, .local-credentials-records, .local-settings-section .local-dashboard-grid, .local-pricing-facts, .local-environment-line, #settings-system-status .widget) { overflow: hidden; }
-html body .local-dashboard-page--settings :is(.local-provider-figures, .local-provider-list, .local-credentials-records, .local-settings-section .local-dashboard-grid, .local-pricing-facts, .local-environment-line, #settings-system-status .widget):not(#ds-important) {
+html body .local-dashboard-page--settings :is(.local-provider-figures, .local-provider-list, .local-credentials-records, .local-model-keys > .local-dashboard-table-wrap, .local-settings-section .local-dashboard-grid, .local-pricing-facts, .local-environment-line, #settings-system-status .widget) { overflow: hidden; }
+html body .local-dashboard-page--settings :is(.local-provider-figures, .local-provider-list, .local-credentials-records, .local-model-keys > .local-dashboard-table-wrap, .local-settings-section .local-dashboard-grid, .local-pricing-facts, .local-environment-line, #settings-system-status .widget):not(#ds-important) {
   border: 1px solid var(--ds-line); border-radius: var(--ds-radius); background: var(--ds-surface); }
 html body .local-dashboard-page--settings :is(.local-provider-figures > div + div, .local-pricing-facts > div):not(#ds-important) { border-color: var(--ds-line); }
 html body .local-dashboard-page--settings .local-settings-section .local-dashboard-panel:not(#ds-important) { background: transparent; }

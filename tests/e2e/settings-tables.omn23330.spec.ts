@@ -61,3 +61,27 @@ test('AC12 Settings at 1440: the provider list and the revoked-key table share o
   // T3: one cell.
   expect(measured.revoked.cell).toEqual(measured.list.cell);
 });
+
+// OMN-23330 AC12, the unread case (live 2026-11-10: GET /models failed, so Settings drew the served keys as its fallback
+// table above the revoked keys, and that table kept the plain 8 px, unfilled card): both key tables share one card.
+test('AC12 Settings at 1440 with GET /models unread: the key table and the revoked-key table share one card', async ({ page }, info) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await serveCharts(page, { ...chartRows, [prefix + 'tenant-credentials.v1']: [
+    { provider: 'gemini', name: 'llm.gemini.api_key', fingerprint: 'bd161cac', set_at: '2026-10-14T08:24:11Z', revoked_at: null },
+    { provider: 'openrouter', name: 'llm.openrouter.old', fingerprint: 'ffee0011', set_at: '2026-09-12T15:52:29Z', revoked_at: '2026-10-12T15:52:29Z' }] });
+  await page.route('**/models', route => route.fulfill({ status: 502, contentType: 'application/json', body: JSON.stringify({ error: 'bad_gateway', message: 'onex models list failed' }) }));
+  await page.goto('/settings');
+  const keys = page.getByRole('table', { name: 'Provider key references', exact: true });
+  const revoked = page.getByRole('table', { name: 'Revoked key references', exact: true });
+  await expect(keys).toBeVisible();
+  await expect(revoked).toBeVisible();
+  const card = (table: typeof keys) => table.evaluate((element, props) => {
+    const wrap = element.closest('.local-dashboard-table-wrap')!;
+    return Object.fromEntries(props.map(prop => [prop, getComputedStyle(wrap).getPropertyValue(prop)]));
+  }, [...BOX]);
+  const measured = { keys: await card(keys), revoked: await card(revoked) };
+  await page.screenshot({ path: info.outputPath('settings-tables-unread-1440.png') });
+  writeFileSync(info.outputPath('receipt-unread.json'), JSON.stringify(measured, null, 2));
+  expect(measured.keys).toEqual(measured.revoked);
+  expect(measured.keys['border-radius']).not.toBe('0px');
+});
