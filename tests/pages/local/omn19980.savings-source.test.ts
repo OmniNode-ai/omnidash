@@ -248,10 +248,10 @@ const R4_ALLOWED: readonly R4Allowance[] = [
   // metering_summary 0002 reached the lab); its card now binds metering-summary.v1 with the field required.
   // OMN-20008 AC5 (Jonah's decision, 4f0e618d): the Savings card's percentage line reads the served ratio from the
   // same all-time row as its figure and formats it; it divides nothing and reads no other savings field.
-  { file: 'src/pages/LocalDashboardPage.tsx', owner: 'MeteringTotalCard', fields: ['savings_pct_of_counterfactual'], componentId: 'overview-savings', state: 'bound' },
+  { file: 'src/pages/local/page-headline.tsx', owner: 'MeteringTotalCard', fields: ['savings_pct_of_counterfactual'], componentId: 'overview-savings', state: 'bound' },
   // OMN-21015 AC3 (the PER_RUN_SAVING exception): the Runs table's cell formats one run's served modelled saving and
   // names its baseline; it sums nothing and reads no other savings field.
-  { file: 'src/pages/LocalDashboardPage.tsx', owner: 'runModelledCell', fields: ['modelled_savings_usd'], componentId: 'recent-runs', state: 'bound' },
+  { file: 'src/pages/local/page-shared.tsx', owner: 'runModelledCell', fields: ['modelled_savings_usd'], componentId: 'recent-runs', state: 'bound' },
   // OMN-21166 AC26: this renderer receives the rows of the Overview's separately declared, meter-only daily-spend
   // binding. The activity analysis does not read savings from decision rows or switch source after a failed read.
   // OMN-21166 live review 2026-10-25: Overview's spend-per-day panel was deleted; these day-row sums read the same
@@ -259,14 +259,15 @@ const R4_ALLOWED: readonly R4Allowance[] = [
   { file: 'src/pages/local/insight-aggregates.ts', owner: 'aggregateMeteringWindow', fields: ['savings_usd', 'counterfactual_usd'], componentId: 'usage-savings-series', pageName: 'usage', state: 'bound' },
   // OMN-21166 AC66: Usage's savings panel (bound to metering-summary.v1 with savings_usd required) lists the runtime's
   // own per-model breakdown of its all-time row, summary_json.by_model, as served; it sums nothing.
-  { file: 'src/pages/LocalDashboardPage.tsx', owner: 'SavingsByModel', fields: ['savings_usd'], componentId: 'usage-savings-series', pageName: 'usage', state: 'bound' },
+  { file: 'src/pages/local/page-headline.tsx', owner: 'SavingsByModel', fields: ['savings_usd'], componentId: 'usage-savings-series', pageName: 'usage', state: 'bound' },
   // OMN-21166 AC63: Usage's KPI strip reads the same bound all-time row and its day rows (savings_usd and
   // counterfactual_usd are required by usage-savings-series), formats them and divides nothing.
-  { file: 'src/pages/LocalDashboardPage.tsx', owner: 'UsageKpis', fields: ['savings_usd', 'counterfactual_usd'], componentId: 'usage-savings-series', pageName: 'usage', state: 'bound' },
+  { file: 'src/pages/local/page-headline.tsx', owner: 'UsageKpis', fields: ['savings_usd', 'counterfactual_usd'], componentId: 'usage-savings-series', pageName: 'usage', state: 'bound' },
   // OMN-21166 live review 2026-10-25 ("unified" window): a 7/15/30-day Overview window sums the same served
   // metering-summary.v1 day rows aggregateMeteringWindow sums (AC42), all days or none; no other source is read.
-  { file: 'src/pages/LocalDashboardPage.tsx', owner: 'RANGE_MONEY', fields: ['savings_usd', 'counterfactual_usd'], componentId: 'usage-savings-series', pageName: 'usage', state: 'bound' },
+  { file: 'src/pages/local/page-headline.tsx', owner: 'RANGE_MONEY', fields: ['savings_usd', 'counterfactual_usd'], componentId: 'usage-savings-series', pageName: 'usage', state: 'bound' },
 ];
+// OMN-23330 AC24: the page's parts (src/pages/local/page-*.tsx) are reached from here through its imports.
 const PAGE_FILE = 'src/pages/LocalDashboardPage.tsx';
 /** Imports of these assets carry no code, so they are not scanned (the page imports its stylesheet). */
 const ASSET_IMPORT = /\.(css|svg|png|json)$/;
@@ -414,6 +415,19 @@ function namesAnExposure(node: ts.Node): boolean {
     && ts.isStringLiteralLike(parent.initializer) && /^onex\.(snapshot|evt|cmd)\./.test(parent.initializer.text);
 }
 
+/**
+ * A name imported from, or re-exported from, another module (import { SavingsByModel } from '@/pages/local/page-headline')
+ * binds that module's code, it reads no field. OMN-23330 AC24 split the page into parts that import and re-export one
+ * another; a field read is still reported wherever the code that reads it lives.
+ */
+function isReexportedName(node: ts.Node): boolean {
+  const specifier = node.parent;
+  if (specifier !== undefined && ts.isImportSpecifier(specifier)) return true;
+  const declaration = specifier?.parent?.parent;
+  return specifier !== undefined && ts.isExportSpecifier(specifier) && declaration !== undefined
+    && ts.isExportDeclaration(declaration) && declaration.moduleSpecifier !== undefined;
+}
+
 /** A JSX tag's name (<SavingsPerRunCard />) refers to a component, it reads no field. */
 function isJsxTagName(node: ts.Node): boolean {
   const parent = node.parent;
@@ -428,7 +442,7 @@ function ruleR4Source(files: ReadonlyArray<{ file: string; source: string }>, al
     const tree = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
     const visit = (node: ts.Node) => {
       const token = ts.isIdentifier(node) || ts.isStringLiteralLike(node) ? node.text : null;
-      const field = token === null || isDeclarationName(node) || namesAnExposure(node) || isJsxTagName(node) ? null : fieldNameOf(token);
+      const field = token === null || isDeclarationName(node) || namesAnExposure(node) || isJsxTagName(node) || isReexportedName(node) ? null : fieldNameOf(token);
       if (field !== null && isSavingsField(field)) {
         const owner = ownerOf(node);
         if (!allowed.some((entry) => entry.file === file && entry.owner === owner && entry.fields.includes(field))) {

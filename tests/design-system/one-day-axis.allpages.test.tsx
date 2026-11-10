@@ -24,7 +24,8 @@ const LEGACY = /\b(gdb-day-label|local-trend-ticks|usage-trend-date|usage-trend-
 /** The charts that draw a day axis, each of which must draw it with DayAxis. */
 const DAILY_CHARTS = [
   'src/theme/design-system/charts/DayColumns.tsx',
-  'src/pages/LocalDashboardPage.tsx',
+  // OMN-23330 AC24: the Daily trend moved from LocalDashboardPage.tsx into its Overview part.
+  'src/pages/local/page-overview.tsx',
   'src/pages/local/insight-charts.tsx',
   'src/pages/local/usage-analysis.tsx',
   'src/components/dashboard/usage/DailyMeteringTokens.tsx',
