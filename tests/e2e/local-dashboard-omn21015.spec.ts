@@ -556,7 +556,8 @@ test('OMN-21015: a tooltip shows markup in a served model name as text, in the r
   await page.mouse.move(bars[0]!.x, bars[0]!.y);
   const figure = page.getByRole('figure', { name: 'Duration per run' });
   // The library's tooltip element, found by the text only it carries (the run's full id and its duration line).
-  const tooltip = figure.locator('div', { hasText: 'Duration: 1200 ms' }).last();
+  // OMN-23330 AC9: the exact duration is the whole millisecond, grouped.
+  const tooltip = figure.locator('div', { hasText: 'Duration: 1,200 ms' }).last();
   await expect(tooltip).toBeVisible();
   await expect(tooltip).toContainText(`passed · ${planted}`);
   await expect(page.locator('.planted-model')).toHaveCount(0);

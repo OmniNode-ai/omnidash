@@ -282,7 +282,8 @@ describe('Partial pages (FR-3, CR-2, CR-3, AK-3, F24)', () => {
     const row = screen.getByRole('row', { name: /Qwen3.8-27B/ });
     // OMN-21166, OMN-22168: token counts read short by the dashboard count rule (1620 reads 1.62K); the value is the
     // served one.
-    for (const value of ['2026-10-02', '1.62K', '520', '10']) expect(within(row).getByText(value)).toBeInTheDocument();
+    // OMN-23330 AC10: the day reads in the short form ("Oct 2"), the served day kept as the cell's title.
+    for (const value of ['Oct 2', '1.62K', '520', '10']) expect(within(row).getByText(value)).toBeInTheDocument();
     // OMN-22168 (Lakshman 2026-11-05): a measured zero is the short "$0" titled with the served "$0.00"; no unmeasured
     // calls is a quiet dash titled so.
     expect(within(row).getByTitle('$0.00')).toHaveTextContent('$0');
@@ -304,8 +305,9 @@ describe('Partial pages (FR-3, CR-2, CR-3, AK-3, F24)', () => {
     await settle();
     const panel = screen.getByRole('heading', { name: 'Savings per day' }).closest('article')!;
     const table = within(panel).getByRole('table', { name: 'Savings per day vs claude-sonnet-5-5' });
-    for (const [start, savings, runs] of [['2026-10-01', '$0.50', '20'], ['2026-10-02', '$0.7184', '26']]) {
-      const row = within(table).getByRole('row', { name: new RegExp(start) });
+    // OMN-23330 AC10: each day reads in the short form ("Oct 1").
+    for (const [start, savings, runs] of [['Oct 1', '$0.50', '20'], ['Oct 2', '$0.7184', '26']]) {
+      const row = within(table).getByRole('row', { name: new RegExp(`^${start}\\b`) });
       for (const value of [start, savings, runs]) expect(within(row).getByText(value)).toBeInTheDocument();
     }
     // The all row is the Overview headline (OV-3): served to this panel too, but never rendered as a day.
