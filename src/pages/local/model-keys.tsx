@@ -250,19 +250,23 @@ export function ModelKeys({ client = LIVE_CLIENT, keys = [], empty }: { client?:
     </DataTable>
   );
   // Revision 3 (AC161): an unread list says so once, with the terminal command that shows the same status.
-  if (listError !== null) return (
+  // OMN-23330 AC3: the notice is the page's statement only when no provider row is served; served keys are drawn as the
+  // provider cards below, and the unread list is one line under them.
+  if (listError !== null && keys.length === 0) return (
     <section className="local-model-keys" aria-label="Model providers">
       <SettingsEmptyState icon={<ConceptIcon concept="credentials" label="Model providers" size={16} />} title="Model providers could not be read"
         action={<span className="local-dashboard-caption">See them in your terminal with <code>onex models list</code>.</span>}>{listError}</SettingsEmptyState>
-      {keysAlone}
     </section>
   );
-  if (rows === null) return <section className="local-model-keys" aria-label="Model providers"><EmptyState status={false}>Reading model providers…</EmptyState>{keysAlone}</section>;
+  if (rows === null && listError === null) return <section className="local-model-keys" aria-label="Model providers"><EmptyState status={false}>Reading model providers…</EmptyState>{keysAlone}</section>;
+  // An unread list lists no provider: each served key keeps its own card (unlisted below), and nothing is counted as 0.
+  const providerRows = rows ?? [];
+  const listRead = listError === null;
 
   // Revision 3 (AC161): nothing listed and no key recorded is one empty state, never a table of headers.
-  if (rows.length === 0 && keys.length === 0 && empty) return <section className="local-model-keys" aria-label="Model providers">{empty}</section>;
+  if (providerRows.length === 0 && keys.length === 0 && empty) return <section className="local-model-keys" aria-label="Model providers">{empty}</section>;
   const keysOf = (provider: string) => keys.filter(key => String(key.provider ?? '').toLowerCase() === provider);
-  const listed = new Set(rows.map(row => row.provider as string));
+  const listed = new Set(providerRows.map(row => row.provider as string));
   const unlisted = [...new Set(keys.map(key => String(key.provider ?? '').toLowerCase()).filter(provider => !listed.has(provider)))];
   const showExpires = keys.some(key => !missing(key.expires_at));
   const showHost = keys.some(key => !missing(key.bound_host));
@@ -270,10 +274,10 @@ export function ModelKeys({ client = LIVE_CLIENT, keys = [], empty }: { client?:
     <section className="local-model-keys" aria-label="Model providers">
       <FactList look="provider-figures">
         {/* Overview's headline cards (Lakshman 2026-11-05, "full platform uniform"): each figure in its concept colour. */}
-        <Fact data-field-tone="pass" term={<><ConceptIcon concept="pass" label="Passed their last test" size={14} />Passed their last test</>}><strong>{rows.filter(row => row.last_test?.status === 'passed').length}</strong><small>{`of ${rows.length} providers`}</small></Fact>
-        <Fact data-field-tone="contract" term={<><ConceptIcon concept="contract" label="Set up" size={14} />Set up</>}><strong>{rows.filter(row => row.set_up).length}</strong><small>{`of ${rows.length} providers`}</small></Fact>
+        {listRead && <Fact data-field-tone="pass" term={<><ConceptIcon concept="pass" label="Passed their last test" size={14} />Passed their last test</>}><strong>{providerRows.filter(row => row.last_test?.status === 'passed').length}</strong><small>{`of ${providerRows.length} providers`}</small></Fact>}
+        {listRead && <Fact data-field-tone="contract" term={<><ConceptIcon concept="contract" label="Set up" size={14} />Set up</>}><strong>{providerRows.filter(row => row.set_up).length}</strong><small>{`of ${providerRows.length} providers`}</small></Fact>}
         <Fact data-field-tone="cloud-keys" term={<><ConceptIcon concept="cloud-keys" label="Keys in use" size={14} />Keys in use</>}><strong>{keys.length}</strong><small>{keys.length === 1 ? 'key' : 'keys'}</small></Fact>
-        <Fact data-field-tone="model" term={<><ConceptIcon concept="model" label="Models listed" size={14} />Models listed</>}><strong>{rows.reduce((sum, row) => sum + row.models.length, 0)}</strong><small>across providers</small></Fact>
+        {listRead && <Fact data-field-tone="model" term={<><ConceptIcon concept="model" label="Models listed" size={14} />Models listed</>}><strong>{providerRows.reduce((sum, row) => sum + row.models.length, 0)}</strong><small>across providers</small></Fact>}
       </FactList>
       <div className="local-provider-list">
         <div className="local-provider-head-band" aria-hidden="true">
@@ -281,10 +285,11 @@ export function ModelKeys({ client = LIVE_CLIENT, keys = [], empty }: { client?:
           {([['backend', 'Provider'], ['run-outcome', 'Status'], ['model', 'Models'], ['cloud-keys', 'Key'], ['age', 'Last test']] as const).map(([concept, label]) =>
             <span key={label} className="local-table-head" data-field-tone={concept}><ConceptIcon concept={concept} label={label} size={13} />{label}</span>)}<span />
         </div>
-        {rows.map((row) => <ProviderCard key={String(row.provider)} row={row} keys={keysOf(String(row.provider))} />)}
+        {providerRows.map((row) => <ProviderCard key={String(row.provider)} row={row} keys={keysOf(String(row.provider))} />)}
         {unlisted.map(provider => <ProviderCard key={`unlisted-${provider}`} listed={false} keys={keysOf(provider)}
           row={{ provider, set_up: false, last_test: null, models: [] }} />)}
       </div>
+      {!listRead && <p className="local-dashboard-caption">Each provider&apos;s status and models could not be read: {listError} See them in your terminal with <code>onex models list</code>.</p>}
       <p className="local-dashboard-caption">Keys are added, replaced and removed in the terminal with onex models add and onex models remove; this page only shows them.</p>
       {keys.length > 0 && !showExpires && !showHost && <p className="local-dashboard-caption">No key records an expiry or a bound host.</p>}
       {keys.length > 0 && showExpires && !showHost && <p className="local-dashboard-caption">No key records a bound host.</p>}

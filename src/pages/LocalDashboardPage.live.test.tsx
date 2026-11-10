@@ -381,11 +381,12 @@ describe('Partial pages (FR-3, CR-2, CR-3, AK-3, F24)', () => {
     harness.answer = () => Promise.resolve([{ provider: 'openrouter', name: 'OPENROUTER_API_KEY', created_at: '2026-10-01T09:00:00Z', revoked_at: null, api_key_value: 'sk-planted' }]);
     render(<LocalDashboardPage pageName="credentials" />);
     await settle();
-    // Part 18 AC128: with GET /models unreachable here, the served key is still listed on its own (Provider key
-    // references); an in-use key has no Revoked column.
-    const row = screen.getByRole('row', { name: /OPENROUTER_API_KEY/ });
-    expect(within(row).getByText('OpenRouter')).toBeInTheDocument(); // one case for provider names (part 18 review)
-    expect(within(row).queryByText('Not revoked')).not.toBeInTheDocument();
+    // Part 18 AC128: with GET /models unreachable here, the served key is still listed; since OMN-23330 AC3 it sits in its
+    // provider's card like every provider's keys, not in a second table under a notice. An in-use key has no Revoked column.
+    const card = screen.getByRole('article', { name: 'OpenRouter' }); // one case for provider names (part 18 review)
+    expect(within(card).getByText('OPENROUTER_API_KEY')).toBeInTheDocument();
+    expect(within(card).queryByText('Not revoked')).not.toBeInTheDocument();
+    expect(screen.queryByText('Model providers could not be read')).not.toBeInTheDocument();
     expect(screen.queryByText('sk-planted')).not.toBeInTheDocument();
   });
 });
