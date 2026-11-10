@@ -138,7 +138,7 @@ html body .local-dashboard-page--settings .local-settings-menu a { border-radius
 html body .local-dashboard-page--settings .local-settings-menu a[aria-current="page"] { background: var(--ds-surface-2) !important; color: var(--ds-ink) !important;
   box-shadow: none; font-weight: 600; }
 html body .local-dashboard-page--settings .local-settings-menu a[aria-current="page"] .local-settings-index { color: var(--ds-ink) !important; }
-html body .local-dashboard-page--settings :is(.local-provider-figures, .local-provider-list, .local-settings-section .local-dashboard-grid, .local-pricing-facts, .local-environment-line, #settings-system-status .widget) {
+html body .local-dashboard-page--settings :is(.local-provider-figures, .local-provider-list, .local-credentials-records, .local-settings-section .local-dashboard-grid, .local-pricing-facts, .local-environment-line, #settings-system-status .widget) {
   border: 1px solid var(--ds-line) !important; border-radius: var(--ds-radius) !important; background: var(--ds-surface) !important; overflow: hidden; }
 html body .local-dashboard-page--settings :is(.local-provider-figures > div + div, .local-pricing-facts > div) { border-color: var(--ds-line) !important; }
 html body .local-dashboard-page--settings .local-settings-section .local-dashboard-panel { background: transparent !important; }
@@ -147,6 +147,12 @@ html body .local-dashboard-page--settings .local-provider-head-band { background
 html body .local-dashboard-page--settings .local-provider-row + .local-provider-row { border-top-color: var(--ds-line); }
 html body .local-dashboard-page--settings .local-provider-cell + .local-provider-cell { border-left-color: var(--ds-line); }
 html body .local-dashboard-page--settings .local-provider-cell--name { background: transparent; color: var(--ds-ink); border-right-color: var(--ds-line); }
+/* OMN-23330 AC12 (the operator's reading 2026-11-10: the provider list and the revoked-key table): one table style. The
+   revoked-key table shares the Settings card (above); the provider list's header band and cells take the dashboard's table
+   header and cell (the page-wide th and td rules), as every other table does, so neither reads as a different table. */
+html body .local-dashboard-page--settings .local-provider-head-band > span { padding: 10px 12px; font-family: var(--ds-font-mono);
+  font-weight: 600; letter-spacing: .06em; }
+html body .local-dashboard-page--settings .local-provider-cell { padding-left: 12px; padding-right: 12px; }
 html body .local-dashboard-page--settings .local-provider-row { --pill-fg: var(--ds-ink-2); --pill-bg: var(--ds-surface-2); --dot: var(--ds-ink-3); }
 html body .local-dashboard-page--settings .local-provider-row[data-tone="pass"] { --pill-fg: var(--ds-ok); --pill-bg: var(--ds-ok-soft); --dot: var(--ds-ok); }
 html body .local-dashboard-page--settings .local-provider-row[data-tone="fail"] { --pill-fg: var(--ds-bad); --pill-bg: var(--ds-bad-soft); --dot: var(--ds-bad); }
