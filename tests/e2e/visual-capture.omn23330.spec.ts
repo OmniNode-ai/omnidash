@@ -9,7 +9,11 @@ import { chartRows, meteringAll, prefix, serveCharts } from './omn21166-chart-fi
 // Each page scrolls inside its own column, so the viewport is made tall enough for the whole page instead of a
 // full-page screenshot; motion is reduced and the fixture clock is frozen, so two captures of one commit match.
 const OUT = process.env.OMN23330_VISUAL_OUT;
-const PAGES = ['overview', 'runs', 'workflow', 'usage', 'settings', 'delegation-evidence', 'event-bus'];
+const SEVEN = ['overview', 'runs', 'workflow', 'usage', 'settings', 'delegation-evidence', 'event-bus'];
+// OMN23330_VISUAL_EXTRA adds the other pages (the widget dashboard and the advanced pages), for changes that reach their
+// widgets (AC25 moved the touched files' static inline styles into classes).
+const EXTRA = ['dashboard', 'experiments', 'agent-workbench', 'lab', 'feature-flags'];
+const PAGES = process.env.OMN23330_VISUAL_EXTRA ? [...SEVEN, ...EXTRA] : SEVEN;
 const all = meteringAll({ total_cost_usd: '12.34', total_savings_usd: '45.67', total_baseline_cost_usd: '58.01', run_count: 2893,
   tokens_input_total: 586080, tokens_output_total: 344360 });
 const rows = { ...chartRows, [prefix + 'metering-summary.v1']: [...(chartRows[prefix + 'metering-summary.v1'] as unknown[]), all] };
@@ -29,7 +33,9 @@ test.describe('OMN-23330 AC32 visual capture', () => {
           await page.setViewportSize({ width, height });
           await serveCharts(page, rows);
           await page.goto(`/${name}`);
-          await expect(page.locator('main h1').first()).toBeVisible({ timeout: 20_000 });
+          // The seven pages carry a title; the other pages are read once their main column has drawn its content.
+          if (SEVEN.includes(name)) await expect(page.locator('main h1').first()).toBeVisible({ timeout: 20_000 });
+          else await expect(page.locator('body')).toContainText(/\w{4}/, { timeout: 20_000 });
           await expect(page.locator('main[aria-busy="true"]')).toHaveCount(0);
           if ((await page.locator('html').getAttribute('data-theme') === 'dark' ? 'dark' : 'light') !== theme) {
             await page.getByRole('button', { name: 'Toggle theme' }).click();
@@ -40,8 +46,9 @@ test.describe('OMN-23330 AC32 visual capture', () => {
           // to the byte: a lab run under load once drew a blank page, and late paints differed by a few pixels.
           let shot: Buffer | null = null;
           for (let attempt = 0; attempt < 8 && shot === null; attempt += 1) {
-            await expect(page.locator('main h1').first()).toBeVisible();
-            expect((await page.locator('main').first().innerText()).length).toBeGreaterThan(80);
+            if (SEVEN.includes(name)) await expect(page.locator('main h1').first()).toBeVisible();
+            // The widget dashboard and feature flags have no <main>; their body is read instead.
+            expect((await page.locator(SEVEN.includes(name) ? 'main' : 'body').first().innerText()).length).toBeGreaterThan(80);
             const first = await page.screenshot({ animations: 'disabled', caret: 'hide' });
             await page.waitForTimeout(500);
             const second = await page.screenshot({ animations: 'disabled', caret: 'hide' });
