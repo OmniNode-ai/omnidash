@@ -101,3 +101,11 @@ dod_evidence:
       - check_type: "test_passes"
         check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/pages/local/overview-daily-binding.omn21970.test.ts"
         cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn21970-ac7-token-days"
+    description: "AC7: the 2026-10-28 'missing token counts' were a day the newest-500 read never reached (cause and per-day counts for 2026-10-26 to 2026-10-31 recorded on the ticket 2026-11-02). Replaying those counts, a day the read holds no runs for is zero runs and zero tokens, each recorded day keeps its measured tokens and counts its unmeasured runs, and a day with no token counts stays not recorded."
+    source: "manual"
+    binds_ac: ["AC7"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/pages/local/insights-token-days.omn21970.test.ts"
+        cwd: "${OMNI_HOME}/omnidash"
