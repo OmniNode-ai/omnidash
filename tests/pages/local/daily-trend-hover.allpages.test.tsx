@@ -10,15 +10,13 @@
 //   H3  the guide line has no colour on a multi-line plot (it took a colour only single-line plots set);
 //   H4  the readout does not name the pointed day, or a count of one reads in the plural ("1 runs");
 //   H5  the scale changes: a line no longer reaches the top at its own peak, or its curve overshoots the peak.
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
 import postcss from 'postcss';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { MultiLinePlot, smoothPath } from '@/theme/design-system/charts';
 import { OverviewTrendPanel } from '@/pages/LocalDashboardPage';
+import { pageStylesheet } from '@/tests/page-stylesheet';
 
-const ROOT = path.resolve(__dirname, '../../..');
 const DAYS = ['2026-11-01', '2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05'];
 const LINES = [
   { key: 'runs', color: 'blue', values: [3, 9, 4, 2, 1] },
@@ -44,7 +42,7 @@ describe('The Daily trend shows where the pointer is and gives values only in it
   });
 
   it('H3: the guide line has a colour on a multi-line plot', () => {
-    const css = readFileSync(path.join(ROOT, 'src/styles/local-dashboard.css'), 'utf8');
+    const css = pageStylesheet('local-dashboard');
     const backgrounds: string[] = [];
     postcss.parse(css).walkDecls('background', (decl) => {
       if (/\.ins-marker\b/.test((decl.parent as postcss.Rule).selector)) backgrounds.push(decl.value);

@@ -36,13 +36,8 @@
 .local-dashboard-page .local-run-classes > .local-run-class { color: var(--field-ink); }
 /* OMN-23330 AC27: a headline card caption's figures and names, each in its concept's colour (CaptionLine). */
 .local-card-caption .local-dashboard-caption > .local-caption-tone[data-field-tone] { color: var(--field-ink); font-weight: 600; }
-.local-dashboard-page [data-field-tone] > :is(dt, dd, .local-dashboard-metric),
-.ev-root [data-field-tone] > :is(.k, .v, .k-l, .k-v, .note, .mono, .big),
-.local-dashboard-page [data-field-tone] dd a,
-.local-dashboard-page [data-field-tone] > :is(span:not([aria-hidden]), strong) { color: var(--field-ink); }
 .ev-root .panel .kv > [data-field-tone] > :is(.k, .v),
 .ev-root .kpi[data-tone][data-field-tone][data-field-unavailable] > :is(.k-l, .k-v) { color: var(--field-ink); }
-.local-dashboard-page [data-field-tone] > .local-dashboard-metric[data-measured="false"] { color: var(--ds-field-unavailable); }
 .local-dashboard-page .local-dashboard-fields dt, .ev-root .panel .kv .k {
   font-size: 12px; line-height: 1.5; letter-spacing: 0; text-transform: none; margin-bottom: 4px;
 }
@@ -57,8 +52,6 @@
 .ev-root .ev-outcome-pass { color: var(--ds-field-pass); }
 .ev-root .ev-outcome-fail { color: var(--ds-field-fail); }
 .local-dashboard-page .local-last-run .local-dashboard-fields [data-field-tone] > dd { font-size: 13px; }
-.local-dashboard-page .local-run-pill:is([data-outcome="passed"], [data-outcome="succeeded"]), .ev-root .badge.ok { color: var(--ds-field-pass); }
-.local-dashboard-page .local-run-pill[data-outcome="failed"], .ev-root .badge.fail { color: var(--ds-field-fail); }
 
 
 
@@ -198,16 +191,16 @@ svg.field-icon[data-field-tone] { color: var(--field-ink); }
    specific. Tested by tests/e2e/design-system-dashboard-polish.omn22168.spec.ts L14. */
 html body :is(.local-dashboard-page, .ev-root, main.ev-root[data-destination]) :is(
   [data-field-tone="tokens-in"] > :is(dd, .v, strong, .ev-token-num, .local-recent-value),
-  span[data-field-tone="tokens-in"], td[data-field-tone="tokens-in"]) { color: var(--ds-field-tokens-in) !important; }
+  span[data-field-tone="tokens-in"], td[data-field-tone="tokens-in"]):not(#ds-important) { color: var(--ds-field-tokens-in); }
 html body :is(.local-dashboard-page, .ev-root, main.ev-root[data-destination]) :is(
   [data-field-tone="tokens-out"] > :is(dd, .v, strong, .ev-token-num, .local-recent-value),
-  span[data-field-tone="tokens-out"], td[data-field-tone="tokens-out"]) { color: var(--ds-field-tokens-out) !important; }
+  span[data-field-tone="tokens-out"], td[data-field-tone="tokens-out"]):not(#ds-important) { color: var(--ds-field-tokens-out); }
 /* The token card's arrows wear their direction's colour too (Lakshman 2026-11-07, "arrow also be colored"); a broad
    rule inks every page icon --ds-ink-3, so the arrow is named here. */
-html body :is(.local-dashboard-page, .ev-root, main.ev-root[data-destination]) .local-token-direction[data-field-tone="tokens-in"] > svg { color: var(--ds-field-tokens-in) !important; }
-html body :is(.local-dashboard-page, .ev-root, main.ev-root[data-destination]) .local-token-direction[data-field-tone="tokens-out"] > svg { color: var(--ds-field-tokens-out) !important; }
-html body :is(.local-dashboard-page, .ev-root, main.ev-root[data-destination]) .local-token-direction[data-field-tone^="tokens-"][data-field-unavailable="true"] > svg { color: var(--ds-field-unavailable) !important; }
+html body :is(.local-dashboard-page, .ev-root, main.ev-root[data-destination]) .local-token-direction[data-field-tone="tokens-in"] > svg:not(#ds-important) { color: var(--ds-field-tokens-in); }
+html body :is(.local-dashboard-page, .ev-root, main.ev-root[data-destination]) .local-token-direction[data-field-tone="tokens-out"] > svg:not(#ds-important) { color: var(--ds-field-tokens-out); }
+html body :is(.local-dashboard-page, .ev-root, main.ev-root[data-destination]) .local-token-direction[data-field-tone^="tokens-"][data-field-unavailable="true"] > svg:not(#ds-important) { color: var(--ds-field-unavailable); }
 html body :is(.local-dashboard-page, .ev-root, main.ev-root[data-destination]) :is(
   [data-field-tone^="tokens-"][data-field-unavailable="true"] > :is(dd, .v, strong, .ev-token-num, .local-recent-value),
   span[data-field-tone^="tokens-"][data-field-unavailable="true"],
-  td[data-field-tone^="tokens-"][data-field-unavailable="true"]) { color: var(--ds-field-unavailable) !important; }
+  td[data-field-tone^="tokens-"][data-field-unavailable="true"]):not(#ds-important) { color: var(--ds-field-unavailable); }

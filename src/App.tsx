@@ -8,9 +8,13 @@ import type { AppPage } from './store/types';
 import type { LocalDashboardCache } from './pages/LocalDashboardPage';
 // OMN-23330 AC22: the local pages' code loads lazily, but these stylesheets also style the app frame (sidebar, top bar),
 // so they stay in the entry, in the order the pages imported them, until AC23 moves the frame's rules out of them.
+import '@/theme/design-system/kit/local-dashboard.css';
 import '@/styles/local-dashboard.css';
+import '@/theme/design-system/kit/dashboard-cards.css';
 import '@/styles/dashboard-cards.css';
+import '@/theme/design-system/kit/seven-page-design.css';
 import '@/styles/seven-page-design.css';
+import '@/theme/design-system/kit/editorial.css';
 import '@/styles/editorial.css';
 import { DestinationIcon } from './navigation/destination-icons';
 import { PAGE_LABELS, PAGE_PATHS, pageForPath } from './navigation/page-routes';

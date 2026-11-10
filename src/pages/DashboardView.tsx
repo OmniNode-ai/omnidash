@@ -14,7 +14,7 @@
 //     `.drop-slot` styled to span both columns.
 //   - OMN-47: CSS ported verbatim to src/styles/dashboard.css + buttons.css; TSX rewritten to use prototype class names.
 
-import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type DragEvent } from 'react';
 import { Check, ChevronDown, LogOut, Pencil, Plus, X } from '@/theme/design-system/icons';
 import { Text } from '@/components/ui/typography';
 import { useFrameStore } from '@/store/store';
@@ -406,7 +406,9 @@ export function DashboardView() {
                 <div
                   key={item.i}
                   className="dash-col-item"
-                  style={{ order: index, gridColumn: (index % 2) + 1 }}
+                  // OMN-23330 AC30: the column is a custom property the stylesheet reads, so the narrow layout's one-column
+                  // rule wins without !important (an inline grid-column beat it).
+                  style={{ order: index, '--dash-col': (index % 2) + 1 } as CSSProperties}
                 >
                   <ComponentCell
                     componentName={item.componentName}

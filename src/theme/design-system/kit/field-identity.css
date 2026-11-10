@@ -1,0 +1,9 @@
+/*  OMN-23330 AC29: the kit's rules from src/styles/field-identity.css, moved here in their order with their media
+   conditions so the kit is styled in one place; AC30: they carry no !important. Imported right after field-identity.css.  */
+.local-dashboard-page [data-field-tone] > :is(dt, dd, .local-dashboard-metric),
+.ev-root [data-field-tone] > :is(.k, .v, .k-l, .k-v, .note, .mono, .big),
+.local-dashboard-page [data-field-tone] dd a,
+.local-dashboard-page [data-field-tone] > :is(span:not([aria-hidden]), strong) { color: var(--field-ink); }
+.local-dashboard-page [data-field-tone] > .local-dashboard-metric[data-measured="false"] { color: var(--ds-field-unavailable); }
+.local-dashboard-page .local-run-pill:is([data-outcome="passed"], [data-outcome="succeeded"]), .ev-root .badge.ok { color: var(--ds-field-pass); }
+.local-dashboard-page .local-run-pill[data-outcome="failed"], .ev-root .badge.fail { color: var(--ds-field-fail); }

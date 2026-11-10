@@ -6,14 +6,12 @@
 // Failure modes:
 //   U1  a Usage day reads in ISO form, or the served day is lost (it stays as the cell's title);
 //   U2  a grouped-bar chart's series legend and tier legend share one row.
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
 import postcss from 'postcss';
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { MeteringDaySeries } from '@/components/dashboard/usage/SavingsSeriesWidget';
+import { pageStylesheet } from '@/tests/page-stylesheet';
 
-const ROOT = path.resolve(__dirname, '../../..');
 const ROWS = ['2026-10-12', '2026-10-13'].map((day, index) => ({ window_kind: 'day', window_start: day, as_of: '2026-10-14T00:00:00Z',
   baseline_model: 'baseline-a', baseline_state: 'resolved', savings_usd: ['0.40', '1.10'][index], runs_total: [3, 5][index] }));
 
@@ -27,7 +25,7 @@ describe('OMN-23330 AC10: Usage reads like the other pages', () => {
   });
 
   it('U2: a grouped-bar chart lists its series legend and its tier legend on separate rows', () => {
-    const css = readFileSync(path.join(ROOT, 'src/styles/seven-page-design.css'), 'utf8');
+    const css = pageStylesheet('seven-page-design');
     const decls: Record<string, string> = {};
     postcss.parse(css).walkRules((rule) => {
       if (rule.selector.trim() !== '.local-dashboard-page .gdb-legends') return;

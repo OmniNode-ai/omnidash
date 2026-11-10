@@ -6,9 +6,13 @@
 import { type ReactNode } from 'react';
 import type { AppPage } from '@/store/types';
 import { DestinationIcon } from '@/navigation/destination-icons';
+import '@/theme/design-system/kit/event-dash.css';
 import '@/styles/event-dash.css';
+import '@/theme/design-system/kit/dashboard-cards.css';
 import '@/styles/dashboard-cards.css';
+import '@/theme/design-system/kit/seven-page-design.css';
 import '@/styles/seven-page-design.css';
+import '@/theme/design-system/kit/editorial.css';
 import '@/styles/editorial.css';
 
 export function EvPageShell({

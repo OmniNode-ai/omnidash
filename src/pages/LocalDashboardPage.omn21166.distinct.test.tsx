@@ -9,8 +9,9 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { PANEL_ICONS } from './LocalDashboardPage';
+import { pageStylesheet } from '@/tests/page-stylesheet';
 
-const CSS = readFileSync('src/styles/local-dashboard.css', 'utf8');
+const CSS = pageStylesheet('local-dashboard');
 const PAGES = ['overview', 'runs', 'workflow', 'usage', 'credentials', 'api-keys'];
 const components = PAGES.flatMap(page =>
   (JSON.parse(readFileSync(`src/pages/local/${page}.contracts.yaml`, 'utf8')) as { components: Array<{ component_id: string }> })

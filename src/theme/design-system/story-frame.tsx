@@ -5,11 +5,16 @@
  * Dark exports, which the coverage scorecard reads.
  */
 import type { ReactNode } from 'react';
+import '@/theme/design-system/kit/local-dashboard.css';
 import '@/styles/local-dashboard.css';
+import '@/theme/design-system/kit/dashboard-cards.css';
 import '@/styles/dashboard-cards.css';
+import '@/theme/design-system/kit/seven-page-design.css';
 import '@/styles/seven-page-design.css';
+import '@/theme/design-system/kit/editorial.css';
 import '@/styles/editorial.css';
 // The field colours, the tokens-in and tokens-out figures among them, as every page loads them through FieldIcon.
+import '@/theme/design-system/kit/field-identity.css';
 import '@/styles/field-identity.css';
 
 export function StorySection({ title, children }: { title: string; children: ReactNode }) {

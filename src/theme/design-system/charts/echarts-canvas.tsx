@@ -18,7 +18,10 @@ export interface EChartProps {
  * echarts-lazy.tsx), so a page with no such chart never downloads echarts. Every chart is drawn as SVG, never merged.
  */
 export function EChartCanvas({ option, onEvents }: EChartProps) {
-  return <ReactEChartsCore echarts={echarts} option={option} notMerge opts={{ renderer: 'svg' }} className="local-chart-canvas" onEvents={onEvents} />;
+  // OMN-23330 AC30: no inline height (echarts-for-react writes 300px unless told otherwise), so each chart's height is
+  // its stylesheet's alone; the page rules had needed !important to beat the inline 300px.
+  return <ReactEChartsCore echarts={echarts} option={option} notMerge opts={{ renderer: 'svg' }} className="local-chart-canvas"
+    style={{ height: undefined }} onEvents={onEvents} />;
 }
 
 export default EChartCanvas;

@@ -18,8 +18,10 @@ import { ModelUsagePanel, TierMixPanel } from '@/pages/LocalDashboardPage';
 vi.mock('wouter', async (importOriginal) => ({ ...(await importOriginal<object>()), Link: ({ children }: { children: unknown }) => children }));
 
 const ROOT = path.resolve(__dirname, '../../..');
-const CSS_FILES = ['src/styles/seven-page-design.css', 'src/styles/editorial.css', 'src/styles/local-dashboard.css',
-  'src/theme/design-system/charts/chart-scroll.css'];
+// OMN-23330 AC29: each page stylesheet is read whole, its kit part included (src/tests/page-stylesheet.ts).
+const CSS_FILES = ['src/theme/design-system/kit/seven-page-design.css', 'src/styles/seven-page-design.css',
+  'src/theme/design-system/kit/editorial.css', 'src/styles/editorial.css', 'src/theme/design-system/kit/local-dashboard.css',
+  'src/styles/local-dashboard.css', 'src/theme/design-system/charts/chart-scroll.css'];
 
 /** The visibility each stylesheet rule gives to the elements a selector test picks, in source order. */
 function visibilityRules(test: (selector: string) => boolean): Array<{ selector: string; value: string }> {

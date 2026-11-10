@@ -3,7 +3,7 @@
 import { formatDashboardCount } from '@/lib/format';
 import { readableTime } from '@/lib/format';
 import { exactMs } from '@/lib/format';
-import { useContext, useEffect, useId, useState, type ReactNode } from 'react';
+import { useContext, useEffect, useId, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { tierColor } from '@/lib/dashboard-colors';
 import { Link, useLocation, useSearch } from 'wouter';
@@ -570,7 +570,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
             // The table is as wide as its panel, or its columns when they need more. Its own width (not a min-width that
             // forces it wider) lets the browser give the room left to the one column with no width, not to every column.
             const tableWidth = shownColumns.reduce((sum, concept) => sum + fixedWidth(concept), 0);
-            return <DataTable fit className={`local-runs-wrap${showAllFields ? ' local-runs-wrap--all' : ''}${showRouting ? ' local-runs-wrap--routing' : ''}`} id={`${id}-table`} style={{ width: `max(100%, ${tableWidth}px)` }}>
+            return <DataTable fit className={`local-runs-wrap${showAllFields ? ' local-runs-wrap--all' : ''}${showRouting ? ' local-runs-wrap--routing' : ''}`} id={`${id}-table`} style={{ '--runs-table-width': `max(100%, ${tableWidth}px)` } as CSSProperties}>
               <thead>
                 <tr>
                   {plainHeader('identity', 'Run')}{sortHeader('created', 'Time', 'age')}{plainHeader('run-outcome', 'Status')}

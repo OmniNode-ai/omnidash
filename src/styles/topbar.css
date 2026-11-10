@@ -98,5 +98,6 @@
 .icon-btn { border-radius: 8px; }
 .icon-btn:focus-visible { outline: 2px solid var(--ds-brand-ink); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) {
-  .topbar *, .toast { animation: none !important; transition: none !important; }
+  .topbar *:not(#ds-important),
+.toast:not(#ds-important) { animation: none; transition: none; }
 }

@@ -27,6 +27,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { PassRateMeter, TierShareChart, tierShares } from './shares';
 import { arcPath } from '@/theme/design-system/charts';
+import { pageStylesheet } from '@/tests/page-stylesheet';
 
 const tier = (name: string, count: number, share: unknown, routed = true) => ({
   cost_tier_name: name, count, tier_routed: routed, pct_of_tier_routed: share,
@@ -130,8 +131,7 @@ describe('OMN-21015 U2: the tier bar and the pass-rate meter on the page', () =>
   });
 
   it('H9: the stylesheet leaves a slice its served arc: no dash, offset, round cap or scaling of its own', async () => {
-    const { readFileSync } = await import('node:fs');
-    const css = readFileSync('src/styles/local-dashboard.css', 'utf8');
+    const css = pageStylesheet('local-dashboard');
     const rules = [...css.matchAll(/([^{}]*\.local-donut-slice[^{}]*)\{([^}]*)\}/g)];
     expect(rules.length).toBeGreaterThan(0);
     for (const [, selector, body] of rules) {

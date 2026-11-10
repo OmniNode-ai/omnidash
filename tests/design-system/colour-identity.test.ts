@@ -11,6 +11,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { colorToNumber } from '@/theme/design-system/color';
+import { pageStylesheet } from '@/tests/page-stylesheet';
 
 const root = resolve(__dirname, '../..');
 const source = (path: string) => readFileSync(resolve(root, path), 'utf8');
@@ -56,17 +57,18 @@ function passFailRules(css: string): string[] {
 const OUTCOME_COLOUR = /var\(--ds-(field-pass|field-fail|ok|bad)\)/;
 
 describe('OMN-22168 AC7: local pass and fail graphics draw the pass and fail field colours', () => {
-  const sheets = ['src/styles/local-dashboard.css', 'src/styles/seven-page-design.css'];
+  // OMN-23330 AC29: each page stylesheet is read whole, its kit part included (src/tests/page-stylesheet.ts).
+  const sheets = ['local-dashboard', 'seven-page-design'] as const;
 
   it('control: the scan finds the graphics, and would catch a status colour on one', () => {
-    const rules = sheets.flatMap(path => passFailRules(source(path)));
+    const rules = sheets.flatMap(name => passFailRules(pageStylesheet(name)));
     expect(rules.length).toBeGreaterThanOrEqual(7);
     const planted = passFailRules('.local-runs-week-bar > i[data-outcome="passed"] { background: var(--ds-ok); }');
     expect(planted.filter(rule => /var\(--ds-(ok|bad)\)/.test(rule))).toHaveLength(1);
   });
 
   it('no pass or fail graphic reads --ds-ok or --ds-bad', () => {
-    const rules = sheets.flatMap(path => passFailRules(source(path)));
+    const rules = sheets.flatMap(name => passFailRules(pageStylesheet(name)));
     expect(rules.filter(rule => /var\(--ds-(ok|bad)\)/.test(rule))).toEqual([]);
     expect(rules.every(rule => /var\(--ds-field-(pass|fail)\)/.test(rule))).toBe(true);
   });

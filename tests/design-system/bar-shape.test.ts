@@ -11,11 +11,13 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { pageStylesheet } from '@/tests/page-stylesheet';
 
 const root = resolve(__dirname, '../..');
 const read = (path: string) => readFileSync(resolve(root, path), 'utf8');
 const KIT_BARS = 'src/theme/design-system/charts/bar-charts.tsx';
-const SHEETS = ['src/styles/local-dashboard.css', 'src/styles/seven-page-design.css'];
+// OMN-23330 AC29: each page stylesheet is read whole, its kit part included (src/tests/page-stylesheet.ts).
+const SHEETS = ['local-dashboard', 'seven-page-design'] as const;
 
 /** flatBar(...) calls whose corners are an array written in place instead of barRadius(...). */
 function literalRadiusCalls(source: string): string[] {
@@ -54,11 +56,11 @@ describe('OMN-22168: every chart bar draws one shape', () => {
   });
 
   it('no bar stylesheet rule sets its own corner radius', () => {
-    expect(SHEETS.flatMap(path => barRadiusLeaks(read(path)))).toEqual([]);
+    expect(SHEETS.flatMap(name => barRadiusLeaks(pageStylesheet(name)))).toEqual([]);
   });
 
   it('the ranked bars behind Model usage and Tier mix are rounded by the token, not square', () => {
-    const css = read('src/styles/seven-page-design.css');
+    const css = pageStylesheet('seven-page-design');
     const base = /\.rb-chart \.rb-bar \{([^}]*)\}/.exec(css)?.[1] ?? '';
     expect(base, 'the base ranked bar rule').toMatch(/border-radius:\s*var\(--ds-radius-bar\) var\(--ds-radius-bar\) 0 0/);
   });

@@ -296,7 +296,9 @@ export function DataTable<T>({
   const colSize = (c: DataColumn<T>): string =>
     c.width ? c.width : c.grow ? 'minmax(0,2.6fr)' : c.num ? 'minmax(0,0.9fr)' : 'minmax(0,1fr)';
   const template = `26px ${columns.map(colSize).join(' ')}`;
-  const gridStyle: CSSProperties = { gridTemplateColumns: template };
+  // OMN-23330 AC30: the columns are a custom property the stylesheet reads, not an inline grid, so a narrow-screen rule
+  // can lay the row out as one column without !important (an inline grid beat every rule that was not important).
+  const gridStyle = { '--dt-columns': template } as CSSProperties;
   return (
     <div className={`dt${pageSize ? ' dt-paged' : ''}`}>
       <div className="dt-head" style={gridStyle}>

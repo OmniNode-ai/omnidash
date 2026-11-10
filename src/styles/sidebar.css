@@ -300,7 +300,10 @@
 .developer-toggle { font-size: 12px; border: 1px solid transparent; }
 .developer-toggle:focus-visible { outline: 2px solid var(--ds-link); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) {
-  .sidebar *, .sidebar *::before, .sidebar *::after, .sidebar-backdrop { transition: none !important; animation: none !important; }
+  .sidebar *:not(#ds-important),
+.sidebar *:not(#ds-important)::before,
+.sidebar *:not(#ds-important)::after,
+.sidebar-backdrop:not(#ds-important) { transition: none; animation: none; }
 }
 
 /* The mockup's quieter rail, without decorative workspace/profile controls. */

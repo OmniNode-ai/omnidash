@@ -13,7 +13,8 @@ import { describe, expect, it } from 'vitest';
 const ROOT = path.resolve(__dirname, '../../..');
 const MOVES = /^(transform|translate|scale|rotate|margin(-.*)?|padding(-.*)?|top|bottom|left|right|inset(-.*)?|width|height|min-height|max-height)$/;
 const CARD = /\.local-overview-summary\s*>\s*\.local-dashboard-panel(?:\.[\w-]+|:not\([^)]*\))*/;
-const hovered = (selector: string) => new RegExp(`${CARD.source}:hover\\s*$`).test(selector.trim());
+// OMN-23330 AC30: a declaration that was !important lives in a copy of its rule ending :not(#ds-important); it is the same rule.
+const hovered = (selector: string) => new RegExp(`${CARD.source}:hover(?::not\\(#ds-important\\))?\\s*$`).test(selector.trim());
 const resting = (selector: string) => new RegExp(`${CARD.source}\\s*$`).test(selector.trim());
 
 function cssFiles(dir: string): string[] {
