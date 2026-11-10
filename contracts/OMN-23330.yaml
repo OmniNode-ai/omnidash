@@ -1,0 +1,535 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+schema_version: "1.0.0"
+ticket_id: "OMN-23330"
+title: "Local dashboard: one number everywhere, readable charts, unified styles and a lighter bundle"
+summary: >-
+  Acceptance for OMN-23330, copied from the approved spec (records/plans/OMN-23330/spec.md, AC1 to AC32). Every
+  criterion with a test is bound below to the test that proves it; AC15 and AC16 read the live Dependabot alerts and
+  hold once the upgrades merge; AC17 and AC32 are comparisons recorded on the pull request.
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-omn23330"
+    statement: >-
+      The six local dashboard pages and Delegation Evidence read one number everywhere, draw readable charts, share
+      one design-system kit, and ship a lighter bundle, with no change a reader sees beyond the approved fixes.
+    acceptance:
+      - id: "AC1"
+        statement: >-
+          Overview, Usage and Delegation Evidence show the same all-time savings figure from one definition. Proved
+          by: npx vitest run tests/pages/local/one-number.allpages.test.tsx, its savings case, on the lab host
+      - id: "AC2"
+        statement: >-
+          Overview and Delegation Evidence show the same all-time tokens figure from one definition, and Usage's
+          tokens in plus tokens out add up to it. Proved by: npx vitest run tests/pages/local/one-
+          number.allpages.test.tsx, its tokens case, on the lab host
+      - id: "AC3"
+        statement: >-
+          Settings shows the "Model providers could not be read" notice only when no provider row is served, never
+          above a served provider table. Proved by: npx vitest run tests/pages/local/settings-providers-
+          notice.allpages.test.tsx on the lab host
+      - id: "AC4"
+        statement: >-
+          every chart in src/theme/design-system/charts whose content is wider than its box shows a visible
+          horizontal scrollbar, and Overview Model usage reaches all of its models. Proved by: npx vitest run
+          tests/design-system/chart-scroll.allpages.test.tsx on the lab host, plus a live Chrome readback of
+          scrollWidth against clientWidth on every chart
+      - id: "AC5"
+        statement: >-
+          the first and last day labels of every daily chart draw inside the chart box, never clipped. Proved by:
+          npx vitest run tests/design-system/axis-end-labels.allpages.test.tsx on the lab host
+      - id: "AC6"
+        statement: >-
+          Overview Model usage and Tier mix print each bar's run count and share, and Usage tokens per day by model
+          prints each day's total. Proved by: npx vitest run tests/pages/local/chart-values.allpages.test.tsx on the
+          lab host
+      - id: "AC7"
+        statement: >-
+          the Daily trend labels each line's peak value while keeping each line scaled to its own busiest day and
+          its monotone curves. Proved by: npx vitest run tests/pages/local/daily-trend-peaks.allpages.test.tsx on
+          the lab host -- note: Superseded in part by the operator on 2026-11-10 ("when hover then show where cursor
+          point and proper details ... why over graph needed?"): the peak labels over the lines are removed; the
+          plot shows a guide line and a dot per line at the pointed day and the readout gives the values. Bound to
+          the test of that design.
+      - id: "AC8"
+        statement: >-
+          the Activity breakdown and Daily trend readouts show the latest served day until the pointer selects
+          another, so no blank row sits above the chart. Proved by: npx vitest run tests/pages/local/readout-
+          default.allpages.test.tsx on the lab host
+      - id: "AC9"
+        statement: >-
+          the Runs page shows every KPI label on one line at 1440 px, durations without fractional milliseconds, a
+          duration caption in the axis's unit, and "<0.1%" for a nonzero share under 0.05%. Proved by: npx vitest
+          run tests/pages/local/runs-polish.allpages.test.tsx on the lab host
+      - id: "AC10"
+        statement: >-
+          Usage shows dates in the same short format as the other pages and lists model and tier legends on separate
+          rows. Proved by: npx vitest run tests/pages/local/usage-polish.allpages.test.tsx on the lab host
+      - id: "AC11"
+        statement: >-
+          Delegation Evidence leaves no empty column below Selected run at 1440 px and shows model names unbroken.
+          Proved by: a live Chrome readback of the two column heights and the model name boxes at 1440 px, light and
+          dark
+      - id: "AC12"
+        statement: >-
+          Settings draws both provider tables in one table style, and its sticky section tabs never cover content
+          when scrolled. Proved by: npx vitest run tests/pages/local/settings-polish.allpages.test.tsx on the lab
+          host, plus a live Chrome readback while scrolled
+      - id: "AC13"
+        statement: >-
+          the Workflow timeline says "not recorded" once per step. Proved by: npx vitest run
+          tests/pages/local/workflow-timeline.allpages.test.tsx on the lab host
+      - id: "AC14"
+        statement: >-
+          at the narrowest window no headline card sits alone on its row, chart day tracks are lighter than the
+          bars, and the Cheap frontier colour meets 3:1 contrast against the light theme's track. Proved by: npx
+          vitest run tests/design-system/contrast-and-grid.allpages.test.tsx on the lab host, plus a live Chrome
+          readback at the narrowest window in both themes
+      - id: "AC15"
+        statement: >-
+          omnidash dev has no open critical Dependabot alert. Proved by: gh api "repos/OmniNode-
+          ai/omnidash/dependabot/alerts?state=open" counted by severity reads 0 critical -- note: Holds once the
+          dependency upgrades merge to dev; the check reads the live alert list (5 critical open on 2026-11-10,
+          before the merge).
+      - id: "AC16"
+        statement: >-
+          omnidash dev has no open high Dependabot alert on a runtime dependency. Proved by: the same read filtered
+          to runtime scope reads 0 high -- note: Holds once the dependency upgrades merge to dev; the check reads
+          the live alert list (22 high runtime open on 2026-11-10, before the merge).
+      - id: "AC17"
+        statement: >-
+          after the dependency upgrades the full vitest, tsc, eslint and Playwright suites show no failure that dev
+          does not have. Proved by: npx vitest run, npx tsc --noEmit, npm run lint and npx playwright test on the
+          lab host at the base and at the head, compared failure by failure -- note: Evidence, no mechanical check:
+          the full vitest and Playwright suites on the lab host at the base and at the head, compared failure by
+          failure, recorded on the pull request.
+      - id: "AC18"
+        statement: >-
+          CostTrend3DBars.tsx and CostTrend3DArea.tsx are deleted together with their own tests and stories, and
+          src/storybook-coverage-compliance.test.ts no longer lists their stories; QualityScoreTilted3D.tsx, its
+          test, stories and src/storybook/fixtures/quality.ts stay because the registered quality-score-panel widget
+          (quality/QualityScore, default 3d) lazy-loads it; StackedChart.tsx stays because live charts import it;
+          and the build passes. Proved by: npx vitest run tests/design-system/no-dead-charts.allpages.test.tsx on
+          the lab host, which fails while either deleted file exists, while any source file imports one by a static
+          or a dynamic import, while the Storybook coverage list names one, or while StackedChart.tsx or
+          QualityScoreTilted3D.tsx is missing (positive controls: the static StackedChart importers and
+          QualityScore's dynamic QualityScoreTilted3D import are found)
+      - id: "AC19"
+        statement: >-
+          money, count, percent, date and duration are formatted by one module, src/lib/format. Proved by: npx
+          vitest run tests/lib/format.allpages.test.tsx on the lab host
+      - id: "AC20"
+        statement: >-
+          no toFixed or toLocaleString call sits outside src/lib/format, and an ESLint rule refuses a new one.
+          Proved by: npx vitest run tests/lint/no-adhoc-format.allpages.test.tsx on the lab host, which runs the
+          rule over src and catches a planted call as its control
+      - id: "AC21"
+        statement: >-
+          every page and widget refreshes from one declared setting, and none polls faster than 30 s unless its
+          manifest declares why. Proved by: npx vitest run tests/lint/refresh-policy.allpages.test.tsx on the lab
+          host
+      - id: "AC22"
+        statement: >-
+          the main entry bundle is at most 250 KB gzipped, and echarts and three.js load only with the pages that
+          use them. Proved by: npx vitest run tests/build/bundle-budget.allpages.test.ts over a fresh vite build on
+          the lab host
+      - id: "AC23"
+        statement: >-
+          each page loads only its own stylesheet chunk, and no CSS file is over 150 KB. Proved by: npx vitest run
+          tests/build/bundle-budget.allpages.test.ts, its stylesheet case, on the lab host
+      - id: "AC24"
+        statement: >-
+          LocalDashboardPage.tsx is split into one module per page plus shared parts, none over 1,000 lines, with no
+          visible change. Proved by: npx vitest run tests/pages/local/module-size.allpages.test.ts plus the full
+          vitest and Playwright suites unchanged against dev on the lab host
+      - id: "AC25"
+        statement: >-
+          the count of static inline style attributes in src does not rise, and drops in every file this ticket
+          touches. Proved by: npx vitest run tests/lint/inline-style-count.allpages.test.ts on the lab host against
+          a recorded baseline
+      - id: "AC26"
+        statement: >-
+          a headline card on Overview and Delegation Evidence lights up in its own colour when hovered (its border
+          turns its accent colour and a soft glow in that colour appears) and never moves or changes size. It lights
+          within 120 ms and starts to fade only after a hold of at least 80 ms, so moving the pointer from one card
+          across the 12 px gap to the next hands the light over with no moment where neither card is lit; under
+          reduced motion it changes at once. Proved by: npx vitest run tests/pages/local/card-hover-
+          still.allpages.test.ts on the lab host, which fails while a rule for a hovered headline card sets
+          transform, translate, margin, padding, width or height, while the hovered rule sets no accent border and
+          glow, while the resting rule's border and glow transition has a delay under 80 ms, or while the hovered
+          rule's transition lasts over 120 ms, with planted rules as its controls; plus a live Chrome readback,
+          light and dark, of each card's box at rest and hovered (equal) and of the card just left still lit while
+          the pointer is in the gap
+      - id: "AC27"
+        statement: >-
+          in each headline card's caption on Overview and Delegation Evidence, every figure and named thing wears
+          the colour of the concept it names from the existing data-field-tone palette (spend, savings, runs and
+          calls, tokens in, tokens out, quality pass, the baseline model), so one concept has one colour on every
+          page and two concepts never share one; connecting words stay neutral. Proved by: npx vitest run
+          tests/pages/local/caption-colours.allpages.test.tsx on the lab host, which fails while a caption figure or
+          name has no tone or a tone that differs from its concept's tone elsewhere, plus a live Chrome readback of
+          the computed colours on both pages, light and dark
+      - id: "AC28"
+        statement: >-
+          each Overview headline card draws its caption directly under its figure, with the same figure-to-caption
+          gap as a Delegation Evidence headline card, instead of pushing the caption to the bottom of a taller card.
+          Proved by: npx vitest run tests/pages/local/headline-card-layout.allpages.test.ts on the lab host, which
+          fails while any stylesheet rule gives a headline card caption margin-top: auto, plus a live Chrome
+          readback of the figure-to-caption gap on Overview and Delegation Evidence (measured 2026-11-09: Overview
+          17 to 22 px, Evidence 5 px; equal within 1 px after), light and dark, at 1440 px and the narrowest window
+      - id: "AC29"
+        statement: >-
+          every component of the design-system kit (src/theme/design-system/components and src/theme/design-
+          system/charts: card, figure, caption, panel, table, tabs, chips, day axis and the charts) is styled in one
+          place, the design-system stylesheets under src/theme/design-system, and no stylesheet elsewhere under src
+          sets a property on a kit component's class. Measured 2026-11-09: 24 stylesheets, 9,353 lines, 324 rules
+          naming .local-dashboard-panel across 5 files. Proved by: npx vitest run tests/lint/component-style-
+          owner.allpages.test.ts on the lab host, which parses every stylesheet with postcss, fails on a rule
+          outside src/theme/design-system whose subject is a kit component class, and catches a planted page rule as
+          its control
+      - id: "AC30"
+        statement: >-
+          no stylesheet under src/theme/design-system uses !important, and the count of !important across src never
+          rises and falls below the 811 measured on 2026-11-09. Proved by: npx vitest run tests/lint/important-
+          count.allpages.test.ts on the lab host against the recorded baseline of 811, with a planted !important as
+          its control
+      - id: "AC31"
+        statement: >-
+          one day-axis component in src/theme/design-system/charts draws the day labels of every daily chart
+          (Overview Runs per day, Tokens per day and Daily trend, the Usage day charts and the Runs page day
+          charts), so the AC5 end-label rule lives in one place; measured 2026-11-09: 5 separate day-axis
+          implementations and 10 .gdb-day-label rules. Proved by: npx vitest run tests/design-system/one-day-
+          axis.allpages.test.tsx on the lab host, which fails on day-label markup or a day-label class rule outside
+          the kit, plus the AC5 test
+      - id: "AC32"
+        statement: >-
+          the consolidation in AC29 to AC31 changes nothing a reader sees beyond the fixes this ticket approves (AC3
+          to AC14 and AC26 to AC28). Proved by: npx playwright test on the lab host at the base and at the head
+          compared failure by failure, plus full-page screenshots of all seven pages in light and dark at 1440 px
+          and 390 px at the commit before the consolidation and after it, whose pixel difference is zero outside the
+          regions those fixes change -- note: Evidence, no mechanical check: tests/e2e/visual-
+          capture.omn23330.spec.ts captures every page in both themes at 1440 and 390 px and
+          tests/visual/compare.mjs compares two captures pixel by pixel; the before and after captures and their
+          comparison are recorded on the pull request.
+evidence_requirements: []
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
+dod_evidence:
+  - id: "dod-omn23330-ac1"
+    description: >-
+      AC1: the test that proves the criterion, red before the change and green after, run on the lab host.
+    source: "manual"
+    binds_ac: ["AC1"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          npm run test:run -- tests/pages/local/one-number.allpages.test.tsx
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac2"
+    description: >-
+      AC2: the test that proves the criterion, red before the change and green after, run on the lab host.
+    source: "manual"
+    binds_ac: ["AC2"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          npm run test:run -- tests/pages/local/one-number.allpages.test.tsx
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac3"
+    description: >-
+      AC3: the test that proves the criterion, red before the change and green after, run on the lab host.
+    source: "manual"
+    binds_ac: ["AC3"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          npm run test:run -- tests/pages/local/settings-providers-notice.allpages.test.tsx
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac4"
+    description: >-
+      AC4: the test that proves the criterion, red before the change and green after, run on the lab host.
+    source: "manual"
+    binds_ac: ["AC4"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          npm run test:run -- tests/design-system/chart-scroll.allpages.test.tsx
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac5"
+    description: >-
+      AC5: the test that proves the criterion, red before the change and green after, run on the lab host.
+    source: "manual"
+    binds_ac: ["AC5"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          npm run test:run -- tests/design-system/axis-end-labels.allpages.test.tsx
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac6"
+    description: >-
+      AC6: the test that proves the criterion, red before the change and green after, run on the lab host.
+    source: "manual"
+    binds_ac: ["AC6"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          npm run test:run -- tests/pages/local/chart-values.allpages.test.tsx
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac7"
+    description: >-
+      AC7: Superseded in part by the operator on 2026-11-10 ("when hover then show where cursor point and proper
+      details ... why over graph needed?"): the peak labels over the lines are removed; the plot shows a guide line
+      and a dot per line at the pointed day and the readout gives the values. Bound to the test of that design.
+    source: "manual"
+    binds_ac: ["AC7"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          npm run test:run -- tests/pages/local/daily-trend-hover.allpages.test.tsx
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac8"
+    description: >-
+      AC8: the test that proves the criterion, red before the change and green after, run on the lab host.
+    source: "manual"
+    binds_ac: ["AC8"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          npm run test:run -- tests/pages/local/readout-default.allpages.test.tsx
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac9"
+    description: >-
+      AC9: the test that proves the criterion, red before the change and green after, run on the lab host.
+    source: "manual"
+    binds_ac: ["AC9"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          npm run test:run -- tests/pages/local/runs-polish.allpages.test.tsx
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac10"
+    description: >-
+      AC10: the test that proves the criterion, red before the change and green after, run on the lab host.
+    source: "manual"
+    binds_ac: ["AC10"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          npm run test:run -- tests/pages/local/usage-polish.allpages.test.tsx
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac11"
+    description: >-
+      AC11: the test that proves the criterion, red before the change and green after, run on the lab host.
+    source: "manual"
+    binds_ac: ["AC11"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          npx playwright test tests/e2e/evidence-layout.omn23330.spec.ts
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac12"
+    description: >-
+      AC12: the test that proves the criterion, red before the change and green after, run on the lab host.
+    source: "manual"
+    binds_ac: ["AC12"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          npm run test:run -- tests/pages/local/settings-polish.allpages.test.tsx
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: >-
+          npx playwright test tests/e2e/settings-tables.omn23330.spec.ts
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac13"
+    description: >-
+      AC13: the test that proves the criterion, red before the change and green after, run on the lab host.
+    source: "manual"
+    binds_ac: ["AC13"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          npm run test:run -- tests/pages/local/workflow-timeline.allpages.test.tsx
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac14"
+    description: >-
+      AC14: the test that proves the criterion, red before the change and green after, run on the lab host.
+    source: "manual"
+    binds_ac: ["AC14"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          npm run test:run -- tests/design-system/contrast-and-grid.allpages.test.ts
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: >-
+          npx playwright test tests/e2e/overview-cards-row.omn23330.spec.ts
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac15"
+    description: >-
+      AC15: Holds once the dependency upgrades merge to dev; the check reads the live alert list (5 critical open on
+      2026-11-10, before the merge).
+    source: "manual"
+    binds_ac: ["AC15"]
+    checks:
+      - check_type: "command"
+        check_value: >-
+          test "$(gh api 'repos/OmniNode-ai/omnidash/dependabot/alerts?state=open&severity=critical&per_page=100'
+          --jq length)" = 0
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac16"
+    description: >-
+      AC16: Holds once the dependency upgrades merge to dev; the check reads the live alert list (22 high runtime
+      open on 2026-11-10, before the merge).
+    source: "manual"
+    binds_ac: ["AC16"]
+    checks:
+      - check_type: "command"
+        check_value: >-
+          test "$(gh api 'repos/OmniNode-
+          ai/omnidash/dependabot/alerts?state=open&severity=high&scope=runtime&per_page=100' --jq length)" = 0
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac18"
+    description: >-
+      AC18: the test that proves the criterion, red before the change and green after, run on the lab host.
+    source: "manual"
+    binds_ac: ["AC18"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          npm run test:run -- tests/design-system/no-dead-charts.allpages.test.tsx
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac19"
+    description: >-
+      AC19: the test that proves the criterion, red before the change and green after, run on the lab host.
+    source: "manual"
+    binds_ac: ["AC19"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          npm run test:run -- tests/lib/format.allpages.test.tsx
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac20"
+    description: >-
+      AC20: the test that proves the criterion, red before the change and green after, run on the lab host.
+    source: "manual"
+    binds_ac: ["AC20"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          npm run test:run -- tests/lint/no-adhoc-format.allpages.test.tsx
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac21"
+    description: >-
+      AC21: the test that proves the criterion, red before the change and green after, run on the lab host.
+    source: "manual"
+    binds_ac: ["AC21"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          npm run test:run -- tests/lint/refresh-policy.allpages.test.tsx
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac22"
+    description: >-
+      AC22: the test that proves the criterion, red before the change and green after, run on the lab host.
+    source: "manual"
+    binds_ac: ["AC22"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          npm run test:run -- tests/build/bundle-budget.allpages.test.ts
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac23"
+    description: >-
+      AC23: the test that proves the criterion, red before the change and green after, run on the lab host.
+    source: "manual"
+    binds_ac: ["AC23"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          npm run test:run -- tests/build/bundle-budget.allpages.test.ts
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac24"
+    description: >-
+      AC24: the test that proves the criterion, red before the change and green after, run on the lab host.
+    source: "manual"
+    binds_ac: ["AC24"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          npm run test:run -- tests/pages/local/module-size.allpages.test.ts
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac25"
+    description: >-
+      AC25: the test that proves the criterion, red before the change and green after, run on the lab host.
+    source: "manual"
+    binds_ac: ["AC25"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          npm run test:run -- tests/lint/inline-style-count.allpages.test.ts
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac26"
+    description: >-
+      AC26: the test that proves the criterion, red before the change and green after, run on the lab host.
+    source: "manual"
+    binds_ac: ["AC26"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          npm run test:run -- tests/pages/local/card-hover-still.allpages.test.ts
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac27"
+    description: >-
+      AC27: the test that proves the criterion, red before the change and green after, run on the lab host.
+    source: "manual"
+    binds_ac: ["AC27"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          npm run test:run -- tests/pages/local/caption-colours.allpages.test.tsx
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac28"
+    description: >-
+      AC28: the test that proves the criterion, red before the change and green after, run on the lab host.
+    source: "manual"
+    binds_ac: ["AC28"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          npm run test:run -- tests/pages/local/headline-card-layout.allpages.test.ts
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac29"
+    description: >-
+      AC29: the test that proves the criterion, red before the change and green after, run on the lab host.
+    source: "manual"
+    binds_ac: ["AC29"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          npm run test:run -- tests/lint/component-style-owner.allpages.test.ts
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac30"
+    description: >-
+      AC30: the test that proves the criterion, red before the change and green after, run on the lab host.
+    source: "manual"
+    binds_ac: ["AC30"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          npm run test:run -- tests/lint/important-count.allpages.test.ts
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac31"
+    description: >-
+      AC31: the test that proves the criterion, red before the change and green after, run on the lab host.
+    source: "manual"
+    binds_ac: ["AC31"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          npm run test:run -- tests/design-system/one-day-axis.allpages.test.tsx
+        cwd: "${OMNI_HOME}/omnidash"
