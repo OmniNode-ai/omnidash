@@ -2269,10 +2269,7 @@ export function OverviewTrendPanel({ rows, columns, window, now }: {
   const visible = columns.filter(column => shown[slug(column.header)]);
   const lines = visible.map(column => {
     const values = days.map(day => valueOf(day, column));
-    const known = values.filter((value): value is number => value !== null);
-    // OMN-23330 AC7: each line's busiest day is labelled with its value, in the line's own unit.
-    return { key: slug(column.header), color: TREND_TONES[column.header] ?? 'var(--ds-ink-2)', values,
-      peak: known.length === 0 ? undefined : say(Math.max(...known), column, true) };
+    return { key: slug(column.header), color: TREND_TONES[column.header] ?? 'var(--ds-ink-2)', values };
   });
   const dayText = (day: string, compact: boolean) => (byDay.has(day) ? twice(day) ? 'not recorded (two rows for this day)'
     : visible.map(column => say(valueOf(day, column), column, compact)).join(', ') : 'not recorded');

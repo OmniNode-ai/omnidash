@@ -1,5 +1,4 @@
-import { useId, type CSSProperties } from 'react';
-import './line-plot.css';
+import { useId } from 'react';
 import { fixed as fmtFixed } from '@/lib/format';
 /**
  * OMN-22168 AC3: the line chart of the local pages (Pass rate per day). Moved from src/pages/local/insight-charts.tsx.
@@ -99,12 +98,7 @@ export function LinePlot({ label, values, keys, labels, min, max, hover, onHover
 /** One line of a MultiLinePlot: its values (null breaks the line) and its colour. */
 export interface PlotLine {
   key: string; color: string; values: ReadonlyArray<number | null>;
-  /** OMN-23330 AC7: the label drawn at the line's own busiest day, in the line's unit ("9 runs", "$1.25 spend"). */
-  peak?: string;
 }
-
-/** How far apart (in percent of the plot's width) two peak labels may sit on one row before the second moves up a row. */
-const PEAK_ROOM = 20;
 
 /**
  * OMN-22168 (Lakshman 2026-11-04, "legend and one line chart for all"): several lines over the same days, each drawn
@@ -133,26 +127,10 @@ export function MultiLinePlot({ label, lines, keys, labels, hover, onHover, focu
   // The lines keep one order (moving an SVG node restarts its draw-in animation); the line in focus is drawn again on top.
   const order = lines;
   const topOf = (value: number, values: ReadonlyArray<number | null>) => ((H - 6 - (value / peak(values)) * (H - 12)) / H) * 100;
-  // OMN-23330 AC7: each line's busiest day carries its value. The first day of a tie is labelled; a line with no served
-  // value has no peak. Labels whose days sit close together take rows above one another, so none covers another.
-  const placed: Array<{ at: number; row: number }> = [];
-  const peakLabels = lines.flatMap(line => {
-    if (!line.peak) return [];
-    const known = line.values.flatMap((value, index) => (value === null ? [] : [{ value, index }]));
-    if (known.length === 0) return [];
-    const top = Math.max(...known.map(point => point.value));
-    const index = known.find(point => point.value === top)!.index;
-    let row = 0;
-    while (placed.some(other => other.row === row && Math.abs(other.at - at(index)) < PEAK_ROOM)) row += 1;
-    placed.push({ at: at(index), row });
-    // A label on the first or last day is anchored inward, so it stays inside the plot.
-    const align = keys.length > 1 && index === 0 ? 'start' : keys.length > 1 && index === keys.length - 1 ? 'end' : 'center';
-    return [{ line, index, top, row, align, text: line.peak }];
-  });
-  const rows = peakLabels.length === 0 ? 0 : Math.max(...peakLabels.map(label => label.row)) + 1;
   return (
-    <div className="ins-plot ins-plot--multi" data-focus={front ? front.key : undefined}
-      style={rows > 0 ? { '--ins-peak-rows': rows } as CSSProperties : undefined}>
+    // The operator, 2026-11-10: values are given in the readout above the plot, never as labels over it; the plot shows
+    // where the pointer is (the guide line and a dot on each line), superseding OMN-23330 AC7's peak labels.
+    <div className="ins-plot ins-plot--multi" data-focus={front ? front.key : undefined}>
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label={label}>
         {front && (
           <defs><linearGradient id={fillId} x1="0" x2="0" y1="0" y2="1">
@@ -176,13 +154,6 @@ export function MultiLinePlot({ label, lines, keys, labels, hover, onHover, focu
       {order.map(line => line.values.map((value, index) => (value === null || line.values[index - 1] != null || line.values[index + 1] != null ? null
         : <span key={`${line.key}-${index}`} className="ins-lone" data-line={line.key} data-front={front ? String(line === front) : undefined} aria-hidden="true"
           style={{ left: `${at(index)}%`, top: `${topOf(value, line.values)}%`, background: line.color }} />)))}
-      {peakLabels.map(label => (
-        <span key={`peak-${label.line.key}`} className="ins-peak" data-line={label.line.key} data-align={label.align}
-          data-row={label.row} aria-hidden="true"
-          style={{ left: `${at(label.index)}%`, top: `${topOf(label.top, label.line.values)}%`, color: label.line.color, '--ins-peak-row': label.row } as CSSProperties}>
-          {label.text}
-        </span>
-      ))}
       {hover !== null && <span className="ins-marker" style={{ left: `${at(hover)}%` }} />}
       {/* A dot for each line on the day in focus, so the reader sees where each line sits that day. */}
       {hover !== null && lines.map(line => {

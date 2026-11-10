@@ -1319,7 +1319,9 @@
 .ins-value-axis { display: flex; justify-content: space-between; font-size: 12px; color: var(--ds-ink-2); }
 .ins-plot { position: relative; height: 120px; }
 .ins-plot svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.ins-marker { position: absolute; top: 0; bottom: 0; width: 1px; background: color-mix(in oklch, var(--ins-accent) 60%, transparent); pointer-events: none; }
+/* The day the pointer is on. A multi-line plot sets no accent of its own, so the line falls back to the ink colour (the
+   operator, 2026-11-10: "when hover then show where cursor point"). */
+.ins-marker { position: absolute; top: 0; bottom: 0; width: 1px; background: color-mix(in oklch, var(--ins-accent, var(--ds-ink-3)) 60%, transparent); pointer-events: none; }
 .ins-hits { position: absolute; inset: 0; display: flex; }
 .ins-hit { flex: 1; padding: 0; border: 0; background: transparent; cursor: crosshair; }
 .ins-hit:focus-visible { outline: 2px solid var(--ins-accent); outline-offset: -2px; }
