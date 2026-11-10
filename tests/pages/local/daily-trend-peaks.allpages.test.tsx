@@ -103,4 +103,17 @@ describe('OMN-23330 AC7: the Daily trend labels each line\'s peak', () => {
       columns={[{ key: 'runs_total', header: 'Runs', format: 'number' }, { key: 'spend_usd', header: 'Spend', format: 'currency' }]} />);
     expect(peaks(container).map(({ text }) => text)).toEqual(['1 run', '$0.01 spend']);
   });
+
+  // The operator, 2026-11-10 ("without hover why showing, remove it and make it uniform"): a peak label shows only while
+  // the plot is hovered or holds focus, as every other chart's values do; at rest the lines stand alone.
+  it('P8: peak labels are hidden at rest and shown on hover or focus, as other chart values are', () => {
+    const css = readFileSync(path.join(ROOT, 'src/theme/design-system/charts/line-plot.css'), 'utf8');
+    const rules: Array<{ selector: string; visibility: string }> = [];
+    postcss.parse(css).walkDecls('visibility', (decl) => {
+      const selector = (decl.parent as postcss.Rule).selector;
+      if (/\.ins-peak/.test(selector)) rules.push({ selector, visibility: decl.value });
+    });
+    expect(rules.some(({ selector, visibility }) => visibility === 'hidden' && !/:hover|:focus/.test(selector))).toBe(true);
+    expect(rules.some(({ selector, visibility }) => visibility === 'visible' && /:hover/.test(selector) && /:focus-within/.test(selector))).toBe(true);
+  });
 });

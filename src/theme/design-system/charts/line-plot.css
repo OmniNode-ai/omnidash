@@ -17,7 +17,11 @@
   line-height: 16px;
   white-space: nowrap;
   pointer-events: none;
+  /* The operator, 2026-11-10 ("without hover why showing, remove it and make it uniform"): shown only while the plot is
+     hovered or holds focus, as every chart's values are; the room above the lines stays, so nothing moves. */
+  visibility: hidden;
 }
+.ins-plot--multi:is(:hover, :focus-within) .ins-peak { visibility: visible; }
 
 .ins-plot--multi .ins-peak[data-align="start"] {
   transform: translate(0, calc(-100% - 6px - var(--ins-peak-row, 0) * 18px));
