@@ -122,6 +122,13 @@ main.ev-root .ev-acceptance-checks > li > :first-child, main.ev-root .ev-accepta
 @media (max-width: 600px) {
   main.ev-root .ev-acceptance-checks > li, main.ev-root .ev-acceptance-models > li { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 }
+/* OMN-23330 AC11: a model's name stays on one line. The list owns the columns and each row takes them as a subgrid, so the
+   name column is as wide as the longest name and every row still lines up. */
+@media (min-width: 601px) {
+  main.ev-root .ev-acceptance-models { grid-template-columns: max-content repeat(3, minmax(0, 1fr)); column-gap: 8px; }
+  main.ev-root .ev-acceptance-models > li { grid-column: 1 / -1; grid-template-columns: subgrid; }
+  main.ev-root .ev-acceptance-models > li > :first-child { overflow-wrap: normal; white-space: nowrap; }
+}
 
 /* Usage › Savings by model (AC66): one row per served model, bar against the largest saving. */
 .local-dashboard-page .local-savings-by-model { margin-top: 20px; }
@@ -567,6 +574,12 @@ main.ev-root details.ev-more > summary::-webkit-details-marker { display: none; 
 main.ev-root details.ev-more > summary::before { content: '+'; display: inline-grid; place-items: center; width: 14px; height: 14px; border: 1px solid var(--ds-line); border-radius: 3px; font-size: 12px; }
 main.ev-root details.ev-more[open] > summary::before { content: '−'; }
 main.ev-root .ev-maple-grid { align-items: start; }
+/* OMN-23330 AC11: Quality gate has its own full row; at a wide window its acceptance checks and failure categories sit
+   side by side rather than stacked down a narrow column. */
+@media (min-width: 1100px) {
+  main.ev-root .ev-qg-detail { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 32px; align-items: start; }
+  main.ev-root .ev-qg-detail > .divider { display: none; }
+}
 /* Maple grid: API Keys' two short cards side by side. */
 @media (min-width: 1100px) {
   .local-dashboard-page--api-keys .local-dashboard-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: none; align-items: start; }

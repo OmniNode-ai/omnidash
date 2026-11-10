@@ -14,7 +14,7 @@ import { isUnavailableField } from '@/components/dashboard/field-identity';
 import { EvPageShell } from '@/components/dashboard/event-dash/EvPageShell';
 import { KpiStrip } from '@/components/dashboard/KpiStrip';
 import { DashboardTabs, TokenCount } from '@/theme/design-system/components';
-import { RankedBars, breakableName } from '@/theme/design-system/charts';
+import { RankedBars } from '@/theme/design-system/charts';
 import {
   Badge,
   CodeBlock,
@@ -277,11 +277,12 @@ function QualityGate() {
         <div className="bar-fill m-green" data-field-tone="pass" data-semantic-concept="field:pass" data-semantic-label="Passed checks" style={{ background: 'var(--ds-field-pass)', width: total && passed !== null ? `${(passed / total) * 100}%` : '0%' }} />
         <div className="bar-fill m-red" data-field-tone="fail" data-semantic-concept="field:fail" data-semantic-label="Failed checks" style={{ background: 'var(--ds-field-fail)', width: total && failed !== null ? `${(failed / total) * 100}%` : '0%' }} />
       </div>
-      {/* OMN-21166 Maple grid: the headline in view; the checks by type, cost to comply and escalation reasons are one
-          click away, so the panel sits beside the selected run without running the length of the page. */}
-      <div className="local-more ev-more local-more--open" data-section="More quality detail">
+      {/* OMN-21166 Maple grid: the headline in view; the checks by type, cost to comply and escalation reasons below it.
+          OMN-23330 AC11: the panel has its own full row, so at a wide window the checks and the categories sit side by side. */}
+      <div className="local-more ev-more local-more--open ev-qg-detail" data-section="More quality detail">
       <AcceptanceChecks q={q} />
       <div className="divider" />
+      <div className="ev-qg-categories">
       <div className="section-label">Failure categories</div>
       {categories === null ? <p className="note">Not served</p> : categories.length === 0 ? <p className="note">0 failure categories</p> : (
         // OMN-22168 (Lakshman 2026-11-05, "full platform uniform"): every served category stays ranked, the top five in view
@@ -303,6 +304,7 @@ function QualityGate() {
           return partIndex === 0 ? <div key="top">{list}</div> : <details key="rest" className="ev-more-rows"><summary>{`Show all ${formatDashboardCount(categories.length)} categories`}</summary>{list}</details>;
         })}</>
       )}
+      </div>
       </div>
     </Panel>
   );
@@ -627,7 +629,8 @@ function RecentDelegations({ decisions }: { decisions: DelegationDecisionRow[] }
   const cols: DataColumn<DelegationDecisionRow>[] = [
     { key: 'correlation_id', label: 'Correlation', concept: 'identity', width: '150px', tip: 'The run\'s correlation id. Open the row for the run\'s detail.', render: (r) => <span className="mono c-blue">{shortId(r.correlation_id)}</span> },
     { key: 'task_type', label: 'Task', grow: true, concept: 'task', tip: 'The kind of work the run did.', render: (r) => taskLabel(r.task_type) },
-    { key: 'model_name', label: 'Model', width: 'minmax(0,2.4fr)', concept: 'model', tip: 'The model that answered.', render: (r) => <span className="mono local-model-identity" data-semantic-concept={`model:${r.model_name}`} style={modelIdentityStyle(r.model_name)}>{/* The whole name, broken at its joins (Lakshman 2026-11-05, "fix this": it was cut to 20 characters). */}{breakableName(r.model_name)}</span> },
+    { key: 'model_name', label: 'Model', width: 'minmax(max-content,2.4fr)', concept: 'model', tip: 'The model that answered.', render: (r) => <span className="mono local-model-identity" data-semantic-concept={`model:${r.model_name}`} style={modelIdentityStyle(r.model_name)}>{/* The whole name (Lakshman 2026-11-05, "fix this": it was cut to 20 characters), on one line (OMN-23330 AC11): the
+      column is as wide as its longest name, so nothing breaks at the joins. */}{r.model_name}</span> },
     { key: 'state', label: 'State', width: '120px', concept: 'run-outcome', tip: 'Whether the run passed or failed its quality gate.', render: (r) => <StateBadge passed={r.quality_gate_passed} /> },
     { key: 'tokens', label: 'Tokens', num: true, width: '112px', concept: 'tokens', tip: 'Tokens the run took to reach a compliant answer.', render: (r) => formatDashboardCount(r.tokens_to_compliance) },
     { key: 'latency_ms', label: 'Latency', num: true, width: '120px', concept: 'duration', tip: 'How long the run took, end to end.', render: (r) => fmtLatency(r.latency_ms) },
@@ -914,12 +917,13 @@ export function DelegationEvidencePage() {
           lines: [summary ? withFixtureNotice(`avg ${formatDuration(summary.avgLatencyMs)} latency`, fixtureNotice) : null] },
       ]} />
 
-      {/* OMN-21166 Maple grid, as on the local pages: the selected run (8 of 12) beside its quality gate (4); then each bar
-          chart on its own full row, as on Overview (live review 2026-10-26), so no model name is cut; token usage is one
-          line when it is not served. */}
+      {/* OMN-21166 Maple grid, as on the local pages: each panel and bar chart on its own full row, as on Overview (live
+          review 2026-10-26), so no model name is cut; token usage is one line when it is not served. OMN-23330 AC11: the
+          selected run and its quality gate each take a full row too; side by side, the shorter one left an empty column
+          (measured at 1440 px on 2026-11-10: Selected run ended 291 px above Quality gate). */}
       <div className="maple-grid ev-maple-grid">
-        <div className="maple-cell maple-cell--wide"><SelectedRun correlationId={latestCid} decision={decisions[0]} /></div>
-        <div className="maple-cell"><QualityGate /></div>
+        <div className="maple-cell maple-cell--full"><SelectedRun correlationId={latestCid} decision={decisions[0]} /></div>
+        <div className="maple-cell maple-cell--full ev-qg-cell"><QualityGate /></div>
         <div className="maple-cell maple-cell--full"><FailureTriage decisions={decisions}
           available={!decisionsQ.isLoading && !!decisionsQ.data && !decisionsQ.data.degradedReason}
           complete={decisionsQ.data?.complete === true} /></div>
