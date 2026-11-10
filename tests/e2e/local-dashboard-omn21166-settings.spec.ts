@@ -81,10 +81,10 @@ test('AC158 Environment is the System status section of Settings, and not on Ove
   await page.goto('/overview');
   await expect(page.locator('article[data-component$="-environment"]')).toHaveCount(0);
   await page.goto('/settings');
-  const sectionHeadings = await page.locator('main section > h2').allTextContents();
   // Part 27 AC169 put Appearance after Model providers; amendment 30c (AC169a) took it out again.
   // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): Pricing and routing joined before System status, still last.
-  expect(sectionHeadings).toEqual(['Model providers', 'Access', 'Pricing and routing', 'System status']);
+  // OMN-23330 AC22: Settings loads lazily, so the headings are awaited, not read once.
+  await expect(page.locator('main section > h2')).toHaveText(['Model providers', 'Access', 'Pricing and routing', 'System status']);
   // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): System status is chosen from the section links; Environment is its one panel.
   const statusSection = await showSettingsSection(page, 'System status');
   await expect(page.locator('article[data-component="status-environment"]')).toHaveCount(1);
