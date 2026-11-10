@@ -80,9 +80,11 @@ describe('excluded counts beside measured figures', () => {
   });
 
   it('declares excluded counts and basis in every consuming binding', () => {
-    expect(overviewMeasured.data_bindings?.[0]?.projection_topic).toBe('onex.snapshot.projection.cost.savings-overview.v1');
-    // OMN-21166 AC37: the card reads every call; its caption shows the served run classes.
-    expect(overviewMeasured.data_bindings?.[0]?.required_fields).toEqual(['window', 'captured_at', 'run_count']);
+    // OMN-23330 AC1/AC2 (Lakshman 2026-11-10, "All on metering"): the card reads metering-summary.v1's all-time row, and
+    // its binding requires every count its caption names: measured, all runs and both excluded classes.
+    expect(overviewMeasured.data_bindings?.[0]?.projection_topic).toBe('onex.snapshot.projection.metering-summary.v1');
+    expect(overviewMeasured.data_bindings?.[0]?.required_fields).toEqual(
+      ['window_kind', 'as_of', 'runs_measured', 'runs_total', 'runs_unknown_tokens', 'runs_unknown_spend']);
     // OMN-21166 live review 2026-10-25: Overview's run tables were deleted; the Runs list is the run table that remains.
     const runs = JSON.parse(readFileSync('src/pages/local/runs.contracts.yaml', 'utf8')) as Pick<LocalPageDocument, 'components'>;
     const recent = runs.components.find(candidate => candidate.component_id === 'recent-runs')!;

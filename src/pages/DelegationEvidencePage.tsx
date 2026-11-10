@@ -32,7 +32,6 @@ import {
   type ProjectionSnapshot,
 } from '@/components/dashboard/event-dash/primitives';
 import {
-  useCostSavingsOverview,
   useCorrelationTrace,
   useDelegationDecisions,
   useDelegationModelRouting,
@@ -40,20 +39,17 @@ import {
   useDelegationSavings,
   useDelegationSummary,
   useDelegationTokenUsage,
-  useExposureCensus,
   useMeteringSummary,
 } from '@/components/dashboard/event-dash/useEventDashData';
 import type {
   QualityGateRow,
   CorrelationTraceRow,
-  CostSavingsOverviewRow,
   DelegationDecisionRow,
   DelegationSummaryRow,
 } from '@/services/event-dash-api';
 import {
-  captionText, meteringMoneyBasis, meteringTokens, overviewHeadlineSource, pickMeteringRow, runBreakdownText, runModelledCell,
+  captionText, meteringMoneyBasis, meteringTokens, pickMeteringRow, runModelledCell,
 } from '@/pages/LocalDashboardPage';
-import { overviewRunCount } from '@/lib/dashboard-overview-count';
 
 import { formatDuration } from '@/components/format/duration';
 import { percent as sharePercent } from '@/theme/design-system/charts';
@@ -78,18 +74,6 @@ function decisionModelledSaving(decision: DelegationDecisionRow | undefined): st
   const figure = runModelledCell(decision as unknown as Record<string, unknown>);
   if (figure.startsWith('Not measured')) return figure;
   return `${figure} · modelled · ${pricingLabel(decision.savings_pricing_manifest_version) ?? 'pricing Not measured'}`;
-}
-
-/**
- * OMN-21166 AC37: the one cost.savings-overview.v1 row both pages read: the newest all-time row. Two all-time rows
- * captured at the same moment cannot be told apart, so neither is picked (the same rule as Overview's cards).
- */
-function overviewRowOf(rows: readonly CostSavingsOverviewRow[]): CostSavingsOverviewRow | 'ambiguous' | null {
-  const time = (row: CostSavingsOverviewRow) => { const t = Date.parse(row.captured_at); return Number.isFinite(t) ? t : -Infinity; };
-  const all = rows.filter(row => row.window === 'all').sort((a, b) => time(b) - time(a));
-  if (all.length === 0) return null;
-  if (all.length > 1 && time(all[0]!) === time(all[1]!)) return 'ambiguous';
-  return all[0]!;
 }
 
 /** A served whole number grouped for reading, or why there is none; never 0 for a missing field. */
@@ -703,22 +687,6 @@ function unavailableHeadline(unavailable: string): EvidenceHeadline {
   return { runs: unavailable, runsSub: null, savings: unavailable, tokens: unavailable, money: null, unavailable };
 }
 
-/** The cost.savings-overview.v1 headline, as Overview's aggregate cards read it. */
-function aggregateHeadline(rows: readonly CostSavingsOverviewRow[] | undefined, loading: boolean): EvidenceHeadline {
-  const picked = rows ? overviewRowOf(rows) : null;
-  if (picked === 'ambiguous') return unavailableHeadline('Not measured: ambiguous overview totals');
-  if (picked === null) return unavailableHeadline(loading ? '—' : 'Not measured');
-  return {
-    runs: servedCount(overviewRunCount(picked)),
-    runsSub: runBreakdownText(picked as unknown as Record<string, unknown>),
-    savings: servedUsd(picked.total_savings_usd),
-    tokens: servedCount(picked.tokens_total),
-    money: { cloud: picked.total_baseline_cost_usd, local: picked.total_cost_usd, saved: picked.total_savings_usd,
-      baselineModel: null, pricing: null, measuredRuns: picked.measured_run_count, basis: null },
-    unavailable: 'Not measured',
-  };
-}
-
 /**
  * The metering-summary.v1 headline, as Overview's metering cards read it: the same all-time row (pickMeteringRow),
  * the same Agent calls figure and run classes, the same token total and the same money basis line.
@@ -881,15 +849,10 @@ function DecisionSampleExport({ decisions, available }: { decisions: readonly De
  * OMN-21166 AC79: the page's scope in one line: the window (all time, as the headline row is) and the same served
  * delegation count the Delegations figure shows. A count that is not a number stays in words.
  */
-export function evidenceScopeLine(runs: ReactNode, basis: 'served' | 'measured' = 'served'): ReactNode {
-  if (basis === 'measured') {
-    if (typeof runs !== 'string') return <>All time · measured delegations: {runs}</>;
-    if (!/^\d[\d,.]*[KMB]?$/.test(runs)) return `All time · measured delegations: ${runs}`;
-    return `All time · ${runs} measured ${runs === '1' ? 'delegation' : 'delegations'}`;
-  }
-  if (typeof runs !== 'string') return <>All time · delegations served: {runs}</>;
-  if (!/^\d[\d,.]*[KMB]?$/.test(runs)) return `All time · delegations served: ${runs}`;
-  return `All time · ${runs} ${runs === '1' ? 'delegation' : 'delegations'} served`;
+export function evidenceScopeLine(runs: ReactNode): ReactNode {
+  if (typeof runs !== 'string') return <>All time · measured delegations: {runs}</>;
+  if (!/^\d[\d,.]*[KMB]?$/.test(runs)) return `All time · measured delegations: ${runs}`;
+  return `All time · ${runs} measured ${runs === '1' ? 'delegation' : 'delegations'}`;
 }
 
 export function DelegationEvidencePage() {
@@ -897,28 +860,21 @@ export function DelegationEvidencePage() {
   const tokensQ = useDelegationTokenUsage();
   const savingsQ = useDelegationSavings();
   const decisionsQ = useDelegationDecisions();
-  const overviewQ = useCostSavingsOverview();
 
   const summary = summaryQ.data?.rows[0];
   const fixtureNotice = summary ? fixtureNoticeOf(summary) : null;
   const decisions = decisionsQ.data?.rows ?? [];
   const latestCid = decisions[0]?.correlation_id ?? null;
 
-  // OMN-21166 AC37/AC50: savings, tokens and runs come from the same served row as Overview's headline cards, so the
-  // two pages show one figure per concept. Overview reads metering-summary.v1 when the catalogue says the old
-  // aggregate is not in the local store; Evidence asks the catalogue the same question and reads the same row.
-  const censusQ = useExposureCensus();
-  const source = censusQ.data ? overviewHeadlineSource(censusQ.data) : null;
-  // The bridge always reads the canonical metering row, including when legacy Overview totals own the headline.
+  // OMN-21166 AC37/AC50, OMN-23330 AC1/AC2 (Lakshman 2026-11-10, "All on metering"): savings, tokens and runs come
+  // from the one all-time metering-summary.v1 row Overview's and Usage's headline cards read, so the three pages show
+  // one figure per concept.
   const meteringQ = useMeteringSummary(true);
-  const headline = source === 'metering'
-    ? meteringHeadline(meteringQ.data?.rows, meteringQ.isLoading || censusQ.isLoading)
-    : aggregateHeadline(overviewQ.data?.rows, overviewQ.isLoading);
+  const headline = meteringHeadline(meteringQ.data?.rows, meteringQ.isLoading);
 
   // Include the savings source in freshness alongside the other headline projections.
   // so the header reflects the composite data state, not a single query's freshness.
-  const headlineSnapshot = source === 'metering' ? meteringQ.data : overviewQ.data;
-  const snapshots: ProjectionSnapshot[] = [summaryQ.data, tokensQ.data, decisionsQ.data, savingsQ.data, headlineSnapshot]
+  const snapshots: ProjectionSnapshot[] = [summaryQ.data, tokensQ.data, decisionsQ.data, savingsQ.data, meteringQ.data]
     .filter((d): d is NonNullable<typeof d> => d !== undefined)
     .map((d) => ({ rowCount: d.rowCount, freshness: d.freshness }));
   const badgeState = derivePageBadge(snapshots);
@@ -939,7 +895,7 @@ export function DelegationEvidencePage() {
       crumb="OmniDash · Delegation Evidence"
       title="Delegation Evidence"
       sub="Routing, quality gate, savings & per-correlation trace — live projections"
-      scope={evidenceScopeLine(headline.runs, source === 'metering' ? 'measured' : 'served')}
+      scope={evidenceScopeLine(headline.runs)}
       headRight={headRight}
     >
       {/* Lakshman 2026-11-05 ("remove"): no claim sentence or derivation row above the cards; the Savings card and

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
-// Pure MeteringTotalCard compatibility remains intact; D1 Overview now intentionally mounts the legacy aggregate.
+// OMN-23330 AC1/AC2 (Lakshman 2026-11-10, "All on metering"): Overview's Savings card mounts metering-summary.v1 again,
+// so L9 and P1 are back on the line's own row; the retired aggregate, served beside it, must not reach the card.
 // OMN-20008 AC5 (Jonah's decision on the ticket, comment 4f0e618d, 2026-10-09T21:08:53Z): the Overview Savings card
 // brings back the percentage line, labelled as modelled, e.g. "42% below the claude-sonnet-5-5 baseline (modelled)".
 // The ratio is metering-summary.v1's served savings_pct_of_counterfactual; the browser divides nothing (OMN-19980).
@@ -152,9 +153,9 @@ describe('OMN-20008 AC5: the Savings card percentage line', () => {
     expect(savings.title).toBe('Savings');
   });
 
-  it('L9: the mounted Overview binding asks the legacy source only for the figure, never a metering ratio', () => {
-    expect(overviewSavings.data_bindings?.map((binding) => binding.projection_topic)).toEqual([OVERVIEW]);
-    expect(overviewSavings.data_bindings?.[0]?.required_fields).toEqual(['window', 'captured_at', 'total_savings_usd']);
+  it('L9: the mounted Overview Savings binding asks metering-summary.v1 for the ratio, beside the figure it qualifies', () => {
+    expect(overviewSavings.data_bindings?.map((binding) => binding.projection_topic)).toEqual([METERING]);
+    expect(overviewSavings.data_bindings?.[0]?.required_fields).toEqual(expect.arrayContaining(['savings_usd', 'baseline_model', PCT]));
   });
 });
 
@@ -171,19 +172,19 @@ describe('OMN-20008 AC5: the Overview page', () => {
     return screen.getByRole('heading', { name: 'Savings' }).closest('article') as HTMLElement;
   }
 
-  it('P1: the legacy Overview figure does not borrow the conflicting metering ratio', async () => {
+  it('P1: the Savings panel shows the served line under its figure, never the old aggregate\'s figure', async () => {
     harness.reachable = new Set([METERING, OVERVIEW]);
-    harness.answer = (topic) => Promise.resolve(topic === OVERVIEW ? [{ window: 'all', captured_at: '2026-10-09T21:00:00Z', total_savings_usd: '0.0156' }] : topic === METERING ? [allRow({ [PCT]: '0.42' })] : []);
+    harness.answer = (topic) => Promise.resolve(topic === OVERVIEW ? [{ window: 'all', captured_at: '2026-10-09T21:00:00Z', total_savings_usd: '9.99' }] : topic === METERING ? [allRow({ [PCT]: '0.42' })] : []);
     const panel = await savingsPanel();
     expect(panel.querySelector('.local-dashboard-metric')?.textContent).toBe('$0.0156');
-    expect(panel.textContent).not.toMatch(PCT_LINE);
-    expect(panel.textContent).toContain('Modelled · vs cloud baseline');
+    expect(panel.textContent?.replaceAll('\u2011', '-')).toMatch(/42% below the claude-sonnet-5-5 baseline \(modelled\)/);
+    expect(panel.textContent).not.toContain('$9.99');
     expect(panel.textContent).not.toMatch(/verified/i);
   });
 
   it('P1 control: with the column not served, the panel shows the figure and no line', async () => {
     harness.reachable = new Set([METERING, OVERVIEW]);
-    harness.answer = (topic) => Promise.resolve(topic === OVERVIEW ? [{ window: 'all', captured_at: '2026-10-09T21:00:00Z', total_savings_usd: '0.0156' }] : topic === METERING ? [allRow()] : []);
+    harness.answer = (topic) => Promise.resolve(topic === METERING ? [allRow()] : []);
     const panel = await savingsPanel();
     expect(panel.querySelector('.local-dashboard-metric')?.textContent).toBe('$0.0156');
     expect(panel.textContent).not.toMatch(PCT_LINE);

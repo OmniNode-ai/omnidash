@@ -126,7 +126,7 @@ describe('OMN-19980 AC2b: a run shows its cost, never a per-run saving', () => {
   });
 
   it('B3: a row\'s null saving no longer decides the page state; the served baseline_state still does', () => {
-    const page = loadLocalPageConfig('overview', 'metering');
+    const page = loadLocalPageConfig('overview');
     // Amendment 2: no Overview card reads cost.savings-overview.v1 any more, so the page state is read off a topic
     // Overview still renders rows from (decisions); metering-summary.v1's rows never decide it (OMN-20009 C3).
     const snapshot = (row: Record<string, unknown>) => [{
@@ -143,12 +143,12 @@ describe('OMN-19980 AC2b: a run shows its cost, never a per-run saving', () => {
   });
 
   it('B4: metering rows with no decisions still leave Overview NO_RUNS_YET', () => {
-    const page = loadLocalPageConfig('overview', 'metering');
+    const page = loadLocalPageConfig('overview');
     expect(resolveLocalPageEmptyState(page, [read(DECISIONS, []), read(METERING, [meteringRow({})])])).toBe('NO_RUNS_YET');
   });
 
   it('B5: a metering row with a null saving and an unresolved baseline never flips the whole page', () => {
-    const page = loadLocalPageConfig('overview', 'metering');
+    const page = loadLocalPageConfig('overview');
     const decision = { correlation_id: 'corr-19980', created_at: '2026-10-05T12:00:00Z' };
     for (const baselineState of ['unresolved', 'BASELINE_UNRESOLVED']) {
       const metering = meteringRow({ savings_usd: null, baseline_state: baselineState });

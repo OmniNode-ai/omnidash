@@ -9,8 +9,11 @@ const SAVINGS = 'onex.snapshot.projection.delegation.savings.v1';
 const DAILY = 'onex.snapshot.projection.delegation.daily.v1';
 // OMN-19980 Amendment 2: Overview's Spend, Savings, Measured runs and Tokens read this exposure's all-time row.
 const METERING = 'onex.snapshot.projection.metering-summary.v1';
-const OVERVIEW = 'onex.snapshot.projection.cost.savings-overview.v1';
-const OVERVIEW_ALL_ROW = { window: 'all', captured_at: '2026-10-02T10:07:00Z', total_cost_usd: '0.006860', total_savings_usd: '1.218400', measured_run_count: 45, tokens_total: 9844 };
+// OMN-23330 AC1/AC2 (Lakshman 2026-11-10, "All on metering"): Overview's headline exposure is metering-summary.v1.
+const HEADLINE = METERING;
+const HEADLINE_ALL_ROW = { window_kind: 'all', window_start: '', as_of: '2026-10-02T10:07:00Z', baseline_model: 'claude-sonnet-5-5',
+  pricing_manifest_version: '1.0.0', baseline_state: 'resolved', spend_usd: '0.006860', savings_usd: '1.218400',
+  runs_total: 45, runs_measured: 45, runs_unknown_tokens: 0, runs_unknown_spend: 0, tokens_in: 7000, tokens_out: 2844 };
 const CREDENTIALS = 'onex.snapshot.projection.tenant-credentials.v1';
 const USAGE = 'onex.snapshot.projection.usage-by-model-day.v1';
 const RUN_TRACE = 'onex.snapshot.projection.run-trace.v1';
@@ -115,7 +118,7 @@ describe('LocalDashboardPage widget states (F26, F27)', () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'setTimeout', 'clearTimeout', 'Date'] });
     vi.setSystemTime(new Date('2026-10-02T10:12:00Z'));
     harness.reads = [];
-    harness.answer = (topic) => Promise.resolve(topic === DECISIONS ? [decisionRow('run-1')] : topic === SAVINGS ? [{ sessions: [] }] : [OVERVIEW_ALL_ROW]);
+    harness.answer = (topic) => Promise.resolve(topic === DECISIONS ? [decisionRow('run-1')] : topic === SAVINGS ? [{ sessions: [] }] : [HEADLINE_ALL_ROW]);
   });
   afterEach(() => { vi.useRealTimers(); });
 
@@ -126,7 +129,7 @@ describe('LocalDashboardPage widget states (F26, F27)', () => {
     render(<LocalDashboardPage pageName="overview" />);
     await settle();
     const spend = screen.getByRole('heading', { name: 'Actual spend' }).closest('article')!;
-    expect(within(spend).getByText('Not available yet: savings summary.')).toBeInTheDocument();
+    expect(within(spend).getByText('Not available yet: usage summary.')).toBeInTheDocument();
     // OMN-21166 live review 2026-10-25: Last run left Overview; Runs per day reads the served decisions instead.
     const runsPerDay = screen.getByRole('heading', { name: 'Runs per day' }).closest('article')!;
     expect(within(runsPerDay).queryByText(/Not available yet/)).toBeNull();
@@ -158,12 +161,12 @@ describe('LocalDashboardPage widget states (F26, F27)', () => {
     expect(within(runs).queryByRole('alert')).not.toBeInTheDocument();
   });
 
-  // OMN-19980 Amendment 2: no Overview panel binds one topic twice any more (Measured runs' second binding on
-  // cost.savings-overview.v1 is gone); four panels now share metering-summary.v1, each with its own one status.
+  // OMN-19980 Amendment 2: no Overview panel binds one topic twice; the four headline panels share metering-summary.v1,
+  // each with its own one status.
   it('a topic bound by several panels renders one failure status per panel, with no duplicate React key', async () => {
-    harness.reachable = new Set([DECISIONS, SAVINGS, OVERVIEW]);
-    harness.answer = (topic) => topic === OVERVIEW
-      ? Promise.reject(new Error(`Projection ${OVERVIEW} failed: HTTP 503 Service Unavailable`))
+    harness.reachable = new Set([DECISIONS, SAVINGS, HEADLINE]);
+    harness.answer = (topic) => topic === HEADLINE
+      ? Promise.reject(new Error(`Projection ${HEADLINE} failed: HTTP 503 Service Unavailable`))
       : Promise.resolve(topic === DECISIONS ? [decisionRow('run-1')] : [{ sessions: [] }]);
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     try {
@@ -181,9 +184,9 @@ describe('LocalDashboardPage widget states (F26, F27)', () => {
   });
 
   it('a read error shows the exposure and the HTTP status, not a bare message', async () => {
-    harness.reachable = new Set([DECISIONS, SAVINGS, OVERVIEW]);
-    harness.answer = (topic) => topic === OVERVIEW
-      ? Promise.reject(new Error(`Projection ${OVERVIEW} failed: HTTP 503 Service Unavailable`))
+    harness.reachable = new Set([DECISIONS, SAVINGS, HEADLINE]);
+    harness.answer = (topic) => topic === HEADLINE
+      ? Promise.reject(new Error(`Projection ${HEADLINE} failed: HTTP 503 Service Unavailable`))
       : Promise.resolve(topic === DECISIONS ? [decisionRow('run-1')] : [{ sessions: [] }]);
     render(<LocalDashboardPage pageName="overview" />);
     await settle();
@@ -192,8 +195,8 @@ describe('LocalDashboardPage widget states (F26, F27)', () => {
   });
 
   it('a read that never answers becomes a typed timeout after 5 s', async () => {
-    harness.reachable = new Set([DECISIONS, SAVINGS, OVERVIEW]);
-    harness.answer = (topic) => topic === OVERVIEW ? new Promise(() => {}) : Promise.resolve(topic === DECISIONS ? [decisionRow('run-1')] : [{ sessions: [] }]);
+    harness.reachable = new Set([DECISIONS, SAVINGS, HEADLINE]);
+    harness.answer = (topic) => topic === HEADLINE ? new Promise(() => {}) : Promise.resolve(topic === DECISIONS ? [decisionRow('run-1')] : [{ sessions: [] }]);
     render(<LocalDashboardPage pageName="overview" />);
     await act(async () => { await vi.advanceTimersByTimeAsync(5_000); });
     const spend = screen.getByRole('heading', { name: 'Actual spend' }).closest('article')!;
@@ -201,11 +204,11 @@ describe('LocalDashboardPage widget states (F26, F27)', () => {
   });
 
   it('keeps the last good figure after a later read fails, and says when it was good', async () => {
-    harness.reachable = new Set([DECISIONS, SAVINGS, OVERVIEW]);
+    harness.reachable = new Set([DECISIONS, SAVINGS, HEADLINE]);
     render(<LocalDashboardPage pageName="overview" />);
     await settle();
-    harness.answer = (topic) => topic === OVERVIEW
-      ? Promise.reject(new Error(`Projection ${OVERVIEW} failed: HTTP 503 Service Unavailable`))
+    harness.answer = (topic) => topic === HEADLINE
+      ? Promise.reject(new Error(`Projection ${HEADLINE} failed: HTTP 503 Service Unavailable`))
       : Promise.resolve(topic === DECISIONS ? [decisionRow('run-1')] : [{ sessions: [] }]);
     await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
     const spend = screen.getByRole('heading', { name: 'Actual spend' }).closest('article')!;

@@ -7,7 +7,7 @@ import { dailyMeteringTokens } from '@/lib/daily-metering-tokens';
 import { DailyMeteringTokens } from '@/components/dashboard/usage/DailyMeteringTokens';
 import { TokenDirections } from '@/components/dashboard/usage/TokenDirections';
 import { exactTokens } from '@/components/dashboard/usage/TokenCount';
-import { Fragment, createContext, useContext, useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { modelTiersFrom, tierColor, tierConcept } from '@/lib/dashboard-colors';
 import { Link, useLocation, useSearch } from 'wouter';
@@ -17,7 +17,7 @@ import {
   type LucideIcon,
 } from '@/theme/design-system/icons';
 import { createSnapshotSource } from '@/data-source';
-import { fetchExposureCensus, type ExposureCensus } from '@/data-source/exposure-census';
+import { fetchExposureCensus } from '@/data-source/exposure-census';
 import { resolveEffectiveDataSource } from '@/data-source/data-source-override';
 import { resolveConfiguredTenant } from '@/data-source/projection-tenant';
 import { UsageByModelDayTable, UsageTokensChart, formatUsd } from '@/components/dashboard/usage/UsageByModelDayWidget';
@@ -58,7 +58,6 @@ import '@/styles/local-dashboard.css';
 import '@/styles/dashboard-cards.css';
 import '@/styles/seven-page-design.css';
 import '@/styles/editorial.css';
-import { overviewRunCount } from '@/lib/dashboard-overview-count';
 import { DestinationIcon } from '@/navigation/destination-icons';
 import type { AppPage } from '@/store/types';
 import { RunAnswer, RunTraceText, WorkflowDecisionCharts, WorkflowRecordDetails, WorkflowRoutingFlow } from '@/pages/local/workflow-analysis';
@@ -565,96 +564,6 @@ export function periodChangeLine(rows: readonly unknown[], window: string, metri
   return `${pct > 0 ? '+' : '\u2212'}${size}% ${span}`;
 }
 
-/** Restored by Lakshman's explicit instruction, 2026-10-19: use the populated old Overview aggregate. */
-const LEGACY_OVERVIEW_TOPIC = 'onex.snapshot.projection.cost.savings-overview.v1';
-
-/**
- * Which exposure the Overview headline reads, decided from the catalogue before any projection read. Only the
- * explicit local-store absence of the old aggregate selects metering; a read error never changes source. Delegation
- * Evidence asks the same question (OMN-21166 AC50), so its headline figures come from the same row as Overview's.
- */
-export function overviewHeadlineSource(census: ExposureCensus): 'savings' | 'metering' {
-  const declared = census.rows.find(row => row.topic === LEGACY_OVERVIEW_TOPIC);
-  return declared?.reachability === 'refused' && declared.backing === 'not_in_local_store'
-    && declared.refusal === 'projection_table_missing' ? 'metering' : 'savings';
-}
-
-export function OverviewAggregateCard({ component, config, rows, window }: {
-  component: LocalPageDocument['components'][number]; config: MetricCardConfig;
-  rows: readonly unknown[]; window: OverviewWindow;
-}) {
-  const unavailable = (message: string) => <Figure measured={false}>{message}</Figure>;
-  if (window !== 'all') return unavailable('Not measured: daily totals unavailable (UTC)');
-  const all = asRecords(rows).filter(row => row.window === 'all')
-    .sort((a, b) => timeOf(b.captured_at) - timeOf(a.captured_at));
-  const servedRow = all[0];
-  if (!servedRow) return unavailable('Not measured: overview totals unavailable');
-  if (all.length > 1 && timeOf(all[0].captured_at) === timeOf(all[1].captured_at)) return unavailable('Not measured: ambiguous overview totals');
-  const row = component.component_id === 'overview-measured'
-    ? { ...servedRow, run_count: overviewRunCount(servedRow) } : servedRow;
-  const value = row[config.metric_key];
-  if (isMissing(value) || !['string', 'number'].includes(typeof value)
-    || (typeof value === 'string' && !/^-?\d+(?:\.\d+)?$/.test(value))
-    || !Number.isFinite(Number(value))) return unavailable('Not measured');
-  const runs = component.component_id === 'overview-measured';
-  // OMN-21304 AC4: this exposure serves no baseline model, pricing version or unpriced count. Its money totals sum
-  // measured-provenance rows only, so the estimated and unknown-provenance runs are what each total leaves out.
-  const basis = SPEND_AND_SAVINGS_CARDS.has(component.component_id) ? {
-    basis_not_served: true, unpriced_not_served: true,
-    excluded_runs: [[row.estimated_run_count, 'estimated run', 'estimated runs'],
-      [row.unknown_run_count, 'unknown-provenance run', 'unknown-provenance runs']],
-  } : null;
-  return <>
-    <MetricCard component={component} config={config} row={row} caption={basis} basisExtra={component.component_id !== 'overview-savings' && !runs && component.component_id !== 'overview-tokens' ? undefined : <>
-      {/* OMN-21166 part 9 AC45: only Savings keeps a caption: its basis (in the tooltip since part 12). */}
-      {component.component_id === 'overview-savings' && <p className="local-dashboard-caption">Modelled · vs cloud baseline</p>}
-      {/* OMN-21166 AC37: the headline is every call; the measured population is a labelled breakdown beside it, the
-          same breakdown Delegation Evidence shows under the same figure. */}
-      {runs && <RunBreakdown row={row} />}
-      {/* OMN-21015: cost.savings-overview.v1 serves the directions as tokens_input_total and tokens_output_total
-          (omnimarket#4341). Live review 2026-10-25 ("in out token also - show it when hover it"): they are in the
-          card's hover, as on the metering source. */}
-      {component.component_id === 'overview-tokens' && <TokenDirections input={row.tokens_input_total} output={row.tokens_output_total} />}
-    </>} />
-  </>;
-}
-
-/**
- * OMN-21166 AC37: the served run classes of one cost.savings-overview.v1 row, as a caption line. A class the row does not
- * serve is left out, never shown as 0. When no run is estimated or unknown the figure already is the measured count, so
- * the line goes rather than repeat it (and the compact first screen keeps its height).
- */
-function runBreakdownParts(row: Record<string, unknown>): Array<{ label: string; count: string }> | null {
-  // By field, never by position: measured stays whenever it is served (a measured 0 is a value); estimated and unknown
-  // only when above 0, and the line only when one of them is.
-  const served = ([['measured_run_count', 'measured'], ['estimated_run_count', 'estimated'], ['unknown_run_count', 'unknown']] as const)
-    .filter(([field]) => !isMissing(row[field]) && Number.isFinite(Number(row[field])));
-  if (!served.some(([field, label]) => label !== 'measured' && Number(row[field]) > 0)) return null;
-  return served
-    .filter(([field, label]) => label === 'measured' || Number(row[field]) > 0)
-    .map(([field, label]) => ({ label, count: formatDashboardCount(row[field]) }));
-}
-
-export function runBreakdownText(row: Record<string, unknown>): string | null {
-  return runBreakdownParts(row)?.map(({ label, count }) => `${count} ${label}`).join(' · ') ?? null;
-}
-
-/**
- * OMN-21166 part 9 AC46: each run class is its own labelled count in its own shared field tone, so no two classes share
- * a colour and the label, not the colour, carries the meaning. Unknown is no measurement: it reads in the not-measured
- * tone, never the failed one.
- */
-function RunBreakdown({ row }: { row: Record<string, unknown> }) {
-  const parts = runBreakdownParts(row);
-  if (!parts) return null;
-  return <p className="local-dashboard-caption local-run-classes">
-    {parts.map(({ label, count }, index) => <Fragment key={label}>
-      {index > 0 && ' · '}
-      <span className="local-run-class" data-run-class={label} data-field-tone={`run-${label}`}>{count} {label}</span>
-    </Fragment>)}
-  </p>;
-}
-
 /** Said on an Overview panel whose exposure serves no row per window, while today is the chosen window. */
 const OUTSIDE_WINDOW_NOTE = 'All time: this panel does not follow the window above.';
 
@@ -967,6 +876,15 @@ export function UsageKpis({ rows }: { rows: readonly unknown[] }) {
   const scope = `Latest ${dayKeys.length} days with usage`;
   const usd = (value: number) => formatUsd(String(value));
   const count = (value: number) => formatDashboardCount(String(value));
+  const tokenTrend = (field: string) => ({ days: dayKeys, values: series(field), format: count, scope });
+  const directionItems = (input: bigint | null, output: bigint | null): KpiItem[] => [
+    { label: 'Tokens in', value: input === null ? 'Not measured' : formatDashboardCount(input.toString()), unavailable: input === null,
+      title: input === null ? undefined : exactTokens(input.toString(), 'in'),
+      accent: 'var(--ds-field-tokens-in)', concept: 'tokens-in', trend: tokenTrend('tokens_in') },
+    { label: 'Tokens out', value: output === null ? 'Not measured' : formatDashboardCount(output.toString()), unavailable: output === null,
+      title: output === null ? undefined : exactTokens(output.toString(), 'out'),
+      accent: 'var(--ds-field-tokens-out)', concept: 'tokens-out', trend: tokenTrend('tokens_out') },
+  ];
   const items: KpiItem[] = [
     { label: 'You paid', value: money(row.spend_usd), unavailable: isMissing(row.spend_usd), accent: 'var(--ds-field-cost)', concept: 'cost',
       lines: ['Measured spend, all time'], trend: { days: dayKeys, values: series('spend_usd'), format: usd, scope } },
@@ -976,12 +894,7 @@ export function UsageKpis({ rows }: { rows: readonly unknown[] }) {
     { label: 'Saved', value: unresolved ? 'Baseline unresolved' : money(row.savings_usd), unavailable: unresolved || isMissing(row.savings_usd),
       accent: 'var(--ds-field-savings)', concept: 'savings', lines: ['Modelled · vs cloud baseline'],
       trend: unresolved ? null : { days: dayKeys, values: series('savings_usd'), format: usd, scope } },
-    { label: 'Tokens in', value: tokens.input === null ? 'Not measured' : formatDashboardCount(tokens.input.toString()), unavailable: tokens.input === null,
-      title: tokens.input === null ? undefined : exactTokens(tokens.input.toString(), 'in'),
-      accent: 'var(--ds-field-tokens-in)', concept: 'tokens-in', trend: { days: dayKeys, values: series('tokens_in'), format: count, scope } },
-    { label: 'Tokens out', value: tokens.output === null ? 'Not measured' : formatDashboardCount(tokens.output.toString()), unavailable: tokens.output === null,
-      title: tokens.output === null ? undefined : exactTokens(tokens.output.toString(), 'out'),
-      accent: 'var(--ds-field-tokens-out)', concept: 'tokens-out', trend: { days: dayKeys, values: series('tokens_out'), format: count, scope } },
+    ...directionItems(tokens.input, tokens.output),
   ];
   return <KpiStrip label="Usage summary" items={items} />;
 }
@@ -3518,18 +3431,6 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
         ]);
         clearTimeout(catalogueTimer);
         if (!current()) return;
-        // Decide from the catalogue before any projection read. Only the explicit
-        // local-store absence selects metering; a read error never changes source.
-        if (pageName === 'overview') {
-          const selected = loadLocalPageConfig(pageName, overviewHeadlineSource(census));
-          if (selected.components[0].data_bindings?.[0]?.projection_topic !== document.components[0].data_bindings?.[0]?.projection_topic) {
-            // A changed catalogue must not leave an old source's figures visible.
-            latest.current = latest.current.filter(snapshot => snapshot.topic !== LEGACY_OVERVIEW_TOPIC && snapshot.topic !== METERING_SUMMARY_TOPIC);
-            setSnapshots(latest.current);
-          }
-          document = selected;
-          setPage(document);
-        }
         setError(null);
         setRefreshError(null);
         const availableTopics = new Set(
@@ -3611,7 +3512,6 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
     // seen on a store of two real days, "Agent calls 4" beside "6 of 6 runs local".
     const outsideWindow = pageName === 'overview' && overviewWindow !== 'all'
       && component.data_bindings?.[0]?.projection_topic !== METERING_SUMMARY_TOPIC
-      && component.data_bindings?.[0]?.projection_topic !== LEGACY_OVERVIEW_TOPIC
       // OMN-21166: the trends follow the window themselves.
       && !['overview-insights', 'status-environment'].includes(component.component_id);
     // GET /models has its own loading/error state; credential projection availability
@@ -3648,11 +3548,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
             />
           ) : component.component_id === 'overview-run-locally' ? (
             <RunLocallyCard row={asRecord(rows[0])} />
-          ) : pageName === 'overview' && component.data_bindings?.[0]?.projection_topic === LEGACY_OVERVIEW_TOPIC ? (() => {
-            const config = metricConfigFor(page, component.component_id);
-            return config ? <OverviewAggregateCard component={component} config={config} rows={rows} window={overviewWindow} />
-              : <EmptyState status={false}>Not measured</EmptyState>;
-          })() : component.data_bindings?.[0]?.projection_topic === METERING_SUMMARY_TOPIC ? (() => {
+          ) : component.data_bindings?.[0]?.projection_topic === METERING_SUMMARY_TOPIC ? (() => {
             const config = metricConfigFor(page, component.component_id);
             return config
               ? <MeteringTotalCard component={component} config={config} rows={rows} window={overviewWindow} now={now} />

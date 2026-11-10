@@ -11,14 +11,14 @@
       },
       "data_bindings": [
         {
-          "binding_id": "overview-spend-legacy",
-          "projection_topic": "onex.snapshot.projection.cost.savings-overview.v1",
-          "ordering_authority_field": "captured_at",
+          "binding_id": "overview-spend-metering",
+          "projection_topic": "onex.snapshot.projection.metering-summary.v1",
+          "ordering_authority_field": "as_of",
           "ordering_direction": "descending",
           "required_fields": [
-            "window",
-            "captured_at",
-            "total_cost_usd"
+            "window_kind",
+            "as_of",
+            "spend_usd"
           ]
         }
       ],
@@ -38,14 +38,18 @@
       },
       "data_bindings": [
         {
-          "binding_id": "overview-savings-legacy",
-          "projection_topic": "onex.snapshot.projection.cost.savings-overview.v1",
-          "ordering_authority_field": "captured_at",
+          "binding_id": "overview-savings-metering",
+          "projection_topic": "onex.snapshot.projection.metering-summary.v1",
+          "ordering_authority_field": "as_of",
           "ordering_direction": "descending",
           "required_fields": [
-            "window",
-            "captured_at",
-            "total_savings_usd"
+            "window_kind",
+            "as_of",
+            "baseline_model",
+            "pricing_manifest_version",
+            "baseline_state",
+            "savings_usd",
+            "savings_pct_of_counterfactual"
           ]
         }
       ],
@@ -65,14 +69,17 @@
       },
       "data_bindings": [
         {
-          "binding_id": "overview-measured-legacy",
-          "projection_topic": "onex.snapshot.projection.cost.savings-overview.v1",
-          "ordering_authority_field": "captured_at",
+          "binding_id": "overview-measured-metering",
+          "projection_topic": "onex.snapshot.projection.metering-summary.v1",
+          "ordering_authority_field": "as_of",
           "ordering_direction": "descending",
           "required_fields": [
-            "window",
-            "captured_at",
-            "run_count"
+            "window_kind",
+            "as_of",
+            "runs_measured",
+            "runs_total",
+            "runs_unknown_tokens",
+            "runs_unknown_spend"
           ]
         }
       ],
@@ -92,14 +99,17 @@
       },
       "data_bindings": [
         {
-          "binding_id": "overview-tokens-legacy",
-          "projection_topic": "onex.snapshot.projection.cost.savings-overview.v1",
-          "ordering_authority_field": "captured_at",
+          "binding_id": "overview-tokens-metering",
+          "projection_topic": "onex.snapshot.projection.metering-summary.v1",
+          "ordering_authority_field": "as_of",
           "ordering_direction": "descending",
           "required_fields": [
-            "window",
-            "captured_at",
-            "tokens_total"
+            "window_kind",
+            "as_of",
+            "tokens_in",
+            "tokens_out",
+            "runs_total",
+            "runs_unknown_tokens"
           ]
         }
       ],

@@ -18,6 +18,9 @@ import { loadLocalPageConfig } from '../layout/local-page-loader';
 
 const METERING = 'onex.snapshot.projection.metering-summary.v1';
 const OVERVIEW = 'onex.snapshot.projection.cost.savings-overview.v1';
+const DECISIONS = 'onex.snapshot.projection.delegation.decisions.v1';
+// A store with these totals has runs: one decisions row keeps Overview out of its no-runs-yet page.
+const DECISION = { correlation_id: 'c-1', created_at: '2026-10-09T11:00:00Z' };
 const PCT = 'savings_pct_of_counterfactual';
 
 const harness = vi.hoisted(() => ({
@@ -47,10 +50,9 @@ type Config = Parameters<typeof MeteringTotalCard>[0]['config'];
 
 const page = loadLocalPageConfig('overview');
 const overviewSavings = page.components.find((candidate) => candidate.component_id === 'overview-savings')!;
-// D1 changes the mounted Overview source; this retained formatter still supports metering callers.
-const savings = { ...overviewSavings, data_bindings: [{ ...overviewSavings.data_bindings![0],
-  projection_topic: METERING, required_fields: ['window_kind', 'as_of', 'baseline_model', 'pricing_manifest_version', 'baseline_state', 'savings_usd', PCT] }] };
-const config = { ...(page.dashboard.widgets.find((widget) => widget.data_source === 'overview-savings')?.config as Config), metric_key: 'savings_usd' };
+// OMN-23330 AC1/AC2 (Lakshman 2026-11-10, "All on metering"): the mounted Savings card is this metering card again.
+const savings = overviewSavings;
+const config = page.dashboard.widgets.find((widget) => widget.data_source === 'overview-savings')?.config as Config;
 
 const NOW = Date.parse('2026-10-09T12:05:00Z');
 const BASE = {
@@ -134,21 +136,24 @@ describe('OMN-21015 AC7: the Overview page', () => {
 
   const panel = () => screen.getByRole('heading', { name: 'Savings' }).closest('article') as HTMLElement;
 
-  it('Q5: Today is explicitly unavailable and All time restores the exact legacy figure without borrowing a ratio', async () => {
-    harness.reachable = new Set([METERING, OVERVIEW]);
+  it('Q5: the switch moves the figure and its line together, and brings both back; the old aggregate never shows', async () => {
+    harness.reachable = new Set([METERING, OVERVIEW, DECISIONS]);
     harness.answer = (topic) => Promise.resolve(topic === OVERVIEW
-      ? [{ window: 'all', captured_at: '2026-10-09T12:00:00Z', total_savings_usd: '0.0089' }]
-      : topic === METERING ? [ALL_ROW, YESTERDAY_ROW, TODAY_ROW] : []);
+      ? [{ window: 'all', captured_at: '2026-10-09T12:00:00Z', total_savings_usd: '7.77' }]
+      : topic === METERING ? [ALL_ROW, YESTERDAY_ROW, TODAY_ROW] : topic === DECISIONS ? [DECISION] : []);
     render(<LocalDashboardPage pageName="overview" />);
     await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    const text = () => panel().textContent?.replaceAll('\u2011', '-') ?? '';
     expect(panel().querySelector('.local-dashboard-metric')?.textContent).toBe('$0.0089');
-    expect(panel().textContent).not.toMatch(ANY_LINE);
+    expect(text()).toContain(LINE(42));
     chooseWindow('today');
-    expect(panel().querySelector('.local-dashboard-metric')?.textContent).toBe('Not measured: daily totals unavailable (UTC)');
-    expect(panel().textContent).not.toMatch(ANY_LINE);
+    expect(panel().querySelector('.local-dashboard-metric')?.textContent).toBe('$0.0003');
+    expect(text()).toContain(LINE(25));
+    expect(text()).not.toContain(LINE(42));
     chooseWindow('all');
     expect(panel().querySelector('.local-dashboard-metric')?.textContent).toBe('$0.0089');
-    expect(panel().textContent).not.toMatch(ANY_LINE);
+    expect(text()).toContain(LINE(42));
+    expect(text()).not.toContain('$7.77');
   });
 
   const NOTE = 'All time: this panel does not follow the window above.';
@@ -168,8 +173,9 @@ describe('OMN-21015 AC7: the Overview page', () => {
   const DOES_NOT = ['Model usage', 'Tier mix'];
 
   async function openOverview() {
-    harness.reachable = new Set([METERING, OVERVIEW]);
-    harness.answer = (topic) => Promise.resolve(topic === OVERVIEW ? [{ window: 'all', captured_at: '2026-10-09T12:00:00Z', total_savings_usd: '0.0089' }] : topic === METERING ? [ALL_ROW, YESTERDAY_ROW, TODAY_ROW] : []);
+    harness.reachable = new Set([METERING, OVERVIEW, DECISIONS]);
+    harness.answer = (topic) => Promise.resolve(topic === OVERVIEW ? [{ window: 'all', captured_at: '2026-10-09T12:00:00Z', total_savings_usd: '7.77' }]
+      : topic === METERING ? [ALL_ROW, YESTERDAY_ROW, TODAY_ROW] : topic === DECISIONS ? [DECISION] : []);
     render(<LocalDashboardPage pageName="overview" />);
     await act(async () => { await vi.advanceTimersByTimeAsync(0); });
   }

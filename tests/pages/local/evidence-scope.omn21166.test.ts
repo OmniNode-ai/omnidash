@@ -7,17 +7,19 @@ import { describe, expect, it } from 'vitest';
 import { evidenceScopeLine } from '@/pages/DelegationEvidencePage';
 
 describe('evidenceScopeLine', () => {
-  it('V1: names the window and the same served count as the Delegations figure', () => {
-    expect(evidenceScopeLine('623')).toBe('All time · 623 delegations served');
-    expect(evidenceScopeLine('1')).toBe('All time · 1 delegation served');
-    expect(evidenceScopeLine('59.19K')).toBe('All time · 59.19K delegations served');
+  // OMN-23330 AC1/AC2 (Lakshman 2026-11-10, "All on metering"): the Delegations figure is metering-summary.v1's measured
+  // count, so the scope line always names it as measured, never as every served decision.
+  it('V1: names the window and the same measured count as the Delegations figure', () => {
+    expect(evidenceScopeLine('623')).toBe('All time · 623 measured delegations');
+    expect(evidenceScopeLine('1')).toBe('All time · 1 measured delegation');
+    expect(evidenceScopeLine('59.19K')).toBe('All time · 59.19K measured delegations');
   });
 
   it('V2: an unserved count stays in words', () => {
-    expect(evidenceScopeLine('Not measured')).toBe('All time · delegations served: Not measured');
+    expect(evidenceScopeLine('Not measured')).toBe('All time · measured delegations: Not measured');
   });
 
-  it('V3: a metered subset is named as measured, not as every served decision', () => {
-    expect(evidenceScopeLine('650', 'measured')).toBe('All time · 650 measured delegations');
+  it('V3: the line never calls the figure every served decision', () => {
+    for (const runs of ['650', '1', 'Not measured']) expect(String(evidenceScopeLine(runs))).not.toMatch(/served/);
   });
 });

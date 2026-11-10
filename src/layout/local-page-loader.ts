@@ -1,4 +1,3 @@
-import meteringHeadlines from '../pages/local/overview-metering.headlines.json';
 import type { ProjectionSnapshot, ProtocolSnapshotSource } from '../data-source/protocol-snapshot-source';
 import { ProjectionReadRefusedError } from '../data-source/http-snapshot-source';
 import type { ModelComponentContract } from '../shared/types/generated/onex-models';
@@ -185,7 +184,7 @@ function isComponentContract(value: unknown): value is LocalComponentContract {
 }
 
 /** Load a dashboard and its component/binding contracts from JSON-compatible YAML. */
-export function loadLocalPageConfig(page: LocalPageName, headlineSource: 'savings' | 'metering' = 'savings'): LocalPageDocument {
+export function loadLocalPageConfig(page: LocalPageName): LocalPageDocument {
   const configPath = `../pages/local/${page}.page.yaml`;
   const contractsPath = `../pages/local/${page}.contracts.yaml`;
   const configSource = pageFiles[configPath];
@@ -204,17 +203,6 @@ export function loadLocalPageConfig(page: LocalPageName, headlineSource: 'saving
   }
   if (!contracts.components.every(isComponentContract)) {
     throw new Error(`Local dashboard component contract is invalid: ${page}`);
-  }
-  if (page === 'overview' && headlineSource === 'metering') {
-    const components: unknown[] = meteringHeadlines.components;
-    if (!components.every(isComponentContract)) throw new Error('Invalid metering headline contracts');
-    return {
-      dashboard: { ...dashboard, widgets: dashboard.widgets.map(widget =>
-        meteringHeadlines.widgets.find(candidate => candidate.data_source === widget.data_source) ?? widget) },
-      components: contracts.components.map(component =>
-        components.find(candidate => candidate.component_id === component.component_id) ?? component),
-      empty_state_reasons: emptyStates,
-    };
   }
   return {
     dashboard,
