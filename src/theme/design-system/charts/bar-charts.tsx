@@ -15,7 +15,7 @@ import { SVGRenderer } from 'echarts/renderers';
 import { useThemeName } from '@/theme';
 import { colorToNumber, tokenHex, tokenValue, type TokenName } from '@/theme/design-system/color';
 import { localeDate as fmtLocaleDate, localeString as fmtLocaleString } from '@/lib/format';
-import { exactMs } from '@/lib/format';
+import { exactMs, formatShortDay } from '@/lib/format';
 
 echarts.use([BarChart, GridComponent, TooltipComponent, AriaComponent, SVGRenderer]);
 
@@ -308,9 +308,10 @@ function SpendChartFigure({ group, title, colourPlaces }: { group: SpendByDayGro
       <div className="local-chart-inspector"><label htmlFor={dayId}>Inspect day</label>
         <select id={dayId} value={selectedDay === null ? '' : day} onChange={event => setDay(event.target.value)}>
           <option value="">Choose a served day</option>
-          {group.days.map((value, index) => <option key={`${value}-${index}`} value={index}>{value}</option>)}
+          {/* OMN-23330 AC10: days in the short form the other pages use. */}
+          {group.days.map((value, index) => <option key={`${value}-${index}`} value={index}>{formatShortDay(value)}</option>)}
         </select>
-        {selectedDay !== null && <div className="local-chart-detail" role="status"><strong>{group.days[selectedDay]}</strong>
+        {selectedDay !== null && <div className="local-chart-detail" role="status"><strong title={group.days[selectedDay]}>{formatShortDay(group.days[selectedDay] ?? '')}</strong>
           {group.series.map(series => <span key={series.key}>{series.name}: {series.served[selectedDay] == null ? 'Not measured' : formatDashboardUsd(series.served[selectedDay])}</span>)}
         </div>}
       </div>

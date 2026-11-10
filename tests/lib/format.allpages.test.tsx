@@ -50,6 +50,8 @@ describe('OMN-23330 AC19: one format module', () => {
     expect(formatDashboardUsd(1.2184)).toBe('$1.21');
     expect(formatShortDay('2026-11-10')).toBe('Nov 10');
     expect(formatShortDay('2026-01-05')).toBe('Jan 5');
+    expect(formatShortDay('day-1')).toBe('day-1');
+    expect(formatShortDay('2026-13-45')).toBe('2026-13-45');
   });
 
   it('F4: no source imports a formatter from an old module path', () => {

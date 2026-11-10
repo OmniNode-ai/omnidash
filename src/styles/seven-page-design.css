@@ -1853,7 +1853,8 @@ html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-e
 .local-dashboard-page ul.gdb-plot--list > .ins-bar.gdb-day { transition: opacity 0.15s; }
 .local-dashboard-page ul.gdb-plot--list > .ins-bar.gdb-day[data-dim="true"] { opacity: 0.45; }
 .local-dashboard-page ul.gdb-plot--list > .ins-bar.gdb-day:is(:hover, :focus-visible) .gdb-name-label { color: var(--ds-ink) !important; }
-.local-dashboard-page .gdb-legends { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px; }
+/* OMN-23330 AC10: the series (model) legend and the tier legend each take their own row. */
+.local-dashboard-page .gdb-legends { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 4px; }
 .local-dashboard-page .gdb-legends > ul { margin: 0 !important; }
 @media (max-width: 700px) {
   .local-dashboard-page ul.gdb-plot--list { height: 220px; }

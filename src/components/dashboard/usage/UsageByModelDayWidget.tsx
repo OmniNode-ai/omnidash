@@ -40,7 +40,7 @@ export interface UsageByModelDayRow {
   updated_at?: string;
 }
 
-import { formatDashboardUsd as formatUsd } from '@/lib/format';
+import { formatDashboardUsd as formatUsd, formatShortDay } from '@/lib/format';
 import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
 import { ColumnTip, DataTable, Dropdown, EmptyState, TokenCount } from '@/theme/design-system/components';
 import { ChartReadout } from '@/theme/design-system/charts/frame';
@@ -97,6 +97,11 @@ const USAGE_HEADERS: ReadonlyArray<readonly [string, string]> = [
   ['usage-day', 'Day'], ['model', 'Model'], ['tokens-in', 'Tokens in'], ['tokens-out', 'Tokens out'], ['cost', 'Cost (measured)'],
   ['unavailable', 'Unmeasured'], ['tier', 'Tier'], ['calls', 'Calls'], ['routing', 'Share of calls'],
 ];
+
+/** A served day in the short form ("Nov 10"); a missing day reads as the column's other missing values do. */
+function shortDay(value: unknown): string {
+  return isMissing(value) ? recorded(value) : formatShortDay(String(value));
+}
 
 function callShare(value: unknown): string {
   const share = Number(value);
@@ -163,8 +168,9 @@ export function UsageByModelDayTable({ rows, interactive = false }: { rows: read
         <tbody>{shown.map((row, index) => (
           <tr key={`${String(row.usage_day)}-${String(row.model_id)}-${String(row.cost_tier_name)}-${index}`}
             data-day-start={index === 0 || shown[index - 1]!.usage_day !== row.usage_day ? '' : undefined}>
-            <td data-label="Day">{index === 0 || shown[index - 1]!.usage_day !== row.usage_day
-              ? recorded(row.usage_day) : <span className="local-visually-hidden">{recorded(row.usage_day)}</span>}</td>
+            {/* OMN-23330 AC10: the day in the short form the other pages use; the served day stays as the title. */}
+            <td data-label="Day" title={isMissing(row.usage_day) ? undefined : String(row.usage_day)}>{index === 0 || shown[index - 1]!.usage_day !== row.usage_day
+              ? shortDay(row.usage_day) : <span className="local-visually-hidden">{shortDay(row.usage_day)}</span>}</td>
             {/* The model's swatch beside its name, as Usage analysis and the decision matrix draw a model (Lakshman 2026-11-05). */}
             <td data-label="Model"><span className="usage-model-name">{!isMissing(row.model_id) && <span className="gdb-swatch" aria-hidden="true"
               data-model-id={model(row.model_id)} style={{ background: modelColor(model(row.model_id)) }} />}{model(row.model_id)}</span></td>

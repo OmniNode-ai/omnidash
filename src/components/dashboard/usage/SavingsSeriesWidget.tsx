@@ -1,5 +1,5 @@
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
-import { formatDashboardCount } from '@/lib/format';
+import { formatDashboardCount, formatShortDay } from '@/lib/format';
 // OMN-20006 Amendment 1 (US-3): savings per UTC day against the one baseline, from metering-summary.v1.
 //
 // node_projection_metering_summary serves one `day` row per UTC day and one `all` row per baseline model, from one
@@ -101,7 +101,9 @@ function SavingsDays({ baseline, days }: { baseline: string; days: MeteringSumma
               const { text, amount } = served[start + index]!;
               return (
               <tr key={`${String(row.window_start)}-${index}`}>
-                <td data-label="Day">{isMissing(row.window_start) ? 'Not recorded' : String(row.window_start)}</td>
+                {/* OMN-23330 AC10: the day in the short form the other pages use; the served day stays as the title. */}
+                <td data-label="Day" title={isMissing(row.window_start) ? undefined : String(row.window_start)}>
+                  {isMissing(row.window_start) ? 'Not recorded' : formatShortDay(String(row.window_start))}</td>
                 <td data-label={`Savings vs ${baseline}`}><span className="local-savings-cell">
                   <span className="local-savings-value">{text}</span>
                   {amount !== null && most > 0 && <span className="local-savings-meter" aria-hidden="true">

@@ -17,5 +17,9 @@ export function formatShare(value: unknown): string {
 
 /** A UTC calendar day ("2026-11-10") as the pages write a day: "Nov 10". */
 export function formatShortDay(day: string): string {
-  return new Date(`${day.slice(0, 10)}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  // A served day that is not a calendar date reads as served, never as "Invalid Date".
+  if (!/^\d{4}-\d{2}-\d{2}/.test(day)) return day;
+  const date = new Date(`${day.slice(0, 10)}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return day;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 }
