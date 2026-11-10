@@ -15,6 +15,9 @@ test('required field and control inventory stays available on every current page
     await page.goto('/' + route);
     await expect(page.locator('.breadcrumbs .cur')).not.toHaveText('');
     await expect(page.locator('.main')).not.toContainText(/Loading(?: runtime exposures| census|…|\.\.\.)/);
+    // OMN-23330 AC22: pages load lazily; their placeholder ("Loading <page>…", aria-busy) must be gone first, or a theme
+    // toggle lands before the page and its stylesheet, whose colour changes then transition after the wait below.
+    await expect(page.locator('main[aria-busy="true"]')).toHaveCount(0);
     if (route === 'runs') await revealRunFields(page);
     // OMN-21166 AC86 (Lakshman 2026-10-25): Overview has no Recent runs field view and no "Additional runtime metrics"
     // disclosure to open; everything it draws is in view on load.
@@ -42,6 +45,9 @@ test('text contrast is measured on real rendered backgrounds in both themes', as
     await page.goto('/' + route);
     await expect(page.locator('.breadcrumbs .cur')).not.toHaveText('');
     await expect(page.locator('.main')).not.toContainText(/Loading(?: runtime exposures| census|…|\.\.\.)/);
+    // OMN-23330 AC22: pages load lazily; their placeholder ("Loading <page>…", aria-busy) must be gone first, or a theme
+    // toggle lands before the page and its stylesheet, whose colour changes then transition after the wait below.
+    await expect(page.locator('main[aria-busy="true"]')).toHaveCount(0);
     if (route === 'runs') await revealRunFields(page);
     // OMN-21166 AC86 (Lakshman 2026-10-25): Overview has no Recent runs field view and no "Additional runtime metrics"
     // disclosure to open; everything it draws is in view on load.
