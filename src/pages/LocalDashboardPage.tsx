@@ -2246,8 +2246,13 @@ export function OverviewTrendPanel({ rows, columns, window, now }: {
     const raw = served[0]![column.key];
     return isMissing(raw) || !Number.isFinite(Number(raw)) ? null : Number(raw);
   };
+  // A count of exactly one names its unit in the singular ("1 run"); money keeps its noun ("$0.01 spend").
+  const unit = (value: number, column: DeclaredColumn) => {
+    const noun = column.header.toLowerCase();
+    return column.format !== 'currency' && value === 1 && noun.endsWith('s') ? noun.slice(0, -1) : noun;
+  };
   const say = (value: number | null, column: DeclaredColumn, compact: boolean) => (value === null ? 'not recorded'
-    : `${column.format === 'currency' ? formatUsd(value) : compact ? formatDashboardCount(value) : formatFullCount(String(value))} ${column.header.toLowerCase()}`);
+    : `${column.format === 'currency' ? formatUsd(value) : compact ? formatDashboardCount(value) : formatFullCount(String(value))} ${unit(value, column)}`);
   const visible = columns.filter(column => shown[slug(column.header)]);
   const lines = visible.map(column => {
     const values = days.map(day => valueOf(day, column));

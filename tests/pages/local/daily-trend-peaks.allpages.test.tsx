@@ -9,11 +9,15 @@
 //   P3  a line with no served value gets a label ("0", "NaN"), or a tie labels more than one day;
 //   P4  two lines peaking on the same or a near day draw their labels on top of each other;
 //   P5  a label at the first or last day leaves the plot box.
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import postcss from 'postcss';
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { MultiLinePlot, smoothPath } from '@/theme/design-system/charts';
 import { OverviewTrendPanel } from '@/pages/LocalDashboardPage';
 
+const ROOT = path.resolve(__dirname, '../../..');
 const DAYS = ['2026-11-01', '2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05'];
 const plot = (lines: Array<{ key: string; color: string; values: Array<number | null>; peak?: string }>) =>
   render(<MultiLinePlot label="Daily trend" lines={lines} keys={DAYS} labels={DAYS} hover={null} onHover={() => {}} />).container;
@@ -78,5 +82,25 @@ describe('OMN-23330 AC7: the Daily trend labels each line\'s peak', () => {
     expect(peaks(container).map(({ line, text }) => ({ line, text }))).toEqual([
       { line: 'runs', text: '9 runs' }, { line: 'spend', text: '$1.25 spend' },
     ]);
+  });
+
+  // Found by the lab Playwright run at 09186244 (readability specs): the labels drew at 11px, under the 12px floor every
+  // visible text keeps (OMN-21166), and a one-run peak read "1 runs".
+  it('P6: a peak label meets the 12px text floor', () => {
+    const css = readFileSync(path.join(ROOT, 'src/theme/design-system/charts/line-plot.css'), 'utf8');
+    const sizes: number[] = [];
+    postcss.parse(css).walkDecls('font-size', (decl) => {
+      if (/\.ins-peak/.test((decl.parent as postcss.Rule).selector)) sizes.push(parseFloat(decl.value));
+    });
+    expect(sizes.length).toBeGreaterThan(0);
+    expect(Math.min(...sizes)).toBeGreaterThanOrEqual(12);
+  });
+
+  it('P7: a peak of one names its unit in the singular', () => {
+    const rows = DAYS.map((day, index) => ({ window_kind: 'day', window_start: day, runs_total: [1, 0, 1, 0, 0][index],
+      spend_usd: ['0.01', '0', '0', '0', '0'][index] }));
+    const { container } = render(<OverviewTrendPanel rows={rows} window="all" now={Date.parse('2026-11-05T12:00:00Z')}
+      columns={[{ key: 'runs_total', header: 'Runs', format: 'number' }, { key: 'spend_usd', header: 'Spend', format: 'currency' }]} />);
+    expect(peaks(container).map(({ text }) => text)).toEqual(['1 run', '$0.01 spend']);
   });
 });

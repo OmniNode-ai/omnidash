@@ -4,25 +4,25 @@
  * above itself for the rows it draws (--ins-peak-rows). A label on the first or last day is anchored inward.
  */
 .ins-plot--multi {
-  margin-top: calc(var(--ins-peak-rows, 0) * 16px);
+  margin-top: calc(var(--ins-peak-rows, 0) * 18px);
 }
 
 .ins-plot--multi .ins-peak {
   position: absolute;
   z-index: 2;
-  transform: translate(-50%, calc(-100% - 6px - var(--ins-peak-row, 0) * 16px));
+  transform: translate(-50%, calc(-100% - 6px - var(--ins-peak-row, 0) * 18px));
   font-family: var(--ds-font-mono);
-  font-size: 11px;
+  font-size: 12px; /* the 12px floor every visible text keeps (OMN-21166) */
   font-weight: 600;
-  line-height: 14px;
+  line-height: 16px;
   white-space: nowrap;
   pointer-events: none;
 }
 
 .ins-plot--multi .ins-peak[data-align="start"] {
-  transform: translate(0, calc(-100% - 6px - var(--ins-peak-row, 0) * 16px));
+  transform: translate(0, calc(-100% - 6px - var(--ins-peak-row, 0) * 18px));
 }
 
 .ins-plot--multi .ins-peak[data-align="end"] {
-  transform: translate(-100%, calc(-100% - 6px - var(--ins-peak-row, 0) * 16px));
+  transform: translate(-100%, calc(-100% - 6px - var(--ins-peak-row, 0) * 18px));
 }

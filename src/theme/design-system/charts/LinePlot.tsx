@@ -104,7 +104,7 @@ export interface PlotLine {
 }
 
 /** How far apart (in percent of the plot's width) two peak labels may sit on one row before the second moves up a row. */
-const PEAK_ROOM = 18;
+const PEAK_ROOM = 20;
 
 /**
  * OMN-22168 (Lakshman 2026-11-04, "legend and one line chart for all"): several lines over the same days, each drawn
