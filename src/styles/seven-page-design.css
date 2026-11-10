@@ -877,6 +877,8 @@ main.ev-root .ev-maple-grid { align-items: start; }
 .ins-bar.gdb-day:is(:hover, :focus-visible) .gdb-val { visibility: visible; }
 .rb-chart .rb-plot > li > .rb-value, .rb-chart .rb-plot > li > .rb-link > .rb-value { visibility: hidden; }
 .rb-chart .rb-plot > li:is(:hover, :focus-within) > .rb-value, .rb-chart .rb-plot > li:is(:hover, :focus-within) > .rb-link > .rb-value { visibility: visible; }
+/* OMN-23330 AC6 (the operator's 2026-11-09 review): Model usage and Tier mix print every bar's runs and share. */
+.rb-chart.rb-chart--values .rb-plot > li > .rb-value, .rb-chart.rb-chart--values .rb-plot > li > .rb-link > .rb-value { visibility: visible; }
 .rb-chart .rb-plot > li { cursor: default; }
 
 /* OMN-21166 part 14 (AC75, AC76): sortable Runs headers read as the header text with an arrow; the export pair sits
@@ -949,8 +951,8 @@ main.ev-root .ev-maple-grid { align-items: start; }
   .rb-chart:not(.rb-chart--vertical) .rb-bar[data-pattern="hatched"] { border-top: 0; border-right: 2px solid currentColor; }
 }
 /* The day's total shows on hover or keyboard focus only, as on every other bar chart (live review 2026-10-26). */
-.utc-value { visibility: hidden; }
-.utc-plot > li:is(:hover, :focus-visible) .utc-value { visibility: visible; color: var(--ds-ink); }
+/* OMN-23330 AC6 (the operator's 2026-11-09 review): Usage's tokens per day prints each day's total; hover inks it. */
+.utc-plot > li:is(:hover, :focus-visible) .utc-value { color: var(--ds-ink); }
 /* Evidence's pass/fail strip: the same hatch, each part in its field colour, tall enough to read as hatching (scoped to win
    over event-dash's .ev-root .bar-track / .ev-root .ev-qg-bar). */
 main.ev-root .bar-track.ev-qg-bar { height: 14px; background: none; gap: 2px; }

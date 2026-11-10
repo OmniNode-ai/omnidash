@@ -44,7 +44,12 @@ const BASIS_WORDS: Readonly<Record<RankedBarBasis, string>> = {
   unknown: 'not measured',
 };
 
-export function RankedBars({ label, unit, items, order = 'asc', note, footnote, layout = 'auto', many = 'sideways', ceiling }: {
+export function RankedBars({ label, unit, items, order = 'asc', note, footnote, layout = 'auto', many = 'sideways', ceiling, values = 'hover' }: {
+  /**
+   * OMN-23330 AC6 (the operator's 2026-11-09 review): 'always' prints every bar's figure; 'hover' (the 2026-10-25 ruling,
+   * "show them when hover") reveals it on pointer or keyboard focus. Every bar's accessible name carries it either way.
+   */
+  values?: 'hover' | 'always';
   /**
    * A share's whole, e.g. 100 for a percentage (Lakshman 2026-11-05, "all bargraph should fill like this", for share bars
    * only): each bar is scaled against it, not against the largest bar, and its figure is always shown. Left out for
@@ -77,7 +82,7 @@ export function RankedBars({ label, unit, items, order = 'asc', note, footnote, 
   // runs sideways. Every drawn item counts, an unserved outline included.
   const sideways = layout === 'vertical' && many === 'sideways' && ordered.length > 10;
   return (
-    <figure className={`rb-chart${layout === 'vertical' && !sideways ? ' rb-chart--vertical' : ''}${sideways ? ' rb-chart--rows' : ''}${ceiling !== undefined ? ' rb-chart--share' : ''} rb-chart--filled`} aria-label={label}>
+    <figure className={`rb-chart${layout === 'vertical' && !sideways ? ' rb-chart--vertical' : ''}${sideways ? ' rb-chart--rows' : ''}${ceiling !== undefined ? ' rb-chart--share' : ''}${values === 'always' ? ' rb-chart--values' : ''} rb-chart--filled`} aria-label={label}>
       <figcaption className="rb-head">
         <span className="rb-unit">{unit}</span>
         {note}
