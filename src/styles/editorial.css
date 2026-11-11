@@ -226,6 +226,12 @@ html body :is(.local-dashboard-page, .ev-root) .local-model-identity::before {
 .local-dashboard-page--runs [data-component="recent-runs"] .local-recent-toolbar input[type="checkbox"]:checked { background: var(--ds-hue-blue); }
 .local-dashboard-page--runs [data-component="recent-runs"] .local-recent-toolbar input[type="checkbox"]:checked::before { transform: translateX(12px); background: var(--ds-on-accent); }
 .local-dashboard-page--runs [data-component="recent-runs"] .local-recent-toolbar input[type="checkbox"]:focus-visible { outline: 2px solid var(--ds-hue-blue); outline-offset: 2px; }
+/* OMN-23330 (Lakshman 2026-11-11, "both toggle different color"): each switch wears its own field colour (its wrapper's
+   data-field-tone): a tint of it on the track when off, the colour itself when on, on its focus ring and its info icon. */
+html body .local-dashboard-page--runs .local-recent-switch[data-field-tone] input[type="checkbox"]:not(#ds-important) {
+  background: color-mix(in oklab, var(--field-ink) 30%, var(--ds-line-strong)); }
+html body .local-dashboard-page--runs .local-recent-switch[data-field-tone] input[type="checkbox"]:checked:not(#ds-important) { background: var(--field-ink); }
+html body .local-dashboard-page--runs .local-recent-switch[data-field-tone] input[type="checkbox"]:focus-visible:not(#ds-important) { outline-color: var(--field-ink); }
 .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-export { margin-left: auto; display: inline-flex; gap: 6px; }
 .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-export button {
   height: 32px; min-height: 32px; padding: 0 12px; border: 1px solid var(--ds-line); background: transparent;

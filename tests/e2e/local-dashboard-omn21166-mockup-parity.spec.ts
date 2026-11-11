@@ -145,6 +145,9 @@ test('AC27 Runs filters by UTC day and task, then shows the selected run without
   await pickFilter(page, 'Task', 'all');
   await expect(page.getByRole('row', { name: /run-yesterday/ })).toBeVisible();
 
+  // OMN-23330 (2026-11-11): the run dialog shows the fields the table shows; these checks read the extra fields, so they
+  // switch them on first, as a reader would.
+  await page.getByRole('checkbox', { name: 'Show all run fields' }).check();
   await page.getByRole('row', { name: /run-today-unmeasured/ }).click();
   // OMN-23330 (2026-11-11): a row opens the run in a centred dialog, still named Selected run.
   const selected = page.getByRole('dialog', { name: 'Selected run' });
@@ -164,14 +167,17 @@ test('AC27 Runs filters by UTC day and task, then shows the selected run without
 test('AC27 selected failed run shows its served result, time, cause, route facts and quality comparison', async ({ page }) => {
   await serveCharts(page, fixtureRows());
   await page.goto('/runs');
+  // OMN-23330 (2026-11-11): the run dialog shows the fields the table shows; these checks read the extra fields, so they
+  // switch them on first, as a reader would.
+  await page.getByRole('checkbox', { name: 'Show all run fields' }).check();
   await page.getByRole('row', { name: /run-today-fail/ }).click();
   // OMN-23330 (2026-11-11): a row opens the run in a centred dialog, still named Selected run.
   const selected = page.getByRole('dialog', { name: 'Selected run' });
   await expect(selected.locator('.local-run-pill')).toHaveText('failed');
   await expect(selected.locator('time')).toHaveAttribute('datetime', at(0, '09:30'));
-  // OMN-21166 (readable task names, 0d7d6df3): a task is written "code generation", not its served key.
-  await expect(selected.locator('.local-task-cell')).toContainText('code generation');
   for (const [label, value] of [
+    // OMN-21166 (readable task names, 0d7d6df3): a task is written "code generation", not its served key.
+    ['Task', 'code generation'],
     // Dev #455 (failure codes out of readable run details): the served "RATE_LIMIT: provider refused" reads "provider refused".
     ['Cause', 'provider refused'], ['Model', 'model-b'],
     // OMN-21166 AC54 / AC55: a tier and a duration are written as words ("Cloud", "1.2 s"), not as served (cloud, 1200 ms).

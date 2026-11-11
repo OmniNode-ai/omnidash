@@ -548,11 +548,13 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
           <h3 className="local-visually-hidden" data-page-heading tabIndex={-1}>Run list</h3>
           {/* Lakshman 2026-11-04: each view switch has an info icon beside it that says, on hover or keyboard focus, what
               the switch adds to the table. */}
-          <p className="local-dashboard-caption local-recent-toolbar"><span className="local-recent-switch"><label>
+          {/* Lakshman 2026-11-11: each switch wears its own field colour on its track and info icon, and its tooltip is the
+              column headers' tinted card in that colour (the kit's ds-column-tip). */}
+          <p className="local-dashboard-caption local-recent-toolbar"><span className="local-recent-switch ds-column-tip" data-field-tone="run-details"><label>
             <input type="checkbox" data-identity-decoration="switch" checked={showAllFields} onChange={event => setShowAllFields(event.target.checked)} aria-controls={`${id}-table`} />
             Show all run fields
           </label><InfoTip side="bottom" label="About Show all run fields" text={RUN_FIELDS_TIP} /></span>
-          <span className="local-recent-switch"><label>
+          <span className="local-recent-switch ds-column-tip" data-field-tone="routing"><label>
             <input type="checkbox" data-identity-decoration="switch" checked={showRouting} onChange={event => setShowRouting(event.target.checked)} aria-controls={`${id}-table`} />
             Routing columns
           </label><InfoTip side="bottom" label="About Routing columns" text={ROUTING_COLUMNS_TIP} /></span>
@@ -679,35 +681,45 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
             <p className="local-dashboard-caption local-run-selected-facts">
               <OutcomePill value={statusOf(selectedRun)} />
               <CellTime value={selectedRun.created_at} />
-              {!isMissing(selectedRun.task_type)
-                ? <span className="local-task-cell"><TaskIcon task={String(selectedRun.task_type)} />{taskLabel(selectedRun.task_type)}</span>
-                : <span>{recorded(selectedRun.task_type)}</span>}
             </p>
+            {/* Lakshman 2026-11-11: the dialog shows the fields the table shows, in its order: with both switches off the
+                default columns, and "Show all run fields" and "Routing columns" add theirs as they add columns. The status
+                and time head the dialog; a failed run's cause goes with its status. */}
             <FactList look="cards">
-              <Fact term={<><ConceptIcon concept="task" size={13} />Task</>} data-field-tone="task">{isMissing(selectedRun.task_type) ? recorded(selectedRun.task_type) : taskLabel(selectedRun.task_type)}</Fact>
-              <Fact term={<><ConceptIcon concept="failures" size={13} />Cause</>} data-field-tone="failures"><span className="local-runs-cause" data-failure-cause={causeOf(selectedRun)} title={causeTextOf(selectedRun)}>{causeTextOf(selectedRun)}</span></Fact>
-              <Fact term={<><ConceptIcon concept="model" size={13} />Model</>} data-field-tone="model">{modelOrUnknown(selectedRun.model_name)}</Fact>
-              <Fact term={<><ConceptIcon concept="routing-model" size={13} />Requested model</>} data-field-tone="routing-model">{recorded(selectedRun.requested_model)}</Fact>
-              <Fact term={<><ConceptIcon concept="backend" size={13} />Backend</>} data-field-tone="backend">{recorded(selectedRun.backend_id)}</Fact>
-              <Fact term={<><ConceptIcon concept="host" size={13} />Host</>} data-field-tone="host">{recorded(selectedRun.host)}</Fact>
-              <Fact term={<><ConceptIcon concept="tier" size={13} />Route tier</>} data-field-tone="tier">{tierOf(selectedRun)}</Fact>
-              <Fact term={<><ConceptIcon concept="completion" size={13} />Finish reason</>} data-field-tone="completion">{recorded(selectedRun.finish_reason)}</Fact>
-              <Fact term={<><ConceptIcon concept="escalated" size={13} />Escalations</>} data-field-tone="escalated">{recorded(selectedRun.escalation_count)}</Fact>
-              <Fact term={<><ConceptIcon concept="duration" size={13} />Duration</>} data-field-tone="duration">{duration(selectedRun.latency_ms)}</Fact>
-              <Fact term={<><ConceptIcon concept="cost" size={13} />Cost</>} data-field-tone="cost">{costOf(selectedSession, selectedRun)}</Fact>
-              <Fact term={<><ConceptIcon concept="tokens-in" size={13} />Tokens in</>} data-field-tone="tokens-in" data-field-unavailable={isMissing(selectedRun.tokens_input)} valueTitle={tokensTitle(selectedRun.tokens_input, 'in')}>{recordedTokens(selectedRun.tokens_input)}</Fact>
-              <Fact term={<><ConceptIcon concept="tokens-out" size={13} />Tokens out</>} data-field-tone="tokens-out" data-field-unavailable={isMissing(selectedRun.tokens_output)} valueTitle={tokensTitle(selectedRun.tokens_output, 'out')}>{recordedTokens(selectedRun.tokens_output)}</Fact>
-              <Fact term={<><ConceptIcon concept="savings" size={13} />Modelled saving</>} data-field-tone="savings">{runModelledCell(selectedRun)}</Fact>
-              <Fact term={<><ConceptIcon concept="baseline" size={13} />Baseline model</>} data-field-tone="baseline">{recorded(isMissing(selectedRun.savings_baseline_model) ? selectedSession?.baseline_model : selectedRun.savings_baseline_model)}</Fact>
-              <Fact term={<><ConceptIcon concept="basis" size={13} />Basis</>} data-field-tone="basis">{recorded(selectedSession?.usage_source)}</Fact>
-              <Fact term={<><ConceptIcon concept="score" size={13} />Quality score</>} data-field-tone="score">{recorded(selectedRun.actual_score)}
-                <Meter kind="selected-quality" label="Quality score versus required bar" min={0} max={1} now={selectedScore}
-                  valueText={`Quality score ${recorded(selectedRun.actual_score)}; required bar ${recorded(selectedRun.required_bar)}`}
-                  share={selectedScore} mark={Number.isFinite(selectedRequiredBar) ? selectedRequiredBar : null} />
-              </Fact>
-              <Fact term={<><ConceptIcon concept="threshold" size={13} />Required bar</>} data-field-tone="threshold">{isMissing(selectedRun.required_bar) ? 'bar not recorded' : recorded(selectedRun.required_bar)}</Fact>
+              {[RUN_OUTCOME_FACT, ...shownNow].flatMap(concept => {
+                const run = selectedRun;
+                switch (concept) {
+                  case RUN_OUTCOME_FACT: return [<Fact key="Cause" term={<><ConceptIcon concept="failures" size={13} />Cause</>} data-field-tone="failures"><span className="local-runs-cause" data-failure-cause={causeOf(run)} title={causeTextOf(run)}>{causeTextOf(run)}</span></Fact>];
+                  case 'model': return [<Fact key="Model" term={<><ConceptIcon concept="model" size={13} />Model</>} data-field-tone="model">{modelOrUnknown(run.model_name)}</Fact>];
+                  case 'tokens': return [
+                    <Fact key="Tokens in" term={<><ConceptIcon concept="tokens-in" size={13} />Tokens in</>} data-field-tone="tokens-in" data-field-unavailable={isMissing(run.tokens_input)} valueTitle={tokensTitle(run.tokens_input, 'in')}>{recordedTokens(run.tokens_input)}</Fact>,
+                    <Fact key="Tokens out" term={<><ConceptIcon concept="tokens-out" size={13} />Tokens out</>} data-field-tone="tokens-out" data-field-unavailable={isMissing(run.tokens_output)} valueTitle={tokensTitle(run.tokens_output, 'out')}>{recordedTokens(run.tokens_output)}</Fact>];
+                  case 'cost': return [<Fact key="Cost" term={<><ConceptIcon concept="cost" size={13} />Cost</>} data-field-tone="cost">{costOf(selectedSession, run)}</Fact>];
+                  case 'savings': return [<Fact key="Modelled saving" term={<><ConceptIcon concept="savings" size={13} />Modelled saving</>} data-field-tone="savings">{runModelledCell(run)}</Fact>];
+                  case 'duration': return [<Fact key="Duration" term={<><ConceptIcon concept="duration" size={13} />Duration</>} data-field-tone="duration">{duration(run.latency_ms)}</Fact>];
+                  case 'backend': return [<Fact key="Backend" term={<><ConceptIcon concept="backend" size={13} />Backend</>} data-field-tone="backend">{recorded(run.backend_id)}</Fact>];
+                  case 'host': return [<Fact key="Host" term={<><ConceptIcon concept="host" size={13} />Host</>} data-field-tone="host">{recorded(run.host)}</Fact>];
+                  case 'baseline': return [<Fact key="Baseline model" term={<><ConceptIcon concept="baseline" size={13} />Baseline model</>} data-field-tone="baseline">{recorded(isMissing(run.savings_baseline_model) ? selectedSession?.baseline_model : run.savings_baseline_model)}</Fact>];
+                  case 'basis': return [<Fact key="Basis" term={<><ConceptIcon concept="basis" size={13} />Basis</>} data-field-tone="basis">{recorded(selectedSession?.usage_source)}</Fact>];
+                  case 'task': return [<Fact key="Task" term={<><ConceptIcon concept="task" size={13} />Task</>} data-field-tone="task">{isMissing(run.task_type) ? recorded(run.task_type) : taskLabel(run.task_type)}</Fact>];
+                  case 'tokens-completion': return [<Fact key="Tokens to compliance" term={<><ConceptIcon concept="tokens-completion" size={13} />Tokens to compliance</>} data-field-tone="tokens-completion">{recordedTokens(run.tokens_to_compliance)}</Fact>];
+                  case 'tier': return [<Fact key="Route tier" term={<><ConceptIcon concept="tier" size={13} />Route tier</>} data-field-tone="tier">{tierOf(run)}</Fact>];
+                  case 'score': return [
+                    <Fact key="Quality score" term={<><ConceptIcon concept="score" size={13} />Quality score</>} data-field-tone="score">{recorded(run.actual_score)}
+                      <Meter kind="selected-quality" label="Quality score versus required bar" min={0} max={1} now={selectedScore}
+                        valueText={`Quality score ${recorded(run.actual_score)}; required bar ${recorded(run.required_bar)}`}
+                        share={selectedScore} mark={Number.isFinite(selectedRequiredBar) ? selectedRequiredBar : null} />
+                    </Fact>,
+                    <Fact key="Required bar" term={<><ConceptIcon concept="threshold" size={13} />Required bar</>} data-field-tone="threshold">{isMissing(run.required_bar) ? 'bar not recorded' : recorded(run.required_bar)}</Fact>];
+                  case 'routing-model': return [<Fact key="Requested model" term={<><ConceptIcon concept="routing-model" size={13} />Requested model</>} data-field-tone="routing-model">{recorded(run.requested_model)}</Fact>];
+                  case 'completion': return [<Fact key="Finish reason" term={<><ConceptIcon concept="completion" size={13} />Finish reason</>} data-field-tone="completion">{recorded(run.finish_reason)}</Fact>];
+                  case 'escalated': return [<Fact key="Escalations" term={<><ConceptIcon concept="escalated" size={13} />Escalations</>} data-field-tone="escalated">{recorded(run.escalation_count)}</Fact>];
+                  default: return [];
+                }
+              })}
             </FactList>
-            <p className="local-dashboard-caption"><Link href={workflowHref(String(selectedRun.correlation_id))}>Open full run</Link></p>
+            {/* A link that reads as one (2026-11-11, "should be like clickable link"): the run-link colour, with an arrow. */}
+            <p className="local-run-open"><Link className="ds-run-link" href={workflowHref(String(selectedRun.correlation_id))}>Open full run<ArrowUpRight size={14} aria-hidden="true" /></Link></p>
             </div>}
           </Dialog>
           </div>
@@ -862,6 +874,8 @@ export function runModelColumnWidth(runs: readonly Row[]): number {
   const fit = Math.ceil(longest * MODEL_CHAR_PX) + MODEL_CELL_PADDING_PX;
   return Math.min(RUN_COLUMN_WIDTHS.model!, Math.max(MODEL_COLUMN_MIN_PX, fit));
 }
+/** The dialog's first fact, a failed run's cause, which goes with its status at the dialog's head. */
+const RUN_OUTCOME_FACT = 'outcome-cause';
 const RUN_DEFAULT_COLUMNS = ['identity', 'age', 'run-outcome', 'model', 'tokens', 'cost', 'savings', 'duration'];
 const RUN_EXTRA_COLUMNS = ['backend', 'host', 'baseline', 'basis', 'task', 'tokens-completion', 'tier', 'score'];
 const RUN_ROUTING_COLUMNS = ['routing-model', 'completion', 'escalated'];

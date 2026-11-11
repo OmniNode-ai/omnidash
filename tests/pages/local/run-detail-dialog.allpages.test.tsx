@@ -11,6 +11,8 @@
 //   R4  the old side panel is still drawn beside the table.
 //   R5  when the run leaves the shown runs (a refresh or a filter), the dialog switches to another run instead of closing
 //       (the side panel's rule: a reader of the dialog would be shown a run they did not open).
+//   R6  the dialog's fields do not follow the table's columns (operator 2026-11-11: with both switches off it shows what
+//       the table shows; "Show all run fields" and "Routing columns" add their fields to it as they add columns).
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { RunsTable } from '@/pages/LocalDashboardPage';
@@ -25,6 +27,8 @@ const run: Record<string, unknown> = {
   created_at: '2026-10-24T05:10:00Z', written_at: '2026-10-24T05:10:00Z',
 };
 
+const terms = (dialog: HTMLElement) => [...dialog.querySelectorAll('dt')].map(term => term.textContent);
+
 function openRun() {
   render(<RunsTable now={NOW} decisions={[run]} sessions={[]} />);
   const row = screen.getAllByRole('row').slice(1)[0]!;
@@ -34,17 +38,36 @@ function openRun() {
 }
 
 describe('OMN-23330: a run row opens a centred dialog with the full run', () => {
-  it('R1 R4: a modal dialog names the run and lists every recorded field; no side panel', () => {
+  it('R1 R4: a modal dialog names the run and lists the fields the table shows; no side panel', () => {
     openRun();
     const dialog = screen.getByRole('dialog', { name: 'Selected run' });
     expect(dialog.getAttribute('aria-modal')).toBe('true');
     expect(dialog.textContent).toContain('ab728126-ec55-473c-b544-cd206379fa32');
-    for (const [term, value] of [['Model', 'Qwen3.8-27B'], ['Requested model', 'qwen-coder'], ['Backend', 'local-coder'], ['Host', 'lab-201'],
-      ['Task', 'document'], ['Duration', '1.8 s'], ['Tokens in', '604'], ['Tokens out', '102'], ['Required bar', '0.8']] as const) {
-      const fact = within(dialog).getByText(term, { selector: 'dt' }).closest('div, dl')!;
-      expect(fact.textContent, term).toContain(value);
+    expect(terms(dialog)).toEqual(['Cause', 'Model', 'Tokens in', 'Tokens out', 'Cost', 'Modelled saving', 'Duration']);
+    for (const [term, value] of [['Model', 'Qwen3.8-27B'], ['Duration', '1.8 s'], ['Tokens in', '604'], ['Tokens out', '102']] as const) {
+      expect(within(dialog).getByText(term, { selector: 'dt' }).closest('div')!.textContent, term).toContain(value);
     }
     expect(screen.queryByRole('complementary', { name: 'Selected run' })).toBeNull();
+  });
+
+  it('R6: each switch adds its columns\' fields to the dialog, in the table\'s order', () => {
+    openRun();
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Show all run fields' }));
+    fireEvent.click(screen.getAllByRole('row').slice(1)[0]!.cells[2]!);
+    expect(terms(screen.getByRole('dialog'))).toEqual(['Cause', 'Model', 'Tokens in', 'Tokens out', 'Cost', 'Modelled saving', 'Duration',
+      'Backend', 'Host', 'Baseline model', 'Basis', 'Task', 'Tokens to compliance', 'Route tier', 'Quality score', 'Required bar']);
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Routing columns' }));
+    fireEvent.click(screen.getAllByRole('row').slice(1)[0]!.cells[2]!);
+    const all = terms(screen.getByRole('dialog'));
+    expect(all.slice(-3)).toEqual(['Requested model', 'Finish reason', 'Escalations']);
+    expect(within(screen.getByRole('dialog')).getByText('Requested model', { selector: 'dt' }).closest('div')!.textContent).toContain('qwen-coder');
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Show all run fields' }));
+    fireEvent.click(screen.getAllByRole('row').slice(1)[0]!.cells[2]!);
+    expect(terms(screen.getByRole('dialog'))).toEqual(['Cause', 'Model', 'Tokens in', 'Tokens out', 'Cost', 'Modelled saving', 'Duration',
+      'Requested model', 'Finish reason', 'Escalations']);
   });
 
   it('R2: Escape closes the dialog and returns focus to the row', () => {

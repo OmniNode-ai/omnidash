@@ -117,5 +117,10 @@ main.ev-root[data-destination="delegation-evidence"] .ev-selected-run-layout > :
 /* OMN-23330 (Lakshman 2026-11-11, "link should be blue color"): a run's id opens its path on Workflow, so it wears the
    link colour wherever it is drawn (Runs, Workflow, Delegation Evidence), outranking the two id-weighted rules that draw
    dashboard links and the Runs table's links in ink. */
-html body :is(.local-dashboard-page, main.ev-root) a.ds-run-link:not(#ds-important) { color: var(--ds-link); text-decoration-color: color-mix(in oklab, var(--ds-link) 45%, transparent); }
-html body :is(.local-dashboard-page, main.ev-root) a.ds-run-link:hover:not(#ds-important) { text-decoration-color: var(--ds-link); }
+html body :is(.local-dashboard-page, main.ev-root) a.ds-run-link:not(#ds-important),
+/* The kit dialog is drawn in the document body, outside the pages: a run link inside it is blue too (2026-11-11). */
+html body .ds-dialog a.ds-run-link:not(#ds-important) { color: var(--ds-link); text-decoration-color: color-mix(in oklab, var(--ds-link) 45%, transparent); }
+html body .ds-dialog .local-run-open a.ds-run-link:not(#ds-important) { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; font-size: 14px;
+  text-decoration: underline; text-underline-offset: 3px; }
+html body .ds-dialog .local-run-open { margin: 14px 0 0; }
+html body :is(.local-dashboard-page, main.ev-root, .ds-dialog) a.ds-run-link:hover:not(#ds-important) { text-decoration-color: var(--ds-link); }
