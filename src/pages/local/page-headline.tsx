@@ -247,7 +247,7 @@ export function QualityCard({ row, change = null }: { row: Row | null; change?: 
   const count = (value: unknown) => (isMissing(value) || !Number.isFinite(Number(value)) ? 'Not recorded' : formatFullCount(String(value)));
   return <>
     <Figure measured><CountUpText text={`${fmtFixed((Number(row.overall_pass_rate) * 100), 1)}%`} /></Figure>
-    {change && <ChangeLine text={change} />}
+    {change && <ChangeLine text={change} meaning={changeMeaning('quality')} />}
     <HeadlineHover label="Delegation Quality" lines={[`${count(row.total_passed)} of ${count(row.total_checks)} runs passed the quality gate`,
       `${count(row.total_failed)} failed · deterministic checks`, 'All time: the window above does not change this figure']} />
   </>;
@@ -263,9 +263,23 @@ export function unbroken(name: string): string {
   return name.replace(/-/g, '\u2011');
 }
 
-export function ChangeLine({ text }: { text: string }) {
+/**
+ * OMN-23330 AC33 (operator, chat 2026-11-11, from a benchmark of 20 open-source dashboards): what a card's change means.
+ * Savings and Delegation Quality: up is good. Actual spend: up is a warning. Agent calls and Tokens processed are volume,
+ * neither good nor bad, so their change stays neutral.
+ */
+export type ChangeMeaning = 'up-good' | 'up-bad' | 'neutral';
+export function changeMeaning(metricKey: string): ChangeMeaning {
+  if (metricKey === 'spend_usd') return 'up-bad';
+  if (metricKey === 'savings_usd' || metricKey === 'quality') return 'up-good';
+  return 'neutral';
+}
+
+export function ChangeLine({ text, meaning = 'neutral' }: { text: string; meaning?: ChangeMeaning }) {
   const sign = /(?:^|\s)([+\u2212])\d/.exec(text)?.[1];
-  return <p className="local-card-change">
+  // AC33: only a signed figure has a direction to colour; "No change", "No earlier data" and "New this period" stay neutral.
+  const tone = sign && meaning !== 'neutral' ? ((sign === '+') === (meaning === 'up-good') ? 'good' : 'warn') : undefined;
+  return <p className="local-card-change" data-tone={tone}>
     {sign && <span className="local-card-change-arrow" aria-hidden="true">{sign === '+' ? '\u2191' : '\u2193'}</span>}
     <span className="local-card-change-text">{text}</span>
   </p>;
@@ -313,7 +327,7 @@ export function RunLocallyCard({ row }: { row: Record<string, unknown> | null })
 }
 
 /** The Tokens card's widget key: two served columns shown side by side, never summed (SV-3: no combined total). */
-const TOKENS_IN_AND_OUT = 'tokens_in_and_out';
+export const TOKENS_IN_AND_OUT = 'tokens_in_and_out';
 /**
  * The Overview's spend and savings cards, by component, under both headline sources (OMN-21304 AC4). Named by card,
  * not by field, so no savings field is read by name here (OMN-19980 R4).
@@ -712,7 +726,7 @@ export function MeteringTotalCard({ component, config, rows, window = 'all', now
     return <>
       <MetricCard component={figureComponent} config={config} row={row} caption={null} />
       {/* Part 19 AC133: the change against the previous window of the same length, only on a 7, 15 or 30 day window. */}
-      {(() => { const change = periodChangeLine(rows, window, config.metric_key, row); return change && <ChangeLine text={change} />; })()}
+      {(() => { const change = periodChangeLine(rows, window, config.metric_key, row); return change && <ChangeLine text={change} meaning={changeMeaning(config.metric_key)} />; })()}
       {/* OMN-20008 L6: no figure, no line: the percentage shows only beside a measured saving with a named, resolved baseline. */}
       <HeadlineHover label={component.title} lines={headlineHoverLines(component.component_id, row,
         row.baseline_state === 'unresolved' || isMissing(row[config.metric_key]) || isMissing(row.baseline_model) ? null : pct, window)} />

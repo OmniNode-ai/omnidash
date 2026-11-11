@@ -866,6 +866,11 @@ main :is(.ev-title-icon, .local-dashboard-page-icon) svg:not(#ds-important),
 :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) a:not(.dash-item):not(.local-card-link):not(.rb-link):not(.local-settings-link):hover { text-decoration-color: currentColor; }
 .local-dashboard-page details.local-run-failure > summary { color: var(--ds-ink-2); }
 .local-overview-summary .local-card-change { color: var(--ds-ink-2); }
+/* OMN-23330 AC33: a change coloured by what it means; the arrow inherits it. Warn text is darkened in the light theme as
+   the range labels are (80% warn, 20% shadow ink), so it keeps 4.5:1 on the card. */
+.local-overview-summary .local-card-change[data-tone="good"] { color: var(--ds-field-pass); }
+.local-overview-summary .local-card-change[data-tone="warn"] { color: color-mix(in oklab, var(--ds-warn) 80%, var(--ds-shadow-ink)); }
+[data-theme="dark"] .local-overview-summary .local-card-change[data-tone="warn"] { color: var(--ds-warn); }
 .local-runs-week-days > div[data-selected="true"] { border-color: var(--ds-ink-3); box-shadow: inset 0 0 0 1px var(--ds-ink-3); }
 
 /* AC179: the headline card's details are a neutral popover under the card (placed by CardBasis); no arrow, no tint. */
