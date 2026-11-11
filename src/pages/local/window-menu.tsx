@@ -19,11 +19,41 @@ function WindowIcon({ value }: { value: string | undefined }) {
 
 export interface WindowMenuOption { value: string; label: string; name: string; checked: boolean; onSelect: () => void }
 
+/**
+ * OMN-23330 AC36 (operator, chat 2026-11-11, from a benchmark of 20 open-source dashboards): one key per window. A key
+ * never acts while the reader types in a field, or with Ctrl, Cmd or Alt held (those are the browser's own shortcuts).
+ */
+const WINDOW_KEYS: readonly (readonly [key: string, value: string, name: string])[] = [
+  ['A', 'all', 'All time'], ['T', 'today', 'Today'], ['W', 'last-7', 'Last 7 days'],
+  ['F', 'last-15', 'Last 15 days'], ['M', 'last-30', 'Last 30 days'], ['Q', 'last-90', 'Last 90 days'],
+];
+function typingIn(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return target.isContentEditable || target.getAttribute('contenteditable') === 'true' || target.getAttribute('contenteditable') === ''
+    || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName);
+}
+
 export function WindowMenu({ labelledBy, options, current }: { labelledBy: string; options: readonly WindowMenuOption[]; current: string }) {
   const [open, setOpen] = useState(false);
+  const [keysShown, setKeysShown] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const listId = useId();
+  const latest = useRef(options);
+  latest.current = options;
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.ctrlKey || event.metaKey || event.altKey || typingIn(event.target)) return;
+      if (event.key === 'Escape') { setKeysShown(false); return; }
+      if (event.key === '?') { setKeysShown(value => !value); event.preventDefault(); return; }
+      const entry = WINDOW_KEYS.find(([key]) => key === event.key.toUpperCase());
+      const option = entry ? latest.current.find(candidate => candidate.value === entry[1]) : undefined;
+      if (option) { option.onSelect(); setOpen(false); event.preventDefault(); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -50,6 +80,11 @@ export function WindowMenu({ labelledBy, options, current }: { labelledBy: strin
           {option.checked && <Check size={16} aria-hidden="true" />}
         </button>
       ))}
+    </div>}
+    {/* AC36: "?" lists the keys; Escape or "?" again closes the list. */}
+    {keysShown && <div role="dialog" aria-label="Keyboard shortcuts" className="local-window-keys">
+      <dl>{WINDOW_KEYS.map(([key, , name]) => <div key={key}><dt><kbd>{key}</kbd></dt><dd>{name}</dd></div>)}
+        <div><dt><kbd>?</kbd></dt><dd>Show or hide this list</dd></div></dl>
     </div>}
   </div>;
 }
