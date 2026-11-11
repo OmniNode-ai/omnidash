@@ -43,6 +43,8 @@
 //   I21 a grouped-bar table keeps the generic "Name" row header (Usage's Cost per run by UTC day and Token counts by
 //       model, live sweep 2026-11-11).
 //   I22 the run timing table's name column is uncoloured (live sweep of Workflow, 2026-11-11).
+//   I23 a day table lists the oldest day first, so today is at the bottom of a long scroll (operator 2026-11-11:
+//       "current date should be top").
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
@@ -76,7 +78,8 @@ describe('OMN-23330 AC37 follow-up: a chart table reads like the Runs table', ()
   });
 
   it('I3 I4 I5 I7: values are written as the pages write them and wear their column tone', () => {
-    const [first, second] = within(dailyTrendTable()).getAllByRole('row').slice(1);
+    // Newest day first (I23): Sep 30, not recorded, then Sep 29.
+    const [second, first] = within(dailyTrendTable()).getAllByRole('row').slice(1);
     expect([...first!.querySelectorAll('th, td')].map(cell => cell.textContent)).toEqual(['Sep 29', '2', '254', '12', '$0.00', '$0.0006']);
     expect([...first!.querySelectorAll('td')].map(cell => cell.getAttribute('data-field-tone'))).toEqual(['calls', 'tokens-in', 'tokens-out', 'cost', 'savings']);
     for (const cell of first!.querySelectorAll('td')) expect(cell.getAttribute('data-field-unavailable')).toBe('false');
@@ -305,5 +308,16 @@ describe('OMN-23330 AC37 follow-up: a chart table reads like the Runs table', ()
     fireEvent.click(screen.getByRole('button', { name: 'Show as table: Run timing' }));
     const heads = within(screen.getByRole('table', { name: 'Run timing as a table' })).getAllByRole('columnheader');
     expect(heads.map(head => [head.textContent, head.getAttribute('data-field-tone')])).toEqual([['Timing', 'timing'], ['Duration', 'duration']]);
+  });
+
+  it('I23: a day table lists the newest day first; rows that are not days keep their order', () => {
+    const days = within(dailyTrendTable()).getAllByRole('row').slice(1).map(row => row.querySelector('th')!.textContent);
+    expect(days).toEqual(['Sep 30', 'Sep 29']);
+    cleanup();
+    render(<TierMix nameOf={t => (t === 'local' ? 'Local' : 'Cloud')}
+      shares={{ segments: [{ name: 'local', share: 0.7, count: 70 }, { name: 'cloud', share: 0.3, count: 30 }], unmeasured: [] }} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Show as table: Tier mix' }));
+    expect(within(screen.getByRole('table', { name: 'Tier mix as a table' })).getAllByRole('row').slice(1).map(row => row.querySelector('th')!.textContent))
+      .toEqual(['Local', 'Cloud']);
   });
 });

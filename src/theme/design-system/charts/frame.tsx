@@ -166,6 +166,11 @@ export function ChartTable({ label, shape, columns, rows, rowColors, rowInkColum
   const ShapeIcon = SHAPE_ICONS[shape];
   const layout = columns.map((column, index) => tableColumn(column, index, label));
   const totalWeight = layout.reduce((sum, column, at) => sum + columnWeight(column, at), 0);
+  // A day table lists the newest served day first, so today is at the top (operator 2026-11-11: "current date should be
+  // top"); rows that are not calendar days keep the chart's order.
+  const byDay = layout[0]?.kind === 'day' && rows.every(row => typeof row[0] === 'string' && /^\d{4}-\d{2}-\d{2}/.test(row[0]));
+  const order = rows.map((_, index) => index);
+  if (byDay) order.sort((a, b) => String(rows[b]![0]).localeCompare(String(rows[a]![0])));
   // The switch follows the plot in the page (keyboard order: the chart's own controls, then the switch) and is shown
   // above it by the stylesheet.
   return <div className="ds-chart-table-frame" data-as-table={asTable ? 'true' : 'false'}>
@@ -178,7 +183,7 @@ export function ChartTable({ label, shape, columns, rows, rowColors, rowInkColum
             {/* The kit's column tooltip, the one every table's headers use (operator 2026-11-11: "one design system"). */}
             <ColumnTip tone={column.tone ?? ''} tip={columnTip(column, at)}>
               <span className="ds-chart-table-head" tabIndex={0}><ColumnIcon column={column} />{column.label}</span></ColumnTip></th>)}</tr></thead>
-          <tbody>{rows.map((row, index) => {
+          <tbody>{order.map(index => { const row = rows[index]!;
             // A named row (a tier, a model) wears the colour its bar wears on its name (with a swatch) and its share value.
             const rowInk = rowColors?.[index] ?? null;
             const rowStyle = rowInk ? { '--row-ink': rowInk } as CSSProperties : undefined;
