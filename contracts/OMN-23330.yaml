@@ -790,3 +790,44 @@ dod_evidence:
           uv run --no-project --python 3.12 --with pytest --with pyyaml python -m pytest
           tests/ci/test_closer_proof_forms_omn23330.py -q --noconftest -p no:cacheprovider -c /dev/null
         cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac38-accepted-20261111t1545z"
+    description: "AC38 accepted binding (lane=dod-closeout-accept-2026-11-11T1545Z-c0): proposed by lane=dod-closeout-bind-2026-11-11T1545Z-c0, re-run green on omnidash origin/dev 5910e98b in a clean worktree on 2026-11-11."
+    source: "manual"
+    binds_ac: ["AC38"]
+    checks:
+      - check_type: "command"
+        check_value: "npm run test:e2e -- tests/e2e/one-design-system-title-scroll.spec.ts --project=chromium --workers=1 --retries=0"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac41-accepted-20261111t1545z"
+    description: "AC41 accepted binding (lane=dod-closeout-accept-2026-11-11T1545Z-c0): proposed by lane=dod-closeout-bind-2026-11-11T1545Z-c0, re-run green on omnidash origin/dev 5910e98b in a clean worktree on 2026-11-11."
+    source: "manual"
+    binds_ac: ["AC41"]
+    checks:
+      - check_type: "command"
+        check_value: "npm test -- run tests/design-system/chart-table-money.allpages.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac42-accepted-20261111t1545z"
+    description: "AC42 accepted binding (lane=dod-closeout-accept-2026-11-11T1545Z-c0): proposed by lane=dod-closeout-bind-2026-11-11T1545Z-c0, re-run green on omnidash origin/dev 5910e98b in a clean worktree on 2026-11-11."
+    source: "manual"
+    binds_ac: ["AC42"]
+    checks:
+      - check_type: "command"
+        check_value: "uv run --no-project --python 3.12 --with pytest --with pyyaml python -m pytest tests/ci/test_closer_proof_forms_omn23330.py -q --noconftest -p no:cacheprovider -c /dev/null"
+        cwd: "${OMNI_HOME}/omnidash"
+context:
+  ac_binding_provenance:
+    dod-omn23330-ac38-accepted-20261111t1545z:
+      - label: "AC38"
+        criterion_hash: "9c7200b2ce87c0484a2c7aad2aabd04c84b3d04421231bc202d52ecc51686ce0"
+        proposed_by: "lane=dod-closeout-bind-2026-11-11T1545Z-c0"
+        accepted_by: "lane=dod-closeout-accept-2026-11-11T1545Z-c0"
+    dod-omn23330-ac41-accepted-20261111t1545z:
+      - label: "AC41"
+        criterion_hash: "f5e0b59153fae2ba0dfc3af496fd272ca0e01a7f3e9824db9233814702db23c6"
+        proposed_by: "lane=dod-closeout-bind-2026-11-11T1545Z-c0"
+        accepted_by: "lane=dod-closeout-accept-2026-11-11T1545Z-c0"
+    dod-omn23330-ac42-accepted-20261111t1545z:
+      - label: "AC42"
+        criterion_hash: "bb967b10e81fba5e8f74a92d4364c63c7ba0fe8ce504bb02ade2d5dd56a63c3e"
+        proposed_by: "lane=dod-closeout-bind-2026-11-11T1545Z-c0"
+        accepted_by: "lane=dod-closeout-accept-2026-11-11T1545Z-c0"
