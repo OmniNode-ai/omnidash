@@ -3,6 +3,7 @@
  * src/pages/local/usage-analysis.tsx. A day the sample does not cover is marked and drawn with no height, never as 0.
  */
 import type { CSSProperties } from 'react';
+import { isTodayInProgress } from './DayAxis';
 
 export interface SparkDay { key: string; value: number | null; title: string }
 
@@ -10,7 +11,7 @@ export function BarSparkline({ label, days }: { label: string; days: readonly Sp
   const peak = Math.max(1, ...days.flatMap(day => (day.value === null ? [] : [day.value])));
   // The bars are one neutral grey, a shape of the runs per day, not an identity colour.
   return <span className="usage-analysis-spark" role="img" data-identity-decoration="sparkline" aria-label={label}>
-    {days.map(day => <i key={day.key} data-day={day.key} data-covered={day.value === null ? 'false' : 'true'} data-runs={day.value ?? undefined}
+    {days.map(day => <i key={day.key} data-day={day.key} data-in-progress={isTodayInProgress(day.key) ? 'true' : undefined} data-covered={day.value === null ? 'false' : 'true'} data-runs={day.value ?? undefined}
       title={day.title} style={day.value === null ? undefined : { '--spark-height': `${(day.value / peak) * 100}%` } as CSSProperties} />)}
   </span>;
 }

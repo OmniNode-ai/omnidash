@@ -4,7 +4,7 @@ import { formatFullCount } from '@/theme/format';
 import type { DailyMeteringTokenData } from '@/lib/daily-metering-tokens';
 import { TokenDirections } from './TokenDirections';
 import { EmptyState } from '@/theme/design-system/components';
-import { DayAxis } from '@/theme/design-system/charts';
+import { DayAxis, isTodayInProgress } from '@/theme/design-system/charts';
 import { localeDate as fmtLocaleDate } from '@/theme/format';
 
 const dayLabel = (day: string) => fmtLocaleDate(new Date(`${day}T00:00:00Z`), 'en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
@@ -30,7 +30,7 @@ export function DailyMeteringTokens({ data }: { data: DailyMeteringTokenData }) 
   return <figure aria-label="Daily metering token totals" className="daily-metering-tokens">
     <figcaption><span>Daily metering totals · UTC</span><span>Model breakdown unavailable</span></figcaption>
     <div ref={bars} className="daily-metering-bars" role="group" aria-label="Daily metering tokens">
-      {days.map(day => <button type="button" key={day.day}
+      {days.map(day => <button type="button" key={day.day} data-day={day.day} data-in-progress={isTodayInProgress(day.day) ? 'true' : undefined}
         aria-label={`${dayLabel(day.day)}: ${direction(day.input)} in, ${direction(day.output)} out`}
         onFocus={() => setSelected(day.day)} onMouseEnter={() => setSelected(day.day)} onClick={() => setSelected(day.day)}>
         <span className="daily-metering-stack" aria-hidden="true">

@@ -5,6 +5,7 @@
  */
 import { createContext, useContext, useId, type CSSProperties, type HTMLAttributes, type ReactNode } from 'react';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
+import { isTodayInProgress } from './DayAxis';
 
 /** True inside a panel whose own heading already names the chart: the chart's title then only labels the figure. */
 export const NamedByPanel = createContext(false);
@@ -27,9 +28,11 @@ export function ChartCard({ title, concept, note, delay, children }: {
 }
 
 /** A chart's words for the mark pointed at; empty at rest (part 15 AC96), keeping its line so the chart does not move. */
-export function ChartReadout({ testId, text, active }: { testId?: string; text: ReactNode; active: boolean }) {
+export function ChartReadout({ testId, text, active, day }: { testId?: string; text: ReactNode; active: boolean; day?: string | null }) {
   if (text === null) return null;
-  return <p className={`ins-readout${active ? ' ins-readout--active' : ''}`} data-testid={testId} aria-live="polite">{text}</p>;
+  // OMN-23330 AC35: a readout showing today's UTC day, still in progress, says so first, hovered or by default (AC8).
+  const today = day ? isTodayInProgress(day) : false;
+  return <p className={`ins-readout${active ? ' ins-readout--active' : ''}`} data-testid={testId} data-in-progress={today ? 'true' : undefined} aria-live="polite">{today ? <>Today so far · {text}</> : text}</p>;
 }
 
 /** Nothing to draw, said in words. Inside a panel (`status`) it is announced as the panel's state. */

@@ -102,3 +102,11 @@ export function DayAxis({ days, ticks, place = 'slot', columns, format = DEFAULT
     </div>
   );
 }
+
+/**
+ * OMN-23330 AC35 (operator, chat 2026-11-11, from a benchmark of 20 open-source dashboards): whether a chart's day is
+ * today's UTC day, still in progress, so the chart draws it distinctly and its readout says "Today so far".
+ */
+export function isTodayInProgress(day: string, now: number = Date.now()): boolean {
+  return day.slice(0, 10) === new Date(now).toISOString().slice(0, 10);
+}

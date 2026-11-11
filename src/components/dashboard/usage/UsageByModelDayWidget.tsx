@@ -272,7 +272,7 @@ export function UsageTokensChart({ rows, days = 14 }: { rows: readonly unknown[]
         if (hover === null || day === undefined) return <ChartReadout active={false} text="" />;
         const models = [...day.entries()];
         const allMissing = models.length > 0 && models.every(([, cell]) => cell.missing && cell.value === 0);
-        return <ChartReadout active text={<>{short(hover)}<span className="ins-readout-sep">{' · '}</span>
+        return <ChartReadout active day={hover} text={<>{short(hover)}<span className="ins-readout-sep">{' · '}</span>
           <span data-field-tone={`tokens-${direction}`}>{allMissing ? `tokens ${direction} not recorded`
             : `${formatFullCount(total(hover))} tokens ${direction}${models.some(([, cell]) => cell.missing) ? ' (partial)' : ''}`}</span>
           {models.map(([name, cell]) => <span key={name}><span className="ins-readout-sep">{' · '}</span>

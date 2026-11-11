@@ -189,7 +189,7 @@ export function OverviewTrendPanel({ rows, columns, window, now }: {
       <SeriesToggles label="Trend lines" onToggle={key => toggle(key)} onPreview={setPreview} focus={front}
         series={columns.map(column => ({ key: slug(column.header), label: column.header, color: TREND_TONES[column.header] ?? 'var(--ds-ink-2)',
           tone: TREND_FIELDS[column.header], shown: shown[slug(column.header)] ?? true }))} />
-      <ChartReadout active={hover !== null}
+      <ChartReadout active={hover !== null} day={active}
         // Lakshman 2026-11-05 ("this also should be colorful"): each value in the readout wears its own line's colour.
         text={active !== undefined ? <>{label(active)}{byDay.has(active) && !twice(active)
           ? visible.map(column => <span key={column.key}><span className="ins-readout-sep">{' · '}</span><span data-field-tone={TREND_FIELDS[column.header]}>{say(valueOf(active, column), column, true)}</span></span>)

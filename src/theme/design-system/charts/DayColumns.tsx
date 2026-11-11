@@ -7,7 +7,7 @@
  * A column is a button: pointer and keyboard both point at it, and a click may open the day.
  */
 import { useRef, type CSSProperties } from 'react';
-import { DayAxis } from './DayAxis';
+import { DayAxis, isTodayInProgress } from './DayAxis';
 
 export interface DayBarValue { key: string; value: number | null; color: string; label: string }
 export interface DayColumn { key: string; ariaLabel: string; tick: boolean; values: readonly DayBarValue[] }
@@ -60,6 +60,7 @@ export function DayColumns({ label, days, max, hover, onHover, onOpen, described
       onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) onHover(null); }}>
       {days.map((day, index) => (
         <button key={day.key} type="button" className="ins-bar gdb-day" aria-label={day.ariaLabel} aria-describedby={describedBy}
+          data-day={day.key} data-in-progress={isTodayInProgress(day.key) ? 'true' : undefined}
           onClick={onOpen ? () => onOpen(day.key) : undefined}
           data-dim={hover !== null && hover !== index} onMouseEnter={() => onHover(index)} onFocus={() => onHover(index)}>
           <DayBars max={max} values={day.values} />

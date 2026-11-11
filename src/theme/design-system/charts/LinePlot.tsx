@@ -1,5 +1,6 @@
-import { useId } from 'react';
+import { useId, Fragment } from 'react';
 import { fixed as fmtFixed } from '@/theme/format';
+import { isTodayInProgress } from './DayAxis';
 /**
  * OMN-22168 AC3: the line chart of the local pages (Pass rate per day). Moved from src/pages/local/insight-charts.tsx.
  * A day without a value breaks the line rather than drawing a 0, and gets no dot; every day is a focusable column.
@@ -61,6 +62,17 @@ export function smoothPath(values: ReadonlyArray<number | null>, max: number, wi
 }
 
 
+/**
+ * OMN-23330 AC35: a line whose last day is today, still in progress, stops solid at yesterday and reaches today with a
+ * dashed segment (od-today): its finished part and the part still filling in read differently.
+ */
+function splitAtToday(keys: readonly string[], values: ReadonlyArray<number | null>):
+  { solid: ReadonlyArray<number | null>; tail: ReadonlyArray<number | null> | null } {
+  const last = values.length - 1;
+  if (last < 1 || !isTodayInProgress(keys[last] ?? '')) return { solid: values, tail: null };
+  return { solid: values.map((value, index) => (index === last ? null : value)), tail: values.map((value, index) => (index >= last - 1 ? value : null)) };
+}
+
 export function LinePlot({ label, values, keys, labels, min, max, hover, onHover, color }: {
   label: string;
   values: ReadonlyArray<number | null>;
@@ -78,7 +90,13 @@ export function LinePlot({ label, values, keys, labels, min, max, hover, onHover
   return (
     <div className="ins-plot">
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label={label}>
-        <path className="od-draw" d={linePath(values, min, max, W, H)} fill="none" stroke={color} strokeWidth={3} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+        {(() => {
+          const { solid, tail } = splitAtToday(keys, values);
+          return <>
+            <path className="od-draw" d={linePath(solid, min, max, W, H)} fill="none" stroke={color} strokeWidth={3} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+            {tail && <path className="od-today" d={linePath(tail, min, max, W, H)} fill="none" stroke={color} strokeWidth={3} vectorEffect="non-scaling-stroke" strokeLinecap="round" />}
+          </>;
+        })()}
       </svg>
       {/* A dot on every point that has a value, so a single day still shows (a line needs two). */}
       {values.map((value, index) => value === null ? null : (
@@ -142,12 +160,18 @@ export function MultiLinePlot({ label, lines, keys, labels, hover, onHover, focu
           return <path key={index} className="ins-area" aria-hidden="true" fill={`url(#${fillId})`} stroke="none"
             d={`${part} L${fmtFixed(Math.max(...xs), 1)} ${H} L${fmtFixed(Math.min(...xs), 1)} ${H} Z`} />;
         })}
-        {order.map(line => (
-          <path key={line.key} className="od-draw" data-line={line.key} data-front={front ? String(line === front) : undefined}
-            d={smoothPath(line.values, peak(line.values), W, H)} fill="none" stroke={line.color}
-            strokeWidth={front && line !== front ? 1.75 : 2.5} vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" />
-        ))}
-        {front && <path key={`front-${front.key}`} className="ins-front" aria-hidden="true" d={smoothPath(front.values, peak(front.values), W, H)}
+        {order.map(line => {
+          const { solid, tail } = splitAtToday(keys, line.values);
+          const width = front && line !== front ? 1.75 : 2.5;
+          return <Fragment key={line.key}>
+            <path className="od-draw" data-line={line.key} data-front={front ? String(line === front) : undefined}
+              d={smoothPath(solid, peak(line.values), W, H)} fill="none" stroke={line.color}
+              strokeWidth={width} vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" />
+            {tail && <path className="od-today" data-line={line.key} d={smoothPath(tail, peak(line.values), W, H)} fill="none" stroke={line.color}
+              strokeWidth={width} vectorEffect="non-scaling-stroke" strokeLinecap="round" />}
+          </Fragment>;
+        })}
+        {front && <path key={`front-${front.key}`} className="ins-front" aria-hidden="true" d={smoothPath(splitAtToday(keys, front.values).solid, peak(front.values), W, H)}
           fill="none" stroke={front.color} strokeWidth={2.75} vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" />}
       </svg>
       {/* A served day with no served neighbour has no segment to draw, so it is a dot (never lost). */}

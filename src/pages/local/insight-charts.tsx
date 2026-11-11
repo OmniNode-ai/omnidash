@@ -143,7 +143,7 @@ export function RunsPerDay({ days }: { days: InsightDay[] }) {
   });
   return (
     <ChartCard title="Runs per day" concept="runs-daily" delay={0}>
-      <ChartReadout testId="runs-per-day-readout" active={hover !== null}
+      <ChartReadout testId="runs-per-day-readout" active={hover !== null} day={active?.day}
         text={active ? verdictsNotRead(active)
           ? <>{dayLabel(active.day)}<Sep /><span data-field-tone="basis">Verdicts not read</span></>
           : <>{dayLabel(active.day)}<Sep /><span data-field-tone="count">{count(active.passed + active.failed)} runs</span><Sep /><span data-field-tone="pass">{count(active.passed)} passed</span><Sep /><span data-field-tone="fail">{count(active.failed)} failed</span></> : ''} />
@@ -175,7 +175,7 @@ function PassRateTrend({ days }: { days: InsightDay[] }) {
   const active = hover === null ? null : days[hover]!;
   return (
     <ChartCard title="Pass rate per day" concept="pass-rate-daily" delay={60}>
-      <ChartReadout active={active !== null} text={active ? <>{dayLabel(active.day)} · <span data-field-tone="pass" data-field-unavailable={active.passRate === null}>{active.passRate === null ? 'no verdicts' : `${fmtFixed(active.passRate, 1)}% passed`}</span> · <span data-field-tone="basis">{verdictCoverage(active.passed + active.failed, active.runs)}</span></> : `Scale from ${min}% to 100%`} />
+      <ChartReadout active={active !== null} day={active?.day} text={active ? <>{dayLabel(active.day)} · <span data-field-tone="pass" data-field-unavailable={active.passRate === null}>{active.passRate === null ? 'no verdicts' : `${fmtFixed(active.passRate, 1)}% passed`}</span> · <span data-field-tone="basis">{verdictCoverage(active.passed + active.failed, active.runs)}</span></> : `Scale from ${min}% to 100%`} />
       <LinePlot label="Pass rate per day" values={rates} keys={days.map(day => day.day)} labels={labels} min={min} max={100}
         hover={hover} onHover={setHover} color={PASS} />
       {/* OMN-23330 AC31: the kit's one DayAxis, first and last day on the line's end points. */}
@@ -340,7 +340,7 @@ export function TokensPerDay({ days }: { days: InsightDay[] }) {
   const ticks = dayTicks(days, location === '/runs' ? 14 : 8);
   return (
     <ChartCard title="Tokens per day" concept="tokens-daily" delay={420}>
-      <ChartReadout active={hover !== null} text={active ? <>{dayLabel(active.day)}<Sep /><span data-field-tone="tokens-in" data-field-unavailable={active.tokensIn === null}>{side(active.tokensIn, active.tokensInUnmeasured, 'in')}</span>, <span data-field-tone="tokens-out" data-field-unavailable={active.tokensOut === null}>{side(active.tokensOut, active.tokensOutUnmeasured, 'out')}</span></> : ''} />
+      <ChartReadout active={hover !== null} day={active?.day} text={active ? <>{dayLabel(active.day)}<Sep /><span data-field-tone="tokens-in" data-field-unavailable={active.tokensIn === null}>{side(active.tokensIn, active.tokensInUnmeasured, 'in')}</span>, <span data-field-tone="tokens-out" data-field-unavailable={active.tokensOut === null}>{side(active.tokensOut, active.tokensOutUnmeasured, 'out')}</span></> : ''} />
       <DayColumns label="Tokens per day" days={days.map((day, index) => ({
         key: day.day,
         ariaLabel: label(day),
