@@ -43,8 +43,9 @@ test('Evidence paging preserves every row and details support keyboard drilldown
   await expect(recent.getByText('26–50 of 60', { exact: true })).toBeVisible();
   await recent.getByRole('button', { name: 'Next page', exact: true }).click();
   await expect(recent.locator('.dt > .row')).toHaveCount(10);
-  await recent.getByRole('button', { name: 'Toggle details for organization-run-59', exact: true }).press('Enter');
-  await expect(recent.locator('.row.open')).toContainText('organization-run-59');
+  // OMN-23330 (2026-11-11, "one design system"): an Evidence row opens the run in the kit's centred dialog, as on Runs.
+  await recent.getByRole('button', { name: 'Open run organization-run-59', exact: true }).press('Enter');
+  await expect(page.getByRole('dialog', { name: 'Selected run' })).toContainText('organization-run-59');
   await expect(page.getByRole('navigation', { name: 'On this page', exact: true })).toHaveCount(0);
   await page.screenshot({ path: info.outputPath('evidence-section-navigation.png') });
 });
@@ -106,8 +107,14 @@ test('phone Evidence records become labelled readable cards', async ({ page }) =
   await expect(cell).toBeVisible();
   expect(await cell.evaluate(el => el.getBoundingClientRect().width)).toBeGreaterThan(200);
   expect(await cell.evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1);
-  await recent.getByRole('button', { name: 'Toggle details for organization-run-0', exact: true }).press('Enter');
-  await expect(recent.locator('.row.open')).toContainText('organization-run-0');
+  // OMN-23330 (2026-11-11, "one design system"): an Evidence row opens the run in the kit's centred dialog, as on Runs.
+  await recent.getByRole('button', { name: 'Open run organization-run-0', exact: true }).press('Enter');
+  const dialog = page.getByRole('dialog', { name: 'Selected run' });
+  await expect(dialog).toContainText('organization-run-0');
+  // On a phone the dialog stays within the screen's width.
+  const box = await dialog.boundingBox();
+  expect(box!.x).toBeGreaterThanOrEqual(0);
+  expect(box!.x + box!.width).toBeLessThanOrEqual(390);
 });
 
 test('Workflow fact cards have distinct semantic Lucide icons and colors', async ({ page }) => {

@@ -1,7 +1,9 @@
 /* OMN-23330: the kit's general dialog, on ConfirmDialog's backdrop and surface tokens so the two modals read as one. */
-.ds-dialog-backdrop { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px;
+/* The column is capped at the window: a grid sizes an auto column to its widest unbreakable line, and a run's prompt shown
+   as code pushed the dialog thousands of pixels off-screen (measured 2026-11-11). Long code scrolls inside its block. */
+.ds-dialog-backdrop { position: fixed; inset: 0; z-index: 60; display: grid; grid-template-columns: minmax(0, 1fr); place-items: center; padding: 16px;
   background: var(--ds-scrim); backdrop-filter: blur(3px); }
-.ds-dialog { display: flex; flex-direction: column; width: min(760px, 100%); max-height: min(86vh, 900px); border-radius: 14px;
+.ds-dialog { display: flex; flex-direction: column; min-width: 0; width: min(760px, 100%); max-height: min(86vh, 900px); border-radius: 14px;
   border: 1px solid var(--ds-line-strong); background: var(--ds-surface); color: var(--ds-ink); box-shadow: var(--ds-shadow-lg); }
 .ds-dialog-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 18px 20px 14px;
   border-bottom: 1px solid var(--ds-line); }
@@ -14,3 +16,4 @@
 .ds-dialog-close:focus-visible { outline: 2px solid var(--ds-focus, var(--ds-link)); outline-offset: 2px; }
 .ds-dialog-body { overflow: auto; padding: 16px 20px 20px; }
 @media (max-width: 640px) { .ds-dialog { max-height: 92vh; } .ds-dialog-head, .ds-dialog-body { padding-inline: 16px; } }
+.ds-dialog-body pre { max-width: 100%; overflow-x: auto; }

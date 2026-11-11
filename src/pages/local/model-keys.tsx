@@ -14,7 +14,8 @@ import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { SettingsEmptyState } from '@/components/dashboard/SettingsEmptyState';
 import { readableTime } from '@/theme/format';
 import { ModelKeysError, listModelKeys, type ModelProviderId, type ModelProviderRow } from '@/services/models-api';
-import { Badge, DataTable, EmptyState, Fact, FactList } from '@/theme/design-system/components';
+import { Badge, ColumnTip, DataTable, EmptyState, Fact, FactList } from '@/theme/design-system/components';
+import { KEY_HEADERS } from '@/pages/local/page-runs';
 
 /** A served key reference row from tenant-credentials.v1: its name, fingerprint prefix and times. Never a value. */
 export type CredentialKeyRow = Record<string, unknown>;
@@ -237,7 +238,10 @@ export function ModelKeys({ client = LIVE_CLIENT, keys = [], empty }: { client?:
   // on their own beside the reason.
   const keysAlone = keys.length === 0 ? null : (
     <DataTable aria-label="Provider key references">
-        <thead><tr><th>Provider</th><th>Key ref</th><th>Fingerprint</th><th>Set</th><th>Last used</th></tr></thead>
+        {/* OMN-23330 (2026-11-11, "one design system"): the shared column header, as the revoked keys table and every other
+            table write theirs: glyph, field colour and an explanation on hover. */}
+        <thead><tr>{KEY_HEADERS.slice(0, 5).map(([concept, name, tip]) => <th key={name}><ColumnTip tone={concept} tip={tip}>
+          <span className="local-table-head" data-field-tone={concept} tabIndex={0}><ConceptIcon concept={concept} label={name} size={13} />{name}</span></ColumnTip></th>)}</tr></thead>
         <tbody>{keys.map((key, index) => (
           <tr key={`${String(key.provider)}-${String(key.name)}-${index}`}>
             <td data-label="Provider">{missing(key.provider) ? 'Not recorded' : providerName(key.provider)}</td>

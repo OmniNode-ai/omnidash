@@ -21,11 +21,14 @@ test('Evidence explains the canonical total and exports only the latest served d
   const sample = page.getByRole('region', { name: 'Decision sample export' });
   await expect(sample).toContainText('Latest 3 served decisions');
   await expect(sample).toContainText('sample');
-  const [jsonDownload] = await Promise.all([page.waitForEvent('download'), sample.getByRole('button', { name: 'Export JSON' }).click()]);
+  // OMN-23330 (2026-11-11): an export asks first, as on Runs; only the confirmation's Download button downloads.
+  await sample.getByRole('button', { name: 'Export JSON' }).click();
+  const [jsonDownload] = await Promise.all([page.waitForEvent('download'), page.getByRole('dialog').getByRole('button', { name: 'Download JSON' }).click()]);
   const json = JSON.parse((await (await jsonDownload.createReadStream()).toArray()).map(chunk => chunk.toString()).join('')) as unknown[];
   expect(json).toHaveLength(evidenceDecisions.length);
   expect(json.map((row) => (row as { correlation_id: string }).correlation_id)).toEqual(evidenceDecisions.map(row => row.correlation_id));
-  const [csvDownload] = await Promise.all([page.waitForEvent('download'), sample.getByRole('button', { name: 'Export CSV' }).click()]);
+  await sample.getByRole('button', { name: 'Export CSV' }).click();
+  const [csvDownload] = await Promise.all([page.waitForEvent('download'), page.getByRole('dialog').getByRole('button', { name: 'Download CSV' }).click()]);
   const csv = (await (await csvDownload.createReadStream()).toArray()).map(chunk => chunk.toString()).join('');
   expect(csv).toContain('correlation_id');
   expect(csv).toContain('evidence-newest');

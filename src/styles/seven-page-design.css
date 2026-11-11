@@ -1430,11 +1430,13 @@ html body .local-dashboard-page .usage-record-controls label:has(option:checked:
   background-color: color-mix(in oklab, var(--ds-hue-blue) 12%, transparent); }
 html body .local-dashboard-page .usage-record-controls select:focus-visible { outline: 2px solid var(--ds-hue-blue); outline-offset: 2px; }
 html body .local-dashboard-page .usage-record-controls select:focus-visible:not(#ds-important) { box-shadow: none; }
-html body .local-dashboard-page .usage-record-controls button { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; color: var(--ds-ink-2); font-size: 12.5px; }
-html body .local-dashboard-page .usage-record-controls button:not(#ds-important) { min-height: 32px;
+/* OMN-23330 (2026-11-11, "one design system"): the toolbar's own buttons only; the kit Dropdown in it keeps the kit size (40px,
+   as Runs' filters draw it), not 32px. */
+html body .local-dashboard-page .usage-record-controls button:not(.ds-dropdown-trigger) { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; color: var(--ds-ink-2); font-size: 12.5px; }
+html body .local-dashboard-page .usage-record-controls button:not(.ds-dropdown-trigger):not(#ds-important) { min-height: 32px;
   border-radius: 999px; border: 1px solid var(--ds-line); background: transparent; }
-html body .local-dashboard-page .usage-record-controls button:hover { color: var(--ds-ink); }
-html body .local-dashboard-page .usage-record-controls button:hover:not(#ds-important) { background: var(--ds-surface-2); }
+html body .local-dashboard-page .usage-record-controls button:not(.ds-dropdown-trigger):hover { color: var(--ds-ink); }
+html body .local-dashboard-page .usage-record-controls button:not(.ds-dropdown-trigger):hover:not(#ds-important) { background: var(--ds-surface-2); }
 .local-dashboard-page .usage-model-name { position: relative; display: inline-block; padding-left: calc(0.7em + 0.5em); }
 .local-dashboard-page table[aria-label="Usage by model and day"] .local-share-meter > i { background: var(--ds-field-routing); }
 
@@ -1482,7 +1484,9 @@ html body .local-dashboard-page .workflow-run-search-field > input:focus-visible
 html body .local-dashboard-page .workflow-run-search-field > input:focus-visible:not(#ds-important) { border-color: var(--ds-hue-blue);
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--ds-hue-blue) 22%, transparent); }
 html body .local-dashboard-page .workflow-run-search > button { height: 40px; padding: 0 16px; font-size: 13px; font-weight: 600; }
-html body .local-dashboard-page .workflow-run-search > button:not(#ds-important) { min-height: 40px; border-radius: 999px; }
+/* OMN-23330 (2026-11-11, "one design system"): the Open run button sits flush with its 40px field, in the kit's 8px corners
+   (it was drawn 32px by the shared small-button rule beside a 40px field). */
+html body main.local-dashboard-page form.workflow-run-search > button:not(#ds-important) { height: 40px; min-height: 40px; border-radius: 8px; }
 .local-dashboard-page .workflow-run-answer-fold > summary { list-style: none; display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
   padding: 6px 12px; border: 1px solid var(--ds-line); border-radius: 999px; font-size: 13px; color: var(--ds-ink-2); transition: background 0.15s, color 0.15s; }
 .local-dashboard-page .workflow-run-answer-fold > summary::-webkit-details-marker { display: none; }

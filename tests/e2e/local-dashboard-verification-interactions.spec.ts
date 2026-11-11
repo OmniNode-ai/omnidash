@@ -126,18 +126,18 @@ test('a run with no recorded id is absent from the chart selector and cannot rep
 
 test.describe('touch Evidence rows', () => {
   test.use({ hasTouch: true, viewport: { width: 390, height: 844 } });
-  test('a real tap expands and collapses a row with aria-expanded matching its details', async ({ page }, info) => {
+  // OMN-23330 (2026-11-11, "one design system"): an Evidence row opens the run in the kit's centred dialog, as on Runs.
+  test('a real tap opens the run in the dialog and a tap on Close closes it', async ({ page }, info) => {
     await serveCharts(page);
     await page.goto('/delegation-evidence');
-    const toggle = page.getByRole('button', { name: 'Toggle details for chart-run-a', exact: true });
-    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    await toggle.tap();
-    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-    await expect(page.locator('.row-detail')).toContainText('chart-run-a');
+    const row = page.getByRole('button', { name: 'Open run chart-run-a', exact: true });
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await row.tap();
+    const dialog = page.getByRole('dialog', { name: 'Selected run' });
+    await expect(dialog).toContainText('chart-run-a');
     await page.screenshot({ path: info.outputPath('evidence-tap-expanded.png'), fullPage: true });
-    await toggle.tap();
-    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    await expect(page.locator('.row-detail')).toHaveCount(0);
+    await dialog.getByRole('button', { name: 'Close', exact: true }).tap();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
     await page.screenshot({ path: info.outputPath('evidence-tap-collapsed.png') });
   });
 });

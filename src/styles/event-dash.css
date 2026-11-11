@@ -18,7 +18,7 @@
   color: var(--ds-ink);
   font-family: var(--ds-font-sans);
   font-size: 14px;
-  line-height: 1.5;
+  /* OMN-23330 (2026-11-11, "one design system"): the line height is the body's, as on every other page (was 1.5 here only). */
   -webkit-font-smoothing: antialiased;
   /* OMN-13057 — ev-root must behave as a flex child of .main (flex column,
      overflow:hidden). display:block + min-height:100% does NOT constrain height
@@ -30,6 +30,10 @@
   flex: 1;
   min-height: 0;
 }
+
+/* OMN-23330 (2026-11-11): the run dialog is portalled outside main.ev-root; its content wrapper carries the Evidence scope so
+   it draws as the inline Selected run panel does, without the page's flex layout or page background. */
+.ev-root.ev-dialog-content { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; flex: none; min-width: 0; background: transparent; }
 
 .ev-root *,
 .ev-root *::before,

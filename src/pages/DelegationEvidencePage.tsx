@@ -8,12 +8,12 @@ import { formatDashboardCount } from '@/theme/format';
  * projection returns no rows / is degraded renders an explicit honest state.
  */
 
-import { type ReactNode, type CSSProperties } from 'react';
+import { useState, type ReactNode, type CSSProperties } from 'react';
 import { formatDashboardUsd as formatUsd } from '@/theme/format';
 import { isUnavailableField } from '@/components/dashboard/field-identity';
 import { EvPageShell } from '@/components/dashboard/event-dash/EvPageShell';
 import { KpiStrip } from '@/components/dashboard/KpiStrip';
-import { DashboardTabs, TokenCount } from '@/theme/design-system/components';
+import { ConfirmDialog, DashboardTabs, Dialog, TokenCount } from '@/theme/design-system/components';
 import { RankedBars } from '@/theme/design-system/charts';
 import {
   Badge,
@@ -597,7 +597,7 @@ function DecisionDetail({ row }: { row: DelegationDecisionRow }) {
   const trace = data?.rows[0];
   return (
     <>
-      <KV
+      <KV cards
         items={[
           { k: 'Correlation', v: row.correlation_id, accent: true },
           { k: 'Task type', v: taskLabel(row.task_type) },
@@ -628,8 +628,10 @@ function DecisionDetail({ row }: { row: DelegationDecisionRow }) {
   );
 }
 
-function RecentDelegations({ decisions }: { decisions: DelegationDecisionRow[] }) {
+function RecentDelegations({ decisions, available }: { decisions: DelegationDecisionRow[]; available: boolean }) {
   const modelIdentityStyle = useModelIdentityStyle();
+  // OMN-23330 (2026-11-11, "one design system"): a row opens the run in the kit's centred dialog, as on Runs.
+  const [opened, setOpened] = useState<DelegationDecisionRow | null>(null);
   const cols: DataColumn<DelegationDecisionRow>[] = [
     { key: 'correlation_id', label: 'Correlation', concept: 'identity', width: '150px', tip: 'The run\'s correlation id. Open the row for the run\'s detail.', render: (r) => <span className="mono c-blue">{shortId(r.correlation_id)}</span> },
     { key: 'task_type', label: 'Task', grow: true, concept: 'task', tip: 'The kind of work the run did.', render: (r) => taskLabel(r.task_type) },
@@ -647,13 +649,21 @@ function RecentDelegations({ decisions }: { decisions: DelegationDecisionRow[] }
       pad={false}
       right={<span className="note">showing {formatDashboardCount(decisions.length)}</span>}
     >
+      {/* The exports sit in the table's own panel, as Runs' do in its toolbar (OMN-23330, 2026-11-11). */}
+      <DecisionSampleExport decisions={decisions} available={available} />
       <DataTable
         columns={cols}
         rows={decisions}
         pageSize={25}
         rowKey={(r) => r.correlation_id}
-        renderDetail={(r) => <DecisionDetail row={r} />}
+        onOpen={setOpened}
       />
+      <Dialog open={opened !== null} title="Selected run" onClose={() => setOpened(null)}
+        subtitle={opened && <code>{opened.correlation_id}</code>}>
+        {/* The dialog is portalled outside main.ev-root; this wrapper gives the run's Prompt/Answer, notes and run path the same
+            Evidence rules as the inline Selected run panel. */}
+        <div className="ev-root ev-dialog-content">{opened && <DecisionDetail row={opened} />}</div>
+      </Dialog>
       <TierLegend label="Recent delegations tier colours" models={decisions.map(r => r.model_name)} />
     </Panel>
   );
@@ -838,15 +848,26 @@ function downloadDecisionSample(rows: readonly DelegationDecisionRow[], format: 
 
 function DecisionSampleExport({ decisions, available }: { decisions: readonly DelegationDecisionRow[]; available: boolean }) {
   const latest = [...decisions].sort(sampleOrder);
+  // Lakshman 2026-11-04 ("so that if someone mistakenly clicks they will not download mistakenly"), as on Runs: an
+  // export asks first, in the kit's confirmation dialog, and only its confirm button downloads (OMN-23330, 2026-11-11).
+  const [pending, setPending] = useState<'csv' | 'json' | null>(null);
   return (
     <section className="ev-decision-export" aria-label="Decision sample export">
       <span>{available ? <>Latest {formatDashboardCount(latest.length)} served decisions · sample, not the runs behind headline totals</>
         : 'Decision sample: Not measured'}</span>
       <div className="ev-decision-export-actions">
         {/* The Runs table's exports: their glyphs and colours (OMN-22168, "make all pages uniform"). */}
-        <button type="button" data-export="csv" disabled={!available || latest.length === 0} onClick={() => downloadDecisionSample(latest, 'csv')}><FileSpreadsheet size={15} aria-hidden="true" />Export CSV</button>
-        <button type="button" data-export="json" disabled={!available || latest.length === 0} onClick={() => downloadDecisionSample(latest, 'json')}><FileJson size={15} aria-hidden="true" />Export JSON</button>
+        <button type="button" data-export="csv" disabled={!available || latest.length === 0} onClick={() => setPending('csv')}><FileSpreadsheet size={15} aria-hidden="true" />Export CSV</button>
+        <button type="button" data-export="json" disabled={!available || latest.length === 0} onClick={() => setPending('json')}><FileJson size={15} aria-hidden="true" />Export JSON</button>
       </div>
+      <ConfirmDialog open={pending !== null} tone={pending === 'json' ? 'purple' : 'green'}
+        icon={pending === 'json' ? <FileJson size={16} /> : <FileSpreadsheet size={16} />}
+        title={`Download ${formatDashboardCount(latest.length)} ${latest.length === 1 ? 'decision' : 'decisions'} as ${pending === 'json' ? 'JSON' : 'CSV'}?`}
+        confirmLabel={`Download ${pending === 'json' ? 'JSON' : 'CSV'}`}
+        onCancel={() => setPending(null)}
+        onConfirm={() => { const format = pending; setPending(null); if (format) downloadDecisionSample(latest, format); }}>
+        <p>The file holds the latest served decisions, a sample, not the runs behind the headline totals.</p>
+      </ConfirmDialog>
     </section>
   );
 }
@@ -896,6 +917,9 @@ export function DelegationEvidencePage() {
     <FreshnessChip state={badgeState} latestEventAt={latestEventAt} />
   ) : null;
 
+  // The decision sample's export, drawn inside the Recent delegations panel in every state.
+  const samplesAvailable = !decisionsQ.isLoading && !!decisionsQ.data && !decisionsQ.data.degradedReason;
+  const sampleExport = <DecisionSampleExport decisions={decisions} available={samplesAvailable} />;
   return (
     // OMN-21970 AC5: a model is its tier's colour here too, from the served runs and token rows that name both.
     <ModelTiersContext.Provider value={modelTiersFrom([...decisions, ...(tokensQ.data?.rows ?? [])])}>
@@ -937,15 +961,15 @@ export function DelegationEvidencePage() {
         <div className="maple-cell maple-cell--full"><TokenUsage /></div>
       </div>
 
-      <DecisionSampleExport decisions={decisions} available={!decisionsQ.isLoading && !!decisionsQ.data && !decisionsQ.data.degradedReason} />
       {decisionsQ.isLoading ? (
-        <Panel title="RECENT DELEGATIONS"><EvEmpty title="Loading…" /></Panel>
+        <Panel title="RECENT DELEGATIONS">{sampleExport}<EvEmpty title="Loading…" /></Panel>
       ) : decisions.length === 0 ? (
         <Panel title="RECENT DELEGATIONS">
+          {sampleExport}
           <EvEmpty title="No delegation decisions" reason={plainUnservedReason(decisionsQ.data?.degradedReason)} note="No delegation decisions recorded yet." />
         </Panel>
       ) : (
-        <RecentDelegations decisions={decisions} />
+        <RecentDelegations decisions={decisions} available={samplesAvailable} />
       )}
     </EvPageShell>
     </ModelTiersContext.Provider>

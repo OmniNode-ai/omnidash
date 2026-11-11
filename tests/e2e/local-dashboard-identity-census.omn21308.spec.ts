@@ -687,10 +687,12 @@ test('AC4 eleven-destination light/dark icon census includes expanded and Develo
     // OMN-21166 part 18 AC125: the step boxes ([data-step-kind]) are removed; the six steps are the timeline's.
     if (destination === 'local-workflow') await expect(page.locator('ol.local-dashboard-steps > li')).toHaveCount(6);
     if (destination === 'delegation-evidence') {
-      const disclosure = page.getByRole('button', { name: 'Toggle details for chart-run-a', exact: true });
-      if (await disclosure.getAttribute('aria-expanded') !== 'true') await disclosure.click();
-      await expect(disclosure).toHaveAttribute('aria-expanded', 'true');
-      await expect(page.locator('.row-detail')).toContainText('chart-run-a');
+      // OMN-23330 (2026-11-11): a row opens the run in the kit's dialog; its fact icons are the Selected run panel's, which the
+      // census reads on the page. The modal is closed before the theme switch, which it would cover.
+      await page.getByRole('button', { name: 'Open run chart-run-a', exact: true }).click();
+      await expect(page.getByRole('dialog', { name: 'Selected run' })).toContainText('chart-run-a');
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('dialog')).toHaveCount(0);
     }
     for (const disclosure of await page.locator('main details').all()) {
       if (await disclosure.isVisible() && await disclosure.getAttribute('open') === null) await disclosure.locator(':scope > summary').press('Enter');
