@@ -894,7 +894,9 @@ main :is(.ev-title-icon, .local-dashboard-page-icon) svg:not(#ds-important),
 .local-dashboard-panel[data-component="overview-insights"] > h2 { border-bottom: 1px solid var(--ds-line); padding-bottom: 8px; margin-bottom: 8px; }
 
 /* AC184: Delegation Evidence's content lines up with its title (24px on desktop, 16px on phones). */
-@media (min-width: 641px) { main.ev-root[data-destination="delegation-evidence"] .ev-scroll { padding: 12px 24px 24px; } }
+@media (min-width: 641px) { main.ev-root[data-destination="delegation-evidence"] .ev-scroll { padding: 12px 24px 24px; }
+  /* OMN-23330 AC38: the head scrolls inside .ev-scroll and cancels exactly this padding, so it keeps its full-width band. */
+  main.ev-root[data-destination="delegation-evidence"] .ev-scroll > .ev-page-head { margin: -12px -24px 12px; } }
 /* AC179 (Lakshman 2026-10-27, "why right corner hover show question mark"): the card's hidden details button keeps the
    card's own pointer, not a help cursor in the top-right corner; it stays for the keyboard and screen readers. */
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-info:not(#ds-important) { cursor: inherit; }

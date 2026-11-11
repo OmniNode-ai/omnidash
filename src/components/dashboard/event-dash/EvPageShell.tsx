@@ -34,18 +34,20 @@ export function EvPageShell({
   } as Record<string, AppPage>)[title];
   return (
     <main className="ev-root" aria-label={`${title} page`} data-destination={destination}>
-      <div className="ev-page-head">
-        <div className="ev-head-row">
-          <div>
-            {destination !== 'delegation-evidence' && <div className="ev-crumb">{crumb}</div>}
-            <h1 className="ev-title">{destination && <span className="ev-title-icon"><DestinationIcon page={destination} size={20} /></span>}{title}</h1>
-            {destination !== 'delegation-evidence' && <div className="ev-sub">{sub}</div>}
-            {scope !== undefined && <p className="ev-sub ev-scope">{scope}</p>}
-          </div>
-          {headRight ? <div className="ev-head-right">{headRight}</div> : null}
-        </div>
-      </div>
+      {/* OMN-23330 AC38: the page head scrolls with its content, as the title does on Runs and Usage (measured
+          2026-11-11: it sat outside the scrolling element, so the title stayed pinned while everything under it moved). */}
       <div className="ev-scroll">
+        <div className="ev-page-head">
+          <div className="ev-head-row">
+            <div>
+              {destination !== 'delegation-evidence' && <div className="ev-crumb">{crumb}</div>}
+              <h1 className="ev-title">{destination && <span className="ev-title-icon"><DestinationIcon page={destination} size={20} /></span>}{title}</h1>
+              {destination !== 'delegation-evidence' && <div className="ev-sub">{sub}</div>}
+              {scope !== undefined && <p className="ev-sub ev-scope">{scope}</p>}
+            </div>
+            {headRight ? <div className="ev-head-right">{headRight}</div> : null}
+          </div>
+        </div>
         <div className="grid">{children}</div>
       </div>
     </main>

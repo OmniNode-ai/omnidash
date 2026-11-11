@@ -337,6 +337,9 @@
 .ev-root .ev-sub { max-width: 76ch; line-height: 1.6; color: var(--ds-ink-2); font-size: 12px; }
 .ev-root .ev-crumb { font-size: 12px; font-weight: 500; color: var(--ds-ink-3); }
 .ev-root .ev-scroll { padding: 24px 36px; }
+/* OMN-23330 AC38: the page head now scrolls inside .ev-scroll; it keeps its full-width band by cancelling the scroller's
+   padding, so it looks as it did when it sat above the scroller. */
+.ev-root .ev-scroll > .ev-page-head { margin: -24px -36px 24px; }
 .ev-root .grid { gap: 18px; }
 .ev-root .panel, .ev-root .kpi { box-shadow: none; border-radius: 10px; }
 .ev-root .panel-h { padding: 18px 20px 0; gap: 8px 12px; }
@@ -372,6 +375,7 @@
   .ev-root .ev-page-head { padding: 20px 16px 16px; }
   .ev-root .ev-title { font-size: 24px; }
   .ev-root .ev-scroll { padding: 16px; }
+  .ev-root .ev-scroll > .ev-page-head { margin: -16px -16px 16px; }
   .ev-root .panel-h { padding: 16px 16px 0; }
   .ev-root .panel-h .ps { text-align: left; }
   .ev-root .panel-h .right { justify-content: flex-start; }

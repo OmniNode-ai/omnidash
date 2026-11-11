@@ -10,7 +10,7 @@ import {
   TableProperties, type LucideIcon,
 } from '@/theme/design-system/icons';
 import { ColumnTip } from '../components/Tooltip';
-import { fixed, formatFullCount, formatShare, formatShortDay, formatUsd } from '@/theme/format';
+import { fixed, formatDashboardUsd, formatFullCount, formatShare, formatShortDay } from '@/theme/format';
 import { isTodayInProgress } from './DayAxis';
 import './chart-scroll.css';
 
@@ -79,7 +79,9 @@ function tableColumn(given: string, index: number, chartLabel = ''): TableColumn
 function cellText(cell: ChartTableCell, column: TableColumn): string {
   if (cell === null) return 'Not recorded';
   if (typeof cell === 'string') return column.kind === 'day' ? formatShortDay(cell) : cell;
-  if (column.kind === 'money') return formatUsd(cell);
+  // OMN-23330 AC41: money by the one display rule the rest of the local pages use (Jonah 2026-11-06: two decimals at $1
+  // and above, up to four below $1), so an amount reads the same in a chart's table and beside it.
+  if (column.kind === 'money') return formatDashboardUsd(cell);
   if (column.kind === 'share') return formatShare(cell);
   return Number.isInteger(cell) ? formatFullCount(String(cell)) : fixed(cell, 2);
 }

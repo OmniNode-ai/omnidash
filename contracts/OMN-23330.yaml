@@ -265,6 +265,30 @@ requirements:
           each series) and back; the choice holds per chart for the session. Proved by: npx vitest run
           tests/design-system/chart-table-twin.allpages.test.tsx on the lab host (each kit chart rendered from one
           fixture, its table cells compared with the values it draws), plus a Playwright toggle readback.
+      - id: "AC38"
+        statement: >-
+          Delegation Evidence's page title scrolls away with its content, as on Runs and Usage. Measured 2026-11-11:
+          after scrolling the content 800 px the Evidence h1 stays at 82 px, while the Runs and Usage h1 move from
+          78 px to -722 px. Proved by: npx playwright test tests/e2e/one-design-system-title-scroll.spec.ts
+          --project=chromium on the lab host, which scrolls each of the six pages 800 px and fails while any page's h1
+          has not moved.
+      - id: "AC41"
+        statement: >-
+          every money figure in a kit chart's table is written by formatDashboardUsd, the display rule every other
+          money figure on the local pages follows (two decimals at $1 and above, up to four below $1, cut and never
+          rounded up), so one amount reads the same in a chart's table and beside it. Measured 2026-11-11 on Usage: the
+          Savings per day chart's table reads $0.66, $0.44 and $0.62 for Nov 8, 6 and 5 where the savings table under
+          it reads $0.6558, $0.4395 and $0.6223. Proved by: npx vitest run
+          tests/design-system/chart-table-money.allpages.test.tsx on the lab host, which fails while a chart table
+          writes 0.655882 as anything but $0.6558, and keeps $1.48 for 1.4812.
+      - id: "AC42"
+        statement: >-
+          the scheduled evidence closer counts this ticket's new checks as behaviour proof. The AC38 and AC41 checks
+          are written as "npm run test:e2e -- <spec>" and "npm test -- run <file>", which omnimarket dev 141b5fb8's
+          classify_command reads as BEHAVIOR, and package.json's pretest and pretest:e2e install dependencies on a
+          runner checkout without node_modules; the 42 merged checks stay byte-identical. Proved by: classify_command
+          over the contract on the lab host, the AC38 and AC41 checks BEHAVIOR (control: their npx form reads
+          INDETERMINATE), plus the repo-evidence CI run of both on a runner checkout without node_modules.
 evidence_requirements: []
 emergency_bypass:
   enabled: false
@@ -730,4 +754,39 @@ dod_evidence:
         check_value: >-
           test -d node_modules || npm ci --no-audit --no-fund; npx vitest run
           tests/design-system/chart-table-twin.allpages.test.tsx tests/design-system/chart-table-identity.allpages.test.tsx
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac38"
+    description: >-
+      AC38: the title-scroll spec, red at the base (Delegation Evidence scrolls 800 px while its h1 moves 0 px) and
+      green at the head, in the form the evidence closer counts as behaviour proof (AC42).
+    source: "manual"
+    binds_ac: ["AC38"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          npm run test:e2e -- tests/e2e/one-design-system-title-scroll.spec.ts --project=chromium --workers=1
+          --retries=0
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac41"
+    description: >-
+      AC41: the chart-table money test, red at the base ($0.66 for 0.655882) and green at the head ($0.6558), in the
+      form the evidence closer counts as behaviour proof (AC42).
+    source: "manual"
+    binds_ac: ["AC41"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          npm test -- run tests/design-system/chart-table-money.allpages.test.tsx
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac42"
+    description: >-
+      AC42: package.json's pretest and pretest:e2e install dependencies, and the AC38 and AC41 checks use the forms
+      the closer counts. At the base all three cases fail (no lifecycle scripts, no such items).
+    source: "manual"
+    binds_ac: ["AC42"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          uv run --no-project --python 3.12 --with pytest --with pyyaml python -m pytest
+          tests/ci/test_closer_proof_forms_omn23330.py -q --noconftest -p no:cacheprovider -c /dev/null
         cwd: "${OMNI_HOME}/omnidash"

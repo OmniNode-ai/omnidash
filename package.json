@@ -17,6 +17,7 @@
     "build": "tsc --noEmit && vite build",
     "build:server": "tsc --noEmit --project tsconfig.node.json",
     "preview": "vite preview",
+    "pretest": "test -d node_modules || npm ci --no-audit --no-fund",
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
@@ -28,6 +29,7 @@
     "types:generate": "bash scripts/run-types-generate.sh",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
+    "pretest:e2e": "test -d node_modules || npm ci --no-audit --no-fund",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"
   },
