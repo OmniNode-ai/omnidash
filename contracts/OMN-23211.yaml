@@ -1,0 +1,39 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+# The tag and asset halves of AC1, and AC2 (a lab onex dashboard start on the new
+# bundle), are proved after the v1.1.12 tag is cut on this change's merge commit, as
+# OMN-21469 proved its tag and pin outside omnidash's contract.
+schema_version: "1.0.0"
+ticket_id: "OMN-23211"
+title: "OmniDash is tagged with the work since v1.1.11 (key last-used, design system and money formatting, Overview charts) with its dashboard bundle asset"
+summary: >-
+  Version bump for the omnidash v1.1.12 release, the shape omnidash#471 used for
+  v1.1.11: package.json and both package-lock.json version fields move to 1.1.12 so
+  the v1.1.12 tag cut on this merge commit publishes a bundle whose declared version
+  matches its tag. No OmniDash code changes.
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-omn23211-release-version"
+    statement: "AC1 copied verbatim from the live ticket on 2026-11-11; this change carries its version half, and the tag and asset halves are proved once the tag exists."
+    acceptance:
+      - id: "AC1"
+        statement: "AC1: the new tag contains the named work -- falsifier: `git -C omnidash merge-base --is-ancestor <sha> <new tag>` exits 0 for 48a7fc16 (OMN-19996), aed7c38f (OMN-22168) and 7ed9966e (OMN-21970), and the release carries its `publish-dashboard-bundle.yml` asset"
+evidence_requirements:
+  - kind: "tests"
+    description: "AC1: package.json version, package-lock.json top-level version and package-lock.json packages[\"\"].version all read 1.1.12. At the merge base (1.1.11) all three cases fail."
+    command: "uv run --no-project --python 3.12 --with pytest python -m pytest tests/ci/test_release_version_omn21469.py -q --noconftest -p no:cacheprovider -c /dev/null"
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
+dod_evidence:
+  - id: "dod-omn23211-ac1-release-version"
+    description: "AC1: package.json version, package-lock.json top-level version and package-lock.json packages[\"\"].version all read 1.1.12, so the v1.1.12 tag cut on this merge commit publishes a bundle whose declared version matches its tag. At merge base 87c77faa (1.1.11) all three cases fail; a bump that moves package.json alone fails the two lockfile cases."
+    source: "manual"
+    binds_ac: ["AC1"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "uv run --no-project --python 3.12 --with pytest python -m pytest tests/ci/test_release_version_omn21469.py -q --noconftest -p no:cacheprovider -c /dev/null"
+        cwd: "${OMNI_HOME}/omnidash"

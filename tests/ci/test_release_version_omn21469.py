@@ -26,7 +26,7 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-RELEASE = "1.1.11"
+RELEASE = "1.1.12"
 
 
 def _json(name: str) -> dict:
