@@ -8,6 +8,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { Link } from 'wouter';
 import './chart-scroll.css';
+import { ChartTable } from './frame';
 
 export type RankedBarBasis = 'measured' | 'estimated' | 'unknown';
 
@@ -44,7 +45,7 @@ const BASIS_WORDS: Readonly<Record<RankedBarBasis, string>> = {
   unknown: 'not measured',
 };
 
-export function RankedBars({ label, unit, items, order = 'asc', note, footnote, layout = 'auto', many = 'sideways', ceiling, values = 'hover' }: {
+function RankedBarsPlot({ label, unit, items, order = 'asc', note, footnote, layout = 'auto', many = 'sideways', ceiling, values = 'hover' }: {
   /**
    * OMN-23330 AC6 (the operator's 2026-11-09 review): 'always' prints every bar's figure; 'hover' (the 2026-10-25 ruling,
    * "show them when hover") reveals it on pointer or keyboard focus. Every bar's accessible name carries it either way.
@@ -122,4 +123,11 @@ export function RankedBars({ label, unit, items, order = 'asc', note, footnote, 
       {footnote && <p className="rb-footnote">{footnote}</p>}
     </figure>
   );
+}
+
+/** OMN-23330 AC37: the chart, with its "Show as table" toggle over the same rows and values. */
+export function RankedBars(props: Parameters<typeof RankedBarsPlot>[0]) {
+  return <ChartTable label={props.label} columns={['Name', props.unit ?? 'Value']} rows={props.items.map(item => [item.name, item.display])}>
+    <RankedBarsPlot {...props} />
+  </ChartTable>;
 }

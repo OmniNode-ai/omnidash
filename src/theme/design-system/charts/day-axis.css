@@ -2,3 +2,9 @@
    at the ends, hidden where it has no room); this file only gives the row its size and the labels their type. */
 .ds-day-axis { position: relative; height: 18px; margin-top: 6px; font-size: 12px; line-height: 18px; color: var(--ds-ink-2); }
 .ds-day-axis-label { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
+
+/* OMN-23330 AC35: today's UTC day, still in progress, is drawn lighter on a bar chart and reached by a dashed segment on a
+   line, so a day that is still filling in never reads as a finished low day. */
+.ins-plot .od-today { stroke-dasharray: 5 4; opacity: .8; }
+:is(.gdb-day, .ins-bar, .ins-money-day, .daily-metering-bars > button, .usage-analysis-spark > i)[data-in-progress="true"] { opacity: .55; }
+.ins-readout[data-in-progress="true"] { font-style: normal; }

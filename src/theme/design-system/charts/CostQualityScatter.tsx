@@ -4,12 +4,13 @@
  * nothing measured there are no axes and no $0 ticks, only the list of what could not be drawn.
  */
 import { useState, type CSSProperties, type ReactNode } from 'react';
+import { ChartTable } from './frame';
 
 export interface ScatterPoint { key: string; name: string; cost: number; rate: number; runs: number; color: string; detail: string }
 
 const W = 640, H = 260, INSET = 24, PAD = { left: 56, right: 200, top: 24, bottom: 40 };
 
-export function CostQualityScatter({ label, points, unplotted, formatCost, legend }: {
+function CostQualityScatterPlot({ label, points, unplotted, formatCost, legend }: {
   label: string;
   points: readonly ScatterPoint[];
   /** The names that could not be drawn (no measured cost or no verdicts). */
@@ -51,4 +52,12 @@ export function CostQualityScatter({ label, points, unplotted, formatCost, legen
       Not drawn (no measured cost or no verdicts): {unplotted.join(', ')}</p>}
     {legend}
   </figure>;
+}
+
+/** OMN-23330 AC37: the chart, with its "Show as table" toggle over the same rows and values. */
+export function CostQualityScatter(props: Parameters<typeof CostQualityScatterPlot>[0]) {
+  return <ChartTable label={props.label} columns={['Model', 'Cost', 'Pass rate', 'Runs']}
+    rows={props.points.map(point => [point.name, point.cost, point.rate, point.runs])}>
+    <CostQualityScatterPlot {...props} />
+  </ChartTable>;
 }

@@ -5,7 +5,7 @@
  * value over the largest served value in the chart (layout only).
  */
 import { useState, type CSSProperties, type ReactNode } from 'react';
-import { ChartReadout } from './frame';
+import { ChartReadout, ChartTable } from './frame';
 import { SeriesLegend } from './legend';
 import './chart-scroll.css';
 
@@ -32,7 +32,7 @@ export interface GroupedBarGroup {
   values: readonly GroupedBarValue[];
 }
 
-export function GroupedBars({ label, groups, legend, wrapNames = false, extraLegend }: {
+function GroupedBarsPlot({ label, groups, legend, wrapNames = false, extraLegend }: {
   label: string;
   groups: readonly GroupedBarGroup[];
   legend?: ReadonlyArray<{ label: string; color: string }>;
@@ -82,4 +82,13 @@ export function GroupedBars({ label, groups, legend, wrapNames = false, extraLeg
       </div>}
     </>
   );
+}
+
+/** OMN-23330 AC37: the chart, with its "Show as table" toggle over the same rows and values. */
+export function GroupedBars(props: Parameters<typeof GroupedBarsPlot>[0]) {
+  const keys = [...new Set(props.groups.flatMap(group => group.values.map(value => value.key)))];
+  return <ChartTable label={props.label} columns={['Name', ...keys]}
+    rows={props.groups.map(group => [group.name, ...keys.map(key => group.values.find(value => value.key === key)?.display ?? null)])}>
+    <GroupedBarsPlot {...props} />
+  </ChartTable>;
 }

@@ -76,7 +76,11 @@ test('AC133 a 7-day window shows each card against the previous 7 days; All show
   await expect(arrow(page, 'overview-tokens')).toHaveText('\u2193');
   await expect(arrow(page, 'overview-savings')).toHaveCount(0);
   await expect(arrow(page, 'overview-spend')).toHaveAttribute('aria-hidden', 'true');
-  await expect(page.locator('[data-component="overview-spend"] .local-card-change')).toHaveCSS('color', await page.locator('[data-component="overview-spend"] .local-card-caption > :first-child').evaluate(el => getComputedStyle(el).color));
+  // OMN-23330 AC33 (operator, 2026-11-11) supersedes AC192's neutral colour where a change has a meaning: Spend's rise is a
+  // warning. A volume card's change (Tokens processed) stays in the caption's neutral colour, as AC192 had it.
+  await expect(page.locator('[data-component="overview-spend"] .local-card-change')).toHaveAttribute('data-tone', 'warn');
+  await expect(page.locator('[data-component="overview-tokens"] .local-card-change')).not.toHaveAttribute('data-tone', /.+/);
+  await expect(page.locator('[data-component="overview-tokens"] .local-card-change')).toHaveCSS('color', await page.locator('[data-component="overview-tokens"] .local-card-caption > :first-child').evaluate(el => getComputedStyle(el).color));
   await chooseWindow(page, 'Today (UTC)');
   await expect(page.locator('.local-card-change')).toHaveCount(0);
 });
