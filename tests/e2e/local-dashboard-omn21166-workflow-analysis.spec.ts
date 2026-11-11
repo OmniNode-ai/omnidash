@@ -105,9 +105,14 @@ test('each analysis card keeps its accent in its chart and icon', async ({ page 
   await page.goto('/workflow?correlation_id=chart-run-a');
   const timing = page.locator('.workflow-analysis-card--timing');
   await expect(timing.locator('svg').last()).toBeVisible();
-  const accent = await timing.evaluate(element => getComputedStyle(element).getPropertyValue('--analysis-accent').trim());
-  // A hatched bar carries its colour in its outline's stroke (live review 2026-10-26).
-  await expect(timing.locator(`.local-chart-canvas path[stroke="${accent}"]`).first()).toBeVisible();
+  // A hatched bar carries its colour in its outline's stroke (live review 2026-10-26). OMN-23330 (Lakshman 2026-11-11, "use
+  // good colors"): each timing wears its own series colour, not a shade of the card's accent; the card keeps its accent on
+  // its heading icon. The bars are the filled, hatched paths: each draws its stroke in its own colour.
+  const accent = (await timing.evaluate(element => getComputedStyle(element).getPropertyValue('--analysis-accent').trim())).toLowerCase();
+  const bars = async () => [...new Set(await timing.locator('.local-chart-canvas path[stroke][fill]:not([fill="none"])')
+    .evaluateAll(paths => paths.map(path => (path.getAttribute('stroke') ?? '').toLowerCase()).filter(stroke => /^#[0-9a-f]{6}$/.test(stroke))))];
+  await expect.poll(async () => (await bars()).length).toBeGreaterThanOrEqual(2);
+  expect(await bars()).not.toContain(accent);
   const accents = await page.locator('.local-run-summary-group, .workflow-analysis-card').evaluateAll(elements => elements.map(element => {
     const style = getComputedStyle(element);
     return style.getPropertyValue('--fact-accent').trim() || style.getPropertyValue('--analysis-accent').trim();

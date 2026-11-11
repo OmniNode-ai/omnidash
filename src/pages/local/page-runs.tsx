@@ -3,7 +3,7 @@
 import { formatDashboardCount } from '@/theme/format';
 import { readableTime } from '@/theme/format';
 import { exactMs } from '@/theme/format';
-import { useContext, useEffect, useId, useState, type CSSProperties, type ReactNode } from 'react';
+import { useContext, useEffect, useId, useLayoutEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { tierColor } from '@/lib/dashboard-colors';
 import { Link, useLocation, useSearch } from 'wouter';
@@ -308,6 +308,18 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
   const [showAllFields, setShowAllFields] = useState(false);
   // Part 30 AC206: the routing fields as columns beside model, backend and tier.
   const [showRouting, setShowRouting] = useState(false);
+  // The table's panel width, read from its wrap, so the room its columns leave can be shared evenly (2026-11-11).
+  const [panelWidth, setPanelWidth] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const wrap = document.getElementById(`${id}-table`)?.parentElement;
+    if (!wrap) return undefined;
+    const read = () => setPanelWidth(wrap.clientWidth);
+    read();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(read);
+    observer.observe(wrap);
+    return () => observer.disconnect();
+  }, [id]);
   const modelColorOf = useModelColor();
   const search = useSearch();
   const [location, navigate] = useLocation();
@@ -359,16 +371,16 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
   const page = shown.slice(current * pageSize, (current + 1) * pageSize);
   const modelWidth = runModelColumnWidth(page);
   const fixedWidth = (concept: string) => (concept === 'model' ? modelWidth : RUN_COLUMN_WIDTHS[concept]!);
-  // The operator, 2026-11-10 ("in column why gap - make it dynamic"): the table fills its panel with a fixed layout, which
-  // stretched every column by the same factor (Model 160 px drew 269 px at 1920). Each column now keeps its own width and
-  // only the last shown column (Duration, or Score with every field shown) takes the room left, after the last value.
-  // A fixed layout spreads any width it has left over every column, so the last column is given exactly what is left:
-  // its own width, or the panel's width less the other shown columns when that is more.
-  const lastColumn = showAllFields ? 'score' : 'duration';
+  // The operator, 2026-11-10 ("in column why gap - make it dynamic"): stretching every column by one factor grew Model
+  // most (160 px drew 269 px at 1920), and giving the last column all the room left put a hole after Duration
+  // (2026-11-11, "why right side too much space left?"). Chosen 2026-11-11, "spread evenly": every shown column draws its
+  // own width plus the same share of the room left, so no column grows more than another. The share is read from the
+  // panel's measured width (a calc() of px and % on a fixed-layout cell is resolved unevenly by Chrome: measured extras
+  // from -21 to +49 px); at or below the columns' sum it is 0 and each column is its own width.
   const shownNow = [...RUN_DEFAULT_COLUMNS, ...(showAllFields ? RUN_EXTRA_COLUMNS : []), ...(showRouting ? RUN_ROUTING_COLUMNS : [])];
-  const othersWidth = shownNow.filter(concept => concept !== lastColumn).reduce((sum, concept) => sum + fixedWidth(concept), 0);
-  const columnWidth = (concept: string) => (concept === lastColumn
-    ? `max(${fixedWidth(concept)}px, calc(100% - ${othersWidth}px))` : fixedWidth(concept));
+  const shownWidth = shownNow.reduce((sum, concept) => sum + fixedWidth(concept), 0);
+  const share = panelWidth === null ? 0 : Math.max(0, (panelWidth - shownWidth) / shownNow.length);
+  const columnWidth = (concept: string) => fixedWidth(concept) + share;
   const canonicalSearch = writeRunsSearch(search, { ...view, page: current + 1 });
   // OMN-23309: useSearch reads whichever page is current, so a Runs table still mounted while the user leaves would
   // send them back to /runs. The table canonicalises the URL only while the path is /runs.
@@ -416,13 +428,13 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
   const headIcon = (concept: string, label: string) => <ConceptIcon concept={concept} label={label} size={13} />;
   // Lakshman 2026-11-05 ("in all columns add a tooltip so that when we hover it should tell about that column"): each header
   // explains its column on hover and on keyboard focus (the kit Tooltip), from RUN_COLUMN_TIPS.
-  const plainHeader = (concept: string, label: string, extra = false) => <th data-column={concept} data-extra={extra ? '' : undefined} style={{ width: columnWidth(concept) }}>
+  const plainHeader = (concept: string, label: string, extra = false) => <th data-column={concept} data-extra={extra ? '' : undefined} data-width={fixedWidth(concept)} style={{ width: columnWidth(concept) }}>
     <span className="local-runs-tip ds-column-tip" data-field-tone={concept}><Tooltip text={RUN_COLUMN_TIPS[concept] ?? label} side="bottom"><span className="local-runs-head" tabIndex={0}>{headIcon(concept, label)}{label}</span></Tooltip></span>
   </th>;
   const sortHeader = (key: RunSortKey, label: string, concept: string) => {
     const active = view.sort === key;
     const direction = active ? view.dir ?? 'desc' : null;
-    return <th data-column={concept} style={{ width: columnWidth(concept) }} aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}>
+    return <th data-column={concept} data-width={fixedWidth(concept)} style={{ width: columnWidth(concept) }} aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}>
       <span className="local-runs-tip ds-column-tip" data-field-tone={concept}><Tooltip text={RUN_COLUMN_TIPS[concept] ?? label} side="bottom">
       <button type="button" className="local-sort-header" data-sort-active={active ? '' : undefined}
         onClick={() => updateView({ sort: key, dir: active && direction === 'desc' ? 'asc' : 'desc', page: 1 })}>
@@ -580,7 +592,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                   {plainHeader('host', 'Host', true)}
                   {plainHeader('tokens', 'Tokens')}{sortHeader('cost', 'Cost', 'cost')}
                   {/* The shared baseline is named in the header's tooltip and accessible name, not on the page. */}
-                  <th data-column="savings" style={{ width: RUN_COLUMN_WIDTHS.savings }} aria-label={sharedBaseline ? `Saving vs ${sharedBaseline}` : undefined}>
+                  <th data-column="savings" data-width={RUN_COLUMN_WIDTHS.savings} style={{ width: columnWidth('savings') }} aria-label={sharedBaseline ? `Saving vs ${sharedBaseline}` : undefined}>
                     <span className="local-runs-tip ds-column-tip" data-field-tone="savings"><Tooltip side="bottom" text={sharedBaseline
                       ? `Modelled saving vs ${sharedBaseline}: what the run's tokens would cost at ${sharedBaseline}'s prices, less what the run cost. ${sharedBaseline} never ran.`
                       : RUN_COLUMN_TIPS.savings!}>

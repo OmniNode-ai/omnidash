@@ -270,7 +270,7 @@ export interface RunViewProps {
 export function RunRef({ id, short = false }: { id: unknown; short?: boolean }) {
   // `short` (OMN-21166 R-A): a run table shows a long id's head and tail; the link target and title keep the whole id.
   return typeof id === 'string' && id !== ''
-    ? <Link href={workflowHref(id)} title={id} aria-label={short ? id : undefined}>{short ? shortId(id) : id}</Link>
+    ? <Link className="ds-run-link" href={workflowHref(id)} title={id} aria-label={short ? id : undefined}>{short ? shortId(id) : id}</Link>
     : <>{recorded(id)}</>;
 }
 

@@ -9,7 +9,7 @@ import { Link } from 'wouter';
 import { workflowHref } from '@/navigation/workflow-url-state';
 import { useThemeName } from '@/theme';
 import { EChart } from './echarts-lazy';
-import { colorToNumber, tokenHex, tokenValue, type TokenName } from '@/theme/design-system/color';
+import { tokenHex, tokenValue, type TokenName } from '@/theme/design-system/color';
 import { localeDate as fmtLocaleDate, localeString as fmtLocaleString } from '@/theme/format';
 import { exactMs, formatShortDay } from '@/theme/format';
 
@@ -432,28 +432,21 @@ function timingOption(bars: readonly RunTimingBar[], colours: readonly string[],
  * OMN-21015: where one run's time went, as bars. A second way of showing the timings the run summary's tiles carry as
  * text; it draws exactly the bars `runTimingBars` shapes, and nothing when no timing is measured.
  */
-export function RunTimingChart({ timings, title = 'Run timing', compact = false, accentToken }: { timings: readonly RunTiming[]; title?: string; compact?: boolean; accentToken?: string }) {
+export function RunTimingChart({ timings, title = 'Run timing', compact = false }: { timings: readonly RunTiming[]; title?: string; compact?: boolean }) {
   const motion = useChartMotion();
   // Re-read the theme's colours when the theme changes.
   useThemeName();
   const { bars, unmeasured } = runTimingBars(timings);
   if (bars.length === 0) return null;
+  // Each timing its own series colour, by its place among the timings handed over (operator 2026-11-11, "use good
+  // colors"): the shades of the card's one accent read as one thing, and the field palette's timing colours are one
+  // brown family, so the series palette, made to be told apart in both themes, is used.
   const palette = seriesColours(timings.length, undefined);
-  const colours = bars.map((bar, index) => {
-    if (!accentToken) return palette[bar.place - 1]!;
-    const accent = colorToNumber(tone(accentToken));
-    // Distinct timings retain separate shades within their enclosing card's
-    // accent. The first remains the exact accent; no data changes with color.
-    const tint = Math.min(.5, index / (bars.length + 1));
-    const channels = [16, 8, 0].map(shift => {
-      const channel = (accent >> shift) & 255;
-      return Math.round(channel + (255 - channel) * tint).toString(16).padStart(2, '0');
-    });
-    return `#${channels.join('')}`;
-  });
+  const colours = bars.map(bar => palette[bar.place - 1]!);
   return (
     <figure className="local-chart local-chart--timing" aria-label={title}>
-      <ChartTable label={title} shape="bars" columns={['Timing', 'Duration']} rows={bars.map(bar => [bar.label, formatDuration(bar.value)])}>
+      <ChartTable label={title} shape="bars" columns={['Timing', 'Duration']} rows={bars.map(bar => [bar.label, formatDuration(bar.value)])}
+        rowColors={colours} rowInkColumns={[1]}>
         <EChart option={{ ...timingOption(bars, colours, compact), ...motion.option }} />
       </ChartTable>
       <figcaption>
