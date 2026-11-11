@@ -1561,7 +1561,9 @@ html body .local-dashboard-page section.workflow-record-group[data-field-tone] >
    1440 px "Median duration" wrapped although it fits (measured 0 px over with nowrap). Narrow cards still wrap: from
    1400 px, since at 1280 px five Overview cards are 187 px and "Delegation Quality" ran 4 px past its card. */
 @media (min-width: 1400px) {
-  .local-overview-summary > article > h2 { white-space: nowrap; }
+  /* OMN-23330 AC9 + CI: one line, and never wider than its card: a label that fits with 0 to 17 px to spare ("Median
+     duration") overflowed by 3 px on the CI runner, so a too-wide label is clipped with an ellipsis instead of widening the card. */
+  .local-overview-summary > article > h2 { white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 }
 
 /* The operator, 2026-11-10 ("in overview all 5 cards in a row"): at a desktop width (901 px and up) every Overview headline
