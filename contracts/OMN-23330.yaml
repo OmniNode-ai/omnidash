@@ -105,9 +105,10 @@ requirements:
           after the dependency upgrades the full vitest, tsc, eslint and Playwright suites show no failure that dev
           does not have. Proved by: npx vitest run, npx tsc --noEmit, npm run lint and npx playwright test on the
           lab host at the base and at the head, compared failure by failure -- note: Bound by the operator on
-          2026-11-10 to the full suites: tsc, eslint, vitest and Playwright (chromium, two workers, one retry). On
-          dev 9cd9c7cf Playwright fails 13 cases; on this branch the suites pass. The failure-by-failure comparison
-          is recorded on the pull request.
+          2026-11-10/11 to tsc, eslint, full vitest and the 13 Playwright cases that fail on dev 9cd9c7cf, selected
+          by title (one was renamed on this branch). CI caps an evidence check at 300 s and the full Playwright
+          suite takes 418 s even when it all passes, so the full comparison (dev 499 passed and 13 failed; head 0
+          failed) is recorded on the pull request.
       - id: "AC18"
         statement: >-
           CostTrend3DBars.tsx and CostTrend3DArea.tsx are deleted together with their own tests and stories, and
@@ -418,16 +419,23 @@ dod_evidence:
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn23330-ac17"
     description: >-
-      AC17: Bound by the operator on 2026-11-10 to the full suites: tsc, eslint, vitest and Playwright (chromium,
-      two workers, one retry). On dev 9cd9c7cf Playwright fails 13 cases; on this branch the suites pass. The
-      failure-by-failure comparison is recorded on the pull request.
+      AC17: Bound by the operator on 2026-11-10/11 to tsc, eslint, full vitest and the 13 Playwright cases that fail
+      on dev 9cd9c7cf, selected by title (one was renamed on this branch). CI caps an evidence check at 300 s and
+      the full Playwright suite takes 418 s even when it all passes, so the full comparison (dev 499 passed and 13
+      failed; head 0 failed) is recorded on the pull request.
     source: "manual"
     binds_ac: ["AC17"]
     checks:
       - check_type: "test_passes"
         check_value: >-
           test -d node_modules || npm ci --no-audit --no-fund; npx tsc --noEmit && npm run lint && npx vitest run &&
-          npx playwright test --project=chromium --workers=2 --retries=1
+          npx playwright test --project=chromium --workers=2 --retries=1 --grep 'stored basis, excluded counts and
+          modelled baseline survive|Overview is the default page and fits 1440x900 with no unmeasured 0|local panels
+          follow both themes on every page without losing readable surfaces|the Runs per day legend hides and shows
+          a series from the keyboard|compact totals and full directional tokens in|organized cards across all seven
+          MVP pages in|metering-backed Overview uses the same compact total and arrow-only full directions|daily
+          metering tokens fill the empty model series honestly in|Evidence selected-run directional counts|R7 a long
+          full count stays on one line inside its headline card'
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn23330-ac18"
     description: >-
