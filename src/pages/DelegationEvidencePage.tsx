@@ -187,7 +187,7 @@ function SelectedRun({ correlationId, decision }: { correlationId: string | null
       title="SELECTED RUN"
       right={<StateBadge passed={row.quality_gate_passed} />}
     >
-      <KV
+      <KV cards
         items={[
           { k: 'Correlation', v: row.correlation_id, accent: true },
           { k: 'Task type', v: taskLabel(row.task_type) },

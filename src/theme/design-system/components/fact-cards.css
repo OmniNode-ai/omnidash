@@ -1,0 +1,16 @@
+/* OMN-23330 (Lakshman 2026-11-11, Delegation Evidence's Selected run: "cards and make it great", then "just one card",
+   "one card scrollable" in the run dialog, and "remove left side border - that is not in our design"): one kit look for a
+   run's facts, wherever they are drawn (Evidence's Selected run, the Runs page's run dialog). All the facts sit in one
+   card, a hairline all round; each fact's icon and label wear its field's colour (--field-ink, set by its
+   data-field-tone: the colour the tables' columns wear), pulled toward the ink so the label reads in either theme; no bar
+   down any edge. Id-weighted so the page rules that draw .kv and the fields list do not win. */
+.ds-fact-cards:not(#ds-important) { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px 24px;
+  margin: 0; padding: 16px 18px; border: 1px solid var(--ds-line); border-radius: 12px; background: var(--ds-surface-2); }
+.ds-fact-cards > *:not(#ds-important) { display: flex; flex-direction: column; gap: 5px; min-width: 0; margin: 0; padding: 0; }
+.ds-fact-cards > * > :is(dt, .k):not(#ds-important) { display: flex; align-items: center; gap: 6px; margin: 0;
+  color: color-mix(in oklab, var(--field-ink, var(--ds-ink-3)) 70%, var(--ds-ink));
+  font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.ds-fact-cards > * > :is(dt, .k) svg:not(#ds-important) { flex: none; color: var(--field-ink, var(--ds-ink-3)); }
+.ds-fact-cards > * > :is(dd, .v):not(#ds-important) { margin: 0; color: var(--ds-ink); font-size: 15px; font-weight: 600; line-height: 1.35;
+  overflow-wrap: anywhere; }
+.ds-fact-cards > [data-field-unavailable="true"] > :is(dd, .v):not(#ds-important) { color: var(--ds-ink-3); font-weight: 400; }

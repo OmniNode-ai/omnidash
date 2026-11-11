@@ -146,7 +146,8 @@ test('AC27 Runs filters by UTC day and task, then shows the selected run without
   await expect(page.getByRole('row', { name: /run-yesterday/ })).toBeVisible();
 
   await page.getByRole('row', { name: /run-today-unmeasured/ }).click();
-  const selected = page.getByRole('complementary', { name: 'Selected run' });
+  // OMN-23330 (2026-11-11): a row opens the run in a centred dialog, still named Selected run.
+  const selected = page.getByRole('dialog', { name: 'Selected run' });
   await expect(selected).toContainText('run-today-unmeasured');
   await expect(selected).toContainText('Task');
   await expect(selected).toContainText('Not recorded');
@@ -164,7 +165,8 @@ test('AC27 selected failed run shows its served result, time, cause, route facts
   await serveCharts(page, fixtureRows());
   await page.goto('/runs');
   await page.getByRole('row', { name: /run-today-fail/ }).click();
-  const selected = page.getByRole('complementary', { name: 'Selected run' });
+  // OMN-23330 (2026-11-11): a row opens the run in a centred dialog, still named Selected run.
+  const selected = page.getByRole('dialog', { name: 'Selected run' });
   await expect(selected.locator('.local-run-pill')).toHaveText('failed');
   await expect(selected.locator('time')).toHaveAttribute('datetime', at(0, '09:30'));
   // OMN-21166 (readable task names, 0d7d6df3): a task is written "code generation", not its served key.
@@ -180,17 +182,17 @@ test('AC27 selected failed run shows its served result, time, cause, route facts
   }
   await expect(selected.locator('[role="meter"]')).toHaveAttribute('aria-valuenow', '0.5');
   await expect(selected.locator('[role="meter"]')).toHaveAttribute('aria-valuetext', /0\.5.*0\.8/);
-  const table = page.locator('.local-runs-wrap');
-  const tableBox = await table.boundingBox();
-  const selectedBox = await selected.boundingBox();
-  expect(tableBox).not.toBeNull();
-  expect(selectedBox).not.toBeNull();
-  expect(selectedBox!.x).toBeGreaterThanOrEqual(tableBox!.x + tableBox!.width - 1);
+  // OMN-23330 (2026-11-11, "open as popup in center"): the run's dialog sits in the middle of the window, and within a
+  // phone's width (it replaced the side panel beside the table, then below it on a phone).
+  const box = await selected.boundingBox();
+  const viewport = page.viewportSize()!;
+  expect(box).not.toBeNull();
+  expect(Math.abs(box!.x + box!.width / 2 - viewport.width / 2)).toBeLessThanOrEqual(2);
+  expect(Math.abs(box!.y + box!.height / 2 - viewport.height / 2)).toBeLessThanOrEqual(2);
   await page.setViewportSize({ width: 390, height: 844 });
   await expect.poll(async () => {
-    const mobileTable = await table.boundingBox();
-    const mobileSelected = await selected.boundingBox();
-    return Boolean(mobileTable && mobileSelected && mobileSelected.y >= mobileTable.y + mobileTable.height - 1);
+    const phone = await selected.boundingBox();
+    return Boolean(phone && phone.x >= 0 && phone.x + phone.width <= 390);
   }).toBe(true);
 });
 
@@ -202,10 +204,15 @@ test('AC27 selection moves to the first listed run when paging hides the selecte
   await serveCharts(page, fixtureRows({ [prefix + 'delegation.decisions.v1']: pagedRuns }));
   await page.goto('/runs');
   await page.getByRole('row', { name: /paged-25/ }).click();
-  const selected = page.getByRole('complementary', { name: 'Selected run' });
+  // OMN-23330 (2026-11-11): a row opens the run in a centred dialog, still named Selected run.
+  const selected = page.getByRole('dialog', { name: 'Selected run' });
   await expect(selected.locator('code')).toHaveText('paged-25');
+  // The dialog is modal: it closes before the reader pages, and a run on the next page opens its own dialog.
+  await page.keyboard.press('Escape');
+  await expect(selected).toHaveCount(0);
   await page.getByRole('button', { name: 'Next page', exact: true }).click();
-  await expect(selected.locator('code')).toHaveText('paged-0');
+  await page.getByRole('row', { name: /paged-0\b/ }).click();
+  await expect(page.getByRole('dialog', { name: 'Selected run' }).locator('code')).toHaveText('paged-0');
 });
 
 test('AC29 Usage exposes measured model spend, per-call cost, tokens, and honest unavailable route savings', async ({ page }, info) => {

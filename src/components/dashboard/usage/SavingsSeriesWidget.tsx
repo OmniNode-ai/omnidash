@@ -76,7 +76,11 @@ export function MeteringDaySeries({ rows }: { rows: readonly unknown[] }) {
 }
 
 const DAYS_PER_PAGE = 8;
-function SavingsDays({ baseline, days }: { baseline: string; days: MeteringSummaryRow[] }) {
+function SavingsDays({ baseline, days: servedDays }: { baseline: string; days: MeteringSummaryRow[] }) {
+  // The newest day first, so page 1 holds today (operator 2026-11-11: "in all table date latest on top"); days that are
+  // not all calendar dates keep the served order.
+  const byDate = servedDays.every(row => typeof row.window_start === 'string' && /^\d{4}-\d{2}-\d{2}/.test(row.window_start));
+  const days = byDate ? [...servedDays].sort((a, b) => String(b.window_start).localeCompare(String(a.window_start))) : servedDays;
   const [requestedPage, setPage] = useState(0);
   const last = Math.max(0, Math.ceil(days.length / DAYS_PER_PAGE) - 1);
   const page = Math.min(requestedPage, last);

@@ -438,7 +438,7 @@ html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-cha
 @media (hover: hover) {
   .local-window-menu .local-window-list [role="radio"]:hover:not(#ds-important) { background: color-mix(in oklab, var(--win-tone) 12%, transparent); color: var(--ds-ink); } }
 .local-window-menu .local-window-list [role="radio"][aria-checked="true"] { font-weight: 600;
-  box-shadow: inset 3px 0 0 var(--win-tone); }
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--win-tone) 55%, transparent); }
 .local-window-menu .local-window-list [role="radio"][aria-checked="true"]:not(#ds-important) {
   background: color-mix(in oklab, var(--win-tone) 18%, transparent); color: var(--ds-ink); }
 .local-window-menu .local-window-list [role="radio"][aria-checked="true"] svg:not(#ds-important) { color: var(--win-tone); }
@@ -446,7 +446,9 @@ html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-cha
 .local-window-menu .local-window-trigger[data-window]:not(#ds-important) {
   border-color: color-mix(in oklab, var(--win-tone) 45%, var(--ds-line)); }
 html body .local-window-menu .local-window-list [role="radio"][aria-checked="true"]:not(#ds-important) {
-  background: color-mix(in oklab, var(--win-tone) 18%, transparent); box-shadow: inset 3px 0 0 var(--win-tone); }
+  /* OMN-23330 (2026-11-11, "remove left side border - that is not in our design"): the chosen window is a tinted fill
+     with a hairline all round in its colour, no left bar. */
+  background: color-mix(in oklab, var(--win-tone) 18%, transparent); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--win-tone) 55%, transparent); }
 html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-toned] { position: relative; z-index: 1; }
 html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-toned][aria-selected="true"] { font-weight: 600; }
 html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-toned][aria-selected="true"]:not(#ds-important) {

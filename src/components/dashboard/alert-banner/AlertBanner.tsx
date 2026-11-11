@@ -36,9 +36,11 @@ function AlertLine({ alert, onDismiss, codeLabel }: { alert: AlertBannerRow; onD
       data-testid={alert.severity === 'critical' ? 'alert-banner-critical' : 'alert-banner-line'}
       data-severity={alert.severity}
       style={{
-        borderLeft: `4px solid ${role.edge}`,
-        background: 'var(--ds-surface-2)',
-        borderRadius: 6,
+        // OMN-23330 (2026-11-11, "remove left side border - that is not in our design"): a hairline all round and a fill
+        // tinted with the severity's colour, as the fact cards and chart tables are drawn; no left bar.
+        border: `1px solid color-mix(in oklab, ${role.edge} 45%, var(--ds-line))`,
+        background: `color-mix(in oklab, ${role.edge} 8%, var(--ds-surface))`,
+        borderRadius: 10,
         padding: '8px 12px',
         display: 'flex',
         alignItems: 'center',
@@ -119,9 +121,9 @@ export function AlertBanner({ alerts, waitsOn, codeLabel, refusalMessage }: Aler
         <div
           data-testid="alert-banner-clear"
           style={{
-            borderLeft: `4px solid ${SEVERITY_ROLES.nominal.edge}`,
-            background: 'var(--ds-surface-2)',
-            borderRadius: 6,
+            border: `1px solid color-mix(in oklab, ${SEVERITY_ROLES.nominal.edge} 45%, var(--ds-line))`,
+            background: `color-mix(in oklab, ${SEVERITY_ROLES.nominal.edge} 8%, var(--ds-surface))`,
+            borderRadius: 10,
             padding: '8px 12px',
           }}
         >

@@ -18,7 +18,7 @@ import { PassRateMeter } from '@/pages/local/shares';
 import { breakableName } from '@/theme/design-system/charts';
 import { PassRateSparkline, TaskIcon } from '@/pages/local/insight-charts';
 import { RoutingAnalysis } from '@/pages/local/usage-analysis';
-import { Badge, ConfirmDialog, DashboardTabs, DataTable, Dropdown, EmptyState, Fact, FactList, InfoTip, Panel, PanelTitle, Tooltip } from '@/theme/design-system/components';
+import { Badge, ConfirmDialog, DashboardTabs, DataTable, Dialog, Dropdown, EmptyState, Fact, FactList, InfoTip, Panel, PanelTitle, Tooltip } from '@/theme/design-system/components';
 import { Bot, ChartArea, CircleCheck, CircleDollarSign, FileJson, FileSpreadsheet, Gauge, Layers, ListChecks, Server, Timer, TriangleAlert } from '@/theme/design-system/icons';
 import { failureCauseLabel, failureDetailText, taskLabel, tierLabel } from '@/pages/local/plain-text';
 import { causeLabelOf, useRunFilter } from '@/pages/local/run-filter';
@@ -389,10 +389,10 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
       navigate(`/runs${canonicalSearch ? `?${canonicalSearch}` : ''}`, { replace: true });
     }
   }, [canonicalSearch, location, navigate, search, syncUrl]);
+  // The open run's dialog closes when the run leaves the shown runs (a refresh, a filter, a page); it never switches to
+  // another run the reader did not open (2026-11-11, the dialog replacing the side panel).
   useEffect(() => {
-    if (selectedRunId !== null && !page.some(run => run.correlation_id === selectedRunId)) {
-      setSelectedRunId(page[0] ? String(page[0].correlation_id ?? '') : null);
-    }
+    if (selectedRunId !== null && !page.some(run => run.correlation_id === selectedRunId)) setSelectedRunId(null);
   }, [page, selectedRunId]);
   const updateView = (change: Partial<RunsViewState>, replace = false) => {
     const next = { ...view, ...change };
@@ -671,9 +671,11 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
           </DataTable>;
           })()}
             </div>
-          {selectedRun && <aside className="local-run-selected" role="complementary" aria-label="Selected run">
-            <div className="local-dashboard-filters"><h3 className="local-dashboard-caption">Selected run</h3><button type="button" aria-label="Close selected run" onClick={() => setSelectedRunId(null)}>Close</button></div>
-            <p className="local-run-title"><code>{recorded(selectedRun.correlation_id)}</code></p>
+          {/* Lakshman 2026-11-11 ("when we click any row that should open as popup in center with full details"): the row
+              opens the kit's dialog, centred over the page, with every recorded field of the run. */}
+          <Dialog open={selectedRun !== undefined} title="Selected run" onClose={() => setSelectedRunId(null)}
+            subtitle={selectedRun && <code className="local-run-title">{recorded(selectedRun.correlation_id)}</code>}>
+            {selectedRun && <div className="local-run-detail">
             <p className="local-dashboard-caption local-run-selected-facts">
               <OutcomePill value={statusOf(selectedRun)} />
               <CellTime value={selectedRun.created_at} />
@@ -681,25 +683,33 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                 ? <span className="local-task-cell"><TaskIcon task={String(selectedRun.task_type)} />{taskLabel(selectedRun.task_type)}</span>
                 : <span>{recorded(selectedRun.task_type)}</span>}
             </p>
-            <FactList>
-              <Fact term="Task">{isMissing(selectedRun.task_type) ? recorded(selectedRun.task_type) : taskLabel(selectedRun.task_type)}</Fact>
-              <Fact term="Cause"><span className="local-runs-cause" data-failure-cause={causeOf(selectedRun)} title={causeTextOf(selectedRun)}>{causeTextOf(selectedRun)}</span></Fact>
-              <Fact term="Model">{modelOrUnknown(selectedRun.model_name)}</Fact>
-              <Fact term="Route tier">{tierOf(selectedRun)}</Fact>
-              <Fact term="Duration">{duration(selectedRun.latency_ms)}</Fact>
-              <Fact term="Cost">{costOf(selectedSession, selectedRun)}</Fact>
-              <Fact term="Tokens in" data-field-tone="tokens-in" data-field-unavailable={isMissing(selectedRun.tokens_input)} valueTitle={tokensTitle(selectedRun.tokens_input, 'in')}>{recordedTokens(selectedRun.tokens_input)}</Fact>
-              <Fact term="Tokens out" data-field-tone="tokens-out" data-field-unavailable={isMissing(selectedRun.tokens_output)} valueTitle={tokensTitle(selectedRun.tokens_output, 'out')}>{recordedTokens(selectedRun.tokens_output)}</Fact>
-              <Fact term="Modelled saving">{runModelledCell(selectedRun)}</Fact>
-              <Fact term="Quality score">{recorded(selectedRun.actual_score)}
+            <FactList look="cards">
+              <Fact term={<><ConceptIcon concept="task" size={13} />Task</>} data-field-tone="task">{isMissing(selectedRun.task_type) ? recorded(selectedRun.task_type) : taskLabel(selectedRun.task_type)}</Fact>
+              <Fact term={<><ConceptIcon concept="failures" size={13} />Cause</>} data-field-tone="failures"><span className="local-runs-cause" data-failure-cause={causeOf(selectedRun)} title={causeTextOf(selectedRun)}>{causeTextOf(selectedRun)}</span></Fact>
+              <Fact term={<><ConceptIcon concept="model" size={13} />Model</>} data-field-tone="model">{modelOrUnknown(selectedRun.model_name)}</Fact>
+              <Fact term={<><ConceptIcon concept="routing-model" size={13} />Requested model</>} data-field-tone="routing-model">{recorded(selectedRun.requested_model)}</Fact>
+              <Fact term={<><ConceptIcon concept="backend" size={13} />Backend</>} data-field-tone="backend">{recorded(selectedRun.backend_id)}</Fact>
+              <Fact term={<><ConceptIcon concept="host" size={13} />Host</>} data-field-tone="host">{recorded(selectedRun.host)}</Fact>
+              <Fact term={<><ConceptIcon concept="tier" size={13} />Route tier</>} data-field-tone="tier">{tierOf(selectedRun)}</Fact>
+              <Fact term={<><ConceptIcon concept="completion" size={13} />Finish reason</>} data-field-tone="completion">{recorded(selectedRun.finish_reason)}</Fact>
+              <Fact term={<><ConceptIcon concept="escalated" size={13} />Escalations</>} data-field-tone="escalated">{recorded(selectedRun.escalation_count)}</Fact>
+              <Fact term={<><ConceptIcon concept="duration" size={13} />Duration</>} data-field-tone="duration">{duration(selectedRun.latency_ms)}</Fact>
+              <Fact term={<><ConceptIcon concept="cost" size={13} />Cost</>} data-field-tone="cost">{costOf(selectedSession, selectedRun)}</Fact>
+              <Fact term={<><ConceptIcon concept="tokens-in" size={13} />Tokens in</>} data-field-tone="tokens-in" data-field-unavailable={isMissing(selectedRun.tokens_input)} valueTitle={tokensTitle(selectedRun.tokens_input, 'in')}>{recordedTokens(selectedRun.tokens_input)}</Fact>
+              <Fact term={<><ConceptIcon concept="tokens-out" size={13} />Tokens out</>} data-field-tone="tokens-out" data-field-unavailable={isMissing(selectedRun.tokens_output)} valueTitle={tokensTitle(selectedRun.tokens_output, 'out')}>{recordedTokens(selectedRun.tokens_output)}</Fact>
+              <Fact term={<><ConceptIcon concept="savings" size={13} />Modelled saving</>} data-field-tone="savings">{runModelledCell(selectedRun)}</Fact>
+              <Fact term={<><ConceptIcon concept="baseline" size={13} />Baseline model</>} data-field-tone="baseline">{recorded(isMissing(selectedRun.savings_baseline_model) ? selectedSession?.baseline_model : selectedRun.savings_baseline_model)}</Fact>
+              <Fact term={<><ConceptIcon concept="basis" size={13} />Basis</>} data-field-tone="basis">{recorded(selectedSession?.usage_source)}</Fact>
+              <Fact term={<><ConceptIcon concept="score" size={13} />Quality score</>} data-field-tone="score">{recorded(selectedRun.actual_score)}
                 <Meter kind="selected-quality" label="Quality score versus required bar" min={0} max={1} now={selectedScore}
                   valueText={`Quality score ${recorded(selectedRun.actual_score)}; required bar ${recorded(selectedRun.required_bar)}`}
                   share={selectedScore} mark={Number.isFinite(selectedRequiredBar) ? selectedRequiredBar : null} />
               </Fact>
-              <Fact term="Required bar">{isMissing(selectedRun.required_bar) ? 'bar not recorded' : recorded(selectedRun.required_bar)}</Fact>
+              <Fact term={<><ConceptIcon concept="threshold" size={13} />Required bar</>} data-field-tone="threshold">{isMissing(selectedRun.required_bar) ? 'bar not recorded' : recorded(selectedRun.required_bar)}</Fact>
             </FactList>
             <p className="local-dashboard-caption"><Link href={workflowHref(String(selectedRun.correlation_id))}>Open full run</Link></p>
-          </aside>}
+            </div>}
+          </Dialog>
           </div>
           <div className="local-dashboard-pager">
             <span>{`Runs ${current * pageSize + 1}–${current * pageSize + page.length} of ${formatDashboardCount(shown.length)}`}</span>

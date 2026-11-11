@@ -68,10 +68,14 @@ test('typed failure labels preserve the exact served cause filter and selected r
   await expect(row).toHaveCount(1);
   await expect(row.locator('[data-failure-cause="refused_before_dispatch"]')).toHaveText('Refused before dispatch');
   await row.click();
-  const selected = page.getByRole('complementary', { name: 'Selected run' });
+  // OMN-23330 (2026-11-11): a row opens the run in a centred dialog, still named Selected run.
+  const selected = page.getByRole('dialog', { name: 'Selected run' });
   await expect(selected).toContainText('cause-run-7');
   await expect(selected.locator('[data-failure-cause="refused_before_dispatch"]')).toHaveText('Refused before dispatch');
   await expect(page).toHaveURL(/cause=refused_before_dispatch/);
+  // The dialog is modal: close it before the filters behind it are used.
+  await page.keyboard.press('Escape');
+  await expect(selected).toHaveCount(0);
   // A typed enum may also be the served failure detail; titles must read
   // the same precise label, including the ordinary-word timeout enum.
   for (const [code, label] of Object.entries(causeLabels)) {

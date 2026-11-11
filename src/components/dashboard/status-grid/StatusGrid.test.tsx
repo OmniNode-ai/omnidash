@@ -25,7 +25,9 @@ describe('StatusGrid', () => {
     render(<StatusGrid title="Services" rows={SEED_ENVIRONMENT_ROWS} waitsOn={[SEED_ENVIRONMENT_TOPIC]} />);
     for (const tile of screen.getAllByTestId('status-grid-tile')) {
       const severity = tile.getAttribute('data-severity') as StatusGridRow['severity'];
-      expect(tile.style.borderLeft).toBe(`4px solid ${SEVERITY_ROLES[severity].edge}`);
+      // OMN-23330 (2026-11-11): a hairline all round in the severity's colour, no left bar.
+      expect(tile.style.borderLeft).toBe('');
+      expect(tile.style.border).toContain(SEVERITY_ROLES[severity].edge);
     }
   });
 

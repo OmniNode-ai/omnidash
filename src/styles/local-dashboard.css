@@ -1487,7 +1487,9 @@
 .local-dashboard-page--runs [data-component="runs-tier-mix"] { grid-column: 1 / -1; }
 .local-routing-summary { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(0, 2fr); gap: 16px 32px; align-items: center; }
 .local-routing-meter > span { display: block; height: 100%; border-radius: inherit; background: var(--ds-field-local-run); }
-.local-routing-counts > div { --routing-count-ink: var(--ds-field-local-run); min-width: 0; padding-left: 14px; border-left: 2px solid color-mix(in oklab, var(--routing-count-ink) 50%, var(--ds-line)); }
+/* OMN-23330 (2026-11-11): no left bar; each count is a tinted cell with a hairline all round in its colour. */
+.local-routing-counts > div { --routing-count-ink: var(--ds-field-local-run); min-width: 0; padding: 8px 12px; border-radius: 10px;
+  border: 1px solid color-mix(in oklab, var(--routing-count-ink) 40%, var(--ds-line)); background: color-mix(in oklab, var(--routing-count-ink) 6%, var(--ds-surface)); }
 .local-routing-counts > [data-routing-count="total"] { --routing-count-ink: var(--ds-link); }
 .local-routing-counts > [data-routing-count="untiered"] { --routing-count-ink: var(--ds-field-duration); }
 .local-routing-counts dt { display: flex; align-items: center; gap: 6px; color: var(--routing-count-ink); font-size: 12px; }

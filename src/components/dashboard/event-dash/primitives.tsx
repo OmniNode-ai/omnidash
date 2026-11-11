@@ -17,6 +17,7 @@ import { formatDuration } from '@/theme/format';
 import { Fragment, useId, useState, type CSSProperties, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight } from '@/theme/design-system/icons';
 import { ColumnTip } from '@/theme/design-system/components/Tooltip';
+import { FACT_CARDS_CLASS } from '@/theme/design-system/components/FactList';
 import { isTenantNotConfiguredReason } from '@/data-source/projection-tenant';
 import { TenantNotConfiguredState } from '../TenantNotConfiguredState';
 import { ConceptIcon, FieldIcon } from '../FieldIcon';
@@ -239,11 +240,12 @@ export interface KVItem {
   accent?: boolean;
 }
 
-export function KV({ items }: { items: (KVItem | null | false)[] }) {
+/** `cards` draws the facts in the kit's card look (OMN-23330, 2026-11-11, Evidence's Selected run). */
+export function KV({ items, cards = false }: { items: (KVItem | null | false)[]; cards?: boolean }) {
   const modelIdentityStyle = useModelIdentityStyle();
   const real = items.filter((it): it is KVItem => Boolean(it));
   return (
-    <div className="kv">
+    <div className={cards ? `kv ${FACT_CARDS_CLASS}` : 'kv'}>
       {real.map((it, i) => (
         <div key={i} data-field-tone={fieldTone(it.k, it.v)} data-field-unavailable={isUnavailableField(it.v)}
           style={fieldTone(it.k, it.v) === 'model' && typeof it.v === 'string' && !isUnavailableField(it.v) ? modelIdentityStyle(it.v) : undefined}>

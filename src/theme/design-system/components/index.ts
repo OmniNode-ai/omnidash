@@ -1,11 +1,12 @@
 /** OMN-22168 AC4: the one component kit. Pages import their controls and panels from here. */
 export { ConfirmDialog } from './ConfirmDialog';
+export { Dialog } from './Dialog';
 export { Dropdown } from './Dropdown';
 export type { DropdownOption } from './Dropdown';
 export { ColumnTip, InfoTip, Tooltip } from './Tooltip';
 export { DashboardTabs, DashboardToggle, readTab, writeTab } from './Tabs';
 export { EmptyState } from './EmptyState';
-export { Fact, FactList } from './FactList';
+export { Fact, FactList, FACT_CARDS_CLASS } from './FactList';
 export { Badge, StatusChip } from './Badge';
 export { Figure, KpiTile, Panel, PanelTitle } from './Panel';
 export { Card } from './Card';

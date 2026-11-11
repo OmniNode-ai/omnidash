@@ -31,7 +31,10 @@ describe('AlertBanner', () => {
       // OMN-21166 part 26 AC159: the time reads as readable UTC, never the served ISO text.
       expect(within(b).getByText(`since ${READABLE_SINCE[alert.alert_id]}`)).toBeTruthy();
       expect(within(b).queryByText(`since ${alert.since}`)).toBeNull();
-      expect(b.style.borderLeft).toBe(`4px solid ${SEVERITY_ROLES.critical.edge}`);
+      // OMN-23330 (2026-11-11, "remove left side border - that is not in our design"): a hairline all round in the
+      // severity's colour, no left bar.
+      expect(b.style.borderLeft).toBe('');
+      expect(b.style.border).toContain(SEVERITY_ROLES.critical.edge);
     }
   });
 
