@@ -24,7 +24,6 @@ test.use({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce', trac
 
 const PAGES = ['/overview', '/runs', '/workflow?correlation_id=chart-run-a', '/usage', '/settings', '/delegation-evidence'];
 // The 01+20 ink (Lakshman 2026-11-03): #0a0a0a / #f5f5f5 (was #111111 / #fafafa).
-const INK = { light: 'rgb(10, 10, 10)', dark: 'rgb(245, 245, 245)' } as const;
 // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the editorial look replaced JetBrains Mono, Inter, the grey card line and 8px
 // corners with Geist Mono labels, a Fraunces display face for titles and figures, ink hairlines and square corners.
 // The checks read those from the page's own tokens (--ds-font-mono, --ds-font-sans, --ds-font-sans, --ds-line), not from
@@ -107,17 +106,22 @@ for (const theme of ['light', 'dark'] as const) {
     expect(firstFamily(await h1.evaluate(el => getComputedStyle(el).fontFamily))).toBe(firstFamily(face.display));
     await expect(h1).toHaveCSS('font-size', '46px');
     await expect(h1).toHaveCSS('font-weight', '600');
-    // Part 28 AC186: the current page is a lifted, bordered item on the shell's active surface, not the sidebar's own
-    // surface. OMN-21970: the surface is read from --ds-surface-2 rather than a hard-coded colour.
+    // Part 28 AC186 as changed by OMN-23330 (Lakshman 2026-11-11, "color on BG side bar selected should follow the icons
+    // colors"): the current page is a fill tinted with its own page colour, not the sidebar's surface, and its name is in
+    // that colour (pulled toward the ink in the light theme).
     const active = page.locator('.sidebar .mvp-nav-item.active');
-    const surfaces = await active.evaluate(el => {
+    const surfaces = await active.evaluate((el, dark) => {
       const probe = document.createElement('span'); el.append(probe);
-      try { probe.style.color = 'var(--ds-surface-2)'; return { surface: getComputedStyle(probe).color, own: getComputedStyle(el).backgroundColor,
-        sidebar: getComputedStyle(el.closest('.sidebar')!).backgroundColor }; } finally { probe.remove(); }
-    });
-    expect(surfaces.own, 'the active item is drawn on --ds-surface-2').toBe(surfaces.surface);
+      try {
+        probe.style.backgroundColor = 'color-mix(in oklch, var(--ds-destination-accent) 16%, var(--ds-surface-2))';
+        probe.style.color = dark ? 'var(--ds-destination-accent)' : 'color-mix(in oklch, var(--ds-destination-accent) 62%, var(--ds-ink))';
+        return { fill: getComputedStyle(probe).backgroundColor, name: getComputedStyle(probe).color, own: getComputedStyle(el).backgroundColor,
+          sidebar: getComputedStyle(el.closest('.sidebar')!).backgroundColor };
+      } finally { probe.remove(); }
+    }, theme === 'dark');
+    expect(surfaces.own, 'the active item is tinted with its page colour').toBe(surfaces.fill);
     expect(surfaces.own, 'the active item is not the sidebar surface').not.toBe(surfaces.sidebar);
-    await expect(active.locator('.dash-name')).toHaveCSS('color', INK[theme]);
+    await expect(active.locator('.dash-name')).toHaveCSS('color', surfaces.name);
     // Lakshman 2026-10-27: "an omninode product - keep this in one line", at the 12px floor and not cut off.
     const tagline = await page.locator('.brand-name .parent').evaluate(el => ({ lines: Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight || '13')),
       height: el.getBoundingClientRect().height, size: getComputedStyle(el).fontSize, clipped: el.scrollWidth - el.clientWidth, overRow: el.getBoundingClientRect().right - el.closest('.brand')!.querySelector('.sidebar-toggle')!.getBoundingClientRect().left }));

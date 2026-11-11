@@ -37,13 +37,62 @@
 
 /* OMN-23330 AC37: a kit chart's "Show as table" toggle (quiet, right-aligned above the plot) and the table it opens. */
 .ds-chart-table-frame { display: flex; flex-direction: column; min-width: 0; }
-.ds-chart-table-toggle { order: -1; align-self: flex-end; margin: 0 0 4px; padding: 2px 8px; font: inherit; font-size: 12px; color: var(--ds-ink-3);
-  background: transparent; border: 1px solid transparent; border-radius: 6px; cursor: pointer; }
-.ds-chart-table-toggle:hover { color: var(--ds-ink); border-color: var(--ds-line); }
-.ds-chart-table-toggle:focus-visible { outline: 2px solid var(--ds-focus, var(--ds-brand)); outline-offset: 1px; }
-.ds-chart-table-toggle[aria-pressed="true"] { color: var(--ds-ink); border-color: var(--ds-line-strong); }
+/* The view switch (operator review 2026-11-11: "two colors, one for chart and one for table"): two buttons in one pill,
+   Chart in the link blue and Table in the chart palette's teal, each a token with light and dark values. The chosen
+   view fills with its colour; the other shows its colour on a faint tint. */
+.ds-chart-views { order: -1; align-self: flex-end; display: inline-flex; gap: 2px; margin: 0 0 8px; padding: 3px;
+  border: 1px solid var(--ds-line); border-radius: 999px; background: var(--ds-surface-2); }
+.ds-chart-view[data-view="chart"] { --view-ink: var(--ds-link); }
+.ds-chart-view[data-view="table"] { --view-ink: var(--ds-chart-2); }
+/* Selected and not selected must read apart at a glance in both themes (operator review 2026-11-11): the chosen view is
+   a solid pill in its own colour with surface-coloured text and icon (measured 4.6:1 to 8.7:1 across both views and
+   both themes); the other view is neutral text with only its icon in its colour, and tints on hover. */
+.ds-chart-view { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; font: inherit; font-size: 12px; font-weight: 600;
+  line-height: 1.3; color: var(--ds-ink-2); background: transparent; border: 0; border-radius: 999px; cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease, box-shadow 140ms ease; }
+/* Outranks the page-wide icon rule (:is(.local-dashboard-page, ...) svg.lucide:not(#ds-important)) by one class. */
+.ds-chart-views > .ds-chart-view[data-view] > svg.lucide:not(#ds-important) { flex: none; color: var(--view-ink); }
+.ds-chart-views > .ds-chart-view[aria-pressed="true"] > svg.lucide:not(#ds-important) { color: var(--ds-surface); }
+.ds-chart-view:hover { color: var(--ds-ink); background: color-mix(in oklab, var(--view-ink) 14%, transparent); }
+.ds-chart-view:focus-visible { outline: 2px solid var(--view-ink); outline-offset: 2px; }
+.ds-chart-view[aria-pressed="true"], .ds-chart-view[aria-pressed="true"]:hover { color: var(--ds-surface); background: var(--view-ink); cursor: default;
+  box-shadow: 0 1px 3px color-mix(in oklab, var(--ds-shadow-ink) 28%, transparent); }
+@media (prefers-reduced-motion: reduce) { .ds-chart-view { transition: none; } }
+/* The table reads like the Runs table: each column wears its field's icon and colour, header and values alike; a value
+   that is not recorded is written in the muted ink, never in the field colour of a real value. */
+.ds-chart-table-head { display: inline-flex; align-items: center; gap: 6px; }
+.ds-chart-table thead th:not(:first-child) .ds-chart-table-head { justify-content: flex-end; }
+/* The page-wide header rule is :not(#ds-important)-weighted; this one outranks it with one more class, no !important. */
+.ds-chart-table-wrap > .ds-chart-table > thead > tr > th[data-field-tone]:not(#ds-important) { color: var(--field-ink); }
+/* A header's icon and text are one colour (operator 2026-11-11): this outranks the page-wide svg.lucide rule. */
+.ds-chart-table-wrap > .ds-chart-table > thead > tr > th[data-field-tone] svg.lucide:not(#ds-important) { color: var(--field-ink); }
+.ds-chart-table-icon { flex: none; }
+.ds-chart-table td[data-field-tone][data-field-unavailable="false"], .ds-chart-table tbody th[data-field-tone] { color: var(--field-ink); font-weight: 600; }
+.ds-chart-table td[data-field-unavailable="true"] { color: var(--ds-ink-3); font-weight: 400; }
+.ds-chart-table tbody tr:hover > * { background: color-mix(in oklab, var(--ds-ink) 5%, transparent); }
+/* Full width (operator 2026-11-11: "table should be full width like before"); the columns are weighted in the markup and
+   a long row name wraps onto a taller row ("column will be dynamic and rows"); past the panel the box scrolls. */
 .ds-chart-table-wrap { max-width: 100%; max-height: 360px; overflow: auto; border: 1px solid var(--ds-line); border-radius: 8px; }
 .ds-chart-table { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
 .ds-chart-table th, .ds-chart-table td { padding: 6px 10px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--ds-line); color: var(--ds-ink); }
 .ds-chart-table thead th { position: sticky; top: 0; background: var(--ds-surface-2); color: var(--ds-ink-2); font-weight: 600; }
 .ds-chart-table th[scope="row"], .ds-chart-table thead th:first-child { text-align: left; }
+/* In table view the day labels drawn beside the chart describe a plot that is not shown (operator review 2026-11-11). */
+.ds-chart-table-frame[data-as-table="true"] ~ .ds-day-axis { display: none; }
+/* Column header tooltips: their look is the kit's .ds-column-tip (one rule with the Runs table's); here only where they
+   open, below the header from its own edge so they stay inside the table. */
+.ds-chart-table thead .ds-tooltip-anchor { display: inline-flex; }
+.ds-chart-table thead .ds-tooltip:not(#ds-important) { left: auto; right: 0; transform: none; }
+.ds-chart-table thead th:first-child .ds-tooltip:not(#ds-important) { left: 0; right: auto; }
+/* A named row (a tier, a model) in its own colour, the one its bar wears, pulled a quarter toward the ink so it reads in
+   either theme; a small swatch of the pure colour leads its name (operator 2026-11-11: "colored and use one design
+   system"). */
+.ds-chart-table-wrap > .ds-chart-table > tbody > tr > th[scope="row"][data-row-color="true"]:not(#ds-important),
+.ds-chart-table-wrap > .ds-chart-table > tbody > tr > td[data-row-color="true"][data-field-unavailable="false"]:not(#ds-important) {
+  color: color-mix(in oklab, var(--row-ink) var(--row-mix), var(--ds-ink)); font-weight: 600; }
+/* How much of the row's own colour its text keeps: 60% in light, so the palest model and tier colours still read at
+   4.5:1 (75% left 16 of 32 cells under it, lowest 4.08, live 2026-11-11); 75% in dark (lowest 5.6). */
+.ds-chart-table-wrap { --row-mix: 60%; }
+[data-theme="dark"] .ds-chart-table-wrap { --row-mix: 75%; }
+.ds-chart-table-swatch { display: inline-block; width: 9px; height: 9px; margin-right: 8px; border-radius: 3px; background: var(--row-ink); vertical-align: 0; }
+.ds-chart-table tbody th[scope="row"] { white-space: normal; overflow-wrap: anywhere; text-align: left; }

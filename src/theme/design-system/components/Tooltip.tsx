@@ -84,5 +84,5 @@ export function InfoTip({ label, text, side }: { label: string; text: ReactNode;
  * glyph's), on hover and on keyboard focus. The child is the header's focusable label or sort button.
  */
 export function ColumnTip({ tone, tip, children }: { tone: string; tip: ReactNode; children: ReactElement }) {
-  return <span className="local-runs-tip local-column-tip" data-field-tone={tone}><Tooltip text={tip} side="bottom">{children}</Tooltip></span>;
+  return <span className="local-runs-tip local-column-tip ds-column-tip" data-field-tone={tone}><Tooltip text={tip} side="bottom">{children}</Tooltip></span>;
 }

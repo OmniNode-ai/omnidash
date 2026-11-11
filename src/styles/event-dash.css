@@ -18,7 +18,7 @@
   color: var(--ds-ink);
   font-family: var(--ds-font-sans);
   font-size: 14px;
-  line-height: 1.5;
+  /* OMN-23330 (2026-11-11, "one design system"): the line height is the body's, as on every other page (was 1.5 here only). */
   -webkit-font-smoothing: antialiased;
   /* OMN-13057 — ev-root must behave as a flex child of .main (flex column,
      overflow:hidden). display:block + min-height:100% does NOT constrain height
@@ -30,6 +30,10 @@
   flex: 1;
   min-height: 0;
 }
+
+/* OMN-23330 (2026-11-11): the run dialog is portalled outside main.ev-root; its content wrapper carries the Evidence scope so
+   it draws as the inline Selected run panel does, without the page's flex layout or page background. */
+.ev-root.ev-dialog-content { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; flex: none; min-width: 0; background: transparent; }
 
 .ev-root *,
 .ev-root *::before,
@@ -130,7 +134,8 @@
 .ev-root .row-main { display: grid; grid-template-columns: var(--dt-columns); align-items: center; cursor: pointer; transition: background .1s; }
 .ev-root .row-main:hover { background: var(--ds-surface-2); }
 .ev-root .row.open .row-main { background: var(--ds-surface-2); }
-.ev-root .row.active .row-main { background: color-mix(in srgb, var(--ds-hue-green) 6%, transparent); box-shadow: inset 2px 0 0 var(--ds-brand); }
+/* OMN-23330 (2026-11-11): the active row is a tinted fill with a hairline all round, no left bar. */
+.ev-root .row.active .row-main { background: color-mix(in srgb, var(--ds-hue-green) 6%, transparent); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--ds-brand) 40%, transparent); }
 .ev-root .row-main > div { padding: 10px 12px; font-size: 13px; min-width: 0; }
 .ev-root .row-main .num { text-align: right; font-family: var(--ds-font-mono); }
 .ev-root .row-main .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

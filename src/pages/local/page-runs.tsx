@@ -3,7 +3,7 @@
 import { formatDashboardCount } from '@/theme/format';
 import { readableTime } from '@/theme/format';
 import { exactMs } from '@/theme/format';
-import { useContext, useEffect, useId, useState, type CSSProperties, type ReactNode } from 'react';
+import { useContext, useEffect, useId, useLayoutEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { tierColor } from '@/lib/dashboard-colors';
 import { Link, useLocation, useSearch } from 'wouter';
@@ -18,7 +18,7 @@ import { PassRateMeter } from '@/pages/local/shares';
 import { breakableName } from '@/theme/design-system/charts';
 import { PassRateSparkline, TaskIcon } from '@/pages/local/insight-charts';
 import { RoutingAnalysis } from '@/pages/local/usage-analysis';
-import { Badge, ConfirmDialog, DashboardTabs, DataTable, Dropdown, EmptyState, Fact, FactList, InfoTip, Panel, PanelTitle, Tooltip } from '@/theme/design-system/components';
+import { Badge, ConfirmDialog, DashboardTabs, DataTable, Dialog, Dropdown, EmptyState, Fact, FactList, InfoTip, Panel, PanelTitle, Tooltip } from '@/theme/design-system/components';
 import { Bot, ChartArea, CircleCheck, CircleDollarSign, FileJson, FileSpreadsheet, Gauge, Layers, ListChecks, Server, Timer, TriangleAlert } from '@/theme/design-system/icons';
 import { failureCauseLabel, failureDetailText, taskLabel, tierLabel } from '@/pages/local/plain-text';
 import { causeLabelOf, useRunFilter } from '@/pages/local/run-filter';
@@ -286,7 +286,7 @@ function FailedStatus({ run }: { run: Row }) {
   const detail = failureDetailText(failureDetailOf(run) ?? cause);
   const tip = <span className="local-run-failure-tip"><strong>{cause}</strong>{detail !== cause && <span>{detail}</span>}</span>;
   return <>
-    <span className="local-runs-tip" data-field-tone="failures">
+    <span className="local-runs-tip ds-column-tip" data-field-tone="failures">
       <Tooltip side="bottom" text={tip}>
         <span className="local-run-status-trigger" tabIndex={0}><OutcomePill value={statusOf(run)} /></span>
       </Tooltip>
@@ -308,6 +308,18 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
   const [showAllFields, setShowAllFields] = useState(false);
   // Part 30 AC206: the routing fields as columns beside model, backend and tier.
   const [showRouting, setShowRouting] = useState(false);
+  // The table's panel width, read from its wrap, so the room its columns leave can be shared evenly (2026-11-11).
+  const [panelWidth, setPanelWidth] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const wrap = document.getElementById(`${id}-table`)?.parentElement;
+    if (!wrap) return undefined;
+    const read = () => setPanelWidth(wrap.clientWidth);
+    read();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(read);
+    observer.observe(wrap);
+    return () => observer.disconnect();
+  }, [id]);
   const modelColorOf = useModelColor();
   const search = useSearch();
   const [location, navigate] = useLocation();
@@ -359,16 +371,16 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
   const page = shown.slice(current * pageSize, (current + 1) * pageSize);
   const modelWidth = runModelColumnWidth(page);
   const fixedWidth = (concept: string) => (concept === 'model' ? modelWidth : RUN_COLUMN_WIDTHS[concept]!);
-  // The operator, 2026-11-10 ("in column why gap - make it dynamic"): the table fills its panel with a fixed layout, which
-  // stretched every column by the same factor (Model 160 px drew 269 px at 1920). Each column now keeps its own width and
-  // only the last shown column (Duration, or Score with every field shown) takes the room left, after the last value.
-  // A fixed layout spreads any width it has left over every column, so the last column is given exactly what is left:
-  // its own width, or the panel's width less the other shown columns when that is more.
-  const lastColumn = showAllFields ? 'score' : 'duration';
+  // The operator, 2026-11-10 ("in column why gap - make it dynamic"): stretching every column by one factor grew Model
+  // most (160 px drew 269 px at 1920), and giving the last column all the room left put a hole after Duration
+  // (2026-11-11, "why right side too much space left?"). Chosen 2026-11-11, "spread evenly": every shown column draws its
+  // own width plus the same share of the room left, so no column grows more than another. The share is read from the
+  // panel's measured width (a calc() of px and % on a fixed-layout cell is resolved unevenly by Chrome: measured extras
+  // from -21 to +49 px); at or below the columns' sum it is 0 and each column is its own width.
   const shownNow = [...RUN_DEFAULT_COLUMNS, ...(showAllFields ? RUN_EXTRA_COLUMNS : []), ...(showRouting ? RUN_ROUTING_COLUMNS : [])];
-  const othersWidth = shownNow.filter(concept => concept !== lastColumn).reduce((sum, concept) => sum + fixedWidth(concept), 0);
-  const columnWidth = (concept: string) => (concept === lastColumn
-    ? `max(${fixedWidth(concept)}px, calc(100% - ${othersWidth}px))` : fixedWidth(concept));
+  const shownWidth = shownNow.reduce((sum, concept) => sum + fixedWidth(concept), 0);
+  const share = panelWidth === null ? 0 : Math.max(0, (panelWidth - shownWidth) / shownNow.length);
+  const columnWidth = (concept: string) => fixedWidth(concept) + share;
   const canonicalSearch = writeRunsSearch(search, { ...view, page: current + 1 });
   // OMN-23309: useSearch reads whichever page is current, so a Runs table still mounted while the user leaves would
   // send them back to /runs. The table canonicalises the URL only while the path is /runs.
@@ -377,10 +389,10 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
       navigate(`/runs${canonicalSearch ? `?${canonicalSearch}` : ''}`, { replace: true });
     }
   }, [canonicalSearch, location, navigate, search, syncUrl]);
+  // The open run's dialog closes when the run leaves the shown runs (a refresh, a filter, a page); it never switches to
+  // another run the reader did not open (2026-11-11, the dialog replacing the side panel).
   useEffect(() => {
-    if (selectedRunId !== null && !page.some(run => run.correlation_id === selectedRunId)) {
-      setSelectedRunId(page[0] ? String(page[0].correlation_id ?? '') : null);
-    }
+    if (selectedRunId !== null && !page.some(run => run.correlation_id === selectedRunId)) setSelectedRunId(null);
   }, [page, selectedRunId]);
   const updateView = (change: Partial<RunsViewState>, replace = false) => {
     const next = { ...view, ...change };
@@ -416,14 +428,14 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
   const headIcon = (concept: string, label: string) => <ConceptIcon concept={concept} label={label} size={13} />;
   // Lakshman 2026-11-05 ("in all columns add a tooltip so that when we hover it should tell about that column"): each header
   // explains its column on hover and on keyboard focus (the kit Tooltip), from RUN_COLUMN_TIPS.
-  const plainHeader = (concept: string, label: string, extra = false) => <th data-column={concept} data-extra={extra ? '' : undefined} style={{ width: columnWidth(concept) }}>
-    <span className="local-runs-tip" data-field-tone={concept}><Tooltip text={RUN_COLUMN_TIPS[concept] ?? label} side="bottom"><span className="local-runs-head" tabIndex={0}>{headIcon(concept, label)}{label}</span></Tooltip></span>
+  const plainHeader = (concept: string, label: string, extra = false) => <th data-column={concept} data-extra={extra ? '' : undefined} data-width={fixedWidth(concept)} style={{ width: columnWidth(concept) }}>
+    <span className="local-runs-tip ds-column-tip" data-field-tone={concept}><Tooltip text={RUN_COLUMN_TIPS[concept] ?? label} side="bottom"><span className="local-runs-head" tabIndex={0}>{headIcon(concept, label)}{label}</span></Tooltip></span>
   </th>;
   const sortHeader = (key: RunSortKey, label: string, concept: string) => {
     const active = view.sort === key;
     const direction = active ? view.dir ?? 'desc' : null;
-    return <th data-column={concept} style={{ width: columnWidth(concept) }} aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}>
-      <span className="local-runs-tip" data-field-tone={concept}><Tooltip text={RUN_COLUMN_TIPS[concept] ?? label} side="bottom">
+    return <th data-column={concept} data-width={fixedWidth(concept)} style={{ width: columnWidth(concept) }} aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}>
+      <span className="local-runs-tip ds-column-tip" data-field-tone={concept}><Tooltip text={RUN_COLUMN_TIPS[concept] ?? label} side="bottom">
       <button type="button" className="local-sort-header" data-sort-active={active ? '' : undefined}
         onClick={() => updateView({ sort: key, dir: active && direction === 'desc' ? 'asc' : 'desc', page: 1 })}>
         {headIcon(concept, label)}{label}{/* Only a sorted column draws its arrow: an empty one still took the button's gap, so the label sat 6px
@@ -536,11 +548,13 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
           <h3 className="local-visually-hidden" data-page-heading tabIndex={-1}>Run list</h3>
           {/* Lakshman 2026-11-04: each view switch has an info icon beside it that says, on hover or keyboard focus, what
               the switch adds to the table. */}
-          <p className="local-dashboard-caption local-recent-toolbar"><span className="local-recent-switch"><label>
+          {/* Lakshman 2026-11-11: each switch wears its own field colour on its track and info icon, and its tooltip is the
+              column headers' tinted card in that colour (the kit's ds-column-tip). */}
+          <p className="local-dashboard-caption local-recent-toolbar"><span className="local-recent-switch ds-column-tip" data-field-tone="run-details"><label>
             <input type="checkbox" data-identity-decoration="switch" checked={showAllFields} onChange={event => setShowAllFields(event.target.checked)} aria-controls={`${id}-table`} />
             Show all run fields
           </label><InfoTip side="bottom" label="About Show all run fields" text={RUN_FIELDS_TIP} /></span>
-          <span className="local-recent-switch"><label>
+          <span className="local-recent-switch ds-column-tip" data-field-tone="routing"><label>
             <input type="checkbox" data-identity-decoration="switch" checked={showRouting} onChange={event => setShowRouting(event.target.checked)} aria-controls={`${id}-table`} />
             Routing columns
           </label><InfoTip side="bottom" label="About Routing columns" text={ROUTING_COLUMNS_TIP} /></span>
@@ -580,8 +594,8 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                   {plainHeader('host', 'Host', true)}
                   {plainHeader('tokens', 'Tokens')}{sortHeader('cost', 'Cost', 'cost')}
                   {/* The shared baseline is named in the header's tooltip and accessible name, not on the page. */}
-                  <th data-column="savings" style={{ width: RUN_COLUMN_WIDTHS.savings }} aria-label={sharedBaseline ? `Saving vs ${sharedBaseline}` : undefined}>
-                    <span className="local-runs-tip" data-field-tone="savings"><Tooltip side="bottom" text={sharedBaseline
+                  <th data-column="savings" data-width={RUN_COLUMN_WIDTHS.savings} style={{ width: columnWidth('savings') }} aria-label={sharedBaseline ? `Saving vs ${sharedBaseline}` : undefined}>
+                    <span className="local-runs-tip ds-column-tip" data-field-tone="savings"><Tooltip side="bottom" text={sharedBaseline
                       ? `Modelled saving vs ${sharedBaseline}: what the run's tokens would cost at ${sharedBaseline}'s prices, less what the run cost. ${sharedBaseline} never ran.`
                       : RUN_COLUMN_TIPS.savings!}>
                       <span className="local-runs-head" tabIndex={0}>{headIcon('savings', 'Saving')}Saving</span>
@@ -659,35 +673,55 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
           </DataTable>;
           })()}
             </div>
-          {selectedRun && <aside className="local-run-selected" role="complementary" aria-label="Selected run">
-            <div className="local-dashboard-filters"><h3 className="local-dashboard-caption">Selected run</h3><button type="button" aria-label="Close selected run" onClick={() => setSelectedRunId(null)}>Close</button></div>
-            <p className="local-run-title"><code>{recorded(selectedRun.correlation_id)}</code></p>
+          {/* Lakshman 2026-11-11 ("when we click any row that should open as popup in center with full details"): the row
+              opens the kit's dialog, centred over the page, with every recorded field of the run. */}
+          <Dialog open={selectedRun !== undefined} title="Selected run" onClose={() => setSelectedRunId(null)}
+            subtitle={selectedRun && <code className="local-run-title">{recorded(selectedRun.correlation_id)}</code>}>
+            {selectedRun && <div className="local-run-detail">
             <p className="local-dashboard-caption local-run-selected-facts">
               <OutcomePill value={statusOf(selectedRun)} />
               <CellTime value={selectedRun.created_at} />
-              {!isMissing(selectedRun.task_type)
-                ? <span className="local-task-cell"><TaskIcon task={String(selectedRun.task_type)} />{taskLabel(selectedRun.task_type)}</span>
-                : <span>{recorded(selectedRun.task_type)}</span>}
             </p>
-            <FactList>
-              <Fact term="Task">{isMissing(selectedRun.task_type) ? recorded(selectedRun.task_type) : taskLabel(selectedRun.task_type)}</Fact>
-              <Fact term="Cause"><span className="local-runs-cause" data-failure-cause={causeOf(selectedRun)} title={causeTextOf(selectedRun)}>{causeTextOf(selectedRun)}</span></Fact>
-              <Fact term="Model">{modelOrUnknown(selectedRun.model_name)}</Fact>
-              <Fact term="Route tier">{tierOf(selectedRun)}</Fact>
-              <Fact term="Duration">{duration(selectedRun.latency_ms)}</Fact>
-              <Fact term="Cost">{costOf(selectedSession, selectedRun)}</Fact>
-              <Fact term="Tokens in" data-field-tone="tokens-in" data-field-unavailable={isMissing(selectedRun.tokens_input)} valueTitle={tokensTitle(selectedRun.tokens_input, 'in')}>{recordedTokens(selectedRun.tokens_input)}</Fact>
-              <Fact term="Tokens out" data-field-tone="tokens-out" data-field-unavailable={isMissing(selectedRun.tokens_output)} valueTitle={tokensTitle(selectedRun.tokens_output, 'out')}>{recordedTokens(selectedRun.tokens_output)}</Fact>
-              <Fact term="Modelled saving">{runModelledCell(selectedRun)}</Fact>
-              <Fact term="Quality score">{recorded(selectedRun.actual_score)}
-                <Meter kind="selected-quality" label="Quality score versus required bar" min={0} max={1} now={selectedScore}
-                  valueText={`Quality score ${recorded(selectedRun.actual_score)}; required bar ${recorded(selectedRun.required_bar)}`}
-                  share={selectedScore} mark={Number.isFinite(selectedRequiredBar) ? selectedRequiredBar : null} />
-              </Fact>
-              <Fact term="Required bar">{isMissing(selectedRun.required_bar) ? 'bar not recorded' : recorded(selectedRun.required_bar)}</Fact>
+            {/* Lakshman 2026-11-11: the dialog shows the fields the table shows, in its order: with both switches off the
+                default columns, and "Show all run fields" and "Routing columns" add theirs as they add columns. The status
+                and time head the dialog; a failed run's cause goes with its status. */}
+            <FactList look="cards">
+              {[RUN_OUTCOME_FACT, ...shownNow].flatMap(concept => {
+                const run = selectedRun;
+                switch (concept) {
+                  case RUN_OUTCOME_FACT: return [<Fact key="Cause" term={<><ConceptIcon concept="failures" size={13} />Cause</>} data-field-tone="failures"><span className="local-runs-cause" data-failure-cause={causeOf(run)} title={causeTextOf(run)}>{causeTextOf(run)}</span></Fact>];
+                  case 'model': return [<Fact key="Model" term={<><ConceptIcon concept="model" size={13} />Model</>} data-field-tone="model">{modelOrUnknown(run.model_name)}</Fact>];
+                  case 'tokens': return [
+                    <Fact key="Tokens in" term={<><ConceptIcon concept="tokens-in" size={13} />Tokens in</>} data-field-tone="tokens-in" data-field-unavailable={isMissing(run.tokens_input)} valueTitle={tokensTitle(run.tokens_input, 'in')}>{recordedTokens(run.tokens_input)}</Fact>,
+                    <Fact key="Tokens out" term={<><ConceptIcon concept="tokens-out" size={13} />Tokens out</>} data-field-tone="tokens-out" data-field-unavailable={isMissing(run.tokens_output)} valueTitle={tokensTitle(run.tokens_output, 'out')}>{recordedTokens(run.tokens_output)}</Fact>];
+                  case 'cost': return [<Fact key="Cost" term={<><ConceptIcon concept="cost" size={13} />Cost</>} data-field-tone="cost">{costOf(selectedSession, run)}</Fact>];
+                  case 'savings': return [<Fact key="Modelled saving" term={<><ConceptIcon concept="savings" size={13} />Modelled saving</>} data-field-tone="savings">{runModelledCell(run)}</Fact>];
+                  case 'duration': return [<Fact key="Duration" term={<><ConceptIcon concept="duration" size={13} />Duration</>} data-field-tone="duration">{duration(run.latency_ms)}</Fact>];
+                  case 'backend': return [<Fact key="Backend" term={<><ConceptIcon concept="backend" size={13} />Backend</>} data-field-tone="backend">{recorded(run.backend_id)}</Fact>];
+                  case 'host': return [<Fact key="Host" term={<><ConceptIcon concept="host" size={13} />Host</>} data-field-tone="host">{recorded(run.host)}</Fact>];
+                  case 'baseline': return [<Fact key="Baseline model" term={<><ConceptIcon concept="baseline" size={13} />Baseline model</>} data-field-tone="baseline">{recorded(isMissing(run.savings_baseline_model) ? selectedSession?.baseline_model : run.savings_baseline_model)}</Fact>];
+                  case 'basis': return [<Fact key="Basis" term={<><ConceptIcon concept="basis" size={13} />Basis</>} data-field-tone="basis">{recorded(selectedSession?.usage_source)}</Fact>];
+                  case 'task': return [<Fact key="Task" term={<><ConceptIcon concept="task" size={13} />Task</>} data-field-tone="task">{isMissing(run.task_type) ? recorded(run.task_type) : taskLabel(run.task_type)}</Fact>];
+                  case 'tokens-completion': return [<Fact key="Tokens to compliance" term={<><ConceptIcon concept="tokens-completion" size={13} />Tokens to compliance</>} data-field-tone="tokens-completion">{recordedTokens(run.tokens_to_compliance)}</Fact>];
+                  case 'tier': return [<Fact key="Route tier" term={<><ConceptIcon concept="tier" size={13} />Route tier</>} data-field-tone="tier">{tierOf(run)}</Fact>];
+                  case 'score': return [
+                    <Fact key="Quality score" term={<><ConceptIcon concept="score" size={13} />Quality score</>} data-field-tone="score">{recorded(run.actual_score)}
+                      <Meter kind="selected-quality" label="Quality score versus required bar" min={0} max={1} now={selectedScore}
+                        valueText={`Quality score ${recorded(run.actual_score)}; required bar ${recorded(run.required_bar)}`}
+                        share={selectedScore} mark={Number.isFinite(selectedRequiredBar) ? selectedRequiredBar : null} />
+                    </Fact>,
+                    <Fact key="Required bar" term={<><ConceptIcon concept="threshold" size={13} />Required bar</>} data-field-tone="threshold">{isMissing(run.required_bar) ? 'bar not recorded' : recorded(run.required_bar)}</Fact>];
+                  case 'routing-model': return [<Fact key="Requested model" term={<><ConceptIcon concept="routing-model" size={13} />Requested model</>} data-field-tone="routing-model">{recorded(run.requested_model)}</Fact>];
+                  case 'completion': return [<Fact key="Finish reason" term={<><ConceptIcon concept="completion" size={13} />Finish reason</>} data-field-tone="completion">{recorded(run.finish_reason)}</Fact>];
+                  case 'escalated': return [<Fact key="Escalations" term={<><ConceptIcon concept="escalated" size={13} />Escalations</>} data-field-tone="escalated">{recorded(run.escalation_count)}</Fact>];
+                  default: return [];
+                }
+              })}
             </FactList>
-            <p className="local-dashboard-caption"><Link href={workflowHref(String(selectedRun.correlation_id))}>Open full run</Link></p>
-          </aside>}
+            {/* A link that reads as one (2026-11-11, "should be like clickable link"): the run-link colour, with an arrow. */}
+            <p className="local-run-open"><Link className="ds-run-link" href={workflowHref(String(selectedRun.correlation_id))}>Open full run<ArrowUpRight size={14} aria-hidden="true" /></Link></p>
+            </div>}
+          </Dialog>
           </div>
           <div className="local-dashboard-pager">
             <span>{`Runs ${current * pageSize + 1}–${current * pageSize + page.length} of ${formatDashboardCount(shown.length)}`}</span>
@@ -840,6 +874,8 @@ export function runModelColumnWidth(runs: readonly Row[]): number {
   const fit = Math.ceil(longest * MODEL_CHAR_PX) + MODEL_CELL_PADDING_PX;
   return Math.min(RUN_COLUMN_WIDTHS.model!, Math.max(MODEL_COLUMN_MIN_PX, fit));
 }
+/** The dialog's first fact, a failed run's cause, which goes with its status at the dialog's head. */
+const RUN_OUTCOME_FACT = 'outcome-cause';
 const RUN_DEFAULT_COLUMNS = ['identity', 'age', 'run-outcome', 'model', 'tokens', 'cost', 'savings', 'duration'];
 const RUN_EXTRA_COLUMNS = ['backend', 'host', 'baseline', 'basis', 'task', 'tokens-completion', 'tier', 'score'];
 const RUN_ROUTING_COLUMNS = ['routing-model', 'completion', 'escalated'];

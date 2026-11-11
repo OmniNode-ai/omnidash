@@ -5,6 +5,7 @@
  * keep their markup and every class they had.
  */
 import type { CSSProperties, HTMLAttributes, ReactNode } from 'react';
+import './fact-cards.css';
 
 const LOOKS = {
   fields: 'local-dashboard-fields',
@@ -13,7 +14,11 @@ const LOOKS = {
   'routing-counts': 'local-routing-counts',
   'provider-figures': 'local-provider-figures',
   'evidence-derivation': 'ev-evidence-derivation',
+  // OMN-23330 (2026-11-11, "cards and make it great"): a run's facts as cards tinted by their fields (fact-cards.css).
+  cards: 'ds-fact-cards',
 } as const;
+/** The class of the card look, for a fact list the kit's FactList does not draw (event-dash's KV). */
+export const FACT_CARDS_CLASS = LOOKS.cards;
 export type FactListLook = keyof typeof LOOKS;
 
 export function FactList({ look = 'fields', className, children, ...rest }: {

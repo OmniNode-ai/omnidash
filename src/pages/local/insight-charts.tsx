@@ -266,6 +266,7 @@ function ModelScoreboard({ runs }: { runs: InsightRun[] }) {
     <ChartCard title="Model scoreboard" concept="quality-model" delay={300}>
       {/* A pass rate is a share, so each bar fills its slot against 100% (Lakshman 2026-11-05). */}
       <RankedBars label="Pass rate by model" unit="Pass rate of runs with a verdict · higher is better" order="desc" layout="vertical" ceiling={100}
+        table={{ nameHeader: 'Model', valueHeader: 'Pass rate', valueFrom: 'display' }}
         items={groups.map(group => {
           const judged = group.passed + group.failed;
           const rate = judged ? (group.passed / judged) * 100 : null;

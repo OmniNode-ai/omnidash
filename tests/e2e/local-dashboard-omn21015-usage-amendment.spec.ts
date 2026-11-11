@@ -54,9 +54,11 @@ for (const theme of ['light', 'dark']) {
     await chooseChartTab(page, 'Savings per day');
     const next = savings.getByRole('button', { name: 'Next savings days for baseline-a' });
     await next.focus(); await page.keyboard.press('Enter');
-    // OMN-23330 AC10: the day reads in the short form ("Sep 2"), the served day kept as the cell's title.
-    await expect(table.locator('tbody tr').first().locator('td').first()).toHaveText(formatShortDay(days[8]!.window_start));
-    await expect(table.locator('tbody tr').first().locator('td').first()).toHaveAttribute('title', days[8]!.window_start);
+    // OMN-23330 AC10: the day reads in the short form ("Sep 2"), the served day kept as the cell's title. The newest day is
+    // first (operator 2026-11-11: "in all table date latest on top"), so page 2 starts at the ninth newest day.
+    const newest = [...days].sort((a, b) => String(b.window_start).localeCompare(String(a.window_start)));
+    await expect(table.locator('tbody tr').first().locator('td').first()).toHaveText(formatShortDay(newest[8]!.window_start));
+    await expect(table.locator('tbody tr').first().locator('td').first()).toHaveAttribute('title', newest[8]!.window_start);
     await page.screenshot({ path: info.outputPath(`usage-${theme}-desktop.png`), fullPage: true });
     for (const width of [390, 320]) {
       await narrowTo(page, width, 844);

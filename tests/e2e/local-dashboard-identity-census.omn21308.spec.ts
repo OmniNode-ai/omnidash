@@ -212,6 +212,10 @@ async function collect(page: Page): Promise<Reading[]> {
       // Choosing the tab repaints it (on-accent inside the chosen tab's filled chip), so it holds no one paint identity; the
       // chart's own concept colours are measured on the chart the tab shows.
       if (svg.closest('[role="tab"]')) { kind = 'action'; concept = 'action:chart-tab'; }
+      // OMN-23330 (Lakshman 2026-11-11, "chart icons based on chart type", "one for chart and one for table"): a chart's
+      // Chart and Table switch is the same kind of control. Its Chart glyph is the chart's type and choosing a view repaints
+      // both glyphs (on-accent inside the chosen view's fill), so it holds no one paint identity either.
+      if (svg.closest('.ds-chart-views .ds-chart-view')) { kind = 'action'; concept = 'action:chart-view'; }
       // Exact affordance icons plus a control are the action allowlist. A Bot,
       // Award, Model etc. inside a clickable semantic row is NOT an action.
       const control = svg.closest('button,a,summary,[role="button"]');
@@ -683,10 +687,12 @@ test('AC4 eleven-destination light/dark icon census includes expanded and Develo
     // OMN-21166 part 18 AC125: the step boxes ([data-step-kind]) are removed; the six steps are the timeline's.
     if (destination === 'local-workflow') await expect(page.locator('ol.local-dashboard-steps > li')).toHaveCount(6);
     if (destination === 'delegation-evidence') {
-      const disclosure = page.getByRole('button', { name: 'Toggle details for chart-run-a', exact: true });
-      if (await disclosure.getAttribute('aria-expanded') !== 'true') await disclosure.click();
-      await expect(disclosure).toHaveAttribute('aria-expanded', 'true');
-      await expect(page.locator('.row-detail')).toContainText('chart-run-a');
+      // OMN-23330 (2026-11-11): a row opens the run in the kit's dialog; its fact icons are the Selected run panel's, which the
+      // census reads on the page. The modal is closed before the theme switch, which it would cover.
+      await page.getByRole('button', { name: 'Open run chart-run-a', exact: true }).click();
+      await expect(page.getByRole('dialog', { name: 'Selected run' })).toContainText('chart-run-a');
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('dialog')).toHaveCount(0);
     }
     for (const disclosure of await page.locator('main details').all()) {
       if (await disclosure.isVisible() && await disclosure.getAttribute('open') === null) await disclosure.locator(':scope > summary').press('Enter');

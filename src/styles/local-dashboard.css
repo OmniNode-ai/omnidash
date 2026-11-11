@@ -1321,8 +1321,8 @@
 .usage-record-controls label { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--ds-ink-2); }
 .usage-record-controls select { max-width: 240px; min-height: 36px; padding: 6px 10px; border: 1px solid var(--ds-line); border-radius: 8px; background: var(--ds-surface-2); color: var(--ds-ink); font: inherit; }
 .usage-record-controls select:focus-visible { outline: 2px solid var(--panel-accent); outline-offset: 3px; }
-.usage-record-controls button, .usage-record-pagination button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; border: 1px solid color-mix(in oklab, var(--panel-accent) 50%, var(--ds-line)); border-radius: 8px; padding: 6px 10px; background: var(--ds-surface-2); color: var(--ds-ink); font: inherit; font-size: 12px; cursor: pointer; }
-.usage-record-controls button:is(:hover, :focus-visible), .usage-record-pagination button:not(:disabled):is(:hover, :focus-visible) { border-color: var(--panel-accent); box-shadow: none; }
+.usage-record-controls button:not(.ds-dropdown-trigger), .usage-record-pagination button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; border: 1px solid color-mix(in oklab, var(--panel-accent) 50%, var(--ds-line)); border-radius: 8px; padding: 6px 10px; background: var(--ds-surface-2); color: var(--ds-ink); font: inherit; font-size: 12px; cursor: pointer; }
+.usage-record-controls button:not(.ds-dropdown-trigger):is(:hover, :focus-visible), .usage-record-pagination button:not(:disabled):is(:hover, :focus-visible) { border-color: var(--panel-accent); box-shadow: none; }
 .usage-record-pagination { justify-content: space-between; padding-top: 12px; color: var(--ds-ink-2); font-size: 12px; }
 .usage-record-pagination button:disabled { opacity: .4; cursor: default; }
 .usage-model-swatch { width: 9px; height: 9px; border-radius: 3px; flex: none; background: var(--model-color); }
@@ -1487,7 +1487,9 @@
 .local-dashboard-page--runs [data-component="runs-tier-mix"] { grid-column: 1 / -1; }
 .local-routing-summary { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(0, 2fr); gap: 16px 32px; align-items: center; }
 .local-routing-meter > span { display: block; height: 100%; border-radius: inherit; background: var(--ds-field-local-run); }
-.local-routing-counts > div { --routing-count-ink: var(--ds-field-local-run); min-width: 0; padding-left: 14px; border-left: 2px solid color-mix(in oklab, var(--routing-count-ink) 50%, var(--ds-line)); }
+/* OMN-23330 (2026-11-11): no left bar; each count is a tinted cell with a hairline all round in its colour. */
+.local-routing-counts > div { --routing-count-ink: var(--ds-field-local-run); min-width: 0; padding: 8px 12px; border-radius: 10px;
+  border: 1px solid color-mix(in oklab, var(--routing-count-ink) 40%, var(--ds-line)); background: color-mix(in oklab, var(--routing-count-ink) 6%, var(--ds-surface)); }
 .local-routing-counts > [data-routing-count="total"] { --routing-count-ink: var(--ds-link); }
 .local-routing-counts > [data-routing-count="untiered"] { --routing-count-ink: var(--ds-field-duration); }
 .local-routing-counts dt { display: flex; align-items: center; gap: 6px; color: var(--routing-count-ink); font-size: 12px; }

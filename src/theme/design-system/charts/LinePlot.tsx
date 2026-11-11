@@ -198,14 +198,14 @@ function MultiLinePlotPlot({ label, lines, keys, labels, hover, onHover, focus =
 
 /** OMN-23330 AC37: the chart, with its "Show as table" toggle over the same rows and values. */
 export function LinePlot(props: Parameters<typeof LinePlotPlot>[0]) {
-  return <ChartTable label={props.label} columns={['Day', props.label]} rows={props.keys.map((key, index) => [key, props.values[index] ?? null])}>
+  return <ChartTable label={props.label} shape="line" columns={['Day', props.label]} rows={props.keys.map((key, index) => [key, props.values[index] ?? null])}>
     <LinePlotPlot {...props} />
   </ChartTable>;
 }
 
 /** OMN-23330 AC37: the chart, with its "Show as table" toggle over the same rows and values. */
 export function MultiLinePlot(props: Parameters<typeof MultiLinePlotPlot>[0]) {
-  return <ChartTable label={props.label} columns={['Day', ...props.lines.map(line => line.key)]}
+  return <ChartTable label={props.label} shape="lines" columns={['Day', ...props.lines.map(line => line.key)]}
     rows={props.keys.map((key, index) => [key, ...props.lines.map(line => line.values[index] ?? null)])}>
     <MultiLinePlotPlot {...props} />
   </ChartTable>;

@@ -1,9 +1,4 @@
 /*  OMN-23330 AC29: the kit's rules from src/styles/event-dash.css, moved here in their order with their media
    conditions so the kit is styled in one place; AC30: they carry no !important. Imported right after event-dash.css.  */
 html body main.ev-root .dt-head .local-column-tip { display: inline-flex; max-width: 100%; }
-html body main.ev-root .dt-head .local-column-tip .ds-tooltip {
-  background: color-mix(in oklab, var(--field-ink, var(--ds-ink-3)) 7%, var(--ds-surface)); color: var(--ds-ink-2);
-  border: 1px solid color-mix(in oklab, var(--field-ink, var(--ds-ink-3)) 28%, var(--ds-line)); border-top: 2px solid var(--field-ink, var(--ds-ink-3));
-  box-shadow: none; font-family: var(--ds-font-sans); font-size: 12px; font-weight: 400; text-transform: none; letter-spacing: 0;
-  white-space: normal; text-align: left; line-height: 1.45; padding: 6px 10px; width: max-content; max-width: 280px; z-index: 30; }
-html body main.ev-root .dt-head .local-column-tip .ds-tooltip[data-side="bottom"]::before { top: -6px; border-top: 2px solid var(--field-ink, var(--ds-ink-3)); border-left: 2px solid var(--field-ink, var(--ds-ink-3)); }
+/* A column tooltip's look (tinted card, coloured top edge and arrow) is the kit's .ds-column-tip (tooltip.css). */

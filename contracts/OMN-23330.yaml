@@ -465,9 +465,10 @@ dod_evidence:
     description: >-
       AC17: Bound by the operator on 2026-11-10/11: tsc and eslint, and the 13 Playwright cases that fail on dev
       9cd9c7cf, selected by title (one was renamed on this branch), each its own check; failing case lines go to
-      stderr. Two of them (local-dashboard-contracts.spec.ts:150 and :459) overflowed by 3 px on the CI runner until
-      a one-line headline label could no longer widen its card. The full comparison (dev 499 passed and 13 failed;
-      head 0 failed) is recorded on the pull request.
+      stderr. Two of them (local-dashboard-contracts.spec.ts:150 and :459) overflowed by 3 px on the CI runner, which
+      draws the page in a fallback font; #505 caps a headline card title at its card's width, so they pass there (on
+      the lab with fallback fonts forced: dev bc262cab 11 of 13, head 13 of 13). The full comparison (dev 499 passed
+      and 13 failed; head 0 failed) is recorded on the pull request.
     source: "manual"
     binds_ac: ["AC17"]
     checks:
@@ -728,5 +729,5 @@ dod_evidence:
       - check_type: "test_passes"
         check_value: >-
           test -d node_modules || npm ci --no-audit --no-fund; npx vitest run
-          tests/design-system/chart-table-twin.allpages.test.tsx
+          tests/design-system/chart-table-twin.allpages.test.tsx tests/design-system/chart-table-identity.allpages.test.tsx
         cwd: "${OMNI_HOME}/omnidash"

@@ -6,7 +6,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { StoryPage, StorySection } from '../story-frame';
 import {
-  Badge, Card, ColumnTip, ConfirmDialog, DashboardTabs, DashboardToggle, DataTable, Dropdown, EmptyState, Fact, FactList, Figure, InfoTip, KpiTile, Panel,
+  Badge, Card, ColumnTip, ConfirmDialog, DashboardTabs, Dialog, DashboardToggle, DataTable, Dropdown, EmptyState, Fact, FactList, Figure, InfoTip, KpiTile, Panel,
   PanelTitle, StatusChip, TokenCount, TokenDirections, Tooltip,
 } from './index';
 import { FileSpreadsheet } from '../icons';
@@ -15,6 +15,7 @@ function Controls() {
   const [window, setWindow] = useState('7d');
   const [view, setView] = useState<'runs' | 'tokens'>('runs');
   const [confirming, setConfirming] = useState(false);
+  const [detail, setDetail] = useState(false);
   return <>
     <Dropdown label="Window" value={window} onChange={setWindow} options={[
       { value: '24h', label: '24 h', name: 'Last 24 hours' }, { value: '7d', label: '7 d', name: 'Last 7 days' }, { value: 'all', label: 'All' }]} />
@@ -33,6 +34,11 @@ function Controls() {
       confirmLabel="Download CSV" onCancel={() => setConfirming(false)} onConfirm={() => setConfirming(false)}>
       <p>The file holds the runs that match the current search and filters, every field of each.</p>
     </ConfirmDialog>
+    {/* OMN-23330: the general dialog, a run's full details in one card (the Runs page opens it from a row). */}
+    <p><button type="button" onClick={() => setDetail(true)}>Open a run</button></p>
+    <Dialog open={detail} title="Selected run" subtitle={<code>ab728126-ec55-473c-b544-cd206379fa32</code>} onClose={() => setDetail(false)}>
+      <FactList look="cards"><Fact term="Model" data-field-tone="model">Qwen3.8-27B</Fact><Fact term="Duration" data-field-tone="duration">1.8 s</Fact></FactList>
+    </Dialog>
   </>;
 }
 

@@ -349,6 +349,9 @@
   --ds-field-task-test: oklch(46% 0.11 315);
   --ds-field-task-other: oklch(46% 0.11 5);
   --ds-field-tier-mix: oklch(46% 0.11 50);
+  /* OMN-23330 (operator 2026-11-11, "one color for all place"): a share, wherever a table writes one; a fuchsia hue the
+     field palette leaves free (tokens 305, tokens out 355), 4.5:1 or more on both themes' surfaces. */
+  --ds-field-share: oklch(47% 0.16 330);
   --ds-field-usage-analysis: oklch(46% 0.11 300);
   --ds-field-runs-analysis: oklch(46% 0.11 214.40213);
   --ds-field-run-routes: oklch(46% 0.11 200);
@@ -486,6 +489,7 @@
   --ds-field-task-test: oklch(79% 0.11 315);
   --ds-field-task-other: oklch(79% 0.11 5);
   --ds-field-tier-mix: oklch(79% 0.11 50);
+  --ds-field-share: oklch(80% 0.12 330);
   --ds-field-usage-analysis: oklch(79% 0.11 300);
   --ds-field-runs-analysis: oklch(79% 0.11 214.40213);
   --ds-field-run-routes: oklch(79% 0.11 200);

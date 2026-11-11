@@ -17,6 +17,7 @@ import { formatDuration } from '@/theme/format';
 import { Fragment, useId, useState, type CSSProperties, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight } from '@/theme/design-system/icons';
 import { ColumnTip } from '@/theme/design-system/components/Tooltip';
+import { FACT_CARDS_CLASS } from '@/theme/design-system/components/FactList';
 import { isTenantNotConfiguredReason } from '@/data-source/projection-tenant';
 import { TenantNotConfiguredState } from '../TenantNotConfiguredState';
 import { ConceptIcon, FieldIcon } from '../FieldIcon';
@@ -125,11 +126,15 @@ export function Panel({
     'SAVINGS vs CLOUD BASELINE': 'savings',
     'TOKEN USAGE': 'tokens',
     'RECENT DELEGATIONS': 'recent',
+    // OMN-23330 (2026-11-11, "one design system"): every Evidence section has its icon and a sentence-case label.
+    'FAILURE TRIAGE': 'failures',
+    'SAVINGS BRIDGE': 'savings',
   };
   const labels: Record<string, string> = {
     'SELECTED RUN': 'Selected run', 'MODEL ROUTING': 'Model routing',
     'QUALITY GATE': 'Quality gate', 'SAVINGS vs CLOUD BASELINE': 'Savings vs cloud baseline',
     'TOKEN USAGE': 'Token usage', 'RECENT DELEGATIONS': 'Recent delegations',
+    'FAILURE TRIAGE': 'Failure triage', 'SAVINGS BRIDGE': 'Savings bridge',
   };
   const label = typeof title === 'string' ? labels[title] ?? title : title;
   const concept = typeof title === 'string' ? panelConcepts[title] : undefined;
@@ -239,11 +244,12 @@ export interface KVItem {
   accent?: boolean;
 }
 
-export function KV({ items }: { items: (KVItem | null | false)[] }) {
+/** `cards` draws the facts in the kit's card look (OMN-23330, 2026-11-11, Evidence's Selected run). */
+export function KV({ items, cards = false }: { items: (KVItem | null | false)[]; cards?: boolean }) {
   const modelIdentityStyle = useModelIdentityStyle();
   const real = items.filter((it): it is KVItem => Boolean(it));
   return (
-    <div className="kv">
+    <div className={cards ? `kv ${FACT_CARDS_CLASS}` : 'kv'}>
       {real.map((it, i) => (
         <div key={i} data-field-tone={fieldTone(it.k, it.v)} data-field-unavailable={isUnavailableField(it.v)}
           style={fieldTone(it.k, it.v) === 'model' && typeof it.v === 'string' && !isUnavailableField(it.v) ? modelIdentityStyle(it.v) : undefined}>
@@ -276,6 +282,7 @@ export function DataTable<T>({
   rows,
   rowKey,
   renderDetail,
+  onOpen,
   activeKey,
   pageSize,
 }: {
@@ -283,6 +290,9 @@ export function DataTable<T>({
   rows: T[];
   rowKey: (row: T) => string;
   renderDetail?: (row: T) => ReactNode;
+  /** OMN-23330 (2026-11-11): the row opens the run in the page's dialog, as the Runs table's rows do; no chevron and no
+   * detail in place. A row is then a keyboard stop that opens on Enter or Space. */
+  onOpen?: (row: T) => void;
   activeKey?: string | null;
   pageSize?: number;
 }) {
@@ -322,10 +332,14 @@ export function DataTable<T>({
             <div
               className="row-main"
               style={gridStyle}
-              onClick={renderDetail ? () => setOpen((o) => ({ ...o, [key]: !o[key] })) : undefined}
+              role={onOpen ? 'button' : undefined}
+              tabIndex={onOpen ? 0 : undefined}
+              aria-label={onOpen ? `Open run ${key}` : undefined}
+              onClick={onOpen ? () => onOpen(r) : renderDetail ? () => setOpen((o) => ({ ...o, [key]: !o[key] })) : undefined}
+              onKeyDown={onOpen ? event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onOpen(r); } } : undefined}
             >
               <div className="cflex">
-                {renderDetail && <button type="button" className="row-disclosure" aria-label={`Toggle details for ${key}`} aria-expanded={isOpen}
+                {renderDetail && !onOpen && <button type="button" className="row-disclosure" aria-label={`Toggle details for ${key}`} aria-expanded={isOpen}
                   aria-controls={`${detailId}-${encodeURIComponent(key)}`} onClick={event => {
                     event.stopPropagation(); setOpen(o => ({ ...o, [key]: !o[key] }));
                   }}><ChevronRight className="caret" size={14} aria-hidden="true" /></button>}
@@ -336,7 +350,7 @@ export function DataTable<T>({
                 </div>
               ))}
             </div>
-            {isOpen && renderDetail ? (
+            {isOpen && renderDetail && !onOpen ? (
               <div className="row-detail" id={`${detailId}-${encodeURIComponent(key)}`}>
                 <div className="row-detail-inner">{renderDetail(r)}</div>
               </div>

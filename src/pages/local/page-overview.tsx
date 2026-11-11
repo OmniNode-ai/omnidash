@@ -31,14 +31,14 @@ export function ModelUsagePanel({ row }: { row: Row | null }) {
     <section aria-label="Model usage" className="local-model-usage local-model-usage--upright">
       {/* Lakshman 2026-11-04 ("remove"): no "Runs" unit line above the bars. */}
       {/* OMN-23330 AC6: each model's runs and share are printed, not left to hover. */}
-      <RankedBars label="Runs by model" unit="" order="desc" layout="vertical" many="scroll" values="always"
+      <RankedBars label="Runs by model" unit="" table={{ nameHeader: 'Model', countHeader: 'Runs' }} order="desc" layout="vertical" many="scroll" values="always"
         items={models.map((model, index) => {
           const name = isMissing(model.model_name) ? 'Not recorded' : String(model.model_name);
           const runs = share(model.total_count);
           const pct = share(model.pct_of_total);
           // Part 19 AC135: a named model opens Runs filtered to it; a model the rows do not name opens nothing.
           const href = isMissing(model.model_name) ? undefined : `/runs?${writeRunsSearch('', { ...DEFAULT_RUNS_VIEW, model: name })}`;
-          return { key: `${name}-${index}`, name, model: isMissing(model.model_name) ? undefined : name, value: runs, basis: 'measured' as const, color: modelColor(name), href, opensLabel: `Opens Runs filtered to ${name}`,
+          return { key: `${name}-${index}`, name, model: isMissing(model.model_name) ? undefined : name, value: runs, count: runs, share: pct, basis: 'measured' as const, color: modelColor(name), href, opensLabel: `Opens Runs filtered to ${name}`,
             display: runs === null ? 'Not recorded'
               : `${recordedCount(model.total_count)}${pct === null ? '' : ` · ${formatShare(pct)}`}` };
         })} />
@@ -243,13 +243,13 @@ export function TierMixPanel({ row, compact = false }: { row: Row | null; compac
     return (
       <section aria-label="Tier mix">
         {/* OMN-23330 AC6: each tier's runs and share are printed, not left to hover. */}
-        <RankedBars label="Runs by tier" unit="" order="desc" layout="vertical" values="always"
+        <RankedBars label="Runs by tier" unit="" table={{ nameHeader: 'Tier', countHeader: 'Runs' }} order="desc" layout="vertical" values="always"
           items={tiers.filter(tier => tier.cost_tier_name !== 'not_tier_routed').map((tier, index) => {
             const name = String(tier.cost_tier_name);
             const pct = share(tier.pct_of_tier_routed);
             // Part 19 AC135 with part 23 AC145: a served tier opens Runs filtered to it (?tier=<served name>).
             const href = isMissing(tier.cost_tier_name) ? undefined : `/runs?${writeRunsSearch('', { ...DEFAULT_RUNS_VIEW, tier: name })}`;
-            return { key: `${name}-${index}`, name: tierLabel(name), value: pct === null ? null : pct * 100, basis: 'measured' as const, color: tierColor(name), href, opensLabel: `Opens Runs filtered to ${tierLabel(name)}`,
+            return { key: `${name}-${index}`, name: tierLabel(name), value: pct === null ? null : pct * 100, count: share(tier.count), share: pct, basis: 'measured' as const, color: tierColor(name), href, opensLabel: `Opens Runs filtered to ${tierLabel(name)}`,
               // A served share above zero but under 0.1% reads "<0.1%", never a rounded 0.0% that hides a real tier.
               display: pct === null ? 'Not recorded' : `${recordedCount(tier.count)} · ${formatShare(pct)}` };
           })} />

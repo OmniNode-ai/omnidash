@@ -3,13 +3,13 @@ import { formatDashboardUsd } from '@/theme/format';
 import { formatDuration } from '@/theme/format';
 import { shortId } from '@/components/dashboard/event-dash/primitives';
 import { useEffect, useId, useState } from 'react';
-import { ChartEmpty, ChartHeading } from './frame';
+import { ChartEmpty, ChartHeading, ChartTable } from './frame';
 import { SwatchToggles } from './legend';
 import { Link } from 'wouter';
 import { workflowHref } from '@/navigation/workflow-url-state';
 import { useThemeName } from '@/theme';
 import { EChart } from './echarts-lazy';
-import { colorToNumber, tokenHex, tokenValue, type TokenName } from '@/theme/design-system/color';
+import { tokenHex, tokenValue, type TokenName } from '@/theme/design-system/color';
 import { localeDate as fmtLocaleDate, localeString as fmtLocaleString } from '@/theme/format';
 import { exactMs, formatShortDay } from '@/theme/format';
 
@@ -299,7 +299,10 @@ function SpendChartFigure({ group, title, colourPlaces }: { group: SpendByDayGro
         series={all.map(({ series, colour }) => ({ key: series.key, label: series.name, color: colour, shown: !hidden.has(series.key) }))} />
       {shown.length === 0
         ? <ChartEmpty status>{EVERY_SERIES_HIDDEN}</ChartEmpty>
-        : <EChart option={{ ...optionFor(group, shown), ...motion.option }} />}
+        : <ChartTable label={`${title} vs ${group.baseline}`} shape="columns" columns={['Day', ...group.series.map(series => series.name)]}
+            rows={group.days.map((day, index) => [day, ...group.series.map(series => point(series.served[index]).value)])}>
+            <EChart option={{ ...optionFor(group, shown), ...motion.option }} />
+          </ChartTable>}
       <div className="local-chart-inspector"><label htmlFor={dayId}>Inspect day</label>
         <select id={dayId} value={selectedDay === null ? '' : day} onChange={event => setDay(event.target.value)}>
           <option value="">Choose a served day</option>
@@ -429,28 +432,23 @@ function timingOption(bars: readonly RunTimingBar[], colours: readonly string[],
  * OMN-21015: where one run's time went, as bars. A second way of showing the timings the run summary's tiles carry as
  * text; it draws exactly the bars `runTimingBars` shapes, and nothing when no timing is measured.
  */
-export function RunTimingChart({ timings, title = 'Run timing', compact = false, accentToken }: { timings: readonly RunTiming[]; title?: string; compact?: boolean; accentToken?: string }) {
+export function RunTimingChart({ timings, title = 'Run timing', compact = false }: { timings: readonly RunTiming[]; title?: string; compact?: boolean }) {
   const motion = useChartMotion();
   // Re-read the theme's colours when the theme changes.
   useThemeName();
   const { bars, unmeasured } = runTimingBars(timings);
   if (bars.length === 0) return null;
+  // Each timing its own series colour, by its place among the timings handed over (operator 2026-11-11, "use good
+  // colors"): the shades of the card's one accent read as one thing, and the field palette's timing colours are one
+  // brown family, so the series palette, made to be told apart in both themes, is used.
   const palette = seriesColours(timings.length, undefined);
-  const colours = bars.map((bar, index) => {
-    if (!accentToken) return palette[bar.place - 1]!;
-    const accent = colorToNumber(tone(accentToken));
-    // Distinct timings retain separate shades within their enclosing card's
-    // accent. The first remains the exact accent; no data changes with color.
-    const tint = Math.min(.5, index / (bars.length + 1));
-    const channels = [16, 8, 0].map(shift => {
-      const channel = (accent >> shift) & 255;
-      return Math.round(channel + (255 - channel) * tint).toString(16).padStart(2, '0');
-    });
-    return `#${channels.join('')}`;
-  });
+  const colours = bars.map(bar => palette[bar.place - 1]!);
   return (
     <figure className="local-chart local-chart--timing" aria-label={title}>
-      <EChart option={{ ...timingOption(bars, colours, compact), ...motion.option }} />
+      <ChartTable label={title} shape="bars" columns={['Timing', 'Duration']} rows={bars.map(bar => [bar.label, formatDuration(bar.value)])}
+        rowColors={colours} rowInkColumns={[1]}>
+        <EChart option={{ ...timingOption(bars, colours, compact), ...motion.option }} />
+      </ChartTable>
       <figcaption>
         {`${bars.map((bar) => bar.label).join(', ')} of this run, ${bars.length === 1 ? 'as served.' : 'each as served, side by side and not added together.'}`}
         {unmeasured.length > 0 && ` No measured value to draw for: ${unmeasured.join(', ')}.`}
@@ -583,7 +581,10 @@ export function RunDurationChart({ runs, onOpen, title = 'Duration per run' }: {
           tone: status === 'passed' ? 'pass' : status === 'failed' ? 'fail' : undefined }))} />
       {statuses.every((status) => hidden.has(status))
         ? <ChartEmpty status>{EVERY_SERIES_HIDDEN}</ChartEmpty>
-        : <EChart option={option} onEvents={openOnClick(runs, onOpen)} />}
+        : <ChartTable label={title} shape="columns" columns={['Run', 'Status', 'Duration']}
+          rows={runs.map(run => [runLabel(run), run.status, point(run.duration).value === null ? null : formatDuration(run.duration)])}>
+          <EChart option={option} onEvents={openOnClick(runs, onOpen)} />
+        </ChartTable>}
       <RunInspector runs={runs} />
       {/* OMN-23330 AC9: the axis reads ms, s or min as the values need, so the caption names the axis, not one unit. */}
       <figcaption>Duration of each listed run, in the list&apos;s order, in the units on the axis. A bar opens its run.</figcaption>
@@ -647,7 +648,10 @@ export function RunTokensChart({ runs, onOpen, title = 'Tokens per run' }: { run
         series={all.map(series => ({ key: series.key, label: series.name, color: series.colour, tone: series.key === 'tokensIn' ? 'tokens-in' : 'tokens-out', shown: !hidden.has(series.key) }))} />
       {shown.length === 0
         ? <ChartEmpty status>{EVERY_SERIES_HIDDEN}</ChartEmpty>
-        : <EChart option={option} onEvents={openOnClick(runs, onOpen)} />}
+        : <ChartTable label={title} shape="columns" columns={['Run', 'Tokens in', 'Tokens out']}
+          rows={runs.map(run => [runLabel(run), point(run.tokensIn).value, point(run.tokensOut).value])}>
+          <EChart option={option} onEvents={openOnClick(runs, onOpen)} />
+        </ChartTable>}
       <RunInspector runs={runs} />
       <figcaption>Tokens in and out of each listed run, in the list&apos;s order, as served. A bar opens its run.</figcaption>
     </figure>
@@ -695,7 +699,9 @@ export function RunMetricChart({ runs, onOpen, metric }: {
       {recordedCount < runs.length && <span>{formatDashboardCount(runs.length - recordedCount)} not recorded</span>}
       {allRecordedZero && <strong>{cost ? 'Recorded costs are $0.00' : 'Recorded scores are 0'}</strong>}
     </div>
-    {measured ? <EChart option={option} onEvents={openOnClick(runs, onOpen)} />
+    {measured ? <ChartTable label={title} shape="columns" columns={['Run', label]} rows={runs.map(run => [runLabel(run), point(run[metric]).value])}>
+        <EChart option={option} onEvents={openOnClick(runs, onOpen)} />
+      </ChartTable>
       : <p className="local-dashboard-empty local-chart-unmeasured">No recorded values for these runs</p>}
     <RunInspector runs={runs} describe={valueText} />
     <figcaption>{cost ? 'Session cost when served, otherwise the run’s recorded cost. USD, with no estimates.' : 'The run’s recorded score, without averaging or inferring a pass threshold.'} Current table page and filters; missing values remain gaps.</figcaption>

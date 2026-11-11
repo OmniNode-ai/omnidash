@@ -75,9 +75,11 @@ export function StatusGrid({ title, rows, waitsOn, isLoading, error, fileMode, c
               data-status={row.status}
               data-severity={row.severity}
               style={{
-                borderLeft: `4px solid ${role.edge}`,
-                background: 'var(--ds-surface-2)',
-                borderRadius: 6,
+                // OMN-23330 (2026-11-11, "remove left side border - that is not in our design"): a hairline all round and a fill
+                // tinted with the severity's colour, as the fact cards and chart tables are drawn; no left bar.
+                border: `1px solid color-mix(in oklab, ${role.edge} 45%, var(--ds-line))`,
+                background: `color-mix(in oklab, ${role.edge} 8%, var(--ds-surface))`,
+                borderRadius: 10,
                 padding: '8px 10px',
                 display: 'flex',
                 flexDirection: 'column',

@@ -67,7 +67,7 @@ export function RunSummary({ decision, showAnalysis = false }: { decision: Row |
   // out; the chart's own rule decides what is drawable, and the tiles still say Not recorded for the rest.
   const drawable = runTimingBars(timings).bars;
   const onlyTotal = drawable.length === 1 && drawable[0]!.label === 'Duration';
-  const timingChart = onlyTotal ? null : <RunTimingChart timings={timings} compact={showAnalysis} accentToken={showAnalysis ? '--workflow-timing-accent' : undefined} />;
+  const timingChart = onlyTotal ? null : <RunTimingChart timings={timings} compact={showAnalysis} />;
   return (
     <section aria-label="Run summary" className="local-dashboard-run-summary">
       <div className="local-run-summary-groups">

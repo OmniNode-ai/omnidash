@@ -37,6 +37,20 @@ export interface RankedBarItem {
   /** OMN-21166 part 19 AC135: where the bar leads (e.g. Runs filtered to it), and the words its link adds. */
   href?: string;
   opensLabel?: string;
+  /** OMN-23330 AC37 follow-up: the served count and share (a fraction) the bar stands for, written exactly in its table. */
+  count?: number | null;
+  share?: number | null;
+}
+
+/** The bars in the order they are drawn: served values ranked by `order`, then the not-measured ones as handed over.
+ * The chart and its table both use it, so the table lists its rows in the chart's order (OMN-23330, 2026-11-11). */
+function rankItems(items: readonly RankedBarItem[], order: 'asc' | 'desc') {
+  const shown = items.map(item => ({
+    ...item,
+    basis: item.value === null || !Number.isFinite(item.value) ? 'unknown' as const : item.basis,
+  }));
+  const ranked = shown.filter(item => item.basis !== 'unknown').sort((a, b) => (order === 'asc' ? a.value! - b.value! : b.value! - a.value!));
+  return [...ranked, ...shown.filter(item => item.basis === 'unknown')];
 }
 
 const BASIS_WORDS: Readonly<Record<RankedBarBasis, string>> = {
@@ -71,13 +85,8 @@ function RankedBarsPlot({ label, unit, items, order = 'asc', note, footnote, lay
   note?: ReactNode;
   footnote?: ReactNode;
 }) {
-  const shown = items.map(item => ({
-    ...item,
-    basis: item.value === null || !Number.isFinite(item.value) ? 'unknown' as const : item.basis,
-  }));
-  const served = shown.filter(item => item.basis !== 'unknown');
-  const ranked = [...served].sort((a, b) => (order === 'asc' ? a.value! - b.value! : b.value! - a.value!));
-  const ordered = [...ranked, ...shown.filter(item => item.basis === 'unknown')];
+  const ordered = rankItems(items, order);
+  const served = ordered.filter(item => item.basis !== 'unknown');
   const max = Math.max(0, ...served.map(item => item.value!));
   // OMN-21166 AC213 (Lakshman 2026-10-28): past 10 bars an upright chart splits its width too thin for any name, so it
   // runs sideways. Every drawn item counts, an unserved outline included.
@@ -126,8 +135,27 @@ function RankedBarsPlot({ label, unit, items, order = 'asc', note, footnote, lay
 }
 
 /** OMN-23330 AC37: the chart, with its "Show as table" toggle over the same rows and values. */
-export function RankedBars(props: Parameters<typeof RankedBarsPlot>[0]) {
-  return <ChartTable label={props.label} columns={['Name', props.unit ?? 'Value']} rows={props.items.map(item => [item.name, item.display])}>
+export function RankedBars({ table, ...props }: Parameters<typeof RankedBarsPlot>[0] & {
+  /**
+   * The table's columns under named headers (operator review 2026-11-11): the row header ("Model", "Tier", "Route"), then
+   * an optional value column (each bar's served value, or with valueFrom 'display' its printed figure, for a chart whose
+   * value is a coordinate rather than the served figure), then optional count and share columns (the bar's served count
+   * and share). Each row's name, value and share wear the bar's colour.
+   */
+  table?: { nameHeader: string; valueHeader?: string; valueFrom?: 'value' | 'display'; countHeader?: string };
+}) {
+  // The table lists the bars in the order the chart draws them.
+  const drawn = rankItems(props.items, props.order ?? 'asc');
+  const columns = !table ? ['Name', props.unit ?? 'Value']
+    : [table.nameHeader, ...(table.valueHeader ? [table.valueHeader] : []), ...(table.countHeader ? [table.countHeader, 'Share'] : [])];
+  const rows = drawn.map(item => (!table ? [item.name, item.display] : [item.name,
+    ...(table.valueHeader ? [table.valueFrom === 'display' ? item.display : item.value] : []),
+    ...(table.countHeader ? [item.count ?? null, item.share ?? null] : [])]));
+  const inked = !table ? [] : [...(table.valueHeader ? [1] : []), ...(table.countHeader ? [columns.length - 1] : [])];
+  // Upright bars are columns (layout vertical, unless more than 10 items are turned sideways); the rest are bars.
+  const upright = props.layout === 'vertical' && !((props.many ?? 'sideways') === 'sideways' && props.items.length > 10);
+  return <ChartTable label={props.label} shape={upright ? 'columns' : 'bars'} columns={columns} rows={rows}
+    rowColors={table ? drawn.map(item => item.color) : undefined} rowInkColumns={inked}>
     <RankedBarsPlot {...props} />
   </ChartTable>;
 }

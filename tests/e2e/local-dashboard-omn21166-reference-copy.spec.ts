@@ -54,10 +54,17 @@ for (const theme of ['light', 'dark'] as const) {
         // OMN-22168 (Lakshman 2026-11-04): the Runs filter and export glyphs, and each page's sidebar and title icon, draw
         // their own colour (design-system-dashboard-polish L8 and L11 check them); they still count as drawn icons.
         // OMN-22168 (Lakshman 2026-11-05, "make all pages uniform"): Evidence's CSV and JSON exports are the Runs exports.
+        // OMN-23330 (Lakshman 2026-11-11, "chart icons based on chart type", "one for chart and one for table"): each chart's
+        // Chart and Table switch glyphs wear their view's colour (checked below), so they are not interface icons.
         .map(svg => ({ color: getComputedStyle(svg).color, active: !!svg.closest('.mvp-nav-item.active'),
-          exempt: !!svg.closest('.local-dashboard-filters .ds-dropdown-mark, .local-runs-export button[data-export], .ev-decision-export-actions button[data-export], .local-dashboard-tablist [role="tab"][data-toned], .local-day-picker .local-day-button') || svg.matches('svg.destination-icon') })));
+          exempt: !!svg.closest('.ds-chart-views .ds-chart-view, .local-dashboard-filters .ds-dropdown-mark, .local-runs-export button[data-export], .ev-decision-export-actions button[data-export], .local-dashboard-tablist [role="tab"][data-toned], .local-day-picker .local-day-button') || svg.matches('svg.destination-icon') })));
       expect(icons.length, `${path} draws icons`).toBeGreaterThan(3);
       for (const icon of icons.filter(item => !item.exempt)) expect(icon.color, `${path} icon`).toBe(INK3[theme]);
+      // The switch glyphs the exemption covers: the unchosen view's glyph is its own colour, never the interface grey.
+      const views = await page.evaluate(() => [...document.querySelectorAll('.ds-chart-views .ds-chart-view[aria-pressed="false"]')].map(button => {
+        const probe = document.createElement('i'); probe.style.color = 'var(--view-ink)'; button.append(probe);
+        try { return { glyph: getComputedStyle(button.querySelector('svg')!).color, want: getComputedStyle(probe).color }; } finally { probe.remove(); } }));
+      for (const view of views) expect(view.glyph, `${path} chart view glyph wears its view colour`).toBe(view.want);
       const concepts = await page.evaluate(() => [...document.querySelectorAll('main svg.field-icon[data-field-icon]:not([data-field-icon^="tier-"]):not([data-semantic-concept^="model:"])')]
         // A chart tab's glyph is part of the tab control: the chosen tab repaints it (checked by the identity census).
         .filter(svg => (svg as SVGElement).getBoundingClientRect().width > 0 && !svg.closest('[data-field-unavailable="true"], .local-dashboard-tablist'))

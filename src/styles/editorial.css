@@ -226,6 +226,12 @@ html body :is(.local-dashboard-page, .ev-root) .local-model-identity::before {
 .local-dashboard-page--runs [data-component="recent-runs"] .local-recent-toolbar input[type="checkbox"]:checked { background: var(--ds-hue-blue); }
 .local-dashboard-page--runs [data-component="recent-runs"] .local-recent-toolbar input[type="checkbox"]:checked::before { transform: translateX(12px); background: var(--ds-on-accent); }
 .local-dashboard-page--runs [data-component="recent-runs"] .local-recent-toolbar input[type="checkbox"]:focus-visible { outline: 2px solid var(--ds-hue-blue); outline-offset: 2px; }
+/* OMN-23330 (Lakshman 2026-11-11, "both toggle different color"): each switch wears its own field colour (its wrapper's
+   data-field-tone): a tint of it on the track when off, the colour itself when on, on its focus ring and its info icon. */
+html body .local-dashboard-page--runs .local-recent-switch[data-field-tone] input[type="checkbox"]:not(#ds-important) {
+  background: color-mix(in oklab, var(--field-ink) 30%, var(--ds-line-strong)); }
+html body .local-dashboard-page--runs .local-recent-switch[data-field-tone] input[type="checkbox"]:checked:not(#ds-important) { background: var(--field-ink); }
+html body .local-dashboard-page--runs .local-recent-switch[data-field-tone] input[type="checkbox"]:focus-visible:not(#ds-important) { outline-color: var(--field-ink); }
 .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-export { margin-left: auto; display: inline-flex; gap: 6px; }
 .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-export button {
   height: 32px; min-height: 32px; padding: 0 12px; border: 1px solid var(--ds-line); background: transparent;
@@ -306,7 +312,7 @@ html body :is(.local-dashboard-page, .ev-root) .local-model-identity::before {
 :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-dashboard-filters input:not([type="checkbox"]):not([type="radio"]) {
   min-height: 34px; border: 1px solid var(--ds-line); background-color: var(--ds-surface-2);
 }
-:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-dashboard-filters input:not([type="checkbox"]):not([type="radio"]):not(#ds-important) { border-radius: 10px;
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-dashboard-filters input:not([type="checkbox"]):not([type="radio"]):not(#ds-important) { border-radius: 8px;
 }
 :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-dashboard-filters input:not([type="checkbox"]):not([type="radio"]):focus-visible {
   outline: none; border-color: var(--ds-hue-blue); box-shadow: 0 0 0 3px color-mix(in oklab, var(--ds-hue-blue) 22%, transparent);
@@ -382,7 +388,7 @@ html body :is(.local-dashboard-page, .ev-root) .local-model-identity::before {
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--tab-tone) 22%, transparent), 0 6px 18px -8px var(--tab-tone); }
 /* OMN-22168 ("do all", item 2): inside a tab the chart's own heading repeats the tab's label; the tab panel is named by
    its tab (aria-labelledby), so the repeat is not drawn. */
-.local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tabpanel .local-dashboard-panel > h2:not(#ds-important) { display: none; }
+:is(.local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis), main.ev-root) .local-dashboard-tabpanel .local-dashboard-panel > h2:not(#ds-important) { display: none; }
 /* Item 3: the runtime state opens Settings' System status. */
 .local-overview-status a.local-overview-status-link { color: inherit; text-decoration: none; border-bottom: 1px dashed currentColor; }
 .local-overview-status a.local-overview-status-link:hover { color: var(--ds-link); }
@@ -405,19 +411,19 @@ html body :is(.local-dashboard-page, .ev-root) .local-model-identity::before {
   box-shadow: 0 6px 16px -8px var(--tab-tone); }
 :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-toned][aria-selected="true"]::after {
   content: ''; position: absolute; left: 18px; right: 18px; bottom: -8px; height: 3px; border-radius: 3px; background: var(--tab-tone); }
-.local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-toned] {
+:is(.local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis), main.ev-root) .local-dashboard-tablist [role="tab"][data-toned] {
   min-height: 40px; padding: 0 16px; gap: 8px; font-weight: 500; }
-.local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-toned]:not(#ds-important) { border: 0; border-radius: 10px;
+:is(.local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis), main.ev-root) .local-dashboard-tablist [role="tab"][data-toned]:not(#ds-important) { border: 0; border-radius: 10px;
   background: transparent; color: var(--ds-ink-2); box-shadow: none; }
 @media (hover: hover) {
-  .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-toned]:hover:not(#ds-important) {
+  :is(.local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis), main.ev-root) .local-dashboard-tablist [role="tab"][data-toned]:hover:not(#ds-important) {
     background: color-mix(in oklab, var(--ds-surface) 70%, transparent); color: var(--ds-ink); } }
-.local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-toned][aria-selected="true"] { font-weight: 600; }
-.local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-toned][aria-selected="true"]:not(#ds-important) {
+:is(.local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis), main.ev-root) .local-dashboard-tablist [role="tab"][data-toned][aria-selected="true"] { font-weight: 600; }
+:is(.local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis), main.ev-root) .local-dashboard-tablist [role="tab"][data-toned][aria-selected="true"]:not(#ds-important) {
   background: var(--ds-surface); color: var(--ds-ink);
   box-shadow: var(--ds-shadow-sm, 0 1px 2px var(--ds-scrim)), inset 0 -3px 0 var(--tab-tone); }
-.local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-toned][aria-selected="true"]::after { content: none; }
-html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-toned][aria-selected="true"]:not(#ds-important) {
+:is(.local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis), main.ev-root) .local-dashboard-tablist [role="tab"][data-toned][aria-selected="true"]::after { content: none; }
+html body :is(.local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis), main.ev-root) .local-dashboard-tablist [role="tab"][data-toned][aria-selected="true"]:not(#ds-important) {
   background: var(--ds-surface);
   box-shadow: 0 1px 3px color-mix(in oklab, var(--ds-ink) 18%, transparent), inset 0 -3px 0 var(--tab-tone); }
 
@@ -438,7 +444,7 @@ html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-cha
 @media (hover: hover) {
   .local-window-menu .local-window-list [role="radio"]:hover:not(#ds-important) { background: color-mix(in oklab, var(--win-tone) 12%, transparent); color: var(--ds-ink); } }
 .local-window-menu .local-window-list [role="radio"][aria-checked="true"] { font-weight: 600;
-  box-shadow: inset 3px 0 0 var(--win-tone); }
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--win-tone) 55%, transparent); }
 .local-window-menu .local-window-list [role="radio"][aria-checked="true"]:not(#ds-important) {
   background: color-mix(in oklab, var(--win-tone) 18%, transparent); color: var(--ds-ink); }
 .local-window-menu .local-window-list [role="radio"][aria-checked="true"] svg:not(#ds-important) { color: var(--win-tone); }
@@ -446,10 +452,12 @@ html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-cha
 .local-window-menu .local-window-trigger[data-window]:not(#ds-important) {
   border-color: color-mix(in oklab, var(--win-tone) 45%, var(--ds-line)); }
 html body .local-window-menu .local-window-list [role="radio"][aria-checked="true"]:not(#ds-important) {
-  background: color-mix(in oklab, var(--win-tone) 18%, transparent); box-shadow: inset 3px 0 0 var(--win-tone); }
-html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-toned] { position: relative; z-index: 1; }
-html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-toned][aria-selected="true"] { font-weight: 600; }
-html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-toned][aria-selected="true"]:not(#ds-important) {
+  /* OMN-23330 (2026-11-11, "remove left side border - that is not in our design"): the chosen window is a tinted fill
+     with a hairline all round in its colour, no left bar. */
+  background: color-mix(in oklab, var(--win-tone) 18%, transparent); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--win-tone) 55%, transparent); }
+html body :is(.local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis), main.ev-root) .local-dashboard-tablist [role="tab"][data-toned] { position: relative; z-index: 1; }
+html body :is(.local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis), main.ev-root) .local-dashboard-tablist [role="tab"][data-toned][aria-selected="true"] { font-weight: 600; }
+html body :is(.local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis), main.ev-root) .local-dashboard-tablist [role="tab"][data-toned][aria-selected="true"]:not(#ds-important) {
   background: transparent; box-shadow: none; color: var(--ds-ink); }
 /* Lakshman 2026-11-04, "no dots ... use icons and calendar also colourful": the window glyphs replace the dots; each
    glyph takes its window's tone, and the calendar button has its own tone (teal). */
@@ -472,22 +480,22 @@ html body .local-dashboard-page .local-window-menu svg.lucide.local-window-icon:
   font-size: 12px; color: var(--ds-ink-3); font-variant-numeric: tabular-nums; text-align: right; }
 @media (max-width: 700px) { .local-trend-yaxis { height: 220px; } }
 .local-trend-plot { min-width: 0; }
-html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-stat] {
+html body :is(.local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis), main.ev-root) .local-dashboard-tablist [role="tab"][data-stat] {
   display: flex; align-items: center; gap: 12px; min-height: 76px; padding: 14px 16px; text-align: left; cursor: pointer;
   transition: transform 180ms var(--ds-ease, ease), border-color 180ms ease, box-shadow 180ms ease, background 180ms ease; }
-html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-stat]:not(#ds-important) {
+html body :is(.local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis), main.ev-root) .local-dashboard-tablist [role="tab"][data-stat]:not(#ds-important) {
   border: 1px solid var(--ds-line); border-radius: 14px; background: var(--ds-surface);
   color: var(--ds-ink); box-shadow: none; }
 @media (hover: hover) {
-  html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-stat]:hover {
+  html body :is(.local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis), main.ev-root) .local-dashboard-tablist [role="tab"][data-stat]:hover {
     transform: translateY(-2px); }
-  html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-stat]:hover:not(#ds-important) { border-color: color-mix(in oklab, var(--tab-tone) 45%, var(--ds-line));
+  html body :is(.local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis), main.ev-root) .local-dashboard-tablist [role="tab"][data-stat]:hover:not(#ds-important) { border-color: color-mix(in oklab, var(--tab-tone) 45%, var(--ds-line));
     box-shadow: 0 8px 20px -14px var(--tab-tone); } }
-html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-stat][aria-selected="true"]:not(#ds-important) {
+html body :is(.local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis), main.ev-root) .local-dashboard-tablist [role="tab"][data-stat][aria-selected="true"]:not(#ds-important) {
   border-color: var(--tab-tone);
   background: linear-gradient(135deg, color-mix(in oklab, var(--tab-tone) 20%, var(--ds-surface)) 0%, var(--ds-surface) 75%);
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--tab-tone) 18%, transparent), 0 12px 28px -16px var(--tab-tone); }
-html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-stat]:focus-visible {
+html body :is(.local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis), main.ev-root) .local-dashboard-tablist [role="tab"][data-stat]:focus-visible {
   outline: 2px solid var(--tab-tone); outline-offset: 3px; }
 html body .local-dashboard-page .local-tab-chip svg.lucide { width: 20px; height: 20px; }
 html body .local-dashboard-page .local-tab-chip svg.lucide:not(#ds-important) { color: var(--tab-tone); }
@@ -504,11 +512,11 @@ html body .local-dashboard-page [aria-selected="true"] > .local-tab-chip svg.luc
 html body .local-dashboard-page .local-status-chip svg.lucide:not(#ds-important) { color: var(--chip-tone); }
 .local-overview-status[data-state="running"] > strong { color: var(--ds-hue-green); }
 .local-overview-status > span[aria-hidden="true"]:not(.local-overview-status-dot) { display: none; }
-html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-stat] {
+html body :is(.local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis), main.ev-root) .local-dashboard-tablist [role="tab"][data-stat] {
   min-height: 56px; padding: 8px 12px; gap: 10px; }
-html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-stat]:not(#ds-important) { border-radius: 12px; }
-html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-tab-chip svg.lucide { width: 16px; height: 16px; }
-html body .local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis, main.ev-root) .local-dashboard-tablist [role="tab"][data-stat][aria-selected="true"]:not(#ds-important) {
+html body :is(.local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis), main.ev-root) .local-dashboard-tablist [role="tab"][data-stat]:not(#ds-important) { border-radius: 12px; }
+html body :is(.local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis), main.ev-root) .local-tab-chip svg.lucide { width: 16px; height: 16px; }
+html body :is(.local-dashboard-page :is(.local-overview-charts-panel, .local-run-charts-panel, .local-runs-routing-panel, .local-chart-tabs-panel, article[data-component="runs-insights"], .usage-analysis), main.ev-root) .local-dashboard-tablist [role="tab"][data-stat][aria-selected="true"]:not(#ds-important) {
   box-shadow: 0 0 0 2px color-mix(in oklab, var(--tab-tone) 16%, transparent), 0 8px 18px -14px var(--tab-tone); }
 
 /* OMN-22168 (Lakshman 2026-11-04, "improve UI/UX of overview and make it uniform"): one rhythm for the whole page,
@@ -782,23 +790,8 @@ html body .local-dashboard-page .local-tier-totals dt { display: inline-flex; al
 html body .local-dashboard-page .local-tier-totals dd { font-size: 20px; font-weight: 600; color: var(--ds-ink); margin: 4px 0 0; }
 html body :is(.local-dashboard-page, main.ev-root) .local-dashboard-table-wrap thead .local-column-tip :is(.local-table-head, .local-runs-head):focus-visible {
   outline: 2px solid var(--field-ink, var(--ds-accent)); outline-offset: 2px; border-radius: 4px; }
-html body main.ev-root .local-dashboard-tablist [role="tab"][data-stat] {
-  display: flex; align-items: center; gap: 12px; min-height: 76px; padding: 14px 16px; text-align: left; font-weight: 400; cursor: pointer;
-  transition: transform 180ms var(--ds-ease, ease), border-color 180ms ease, box-shadow 180ms ease, background 180ms ease; }
-html body main.ev-root .local-dashboard-tablist [role="tab"][data-stat]:not(#ds-important) {
-  border: 1px solid var(--ds-line); border-radius: 14px; background: var(--ds-surface);
-  color: var(--ds-ink); box-shadow: none; }
-html body main.ev-root .local-dashboard-tablist [role="tab"][data-stat]:not(#ds-important)::after { content: none; }
-@media (hover: hover) {
-  html body main.ev-root .local-dashboard-tablist [role="tab"][data-stat]:hover {
-    transform: translateY(-2px); }
-  html body main.ev-root .local-dashboard-tablist [role="tab"][data-stat]:hover:not(#ds-important) { border-color: color-mix(in oklab, var(--tab-tone) 45%, var(--ds-line));
-    box-shadow: 0 8px 20px -14px var(--tab-tone); } }
-html body main.ev-root .local-dashboard-tablist [role="tab"][data-stat][aria-selected="true"]:not(#ds-important) {
-  border-color: var(--tab-tone); color: var(--ds-ink);
-  background: linear-gradient(135deg, color-mix(in oklab, var(--tab-tone) 20%, var(--ds-surface)) 0%, var(--ds-surface) 75%);
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--tab-tone) 18%, transparent), 0 12px 28px -16px var(--tab-tone); }
-html body main.ev-root .local-dashboard-tablist [role="tab"][data-stat]:focus-visible { outline: 2px solid var(--tab-tone); outline-offset: 3px; }
+/* OMN-23330 (2026-11-11, "one design system"): Delegation Evidence's tab cards are drawn by the shared tab rules above, which
+   now reach its root; its own tab design (76px cards, 14px padding, weights 400/700, a 3px ring) is gone. */
 
 /* Settings' section menu as Overview's stat tabs (Lakshman 2026-11-05, "Settings and Delegation Evidence ... same as
    runs, overview in style, colors and uniform"): each section a card with its glyph in a chip tinted in its concept
@@ -910,7 +903,6 @@ html body main.ev-root .ev-decision-export-actions button[data-export]:not(#ds-i
 html body main.ev-root .ev-decision-export-actions button[data-export="json"] { --tone: var(--ds-hue-purple); }
 html body main.ev-root .ev-decision-export-actions button[data-export]:not(:disabled):hover:not(#ds-important) { background: color-mix(in oklab, var(--tone) 20%, transparent); border-color: color-mix(in oklab, var(--tone) 70%, var(--ds-line)); }
 html body main.ev-root .ev-decision-export-actions button[data-export] svg.lucide:not(#ds-important) { color: var(--tone-ink); }
-html body main.ev-root .local-dashboard-tablist [role="tab"][data-stat]:not(#ds-important) { min-height: 56px; border-radius: 12px; padding: 10px 12px; }
 html body .local-dashboard-page--settings .local-settings-menu a:not(#ds-important) { border-radius: 12px; }
 /* No text under 12px: the newest-run tag on Workflow was 11px. */
 html body main.local-dashboard-page .local-run-tag:not(#ds-important) { font-size: 12px; }

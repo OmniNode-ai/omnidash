@@ -195,7 +195,7 @@ function TierMixPlot({ shares: shaped, nameOf: tierLabel, variant = 'donut' }: {
 /** OMN-23330 AC37: the chart, with its "Show as table" toggle over the same rows and values. */
 export function TierMix(props: Parameters<typeof TierMixPlot>[0]) {
   if ('refused' in props.shares) return <TierMixPlot {...props} />;
-  return <ChartTable label="Tier mix" columns={['Tier', 'Share of tier-routed runs', 'Runs']}
+  return <ChartTable label="Tier mix" shape="stacked-bar" columns={['Tier', 'Share of tier-routed runs', 'Runs']}
     rows={props.shares.segments.map(segment => [props.nameOf(segment.name), segment.share,
       typeof segment.count === 'number' || typeof segment.count === 'string' ? segment.count : null])}>
     <TierMixPlot {...props} />
