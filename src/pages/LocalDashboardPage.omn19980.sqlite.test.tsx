@@ -64,6 +64,13 @@ vi.mock('@/data-source/exposure-census', () => ({
 import { LocalDashboardPage } from './LocalDashboardPage';
 import { loadLocalPageConfig, resolveLocalPageEmptyState } from '@/layout/local-page-loader';
 
+/** OMN-23330 AC27: a caption line's whole text; its figures and names are drawn as separate toned parts. */
+const caption = (text: string | RegExp) => (_content: string, element: Element | null) =>
+  element !== null && element.classList.contains('local-dashboard-caption')
+  && (typeof text === 'string' ? element.textContent === text : text.test(element.textContent ?? ''));
+/** OMN-23330 AC27: a card's figure, now that its caption may draw the same number toned. */
+const FIGURE = { selector: '.local-dashboard-metric, .local-dashboard-metric *' };
+
 // Distinct figures, so a per-run saving or baseline price that reached the screen is found by its value.
 const LOCAL_COST = '$1.10';
 const SESSION = {
@@ -119,7 +126,7 @@ describe('OMN-19980 AC2b: a run shows its cost, never a per-run saving', () => {
   });
 
   it('B3: a row\'s null saving no longer decides the page state; the served baseline_state still does', () => {
-    const page = loadLocalPageConfig('overview', 'metering');
+    const page = loadLocalPageConfig('overview');
     // Amendment 2: no Overview card reads cost.savings-overview.v1 any more, so the page state is read off a topic
     // Overview still renders rows from (decisions); metering-summary.v1's rows never decide it (OMN-20009 C3).
     const snapshot = (row: Record<string, unknown>) => [{
@@ -136,12 +143,12 @@ describe('OMN-19980 AC2b: a run shows its cost, never a per-run saving', () => {
   });
 
   it('B4: metering rows with no decisions still leave Overview NO_RUNS_YET', () => {
-    const page = loadLocalPageConfig('overview', 'metering');
+    const page = loadLocalPageConfig('overview');
     expect(resolveLocalPageEmptyState(page, [read(DECISIONS, []), read(METERING, [meteringRow({})])])).toBe('NO_RUNS_YET');
   });
 
   it('B5: a metering row with a null saving and an unresolved baseline never flips the whole page', () => {
-    const page = loadLocalPageConfig('overview', 'metering');
+    const page = loadLocalPageConfig('overview');
     const decision = { correlation_id: 'corr-19980', created_at: '2026-10-05T12:00:00Z' };
     for (const baselineState of ['unresolved', 'BASELINE_UNRESOLVED']) {
       const metering = meteringRow({ savings_usd: null, baseline_state: baselineState });
@@ -224,8 +231,8 @@ describe('OMN-19980 Step B: the Overview Savings total is metering-summary.v1\'s
     const savings = panel('Savings');
     expect(within(savings).getByText('$1,225.20')).toBeInTheDocument();
     // OMN-21166 live review: the card shows its figure; its hover names the baseline, the pricing and the runs left out.
-    expect(within(savings).getByText('Baseline claude-sonnet-5-5 · pricing v3')).toBeInTheDocument();
-    expect(within(savings).getByText('Not counted: 1 run without token counts, 1 run without spend')).toBeInTheDocument();
+    expect(within(savings).getByText(caption('Baseline claude-sonnet-5-5 · pricing v3'))).toBeInTheDocument();
+    expect(within(savings).getByText(caption('Not counted: 1 run without token counts, 1 run without spend'))).toBeInTheDocument();
     expect(within(savings).getByText(/The baseline never ran\./)).toBeInTheDocument();
     // cost.savings-overview.v1 serves 1.29 and delegation.savings.v1 names claude-opus-4-6: neither reaches the card.
     expect(within(savings).queryByText('$1,290.00')).toBeNull();
@@ -233,7 +240,7 @@ describe('OMN-19980 Step B: the Overview Savings total is metering-summary.v1\'s
     expect(within(savings).queryByText('$500.00')).toBeNull();
     // Amendment 2: Spend and Measured runs read the same all row now, not cost.savings-overview.v1 (0.01 and 4).
     expect(within(panel('Actual spend')).getByText('$7.10')).toBeInTheDocument();
-    expect(within(panel('Agent calls')).getByText('7')).toBeInTheDocument();
+    expect(within(panel('Agent calls')).getByText('7', FIGURE)).toBeInTheDocument();
   });
 
   it('T2: metering-summary.v1 not in the census: the card names it and shows no figure', async () => {
@@ -272,8 +279,8 @@ describe('OMN-19980 Step B: the Overview Savings total is metering-summary.v1\'s
     const savings = panel('Savings');
     expect(within(savings).getByText('$1,225.20')).toBeInTheDocument();
     // OMN-21166 live review: the card shows its figure; its hover names the baseline, the pricing and the runs left out.
-    expect(within(savings).getByText('Baseline claude-sonnet-5-5 · pricing v3')).toBeInTheDocument();
-    expect(within(savings).getByText('Not counted: 1 run without token counts, 1 run without spend')).toBeInTheDocument();
+    expect(within(savings).getByText(caption('Baseline claude-sonnet-5-5 · pricing v3'))).toBeInTheDocument();
+    expect(within(savings).getByText(caption('Not counted: 1 run without token counts, 1 run without spend'))).toBeInTheDocument();
     expect(within(savings).queryByText('$9,990.00')).toBeNull();
   });
 
@@ -315,9 +322,9 @@ describe('OMN-19980 Step B (Amendment 2): Spend, Measured runs and Tokens read t
     expect(within(spend).queryByText('$10.00')).toBeNull();
     expect(within(spend).queryByText('$2.20')).toBeNull();
     const measured = panel('Agent calls');
-    expect(within(measured).getByText('7')).toBeInTheDocument();
-    expect(within(measured).getByText('7 of 9 runs measured')).toBeInTheDocument();
-    expect(within(measured).getByText('Not counted: 1 run without token counts, 1 run without spend')).toBeInTheDocument();
+    expect(within(measured).getByText('7', FIGURE)).toBeInTheDocument();
+    expect(within(measured).getByText(caption('7 of 9 runs measured'))).toBeInTheDocument();
+    expect(within(measured).getByText(caption('Not counted: 1 run without token counts, 1 run without spend'))).toBeInTheDocument();
     expect(within(measured).queryByText('4')).toBeNull();
     expect(within(measured).queryByText(/Estimated runs excluded/)).toBeNull();
     const tokens = panel('Tokens processed');
@@ -341,7 +348,7 @@ describe('OMN-19980 Step B (Amendment 2): Spend, Measured runs and Tokens read t
     await open('overview');
     expect(within(panel('Savings')).getByText('Baseline unresolved')).toBeInTheDocument();
     expect(within(panel('Actual spend')).getByText('$7.10')).toBeInTheDocument();
-    expect(within(panel('Agent calls')).getByText('7')).toBeInTheDocument();
+    expect(within(panel('Agent calls')).getByText('7', FIGURE)).toBeInTheDocument();
     expect(within(panel('Tokens processed')).getByText('2.14K')).toBeInTheDocument();
     for (const title of HEADLINES) expect(within(panel(title)).queryByText('Baseline unresolved'), title).toBeNull();
   });
@@ -366,7 +373,7 @@ describe('OMN-19980 Step B (Amendment 2): Spend, Measured runs and Tokens read t
     await open('overview');
     expect(within(panel('Savings')).getByText('$1,225.20')).toBeInTheDocument();
     expect(within(panel('Actual spend')).getByText('$7.10')).toBeInTheDocument();
-    expect(within(panel('Agent calls')).getByText('7')).toBeInTheDocument();
+    expect(within(panel('Agent calls')).getByText('7', FIGURE)).toBeInTheDocument();
     expect(within(panel('Tokens processed')).getByText('2.14K')).toBeInTheDocument();
     expect([...HEADLINES].map(figure)).toEqual([['$7.10'], ['7'], ['2.14K']]);
     expect(captions('Agent calls')).toEqual(['7 of 9 runs measured', 'Not counted: 1 run without token counts, 1 run without spend']);

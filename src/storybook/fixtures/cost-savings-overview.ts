@@ -3,6 +3,7 @@ import type {
   CostSavingsRow,
   ExecutionMode,
 } from '@/components/dashboard/cost-savings-overview/CostSavingsOverviewWidget';
+import { fixed as fmtFixed } from '@/theme/format';
 
 export interface BuildCostSavingsOverviewOptions {
   window?: '24h' | '7d' | '30d';
@@ -48,10 +49,10 @@ export function buildCostSavingsOverview(
       execution_mode: m.mode,
       task_count: taskCount,
       tokens_total: tokensTotal,
-      cost_usd: Number(costUsd.toFixed(4)),
-      baseline_cost_usd: Number(baselineCostUsd.toFixed(4)),
-      savings_usd: Number(savingsUsd.toFixed(4)),
-      savings_pct: Number(savingsPct.toFixed(4)),
+      cost_usd: Number(fmtFixed(costUsd, 4)),
+      baseline_cost_usd: Number(fmtFixed(baselineCostUsd, 4)),
+      savings_usd: Number(fmtFixed(savingsUsd, 4)),
+      savings_pct: Number(fmtFixed(savingsPct, 4)),
       // Synthetic storybook display value for the projection row's
       // url-authority-ok: `runtime_address` column — never used to open a connection.
       runtime_address: isLocal ? `192.168.86.${200 + (MODELS.indexOf(m) % 3)}` : null,
@@ -74,10 +75,10 @@ export function buildCostSavingsOverview(
 
   return {
     window,
-    total_cost_usd: Number(totalCost.toFixed(2)),
-    total_baseline_cost_usd: Number(totalBaseline.toFixed(2)),
-    total_savings_usd: Number(totalSavings.toFixed(2)),
-    savings_rate: Number(savingsRate.toFixed(4)),
+    total_cost_usd: Number(fmtFixed(totalCost, 2)),
+    total_baseline_cost_usd: Number(fmtFixed(totalBaseline, 2)),
+    total_savings_usd: Number(fmtFixed(totalSavings, 2)),
+    savings_rate: Number(fmtFixed(savingsRate, 4)),
     tokens_total: tokensTotal,
     local_token_pct: localRatio,
     captured_at: new Date('2026-05-05T12:00:00Z').toISOString(),

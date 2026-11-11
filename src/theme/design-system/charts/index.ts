@@ -14,8 +14,9 @@ export { ChartCard, ChartEmpty, ChartHeading, ChartNotRecorded, ChartReadout, Na
 export { SeriesLegend, SeriesToggles, TierLegend, useSeriesToggles } from './legend';
 export type { LegendSeries, ToggleSeries } from './legend';
 export { DayColumns, Histogram, dayTicks } from './DayColumns';
+export { DayAxis, placeDayLabels } from './DayAxis';
 export type { DayBarValue, DayColumn, HistogramBucket } from './DayColumns';
-export { LinePlot, MultiLinePlot, linePath, type PlotLine } from './LinePlot';
+export { LinePlot, MultiLinePlot, linePath, smoothPath, type PlotLine } from './LinePlot';
 export { CumulativeColumns, SpendColumns } from './SpendColumns';
 export type { CumulativeDay, SpendDay } from './SpendColumns';
 export { BarSparkline } from './BarSparkline';

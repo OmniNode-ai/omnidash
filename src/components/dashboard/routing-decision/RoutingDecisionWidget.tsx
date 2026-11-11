@@ -4,6 +4,9 @@ import { ComponentWrapper } from '../ComponentWrapper';
 import { NodePill, CardHeader, Price } from '@/components/primitives';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
+import { refreshInterval } from '@/theme/refresh';
+// OMN-23330 AC25: this file's fixed inline styles are classes in RoutingDecisionWidget.static.css.
+import './RoutingDecisionWidget.static.css';
 
 // ── Projection types ─────────────────────────────────────────────────
 
@@ -82,7 +85,7 @@ const FALLBACK_ROUTING_RULES: RoutingRule[] = [
 
 function Arrow({ accent }: { accent?: boolean }) {
   return (
-    <svg width="32" height="20" viewBox="0 0 32 20" style={{ overflow: 'visible' }}>
+    <svg className="routing-decision-widget-s350f32" width="32" height="20" viewBox="0 0 32 20">
       <line x1="0" y1="10" x2="26" y2="10" stroke={accent ? 'var(--ds-brand)' : 'var(--ds-ink-3)'} strokeWidth={accent ? 2 : 1.5} />
       <path d="M22,5 L30,10 L22,15" fill={accent ? 'var(--ds-brand)' : 'var(--ds-ink-3)'} />
     </svg>
@@ -93,7 +96,7 @@ function Arrow({ accent }: { accent?: boolean }) {
 
 function ConfidenceBar({ value, color }: { value: number; color: string }) {
   return (
-    <div style={{ flex: 1, height: 4, background: 'var(--ds-line)', borderRadius: 2, overflow: 'hidden' }}>
+    <div className="routing-decision-widget-sa9a36c">
       <div style={{ width: `${value * 100}%`, height: '100%', background: color, transition: 'width .5s' }} />
     </div>
   );
@@ -156,8 +159,8 @@ function RoutingRulesTable({ rules, activeIntent, onSelectIntent }: {
   };
 
   return (
-    <div style={{ background: 'var(--ds-surface)', border: '1px solid var(--ds-line)', borderRadius: 6, overflow: 'hidden' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.5fr 70px', padding: '8px 12px', borderBottom: '1px solid var(--ds-line)' }}>
+    <div className="routing-decision-widget-seffb15">
+      <div className="routing-decision-widget-s6cac61">
         <Header label="TASK TYPE" k="type" />
         <Header label="MODEL" k="model" />
         <Header label="COST" k="cost" align="right" />
@@ -183,11 +186,11 @@ function RoutingRulesTable({ rules, activeIntent, onSelectIntent }: {
               cursor: 'pointer',
             }}
           >
-            <div style={{ "fontSize": 12, "fontWeight": 600, "color": 'var(--ds-ink)' }}>{r.type}</div>
+            <div className="routing-decision-widget-se1d496">{r.type}</div>
             <div className="mono" style={{ "fontSize": 12, color: r.cost === 0 ? 'var(--ds-kind-compute-ink)' : 'var(--ds-kind-effect)', "fontWeight": 700 }}>
               {r.model}
             </div>
-            <div style={{ textAlign: 'right' }}>
+            <div className="routing-decision-widget-s13cbe0">
               <span
                 className="mono tnum"
                 style={{
@@ -216,7 +219,7 @@ export default function RoutingDecisionWidget() {
   const { data, isLoading, error } = useProjectionQuery<RoutingDecisionProjection>({
     queryKey: ['routing-decision-widget', TOPICS.routingDecision],
     topic: TOPICS.routingDecision,
-    refetchInterval: 30_000,
+    refetchInterval: refreshInterval(),
   });
 
   const projection = useMemo<RoutingDecisionProjection | null>(() => {
@@ -246,7 +249,7 @@ export default function RoutingDecisionWidget() {
       emptyMessage="No routing data"
       emptyHint="Routing decisions appear once delegation events are recorded"
     >
-      <div style={{ width: '100%' }}>
+      <div className="routing-decision-widget-s69d66e">
         <CardHeader
           eyebrow="Model routing"
           title="What's the cheapest model that can do this task?"
@@ -254,11 +257,10 @@ export default function RoutingDecisionWidget() {
         />
 
         {/* Task selector */}
-        <div style={{ marginBottom: 14 }}>
+        <div className="routing-decision-widget-s390758">
           <label
             htmlFor="task-selector"
-            className="mono"
-            style={{ "fontSize": 10, "color": 'var(--ds-ink-3)', "letterSpacing": '0.1em', "textTransform": 'uppercase', "fontWeight": 600, marginBottom: 6, display: 'block' }}
+            className="mono routing-decision-widget-sdf99a7"
           >
             Select task
           </label>
@@ -266,19 +268,7 @@ export default function RoutingDecisionWidget() {
             id="task-selector"
             value={safeIdx}
             onChange={(e) => setTaskIdx(Number(e.target.value))}
-            className="mono"
-            style={{
-              width: '100%',
-              padding: '8px 12px',
-              "fontSize": 12,
-              "fontWeight": 500,
-              "color": 'var(--ds-ink)',
-              background: 'var(--ds-surface)',
-              border: '1px solid var(--ds-line)',
-              borderRadius: 6,
-              cursor: 'pointer',
-              appearance: 'auto',
-            }}
+            className="mono routing-decision-widget-s467a09"
           >
             {taskPresets.map((t, i) => (
               <option key={t.id} value={i}>{t.label}</option>
@@ -287,24 +277,17 @@ export default function RoutingDecisionWidget() {
         </div>
 
         {/* Live trace */}
-        <div
-          style={{
-            background: 'var(--ds-inset)',
-            border: '1px solid var(--ds-line)',
-            borderRadius: 8,
-            padding: 16,
-            marginBottom: 18,
-          }}
+        <div className="routing-decision-widget-s3cc629"
         >
-          <div className="eyebrow" style={{ marginBottom: 12 }}>decision trace</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr auto 1fr', alignItems: 'center', gap: 12 }}>
+          <div className="eyebrow routing-decision-widget-s72d6c3">decision trace</div>
+          <div className="routing-decision-widget-sea62e4">
             {/* INPUT */}
             <div>
               <NodePill kind="cmd">input</NodePill>
-              <div className="mono" style={{ "fontSize": 12, marginTop: 8, "color": 'var(--ds-ink-2)', "lineHeight": 1.4 }}>
+              <div className="mono routing-decision-widget-s661127">
                 {task.label}
               </div>
-              <div className="mono" style={{ "fontSize": 10, "color": 'var(--ds-ink-3)', marginTop: 4 }}>
+              <div className="mono routing-decision-widget-sb62dad">
                 ticket-{4470 + safeIdx} {'·'} 1.2 KB
               </div>
             </div>
@@ -314,12 +297,12 @@ export default function RoutingDecisionWidget() {
             {/* CLASSIFY */}
             <div>
               <NodePill kind="compute">classify</NodePill>
-              <div style={{ "fontSize": 13, "fontWeight": 700, marginTop: 8, "color": 'var(--ds-ink)' }}>
+              <div className="routing-decision-widget-sa023c2">
                 {intent.label}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+              <div className="routing-decision-widget-s6a1fb2">
                 <ConfidenceBar value={0.91} color={intent.color} />
-                <span className="mono" style={{ "fontSize": 10, "color": 'var(--ds-ink-3)' }}>0.91</span>
+                <span className="mono routing-decision-widget-s279e25">0.91</span>
               </div>
             </div>
 
@@ -328,12 +311,12 @@ export default function RoutingDecisionWidget() {
             {/* ROUTE */}
             <div>
               <NodePill kind="effect">route</NodePill>
-              <div className="mono" style={{ "fontSize": 13, "fontWeight": 700, marginTop: 8, "color": 'var(--ds-ink)' }}>
+              <div className="mono routing-decision-widget-sa023c2">
                 {chosen.name}
               </div>
-              <div style={{ marginTop: 4 }}>
+              <div className="routing-decision-widget-sc71373">
                 <Price value={chosen.cost} />
-                <span className="mono" style={{ "fontSize": 10, "color": 'var(--ds-ink-3)', marginLeft: 8 }}>
+                <span className="mono routing-decision-widget-sd430d9">
                   {'·'} {chosen.host}
                 </span>
               </div>
@@ -342,7 +325,7 @@ export default function RoutingDecisionWidget() {
         </div>
 
         {/* Routing rules table */}
-        <div className="eyebrow" style={{ marginBottom: 8 }}>routing rules {'·'} learned from cost/quality history</div>
+        <div className="eyebrow routing-decision-widget-s7f3cba">routing rules {'·'} learned from cost/quality history</div>
         <RoutingRulesTable
           rules={routingRules}
           activeIntent={task.intent}
@@ -353,12 +336,12 @@ export default function RoutingDecisionWidget() {
         />
 
         {isUpstreamBlocked && (
-          <div style={{ marginTop: 10, "fontSize": 11, "color": 'var(--ds-ink-3)', fontStyle: 'italic' }}>
+          <div className="routing-decision-widget-sf28a0b">
             Projection upstream-blocked — displaying contract-valid fixtures.
           </div>
         )}
 
-        <div style={{ marginTop: 14, "fontSize": 11, "color": 'var(--ds-ink-3)', fontStyle: 'italic', textAlign: 'center' }}>
+        <div className="routing-decision-widget-sed6a48">
           Every routing decision produces a receipt with <span className="mono">model_chosen</span>, <span className="mono">tokens</span>, <span className="mono">cost</span>.
         </div>
       </div>

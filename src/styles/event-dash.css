@@ -105,9 +105,13 @@
 /* badges */
 .ev-root .badge { display: inline-flex; align-items: center; gap: 5px; font-family: var(--ds-font-mono); font-size: 12px; font-weight: 500;
   padding: 2px 7px; border-radius: 5px; border: 1px solid; white-space: nowrap; }
-.ev-root .badge.ok { color: var(--ds-ok); border-color: color-mix(in srgb, var(--ds-ok) 35%, transparent); background: color-mix(in srgb, var(--ds-ok) 8%, transparent); }
-.ev-root .badge.fail { color: var(--ds-bad); border-color: color-mix(in srgb, var(--ds-hue-orange) 35%, transparent); background: color-mix(in srgb, var(--ds-hue-orange) 8%, transparent); }
+/* OMN-23330 (operator, 2026-11-10): passed and failed badges wear the field palette's pass and fail colours. */
+.ev-root .badge.ok { color: var(--ds-field-pass); border-color: color-mix(in srgb, var(--ds-ok) 35%, transparent); background: color-mix(in srgb, var(--ds-ok) 8%, transparent); }
+.ev-root .badge.fail { color: var(--ds-field-fail); border-color: color-mix(in srgb, var(--ds-hue-orange) 35%, transparent); background: color-mix(in srgb, var(--ds-hue-orange) 8%, transparent); }
 .ev-root .badge.warn { color: var(--ds-warn); border-color: color-mix(in srgb, var(--ds-warn) 32%, transparent); background: color-mix(in srgb, var(--ds-warn) 8%, transparent); }
+/* OMN-23330 (2026-11-10): in the light theme the amber text of a stale pill or a warn badge measured 4.17 to 4.35 against its
+   own tinted fill, under WCAG AA's 4.5; darkened as the range labels are (80% warn, 20% shadow ink): 5.85 to 6.10. */
+:root:not([data-theme="dark"]) .ev-root :is(.live-pill.stale, .badge.warn) { color: color-mix(in oklab, var(--ds-warn) 80%, var(--ds-shadow-ink)); }
 .ev-root .badge.info { color: var(--ds-info); border-color: color-mix(in srgb, var(--ds-info) 32%, transparent); background: color-mix(in srgb, var(--ds-info) 8%, transparent); }
 .ev-root .badge.muted { color: var(--ds-ink-3); border-color: var(--ds-line); background: var(--ds-surface-2); }
 .ev-root .badge.accent { color: var(--ds-brand); border-color: color-mix(in srgb, var(--ds-hue-green) 32%, transparent); background: color-mix(in srgb, var(--ds-hue-green) 8%, transparent); }
@@ -118,11 +122,12 @@
 
 /* tables */
 .ev-root .dt { width: 100%; }
-.ev-root .dt-head { display: grid; align-items: end; border-bottom: 1px solid var(--ds-line); }
+.ev-root .dt-head { display: grid; grid-template-columns: var(--dt-columns); align-items: end; border-bottom: 1px solid var(--ds-line); }
 .ev-root .dt-head > div { padding: 0 12px 9px; font-size: 12px; letter-spacing: .4px; text-transform: uppercase; color: var(--ds-ink-3); font-weight: 600; white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .ev-root .dt-head .num { text-align: right; }
 .ev-root .row { border-bottom: 1px solid var(--ds-line-soft); }
-.ev-root .row-main { display: grid; align-items: center; cursor: pointer; transition: background .1s; }
+/* OMN-23330 AC30: the columns come from --dt-columns, set by the table component. */
+.ev-root .row-main { display: grid; grid-template-columns: var(--dt-columns); align-items: center; cursor: pointer; transition: background .1s; }
 .ev-root .row-main:hover { background: var(--ds-surface-2); }
 .ev-root .row.open .row-main { background: var(--ds-surface-2); }
 .ev-root .row.active .row-main { background: color-mix(in srgb, var(--ds-hue-green) 6%, transparent); box-shadow: inset 2px 0 0 var(--ds-brand); }
@@ -194,7 +199,8 @@
 .ev-root .heat-cell { border-radius: 5px; padding: 9px 6px; text-align: center; font-family: var(--ds-font-mono); font-size: 12px; color: var(--ds-on-accent); font-weight: 600; }
 .ev-root .heat-h { font-size: 12px; color: var(--ds-ink-3); text-align: center; padding: 2px; font-family: var(--ds-font-mono); letter-spacing: .2px; }
 .ev-root .heat-seg { font-size: 12px; color: var(--ds-ink-2); display: flex; align-items: center; padding-right: 8px; }
-.ev-root .heat-cell.base { background: var(--ds-inset) !important; color: var(--ds-ink-2) !important; border: 1px dashed var(--ds-line); }
+.ev-root .heat-cell.base { border: 1px dashed var(--ds-line); }
+.ev-root .heat-cell.base:not(#ds-important) { background: var(--ds-inset); color: var(--ds-ink-2); }
 .ev-root .heat-legend { display: flex; align-items: center; gap: 10px; margin-top: 14px; font-size: 12px; color: var(--ds-ink-2); }
 .ev-root .heat-grad { height: 9px; width: 160px; border-radius: 5px; background: linear-gradient(90deg, color-mix(in srgb, var(--ds-hue-green) 10%, transparent), var(--ds-hue-green)); }
 .ev-root .chart-axis { font-size: 12px; color: var(--ds-ink-3); letter-spacing: .4px; }
@@ -369,9 +375,11 @@
   .ev-root :is(input, select, .tab) { min-height: 40px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ev-root *, .ev-root *::before, .ev-root *::after {
-    animation: none !important;
-    transition: none !important;
+  .ev-root *:not(#ds-important),
+.ev-root *:not(#ds-important)::before,
+.ev-root *:not(#ds-important)::after {
+    animation: none;
+    transition: none;
   }
 }
 
@@ -459,7 +467,8 @@
 @media (max-width: 640px) {
   .ev-root .dt-paged .dt-head { display: none; }
   .ev-root .dt-paged .row { padding: 10px 14px; border-bottom: 1px solid var(--ds-line); }
-  .ev-root .dt-paged .row-main { grid-template-columns: minmax(0, 1fr) !important; gap: 6px; }
+  .ev-root .dt-paged .row-main { gap: 6px; }
+  .ev-root .dt-paged .row-main:not(#ds-important) { grid-template-columns: minmax(0, 1fr); }
   .ev-root .dt-paged .row-main > .cflex { justify-content: flex-end; padding: 0; }
   .ev-root .dt-paged .row-main > [data-label] { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 8px; padding: 2px 0; text-align: left; white-space: normal; overflow-wrap: anywhere; }
   .ev-root .dt-paged .row-main > [data-label]::before { content: attr(data-label); color: var(--ds-ink-2); font-family: var(--ds-font-sans); font-size: 12px; }
@@ -488,20 +497,16 @@
 /* Recent delegations reads as every other table (Lakshman 2026-11-05, "all other too"): the run table's header band and
    coloured headers, 10px 12px header cells and 11px 12px rows in 13px, text and figures left as on Runs with tabular
    digits, model names whole (they wrap in their column), the time on one line, and the Runs table's pager. */
-html body main.ev-root .dt-head { background: var(--ds-surface-2) !important; border-block: 1px solid var(--ds-line); }
-html body main.ev-root .dt-head > div { padding: 10px 12px !important; overflow: visible; text-align: left !important;
+html body main.ev-root .dt-head { border-block: 1px solid var(--ds-line); }
+html body main.ev-root .dt-head:not(#ds-important) { background: var(--ds-surface-2); }
+html body main.ev-root .dt-head > div { overflow: visible;
   font-family: var(--ds-font-mono); font-size: 12px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ds-ink-3); }
-html body main.ev-root .row-main > div { padding: 11px 12px !important; font-size: 13px; font-variant-numeric: tabular-nums; }
-html body main.ev-root .row-main > .num { text-align: left !important; }
+html body main.ev-root .dt-head > div:not(#ds-important) { padding: 10px 12px; text-align: left; }
+html body main.ev-root .row-main > div { font-size: 13px; font-variant-numeric: tabular-nums; }
+html body main.ev-root .row-main > div:not(#ds-important) { padding: 11px 12px; }
+html body main.ev-root .row-main > .num:not(#ds-important) { text-align: left; }
 html body main.ev-root .row-main > [data-label="Model"] { overflow-wrap: anywhere; }
 html body main.ev-root .row-main > [data-label="Created"] { white-space: nowrap; }
-html body main.ev-root .dt-head .local-column-tip { display: inline-flex; max-width: 100%; }
-html body main.ev-root .dt-head .local-column-tip .ds-tooltip {
-  background: color-mix(in oklab, var(--field-ink, var(--ds-ink-3)) 7%, var(--ds-surface)); color: var(--ds-ink-2);
-  border: 1px solid color-mix(in oklab, var(--field-ink, var(--ds-ink-3)) 28%, var(--ds-line)); border-top: 2px solid var(--field-ink, var(--ds-ink-3));
-  box-shadow: none; font-family: var(--ds-font-sans); font-size: 12px; font-weight: 400; text-transform: none; letter-spacing: 0;
-  white-space: normal; text-align: left; line-height: 1.45; padding: 6px 10px; width: max-content; max-width: 280px; z-index: 30; }
-html body main.ev-root .dt-head .local-column-tip .ds-tooltip[data-side="bottom"]::before { top: -6px; border-top: 2px solid var(--field-ink, var(--ds-ink-3)); border-left: 2px solid var(--field-ink, var(--ds-ink-3)); }
 html body main.ev-root .ev-table-paging.local-dashboard-pager { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--ds-line); }
 html body main.ev-root .ev-table-paging.local-dashboard-pager > span { margin-right: auto; color: var(--ds-ink-2); font-variant-numeric: tabular-nums; }
 html body main.ev-root .ev-table-paging.local-dashboard-pager button { display: inline-flex; align-items: center; gap: 4px; min-height: 30px; padding: 4px 10px; font-size: 13px; }
@@ -523,9 +528,10 @@ html body main.ev-root .ev-more-rows > summary:hover { background: var(--ds-surf
 html body main.ev-root .ev-more-rows > summary:focus-visible { outline: 2px solid var(--ds-hue-blue); outline-offset: 2px; }
 /* Evidence, as the other pages (OMN-22168): the savings bridge's figures in their field colours; a fact's value wraps
    between words first (it broke "modelled" mid-word), a long id still wraps where it must. */
-html body main.ev-root .ev-savings-equation > div[data-field-tone] > strong { color: var(--field-ink) !important; }
-html body main.ev-root .kv .v { overflow-wrap: break-word !important; word-break: normal !important; }
-html body main.ev-root .kv .v.accent, html body main.ev-root .kv .v .mono { overflow-wrap: anywhere !important; }
+html body main.ev-root .ev-savings-equation > div[data-field-tone] > strong:not(#ds-important) { color: var(--field-ink); }
+html body main.ev-root .kv .v:not(#ds-important) { overflow-wrap: break-word; word-break: normal; }
+html body main.ev-root .kv .v.accent:not(#ds-important),
+html body main.ev-root .kv .v .mono:not(#ds-important) { overflow-wrap: anywhere; }
 /* The run table's muted zero cost, on Evidence too (its rule is scoped to .local-dashboard-page, which main.ev-root is not inside). */
 html body main.ev-root .local-cost-free { color: var(--ds-ink-3); }
 /* A wrapped model name hangs beside its swatch, its second line under its first letter, not under the swatch. */

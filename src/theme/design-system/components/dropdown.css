@@ -21,7 +21,8 @@
 /* OMN-22168 (Lakshman 2026-11-04, "modern and colourful, use lucide icons too"): each option and the trigger carry a mark,
    a registry glyph or a dot, in the option's own colour. */
 .ds-dropdown-mark { display: inline-grid; place-items: center; flex: none; width: 18px; height: 18px; color: var(--mark, var(--ds-ink-3)); }
-.ds-dropdown-mark svg { width: 15px; height: 15px; color: inherit !important; } /* page rules grey interface glyphs; a mark keeps its tone */
+.ds-dropdown-mark svg { width: 15px; height: 15px; }
+.ds-dropdown-mark svg:not(#ds-important) { color: inherit; } /* page rules grey interface glyphs; a mark keeps its tone */
 .ds-dropdown-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--mark, var(--ds-ink-3));
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--mark, var(--ds-ink-3)) 20%, transparent); }
 .ds-dropdown-list[data-align="end"] { left: auto; right: 0; }

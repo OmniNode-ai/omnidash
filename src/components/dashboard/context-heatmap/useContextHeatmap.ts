@@ -4,9 +4,9 @@ import { useFrameStore } from '@/store/store';
 import { fetchContextExperimentScores } from '@/services/event-dash-api';
 import type { ContextExperimentScoreRow } from '@/services/event-dash-api';
 import type { HeatmapCell, ContextSegment } from './context-heatmap.types';
+import { refreshInterval } from '@/theme/refresh';
 
 // Fallback poll cadence when no dashboard-level auto-refresh preference is set.
-const DEFAULT_POLL_MS = 15_000;
 
 /**
  * Display metadata for segment ids known from prior OMN-11241 research or
@@ -73,7 +73,7 @@ export interface ContextHeatmapSnapshot {
  */
 export function useContextHeatmap(): ContextHeatmapSnapshot {
   const globalInterval = useFrameStore((s) => s.globalFilters.autoRefreshInterval);
-  const refetchInterval = globalInterval === null ? false : (globalInterval ?? DEFAULT_POLL_MS);
+  const refetchInterval = globalInterval === null ? false : (globalInterval ?? refreshInterval());
 
   const query = useQuery({
     // Distinct from useContextExperimentScores' ['ev','experiments','context-scores']

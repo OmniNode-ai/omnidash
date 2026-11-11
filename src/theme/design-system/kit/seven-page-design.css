@@ -1,0 +1,744 @@
+/*  OMN-23330 AC29: the kit's rules from src/styles/seven-page-design.css, moved here in their order with their media
+   conditions so the kit is styled in one place; AC30: they carry no !important. Imported right after seven-page-design.css.  */
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel {
+  border: 0;
+  border-radius: 0;
+  border-inline-end: 1px solid var(--ds-line);
+  background: var(--ds-surface);
+  box-shadow: none;
+  padding: 14px 18px 16px;
+  min-width: 0;
+}
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel:last-child {
+  border-inline-end: 0;
+}
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > h2.local-dashboard-panel-title,
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > h2 {
+  /* Part 27 AC166: monospace labels, as in the reference style. */
+  font-family: var(--ds-font-mono);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ds-ink-2);
+}
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-metric[data-measured="true"] {
+  font-family: var(--ds-font-sans);
+  font-weight: 600;
+  font-size: clamp(24px, 2vw, 30px);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ds-ink);
+}
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-caption {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ds-ink-3);
+}
+@media (max-width: 1100px) {
+  :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel:nth-child(2n) { border-inline-end: 0; }
+  :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel:nth-child(n + 3) { border-top: 1px solid var(--ds-line); }
+}
+@media (max-width: 600px) {
+  :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel { border-inline-end: 0; border-top: 1px solid var(--ds-line); }
+  :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel:first-child { border-top: 0; }
+}
+
+/* ── Panels: quiet surfaces, mono section labels, no hover lift ─────────────────────────────────────────── */
+.local-dashboard-page .local-dashboard-panel,
+.local-dashboard-page .local-dashboard-panel:hover { border-radius: 10px; padding: 16px 18px; }
+
+/* Figures and table numbers use IBM Plex Sans's tabular digits; IBM Plex Mono is kept for ids, code and logs. */
+.local-dashboard-page :is(td, .local-dashboard-metric, .local-recent-value, code),
+main.ev-root[data-destination="delegation-evidence"] :is(.kpi .k-v, .big, td) {
+  font-variant-numeric: tabular-nums;
+}
+.local-dashboard-page .local-meter-value { font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
+
+/* AC62 (corrected 2026-10-25): figures, shares, statuses, tier names and times read in Inter with tabular digits;
+ * IBM Plex Mono stays only on run ids, model and backend ids, hashes, code, answers and logs. */
+.local-dashboard-page :is(.local-donut-focus-value, .local-share-value, .local-meter-value, .local-readable,
+  .local-routing-name:not(.local-model-identity), .local-run-step-time, .workflow-comparison-row strong),
+.local-dashboard-page [data-environment] :is(span, strong, dd) {
+  font-family: var(--ds-font-sans);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Overview › all-time metering line (AC42 keeps it visible; AC60): one slim full-width row, not an orphan half card. */
+.local-dashboard-page .ins-window-kpis--metering:has(> .ins-kpi:only-child) { grid-template-columns: minmax(0, 1fr); }
+.local-dashboard-page .ins-window-kpis--metering > .ins-kpi:only-child {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; padding: 10px 14px;
+}
+:is(.local-dashboard-page, .ev-root) .local-overview-bottom > .local-dashboard-panel { align-self: start; }
+
+/* Panels: one quiet surface, compact title row; icons keep their identity colour */
+.local-dashboard-page .local-dashboard-panel,
+.local-dashboard-page .local-dashboard-panel:hover,
+main.ev-root[data-destination="delegation-evidence"] :is(.panel, .kpi, .kpi[data-tone]:hover) {
+  border: 1px solid var(--ds-line); border-radius: 12px; background: var(--ds-surface); box-shadow: none; transform: none; animation: none;
+}
+/* Hover keeps the resting padding: a panel's content no longer shifts 2px when pointed at (found 2026-10-25). */
+.local-dashboard-page .local-dashboard-panel, .local-dashboard-page .local-dashboard-panel:hover { padding: 14px 16px; }
+
+/* Figures read in the one ink; status keeps its colour (pass, fail) and series keep theirs in charts */
+.local-dashboard-page :is(dd, .local-recent-value, .local-dashboard-metric, .ins-kpi strong, .ins-list-value, .local-share-value, .local-readable):not(#ds-important),
+main.ev-root[data-destination="delegation-evidence"] :is(.kv .v, .kpi .k-v):not(#ds-important) { color: var(--ds-ink); }
+/* Evidence's statistics and bar values keep their OMN-21308 concept colours (pass, fail, savings, baseline, cost). */
+.local-dashboard-page :is(dt, .ins-kpi > span, .ins-kpi small):not(#ds-important),
+main.ev-root[data-destination="delegation-evidence"] :is(.kv .k, .kpi .k-l):not(#ds-important) { color: var(--ds-ink-3); }
+
+/* Charts sit on the panel surface: no grey plot fill, hairline grid */
+.local-dashboard-page :is(.ins-card, .local-chart, .usage-insight, .workflow-analysis-card) { background: transparent; box-shadow: none; }
+
+.local-dashboard-page .ins-card { border: 1px solid var(--ds-line); border-radius: 8px; padding: 12px 14px; }
+.local-dashboard-page h3.local-dashboard-caption { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ds-ink-3); }
+@media (min-width: 1101px) {
+  :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel {
+    display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 4px; padding: 14px 18px 12px;
+  }
+  :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel > :is(h2, .local-dashboard-metric) {
+    grid-column: 1; grid-row: auto; text-align: left; margin: 0;
+  }
+}
+/* Part 27 AC166/AC168: measured headline figures in monospace, 32px (24px on phones); "Not measured" stays text. A long
+   full count (Usage tokens, 409,870,123) steps down just enough to stay on one line: the card is the size container
+   and --figure-chars is the figure's length, a monospace character being 0.6em wide. */
+:is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel { container-type: inline-size; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-metric:not([data-measured="false"]) {
+  font-family: var(--ds-font-mono); font-size: min(32px, calc(100cqi / (var(--figure-chars, 1) * 0.6))); font-weight: 500;
+  letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; overflow-wrap: normal;
+}
+@media (max-width: 600px) {
+  :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-metric:not([data-measured="false"]) { font-size: min(24px, calc(100cqi / (var(--figure-chars, 1) * 0.6))); }
+}
+/* "This week" and the other uppercase section labels share the monospace label style. */
+.local-dashboard-page .local-section-heading.local-dashboard-caption { font-family: var(--ds-font-mono); font-weight: 400; letter-spacing: .04em; text-transform: uppercase; }
+@media (min-width: 1101px) {
+  :is(.local-dashboard-page, .ev-root) .local-overview-focus > .local-dashboard-panel { align-self: start; }
+}
+.local-dashboard-page--overview .local-meter-value { font-size: 40px; line-height: 1.1; }
+
+/* ── Overview headline cards: figure only, basis in a tooltip (part 12 AC73) ────────────────────────────────── */
+:is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel { position: relative; }
+.local-card-tooltip .local-dashboard-caption { margin: 0 0 6px; font-size: 12px; line-height: 1.45; }
+.local-card-tooltip .local-dashboard-caption:not(#ds-important) { color: var(--ds-ink-2); }
+.local-card-tooltip .local-dashboard-caption:last-child { margin-bottom: 0; }
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel:first-child { border-radius: 10px 0 0 10px; }
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel:last-child { border-radius: 0 10px 10px 0; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel:has(.local-card-basis-tip[data-open="true"], .local-card-basis-tip:focus-within) { z-index: 6; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel.local-dashboard-panel { overflow: visible; }
+
+/* ── AC64: ranked bars (one bar per model, value above, name below, pattern by how the figure was obtained) ── */
+.rb-chart { container-type: inline-size; margin: 0; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.rb-chart .rb-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; font-size: 12px; color: var(--ds-ink-3); }
+.rb-chart .rb-plot {
+  list-style: none; margin: 0; padding: 0; display: grid; align-items: end; gap: clamp(8px, 2vw, 20px);
+  grid-template-columns: repeat(var(--rb-count), minmax(0, 1fr)); border-bottom: 1px solid var(--ds-line);
+  max-width: calc(var(--rb-count) * 120px);
+}
+.rb-chart .rb-value { font-family: var(--ds-font-mono); font-size: 12px; color: var(--ds-ink); text-align: center; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rb-chart [data-basis="unknown"] > .rb-value { color: var(--ds-ink-3); font-family: var(--ds-font-sans); }
+.rb-chart .rb-track { height: 180px; display: flex; align-items: flex-end; }
+.rb-chart .rb-bar { display: block; width: 100%; height: var(--rb-size, 0); min-height: 0; box-sizing: border-box; border-radius: var(--ds-radius-bar) var(--ds-radius-bar) 0 0; color: var(--rb-color); }
+.rb-chart .rb-bar[data-pattern="outline"] { height: 14px; border: 1px dashed var(--ds-ink-3); border-bottom: 0; background: none; }
+.rb-chart .rb-name {
+  margin-top: 8px; font-size: 12px; line-height: 1.3; color: var(--rb-color); text-align: center;
+  overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-break: break-word;
+  position: absolute; top: 100%; left: 0; right: 0;
+}
+.rb-chart .rb-plot { margin-bottom: calc(2.6em + 10px); }
+.rb-chart .rb-footnote { margin: 0; font-size: 12px; color: var(--ds-ink-3); }
+@container (max-width: 560px) {
+  .rb-chart .rb-plot { display: flex; flex-direction: column; align-items: stretch; gap: 10px; max-width: none; margin-bottom: 0; border-bottom: 0; border-left: 1px solid var(--ds-line); padding-left: 0; }
+  .rb-chart .rb-name { position: static; grid-area: name; text-align: left; margin: 0 0 0 8px; -webkit-line-clamp: 1; }
+  .rb-chart .rb-value { grid-area: value; margin: 0; text-align: right; }
+  .rb-chart .rb-track { grid-area: track; height: 12px; align-items: stretch; }
+  .rb-chart .rb-bar { height: auto; width: var(--rb-size, 0); border-radius: 0 var(--ds-radius-bar) var(--ds-radius-bar) 0; }
+  .rb-chart .rb-bar[data-pattern="outline"] { width: 14px; height: auto; border: 1px dashed var(--ds-ink-3); border-left: 0; }
+}
+.maple-cell > .local-dashboard-panel { flex: 1; margin: 0; }
+
+/* A slice panel draws its chart flat: the panel heading is the chart's title, so the inner card loses its chrome. */
+.local-dashboard-panel[data-slice] .ins-card { border: 0; background: none; box-shadow: none; padding: 0; margin: 0; animation: none; }
+.local-dashboard-panel[data-slice] .ins-card-head { min-height: 0; margin: 0; }
+.local-dashboard-page .local-run-preview > li .local-dashboard-caption { text-align: right; margin: 0; }
+.local-dashboard-panel[data-slice="failures"] .ins-track { grid-area: track; }
+.local-dashboard-page .local-runs-toolbar .local-dashboard-filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; border: 0; }
+.local-dashboard-page .local-runs-toolbar .local-dashboard-filters { flex-wrap: wrap; row-gap: 8px; }
+.local-dashboard-page .local-runs-toolbar .local-dashboard-filters { flex: 0 1 auto; flex-wrap: nowrap; min-width: 0; }
+@media (max-width: 1200px) {
+  .local-dashboard-page .local-runs-toolbar, .local-dashboard-page .local-runs-toolbar .local-dashboard-filters { flex-wrap: wrap; }
+}
+
+/* Maple grid: the savings day chart drawn flat in its panel (the panel heading names it; no inner card, no zoom bar). */
+.maple-cell .local-usage-savings > figure.local-chart { border: 0; background: none; box-shadow: none; padding: 0; margin: 0; }
+.maple-cell .local-usage-savings > figure.local-chart .local-chart-heading { min-height: 0; margin: 0 0 6px; }
+.maple-cell .local-usage-savings > figure.local-chart .local-chart-canvas { background: transparent; }
+.maple-cell .local-usage-savings > figure.local-chart .local-chart-legend { display: none; }
+@media (min-width: 1100px) {
+  .local-dashboard-page--api-keys .local-dashboard-grid > .local-dashboard-panel { grid-column: auto; max-width: none; }
+}
+
+/* Live review 2026-10-25: Overview headline tiles end with their day sparkline; the info icon sits on the label line. */
+:is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel { display: flex; flex-direction: column; }
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel { display: flex; flex-direction: column; gap: 6px; }
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel { align-items: stretch; text-align: left; min-height: 0; }
+
+/* Part 27 AC167 (revision 4): headline cards are the plain neutral card; each keeps its identity colour (OMN-21308: amber
+   spend, teal savings, blue calls, violet tokens) on its icon only. */
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel { background: var(--ds-surface); }
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel,
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel:first-child,
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel:last-child {
+  border: 1px solid var(--ds-line); border-radius: 12px; box-shadow: none;
+}
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip .local-dashboard-caption { margin: 0 0 2px; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip .local-dashboard-caption:first-child { font-weight: 500; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip .local-dashboard-caption:first-child:not(#ds-important) { color: var(--ds-ink); }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip .local-dashboard-caption:first-child:not(#ds-important) { color: color-mix(in srgb, var(--panel-accent, var(--ds-ink)) 70%, var(--ds-ink)); }
+@media (max-width: 600px) {
+  .local-dashboard-page details.local-more--page .local-dashboard-panel { padding: 12px 10px; }
+}
+
+/* ── Live review 2026-10-25 ("all graphs this style"): grouped dotted bars, value above, day below, legend under ── */
+.ins-bars.gdb-plot { display: flex; align-items: stretch; gap: 6px; height: 240px; padding: 0; border-bottom: 1px solid var(--ds-line); margin-bottom: 26px; }
+/* OMN-23330 AC31: a day chart's labels are the DayAxis row under the plot, so the plot keeps no room for labels inside it;
+   GroupedBars (a list) still draws its model names under its columns. */
+.ins-bars.gdb-plot:not(.gdb-plot--list) { margin-bottom: 0; }
+.ins-bars.gdb-plot > .ins-bar.gdb-day {
+  flex: 1 1 0; min-width: 0; height: 100%; padding: 0; border: 0; background: none; position: relative;
+  display: flex; flex-direction: column; justify-content: flex-end; cursor: default; box-shadow: none;
+}
+.ins-bars.gdb-plot > .ins-bar.gdb-day[data-dim="true"] { opacity: .45; }
+.gdb-group { display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 100%; }
+.gdb-col { flex: 1 1 0; max-width: 28px; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; min-width: 0; }
+.gdb-val { font-family: var(--ds-font-mono); font-weight: 500; font-size: 12px; color: var(--ds-ink); text-align: center; line-height: 1; margin-bottom: 4px; white-space: nowrap; }
+.gdb-bar.ins-seg {
+  display: block; width: 100%; min-height: 0; border-radius: var(--ds-radius-bar) var(--ds-radius-bar) 0 0; animation: none;
+}
+.gdb-bar.ins-seg:not(#ds-important) { background: none;
+}
+.gdb-name-label { position: absolute; top: calc(100% + 6px); left: -4px; right: -4px; text-align: center; font-size: 12px; color: var(--ds-ink-3); white-space: nowrap; }
+.gdb-legend { display: flex; flex-wrap: wrap; gap: 16px; margin: 4px 0 0; padding: 0; list-style: none; }
+.gdb-legend .ins-toggle { border: 0; background: none; box-shadow: none; padding: 0 2px; font-size: 13px; min-height: 32px; }
+.gdb-legend .ins-toggle[aria-pressed="false"] { opacity: .45; }
+.ins-section--slice .ins-readout { min-height: 18px; }
+@container (max-width: 560px) {
+  .rb-chart.rb-chart--vertical .rb-plot { display: grid; flex-direction: row; align-items: end; border-left: 0; border-bottom: 1px solid var(--ds-line); margin-bottom: calc(2.6em + 10px); gap: 10px; }
+  .rb-chart.rb-chart--vertical .rb-name { position: absolute; top: 100%; margin: 8px 0 0; text-align: center; -webkit-line-clamp: 2; }
+  .rb-chart.rb-chart--vertical .rb-value { margin: 0 0 6px; text-align: center; }
+  .rb-chart.rb-chart--vertical .rb-track { height: 180px; align-items: flex-end; }
+  .rb-chart.rb-chart--vertical .rb-bar { width: 100%; height: var(--rb-size, 0); border-radius: var(--ds-radius-bar) var(--ds-radius-bar) 0 0; }
+  .rb-chart.rb-chart--vertical .rb-bar[data-pattern="outline"] { width: 100%; height: 14px; border: 1px dashed var(--ds-ink-3); border-bottom: 0; }
+}
+
+.gdb-col { max-width: 40px; } .gdb-group { gap: 4px; padding: 0 2px; }
+/* "Not measured" wraps, never cut. */
+.rb-chart.rb-chart--vertical .rb-plot { max-width: none; }
+.rb-chart [data-basis="unknown"] > .rb-value { white-space: normal; line-height: 1.2; }
+.maple-grid > [class*="maple-cell--slim"] > .local-dashboard-panel { padding: 10px 14px; }
+/* Quality in the strip: the pass rate and its meter only; its detail stays on Delegation Evidence. */
+.overview-slim-quality :is(.ins-pass-headline, details.local-more, .local-recent-footer, .local-dashboard-caption) { display: none; }
+.overview-slim-quality .local-dashboard-metric { font-size: 22px; }
+.rb-chart.rb-chart--vertical .rb-value { overflow: visible; text-overflow: clip; white-space: nowrap; }
+/* Delegation Quality: the fifth headline card, in the pass colour (Quality's teal would repeat Savings). */
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-panel[data-component="overview-quality"] { --panel-accent: var(--ds-field-pass); }
+.local-dashboard-panel[data-component="status-environment"] { --panel-accent: var(--ds-field-host); }
+/* Live review 2026-10-25 ("all bar graphs should have full cards"), on every page since part 15: upright bars fill their
+   card, each bar 72% of its column and at most 120px wide (live review 2026-10-26: a three-bar chart draws no slabs). */
+.rb-chart.rb-chart--vertical .rb-plot { grid-template-columns: repeat(var(--rb-count), minmax(0, 1fr)); justify-content: stretch; gap: 24px; }
+.rb-chart.rb-chart--vertical .rb-bar { width: 72%; max-width: 120px; margin: 0 auto; }
+.rb-chart.rb-chart--vertical .rb-track { justify-content: center; height: 220px; }
+.local-dashboard-page--overview .gdb-col { max-width: none; }
+.local-dashboard-page--overview .gdb-group { gap: 3px; padding: 0 3px; }
+/* OMN-21166 part 21 AC140: shorter Overview charts (day plot 170px, so the 500-run limit line still fits within 340px). */
+.local-dashboard-page--overview .ins-bars.gdb-plot { gap: 8px; height: 170px; }
+.local-dashboard-page--overview .rb-chart.rb-chart--vertical .rb-track { height: 180px; }
+
+/* Live review 2026-10-25 ("remove the number and show them when hover"): bar values appear on hover or keyboard
+   focus only; their space stays, so nothing moves, and each bar's accessible name still carries its value. */
+.gdb-val { visibility: hidden; }
+.ins-bar.gdb-day:is(:hover, :focus-visible) .gdb-val { visibility: visible; }
+.rb-chart .rb-plot > li > .rb-value, .rb-chart .rb-plot > li > .rb-link > .rb-value { visibility: hidden; }
+.rb-chart .rb-plot > li:is(:hover, :focus-within) > .rb-value, .rb-chart .rb-plot > li:is(:hover, :focus-within) > .rb-link > .rb-value { visibility: visible; }
+/* OMN-23330 AC6 (the operator's 2026-11-09 review): Model usage and Tier mix print every bar's runs and share. */
+.rb-chart.rb-chart--values .rb-plot > li > .rb-value, .rb-chart.rb-chart--values .rb-plot > li > .rb-link > .rb-value { visibility: visible; }
+
+/* Live review 2026-10-26 ("all bar graph follow this style"): every bar on the local pages and Evidence is one hatch in
+   its own colour under a 2px edge of that colour: ranked bars, grouped day bars and Usage's token stack. What a figure is
+   (measured or modelled) is said in words; a value that is not served stays a dashed outline. */
+.rb-chart .rb-bar[data-pattern="hatched"],
+.gdb-bar.ins-seg,
+.utc-stack i {
+  border-top: 2px solid currentColor;
+  -webkit-mask-image: none; mask-image: none;
+}
+.rb-chart .rb-bar[data-pattern="hatched"]:not(#ds-important),
+.gdb-bar.ins-seg:not(#ds-important),
+.utc-stack i:not(#ds-important) {
+  background: repeating-linear-gradient(135deg, currentColor 0 1.5px, transparent 1.5px 6px);
+}
+@container (max-width: 560px) {
+  .rb-chart:not(.rb-chart--vertical) .rb-bar[data-pattern="hatched"] { border-top: 0; border-right: 2px solid currentColor; }
+}
+@container (min-width: 561px) { .rb-chart:not(.rb-chart--vertical) .rb-bar { width: 72%; max-width: 120px; margin-inline: auto; } }
+/* A headline card's figure sits on the card's last line, so figures share one baseline when a title wraps ("Median
+   duration" in a six-card row). */
+:is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel { display: flex; flex-direction: column; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel > .local-dashboard-metric { margin-top: auto; }
+/* Part 17: grouped bars drawn as a list (GroupedBars), in the day-chart look; long model names wrap under their column. */
+ul.gdb-plot--list { list-style: none; margin: 0 0 26px; }
+.gdb-plot--list > .ins-bar.gdb-day:focus-visible { outline: 2px solid var(--ds-accent); outline-offset: 2px; }
+ul.gdb-plot--names { margin-bottom: 48px; }
+.gdb-plot--names .gdb-name-label { white-space: normal; line-height: 1.25; overflow-wrap: anywhere; }
+/* Part 18 AC124: no card inside a card. A chart inside a panel draws no box of its own; its title row is the Overview
+   one (icon, then a neutral title). */
+.local-dashboard-panel .local-chart:not(.ins-card) { border: 0; padding: 0; border-radius: 0; background: none; box-shadow: none; }
+.local-chart-heading { align-items: flex-start; gap: 8px; }
+
+/* Part 18 AC124 on Runs: chart titles are neutral, as on Overview (the icon carries the colour); cause names are whole;
+   each analysis chart has its own row inside the panel, with no card inside the card. */
+.local-dashboard-page .ins-card .ins-title { color: var(--ds-ink); font-size: 13px; }
+/* The panel keeps its surface like every panel; its charts draw no box of their own, one per row under a hairline. */
+.local-dashboard-page--runs .local-dashboard-panel[data-component="runs-insights"] .ins-card { border: 0; border-top: 1px solid var(--ds-line); border-radius: 0; background: none; box-shadow: none; padding: 16px 0 4px; }
+/* Part 16 AC97 on list bars (Tasks, Why runs failed): the same hatch in each row's colour, on no grey track. */
+.local-dashboard-page .ins-track { background: none; height: 12px; }
+.local-dashboard-page .ins-fill { color: var(--ins-swatch); border-radius: 0; border-right: 2px solid currentColor; }
+.local-dashboard-page .ins-fill:not(#ds-important) { background: repeating-linear-gradient(135deg, currentColor 0 1.5px, transparent 1.5px 6px); }
+@media (max-width: 760px) {
+  .local-model-keys .local-dashboard-table-wrap { overflow: visible; }
+}
+
+/* OMN-21166 part 21 AC140: Overview's day charts start right under their title. The hovered day's words (aria-live) sit on
+   the legend row instead of a reserved empty line, and the plot drops its filled box. */
+.local-dashboard-page--overview .local-dashboard-panel[data-slice] .ins-card-head:not(:has(.ins-note)) { display: none; }
+/* The bar heights above are their values' shares only (no minimum height); a drawn bar's 2px edge still marks it. */
+.local-dashboard-page--overview .local-dashboard-panel[data-slice] .ins-card { position: relative; }
+.local-dashboard-page--overview .local-dashboard-panel[data-slice] .ins-readout {
+  position: absolute; bottom: 0; right: 0; min-height: 0; max-width: 60%; line-height: 32px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.local-dashboard-page--overview .local-dashboard-panel[data-slice] .ins-bars.gdb-plot { background: none; border-radius: 0; }
+/* OMN-21166 part 21 AC139: a day label stays inside its own slot, so the last one never passes the panel edge. */
+.local-dashboard-page--overview .gdb-name-label { left: 0; right: 0; }
+
+/* OMN-21166 part 21 AC143 (onex delegate run 1b283439): each day keeps its spacing inside its own slot, so bars span 72%
+   of a day at any day count (fixed 8px gaps left 1px bars at 30 days in a half-width panel). */
+.local-dashboard-page--overview .ins-bars.gdb-plot { gap: 0; }
+.local-dashboard-page--overview .gdb-group { gap: 1px; padding: 0 14%; }
+/* No number above each bar here: a 30-day bar is too narrow for it. The readout on the legend row shows the hovered or
+   focused day's numbers, and each bar's accessible name carries its values. */
+.local-dashboard-page--overview .gdb-val { display: none; }
+/* OMN-21166 part 21 AC139: a day label is as wide as its text and centred on its day; the first and last align to the
+   chart's edges, so no label passes the panel. */
+.local-dashboard-page--overview .gdb-name-label { left: 50%; right: auto; transform: translateX(-50%); }
+.local-dashboard-page--overview .gdb-day:first-child .gdb-name-label { left: 0; transform: none; text-align: left; }
+.local-dashboard-page--overview .gdb-day:last-child .gdb-name-label { left: auto; right: 0; transform: none; text-align: right; }
+/* OMN-21166 part 21 AC140: upright bars 115px tall, so the Model usage and Tier mix row stays within 340px, including the
+   "All time: this panel does not follow the window above" caption a 7, 15 or 30 day window adds (130px measured 349px). */
+.local-dashboard-page--overview .rb-chart.rb-chart--vertical .rb-track { height: 115px; }
+/* AC139: a day chart under 420px wide labels only its first and last day, so phone labels never overlap. */
+.local-dashboard-page--overview .ins-bars.gdb-plot { container-type: inline-size; }
+@container (max-width: 420px) {
+  .local-dashboard-page--overview .gdb-day:not(:first-child):not(:last-child) .gdb-name-label { visibility: hidden; }
+}
+@container (min-width: 421px) {
+  .local-dashboard-page--overview .gdb-day:is(:first-child, :last-child) .gdb-name-label { left: 50%; right: auto; transform: translateX(-50%); text-align: center; }
+}
+@container (max-width: 400px) {
+  :is(.local-dashboard-page, .ev-root) .rb-chart.rb-chart--vertical .rb-plot { display: flex; flex-direction: column; align-items: stretch; gap: 10px; max-width: none; margin-bottom: 0; border-bottom: 0; border-left: 1px solid var(--ds-line); }
+  :is(.local-dashboard-page, .ev-root) .rb-chart.rb-chart--vertical .rb-name { position: static; grid-area: name; text-align: left; margin: 0 0 0 8px; -webkit-line-clamp: 1; }
+  :is(.local-dashboard-page, .ev-root) .rb-chart.rb-chart--vertical .rb-value { grid-area: value; margin: 0; text-align: right; }
+  :is(.local-dashboard-page, .ev-root) .rb-chart.rb-chart--vertical .rb-track { grid-area: track; height: 12px; align-items: stretch; justify-content: flex-start; }
+  :is(.local-dashboard-page, .ev-root) .rb-chart.rb-chart--vertical .rb-bar { height: auto; width: var(--rb-size, 0); max-width: none; margin: 0; }
+  :is(.local-dashboard-page, .ev-root) .rb-chart.rb-chart--vertical .rb-bar[data-pattern="outline"] { width: 14px; height: auto; border: 1px dashed var(--ds-ink-3); border-left: 0; }
+}
+
+/* OMN-21166 part 22 AC144 (onex delegate run 0320afb4, scoped and corrected): Model usage never cuts a model name, in
+   either layout, at any width; names sit in flow under or above their bar and wrap, values wrap rather than ellipsis. */
+:is(.local-dashboard-page, .ev-root) .local-model-usage .rb-chart .rb-name { position: static; display: block; -webkit-line-clamp: unset; overflow: visible; overflow-wrap: break-word; word-break: normal; }
+:is(.local-dashboard-page, .ev-root) .local-model-usage .rb-chart .rb-value { white-space: normal; overflow: visible; text-overflow: clip; }
+/* Six or fewer models: upright bars whose tops line up, names of any length below their own bar. */
+:is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart .rb-plot { align-items: start; margin-bottom: 0; }
+/* More than six: one row per model at any width, the name on its own line, then the bar and its count with share. */
+:is(.local-dashboard-page, .ev-root) .local-model-usage--rows .rb-chart .rb-plot { display: flex; flex-direction: column; align-items: stretch; gap: 10px; max-width: none; margin-bottom: 0; border-bottom: 0; border-left: 1px solid var(--ds-line); }
+:is(.local-dashboard-page, .ev-root) .local-model-usage--rows .rb-chart .rb-name { grid-area: name; text-align: left; margin: 0 0 0 8px; }
+:is(.local-dashboard-page, .ev-root) .local-model-usage--rows .rb-chart .rb-value { grid-area: value; margin: 0; text-align: right; }
+:is(.local-dashboard-page, .ev-root) .local-model-usage--rows .rb-chart .rb-track { grid-area: track; height: 12px; align-items: stretch; }
+:is(.local-dashboard-page, .ev-root) .local-model-usage--rows .rb-chart .rb-bar { height: auto; width: var(--rb-size, 0); max-width: none; margin: 0; }
+
+/* OMN-21166 part 19 AC135: a bar that opens Runs is a link with a box of its own (a display: contents link cannot take
+   keyboard focus, found by the lab e2e): it spans the whole bar and copies the bar's layout, flex column when upright,
+   the grid areas when it runs sideways, so the bar looks the same and its focus ring sits on the link. */
+.rb-chart .rb-plot > li > .rb-link {
+  display: inherit; flex-direction: inherit; align-items: inherit; justify-content: inherit; gap: inherit;
+  grid-template-columns: inherit; grid-template-rows: inherit; grid-template-areas: inherit; row-gap: inherit; column-gap: inherit;
+  grid-column: 1 / -1; grid-row: 1 / -1; flex: 1 1 auto; min-width: 0; position: relative; color: inherit; text-decoration: none; border-radius: 4px;
+}
+.rb-chart .rb-plot > li > .rb-link:focus-visible { outline: 2px solid var(--ds-accent); outline-offset: 3px; }
+.rb-chart .rb-plot > li:has(> .rb-link):hover .rb-name { text-decoration: underline; }
+
+/* OMN-21166 part 19 AC134: a headline card that opens a page is one link stretched over it (`a.` outranks the card's
+   rule that lifts its own links and buttons with position: relative, which left this link 0px tall). */
+:is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel:has(> .local-card-link) { position: relative; cursor: pointer; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel:has(.local-card-info:focus-visible) {
+  outline: 2px solid var(--panel-accent, var(--ds-accent)); outline-offset: 2px;
+}
+/* Part 27 round 1: 64px columns let seven models fit a half-width panel at 1440 without a scrollbar or a cut name. */
+:is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart .ds-chart-scroll > .rb-plot { min-width: max(100%, calc(7 /* OMN-22168: --rb-model-count was never set, so this was always 7 */ * 70px)); }
+
+/* The seven-model plot stays upright at every width. A narrow panel scrolls its plot in the kit's scroll container
+   (OMN-23330 AC4: the scrollbar is always drawn), keeping long names intact and the document free of horizontal scroll.
+   The expanded panel gives each bar more space. */
+:is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart.rb-chart--vertical .rb-plot {
+  /* Lakshman 2026-11-04, "widen the model usage columns so names don't break": a column is at least as wide as its
+     name's longest part between joins (96px at the least), so a name wraps only at a slash, colon, hyphen or underscore;
+     more models than fit scroll inside the panel. */
+  display: grid; grid-template-columns: repeat(var(--rb-count), minmax(min-content, 1fr)); gap: 6px;
+  align-items: start; border-left: 0; border-bottom: 1px solid var(--ds-line); margin-bottom: 0;
+}
+:is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart.rb-chart--vertical .rb-track {
+  height: 115px; align-items: flex-end; justify-content: center;
+}
+:is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart.rb-chart--vertical .rb-bar {
+  height: var(--rb-size, 0); width: 72%; max-width: 120px; margin: 0 auto;
+}
+:is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart.rb-chart--vertical .rb-name {
+  /* Names break only at their joins: the column is never narrower than a part. */
+  position: static; margin: 8px 0 0; text-align: center; overflow-wrap: normal; word-break: normal; hyphens: manual; -webkit-line-clamp: unset;
+}
+:is(.local-dashboard-page, .ev-root) .local-model-usage--upright .rb-chart.rb-chart--vertical .rb-value {
+  grid-area: auto; margin: 0 0 6px; text-align: center;
+}
+
+/* A native modal keeps the other panels in place and makes the background inert. Its own overflow supplies the
+   full-view scrollbar; the model plot can also scroll horizontally on a phone. */
+.local-dashboard-page--overview .local-dashboard-panel:has(> .local-chart-expand) { position: relative; }
+.local-dashboard-page--overview .local-dashboard-panel--full-chart {
+  min-width: 0; width: 100%; height: auto; max-height: none; margin: 0; box-shadow: none;
+}
+/* Part 27 round 6: the dialog is the frame; the chart inside it draws no second card border. */
+.local-dashboard-page--overview .local-chart-dialog .local-dashboard-panel--full-chart,
+.local-dashboard-page--overview .local-chart-dialog .local-dashboard-panel--full-chart:hover { border: 0; padding: 0; background: transparent; }
+.local-dashboard-page--overview .local-dashboard-panel--full-chart .ins-bars.gdb-plot { height: 300px; }
+.local-dashboard-page--overview .local-dashboard-panel--full-chart .rb-track { height: 260px; }
+.local-dashboard-page--overview .local-dashboard-panel--full-chart .local-model-usage--upright .rb-chart .ds-chart-scroll > .rb-plot { min-width: max(100%, calc(7 /* OMN-22168: --rb-model-count was never set, so this was always 7 */ * 110px)); }
+.local-dashboard-page--overview .local-dashboard-panel--full-chart .local-model-usage--upright .rb-chart.rb-chart--vertical .rb-track { height: 260px; }
+
+/* AC178: every selected option is the raised surface, primary text and a 1px border; the accent is only the focus ring. */
+.local-dashboard-page .local-window-switch .local-window-options button[aria-checked="true"]:not(#ds-important),
+.local-dashboard-page .local-window-options button[aria-checked="true"]:not(#ds-important),
+.local-dashboard-page .local-window-switch .local-window-options .local-day-button[aria-pressed="true"]:not(#ds-important),
+.utc-switch button[aria-pressed="true"]:not(#ds-important),
+.local-settings-choice label:has(input:checked):not(#ds-important),
+.ins-toggles:not(.gdb-legend) .ins-toggle[aria-pressed="true"]:not(#ds-important) {
+  background: var(--ds-surface-2); color: var(--ds-ink); box-shadow: inset 0 0 0 1px var(--ds-line);
+}
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip .local-dashboard-caption:not(#ds-important) { color: var(--ds-ink-2); }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip .local-dashboard-caption:first-child { font-weight: 500; }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-card-tooltip .local-dashboard-caption:first-child:not(#ds-important) { color: var(--ds-ink); }
+
+/* AC180: every bar is a solid flat fill in its series colour; a value that is not served stays a dashed outline. */
+.rb-chart .rb-bar[data-pattern="hatched"]:not(#ds-important),
+.gdb-bar.ins-seg:not(#ds-important),
+.utc-stack i:not(#ds-important),
+.ev-qg-bar > .bar-fill:not(#ds-important),
+.local-runs-week-bar > i:not(#ds-important),
+.local-dashboard-page .ins-fill:not(#ds-important) { background: currentColor; }
+
+/* AC181: cards, panels, tables and popovers 8px; buttons, inputs and segmented controls 6px. */
+:is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) :is(article.local-dashboard-panel, .local-overview-surface,
+  section.local-overview-summary, .panel, .local-run-summary-group, .local-settings-section, .workflow-analysis-card, .local-dashboard-filters,
+  .local-dashboard-table-wrap, details.local-more, .usage-record-controls, .local-card-tooltip, figure.ins-card, dialog.local-chart-dialog, a.local-card-link):not(#ds-important) {
+  border-radius: 8px;
+}
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel { border-radius: 8px; }
+
+/* AC182: secondary buttons are transparent with a 1px border and secondary text; none is blue. */
+.local-dashboard-page :is(.local-chart-expand, .local-runs-export > button, form.local-dashboard-filters > button[type="submit"], .local-copy, .local-chart-open, .local-run-neighbours > a) {
+  border-radius: 6px;
+}
+.local-dashboard-page :is(.local-chart-expand, .local-runs-export > button, form.local-dashboard-filters > button[type="submit"], .local-copy, .local-chart-open, .local-run-neighbours > a):not(#ds-important) {
+  background: transparent; border: 1px solid var(--ds-line); color: var(--ds-ink-2); text-decoration: none; box-shadow: none;
+}
+.local-dashboard-page :is(.local-chart-expand, .local-runs-export > button, form.local-dashboard-filters > button[type="submit"], .local-copy, .local-chart-open, .local-run-neighbours > a):hover:not(#ds-important) {
+  background: var(--ds-surface-2); color: var(--ds-ink);
+}
+
+/* AC183: Overview's paired charts share a baseline and legend row; every chart title has the panel divider. */
+.local-dashboard-page--overview .local-dashboard-panel[data-component="overview-insights"]:not(.local-dashboard-panel--full-chart) { display: flex; flex-direction: column; }
+/* AC183: both legend rows on an Overview pair are one height (the Passed/Failed toggles are 32px), so the bars share a baseline. */
+.local-dashboard-page--overview .ins-token-legend.gdb-legend { min-height: 32px; align-items: center; margin-bottom: 0; }
+
+/* ── Part 29 (revision 6): the delegation-data redesign ─────────────────────────────────────────────────────────────
+   AC191: a headline card's basis is a caption under its figure (Entire's figure-and-caption card), not a hover popover.
+   The figure sits under its label; the caption is pinned to the card's foot, so figures share one line across a row
+   whatever each caption's length. Only the first basis line is drawn (two lines at most); the rest stay in the page for
+   screen readers. */
+:is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel > .local-dashboard-metric { margin-top: 6px; }
+.usage-analysis-spark { display: inline-flex; align-items: flex-end; gap: 2px; height: 20px; width: 98px; }
+/* AC195: cost versus quality, hairline axes, each model point in its identity colour. */
+.usage-analysis-quality { margin: 0; }
+.usage-analysis-axis { stroke: var(--ds-line); stroke-width: 1; }
+.usage-analysis-tick, .usage-analysis-point-name { fill: var(--ds-ink-2); font-size: 12px; font-family: var(--ds-font-mono); }
+.usage-analysis > .local-dashboard-table-wrap { order: 2; overflow-x: visible; }
+.usage-analysis > .usage-analysis-quality { order: 3; }
+/* AC195: the hovered or focused point's values, read in a line under the chart; empty until a point is chosen. */
+.usage-analysis-readout { min-height: 1.4em; font-family: var(--ds-font-mono); }
+.usage-analysis > .local-dashboard-caption { overflow-wrap: anywhere; }
+@media (max-width: 760px) {
+  .usage-analysis > .local-dashboard-table-wrap { overflow-x: auto; }
+  .usage-analysis-quality { overflow-x: auto; }
+}
+/* One column that never grows past its card: a wide table or chart scrolls inside its panel (Chrome on local data at
+   500px: the tab panel took the matrix's 465px width inside a 362px card). */
+.local-dashboard-tabs { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; min-width: 0; }
+/* OMN-21166 part 30 (revision 7) AC201: the shared tabs and toggle use the neutral segmented control (AC178). The tab list
+   is a flat row with the selected tab raised; the toggle is the same control at a smaller size. Both wrap on a phone. */
+.local-dashboard-page .local-dashboard-filters.local-dashboard-tablist,
+.local-dashboard-page .local-dashboard-filters.local-dashboard-toggle,
+.ev-root .local-dashboard-filters.local-dashboard-tablist,
+.ev-root .local-dashboard-filters.local-dashboard-toggle {
+  display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 2px; margin: 0; width: max-content; max-width: 100%;
+  border: 1px solid var(--ds-line); border-radius: 6px; background: var(--ds-surface); align-items: center; order: 0; flex: 0 1 auto;
+}
+.local-dashboard-tabpanel { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.usage-analysis .local-dashboard-tabpanel > .local-dashboard-table-wrap { overflow-x: auto; max-width: 100%; }
+.local-dashboard-tabpanel:focus-visible { outline: 2px solid var(--ds-accent); outline-offset: 4px; border-radius: 4px; }
+/* AC203: Model by task. Each cell is its figure over its denominator line; a small sample is set in the secondary ink with
+   the words "small sample", a pair with no runs reads no runs. The whole cell is the link to its runs. */
+.usage-analysis .local-dashboard-tabpanel > .local-dashboard-table-wrap.usage-matrix-wrap { overflow-x: auto; }
+
+/* OMN-21166 AC213 (Lakshman 2026-10-28, "the x axis labels need to be fixed"): an upright chart with more than 10 bars
+   splits its width too thin for any name, so it runs sideways at every width: name, bar, then value on one row each, the
+   name wrapping on its own words and the value always shown. */
+.rb-chart.rb-chart--rows .rb-plot { display: flex; flex-direction: column; align-items: stretch; gap: 8px; max-width: none; margin-bottom: 0; border-bottom: 0; }
+.rb-chart.rb-chart--rows .rb-plot > li .rb-name { position: static; grid-area: name; margin: 0; text-align: left; display: block; overflow: visible; -webkit-line-clamp: unset; overflow-wrap: anywhere; }
+.rb-chart.rb-chart--rows .rb-plot > li .rb-track { grid-area: track; height: 12px; align-items: stretch; justify-content: flex-start; }
+.rb-chart.rb-chart--rows .rb-plot > li .rb-bar { width: var(--rb-size, 0); max-width: none; height: auto; margin: 0; }
+.rb-chart.rb-chart--rows .rb-plot > li .rb-bar[data-pattern="outline"] { width: 14px; height: auto; border: 1px dashed var(--ds-ink-3); border-left: 0; }
+.rb-chart.rb-chart--rows .rb-plot > li .rb-value { grid-area: value; margin: 0; text-align: right; visibility: visible; overflow: visible; text-overflow: clip; white-space: nowrap; }
+
+/* OMN-21970 AC5: the tier legend beside every chart and table that shows models, so colour is never the only label. */
+.tier-legend { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--ds-ink-2); }
+
+/* OMN-21970 (Lakshman 2026-11-02, "make savings, usage cards colorful"): every summary card on Overview and Usage
+   carries its own field colour -- a top accent, a light tint and the figure itself -- so spend, savings, calls, tokens
+   and quality read apart at a glance. The colour is the card's existing field tone (Overview) or accent (Usage); a
+   figure that is not measured keeps the unavailable colour. The panel class is repeated so these rules outrank the
+   redesign's own card rules, which set a neutral border and figure. */
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel {
+  --card-accent: var(--panel-accent, var(--field-ink, var(--ds-line)));
+  border-top: 3px solid var(--card-accent);
+  background-image: linear-gradient(180deg, color-mix(in srgb, var(--card-accent) 14%, transparent), transparent 75%);
+}
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel > .local-dashboard-metric[data-measured="true"] {
+  /* The redesign pins every figure to ink with !important; only these summary-card figures take their card colour. Their
+     icons take their concept colour, the same on every page (editorial.css, one colour per concept). */
+}
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel > .local-dashboard-metric[data-measured="true"]:not(#ds-important) {
+  color: var(--card-accent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Rise-in: cards and panels enter once, the summary cards one after another. */
+  :is(.local-dashboard-page, .ev-root) .local-dashboard-panel,
+  .ev-root .panel {
+    animation: omn-rise-in 460ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+  }
+  :is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel:nth-child(2) { animation-delay: 60ms; }
+  :is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel:nth-child(3) { animation-delay: 120ms; }
+  :is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel:nth-child(4) { animation-delay: 180ms; }
+  :is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel:nth-child(5) { animation-delay: 240ms; }
+  :is(.local-dashboard-page, .ev-root) .local-overview-summary > .local-dashboard-panel:nth-child(6) { animation-delay: 300ms; }
+
+  /* Grow-in: bars rise from their axis; the pass-rate line draws from left to right. */
+  .gdb-bar.ins-seg {
+    transform-origin: 50% 100%;
+    animation: omn-grow-y 560ms cubic-bezier(0.2, 0.75, 0.25, 1) 140ms both;
+  }
+  .od-draw {
+    animation: omn-draw 800ms ease-out 160ms both;
+  }
+  /* Lakshman 2026-11-05 ("why bar graph blinking"): choosing a chart tab mounts its chart again, so the chart's panel
+     faded in from nothing and its bars waited 140ms at zero height before growing: a blink on every switch. Inside a
+     tab the chart does not fade; its bars grow at once, briefly. The page's first entrance is unchanged. */
+  :is(.local-dashboard-page, .ev-root) .local-dashboard-tabpanel .local-dashboard-panel { animation: none; }
+  :is(.local-dashboard-page, .ev-root) .local-dashboard-tabpanel .gdb-bar.ins-seg { animation-duration: 380ms; animation-delay: 0ms; }
+
+  /* OMN-23330 AC26 (operator 2026-11-09: "hover should light it and make it best please"): a summary card lights up in its
+     own colour when hovered (accent border and a soft accent glow) and never moves. It lights in 110 ms and fades only
+     after a 90 ms hold, so crossing the 12px gap to the next card hands the light over with no moment where neither card
+     is lit. History: a 3px lift flickered under a pointer near the edge; a glow that faded at once blinked in the gap.
+     The resting rule's transition is the one used when the hover ends; the hovered rule's is the one used when it starts.
+     !important on box-shadow: editorial.css sets box-shadow: none !important on every hovered panel. */
+  :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel {
+    transition: border-color 220ms ease 90ms, box-shadow 220ms ease 90ms;
+  }
+  :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel:hover {
+    border-color: var(--card-accent);
+    /* editorial.css pins the card border with !important through --card-border, so the hover sets the variable. */
+    --card-border: var(--card-accent);
+    transition: border-color 110ms ease 0ms, box-shadow 110ms ease 0ms;
+  }
+  :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel:hover:not(#ds-important) {
+    box-shadow: 0 10px 28px -14px color-mix(in srgb, var(--card-accent) 65%, transparent),
+      0 0 18px -6px color-mix(in srgb, var(--card-accent) 35%, transparent);
+  }
+}
+/* OMN-23330 AC26: the headline card border, moved here from editorial.css (outside the motion block, so it holds under
+   reduced motion too): its tinted colour at rest, the hover's --card-border when lit. It keeps editorial.css's selector
+   and !important, so it still wins over the generic panel borders. */
+html body :is(.local-dashboard-page, main.ev-root[data-destination="delegation-evidence"]) .local-overview-summary > article.local-dashboard-panel.local-dashboard-panel:not(#ds-important) {
+  border-color: var(--card-border, color-mix(in oklab, var(--panel-accent, var(--ds-line)) 38%, var(--ds-line)));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.local-dashboard-page, .ev-root) .local-dashboard-panel:not(#ds-important),
+.ev-root .panel:not(#ds-important),
+.gdb-bar.ins-seg:not(#ds-important),
+.od-draw:not(#ds-important) { animation: none; }
+  .od-draw { clip-path: none; }
+  :is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel:not(#ds-important),
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel:hover:not(#ds-important) {
+    transition: none;
+    transform: none;
+  }
+}
+
+/* Card styling: a soft resting shadow, the icon in the card's colour, the figure in the sans face
+   semibold with tabular digits, and quieter labels. */
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel {
+  border-radius: 12px;
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--ds-ink) 8%, transparent);
+}
+:is(.local-dashboard-page, .ev-root) .local-overview-surface > .local-overview-summary > .local-dashboard-panel.local-dashboard-panel.local-dashboard-panel > .local-dashboard-metric {
+  font-family: var(--ds-font-sans);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* Chart styling: bars get rounded tops. */
+.gdb-bar.ins-seg { border-radius: var(--ds-radius-bar) var(--ds-radius-bar) 0 0; }
+
+/* OMN-21970 AC9, layout and type on every page: panels share one radius and a soft resting shadow, and panel titles
+   use IBM Plex Sans semibold. Settings keeps its borderless sections (its own rule sets border 0 and no shadow). */
+.local-dashboard-page .local-dashboard-panel:not(.local-settings-section .local-dashboard-panel),
+.ev-root .panel {
+  border-radius: 12px;
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--ds-ink) 6%, transparent), 0 8px 24px -18px color-mix(in srgb, var(--ds-ink) 18%, transparent);
+}
+/* Lakshman 2026-11-05 ("all bargraph should fill like this"): a share chart (RankedBars with a ceiling) draws each bar
+   inside a grey slot that stands for the whole, so 50% fills half of it. Count and money charts have no slot.
+   Upright, the slot is the bar's column at full height; sideways (a chart under 560px, or an upright one on a local page
+   under 400px, where the kit lays bars in rows), the slot is the bar's row at full width. */
+.rb-chart--filled .rb-slot { display: flex; align-items: flex-end; box-sizing: border-box; width: 100%; height: 100%;
+  background: var(--ds-line); border-radius: var(--ds-radius-bar) var(--ds-radius-bar) 0 0; overflow: hidden; }
+.rb-chart--filled .rb-slot .rb-bar:not([data-pattern="outline"]):not(#ds-important) { width: 100%; max-width: none; margin: 0; height: var(--rb-size, 0); }
+.rb-chart--filled.rb-chart--vertical .rb-slot { width: 72%; max-width: 120px; margin: 0 auto; }
+@container (max-width: 560px) {
+  .rb-chart--filled:not(.rb-chart--vertical) .rb-slot { width: 100%; align-items: stretch; border-radius: 0 var(--ds-radius-bar) var(--ds-radius-bar) 0; }
+  .rb-chart--filled:not(.rb-chart--vertical) .rb-slot .rb-bar:not([data-pattern="outline"]) { border-radius: 0 var(--ds-radius-bar) var(--ds-radius-bar) 0; }
+  .rb-chart--filled:not(.rb-chart--vertical) .rb-slot .rb-bar:not([data-pattern="outline"]):not(#ds-important) { width: var(--rb-size, 0); height: auto; }
+}
+@container (max-width: 400px) {
+  :is(.local-dashboard-page, .ev-root) .rb-chart--filled.rb-chart--vertical .rb-slot { width: 100%; max-width: none; margin: 0; align-items: stretch; border-radius: 0 var(--ds-radius-bar) var(--ds-radius-bar) 0; }
+  :is(.local-dashboard-page, .ev-root) .rb-chart--filled.rb-chart--vertical .rb-slot .rb-bar:not([data-pattern="outline"]) { border-radius: 0 var(--ds-radius-bar) var(--ds-radius-bar) 0; }
+  :is(.local-dashboard-page, .ev-root) .rb-chart--filled.rb-chart--vertical .rb-slot .rb-bar:not([data-pattern="outline"]):not(#ds-important) { width: var(--rb-size, 0); height: auto; }
+}
+/* A share chart labels every bar with its percentage, as in the reference (the other ranked charts reveal on hover). */
+.rb-chart--share .rb-plot > li > .rb-value, .rb-chart--share .rb-plot > li > .rb-link > .rb-value { visibility: visible; font-weight: 600; }
+/* The track is the column's own background (a pseudo-element would read as a second, unnamed mark to the identity
+   census): the column's width elsewhere, a 44px centred strip on Overview, where the bar is capped at 44px. */
+:is(.local-dashboard-page, .ev-root) .gdb-col { background: var(--ds-line); border-radius: var(--ds-radius-bar) var(--ds-radius-bar) 0 0; }
+
+/* Lakshman 2026-11-05 ("use all places this type of bargraph like water filled"): every bar on the local pages stands in
+   a track in the line colour that runs the plot's full height (a column) or length (a horizontal bar), as the ranked
+   bars' slots and the canvas charts' backgrounds do. A column's track is as wide as its bar. */
+.local-dashboard-page--overview .local-overview-charts-panel .gdb-col { background: linear-gradient(var(--ds-line), var(--ds-line)) center / min(44px, 100%) 100% no-repeat; border-radius: 0; }
+:is(.local-dashboard-page, .ev-root) :is(.ins-track, .workflow-comparison-track, .local-tier-bar-track):not(#ds-important) { background: var(--ds-line); }
+:is(.local-dashboard-page, .ev-root) .ins-money-day-bars { background: var(--ds-line); border-radius: var(--ds-radius-bar) var(--ds-radius-bar) 0 0; }
+/* The duration histogram's buckets: each bar fills its button's width, so the button is its track. */
+:is(.local-dashboard-page, .ev-root) .ins-bars--short > .ins-bar { background: var(--ds-line); border-radius: var(--ds-radius-bar) var(--ds-radius-bar) 0 0; }
+.rb-chart--filled.rb-chart--rows .rb-slot { width: 100%; max-width: none; margin: 0; align-items: stretch; border-radius: 0 var(--ds-radius-bar) var(--ds-radius-bar) 0; }
+.rb-chart--filled.rb-chart--rows .rb-slot .rb-bar:not([data-pattern="outline"]) { border-radius: 0 var(--ds-radius-bar) var(--ds-radius-bar) 0; }
+.rb-chart--filled.rb-chart--rows .rb-slot .rb-bar:not([data-pattern="outline"]):not(#ds-important) { width: var(--rb-size, 0); height: auto; }
+.rb-chart--filled .rb-slot:has(> .rb-bar[data-pattern="outline"]) { background: none; }
+@media (max-width: 640px) {
+  .local-dashboard-page .ins-task-row > .ins-track { grid-column: 2 / -1; grid-row: 2; }
+}
+
+/* Tokens per day on Usage, drawn as Overview's day charts are (Lakshman 2026-11-05, "modern and unified like overview and
+   Runs"): Overview's segmented switch, the readout line above the plot, a 300px plot (220px on a phone) with the top and
+   middle gridlines, each day's track and stack at most 44px wide and centred in its slot, the other days dimmed while
+   one is read, and the day labels under the baseline. */
+.local-dashboard-page .utc-chart .ins-readout { min-height: 20px; margin: 4px 0 0; font-variant-numeric: tabular-nums; }
+
+/* Usage's grouped bars (Tokens by model, Cost per run), drawn as Overview's day charts are (Lakshman 2026-11-05): the
+   readout line above, a 300px plot (220px on a phone) with the top and middle gridlines, bars at most 44px wide and
+   centred, the other groups dimmed while one is read, and the series and tier chips in one row under the names. */
+.local-dashboard-page .usage-insight .ins-readout { min-height: 20px; margin: 4px 0 8px; font-variant-numeric: tabular-nums; }
+.local-dashboard-page ul.gdb-plot--list { height: 300px;
+  background-image: linear-gradient(to bottom, var(--ds-line) 1px, transparent 1px), linear-gradient(to bottom, var(--ds-line) 1px, transparent 1px);
+  background-size: 100% 1px, 100% 1px; background-position: 0 0, 0 50%; background-repeat: no-repeat; }
+.local-dashboard-page ul.gdb-plot--list .gdb-col { max-width: 44px; align-items: center; }
+.local-dashboard-page ul.gdb-plot--list .gdb-bar { max-width: 44px; }
+.local-dashboard-page ul.gdb-plot--list > .ins-bar.gdb-day { transition: opacity 0.15s; }
+.local-dashboard-page ul.gdb-plot--list > .ins-bar.gdb-day[data-dim="true"] { opacity: 0.45; }
+.local-dashboard-page ul.gdb-plot--list > .ins-bar.gdb-day:is(:hover, :focus-visible) .gdb-name-label:not(#ds-important) { color: var(--ds-ink); }
+/* OMN-23330 AC10: the series (model) legend and the tier legend each take their own row. */
+.local-dashboard-page .gdb-legends { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 4px; }
+@media (max-width: 700px) {
+  .local-dashboard-page ul.gdb-plot--list { height: 220px; }
+}
+/* The readout says each value in full, so the grouped bars draw no figure over a bar, as on Overview; long wrapped names
+   keep clear of the chips under them. */
+.local-dashboard-page ul.gdb-plot--list .gdb-val { display: none; }
+.local-dashboard-page ul.gdb-plot--names { margin-bottom: 58px; }
+/* Above editorial.css's panel rule, which gives every .local-dashboard-filters a panel's 12px corners and surface. */
+html body .local-dashboard-page .local-dashboard-filters.local-dashboard-toggle[role="radiogroup"],
+html body .ev-root .local-dashboard-filters.local-dashboard-toggle[role="radiogroup"] { position: relative; }
+html body .local-dashboard-page .local-dashboard-filters.local-dashboard-toggle[role="radiogroup"]:not(#ds-important),
+html body .ev-root .local-dashboard-filters.local-dashboard-toggle[role="radiogroup"]:not(#ds-important) { gap: 0; padding: 4px;
+  border: 1px solid var(--ds-line); border-radius: 999px; background: var(--ds-surface-2); }
+.local-dashboard-toggle .local-toggle-thumb { position: absolute; top: 0; left: 0; z-index: 0; border-radius: 999px; pointer-events: none;
+  border: 1px solid color-mix(in oklab, var(--toggle-tone, var(--panel-accent, var(--ds-brand))) 60%, transparent);
+  background: color-mix(in oklab, var(--toggle-tone, var(--panel-accent, var(--ds-brand))) 18%, var(--ds-surface));
+  box-shadow: 0 6px 16px -8px var(--toggle-tone, var(--panel-accent, var(--ds-brand)));
+  transition-property: transform, width, background, border-color;
+  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), width 0.28s cubic-bezier(0.2, 0.8, 0.2, 1); }
+@media (prefers-reduced-motion: reduce) { .local-dashboard-toggle .local-toggle-thumb { transition: none; } }
+.local-dashboard-toggle .local-toggle-icon { display: inline-flex; pointer-events: none; }
+.local-dashboard-toggle.local-dashboard-filters label[data-toned]:not(:has(input:checked)) .local-toggle-icon { opacity: 0.75; }
+.local-dashboard-page .usage-analysis-spark { gap: 3px; height: 22px; }
+/* The option's glyph sits in a small round badge of its colour, as the stat tabs' chips do, so each option's colour reads. */
+.local-dashboard-toggle .local-toggle-icon.ins-chip-icon { width: 22px; height: 22px; margin-left: -6px; align-items: center; justify-content: center; border-radius: 999px;
+  background: color-mix(in oklab, var(--option-tone) 18%, transparent); }
+.local-dashboard-toggle.local-dashboard-filters label[data-toned]:has(input:checked) .local-toggle-icon { background: color-mix(in oklab, var(--option-tone) 30%, transparent); }
+@media (max-width: 640px) {
+  html body .local-dashboard-page .local-dashboard-filters.local-dashboard-toggle[role="radiogroup"] { flex-wrap: wrap; max-width: 100%; }
+  html body .local-dashboard-page .local-dashboard-filters.local-dashboard-toggle[role="radiogroup"]:not(#ds-important) { border-radius: 18px; }
+  .local-dashboard-toggle .local-toggle-icon.ins-chip-icon { width: 20px; height: 20px; margin-left: -4px; }
+}
+
+/* Usage by model and day (Lakshman 2026-11-05, "fix this too"): the filters are the Runs toolbar's pills (no boxed group,
+   small labels, a set filter tinted blue, the clear button a pill), each model carries its swatch with its name hanging
+   beside it, and the share meter wears its column's colour as the day bars do. */
+html body .local-dashboard-page .usage-record-controls.local-dashboard-filters[role="group"] { flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 0 14px; }
+html body .local-dashboard-page .usage-record-controls.local-dashboard-filters[role="group"]:not(#ds-important) { display: flex;
+  border: 0; padding: 0; background: none; box-shadow: none; }
+.local-dashboard-page .usage-model-name > .gdb-swatch { position: absolute; left: 0; top: 0.42em; margin: 0; }
+@media (max-width: 700px) {
+  .local-dashboard-page .ins-task-row > .ins-track { grid-column: 2 / -1; grid-row: 2; min-width: 0; }
+}
+
+/* Workflow, as Overview and Runs (Lakshman 2026-11-05, "lets work on workflow page"): the correlation search is the Runs
+   search's pill with its glyph inside, no boxed group; the answer opens from a styled disclosure; the run timeline sits in
+   a titled card like every other part of the run. */
+html body .local-dashboard-page .workflow-run-search.local-dashboard-filters { flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 14px; }
+html body .local-dashboard-page .workflow-run-search.local-dashboard-filters:not(#ds-important) { display: flex;
+  border: 0; padding: 0; background: none; box-shadow: none; }
+.local-dashboard-page .workflow-record-group .local-dashboard-fields { gap: 10px; }
+.local-dashboard-page .workflow-record-group .local-dashboard-fields:not(#ds-important) { grid-template-columns: minmax(0, 1fr); }
+:is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-caption { overflow-wrap: anywhere; }

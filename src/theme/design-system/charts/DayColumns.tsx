@@ -6,7 +6,8 @@
  * above it; a value not served draws no bar and no number. Heights are each value over the largest value in the chart.
  * A column is a button: pointer and keyboard both point at it, and a click may open the day.
  */
-import type { CSSProperties } from 'react';
+import { useRef, type CSSProperties } from 'react';
+import { DayAxis } from './DayAxis';
 
 export interface DayBarValue { key: string; value: number | null; color: string; label: string }
 export interface DayColumn { key: string; ariaLabel: string; tick: boolean; values: readonly DayBarValue[] }
@@ -51,19 +52,22 @@ export function DayColumns({ label, days, max, hover, onHover, onOpen, described
   describedBy?: string;
   dayLabel: (key: string) => string;
 }) {
-  return (
-    <div className="ins-bars gdb-plot" role="group" aria-label={label} onMouseLeave={() => onHover(null)}
+  const plot = useRef<HTMLDivElement>(null);
+  // OMN-23330 AC31: the day labels are the kit's one DayAxis, placed under each column's measured centre (AC5).
+  const ticks = new Set(days.flatMap((day, index) => (day.tick ? [index] : [])));
+  return (<>
+    <div ref={plot} className="ins-bars gdb-plot" role="group" aria-label={label} onMouseLeave={() => onHover(null)}
       onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) onHover(null); }}>
       {days.map((day, index) => (
         <button key={day.key} type="button" className="ins-bar gdb-day" aria-label={day.ariaLabel} aria-describedby={describedBy}
           onClick={onOpen ? () => onOpen(day.key) : undefined}
           data-dim={hover !== null && hover !== index} onMouseEnter={() => onHover(index)} onFocus={() => onHover(index)}>
           <DayBars max={max} values={day.values} />
-          <span className="gdb-day-label" aria-hidden="true">{day.tick ? dayLabel(day.key) : ''}</span>
         </button>
       ))}
     </div>
-  );
+    <DayAxis days={days.map(day => day.key)} ticks={ticks} columns={plot} format={dayLabel} />
+  </>);
 }
 
 export interface HistogramBucket { key: string; ariaLabel: string; value: number | null }

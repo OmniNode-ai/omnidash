@@ -3,6 +3,10 @@ import { Play, Pause, SkipBack, SkipForward, RotateCcw } from '@/theme/design-sy
 import { Text, Heading } from '@/components/ui/typography';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
+import { localeTime as fmtLocaleTime } from '@/theme/format';
+import { refreshInterval } from '@/theme/refresh';
+// OMN-23330 AC25: this file's fixed inline styles are classes in SessionReplayPage.static.css.
+import './SessionReplayPage.static.css';
 
 interface ReplaySnapshot {
   snapshot_id: string;
@@ -19,7 +23,7 @@ interface ReplaySnapshot {
 function formatTimestamp(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '--:--:--';
-  return d.toLocaleTimeString(undefined, { hour12: false });
+  return fmtLocaleTime(d, undefined, { hour12: false });
 }
 
 function EventTypeTag({ type }: { type: string }) {
@@ -56,22 +60,11 @@ function StateDeltaViewer({ delta }: { delta: Record<string, unknown> }) {
     return <Text size="xs" color="tertiary">No state changes</Text>;
   }
   return (
-    <Text
+    <Text className="session-replay-page-s780a78"
       as="pre"
       size="xs"
       color="secondary"
       family="mono"
-      style={{
-        maxHeight: 160,
-        overflow: 'auto',
-        padding: 8,
-        borderRadius: 4,
-        border: '1px solid var(--ds-line, var(--ds-line-soft))',
-        background: 'var(--ds-surface-2, var(--ds-surface))',
-        whiteSpace: 'pre-wrap',
-        wordBreak: 'break-word',
-        margin: 0,
-      }}
     >
       {JSON.stringify(delta, null, 2)}
     </Text>
@@ -88,19 +81,13 @@ function SessionList({
   onSelect: (id: string) => void;
 }) {
   return (
-    <div
-      style={{
-        background: 'var(--ds-surface, var(--ds-page))',
-        border: '1px solid var(--ds-line, var(--ds-line-soft))',
-        borderRadius: 8,
-        overflow: 'hidden',
-      }}
+    <div className="session-replay-page-s543027"
     >
-      <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--ds-line, var(--ds-line-soft))' }}>
+      <div className="session-replay-page-safb590">
         <Text size="xs" weight="semibold" color="tertiary" transform="uppercase">Sessions</Text>
       </div>
       {sessions.length === 0 && (
-        <div style={{ padding: 16 }}>
+        <div className="session-replay-page-s872b66">
           <Text size="sm" color="tertiary" align="center">No sessions available</Text>
         </div>
       )}
@@ -130,7 +117,7 @@ export function SessionReplayPage() {
   const { data: snapshots, isLoading, error } = useProjectionQuery<ReplaySnapshot>({
     topic: TOPICS.sessionReplay,
     queryKey: ['session-replay'],
-    refetchInterval: 30_000,
+    refetchInterval: refreshInterval(),
   });
 
   const [selectedSession, setSelectedSession] = useState<string | null>(null);
@@ -180,7 +167,7 @@ export function SessionReplayPage() {
         </div>
       </div>
 
-      <div className="dash-body" style={{ padding: '24px 28px', overflowY: 'auto' }}>
+      <div className="dash-body session-replay-page-sea0c4d">
         {isLoading && (
           <Text size="sm" color="tertiary">Loading sessions…</Text>
         )}
@@ -189,39 +176,23 @@ export function SessionReplayPage() {
         )}
 
         {!isLoading && (
-          <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: 20 }}>
+          <div className="session-replay-page-s6d8474">
             <SessionList
               sessions={sessions}
               selectedId={selectedSession}
               onSelect={handleSelectSession}
             />
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="session-replay-page-s8ef476">
               {!selectedSession ? (
-                <div
-                  style={{
-                    background: 'var(--ds-surface, var(--ds-page))',
-                    border: '1px solid var(--ds-line, var(--ds-line-soft))',
-                    borderRadius: 8,
-                    padding: 40,
-                    textAlign: 'center',
-                  }}
+                <div className="session-replay-page-sfe0e02"
                 >
                   <Text color="tertiary" size="sm">Select a session to start replay</Text>
                 </div>
               ) : (
                 <>
                   {/* Playback controls */}
-                  <div
-                    style={{
-                      background: 'var(--ds-surface, var(--ds-page))',
-                      border: '1px solid var(--ds-line, var(--ds-line-soft))',
-                      borderRadius: 8,
-                      padding: '12px 16px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 12,
-                    }}
+                  <div className="session-replay-page-sd5bf69"
                   >
                     <button
                       onClick={handleReset}
@@ -229,7 +200,7 @@ export function SessionReplayPage() {
                       aria-label="Reset to start"
                       style={{ all: 'unset', cursor: currentStep === 0 ? 'not-allowed' : 'pointer', opacity: currentStep === 0 ? 0.4 : 1 }}
                     >
-                      <RotateCcw size={16} style={{ color: 'var(--ds-ink-2)' }} />
+                      <RotateCcw className="session-replay-page-sc331ff" size={16} />
                     </button>
                     <button
                       onClick={handlePrev}
@@ -237,16 +208,15 @@ export function SessionReplayPage() {
                       aria-label="Previous step"
                       style={{ all: 'unset', cursor: currentStep === 0 ? 'not-allowed' : 'pointer', opacity: currentStep === 0 ? 0.4 : 1 }}
                     >
-                      <SkipBack size={16} style={{ color: 'var(--ds-ink-2)' }} />
+                      <SkipBack className="session-replay-page-sc331ff" size={16} />
                     </button>
-                    <button
+                    <button className="session-replay-page-s7c5c86"
                       onClick={() => setIsPlaying((p) => !p)}
                       aria-label={isPlaying ? 'Pause' : 'Play'}
-                      style={{ all: 'unset', cursor: 'pointer' }}
                     >
                       {isPlaying
-                        ? <Pause size={18} style={{ color: 'var(--ds-brand, var(--ds-hue-blue))' }} />
-                        : <Play size={18} style={{ color: 'var(--ds-brand, var(--ds-hue-blue))' }} />
+                        ? <Pause className="session-replay-page-s2dcb32" size={18} />
+                        : <Play className="session-replay-page-s2dcb32" size={18} />
                       }
                     </button>
                     <button
@@ -255,12 +225,11 @@ export function SessionReplayPage() {
                       aria-label="Next step"
                       style={{ all: 'unset', cursor: currentStep >= totalSteps - 1 ? 'not-allowed' : 'pointer', opacity: currentStep >= totalSteps - 1 ? 0.4 : 1 }}
                     >
-                      <SkipForward size={16} style={{ color: 'var(--ds-ink-2)' }} />
+                      <SkipForward className="session-replay-page-sc331ff" size={16} />
                     </button>
 
                     {/* Progress bar */}
-                    <div
-                      style={{ flex: 1, height: 4, background: 'var(--ds-line, var(--ds-surface))', borderRadius: 2, overflow: 'hidden' }}
+                    <div className="session-replay-page-s6e957d"
                     >
                       <div
                         style={{
@@ -274,18 +243,12 @@ export function SessionReplayPage() {
                   </div>
 
                   {/* Timeline list */}
-                  <div
-                    style={{
-                      background: 'var(--ds-surface, var(--ds-page))',
-                      border: '1px solid var(--ds-line, var(--ds-line-soft))',
-                      borderRadius: 8,
-                      overflow: 'hidden',
-                    }}
+                  <div className="session-replay-page-s543027"
                   >
-                    <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--ds-line, var(--ds-line-soft))' }}>
+                    <div className="session-replay-page-safb590">
                       <Heading level={3} size="sm">Event Timeline</Heading>
                     </div>
-                    <div style={{ maxHeight: 320, overflowY: 'auto' }}>
+                    <div className="session-replay-page-s8580f0">
                       {sessionSnapshots.map((snap, idx) => (
                         <button
                           key={snap.snapshot_id}
@@ -316,22 +279,16 @@ export function SessionReplayPage() {
 
                   {/* Current state delta */}
                   {currentSnapshot && (
-                    <div
-                      style={{
-                        background: 'var(--ds-surface, var(--ds-page))',
-                        border: '1px solid var(--ds-line, var(--ds-line-soft))',
-                        borderRadius: 8,
-                        overflow: 'hidden',
-                      }}
+                    <div className="session-replay-page-s543027"
                     >
-                      <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--ds-line, var(--ds-line-soft))', display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div className="session-replay-page-sd846ee">
                         <Heading level={3} size="sm">State Delta</Heading>
                         <EventTypeTag type={currentSnapshot.event_type} />
-                        <Text size="xs" color="tertiary" family="mono" style={{ marginLeft: 'auto' }}>
+                        <Text className="session-replay-page-s538764" size="xs" color="tertiary" family="mono">
                           {currentSnapshot.cumulative_tokens} tokens
                         </Text>
                       </div>
-                      <div style={{ padding: '12px 14px' }}>
+                      <div className="session-replay-page-s3ba727">
                         <StateDeltaViewer delta={currentSnapshot.state_delta} />
                       </div>
                     </div>

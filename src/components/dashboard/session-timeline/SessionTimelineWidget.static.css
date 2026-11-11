@@ -1,0 +1,10 @@
+/* OMN-23330 AC25: the fixed inline styles of SessionTimelineWidget.tsx, moved into classes with nothing else changed. Each selector
+   repeats its class so it keeps the weight the inline style had over the stylesheet rules around it. */
+.session-timeline-widget-s6e5d05.session-timeline-widget-s6e5d05.session-timeline-widget-s6e5d05 { width: 100%; height: auto; }
+.session-timeline-widget-s8a0b35.session-timeline-widget-s8a0b35.session-timeline-widget-s8a0b35 { max-height: 360px; overflow-y: auto; display: flex; flex-direction: column; gap: 0; }
+.session-timeline-widget-s847317.session-timeline-widget-s847317.session-timeline-widget-s847317 { display: flex; gap: 12px; padding: 8px 12px; border-bottom: 1px solid var(--ds-line-soft); align-items: flex-start; }
+.session-timeline-widget-sf3acc3.session-timeline-widget-sf3acc3.session-timeline-widget-sf3acc3 { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.session-timeline-widget-s79731f.session-timeline-widget-s79731f.session-timeline-widget-s79731f { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.session-timeline-widget-scdea4e.session-timeline-widget-scdea4e.session-timeline-widget-scdea4e { color: var(--ds-ink-3); }
+.session-timeline-widget-sf7aba4.session-timeline-widget-sf7aba4.session-timeline-widget-sf7aba4 { display: flex; gap: 4px; flex-wrap: wrap; }
+.session-timeline-widget-sdcc3a0.session-timeline-widget-sdcc3a0.session-timeline-widget-sdcc3a0 { height: 18px; padding: 0 6px; }

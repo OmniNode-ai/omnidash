@@ -9,6 +9,10 @@ import { DataTableThreeJs } from '@/components/charts/threejs/DataTable';
 import type { DataTableColumnConfig } from '@shared/types/chart-config';
 import { Text } from '@/components/ui/typography';
 import { FreshnessLine } from '@/components/dashboard/lab/FreshnessLine';
+import { fixed as fmtFixed } from '@/theme/format';
+import { refreshInterval } from '@/theme/refresh';
+// OMN-23330 AC25: this file's fixed inline styles are classes in RoutingDecisionTable.static.css.
+import './RoutingDecisionTable.static.css';
 
 /**
  * RoutingDecision row shape from the `delegationDecisions` projection.
@@ -97,7 +101,7 @@ function formatTimestamp(iso: string, timeZone: string): string {
  * (which took the whole Lab page down).
  */
 function formatPercent(value: unknown): string {
-  return typeof value === 'number' ? `${(value * 100).toFixed(0)}%` : 'not emitted';
+  return typeof value === 'number' ? `${fmtFixed((value * 100), 0)}%` : 'not emitted';
 }
 
 function toDisplayRow(row: RoutingDecision, tz: string): Record<string, unknown> {
@@ -107,7 +111,7 @@ function toDisplayRow(row: RoutingDecision, tz: string): Record<string, unknown>
     agreement: row.agreement ? 'Agree' : 'Disagree',
     llm_confidence: formatPercent(row.llm_confidence),
     fuzzy_confidence: formatPercent(row.fuzzy_confidence),
-    cost_usd: typeof row.cost_usd === 'number' ? `$${row.cost_usd.toFixed(4)}` : 'not emitted',
+    cost_usd: typeof row.cost_usd === 'number' ? `$${fmtFixed(row.cost_usd, 4)}` : 'not emitted',
   };
 }
 
@@ -125,7 +129,7 @@ export default function RoutingDecisionTable({ config }: { config: Record<string
   const query = useProjectionSnapshotQuery<RoutingDecision>({
     topic: TOPICS.delegationDecisions,
     queryKey: ['routing-decisions'],
-    refetchInterval: 60_000,
+    refetchInterval: refreshInterval(),
   });
   const data = useMemo(() => query.data?.rows ?? [], [query.data]);
 
@@ -159,8 +163,8 @@ export default function RoutingDecisionTable({ config }: { config: Record<string
           />
         ) : null}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '150px 130px minmax(150px, 1fr) 110px minmax(160px, 1fr)', gap: 8, padding: '5px 0', borderBottom: '1px solid var(--ds-line)' }}>
+        <div className="routing-decision-table-s30160b">
+          <div className="routing-decision-table-s2ef91c">
             {['Timestamp', 'Provider / delegate', 'Model', 'Outcome', 'Correlation'].map((label) => (
               <Text key={label} as="span" size="xs" weight="semibold" color="tertiary">{label}</Text>
             ))}
@@ -172,7 +176,7 @@ export default function RoutingDecisionTable({ config }: { config: Record<string
               ? 'passed'
               : row.quality_gate_passed === false ? 'failed' : 'not emitted');
             return (
-              <div key={row.id} data-testid="delegation-run-row" style={{ display: 'grid', gridTemplateColumns: '150px 130px minmax(150px, 1fr) 110px minmax(160px, 1fr)', gap: 8, padding: '7px 0', borderBottom: '1px solid var(--ds-line-soft)', alignItems: 'center' }}>
+              <div className="routing-decision-table-se91ef4" key={row.id} data-testid="delegation-run-row">
                 <Text as="span" size="xs" family="mono" color="tertiary">{formatTimestamp(row.created_at, tz)}</Text>
                 <Text as="span" size="xs" family="mono" color="secondary">{provider}</Text>
                 <Text as="span" size="xs" family="mono" color="primary" truncate title={model}>{model}</Text>

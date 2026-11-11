@@ -1,5 +1,8 @@
 import { Text } from '@/components/ui/typography';
 import { formatRedactedEventPayload } from '@/utils/redact-event-payload';
+import { localeTime as fmtLocaleTime } from '@/theme/format';
+// OMN-23330 AC25: this file's fixed inline styles are classes in PipelineLogStream.static.css.
+import './PipelineLogStream.static.css';
 
 export interface PipelineEvent {
   id: string;
@@ -35,7 +38,7 @@ const TYPE_COLORS: Record<PipelineEvent['type'], string> = {
 function formatTime(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '--:--:--';
-  return d.toLocaleTimeString(undefined, {
+  return fmtLocaleTime(d, undefined, {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
@@ -54,7 +57,7 @@ function ProofFact({ label, value }: { label: string; value: string | null | und
       <Text as="div" size="xs" color="tertiary" className="mono text-tracked text-upper">
         {label}
       </Text>
-      <Text as="div" size="xs" color="secondary" className="mono" style={{ wordBreak: 'break-word' }}>
+      <Text as="div" size="xs" color="secondary" className="mono pipeline-log-stream-s517194">
         {value}
       </Text>
     </div>
@@ -65,23 +68,14 @@ function ArtifactBlock({ label, value }: { label: string; value: string | null |
   if (!hasText(value)) return null;
   return (
     <div>
-      <Text as="div" size="xs" color="tertiary" className="mono text-tracked text-upper" style={{ marginBottom: 4 }}>
+      <Text as="div" size="xs" color="tertiary" className="mono text-tracked text-upper pipeline-log-stream-s3eaa7b">
         {label}
       </Text>
       <Text
         as="pre"
         size="xs"
         color="secondary"
-        className="mono"
-        style={{
-          margin: 0,
-          padding: 10,
-          border: '1px solid var(--ds-line)',
-          borderRadius: 6,
-          background: 'var(--ds-surface)',
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-word',
-        }}
+        className="mono pipeline-log-stream-s92c43e"
       >
         {value}
       </Text>
@@ -111,19 +105,14 @@ function ArtifactProof({ event }: { event: PipelineEvent }) {
   if (!hasProof) return null;
 
   return (
-    <details open style={{ gridColumn: '1 / -1', marginTop: 8 }}>
-      <summary style={{ cursor: 'pointer', listStyle: 'revert' }}>
+    <details className="pipeline-log-stream-s00c051" open>
+      <summary className="pipeline-log-stream-sa434d0">
         <Text as="span" size="xs" weight="bold" color="primary" className="mono text-tracked text-upper">
           Projection-backed artifact proof
         </Text>
       </summary>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-            gap: 8,
-          }}
+      <div className="pipeline-log-stream-s044f9a">
+        <div className="pipeline-log-stream-sd94959"
         >
           <ProofFact label="Correlation" value={event.correlationId} />
           <ProofFact label="Provider" value={event.selectedProvider} />
@@ -162,7 +151,7 @@ export function PipelineLogStream({ events }: { events: PipelineEvent[] }) {
       }}
     >
       {events.length === 0 ? (
-        <div style={{ padding: '24px 16px', textAlign: 'center' }}>
+        <div className="pipeline-log-stream-s744dd4">
           <Text size="md" color="tertiary">
             Waiting for pipeline events...
           </Text>
@@ -195,18 +184,11 @@ export function PipelineLogStream({ events }: { events: PipelineEvent[] }) {
             </Text>
             <Text size="sm" color="secondary">
               {evt.simulated && (
-                <Text
+                <Text color="warn"
                   as="span"
                   size="xs"
                   weight="bold"
-                  className="mono"
-                  style={{
-                    color: 'var(--ds-warn)',
-                    marginRight: 6,
-                    border: '1px solid var(--ds-warn)',
-                    padding: '0 3px',
-                    borderRadius: 2,
-                  }}
+                  className="mono pipeline-log-stream-sb6c4a4"
                 >
                   DEMO
                 </Text>

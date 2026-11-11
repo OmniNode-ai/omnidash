@@ -176,7 +176,7 @@ test('AC197 Workflow draws the run as a waterfall: bars only for steps with a st
     const track = item.querySelector('[data-waterfall]') as HTMLElement | null;
     const bar = item.querySelector('[data-waterfall-bar]') as HTMLElement | null;
     const box = track?.getBoundingClientRect(); const barBox = bar?.getBoundingClientRect();
-    return { positioned: track?.getAttribute('data-positioned'), text: track?.textContent ?? '',
+    return { positioned: track?.getAttribute('data-positioned'), text: item.querySelector('[data-not-recorded]')?.textContent ?? '',
       left: box && barBox ? (barBox.left - box.left) / box.width : null, width: box && barBox ? barBox.width / box.width : null };
   }));
   writeFileSync(info.outputPath('ac197-waterfall.json'), JSON.stringify(read, null, 2));
@@ -187,7 +187,8 @@ test('AC197 Workflow draws the run as a waterfall: bars only for steps with a st
   expect(read[3]!.left!).toBeCloseTo(430 / 730, 2);
   expect(read[3]!.width!).toBeCloseTo(300 / 730, 2);
   for (const row of read.slice(4)) {
-    expect(row.text).toContain('not recorded');
+    // OMN-23330 AC13: the step says "Not recorded" once, naming its missing start or duration.
+    expect(row.text).toMatch(/Not recorded: .*(start|duration)/);
     expect(row.width, 'no bar without both times').toBeNull();
   }
   // Attempts are the served attempt steps, each its own row; with them present no escalation-count sentence stands in.

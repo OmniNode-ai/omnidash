@@ -1,3 +1,4 @@
+import '@/theme/design-system/kit/field-identity.css';
 import '@/styles/field-identity.css';
 
 /** Display identity only: labels select a color, never a value or verdict. */

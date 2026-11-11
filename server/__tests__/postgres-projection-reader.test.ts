@@ -10,7 +10,8 @@ vi.mock('pg', () => {
     connect: vi.fn().mockResolvedValue(mockClient),
     end: vi.fn().mockResolvedValue(undefined),
   };
-  return { Pool: vi.fn().mockImplementation(() => mockPool) };
+  // vitest 4: a mock called with `new` needs a function implementation, not an arrow (OMN-23330 AC17).
+  return { Pool: vi.fn().mockImplementation(function () { return mockPool; }) };
 });
 
 import { Pool } from 'pg';

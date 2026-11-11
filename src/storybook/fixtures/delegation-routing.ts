@@ -3,6 +3,7 @@ import type { DelegationModelRoutingProjection } from '@/components/dashboard/de
 import type { DelegationQualityGateProjection } from '@/components/dashboard/delegation/DelegationQualityGateWidget';
 import type { DelegationTokenUsageProjection, TokenProvenance } from '@/components/dashboard/delegation/DelegationTokenUsageWidget';
 import type { InferenceResponseProjection } from '@/components/dashboard/delegation/DelegationModelOutputWidget';
+import { fixed as fmtFixed } from '@/theme/format';
 
 // ── Savings fixtures ──────────────────────────────────────────────────
 
@@ -54,9 +55,9 @@ export function buildDelegationSavings(opts: BuildDelegationSavingsOptions = {})
       prompt_tokens: promptTokens,
       completion_tokens: completionTokens,
       latency_ms: Math.round(400 + rand() * 2600),
-      local_cost_usd: Number(localCost.toFixed(4)),
-      cloud_cost_usd: Number(cloudCost.toFixed(4)),
-      savings_usd: Number(Math.max(0, cloudCost - localCost).toFixed(4)),
+      local_cost_usd: Number(fmtFixed(localCost, 4)),
+      cloud_cost_usd: Number(fmtFixed(cloudCost, 4)),
+      savings_usd: Number(fmtFixed(Math.max(0, cloudCost - localCost), 4)),
       baseline_model: resolvedBaselineModel,
       pricing_manifest_version: pricingManifestVersion,
       savings_method: 'estimated' as const,
@@ -70,9 +71,9 @@ export function buildDelegationSavings(opts: BuildDelegationSavingsOptions = {})
   const cumulativeCloudCost = sessions.reduce((s, r) => s + r.cloud_cost_usd, 0);
 
   return {
-    cumulative_savings_usd: Number(cumulativeSavings.toFixed(4)),
-    cumulative_local_cost_usd: Number(cumulativeLocalCost.toFixed(4)),
-    cumulative_cloud_cost_usd: Number(cumulativeCloudCost.toFixed(4)),
+    cumulative_savings_usd: Number(fmtFixed(cumulativeSavings, 4)),
+    cumulative_local_cost_usd: Number(fmtFixed(cumulativeLocalCost, 4)),
+    cumulative_cloud_cost_usd: Number(fmtFixed(cumulativeCloudCost, 4)),
     baseline_model: resolvedBaselineModel,
     pricing_manifest_version: pricingManifestVersion,
     session_count: sessions.length,
@@ -111,7 +112,7 @@ export function buildDelegationModelRouting(
     pct_of_total: modelWeights[i],
     top_task_type: TASK_TYPES[0],
     avg_latency_ms: Math.round(300 + rand() * 2200),
-    qg_pass_rate: Number((0.70 + rand() * 0.28).toFixed(2)),
+    qg_pass_rate: Number(fmtFixed((0.70 + rand() * 0.28), 2)),
     task_types: TASK_TYPES.slice(0, i < 2 ? 4 : 2),
   }));
 
@@ -265,7 +266,7 @@ export function buildDelegationTokenUsage(
       prompt_tokens: prompt,
       completion_tokens: completion,
       total_tokens: total,
-      estimated_cost_usd: Number((total * m.costPerToken).toFixed(4)),
+      estimated_cost_usd: Number(fmtFixed((total * m.costPerToken), 4)),
       usage_source: m.provenance,
       token_provenance: m.provenance,
     };
@@ -283,7 +284,7 @@ export function buildDelegationTokenUsage(
     total_prompt_tokens: totalPrompt,
     total_completion_tokens: totalCompletion,
     total_tokens: totalTokens,
-    total_estimated_cost_usd: Number(totalCost.toFixed(4)),
+    total_estimated_cost_usd: Number(fmtFixed(totalCost, 4)),
     provenance_summary: provenanceSummary,
     by_model,
     captured_at: new Date('2026-05-05T12:00:00Z').toISOString(),

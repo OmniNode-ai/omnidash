@@ -5,6 +5,10 @@ import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { CountUp } from '@/components/primitives';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
+import { fixed as fmtFixed } from '@/theme/format';
+import { refreshInterval } from '@/theme/refresh';
+// OMN-23330 AC25: this file's fixed inline styles are classes in AbCompareWidget.static.css.
+import './AbCompareWidget.static.css';
 
 // ── Data types ──────────────────────────────────────────────────────
 
@@ -169,53 +173,20 @@ function PromptBlock({ prompt }: { prompt: string }) {
   };
 
   return (
-    <div
-      style={{
-        background: 'var(--ds-surface)',
-        border: '1px solid var(--ds-line)',
-        borderRadius: 6,
-        overflow: 'hidden',
-      }}
+    <div className="ab-compare-widget-seffb15"
     >
-      <button
+      <button className="ab-compare-widget-sa712cb"
         type="button"
         onClick={() => setOpen((o) => !o)}
-        style={{
-          all: 'unset',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          width: '100%',
-          padding: '8px 10px',
-          boxSizing: 'border-box',
-        }}
       >
         <Caret open={open} />
         <span
-          className="mono"
-          style={{
-            "fontSize": 9,
-            "fontWeight": 700,
-            "color": 'var(--ds-ink-3)',
-            "letterSpacing": '0.16em',
-            "textTransform": 'uppercase',
-          }}
+          className="mono ab-compare-widget-sdb50b4"
         >
           Prompt
         </span>
         {!open && (
-          <span
-            style={{
-              "fontSize": 11,
-              "color": 'var(--ds-ink-3)',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              flex: 1,
-              minWidth: 0,
-              fontStyle: 'italic',
-            }}
+          <span className="ab-compare-widget-s3a4d75"
           >
             {preview}
           </span>
@@ -240,20 +211,7 @@ function PromptBlock({ prompt }: { prompt: string }) {
       </button>
       {open && (
         <pre
-          className="mono"
-          style={{
-            margin: 0,
-            padding: '10px 12px 12px 32px',
-            background: 'var(--ds-inset)',
-            "fontSize": 11,
-            "lineHeight": 1.55,
-            "color": 'var(--ds-ink-2)',
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-            borderTop: '1px solid var(--ds-line-soft)',
-            maxHeight: 220,
-            overflowY: 'auto',
-          }}
+          className="mono ab-compare-widget-s210dfb"
         >
           {prompt}
         </pre>
@@ -274,31 +232,18 @@ function LedgerDetail({
   dollars: number;
 }) {
   return (
-    <div
-      style={{
-        background: 'var(--ds-surface)',
-        border: '1px solid var(--ds-line)',
-        borderRadius: 6,
-        padding: 10,
-      }}
+    <div className="ab-compare-widget-s7dd398"
     >
       {/* Header */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 90px 90px',
-          gap: 10,
-          paddingBottom: 6,
-          borderBottom: '1px solid var(--ds-ink)',
-        }}
+      <div className="ab-compare-widget-s5a3f63"
       >
-        <div className="mono" style={{ "fontSize": 9, "fontWeight": 700, "color": 'var(--ds-ink-2)', "letterSpacing": '0.16em' }}>
+        <div className="mono ab-compare-widget-s797961">
           MODEL
         </div>
-        <div className="mono" style={{ "fontSize": 9, "fontWeight": 700, color: 'var(--ds-ok)', "letterSpacing": '0.16em', textAlign: 'right' }}>
+        <div className="mono ab-compare-widget-s460335">
           CREDIT
         </div>
-        <div className="mono" style={{ "fontSize": 9, "fontWeight": 700, color: 'var(--ds-bad)', "letterSpacing": '0.16em', textAlign: 'right' }}>
+        <div className="mono ab-compare-widget-sa713fc">
           DEBIT
         </div>
       </div>
@@ -319,40 +264,32 @@ function LedgerDetail({
               alignItems: 'center',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-              {isWinner && <span style={{ color: 'var(--ds-brand)', "fontSize": 10 }}>{'★'}</span>}
+            <div className="ab-compare-widget-s5f3741">
+              {isWinner && <span className="ab-compare-widget-s67d777">{'★'}</span>}
               <span className="mono" style={{ "fontSize": 11, "fontWeight": isWinner ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {m.name}
               </span>
-              <span className="mono" style={{ "fontSize": 9, "color": 'var(--ds-ink-3)' }}>{'·'} {m.host}</span>
+              <span className="mono ab-compare-widget-sa29e5a">{'·'} {m.host}</span>
             </div>
             <div className="mono tnum" style={{ "fontSize": 11, color: free ? 'var(--ds-ok)' : 'var(--ds-ink-4)', textAlign: 'right' }}>
               {free ? '+ $0.118' : '—'}
             </div>
             <div className="mono tnum" style={{ "fontSize": 11, color: free ? 'var(--ds-ink-4)' : 'var(--ds-bad)', textAlign: 'right' }}>
-              {free ? '—' : `– $${m.cost.toFixed(3)}`}
+              {free ? '—' : `– $${fmtFixed(m.cost, 3)}`}
             </div>
           </div>
         );
       })}
 
       {/* Net total */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 90px 90px',
-          gap: 10,
-          padding: '8px 0 2px',
-          borderTop: '1.5px solid var(--ds-ink)',
-          marginTop: 4,
-        }}
+      <div className="ab-compare-widget-sbaaf50"
       >
-        <div className="mono" style={{ "fontSize": 10, "fontWeight": 700, "letterSpacing": '0.14em', "textTransform": 'uppercase' }}>
+        <div className="mono ab-compare-widget-sc5cfdd">
           Net
         </div>
         <div />
-        <div className="mono tnum" style={{ "fontSize": 13, "fontWeight": 700, color: 'var(--ds-ok)', textAlign: 'right' }}>
-          + ${dollars.toFixed(3)}
+        <div className="mono tnum ab-compare-widget-sed0a79">
+          + ${fmtFixed(dollars, 3)}
         </div>
       </div>
     </div>
@@ -362,7 +299,7 @@ function LedgerDetail({
 // ── Task list item ──────────────────────────────────────────────────
 
 function formatLatency(ms: number): string {
-  if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
+  if (ms >= 1000) return `${fmtFixed((ms / 1000), 1)}s`;
   return `${ms}ms`;
 }
 
@@ -381,8 +318,8 @@ function TaskListItem({
   const maxCost = Math.max(...task.models.map((m) => m.cost));
   const minCost = Math.min(...task.models.map((m) => m.cost));
   const costRange = minCost === maxCost
-    ? (minCost === 0 ? 'FREE' : `$${minCost.toFixed(3)}`)
-    : `${minCost === 0 ? '$0' : `$${minCost.toFixed(3)}`} – $${maxCost.toFixed(3)}`;
+    ? (minCost === 0 ? 'FREE' : `$${fmtFixed(minCost, 3)}`)
+    : `${minCost === 0 ? '$0' : `$${fmtFixed(minCost, 3)}`} – $${fmtFixed(maxCost, 3)}`;
 
   return (
     <div
@@ -393,31 +330,20 @@ function TaskListItem({
       }}
     >
       {/* Summary row */}
-      <button
+      <button className="ab-compare-widget-s1a359f"
         type="button"
         onClick={onToggle}
-        style={{
-          all: 'unset',
-          display: 'grid',
-          gridTemplateColumns: '20px 1fr 70px 90px 110px',
-          alignItems: 'center',
-          gap: 14,
-          width: '100%',
-          padding: '10px 14px',
-          cursor: 'pointer',
-          boxSizing: 'border-box',
-        }}
       >
         <Caret open={expanded} />
-        <div style={{ minWidth: 0 }}>
-          <div style={{ "fontSize": 13, "fontWeight": 500, "color": 'var(--ds-ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <div className="ab-compare-widget-s2cd52a">
+          <div className="ab-compare-widget-s86ecb8">
             {task.label}
           </div>
-          <div className="mono" style={{ "fontSize": 10, "color": 'var(--ds-ink-3)', marginTop: 2 }}>
+          <div className="mono ab-compare-widget-s462708">
             {chosen.name} {'·'} {chosen.tier}
           </div>
         </div>
-        <div className="mono tnum" style={{ "fontSize": 11, "color": 'var(--ds-ink-2)', textAlign: 'center' }}>
+        <div className="mono tnum ab-compare-widget-sa74b0c">
           {modelCount} models
         </div>
         <div className="mono tnum" style={{ "fontSize": 11, color: winnerLatencyMs < 5000 ? 'var(--ds-ok)' : winnerLatencyMs < 30000 ? 'var(--ds-ink-2)' : 'var(--ds-warn)', textAlign: 'right' }}>
@@ -430,10 +356,10 @@ function TaskListItem({
 
       {/* Expanded detail */}
       {expanded && (
-        <div style={{ padding: '8px 14px 18px 48px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div className="ab-compare-widget-s3ec5ac">
           <PromptBlock prompt={task.prompt} />
           <LedgerDetail models={task.models} chosenId={chosen.id} dollars={task.savedDollars} />
-          <div style={{ "fontSize": 10, "color": 'var(--ds-ink-3)', fontStyle: 'italic' }}>
+          <div className="ab-compare-widget-scce500">
             <span className="mono">correlation_id: {shortCorrelationId(task.id)}</span>
           </div>
         </div>
@@ -513,7 +439,7 @@ export default function AbCompareWidget({
   const { data, isLoading, error } = useProjectionQuery<AbCompareRow>({
     topic: TOPICS.abCompare,
     queryKey: ['ab-compare'],
-    refetchInterval: 10_000,
+    refetchInterval: refreshInterval(),
   });
 
   // Build tasks from projection data. Storybook owns demo fixture seeding; the
@@ -583,42 +509,34 @@ export default function AbCompareWidget({
       emptyHint="Results appear after the first ab-compare run completes. In file mode, add fixture files under fixtures/onex.snapshot.projection.ab-compare.v1/"
       fileMode={!isLiveDataSource(dataSourceMode)}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 0, width: '100%' }}>
+      <div className="ab-compare-widget-s1a382a">
         {/* Hero header */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 14 }}>
+        <div className="ab-compare-widget-s4a0162">
           <div>
             <div className="eyebrow">A/B model cost compare {'·'} last {totals.count} tasks</div>
-            <div style={{ "fontSize": 14, "fontWeight": 600, marginTop: 6, "color": 'var(--ds-ink-2)' }}>
+            <div className="ab-compare-widget-sdee618">
               Tap any task to see the prompt and correlation.
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ textAlign: 'right' }}>
-              <div className="mono tnum" style={{ "fontSize": 24, "fontWeight": 800, color: 'var(--ds-ok)', "lineHeight": 1 }}>
+          <div className="ab-compare-widget-sb99074">
+            <div className="ab-compare-widget-s13cbe0">
+              <div className="mono tnum ab-compare-widget-s36e936">
                 <CountUp value={totals.savedPct} suffix="%" />
               </div>
-              <div className="eyebrow" style={{ color: 'var(--ds-ok)', marginTop: 3 }}>saved</div>
+              <div className="eyebrow ab-compare-widget-s644dd4">saved</div>
             </div>
-            <div style={{ width: 1, height: 28, background: 'var(--ds-line)' }} />
-            <div style={{ textAlign: 'right' }}>
-              <div className="mono tnum" style={{ "fontSize": 16, "fontWeight": 700, "lineHeight": 1 }}>
+            <div className="ab-compare-widget-s89e50e" />
+            <div className="ab-compare-widget-s13cbe0">
+              <div className="mono tnum ab-compare-widget-s0dc60a">
                 <CountUp value={totals.savedDollars} prefix="$" decimals={3} />
               </div>
-              <div className="eyebrow" style={{ marginTop: 3 }}>vs cloud-only</div>
+              <div className="eyebrow ab-compare-widget-s45f395">vs cloud-only</div>
             </div>
           </div>
         </div>
 
         {/* Sortable column headers */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '20px 1fr 70px 90px 110px',
-            gap: 14,
-            padding: '8px 14px',
-            borderTop: '1px solid var(--ds-line)',
-            borderBottom: '1px solid var(--ds-line)',
-          }}
+        <div className="ab-compare-widget-s746dd0"
         >
           <div />
           <HeaderCell label="TASK" sortKey="task" sort={sort} onSort={toggleSort} />

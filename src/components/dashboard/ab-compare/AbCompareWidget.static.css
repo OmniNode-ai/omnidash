@@ -1,0 +1,36 @@
+/* OMN-23330 AC25: the fixed inline styles of AbCompareWidget.tsx, moved into classes with nothing else changed. Each selector
+   repeats its class so it keeps the weight the inline style had over the stylesheet rules around it. */
+.ab-compare-widget-seffb15.ab-compare-widget-seffb15.ab-compare-widget-seffb15 { background: var(--ds-surface); border: 1px solid var(--ds-line); border-radius: 6px; overflow: hidden; }
+.ab-compare-widget-sa712cb.ab-compare-widget-sa712cb.ab-compare-widget-sa712cb { all: unset; cursor: pointer; display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; box-sizing: border-box; }
+.ab-compare-widget-sdb50b4.ab-compare-widget-sdb50b4.ab-compare-widget-sdb50b4 { font-size: 9px; font-weight: 700; color: var(--ds-ink-3); letter-spacing: 0.16em; text-transform: uppercase; }
+.ab-compare-widget-s3a4d75.ab-compare-widget-s3a4d75.ab-compare-widget-s3a4d75 { font-size: 11px; color: var(--ds-ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; font-style: italic; }
+.ab-compare-widget-s210dfb.ab-compare-widget-s210dfb.ab-compare-widget-s210dfb { margin: 0; padding: 10px 12px 12px 32px; background: var(--ds-inset); font-size: 11px; line-height: 1.55; color: var(--ds-ink-2); white-space: pre-wrap; word-break: break-word; border-top: 1px solid var(--ds-line-soft); max-height: 220px; overflow-y: auto; }
+.ab-compare-widget-s7dd398.ab-compare-widget-s7dd398.ab-compare-widget-s7dd398 { background: var(--ds-surface); border: 1px solid var(--ds-line); border-radius: 6px; padding: 10px; }
+.ab-compare-widget-s5a3f63.ab-compare-widget-s5a3f63.ab-compare-widget-s5a3f63 { display: grid; grid-template-columns: 1fr 90px 90px; gap: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--ds-ink); }
+.ab-compare-widget-s797961.ab-compare-widget-s797961.ab-compare-widget-s797961 { font-size: 9px; font-weight: 700; color: var(--ds-ink-2); letter-spacing: 0.16em; }
+.ab-compare-widget-s460335.ab-compare-widget-s460335.ab-compare-widget-s460335 { font-size: 9px; font-weight: 700; color: var(--ds-ok); letter-spacing: 0.16em; text-align: right; }
+.ab-compare-widget-sa713fc.ab-compare-widget-sa713fc.ab-compare-widget-sa713fc { font-size: 9px; font-weight: 700; color: var(--ds-bad); letter-spacing: 0.16em; text-align: right; }
+.ab-compare-widget-s5f3741.ab-compare-widget-s5f3741.ab-compare-widget-s5f3741 { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.ab-compare-widget-s67d777.ab-compare-widget-s67d777.ab-compare-widget-s67d777 { color: var(--ds-brand); font-size: 10px; }
+.ab-compare-widget-sa29e5a.ab-compare-widget-sa29e5a.ab-compare-widget-sa29e5a { font-size: 9px; color: var(--ds-ink-3); }
+.ab-compare-widget-sbaaf50.ab-compare-widget-sbaaf50.ab-compare-widget-sbaaf50 { display: grid; grid-template-columns: 1fr 90px 90px; gap: 10px; padding: 8px 0 2px; border-top: 1.5px solid var(--ds-ink); margin-top: 4px; }
+.ab-compare-widget-sc5cfdd.ab-compare-widget-sc5cfdd.ab-compare-widget-sc5cfdd { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+.ab-compare-widget-sed0a79.ab-compare-widget-sed0a79.ab-compare-widget-sed0a79 { font-size: 13px; font-weight: 700; color: var(--ds-ok); text-align: right; }
+.ab-compare-widget-s1a359f.ab-compare-widget-s1a359f.ab-compare-widget-s1a359f { all: unset; display: grid; grid-template-columns: 20px 1fr 70px 90px 110px; align-items: center; gap: 14px; width: 100%; padding: 10px 14px; cursor: pointer; box-sizing: border-box; }
+.ab-compare-widget-s2cd52a.ab-compare-widget-s2cd52a.ab-compare-widget-s2cd52a { min-width: 0; }
+.ab-compare-widget-s86ecb8.ab-compare-widget-s86ecb8.ab-compare-widget-s86ecb8 { font-size: 13px; font-weight: 500; color: var(--ds-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ab-compare-widget-s462708.ab-compare-widget-s462708.ab-compare-widget-s462708 { font-size: 10px; color: var(--ds-ink-3); margin-top: 2px; }
+.ab-compare-widget-sa74b0c.ab-compare-widget-sa74b0c.ab-compare-widget-sa74b0c { font-size: 11px; color: var(--ds-ink-2); text-align: center; }
+.ab-compare-widget-s3ec5ac.ab-compare-widget-s3ec5ac.ab-compare-widget-s3ec5ac { padding: 8px 14px 18px 48px; display: flex; flex-direction: column; gap: 10px; }
+.ab-compare-widget-scce500.ab-compare-widget-scce500.ab-compare-widget-scce500 { font-size: 10px; color: var(--ds-ink-3); font-style: italic; }
+.ab-compare-widget-s1a382a.ab-compare-widget-s1a382a.ab-compare-widget-s1a382a { display: flex; flex-direction: column; gap: 0; width: 100%; }
+.ab-compare-widget-s4a0162.ab-compare-widget-s4a0162.ab-compare-widget-s4a0162 { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+.ab-compare-widget-sdee618.ab-compare-widget-sdee618.ab-compare-widget-sdee618 { font-size: 14px; font-weight: 600; margin-top: 6px; color: var(--ds-ink-2); }
+.ab-compare-widget-sb99074.ab-compare-widget-sb99074.ab-compare-widget-sb99074 { display: flex; align-items: center; gap: 14px; }
+.ab-compare-widget-s13cbe0.ab-compare-widget-s13cbe0.ab-compare-widget-s13cbe0 { text-align: right; }
+.ab-compare-widget-s36e936.ab-compare-widget-s36e936.ab-compare-widget-s36e936 { font-size: 24px; font-weight: 800; color: var(--ds-ok); line-height: 1; }
+.ab-compare-widget-s644dd4.ab-compare-widget-s644dd4.ab-compare-widget-s644dd4 { color: var(--ds-ok); margin-top: 3px; }
+.ab-compare-widget-s89e50e.ab-compare-widget-s89e50e.ab-compare-widget-s89e50e { width: 1px; height: 28px; background: var(--ds-line); }
+.ab-compare-widget-s0dc60a.ab-compare-widget-s0dc60a.ab-compare-widget-s0dc60a { font-size: 16px; font-weight: 700; line-height: 1; }
+.ab-compare-widget-s45f395.ab-compare-widget-s45f395.ab-compare-widget-s45f395 { margin-top: 3px; }
+.ab-compare-widget-s746dd0.ab-compare-widget-s746dd0.ab-compare-widget-s746dd0 { display: grid; grid-template-columns: 20px 1fr 70px 90px 110px; gap: 14px; padding: 8px 14px; border-top: 1px solid var(--ds-line); border-bottom: 1px solid var(--ds-line); }

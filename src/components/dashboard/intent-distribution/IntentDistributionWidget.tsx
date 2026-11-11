@@ -3,6 +3,10 @@ import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { Text } from '@/components/ui/typography';
+import { fixed as fmtFixed } from '@/theme/format';
+import { refreshInterval } from '@/theme/refresh';
+// OMN-23330 AC25: this file's fixed inline styles are classes in IntentDistributionWidget.static.css.
+import './IntentDistributionWidget.static.css';
 
 // Raw projection row (onex.snapshot.projection.intent-classification.v1);
 // grouping happens client-side per the node_projection_intent_classification
@@ -47,7 +51,7 @@ export default function IntentDistributionWidget() {
   const { data, isLoading, error } = useProjectionQuery<IntentEventRow>({
     topic: TOPICS.intentClassification,
     queryKey: ['intent-distribution'],
-    refetchInterval: 30_000,
+    refetchInterval: refreshInterval(),
   });
 
   const sorted = useMemo<IntentBucket[]>(() => {
@@ -88,30 +92,21 @@ export default function IntentDistributionWidget() {
       emptyMessage="No intent data"
       emptyHint="Intent classification data appears after session analysis runs"
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div className="intent-distribution-widget-s9808a2">
         {sorted.map((row) => {
           const color = colorForCategory(row.intent_category);
           const widthPct = (row.count / maxCount) * 100;
           return (
-            <div
+            <div className="intent-distribution-widget-s3088da"
               key={row.intent_category}
               data-testid="intent-row"
-              style={{ display: 'flex', alignItems: 'center', gap: 8 }}
             >
-              <div style={{ width: 120, flexShrink: 0 }}>
-                <span className="eyebrow" style={{ "color": 'var(--ds-ink-2)' }} title={row.intent_category}>
+              <div className="intent-distribution-widget-s2f671a">
+                <span className="eyebrow intent-distribution-widget-sc331ff" title={row.intent_category}>
                   {formatCategory(row.intent_category)}
                 </span>
               </div>
-              <div
-                style={{
-                  flex: 1,
-                  height: 22,
-                  background: 'var(--ds-inset)',
-                  borderRadius: 4,
-                  overflow: 'hidden',
-                  position: 'relative',
-                }}
+              <div className="intent-distribution-widget-s472dc9"
               >
                 <div
                   style={{
@@ -123,27 +118,16 @@ export default function IntentDistributionWidget() {
                     minWidth: widthPct > 0 ? 2 : 0,
                   }}
                 />
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    paddingLeft: 6,
-                  }}
+                <div className="intent-distribution-widget-sfa8c3a"
                 >
                   <Text size="sm" weight="semibold" style={{ color: widthPct > 30 ? 'var(--ds-page)' : 'var(--ds-ink)' }}>
-                    {row.percentage.toFixed(1)}%
+                    {fmtFixed(row.percentage, 1)}%
                   </Text>
                 </div>
               </div>
-              <div style={{ width: 48, textAlign: 'right', flexShrink: 0 }}>
+              <div className="intent-distribution-widget-sc074c2">
                 <span
-                  className="mono tnum"
-                  style={{ "color": 'var(--ds-ink-2)' }}
+                  className="mono tnum intent-distribution-widget-sc331ff"
                   title={Object.entries(row.bySource)
                     .map(([source, n]) => `${source}: ${n}`)
                     .join(', ')}

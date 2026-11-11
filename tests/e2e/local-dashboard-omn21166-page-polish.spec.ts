@@ -72,6 +72,8 @@ for (const route of ['delegation-evidence', 'experiments', 'agent-workbench', 'e
     const overviewTitle = async () => {
       const at = page.url();
       await page.goto('/overview');
+      // OMN-23330 AC22: the page loads lazily; its placeholder shares the title, so read only once it is no longer busy.
+      await expect(page.locator('main[aria-busy="true"]')).toHaveCount(0);
       const size = await page.locator('.local-dashboard-header h1').evaluate(el => parseFloat(getComputedStyle(el).fontSize));
       await page.goto(at);
       await expect(title).toBeVisible();

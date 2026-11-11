@@ -1,0 +1,10 @@
+/* OMN-23330 AC25: the fixed inline styles of FeatureFlagDashboard.tsx, moved into classes with nothing else changed. Each selector
+   repeats its class so it keeps the weight the inline style had over the stylesheet rules around it. */
+.feature-flag-dashboard-s73678e.feature-flag-dashboard-s73678e.feature-flag-dashboard-s73678e { padding: 2px 6px; border-radius: 4px; background: var(--ds-surface-2, var(--ds-surface)); white-space: nowrap; }
+.feature-flag-dashboard-sdb9ab8.feature-flag-dashboard-sdb9ab8.feature-flag-dashboard-sdb9ab8 { opacity: 0.5; }
+.feature-flag-dashboard-s0bc69d.feature-flag-dashboard-s0bc69d.feature-flag-dashboard-s0bc69d { width: 100%; border-collapse: collapse; }
+.feature-flag-dashboard-s99d8eb.feature-flag-dashboard-s99d8eb.feature-flag-dashboard-s99d8eb { border-bottom: 1px solid var(--ds-line, var(--ds-line-soft)); }
+.feature-flag-dashboard-s636ba8.feature-flag-dashboard-s636ba8.feature-flag-dashboard-s636ba8 { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+.feature-flag-dashboard-sb6e62f.feature-flag-dashboard-sb6e62f.feature-flag-dashboard-sb6e62f { gap: 12px; }
+.feature-flag-dashboard-sdb6e0e.feature-flag-dashboard-sdb6e0e.feature-flag-dashboard-sdb6e0e { overflow-y: auto; }
+.feature-flag-dashboard-sa09116.feature-flag-dashboard-sa09116.feature-flag-dashboard-sa09116 { background: var(--ds-surface, var(--ds-page)); border: 1px solid var(--ds-line, var(--ds-line-soft)); border-radius: 8px; padding: 24px; text-align: center; }

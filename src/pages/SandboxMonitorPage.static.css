@@ -1,0 +1,23 @@
+/* OMN-23330 AC25: the fixed inline styles of SandboxMonitorPage.tsx, moved into classes with nothing else changed. Each selector
+   repeats its class so it keeps the weight the inline style had over the stylesheet rules around it. */
+.sandbox-monitor-page-sfb9057.sandbox-monitor-page-sfb9057.sandbox-monitor-page-sfb9057 { display: flex; align-items: center; gap: 10px; }
+.sandbox-monitor-page-s3c30dd.sandbox-monitor-page-s3c30dd.sandbox-monitor-page-s3c30dd { flex: 1; height: 6px; background: var(--ds-line, var(--ds-surface)); border-radius: 3px; overflow: hidden; }
+.sandbox-monitor-page-s636ba8.sandbox-monitor-page-s636ba8.sandbox-monitor-page-s636ba8 { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+.sandbox-monitor-page-sb6e62f.sandbox-monitor-page-sb6e62f.sandbox-monitor-page-sb6e62f { gap: 12px; }
+.sandbox-monitor-page-sda39a3.sandbox-monitor-page-sda39a3.sandbox-monitor-page-sda39a3 {  }
+.sandbox-monitor-page-sea0c4d.sandbox-monitor-page-sea0c4d.sandbox-monitor-page-sea0c4d { padding: 24px 28px; overflow-y: auto; }
+.sandbox-monitor-page-s4dd6d5.sandbox-monitor-page-s4dd6d5.sandbox-monitor-page-s4dd6d5 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+.sandbox-monitor-page-s6bf4d6.sandbox-monitor-page-s6bf4d6.sandbox-monitor-page-s6bf4d6 { background: var(--ds-surface, var(--ds-page)); border: 1px solid var(--ds-line, var(--ds-line-soft)); border-radius: 8px; padding: 16px 20px; }
+.sandbox-monitor-page-s88d796.sandbox-monitor-page-s88d796.sandbox-monitor-page-s88d796 { background: var(--ds-surface, var(--ds-page)); border: 1px solid var(--ds-line, var(--ds-line-soft)); border-radius: 8px; padding: 16px 20px; margin-bottom: 24px; }
+.sandbox-monitor-page-s6ddf48.sandbox-monitor-page-s6ddf48.sandbox-monitor-page-s6ddf48 { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.sandbox-monitor-page-sae8498.sandbox-monitor-page-sae8498.sandbox-monitor-page-sae8498 { background: var(--ds-surface, var(--ds-page)); border: 1px solid var(--ds-line, var(--ds-line-soft)); border-radius: 8px; overflow: hidden; margin-bottom: 24px; }
+.sandbox-monitor-page-s52a6b6.sandbox-monitor-page-s52a6b6.sandbox-monitor-page-s52a6b6 { padding: 12px 16px; border-bottom: 1px solid var(--ds-line, var(--ds-line-soft)); }
+.sandbox-monitor-page-s0bc69d.sandbox-monitor-page-s0bc69d.sandbox-monitor-page-s0bc69d { width: 100%; border-collapse: collapse; }
+.sandbox-monitor-page-s99d8eb.sandbox-monitor-page-s99d8eb.sandbox-monitor-page-s99d8eb { border-bottom: 1px solid var(--ds-line, var(--ds-line-soft)); }
+.sandbox-monitor-page-sf7aca1.sandbox-monitor-page-sf7aca1.sandbox-monitor-page-sf7aca1 { padding: 8px 12px; text-align: left; }
+.sandbox-monitor-page-s96bfe9.sandbox-monitor-page-s96bfe9.sandbox-monitor-page-s96bfe9 { padding: 10px 12px; }
+.sandbox-monitor-page-sb7087d.sandbox-monitor-page-sb7087d.sandbox-monitor-page-sb7087d { padding: 10px 12px; min-width: 160px; }
+.sandbox-monitor-page-s543027.sandbox-monitor-page-s543027.sandbox-monitor-page-s543027 { background: var(--ds-surface, var(--ds-page)); border: 1px solid var(--ds-line, var(--ds-line-soft)); border-radius: 8px; overflow: hidden; }
+.sandbox-monitor-page-s20f44e.sandbox-monitor-page-s20f44e.sandbox-monitor-page-s20f44e { padding: 12px 16px; border-bottom: 1px solid var(--ds-line, var(--ds-line-soft)); display: flex; align-items: center; gap: 8px; }
+.sandbox-monitor-page-s0830bd.sandbox-monitor-page-s0830bd.sandbox-monitor-page-s0830bd { padding: 24px; text-align: center; }
+.sandbox-monitor-page-s966836.sandbox-monitor-page-s966836.sandbox-monitor-page-s966836 { padding: 8px 12px; }

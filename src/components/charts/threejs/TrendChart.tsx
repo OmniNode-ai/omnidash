@@ -18,6 +18,9 @@ import {
   StackedChart,
   type StackedSlice,
 } from '../../dashboard/cost-trend/StackedChart';
+import { localeDate as fmtLocaleDate, localeTime as fmtLocaleTime } from '@/theme/format';
+// OMN-23330 AC25: this file's fixed inline styles are classes in TrendChart.static.css.
+import './TrendChart.static.css';
 
 // ---------- Empty state ----------
 
@@ -47,19 +50,9 @@ function EmptyStateDisplay({ reason, emptyState }: EmptyStateDisplayProps) {
   const message = resolveEmptyMessage(reason, emptyState);
   const cta = emptyState?.reasons?.[reason]?.cta;
   return (
-    <div
+    <div className="trend-chart-scfcdcb"
       data-testid="trendchart-empty"
       data-empty-reason={reason}
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '24px 16px',
-        minHeight: 120,
-        textAlign: 'center',
-        gap: 8,
-      }}
     >
       <Text size="sm" color="tertiary">{message}</Text>
       {cta && (
@@ -165,13 +158,13 @@ function formatBucketTick(iso: string, granularity: TrendChartFieldMapping['gran
   const d = new Date(iso);
   if (isNaN(d.getTime())) return iso;
   if (granularity === 'week') {
-    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    return fmtLocaleDate(d, undefined, { month: 'short', day: 'numeric' });
   }
   if (granularity === 'day') {
-    return d.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' });
+    return fmtLocaleDate(d, undefined, { month: 'numeric', day: 'numeric' });
   }
   // hour
-  return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  return fmtLocaleTime(d, undefined, { hour: '2-digit', minute: '2-digit' });
 }
 
 export function TrendChart({

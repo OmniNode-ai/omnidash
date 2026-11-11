@@ -17,7 +17,12 @@ const RUN_TRACE = 'onex.snapshot.projection.run-trace.v1';
 // OMN-19920: and correlation-trace.v1 (the run's answer), which serves response_text and is tenant-scoped.
 const ANSWERS = 'onex.snapshot.projection.delegation.correlation-trace.v1';
 const ENVIRONMENT = 'onex.snapshot.projection.local-environment.v1';
-const SCOPED = new Set([DECISIONS, SAVINGS, OVERVIEW, CREDENTIALS, RUN_TRACE, ANSWERS, ENVIRONMENT]);
+// OMN-23330 AC1: Overview's cards and Daily trend read metering-summary.v1, and (OMN-21970 AC2) its activity charts
+// delegation.daily.v1; the lab serves both with a tenant_id column (served-catalogue.lab.json), as it does
+// local-environment.v1, so both are tenant-scoped here too.
+const METERING = 'onex.snapshot.projection.metering-summary.v1';
+const DAILY = 'onex.snapshot.projection.delegation.daily.v1';
+const SCOPED = new Set([DECISIONS, SAVINGS, OVERVIEW, CREDENTIALS, RUN_TRACE, ANSWERS, ENVIRONMENT, METERING, DAILY]);
 
 vi.mock('@/data-source/data-source-override', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/data-source/data-source-override')>()),
@@ -35,7 +40,7 @@ const projectionReads: string[] = [];
 
 function catalogue() {
   return {
-    topics: [DECISIONS, SAVINGS, OVERVIEW, CREDENTIALS, USAGE, RUN_TRACE, ANSWERS, ENVIRONMENT].map((topic) => ({
+    topics: [DECISIONS, SAVINGS, OVERVIEW, CREDENTIALS, USAGE, RUN_TRACE, ANSWERS, ENVIRONMENT, METERING, DAILY].map((topic) => ({
       topic,
       backing: 'bus',
       tenant_column: SCOPED.has(topic) ? 'tenant_id' : null,

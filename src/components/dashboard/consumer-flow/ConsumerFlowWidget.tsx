@@ -19,6 +19,9 @@ import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { Text, type TextColor } from '@/components/ui/typography';
+import { refreshInterval } from '@/theme/refresh';
+// OMN-23330 AC25: this file's fixed inline styles are classes in ConsumerFlowWidget.static.css.
+import './ConsumerFlowWidget.static.css';
 
 // Row shape mirrors the contract's projection_api.columns for
 // onex.snapshot.projection.consumer-flow.v1.
@@ -140,23 +143,21 @@ function FlowRow({ row }: { row: ConsumerFlowRow }) {
         alignItems: 'center',
       }}
     >
-      <Text
+      <Text className="consumer-flow-widget-s6d812f"
         as="span"
         size="xs"
         family="mono"
         color="primary"
         title={row.consumer_group}
-        style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
       >
         {row.consumer_group}
       </Text>
-      <Text
+      <Text className="consumer-flow-widget-s6d812f"
         as="span"
         size="xs"
         family="mono"
         color="secondary"
         title={row.topic}
-        style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
       >
         {row.topic}
       </Text>
@@ -204,7 +205,7 @@ export default function ConsumerFlowWidget(props: { config?: ConsumerFlowWidgetC
   const { data, isLoading, error } = useProjectionQuery<ConsumerFlowRow>({
     queryKey: ['consumer-flow', TOPICS.consumerFlow],
     topic: TOPICS.consumerFlow,
-    refetchInterval: 30_000,
+    refetchInterval: refreshInterval(),
   });
 
   const all = useMemo(() => latestWindowPerConsumer(data ?? []), [data]);
@@ -227,7 +228,7 @@ export default function ConsumerFlowWidget(props: { config?: ConsumerFlowWidgetC
       emptyHint="Rows appear once the runtime heartbeat carries per-consumer flow windows and node_projection_consumer_flow materializes them (epic OMN-16776 Phase 1)."
     >
       {!isEmpty && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="consumer-flow-widget-s355eed">
           <Text as="div" size="xs" color="tertiary" data-testid="consumer-flow-summary">
             {all.length} consumer{all.length === 1 ? '' : 's'} observed
             {hideIdle && idleCount > 0 ? ` (${idleCount} idle hidden)` : ''}

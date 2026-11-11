@@ -76,7 +76,7 @@ async function invariants(page: Page, label: string, opts: { twoColumns?: boolea
         sideways: document.documentElement.scrollWidth - document.documentElement.clientWidth,
         cutOff: [...chartPanels, ...cards].map(el => ({ name: el.querySelector('h2')?.textContent?.trim() ?? '', extra: el.scrollWidth - el.clientWidth })).filter(x => x.extra > 0),
         notFull: chartPanels.filter(el => el.getBoundingClientRect().width < inner - 2).map(el => Math.round(el.getBoundingClientRect().width) + ' of ' + Math.round(inner)),
-        labelOverlap: chartPanels.filter(el => overlaps([...el.querySelectorAll('.gdb-day-label')].filter(visible).map(x => x.getBoundingClientRect()))).map(el => el.querySelector('h2')?.textContent),
+        labelOverlap: chartPanels.filter(el => overlaps([...el.querySelectorAll('.ds-day-axis-label, .gdb-name-label')].filter(visible).map(x => x.getBoundingClientRect()))).map(el => el.querySelector('h2')?.textContent),
         nameOverlap: chartPanels.filter(el => overlaps([...el.querySelectorAll('.rb-name')].filter(visible).map(x => x.getBoundingClientRect()))).map(el => el.querySelector('h2')?.textContent),
         valueOut: chartPanels.flatMap(el => [...el.querySelectorAll('[data-ranked-item]')].flatMap(item => {
           const box = item.getBoundingClientRect();
@@ -279,13 +279,14 @@ test('E6 keyboard: focus walks the days, the readout follows, and clears when fo
   await days.last().focus();
   await page.keyboard.press('Tab');
   await expect(days.last()).not.toBeFocused();
-  await expect(readout).toHaveText('');
+  // OMN-23330 AC8: leaving the chart brings back the newest served day, never a blank readout.
+  await expect(readout).toHaveText(/ · \d+ runs?/);
   await expect(runsPanel(page).locator('.gdb-day[data-dim="true"]')).toHaveCount(0);
 });
 
 test('controls: the checks catch overlapping labels, a cut-off panel and NaN', async ({ page }) => {
   await open(page, { [decisionsTopic]: runs(300) });
-  await page.addStyleTag({ content: '.local-dashboard-page--overview .gdb-day-label { left: -40px !important; right: auto !important; transform: none !important; }' });
+  await page.addStyleTag({ content: '.local-dashboard-page--overview .ds-day-axis-label { left: -40px !important; right: auto !important; transform: none !important; }' });
   await page.evaluate(() => {
     const panel = document.querySelector('.local-overview-charts-panel .local-dashboard-tabpanel')!;
     const wide = document.createElement('div'); wide.style.width = '4000px'; wide.textContent = 'NaN'; panel.append(wide);

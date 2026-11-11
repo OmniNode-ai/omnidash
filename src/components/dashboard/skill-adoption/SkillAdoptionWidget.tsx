@@ -9,6 +9,9 @@ import {
   type SkillAdoptionRow,
   type SkillExecutionRow,
 } from '@/services/skill-adoption-service';
+import { refreshInterval } from '@/theme/refresh';
+// OMN-23330 AC25: this file's fixed inline styles are classes in SkillAdoptionWidget.static.css.
+import './SkillAdoptionWidget.static.css';
 
 // ── Config ────────────────────────────────────────────────────────────
 
@@ -35,22 +38,13 @@ function coverageColor(coverage: number): TextColor {
 
 function SkillRow({ row }: { row: SkillAdoptionRow }) {
   return (
-    <div
-      style={{
-        padding: '6px 0',
-        borderBottom: '1px solid var(--ds-line-soft)',
-        display: 'grid',
-        gridTemplateColumns: '1fr 70px 70px 130px 70px',
-        gap: 8,
-        alignItems: 'center',
-      }}
+    <div className="skill-adoption-widget-se34a59"
     >
-      <Text
+      <Text className="skill-adoption-widget-s6d812f"
         as="span"
         size="xs"
         family="mono"
         color="primary"
-        style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
       >
         {row.skill_name}
       </Text>
@@ -87,15 +81,7 @@ function HeaderRow() {
     </Text>
   );
   return (
-    <div
-      style={{
-        padding: '4px 0',
-        borderBottom: '1px solid var(--ds-line)',
-        display: 'grid',
-        gridTemplateColumns: '1fr 70px 70px 130px 70px',
-        gap: 8,
-        alignItems: 'center',
-      }}
+    <div className="skill-adoption-widget-s7d437f"
     >
       {cell('Skill')}
       {cell('Started')}
@@ -115,7 +101,7 @@ export default function SkillAdoptionWidget(props: { config: SkillAdoptionWidget
   const { data, isLoading, error } = useProjectionQuery<SkillExecutionRow>({
     queryKey: ['skill-executions', TOPICS.skillExecutions],
     topic: TOPICS.skillExecutions,
-    refetchInterval: 30_000,
+    refetchInterval: refreshInterval(),
   });
 
   const summary = useMemo(() => aggregateSkillAdoption(data ?? []), [data]);
@@ -134,16 +120,9 @@ export default function SkillAdoptionWidget(props: { config: SkillAdoptionWidget
       emptyHint="Rows appear once skills emit started/completed lifecycle events to the bus"
     >
       {!isEmpty && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="skill-adoption-widget-s930d87">
           {/* KPI row */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)',
-              gap: 12,
-              paddingBottom: 12,
-              borderBottom: '1px solid var(--ds-line)',
-            }}
+          <div className="skill-adoption-widget-s1e8560"
           >
             <KPI label="Started" value={summary.totalStarted} />
             <KPI label="Completed" value={summary.totalCompleted} />

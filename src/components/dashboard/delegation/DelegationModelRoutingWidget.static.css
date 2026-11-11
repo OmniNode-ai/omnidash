@@ -1,0 +1,21 @@
+/* OMN-23330 AC25: the fixed inline styles of DelegationModelRoutingWidget.tsx, moved into classes with nothing else changed. Each selector
+   repeats its class so it keeps the weight the inline style had over the stylesheet rules around it. */
+.delegation-model-routing-widget-s841bd1.delegation-model-routing-widget-s841bd1.delegation-model-routing-widget-s841bd1 { height: 6px; border-radius: 3px; background: var(--ds-surface-2); overflow: hidden; flex: 0 0 80px; }
+.delegation-model-routing-widget-s58c811.delegation-model-routing-widget-s58c811.delegation-model-routing-widget-s58c811 { margin-top: 4px; padding: 8px 10px; background: var(--ds-surface-2); border: 1px solid var(--ds-line-soft); border-radius: 6px; }
+.delegation-model-routing-widget-s4feedf.delegation-model-routing-widget-s4feedf.delegation-model-routing-widget-s4feedf { margin-bottom: 6px; }
+.delegation-model-routing-widget-s9aa2f8.delegation-model-routing-widget-s9aa2f8.delegation-model-routing-widget-s9aa2f8 { display: grid; grid-template-columns: 1fr 40px 80px 40px; gap: 8px; padding: 3px 0; align-items: center; }
+.delegation-model-routing-widget-s13cbe0.delegation-model-routing-widget-s13cbe0.delegation-model-routing-widget-s13cbe0 { text-align: right; }
+.delegation-model-routing-widget-sdf7e07.delegation-model-routing-widget-sdf7e07.delegation-model-routing-widget-sdf7e07 { display: flex; align-items: center; gap: 4px; }
+.delegation-model-routing-widget-s9ab908.delegation-model-routing-widget-s9ab908.delegation-model-routing-widget-s9ab908 { width: 32px; height: 4px; border-radius: 2px; background: var(--ds-surface-2); overflow: hidden; }
+.delegation-model-routing-widget-s17ee95.delegation-model-routing-widget-s17ee95.delegation-model-routing-widget-s17ee95 { margin-top: 12px; border-top: 1px solid var(--ds-line); padding-top: 10px; }
+.delegation-model-routing-widget-s7f3cba.delegation-model-routing-widget-s7f3cba.delegation-model-routing-widget-s7f3cba { margin-bottom: 8px; }
+.delegation-model-routing-widget-s90d64c.delegation-model-routing-widget-s90d64c.delegation-model-routing-widget-s90d64c { display: grid; grid-template-columns: 80px 1fr 1fr 72px; gap: 8px; padding-bottom: 4px; border-bottom: 1px solid var(--ds-line-soft); }
+.delegation-model-routing-widget-s0f43aa.delegation-model-routing-widget-s0f43aa.delegation-model-routing-widget-s0f43aa { display: grid; grid-template-columns: 80px 1fr 1fr 72px; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--ds-line-soft); align-items: center; }
+.delegation-model-routing-widget-s6d812f.delegation-model-routing-widget-s6d812f.delegation-model-routing-widget-s6d812f { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.delegation-model-routing-widget-s81e9a6.delegation-model-routing-widget-s81e9a6.delegation-model-routing-widget-s81e9a6 { margin-top: 6px; background: none; border: none; padding: 0; cursor: pointer; }
+.delegation-model-routing-widget-s30160b.delegation-model-routing-widget-s30160b.delegation-model-routing-widget-s30160b { display: flex; flex-direction: column; gap: 0; }
+.delegation-model-routing-widget-s0898f4.delegation-model-routing-widget-s0898f4.delegation-model-routing-widget-s0898f4 { display: grid; grid-template-columns: 1fr 44px 1fr 72px 60px 80px 36px; gap: 8px; padding-bottom: 4px; border-bottom: 1px solid var(--ds-line); }
+.delegation-model-routing-widget-s5f3741.delegation-model-routing-widget-s5f3741.delegation-model-routing-widget-s5f3741 { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.delegation-model-routing-widget-s4e75c6.delegation-model-routing-widget-s4e75c6.delegation-model-routing-widget-s4e75c6 { display: flex; gap: 4px; flex-wrap: wrap; overflow: hidden; }
+.delegation-model-routing-widget-sfb7313.delegation-model-routing-widget-sfb7313.delegation-model-routing-widget-sfb7313 { display: inline-block; padding: 1px 5px; border-radius: 3px; background: var(--ds-surface-2); border: 1px solid var(--ds-line-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90px; }
+.delegation-model-routing-widget-s9b2b6d.delegation-model-routing-widget-s9b2b6d.delegation-model-routing-widget-s9b2b6d { margin-top: 8px; display: block; }

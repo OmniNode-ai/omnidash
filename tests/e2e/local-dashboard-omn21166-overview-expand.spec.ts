@@ -1,5 +1,5 @@
 import { expect, test } from 'playwright/test';
-import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chartRows, prefix, serveCharts, meteringAll } from './omn21166-chart-fixtures';
 import { chooseChartTab } from './chart-tabs';
 
 // Part 24: the current page has visible info icons, a seven-model row chart, and no expand controls.
@@ -12,9 +12,9 @@ const names = [
 ];
 const rows = {
   ...chartRows,
-  [prefix + 'cost.savings-overview.v1']: [{ window: 'all', captured_at: '2026-10-26T10:00:00Z',
+  [prefix + 'metering-summary.v1']: [meteringAll({ window: 'all', captured_at: '2026-10-26T10:00:00Z',
     total_cost_usd: 0.23, total_savings_usd: 4.23, run_count: 657, measured_run_count: 655,
-    unknown_run_count: 2, estimated_run_count: 0, tokens_total: 963210 }],
+    unknown_run_count: 2, estimated_run_count: 0, tokens_total: 963210 })],
   [prefix + 'delegation.model-routing.v1']: [{
     total_delegations: 657,
     by_model: names.map((model_name, index) => ({ model_name, total_count: [583, 39, 24, 5, 3, 2, 1][index], pct_of_total: [0.887, 0.059, 0.037, 0.008, 0.005, 0.003, 0.002][index] })),
@@ -54,7 +54,8 @@ for (const [width, height] of [[1440, 900], [390, 844]] as const) {
     const plot = await model.locator('.rb-plot').evaluate(el => ({ display: getComputedStyle(el).display, scrollWidth: el.scrollWidth, clientWidth: el.clientWidth }));
     expect(plot.display).toBe('grid');
     if (width === 390) {
-      const modelScroll = await model.locator('.local-model-usage').evaluate(el => ({ content: el.scrollWidth, viewport: el.clientWidth }));
+      // OMN-23330 AC4: the plot scrolls in the chart kit's container, its scrollbar always drawn.
+      const modelScroll = await model.locator('.local-model-usage .ds-chart-scroll').evaluate(el => ({ content: el.scrollWidth, viewport: el.clientWidth }));
       expect(modelScroll.content).toBeGreaterThan(modelScroll.viewport);
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);

@@ -37,6 +37,7 @@ vi.mock('@/data-source/data-source-override', () => ({ resolveEffectiveDataSourc
 vi.mock('@/data-source/exposure-census', () => ({ fetchExposureCensus: async () => ({ rows: [] }) }));
 
 import { LastRunCard, LocalDashboardPage } from './LocalDashboardPage';
+import { pageStylesheet } from '@/tests/page-stylesheet';
 
 type PageName = 'overview' | 'usage';
 const ORDER: Record<PageName, Array<[title: string, width: number]>> = {
@@ -132,7 +133,7 @@ describe.each(['overview', 'usage'] as const)('OMN-21015: %s puts its charts fir
   });
 
   it('Y4: every declared width has a rule in the stylesheet', async () => {
-    const css = readFileSync('src/styles/local-dashboard.css', 'utf8');
+    const css = pageStylesheet('local-dashboard');
     const widths = [...new Set((await panels(pageName)).map(([, width]) => width))].filter((width) => width !== 12);
     for (const width of widths) {
       expect(`width ${width}: ${new RegExp(`\\.local-dashboard-panel\\[data-width='${width}'\\]\\s*\\{\\s*grid-column:\\s*span ${width};`).test(css)}`).toBe(`width ${width}: true`);
@@ -173,7 +174,7 @@ describe('OMN-22168: every Usage chart is one tab', () => {
 
 describe('OMN-21015: the wide run tables keep to what their panel holds', () => {
   it('Y6: the stylesheet cuts a run id at 7ch or less, and gives these tables no header letter spacing and a slim pill', () => {
-    const css = readFileSync('src/styles/local-dashboard.css', 'utf8');
+    const css = pageStylesheet('local-dashboard');
     const rule = (selector: string) => {
       const found = [...css.matchAll(/([^{}]+)\{([^}]*)\}/g)].filter(([, sel]) => sel!.replace(/\/\*[\s\S]*?\*\//g, '').trim() === selector).map(([, , body]) => body!);
       expect(`${selector}: ${found.length} rule(s)`).toBe(`${selector}: 1 rule(s)`);

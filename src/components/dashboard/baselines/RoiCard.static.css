@@ -1,0 +1,8 @@
+/* OMN-23330 AC25: the fixed inline styles of BaselinesROICard.tsx, moved into classes with nothing else changed. Each selector
+   repeats its class so it keeps the weight the inline style had over the stylesheet rules around it. */
+.baselines-roicard-s51a6fe.baselines-roicard-s51a6fe.baselines-roicard-s51a6fe { display: flex; flex-direction: column; gap: 0.125rem; }
+.baselines-roicard-s25d6a4.baselines-roicard-s25d6a4.baselines-roicard-s25d6a4 { display: flex; flex-direction: column; gap: 1rem; }
+.baselines-roicard-s64891b.baselines-roicard-s64891b.baselines-roicard-s64891b { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+.baselines-roicard-s2c9932.baselines-roicard-s2c9932.baselines-roicard-s2c9932 { border-top: 1px solid var(--ds-line); padding-top: 0.75rem; }
+.baselines-roicard-s1c09f0.baselines-roicard-s1c09f0.baselines-roicard-s1c09f0 { margin-bottom: 0.5rem; }
+.baselines-roicard-s366990.baselines-roicard-s366990.baselines-roicard-s366990 { display: flex; gap: 1rem; }

@@ -19,7 +19,8 @@ test('Usage savings chart has no range slider and keeps the selected day and exa
   // OMN-21166 part 13: the savings day table is under "Savings by day as a table".
   const before = await panel.getByRole('table').innerText();
   await chart.getByLabel('Inspect day', { exact: true }).selectOption('1');
-  await expect(chart.getByRole('status')).toContainText('2026-10-02');
+  // OMN-23330 AC10: Usage days read in the short form the other pages use.
+  await expect(chart.getByRole('status')).toContainText('Oct 2');
   await expect(chart.getByRole('status')).toContainText(/Savings: \$0\.03$/);
   await expect(chart.locator('input[type="range"]')).toHaveCount(0);
   await expect(chart.getByRole('button', { name: 'Reset view', exact: true })).toHaveCount(0);

@@ -1,5 +1,5 @@
-import { formatDashboardCount } from '@/lib/dashboard-count';
-import { formatDuration } from '@/components/format/duration';
+import { formatDashboardCount } from '@/theme/format';
+import { formatDuration } from '@/theme/format';
 /**
  * OMN-12943 — shared UI primitives for the ported event-dash views.
  *
@@ -22,25 +22,26 @@ import { TenantNotConfiguredState } from '../TenantNotConfiguredState';
 import { ConceptIcon, FieldIcon } from '../FieldIcon';
 import { fieldTone, isUnavailableField } from '../field-identity';
 import { useModelIdentityStyle } from '@/components/dashboard/model-tiers';
+import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/theme/format';
 
 // ── formatting helpers ───────────────────────────────────────────────────────
 
 export const fmtPct = (x: number | null | undefined): string =>
   x == null ? '—' : `${Math.round(x * 100)}%`;
 export const fmtPct1 = (x: number | null | undefined): string =>
-  x == null ? '—' : `${(x * 100).toFixed(1)}%`;
+  x == null ? '—' : `${fmtFixed((x * 100), 1)}%`;
 export const fmtMoney = (x: number | null | undefined): string =>
-  x == null ? '—' : `$${Number(x).toFixed(2)}`;
+  x == null ? '—' : `$${fmtFixed(Number(x), 2)}`;
 /** Four decimals, grouped like the dollar figures beside it (OMN-21166), with the sign before the currency. */
 export const fmtMoney4 = (x: number | null | undefined): string => {
   if (x == null) return '—';
   const amount = Number(x);
-  const text = Math.abs(amount).toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+  const text = fmtLocaleString(Math.abs(amount), 'en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
   return amount < 0 ? `-$${text}` : `$${text}`;
 };
 export const fmtTokens = (n: number | null | undefined): string => {
   if (n == null) return '—';
-  if (n >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}K`;
+  if (n >= 1000) return `${fmtFixed((n / 1000), n >= 10000 ? 0 : 1)}K`;
   return String(n);
 };
 // OMN-21166 AC55: the one duration formatter, so Evidence reads "23.5 s" as every local page does.
@@ -295,7 +296,9 @@ export function DataTable<T>({
   const colSize = (c: DataColumn<T>): string =>
     c.width ? c.width : c.grow ? 'minmax(0,2.6fr)' : c.num ? 'minmax(0,0.9fr)' : 'minmax(0,1fr)';
   const template = `26px ${columns.map(colSize).join(' ')}`;
-  const gridStyle: CSSProperties = { gridTemplateColumns: template };
+  // OMN-23330 AC30: the columns are a custom property the stylesheet reads, not an inline grid, so a narrow-screen rule
+  // can lay the row out as one column without !important (an inline grid beat every rule that was not important).
+  const gridStyle = { '--dt-columns': template } as CSSProperties;
   return (
     <div className={`dt${pageSize ? ' dt-paged' : ''}`}>
       <div className="dt-head" style={gridStyle}>

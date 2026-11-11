@@ -1,10 +1,11 @@
-import { formatUsd } from '@/lib/currency';
+import { formatUsd } from '@/theme/format';
+import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/theme/format';
 
 export function fmtDate(value: string | undefined): string {
   if (!value) return 'pending';
   const ts = Date.parse(value);
   if (Number.isNaN(ts)) return value;
-  return new Date(ts).toLocaleString(undefined, {
+  return fmtLocaleString(new Date(ts), undefined, {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
@@ -27,15 +28,15 @@ export function fmtPct(value: number | string | undefined): string {
 export function fmtTokens(value: number | string | undefined): string {
   const numeric = asNumber(value);
   if (numeric == null) return '-';
-  if (numeric >= 1_000_000) return `${(numeric / 1_000_000).toFixed(1)}M`;
-  if (numeric >= 1_000) return `${(numeric / 1_000).toFixed(1)}K`;
+  if (numeric >= 1_000_000) return `${fmtFixed((numeric / 1_000_000), 1)}M`;
+  if (numeric >= 1_000) return `${fmtFixed((numeric / 1_000), 1)}K`;
   return String(numeric);
 }
 
 export function fmtMs(value: number | string | undefined): string {
   const numeric = asNumber(value);
   if (numeric == null) return '-';
-  if (numeric >= 1_000) return `${(numeric / 1_000).toFixed(2)}s`;
+  if (numeric >= 1_000) return `${fmtFixed((numeric / 1_000), 2)}s`;
   return `${Math.round(numeric)}ms`;
 }
 

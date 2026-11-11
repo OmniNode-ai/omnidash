@@ -14,7 +14,8 @@ import { buildUserContext } from './agent/contextUtils';
 import { TEST_MANIFEST as manifest, createTestQueryClient } from './test-utils/integrationHelpers';
 
 vi.mock('page-agent', () => ({
-  PageAgent: vi.fn().mockImplementation(() => ({
+  // vitest 4: a mock called with `new` needs a function implementation, not an arrow (OMN-23330 AC17).
+  PageAgent: vi.fn().mockImplementation(function () { return {
     execute: vi.fn().mockResolvedValue({
       success: true,
       data: 'I have added cost-trend-panel to your dashboard.',
@@ -31,7 +32,7 @@ vi.mock('page-agent', () => ({
     }),
     dispose: vi.fn(),
     status: 'idle',
-  })),
+  }; }),
 }));
 
 describe('Proof of Life — Part 4 (Conversational Layer)', () => {

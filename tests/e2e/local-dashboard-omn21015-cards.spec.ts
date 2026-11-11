@@ -1,5 +1,5 @@
 import { expect, test } from 'playwright/test';
-import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chartRows, prefix, serveCharts, meteringAll } from './omn21166-chart-fixtures';
 
 test.use({ viewport: { width: 1440, height: 900 }, trace: 'on', reducedMotion: 'reduce' });
 // Failure modes: identical undifferentiated cards, iconless headings, lost controls/data,
@@ -10,10 +10,10 @@ test(`organized cards across all seven MVP pages in ${theme}`, async ({ page }, 
     await page.addInitScript(value => localStorage.setItem('omnidash.theme.v1', value), theme);
     // A return visit with no newer rows should not occupy a notification banner.
     await page.addInitScript(() => localStorage.setItem('omnidash.overview.last-visit', String(Date.UTC(2100, 0, 1))));
-    await serveCharts(page, { ...chartRows, [prefix + 'cost.savings-overview.v1']: [{
+    await serveCharts(page, { ...chartRows, [prefix + 'metering-summary.v1']: [meteringAll({
       window: 'all', captured_at: '2026-10-22T10:00:00Z', total_cost_usd: '3.5923', total_savings_usd: '1074.2157',
       run_count: 59188, tokens_total: 309271491, tokens_input: 300000001, tokens_output: 9271490,
-    }] });
+    })] });
     for (const path of ['/overview', '/runs', '/workflow?correlation_id=chart-run-a', '/usage', '/settings', '/delegation-evidence']) {
       await page.setViewportSize({ width: 1440, height: 900 });
       await page.goto(path);

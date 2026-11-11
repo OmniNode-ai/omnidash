@@ -1,0 +1,23 @@
+/* OMN-23330 AC25: the fixed inline styles of EvidencePipelineFlow.tsx, moved into classes with nothing else changed. Each selector
+   repeats its class so it keeps the weight the inline style had over the stylesheet rules around it. */
+.evidence-pipeline-flow-s9bf617.evidence-pipeline-flow-s9bf617.evidence-pipeline-flow-s9bf617 { border: 1px solid var(--ds-line); border-radius: 4px; padding: 2px 6px; background: var(--ds-surface-2); }
+.evidence-pipeline-flow-s987253.evidence-pipeline-flow-s987253.evidence-pipeline-flow-s987253 { border: 1px solid var(--ds-warn); border-radius: 6px; padding: 8px 10px; background: var(--ds-surface-2); }
+.evidence-pipeline-flow-s3088da.evidence-pipeline-flow-s3088da.evidence-pipeline-flow-s3088da { display: flex; align-items: center; gap: 8px; }
+.evidence-pipeline-flow-s464b28.evidence-pipeline-flow-s464b28.evidence-pipeline-flow-s464b28 { display: flex; flex-direction: column; gap: 10px; }
+.evidence-pipeline-flow-s930d87.evidence-pipeline-flow-s930d87.evidence-pipeline-flow-s930d87 { display: flex; flex-direction: column; gap: 12px; }
+.evidence-pipeline-flow-s355eed.evidence-pipeline-flow-s355eed.evidence-pipeline-flow-s355eed { display: flex; flex-direction: column; gap: 8px; }
+.evidence-pipeline-flow-s002b99.evidence-pipeline-flow-s002b99.evidence-pipeline-flow-s002b99 { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 8px; }
+.evidence-pipeline-flow-sf8c555.evidence-pipeline-flow-sf8c555.evidence-pipeline-flow-sf8c555 { border: 1px solid var(--ds-line); border-radius: 6px; padding: 10px; background: var(--ds-surface-2); }
+.evidence-pipeline-flow-sc71373.evidence-pipeline-flow-sc71373.evidence-pipeline-flow-sc71373 { margin-top: 4px; }
+.evidence-pipeline-flow-sefda42.evidence-pipeline-flow-sefda42.evidence-pipeline-flow-sefda42 { display: flex; align-items: center; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.evidence-pipeline-flow-s36ca0a.evidence-pipeline-flow-s36ca0a.evidence-pipeline-flow-s36ca0a { margin-top: 8px; }
+.evidence-pipeline-flow-s322450.evidence-pipeline-flow-s322450.evidence-pipeline-flow-s322450 { border: 1px solid var(--ds-line); border-radius: 6px; overflow: hidden; }
+.evidence-pipeline-flow-s905bf6.evidence-pipeline-flow-s905bf6.evidence-pipeline-flow-s905bf6 { display: grid; grid-template-columns: 72px minmax(120px, 1fr) 110px minmax(160px, 2fr); gap: 10px; padding: 8px 10px; border-bottom: 1px solid var(--ds-line-soft); align-items: center; }
+.evidence-pipeline-flow-s801160.evidence-pipeline-flow-s801160.evidence-pipeline-flow-s801160 { padding: 10px; }
+.evidence-pipeline-flow-scb6b1a.evidence-pipeline-flow-scb6b1a.evidence-pipeline-flow-scb6b1a { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 8px; }
+.evidence-pipeline-flow-s6d9e63.evidence-pipeline-flow-s6d9e63.evidence-pipeline-flow-s6d9e63 { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.evidence-pipeline-flow-s85c820.evidence-pipeline-flow-s85c820.evidence-pipeline-flow-s85c820 { border: 1px solid var(--ds-line); border-radius: 6px; padding: 8px 10px; background: var(--ds-surface); }
+.evidence-pipeline-flow-s872826.evidence-pipeline-flow-s872826.evidence-pipeline-flow-s872826 { border: 1px solid var(--ds-line); border-radius: 6px; overflow: hidden; max-height: 320px; overflow-y: auto; }
+.evidence-pipeline-flow-s78af44.evidence-pipeline-flow-s78af44.evidence-pipeline-flow-s78af44 { display: grid; grid-template-columns: 72px minmax(160px, 1fr) 100px minmax(180px, 2fr); gap: 10px; padding: 8px 10px; border-bottom: 1px solid var(--ds-line-soft); align-items: center; }
+.evidence-pipeline-flow-s3e5458.evidence-pipeline-flow-s3e5458.evidence-pipeline-flow-s3e5458 { display: inline-flex; align-items: center; gap: 8px; }
+.evidence-pipeline-flow-sb31902.evidence-pipeline-flow-sb31902.evidence-pipeline-flow-sb31902 { display: grid; gap: 18px; }

@@ -1,7 +1,7 @@
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Link } from 'wouter';
 
-import { formatDashboardUsd } from '@/lib/dashboard-currency';
+import { formatDashboardUsd } from '@/theme/format';
 import { ColumnTip, DashboardTabs, DashboardToggle, DataTable, EmptyState, InfoTip, Panel, PanelTitle } from '@/theme/design-system/components';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { tierLabel } from '@/pages/local/plain-text';
@@ -12,8 +12,9 @@ import {
   type Group, type GroupBy, type Totals, type TrendDay, type TrendSeriesBy,
 } from './decision-analysis';
 import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
-import { BarSparkline, CostQualityScatter, breakableName } from '@/theme/design-system/charts';
+import { BarSparkline, CostQualityScatter, DayAxis, breakableName } from '@/theme/design-system/charts';
 import { ChartLine, Gauge, Layers, LayoutGrid } from '@/theme/design-system/icons';
+import { fixed as fmtFixed, localeDate as fmtLocaleDate } from '@/theme/format';
 
 /**
  * OMN-21166 part 29 (revision 6) AC194 and AC195: Usage analysis, read from the latest N served decisions (Langfuse's
@@ -51,11 +52,11 @@ const toned = <T extends string>(value: T, label: string, concept: string) =>
   ({ value, label, tone: `var(--ds-field-${concept})`, icon: <ConceptIcon concept={concept} size={14} /> });
 type SortKey = 'name' | 'runs' | 'spend' | 'pass' | 'p50' | 'p95' | 'last';
 
-const dayLabel = (day: string) => new Date(`${day}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+const dayLabel = (day: string) => fmtLocaleDate(new Date(`${day}T00:00:00Z`), 'en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 // OMN-22168 (Jonah 2026-11-06): every dollar figure follows the display rule (two decimals, up to four under $1, cut).
 const usd = (value: number) => formatDashboardUsd(value);
-const latency = (value: number | null) => (value === null ? 'Not recorded' : value >= 1000 ? `${(value / 1000).toFixed(1)} s` : `${Math.round(value)} ms`);
-const passText = (totals: Totals) => (totals.verdicts === 0 ? 'No verdicts' : `${((totals.passed / totals.verdicts) * 100).toFixed(1)}% (${totals.passed} of ${totals.verdicts})`);
+const latency = (value: number | null) => (value === null ? 'Not recorded' : value >= 1000 ? `${fmtFixed((value / 1000), 1)} s` : `${Math.round(value)} ms`);
+const passText = (totals: Totals) => (totals.verdicts === 0 ? 'No verdicts' : `${fmtFixed(((totals.passed / totals.verdicts) * 100), 1)}% (${totals.passed} of ${totals.verdicts})`);
 const money = (value: number | null, measured: number, runs: number) => (value === null ? 'Not measured' : `${formatDashboardUsd(value)} (${measured} of ${runs} measured)`);
 const lastText = (value: string | null) => (value === null ? 'Not recorded'
   : `${dayLabel(value.slice(0, 10))}, ${new Date(value).toISOString().slice(11, 16)} UTC`);
@@ -166,7 +167,7 @@ const MATRIX_COLUMNS: ReadonlyArray<{ value: Extract<GroupBy, 'task' | 'tier'>; 
 function matrixFigure(totals: Totals, metric: MatrixMetric): [string, string] {
   switch (metric) {
     case 'pass': return totals.verdicts === 0 ? ['No verdicts', runCount(totals.runs)]
-      : [`${((totals.passed / totals.verdicts) * 100).toFixed(1)}%`, `${totals.passed} of ${totals.verdicts}`];
+      : [`${fmtFixed(((totals.passed / totals.verdicts) * 100), 1)}%`, `${totals.passed} of ${totals.verdicts}`];
     case 'p95': return [latency(totals.p95), `${totals.latencies} recorded`];
     case 'cost': return totals.spend === null ? ['Not measured', runCount(totals.runs)] : [usd(totals.spend / totals.spendMeasured), `${totals.spendMeasured} measured`];
     case 'runs': return [String(totals.runs), totals.verdicts === 0 ? 'no verdicts' : `${totals.passed} of ${totals.verdicts} passed`];
@@ -233,7 +234,7 @@ function trendLabel(day: TrendDay, metric: TrendMetric): string {
   if (day.state === 'no-runs') return `${date}: no runs`;
   const runs = `${day.runs} ${day.runs === 1 ? 'run' : 'runs'}`;
   if (metric === 'p95') return day.p95 === null ? `${date}: latency not recorded, ${runs}` : `${date}: p95 ${latency(day.p95)}, ${runs}`;
-  return day.state === 'no-verdicts' ? `${date}: no verdicts, ${runs}` : `${date}: ${((day.passed / day.verdicts) * 100).toFixed(1)}% passed (${day.passed} of ${day.verdicts}), ${runs}`;
+  return day.state === 'no-verdicts' ? `${date}: no verdicts, ${runs}` : `${date}: ${fmtFixed(((day.passed / day.verdicts) * 100), 1)}% passed (${day.passed} of ${day.verdicts}), ${runs}`;
 }
 
 /**
@@ -250,6 +251,8 @@ function QualityTrend({ decisionRows }: { decisionRows: readonly unknown[] }) {
   const height = (day: TrendDay): number | null => (metric === 'pass'
     ? (day.state === 'value' ? day.passed / day.verdicts : null) : (day.state === 'not-covered' || day.p95 === null ? null : day.p95 / peak));
   const days = series[0]?.days ?? [];
+  // OMN-23330 AC31: the day labels are the kit's DayAxis, under the first series' measured day columns (AC5).
+  const firstRow = useRef<HTMLOListElement>(null);
   return <figure className="local-chart usage-trend" data-quality-trend data-metric={metric} aria-label="Quality over time">
     <div className="local-dashboard-toggles">
       <DashboardToggle label="Trend metric" options={[toned('pass' as const, 'Pass rate', 'pass'), toned('p95' as const, 'p95 latency', 'duration-p95')]} value={metric} onChange={setMetric} />
@@ -259,12 +262,12 @@ function QualityTrend({ decisionRows }: { decisionRows: readonly unknown[] }) {
       ? 'Pass rate per UTC day over runs with a verdict; an outlined day is before the sample, a dashed one has runs but no verdicts.'
       : `p95 latency per UTC day from recorded latencies; the tallest bar is ${latency(peak)}.`}</figcaption>
     <div className="usage-trend-rows">
-      {series.map(line => <div key={line.name} className="usage-trend-row" data-series={line.name}
+      {series.map((line, lineIndex) => <div key={line.name} className="usage-trend-row" data-series={line.name}
         style={by === 'model' && line.filter && line.name !== NOT_RECORDED ? { '--model-color': modelColor(line.name) } as CSSProperties : undefined}>
         <span className="usage-trend-name" data-model-name={by === 'model' && line.filter && line.name !== NOT_RECORDED ? '' : undefined}
           data-semantic-concept={by === 'model' && line.filter && line.name !== NOT_RECORDED ? `model:${line.name}` : undefined}
           style={by === 'model' && line.filter && line.name !== NOT_RECORDED ? { '--model-color': modelColor(line.name) } as CSSProperties : undefined}>{line.name}</span>
-        <ol className="usage-trend-days" aria-label={`${line.name}, ${metric === 'pass' ? 'pass rate' : 'p95 latency'} per day`}>
+        <ol ref={lineIndex === 0 ? firstRow : undefined} className="usage-trend-days" aria-label={`${line.name}, ${metric === 'pass' ? 'pass rate' : 'p95 latency'} per day`}>
           {line.days.map(day => {
             const label = trendLabel(day, metric);
             const value = height(day);
@@ -283,10 +286,11 @@ function QualityTrend({ decisionRows }: { decisionRows: readonly unknown[] }) {
           })}
         </ol>
       </div>)}
-      <div className="usage-trend-row usage-trend-axis" aria-hidden="true">
+      <div className="usage-trend-row usage-trend-labels" aria-hidden="true">
         <span className="usage-trend-name" />
-        <ol className="usage-trend-days">{days.map((day, index) => <li key={day.day}>
-          <span className="usage-trend-date">{index % 2 === days.length % 2 ? '' : dayLabel(day.day)}</span></li>)}</ol>
+        {/* Every other day, ending on the last, as before; DayAxis keeps the ends inside and hides a label with no room. */}
+        <DayAxis days={days.map(day => day.day)} ticks={new Set(days.flatMap((_, index) => (index % 2 === days.length % 2 ? [] : [index])))}
+          columns={firstRow} format={dayLabel} />
       </div>
     </div>
     {by === 'model' && <TierLegend label="Quality over time tier colours" models={series.map(line => line.name)} />}
@@ -329,7 +333,7 @@ export function RunsTotals({ rows, sample, complete = false }: { rows: readonly 
   return <p className="local-dashboard-caption local-runs-totals" data-runs-totals aria-live="polite">
     <span data-total="runs">{`${totals.runs} ${totals.runs === 1 ? 'run' : 'runs'}`}</span>{' · '}
     <span data-total="spend">{totals.spend === null ? 'spend not measured' : `${formatDashboardUsd(totals.spend)} spend (${totals.spendMeasured} with a recorded cost)`}</span>{' · '}
-    <span data-total="pass">{totals.verdicts === 0 ? 'no verdicts' : `${((totals.passed / totals.verdicts) * 100).toFixed(1)}% passed (${totals.passed} of ${totals.verdicts})`}</span>{' · '}
+    <span data-total="pass">{totals.verdicts === 0 ? 'no verdicts' : `${fmtFixed(((totals.passed / totals.verdicts) * 100), 1)}% passed (${totals.passed} of ${totals.verdicts})`}</span>{' · '}
     <span data-total="p95">{totals.p95 === null ? 'p95 not recorded' : `p95 ${latency(totals.p95)}`}</span>{' · '}
     {/* "Measured" is Overview's word for runs with token counts and a cost; this counts runs with a recorded cost. */}
     <span className="local-runs-totals-scope">{`current filter · ${complete ? 'all' : 'latest'} ${sample} served runs`}</span>

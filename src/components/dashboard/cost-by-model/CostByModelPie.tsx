@@ -23,6 +23,10 @@ import { useThemeName } from '@/theme';
 import { useFrameStore } from '@/store/store';
 import { useTokenColors } from '@/theme/design-system/useTokenColors';
 import { colorToNumber, tokenNumber } from '@/theme/design-system/color';
+import { fixed as fmtFixed } from '@/theme/format';
+import { refreshInterval } from '@/theme/refresh';
+// OMN-23330 AC25: this file's fixed inline styles are classes in CostByModelPie.static.css.
+import './CostByModelPie.static.css';
 
 interface CostDataPoint {
   bucket_time: string;
@@ -440,26 +444,25 @@ export function ThreePieChart({ slices, chartColors, themeName }: ThreePieChartP
             zIndex: 1000,
           }}
         >
-          <Text
+          <Text className="cost-by-model-pie-scdbb71"
             as="div"
             size="sm"
             family="mono"
             color="secondary"
             weight="semibold"
-            style={{ marginBottom: 2 }}
           >
             {hoverInfo.model}
           </Text>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+          <div className="cost-by-model-pie-seafffa">
             <Text as="span" size="sm" family="mono" color="secondary">cost</Text>
             <Text as="span" size="sm" family="mono" tabularNums>
-              ${hoverInfo.cost.toFixed(4)}
+              ${fmtFixed(hoverInfo.cost, 4)}
             </Text>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+          <div className="cost-by-model-pie-seafffa">
             <Text as="span" size="sm" family="mono" color="secondary">share</Text>
             <Text as="span" size="sm" family="mono" weight="semibold" tabularNums>
-              {hoverInfo.percentage.toFixed(1)}%
+              {fmtFixed(hoverInfo.percentage, 1)}%
             </Text>
           </div>
         </div>
@@ -474,7 +477,7 @@ export default function CostByModelPie({ config: _config }: { config: Record<str
   const { data, isLoading, error } = useProjectionQuery<CostDataPoint>({
     topic: TOPICS.llmCost,
     queryKey: ['cost-by-model'],
-    refetchInterval: 60_000,
+    refetchInterval: refreshInterval(),
   });
 
   // Dashboard-level time range (supports_time_range: true).
@@ -521,32 +524,18 @@ export default function CostByModelPie({ config: _config }: { config: Record<str
       emptyHint="Cost data appears after LLM calls are tracked"
     >
       {hasAnyData && (
-        <div
-          style={{
-            display: 'flex',
-            gap: 16,
-            alignItems: 'stretch',
-            width: '100%',
-          }}
+        <div className="cost-by-model-pie-s20c727"
         >
           {/* Pie area. Shows the in-range-empty message as an overlay
               so the frame stays put. */}
-          <div style={{ flex: '1 1 auto', minWidth: 0, position: 'relative' }}>
+          <div className="cost-by-model-pie-sa33155">
             <ThreePieChart
               slices={slices}
               chartColors={colors.chart}
               themeName={themeName}
             />
             {inRangeEmpty && (
-              <div
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  pointerEvents: 'none',
-                }}
+              <div className="cost-by-model-pie-sacccc4"
               >
                 <Text size="lg" color="tertiary">
                   {rangeActive
@@ -558,37 +547,22 @@ export default function CostByModelPie({ config: _config }: { config: Record<str
           </div>
 
           {/* Legend — one row per model, sorted by share descending. */}
-          <div
-            style={{
-              flex: '0 0 180px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 4,
-              padding: '4px 2px',
-              minWidth: 0,
-            }}
+          <div className="cost-by-model-pie-s305b44"
           >
-            <Text
+            <Text className="cost-by-model-pie-s3eaa7b"
               as="div"
               size="xs"
               family="mono"
               color="tertiary"
               transform="uppercase"
-              style={{ marginBottom: 4 }}
             >
               Models
             </Text>
             {slices.map((s) => {
               const color = colors.chart[s.colorIdx % colors.chart.length];
               return (
-                <div
+                <div className="cost-by-model-pie-s4363d3"
                   key={s.model}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    padding: '3px 0',
-                  }}
                 >
                   <span
                     style={{
@@ -600,12 +574,11 @@ export default function CostByModelPie({ config: _config }: { config: Record<str
                       flexShrink: 0,
                     }}
                   />
-                  <Text
+                  <Text className="cost-by-model-pie-see3d55"
                     as="span"
                     size="sm"
                     family="mono"
                     truncate
-                    style={{ flex: 1 }}
                     title={s.model}
                   >
                     {s.model}
@@ -617,20 +590,13 @@ export default function CostByModelPie({ config: _config }: { config: Record<str
                     color="secondary"
                     tabularNums
                   >
-                    {s.percentage.toFixed(1)}%
+                    {fmtFixed(s.percentage, 1)}%
                   </Text>
                 </div>
               );
             })}
             {total > 0 && (
-              <div
-                style={{
-                  marginTop: 8,
-                  paddingTop: 6,
-                  borderTop: '1px solid var(--ds-line-soft)',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                }}
+              <div className="cost-by-model-pie-s7856ab"
               >
                 <Text as="span" size="sm" family="mono" color="secondary">
                   total
@@ -642,7 +608,7 @@ export default function CostByModelPie({ config: _config }: { config: Record<str
                   weight="semibold"
                   tabularNums
                 >
-                  ${total.toFixed(2)}
+                  ${fmtFixed(total, 2)}
                 </Text>
               </div>
             )}

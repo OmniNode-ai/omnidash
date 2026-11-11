@@ -1,3 +1,4 @@
+import { fixed as fmtFixed } from '@/theme/format';
 /* eslint-disable local/no-typography-inline -- OMN-10509 keeps prototype primitive layout while source-level typography compliance is enforced separately. */
 export interface PriceProps {
   value: number;
@@ -12,7 +13,7 @@ export function Price({ value, big = false }: PriceProps) {
   const free = value === 0;
   const formatted = free
     ? 'FREE'
-    : '$' + value.toFixed(value < 0.01 ? 4 : 3);
+    : '$' + fmtFixed(value, value < 0.01 ? 4 : 3);
 
   const color = free
     ? 'var(--ds-ok)'

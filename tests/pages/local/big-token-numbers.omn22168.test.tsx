@@ -54,8 +54,8 @@ describe('big token counts read short, exact on hover', () => {
   it('B3, B4: the in / out directions are short, the exact counts on hover and in their names', () => {
     const { container } = render(<TokenDirections input={3032528} output={1425061} />);
     expect([...container.querySelectorAll('.local-token-direction strong')].map(node => node.textContent)).toEqual(['3.03M', '1.42M']);
-    expect(screen.getByLabelText('Input tokens: 3,032,528').getAttribute('title')).toBe('Input tokens: 3,032,528');
-    expect(screen.getByLabelText('Output tokens: 1,425,061').getAttribute('title')).toBe('Output tokens: 1,425,061');
+    expect(screen.getByLabelText('Input tokens: 3.03M, exactly 3,032,528').getAttribute('title')).toBe('Input tokens: 3,032,528');
+    expect(screen.getByLabelText('Output tokens: 1.42M, exactly 1,425,061').getAttribute('title')).toBe('Output tokens: 1,425,061');
   });
 
   it('B5, B4: the Runs table and the recent runs show short counts with the exact count on hover', () => {

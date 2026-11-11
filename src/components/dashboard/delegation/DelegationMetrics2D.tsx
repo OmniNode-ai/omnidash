@@ -13,6 +13,10 @@ import type { DelegationSummary } from './DelegationMetrics3D';
 import { useDelegationRunContextOptional } from '@/components/dashboard/delegation-control-plane/DelegationRunContext';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 import { useTokenColors } from '@/theme/design-system/useTokenColors';
+import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/theme/format';
+import { refreshInterval } from '@/theme/refresh';
+// OMN-23330 AC25: this file's fixed inline styles are classes in DelegationMetrics2D.static.css.
+import './DelegationMetrics2D.static.css';
 
 // avgLatencyMs is not in every projection snapshot (the file-source
 // fixture omits it); treat it and the per-model breakdown as optional so
@@ -28,8 +32,8 @@ type Summary = Omit<DelegationSummary, 'byTaskType'> & {
 };
 
 function fmtMs(ms: number): string {
-  if (ms >= 1000) return `${(ms / 1000).toFixed(2)}s`;
-  return `${ms.toFixed(0)}ms`;
+  if (ms >= 1000) return `${fmtFixed((ms / 1000), 2)}s`;
+  return `${fmtFixed(ms, 0)}ms`;
 }
 
 // Model IDs arrive fully-qualified (e.g. "cyankiwi/Qwen3-Coder-30B-A3B").
@@ -60,18 +64,7 @@ function StatTile({
   sub?: string;
 }) {
   return (
-    <div
-      style={{
-        flex: '1 1 0',
-        minWidth: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 2,
-        padding: '8px 10px',
-        background: 'var(--ds-surface-2)',
-        border: '1px solid var(--ds-line-soft)',
-        borderRadius: 6,
-      }}
+    <div className="delegation-metrics2-d-sf79405"
     >
       <Text as="div" size="xs" family="mono" color="tertiary" transform="uppercase" truncate>
         {label}
@@ -95,7 +88,7 @@ function BreakdownRow({ seg, dimmed, onHover }: { seg: Segment; dimmed: boolean;
   return (
     <div
       onPointerEnter={onHover}
-      title={`${seg.fullLabel}: ${seg.count} (${seg.pct.toFixed(1)}%)`}
+      title={`${seg.fullLabel}: ${seg.count} (${fmtFixed(seg.pct, 1)}%)`}
       style={{
         display: 'grid',
         gridTemplateColumns: '1fr 2.5rem 2.75rem',
@@ -106,17 +99,11 @@ function BreakdownRow({ seg, dimmed, onHover }: { seg: Segment; dimmed: boolean;
         transition: 'opacity 120ms ease-out',
       }}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+      <div className="delegation-metrics2-d-sbb20bd">
         <Text as="div" size="sm" family="mono" color="primary" truncate>
           {seg.label}
         </Text>
-        <div
-          style={{
-            height: 4,
-            borderRadius: 2,
-            background: 'var(--ds-surface-2)',
-            overflow: 'hidden',
-          }}
+        <div className="delegation-metrics2-d-sb6f5d2"
         >
           <div
             style={{
@@ -129,11 +116,11 @@ function BreakdownRow({ seg, dimmed, onHover }: { seg: Segment; dimmed: boolean;
           />
         </div>
       </div>
-      <Text as="span" size="sm" family="mono" color="secondary" tabularNums style={{ textAlign: 'right' }}>
+      <Text className="delegation-metrics2-d-s13cbe0" as="span" size="sm" family="mono" color="secondary" tabularNums>
         {seg.count}
       </Text>
-      <Text as="span" size="sm" family="mono" color="secondary" tabularNums style={{ textAlign: 'right' }}>
-        {seg.pct.toFixed(0)}%
+      <Text className="delegation-metrics2-d-s13cbe0" as="span" size="sm" family="mono" color="secondary" tabularNums>
+        {fmtFixed(seg.pct, 0)}%
       </Text>
     </div>
   );
@@ -151,7 +138,7 @@ export default function DelegationMetrics2D({ config }: { config: Record<string,
   const { data: dataArr, isLoading: queryLoading, error: queryError } = useProjectionQuery<Summary>({
     topic: TOPICS.delegationSummary,
     queryKey: ['delegation-summary'],
-    refetchInterval: 60_000,
+    refetchInterval: refreshInterval(),
     enabled: !runCtx,
   });
 
@@ -213,10 +200,10 @@ export default function DelegationMetrics2D({ config }: { config: Record<string,
       fileMode={!isLiveDataSource(dataSourceMode)}
     >
       {data && !isEmpty && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
+        <div className="delegation-metrics2-d-s658dc5">
           {/* KPI header row */}
-          <div style={{ display: 'flex', gap: 8 }}>
-            <StatTile label="Delegations" value={data.totalDelegations.toLocaleString()} />
+          <div className="delegation-metrics2-d-s693434">
+            <StatTile label="Delegations" value={fmtLocaleString(data.totalDelegations)} />
             {showQualityGates && (
               <StatTile
                 label="Local Success"
@@ -226,13 +213,13 @@ export default function DelegationMetrics2D({ config }: { config: Record<string,
               />
             )}
             {data.avgLatencyMs != null && <StatTile label="Avg Latency" value={fmtMs(data.avgLatencyMs)} />}
-            {showSavings && <StatTile label="Savings" value={`$${data.totalSavingsUsd.toFixed(2)}`} />}
+            {showSavings && <StatTile label="Savings" value={`$${fmtFixed(data.totalSavingsUsd, 2)}`} />}
           </div>
 
           {/* Model distribution — stacked bar + legend (replaces donut) */}
           {modelSegments.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <div className="delegation-metrics2-d-s9808a2">
+              <div className="delegation-metrics2-d-sbcda9e">
                 <Text as="span" size="xs" family="mono" color="tertiary" transform="uppercase">
                   Model Distribution
                 </Text>
@@ -240,21 +227,13 @@ export default function DelegationMetrics2D({ config }: { config: Record<string,
                   {modelSegments.length} {modelSegments.length === 1 ? 'model' : 'models'}
                 </Text>
               </div>
-              <div
+              <div className="delegation-metrics2-d-sa327ad"
                 onPointerLeave={() => setHoverModel(null)}
-                style={{
-                  display: 'flex',
-                  height: 14,
-                  borderRadius: 4,
-                  overflow: 'hidden',
-                  border: '1px solid var(--ds-line-soft)',
-                  background: 'var(--ds-surface-2)',
-                }}
               >
                 {modelSegments.map((seg, i) => (
                   <div
                     key={seg.fullLabel}
-                    title={`${seg.fullLabel}: ${seg.count} (${seg.pct.toFixed(1)}%)`}
+                    title={`${seg.fullLabel}: ${seg.count} (${fmtFixed(seg.pct, 1)}%)`}
                     onPointerEnter={() => setHoverModel(i)}
                     style={{
                       width: `${seg.pct}%`,
@@ -266,7 +245,7 @@ export default function DelegationMetrics2D({ config }: { config: Record<string,
                   />
                 ))}
               </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 14px' }}>
+              <div className="delegation-metrics2-d-s3eee60">
                 {modelSegments.map((seg, i) => (
                   <div
                     key={`${seg.fullLabel}-legend`}
@@ -287,11 +266,11 @@ export default function DelegationMetrics2D({ config }: { config: Record<string,
                       aria-hidden
                       style={{ width: 9, height: 9, borderRadius: 2, background: seg.color, flex: '0 0 auto' }}
                     />
-                    <Text as="span" size="sm" family="mono" color="primary" truncate style={{ maxWidth: 150 }}>
+                    <Text className="delegation-metrics2-d-sa4a90c" as="span" size="sm" family="mono" color="primary" truncate>
                       {seg.label}
                     </Text>
                     <Text as="span" size="sm" family="mono" color="secondary" tabularNums>
-                      {seg.pct.toFixed(0)}%
+                      {fmtFixed(seg.pct, 0)}%
                     </Text>
                   </div>
                 ))}
@@ -301,11 +280,11 @@ export default function DelegationMetrics2D({ config }: { config: Record<string,
 
           {/* Task-type breakdown — labelled mini-bars */}
           {taskSegments.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div className="delegation-metrics2-d-s9808a2">
               <Text as="span" size="xs" family="mono" color="tertiary" transform="uppercase">
                 Task Types
               </Text>
-              <div onPointerLeave={() => setHoverTask(null)} style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              <div className="delegation-metrics2-d-sd8963c" onPointerLeave={() => setHoverTask(null)}>
                 {taskSegments.map((seg) => (
                   <BreakdownRow
                     key={seg.fullLabel}
@@ -320,8 +299,8 @@ export default function DelegationMetrics2D({ config }: { config: Record<string,
 
           {/* Local vs escalated ratio bar */}
           {showQualityGates && passed != null && gateTotal != null && gateTotal > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <div className="delegation-metrics2-d-s9808a2">
+              <div className="delegation-metrics2-d-sbcda9e">
                 <Text as="span" size="xs" family="mono" color="tertiary" transform="uppercase">
                   Local vs Escalated
                 </Text>
@@ -329,15 +308,7 @@ export default function DelegationMetrics2D({ config }: { config: Record<string,
                   {passed} local{failed != null ? ` · ${failed} escalated` : ''}
                 </Text>
               </div>
-              <div
-                style={{
-                  display: 'flex',
-                  height: 10,
-                  borderRadius: 4,
-                  overflow: 'hidden',
-                  border: '1px solid var(--ds-line-soft)',
-                  background: 'var(--ds-surface-2)',
-                }}
+              <div className="delegation-metrics2-d-s35516d"
               >
                 <div
                   title={`${passed} handled locally`}

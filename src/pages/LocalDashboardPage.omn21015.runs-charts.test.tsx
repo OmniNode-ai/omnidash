@@ -168,7 +168,8 @@ describe('OMN-21015: the Runs page draws the runs it lists', () => {
   it('R8: the tooltip names the run, its status and model, and writes the served text', () => {
     open([decision('eeeeeeee-0000-4000-8000-000000000005', 50, { latency_ms: '0813', tokens_input: '0162', tokens_output: 52 })]);
     const duration = chart('Duration per run').option.tooltip.formatter([{ dataIndex: 0, seriesIndex: 0, marker: '' }]);
-    expect(duration).toBe('eeeeeeee-0000-4000-8000-000000000005<br/>passed · model-a<br/>Duration: 0813 ms');
+    // OMN-23330 AC9 supersedes the served text here: the exact figure is the whole millisecond, grouped (served "0813").
+    expect(duration).toBe('eeeeeeee-0000-4000-8000-000000000005<br/>passed · model-a<br/>Duration: 813 ms');
     const both = chart('Tokens per run').option.tooltip.formatter([{ dataIndex: 0, seriesIndex: 0, marker: '', seriesName: 'Tokens in' }, { dataIndex: 0, seriesIndex: 1, marker: '', seriesName: 'Tokens out' }]);
     expect(both).toBe('eeeeeeee-0000-4000-8000-000000000005<br/>passed · model-a<br/>Tokens in: 162<br/>Tokens out: 52');
   });

@@ -9,8 +9,11 @@ const SAVINGS = 'onex.snapshot.projection.delegation.savings.v1';
 const DAILY = 'onex.snapshot.projection.delegation.daily.v1';
 // OMN-19980 Amendment 2: Overview's Spend, Savings, Measured runs and Tokens read this exposure's all-time row.
 const METERING = 'onex.snapshot.projection.metering-summary.v1';
-const OVERVIEW = 'onex.snapshot.projection.cost.savings-overview.v1';
-const OVERVIEW_ALL_ROW = { window: 'all', captured_at: '2026-10-02T10:07:00Z', total_cost_usd: '0.006860', total_savings_usd: '1.218400', measured_run_count: 45, tokens_total: 9844 };
+// OMN-23330 AC1/AC2 (Lakshman 2026-11-10, "All on metering"): Overview's headline exposure is metering-summary.v1.
+const HEADLINE = METERING;
+const HEADLINE_ALL_ROW = { window_kind: 'all', window_start: '', as_of: '2026-10-02T10:07:00Z', baseline_model: 'claude-sonnet-5-5',
+  pricing_manifest_version: '1.0.0', baseline_state: 'resolved', spend_usd: '0.006860', savings_usd: '1.218400',
+  runs_total: 45, runs_measured: 45, runs_unknown_tokens: 0, runs_unknown_spend: 0, tokens_in: 7000, tokens_out: 2844 };
 const CREDENTIALS = 'onex.snapshot.projection.tenant-credentials.v1';
 const USAGE = 'onex.snapshot.projection.usage-by-model-day.v1';
 const RUN_TRACE = 'onex.snapshot.projection.run-trace.v1';
@@ -115,7 +118,7 @@ describe('LocalDashboardPage widget states (F26, F27)', () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'setTimeout', 'clearTimeout', 'Date'] });
     vi.setSystemTime(new Date('2026-10-02T10:12:00Z'));
     harness.reads = [];
-    harness.answer = (topic) => Promise.resolve(topic === DECISIONS ? [decisionRow('run-1')] : topic === SAVINGS ? [{ sessions: [] }] : [OVERVIEW_ALL_ROW]);
+    harness.answer = (topic) => Promise.resolve(topic === DECISIONS ? [decisionRow('run-1')] : topic === SAVINGS ? [{ sessions: [] }] : [HEADLINE_ALL_ROW]);
   });
   afterEach(() => { vi.useRealTimers(); });
 
@@ -126,7 +129,7 @@ describe('LocalDashboardPage widget states (F26, F27)', () => {
     render(<LocalDashboardPage pageName="overview" />);
     await settle();
     const spend = screen.getByRole('heading', { name: 'Actual spend' }).closest('article')!;
-    expect(within(spend).getByText('Not available yet: savings summary.')).toBeInTheDocument();
+    expect(within(spend).getByText('Not available yet: usage summary.')).toBeInTheDocument();
     // OMN-21166 live review 2026-10-25: Last run left Overview; Runs per day reads the served decisions instead.
     const runsPerDay = screen.getByRole('heading', { name: 'Runs per day' }).closest('article')!;
     expect(within(runsPerDay).queryByText(/Not available yet/)).toBeNull();
@@ -158,12 +161,12 @@ describe('LocalDashboardPage widget states (F26, F27)', () => {
     expect(within(runs).queryByRole('alert')).not.toBeInTheDocument();
   });
 
-  // OMN-19980 Amendment 2: no Overview panel binds one topic twice any more (Measured runs' second binding on
-  // cost.savings-overview.v1 is gone); four panels now share metering-summary.v1, each with its own one status.
+  // OMN-19980 Amendment 2: no Overview panel binds one topic twice; the four headline panels share metering-summary.v1,
+  // each with its own one status.
   it('a topic bound by several panels renders one failure status per panel, with no duplicate React key', async () => {
-    harness.reachable = new Set([DECISIONS, SAVINGS, OVERVIEW]);
-    harness.answer = (topic) => topic === OVERVIEW
-      ? Promise.reject(new Error(`Projection ${OVERVIEW} failed: HTTP 503 Service Unavailable`))
+    harness.reachable = new Set([DECISIONS, SAVINGS, HEADLINE]);
+    harness.answer = (topic) => topic === HEADLINE
+      ? Promise.reject(new Error(`Projection ${HEADLINE} failed: HTTP 503 Service Unavailable`))
       : Promise.resolve(topic === DECISIONS ? [decisionRow('run-1')] : [{ sessions: [] }]);
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     try {
@@ -181,9 +184,9 @@ describe('LocalDashboardPage widget states (F26, F27)', () => {
   });
 
   it('a read error shows the exposure and the HTTP status, not a bare message', async () => {
-    harness.reachable = new Set([DECISIONS, SAVINGS, OVERVIEW]);
-    harness.answer = (topic) => topic === OVERVIEW
-      ? Promise.reject(new Error(`Projection ${OVERVIEW} failed: HTTP 503 Service Unavailable`))
+    harness.reachable = new Set([DECISIONS, SAVINGS, HEADLINE]);
+    harness.answer = (topic) => topic === HEADLINE
+      ? Promise.reject(new Error(`Projection ${HEADLINE} failed: HTTP 503 Service Unavailable`))
       : Promise.resolve(topic === DECISIONS ? [decisionRow('run-1')] : [{ sessions: [] }]);
     render(<LocalDashboardPage pageName="overview" />);
     await settle();
@@ -192,8 +195,8 @@ describe('LocalDashboardPage widget states (F26, F27)', () => {
   });
 
   it('a read that never answers becomes a typed timeout after 5 s', async () => {
-    harness.reachable = new Set([DECISIONS, SAVINGS, OVERVIEW]);
-    harness.answer = (topic) => topic === OVERVIEW ? new Promise(() => {}) : Promise.resolve(topic === DECISIONS ? [decisionRow('run-1')] : [{ sessions: [] }]);
+    harness.reachable = new Set([DECISIONS, SAVINGS, HEADLINE]);
+    harness.answer = (topic) => topic === HEADLINE ? new Promise(() => {}) : Promise.resolve(topic === DECISIONS ? [decisionRow('run-1')] : [{ sessions: [] }]);
     render(<LocalDashboardPage pageName="overview" />);
     await act(async () => { await vi.advanceTimersByTimeAsync(5_000); });
     const spend = screen.getByRole('heading', { name: 'Actual spend' }).closest('article')!;
@@ -201,11 +204,11 @@ describe('LocalDashboardPage widget states (F26, F27)', () => {
   });
 
   it('keeps the last good figure after a later read fails, and says when it was good', async () => {
-    harness.reachable = new Set([DECISIONS, SAVINGS, OVERVIEW]);
+    harness.reachable = new Set([DECISIONS, SAVINGS, HEADLINE]);
     render(<LocalDashboardPage pageName="overview" />);
     await settle();
-    harness.answer = (topic) => topic === OVERVIEW
-      ? Promise.reject(new Error(`Projection ${OVERVIEW} failed: HTTP 503 Service Unavailable`))
+    harness.answer = (topic) => topic === HEADLINE
+      ? Promise.reject(new Error(`Projection ${HEADLINE} failed: HTTP 503 Service Unavailable`))
       : Promise.resolve(topic === DECISIONS ? [decisionRow('run-1')] : [{ sessions: [] }]);
     await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
     const spend = screen.getByRole('heading', { name: 'Actual spend' }).closest('article')!;
@@ -279,7 +282,8 @@ describe('Partial pages (FR-3, CR-2, CR-3, AK-3, F24)', () => {
     const row = screen.getByRole('row', { name: /Qwen3.8-27B/ });
     // OMN-21166, OMN-22168: token counts read short by the dashboard count rule (1620 reads 1.62K); the value is the
     // served one.
-    for (const value of ['2026-10-02', '1.62K', '520', '10']) expect(within(row).getByText(value)).toBeInTheDocument();
+    // OMN-23330 AC10: the day reads in the short form ("Oct 2"), the served day kept as the cell's title.
+    for (const value of ['Oct 2', '1.62K', '520', '10']) expect(within(row).getByText(value)).toBeInTheDocument();
     // OMN-22168 (Lakshman 2026-11-05): a measured zero is the short "$0" titled with the served "$0.00"; no unmeasured
     // calls is a quiet dash titled so.
     expect(within(row).getByTitle('$0.00')).toHaveTextContent('$0');
@@ -301,8 +305,9 @@ describe('Partial pages (FR-3, CR-2, CR-3, AK-3, F24)', () => {
     await settle();
     const panel = screen.getByRole('heading', { name: 'Savings per day' }).closest('article')!;
     const table = within(panel).getByRole('table', { name: 'Savings per day vs claude-sonnet-5-5' });
-    for (const [start, savings, runs] of [['2026-10-01', '$0.50', '20'], ['2026-10-02', '$0.7184', '26']]) {
-      const row = within(table).getByRole('row', { name: new RegExp(start) });
+    // OMN-23330 AC10: each day reads in the short form ("Oct 1").
+    for (const [start, savings, runs] of [['Oct 1', '$0.50', '20'], ['Oct 2', '$0.7184', '26']]) {
+      const row = within(table).getByRole('row', { name: new RegExp(`^${start}\\b`) });
       for (const value of [start, savings, runs]) expect(within(row).getByText(value)).toBeInTheDocument();
     }
     // The all row is the Overview headline (OV-3): served to this panel too, but never rendered as a day.
@@ -379,10 +384,11 @@ describe('Partial pages (FR-3, CR-2, CR-3, AK-3, F24)', () => {
     render(<LocalDashboardPage pageName="credentials" />);
     await settle();
     // Part 18 AC128: with GET /models unreachable here, the served key is still listed on its own (Provider key
-    // references); an in-use key has no Revoked column.
+    // references); an in-use key has no Revoked column. OMN-23330 AC3: no "could not be read" notice sits above it.
     const row = screen.getByRole('row', { name: /OPENROUTER_API_KEY/ });
     expect(within(row).getByText('OpenRouter')).toBeInTheDocument(); // one case for provider names (part 18 review)
     expect(within(row).queryByText('Not revoked')).not.toBeInTheDocument();
+    expect(screen.queryByText('Model providers could not be read')).not.toBeInTheDocument();
     expect(screen.queryByText('sk-planted')).not.toBeInTheDocument();
   });
 });

@@ -1,0 +1,23 @@
+/* OMN-23330 AC25: the fixed inline styles of VoiceSessionPage.tsx, moved into classes with nothing else changed. Each selector
+   repeats its class so it keeps the weight the inline style had over the stylesheet rules around it. */
+.voice-session-page-s5b00cd.voice-session-page-s5b00cd.voice-session-page-s5b00cd { position: relative; height: 48px; background: var(--ds-surface-2, var(--ds-surface)); border-radius: 6px; overflow: hidden; }
+.voice-session-page-s0830bd.voice-session-page-s0830bd.voice-session-page-s0830bd { padding: 24px; text-align: center; }
+.voice-session-page-s96ad66.voice-session-page-s96ad66.voice-session-page-s96ad66 { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; }
+.voice-session-page-s7c94dd.voice-session-page-s7c94dd.voice-session-page-s7c94dd { color: var(--ds-status-ok); }
+.voice-session-page-s4f4bdb.voice-session-page-s4f4bdb.voice-session-page-s4f4bdb { color: var(--ds-warn); }
+.voice-session-page-s4624c7.voice-session-page-s4624c7.voice-session-page-s4624c7 { margin-bottom: 4px; display: block; }
+.voice-session-page-s636ba8.voice-session-page-s636ba8.voice-session-page-s636ba8 { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+.voice-session-page-sb6e62f.voice-session-page-sb6e62f.voice-session-page-sb6e62f { gap: 12px; }
+.voice-session-page-sea0c4d.voice-session-page-sea0c4d.voice-session-page-sea0c4d { padding: 24px 28px; overflow-y: auto; }
+.voice-session-page-sd418a0.voice-session-page-sd418a0.voice-session-page-sd418a0 { display: grid; grid-template-columns: 260px 1fr; gap: 20px; }
+.voice-session-page-s543027.voice-session-page-s543027.voice-session-page-s543027 { background: var(--ds-surface, var(--ds-page)); border: 1px solid var(--ds-line, var(--ds-line-soft)); border-radius: 8px; overflow: hidden; }
+.voice-session-page-safb590.voice-session-page-safb590.voice-session-page-safb590 { padding: 10px 14px; border-bottom: 1px solid var(--ds-line, var(--ds-line-soft)); }
+.voice-session-page-s672d71.voice-session-page-s672d71.voice-session-page-s672d71 { padding: 20px; text-align: center; }
+.voice-session-page-s204b18.voice-session-page-s204b18.voice-session-page-s204b18 { display: flex; align-items: center; justify-content: space-between; }
+.voice-session-page-s8ef476.voice-session-page-s8ef476.voice-session-page-s8ef476 { display: flex; flex-direction: column; gap: 16px; }
+.voice-session-page-sfe0e02.voice-session-page-sfe0e02.voice-session-page-sfe0e02 { background: var(--ds-surface, var(--ds-page)); border: 1px solid var(--ds-line, var(--ds-line-soft)); border-radius: 8px; padding: 40px; text-align: center; }
+.voice-session-page-s457570.voice-session-page-s457570.voice-session-page-s457570 { background: var(--ds-surface, var(--ds-page)); border: 1px solid var(--ds-line, var(--ds-line-soft)); border-radius: 8px; padding: 14px 18px; display: flex; gap: 24px; flex-wrap: wrap; }
+.voice-session-page-sac883a.voice-session-page-sac883a.voice-session-page-sac883a { background: var(--ds-surface, var(--ds-page)); border: 1px solid var(--ds-line, var(--ds-line-soft)); border-radius: 8px; padding: 14px 18px; }
+.voice-session-page-sbc65cd.voice-session-page-sbc65cd.voice-session-page-sbc65cd { margin-bottom: 10px; display: flex; align-items: center; gap: 12px; }
+.voice-session-page-s0728b3.voice-session-page-s0728b3.voice-session-page-s0728b3 { background: var(--ds-surface, var(--ds-page)); border: 1px solid var(--ds-line, var(--ds-line-soft)); border-radius: 8px; overflow: hidden; max-height: 520px; overflow-y: auto; }
+.voice-session-page-s866c04.voice-session-page-s866c04.voice-session-page-s866c04 { padding: 10px 14px; border-bottom: 1px solid var(--ds-line, var(--ds-line-soft)); position: sticky; top: 0; background: var(--ds-surface, var(--ds-page)); }

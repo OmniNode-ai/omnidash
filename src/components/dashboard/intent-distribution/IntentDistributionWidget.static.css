@@ -1,0 +1,9 @@
+/* OMN-23330 AC25: the fixed inline styles of IntentDistributionWidget.tsx, moved into classes with nothing else changed. Each selector
+   repeats its class so it keeps the weight the inline style had over the stylesheet rules around it. */
+.intent-distribution-widget-s9808a2.intent-distribution-widget-s9808a2.intent-distribution-widget-s9808a2 { display: flex; flex-direction: column; gap: 6px; }
+.intent-distribution-widget-s3088da.intent-distribution-widget-s3088da.intent-distribution-widget-s3088da { display: flex; align-items: center; gap: 8px; }
+.intent-distribution-widget-s2f671a.intent-distribution-widget-s2f671a.intent-distribution-widget-s2f671a { width: 120px; flex-shrink: 0; }
+.intent-distribution-widget-sc331ff.intent-distribution-widget-sc331ff.intent-distribution-widget-sc331ff { color: var(--ds-ink-2); }
+.intent-distribution-widget-s472dc9.intent-distribution-widget-s472dc9.intent-distribution-widget-s472dc9 { flex: 1; height: 22px; background: var(--ds-inset); border-radius: 4px; overflow: hidden; position: relative; }
+.intent-distribution-widget-sfa8c3a.intent-distribution-widget-sfa8c3a.intent-distribution-widget-sfa8c3a { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; padding-left: 6px; }
+.intent-distribution-widget-sc074c2.intent-distribution-widget-sc074c2.intent-distribution-widget-sc074c2 { width: 48px; text-align: right; flex-shrink: 0; }

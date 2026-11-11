@@ -85,6 +85,7 @@
 .dash-col-item {
   min-width: 0;
   height: 100%;
+  grid-column: var(--dash-col, auto); /* OMN-23330 AC30: set by DashboardView, overridden by the narrow layout */
 }
 
 /* Paired dashboard widgets share a grid row. Stretch both cards to the row's
@@ -107,7 +108,9 @@
   }
   .dash-col-item {
     width: 100%;
-    grid-column: 1 !important;
+  }
+  .dash-col-item:not(#ds-important) {
+    grid-column: 1;
   }
 }
 

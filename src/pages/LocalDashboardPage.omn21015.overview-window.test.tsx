@@ -1,14 +1,16 @@
 // @vitest-environment jsdom
-// D1 confirmed2026-10-20: legacy Overview all-time totals; Today explicitly unavailable.
-// Preserve all-time restoration, conflicting metering days, UTC boundary, newest-row and tie controls.
-// Secondary metering metrics stay on Overview under the D2 disclosure.
+// OMN-23330 AC1/AC2 (Lakshman 2026-11-10, "All on metering"): Overview's headline reads metering-summary.v1 again, so
+// Today reads today's served day row, as it did before the 2026-10-20 D1 aggregate source made it unavailable. The
+// old aggregate is still served here with conflicting figures: no window may show them. Kept controls: no browser sum
+// of day rows, the UTC boundary, another day's late refresh, the newest row and baseline ties.
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const METERING = 'onex.snapshot.projection.metering-summary.v1';
 const OVERVIEW = 'onex.snapshot.projection.cost.savings-overview.v1';
-const LEGACY_ALL = { window: 'all', captured_at: '2026-10-09T12:00:00Z', total_cost_usd: '12.3000', total_savings_usd: '2.992000', run_count: 23, measured_run_count: 23, tokens_total: 6134 };
-const DAILY_UNAVAILABLE = 'Not measured: daily totals unavailable (UTC)';
+const DECISIONS = 'onex.snapshot.projection.delegation.decisions.v1';
+/** The retired aggregate, served with figures no Overview card may show. */
+const LEGACY_ALL = { window: 'all', captured_at: '2026-10-09T12:00:00Z', total_cost_usd: '55.5000', total_savings_usd: '9.900000', run_count: 99, measured_run_count: 99, tokens_total: 9999 };
 
 const harness = vi.hoisted(() => ({
   reachable: new Set<string>(),
@@ -62,8 +64,9 @@ const TODAY_ROW = {
 };
 
 async function open(pageName: 'overview' | 'usage', rows: unknown[], totals: unknown[] = [LEGACY_ALL]): Promise<void> {
-  harness.reachable = new Set([METERING, OVERVIEW]);
-  harness.answer = (topic) => Promise.resolve(topic === OVERVIEW ? totals : topic === METERING ? rows : []);
+  harness.reachable = new Set([METERING, OVERVIEW, DECISIONS]);
+  harness.answer = (topic) => Promise.resolve(topic === OVERVIEW ? totals : topic === METERING ? rows
+    : topic === DECISIONS ? [{ correlation_id: 'c-1', created_at: '2026-10-09T11:00:00Z' }] : []);
   render(<LocalDashboardPage pageName={pageName} />);
   await act(async () => { await vi.advanceTimersByTimeAsync(0); });
 }
@@ -99,21 +102,22 @@ describe('OMN-21015 AC7: the Overview tiles switch between today (UTC) and all t
     expect(figure('Agent calls')).toBe('23');
   });
 
-  it('W1, W2: Today is unavailable even if metering serves daily measurements', async () => {
+  it("W1, W2: today shows today's served row, not a sum of rows and not the old aggregate", async () => {
     await open('overview', [ALL_ROW, YESTERDAY_ROW, TODAY_ROW]);
     chooseWindow('today');
-    expect(figure('Actual spend')).toBe(DAILY_UNAVAILABLE);
-    expect(figure('Agent calls')).toBe(DAILY_UNAVAILABLE);
-    expect(figure('Tokens processed')).toBe(DAILY_UNAVAILABLE);
-    expect(figure('Savings')).toBe(DAILY_UNAVAILABLE);
+    expect(figure('Actual spend')).toBe('$0.70');
+    expect(figure('Agent calls')).toBe('3');
+    expect(figure('Tokens processed')).toBe('834');
+    expect(figure('Savings')).toBe('$1.20');
   });
 
   // OMN-21166 live review 2026-10-25: the secondary metrics left Overview ("delete them"); the four headline cards
-  // are its metering cards, and all time shows each one's all-time figure.
+  // are its metering cards, and all time shows each one's all-time figure, never the old aggregate's.
   it('W6: the headline cards all read all time together', async () => {
     await open('overview', [ALL_ROW, YESTERDAY_ROW, TODAY_ROW]);
     expect(screen.queryByText('Additional runtime metrics')).toBeNull();
-    expect(figure('Actual spend')).toBe('$12.30');
+    expect(['Actual spend', 'Savings', 'Agent calls', 'Tokens processed'].map(figure)).toEqual(['$12.30', '$2.99', '23', '6.13K']);
+    expect(document.body.textContent).not.toMatch(/55\.50|9\.90|9\.99K/);
   });
 
   it('W7: all time comes back when chosen again', async () => {
@@ -123,38 +127,39 @@ describe('OMN-21015 AC7: the Overview tiles switch between today (UTC) and all t
     expect(figure('Actual spend')).toBe('$12.30');
   });
 
-  it("W3: a day with no runs says so, and shows neither 0 nor yesterday's figures", async () => {
+  // Lakshman 2026-10-25: a chosen day with no served row is a day with no runs. It reads as zero, never yesterday's.
+  it("W3: a day with no runs reads as no runs, never yesterday's figures", async () => {
     await open('overview', [ALL_ROW, YESTERDAY_ROW]);
     chooseWindow('today');
-    for (const title of ['Actual spend', 'Savings', 'Agent calls', 'Tokens processed']) {
-      expect(figure(title)).toBe(DAILY_UNAVAILABLE);
-    }
+    expect(figure('Actual spend')).toBe('$0.00');
+    expect(figure('Agent calls')).toBe('0');
+    for (const title of ['Actual spend', 'Savings', 'Agent calls', 'Tokens processed']) expect(figure(title)).not.toMatch(/10\.00|^20$|5\.3K/);
   });
 
-  it('W4: Today stays unavailable across the UTC date boundary', async () => {
+  it('W4: today is the UTC date, also in the first minutes after UTC midnight', async () => {
     vi.setSystemTime(new Date('2026-10-09T00:04:00Z'));
     await open('overview', [ALL_ROW, YESTERDAY_ROW, TODAY_ROW]);
     chooseWindow('today');
-    expect(figure('Actual spend')).toBe(DAILY_UNAVAILABLE);
+    expect(figure('Actual spend')).toBe('$0.70');
   });
 
   it("W3: another day's row is never today's, even when it was refreshed later", async () => {
     const refreshedLate = { ...YESTERDAY_ROW, as_of: '2026-10-09T12:04:00Z' };
     await open('overview', [ALL_ROW, refreshedLate, TODAY_ROW]);
     chooseWindow('today');
-    expect(figure('Actual spend')).toBe(DAILY_UNAVAILABLE);
-    expect(figure('Agent calls')).toBe(DAILY_UNAVAILABLE);
+    expect(figure('Actual spend')).toBe('$0.70');
+    expect(figure('Agent calls')).toBe('3');
   });
 
-  it('W5: latest legacy captured_at selects All time independently of metering baselines', async () => {
-    await open('overview', [ALL_ROW, TODAY_ROW], [{ ...LEGACY_ALL, captured_at: '2026-10-09T09:00:00Z', total_savings_usd: '9.9000' }, LEGACY_ALL]);
+  it('W5: the newest all-time row is All time, whatever the served order', async () => {
+    await open('overview', [{ ...ALL_ROW, as_of: '2026-10-09T09:00:00Z', savings_usd: 9.9 }, ALL_ROW, TODAY_ROW]);
     expect(figure('Savings')).toBe('$2.99');
-    chooseWindow('today'); expect(figure('Savings')).toBe(DAILY_UNAVAILABLE);
+    chooseWindow('today'); expect(figure('Savings')).toBe('$1.20');
     chooseWindow('all'); expect(figure('Savings')).toBe('$2.99');
   });
-  it('W5: tied newest legacy timestamps are refused on every card', async () => {
-    await open('overview', [ALL_ROW, TODAY_ROW], [{ ...LEGACY_ALL, total_savings_usd: '9.9000' }, LEGACY_ALL]);
-    for (const title of ['Actual spend', 'Agent calls', 'Tokens processed', 'Savings']) expect(figure(title)).toBe('Not measured: ambiguous overview totals');
+  it('W5: two baselines refreshed at the same moment are refused by name on every card', async () => {
+    await open('overview', [{ ...ALL_ROW, baseline_model: 'claude-opus-4-6', savings_usd: 9.9 }, ALL_ROW, TODAY_ROW]);
+    for (const title of ['Actual spend', 'Agent calls', 'Tokens processed', 'Savings']) expect(figure(title)).toBe('Not measured: 2 baseline models');
   });
 
   it('W8: the Usage page offers no such switch', async () => {

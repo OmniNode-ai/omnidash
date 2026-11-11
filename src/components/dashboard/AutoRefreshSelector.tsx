@@ -24,19 +24,19 @@ import {
 } from '@/components/ui/positioned-menu';
 import { Text } from '@/components/ui/typography';
 import { useFrameStore } from '@/store/store';
+import { VIEWER_REFRESH_CHOICES } from '@/theme/refresh';
+// OMN-23330 AC25: this file's fixed inline styles are classes in AutoRefreshSelector.static.css.
+import './AutoRefreshSelector.static.css';
 
 interface IntervalPreset {
   label: string;
   value: number | null; // ms, or null for off
 }
 
+// OMN-23330 AC21: the choices come from the one refresh setting's module, which declares why two sit under it.
 const PRESETS: IntervalPreset[] = [
   { label: 'Off', value: null },
-  { label: '5s', value: 5_000 },
-  { label: '10s', value: 10_000 },
-  { label: '30s', value: 30_000 },
-  { label: '1m', value: 60_000 },
-  { label: '5m', value: 5 * 60_000 },
+  ...VIEWER_REFRESH_CHOICES.map(({ label, ms }) => ({ label, value: ms })),
 ];
 
 // OMN-17188 (CodeQL #13 js/unneeded-defensive-code): the `interval === null`
@@ -119,18 +119,17 @@ export function AutoRefreshSelector() {
     <>
       <button
         type="button"
-        className="btn ghost"
+        className="btn ghost auto-refresh-selector-s23b34f"
         onClick={menu.open}
         aria-label="Auto-refresh"
         aria-haspopup="menu"
         aria-expanded={menu.isOpen}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
       >
         <RefreshCw size={14} />
         <Text size="md" family="mono" color={isActive ? 'ok' : 'secondary'}>
           {label}
         </Text>
-        <ChevronDown size={12} style={{ opacity: 0.7 }} />
+        <ChevronDown className="auto-refresh-selector-sf91366" size={12} />
       </button>
       {menu.isOpen && (
         <PositionedMenu

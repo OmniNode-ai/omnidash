@@ -23,6 +23,9 @@ import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { Text, type TextColor } from '@/components/ui/typography';
+import { refreshInterval } from '@/theme/refresh';
+// OMN-23330 AC25: this file's fixed inline styles are classes in SessionReplayWidget.static.css.
+import './SessionReplayWidget.static.css';
 
 // Row shape mirrors the contract's projection_api.columns for
 // onex.snapshot.projection.session.replay.v1, in declaration order.
@@ -131,13 +134,12 @@ function SnapshotRow({ row }: { row: SessionReplayRow }) {
         alignItems: 'center',
       }}
     >
-      <Text
+      <Text className="session-replay-widget-s6d812f"
         as="span"
         size="xs"
         family="mono"
         color="primary"
         title={row.session_id}
-        style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
       >
         {row.session_id}
       </Text>
@@ -153,13 +155,12 @@ function SnapshotRow({ row }: { row: SessionReplayRow }) {
       >
         {row.event_type}
       </Text>
-      <Text
+      <Text className="session-replay-widget-s6d812f"
         as="span"
         size="xs"
         family="mono"
         color="secondary"
         title={row.node_name ?? ''}
-        style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
       >
         {row.node_name ?? ''}
       </Text>
@@ -183,7 +184,7 @@ export default function SessionReplayWidget(props: { config?: SessionReplayWidge
   const { data, isLoading, error } = useProjectionQuery<SessionReplayRow>({
     queryKey: ['session-replay-widget', TOPICS.sessionReplay],
     topic: TOPICS.sessionReplay,
-    refetchInterval: 30_000,
+    refetchInterval: refreshInterval(),
   });
 
   const ordered = useMemo(() => newestFirst(data ?? []), [data]);
@@ -205,7 +206,7 @@ export default function SessionReplayWidget(props: { config?: SessionReplayWidge
       emptyHint="Rows appear once session lifecycle events reach node_projection_session_replay and it republishes each materialized row onto the snapshot topic (OMN-17774)."
     >
       {!isEmpty && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="session-replay-widget-s355eed">
           <Text as="div" size="xs" color="tertiary" data-testid="session-replay-summary">
             {ordered.length} snapshot{ordered.length === 1 ? '' : 's'} across {sessionCount} session
             {sessionCount === 1 ? '' : 's'}

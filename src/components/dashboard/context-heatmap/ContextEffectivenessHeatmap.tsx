@@ -4,6 +4,9 @@ import { Text } from '@/components/ui/typography';
 import { useContextHeatmap } from './useContextHeatmap';
 import { classifyCell } from './context-heatmap.types';
 import type { HeatmapCell, ContextHeatmapConfig, HeatmapSignal } from './context-heatmap.types';
+import { localeString as fmtLocaleString } from '@/theme/format';
+// OMN-23330 AC25: this file's fixed inline styles are classes in ContextEffectivenessHeatmap.static.css.
+import './ContextEffectivenessHeatmap.static.css';
 
 // ── Color helpers ────────────────────────────────────────────────────────────
 
@@ -47,17 +50,7 @@ function MatrixCell({
 }) {
   if (cell == null) {
     return (
-      <div
-        style={{
-          width: 72,
-          height: 52,
-          border: '1px solid var(--ds-line-soft)',
-          borderRadius: 6,
-          background: 'var(--ds-surface)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
+      <div className="context-effectiveness-heatmap-s4c7d68"
       >
         <Text as="span" size="xs" color="tertiary">—</Text>
       </div>
@@ -109,9 +102,9 @@ function ExamplesPanel({ cell, segmentLabel }: { cell: HeatmapCell; segmentLabel
   const signal = classifyCell(cell);
   const tokenDeltaStr = cell.tokenDelta != null
     ? cell.tokenDelta > 0
-      ? `saved ${Math.round(cell.tokenDelta).toLocaleString()} tokens avg`
+      ? `saved ${fmtLocaleString(Math.round(cell.tokenDelta))} tokens avg`
       : cell.tokenDelta < 0
-      ? `added ${Math.round(-cell.tokenDelta).toLocaleString()} tokens avg`
+      ? `added ${fmtLocaleString(Math.round(-cell.tokenDelta))} tokens avg`
       : 'no token impact'
     : null;
 
@@ -141,7 +134,7 @@ function ExamplesPanel({ cell, segmentLabel }: { cell: HeatmapCell; segmentLabel
         gap: 8,
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+      <div className="context-effectiveness-heatmap-s2833f2">
         <Text as="div" size="sm" weight="semibold" color={signalTextColor(signal)}>
           {segmentLabel} × {cell.modelId}
         </Text>
@@ -159,7 +152,7 @@ function ExamplesPanel({ cell, segmentLabel }: { cell: HeatmapCell; segmentLabel
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+      <div className="context-effectiveness-heatmap-sa97c72">
         <div>
           <Text as="div" size="xs" color="tertiary">Pass rate</Text>
           <Text as="div" size="xs" color="secondary">
@@ -169,7 +162,7 @@ function ExamplesPanel({ cell, segmentLabel }: { cell: HeatmapCell; segmentLabel
         <div>
           <Text as="div" size="xs" color="tertiary">Avg tokens</Text>
           <Text as="div" size="xs" color="secondary">
-            {avgTokens.toLocaleString()}
+            {fmtLocaleString(avgTokens)}
           </Text>
         </div>
         {cell.tokenDelta != null && (
@@ -180,14 +173,14 @@ function ExamplesPanel({ cell, segmentLabel }: { cell: HeatmapCell; segmentLabel
               size="xs"
               color={cell.tokenDelta > 0 ? 'ok' : cell.tokenDelta < 0 ? 'bad' : 'secondary'}
             >
-              {cell.tokenDelta > 0 ? '−' : '+'}{Math.abs(Math.round(cell.tokenDelta)).toLocaleString()}
+              {cell.tokenDelta > 0 ? '−' : '+'}{fmtLocaleString(Math.abs(Math.round(cell.tokenDelta)))}
             </Text>
           </div>
         )}
       </div>
 
       {exampleLines.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <div className="context-effectiveness-heatmap-s5c5eae">
           {exampleLines.map((line, i) => (
             <Text key={i} as="div" size="xs" color="secondary">
               {line}
@@ -208,9 +201,9 @@ function Legend() {
     { signal: 'harmful', label: 'Harmful', detail: '≤25% pass rate' },
   ];
   return (
-    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+    <div className="context-effectiveness-heatmap-sb7f7d3">
       {items.map(({ signal, label, detail }) => (
-        <div key={signal} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+        <div className="context-effectiveness-heatmap-s3e64da" key={signal}>
           <div
             style={{
               width: 12,
@@ -273,21 +266,21 @@ export default function ContextEffectivenessHeatmap({ config: _config = {} }: { 
       // honest error (`projectionUrl()` throws) rather than fabricated data.
       isLive
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div className="context-effectiveness-heatmap-sb0831f">
 
         {/* Legend */}
         <Legend />
 
         {/* Matrix */}
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ borderCollapse: 'separate', borderSpacing: 4 }}>
+        <div className="context-effectiveness-heatmap-s42d445">
+          <table className="context-effectiveness-heatmap-sa8c150">
             <thead>
               <tr>
-                <th style={{ padding: '4px 8px', textAlign: 'left', minWidth: 140 }}>
+                <th className="context-effectiveness-heatmap-sde3068">
                   <Text as="span" size="xs" color="tertiary">Segment</Text>
                 </th>
                 {snapshot.models.map((model) => (
-                  <th key={model} style={{ padding: '4px 6px', textAlign: 'center' }}>
+                  <th className="context-effectiveness-heatmap-sb799cd" key={model}>
                     <Text as="span" size="xs" color="secondary">{model}</Text>
                   </th>
                 ))}
@@ -296,7 +289,7 @@ export default function ContextEffectivenessHeatmap({ config: _config = {} }: { 
             <tbody>
               {snapshot.segments.map((seg) => (
                 <tr key={seg.id}>
-                  <td style={{ padding: '4px 8px', verticalAlign: 'middle' }}>
+                  <td className="context-effectiveness-heatmap-sb91b02">
                     <div>
                       <Text as="div" size="xs" weight="semibold" color="primary">{seg.label}</Text>
                       <Text as="div" size="xs" color="tertiary">{seg.description}</Text>
@@ -308,7 +301,7 @@ export default function ContextEffectivenessHeatmap({ config: _config = {} }: { 
                     ) ?? null;
                     const key = `${seg.id}::${model}`;
                     return (
-                      <td key={model} style={{ padding: '4px 6px', textAlign: 'center', verticalAlign: 'middle' }}>
+                      <td className="context-effectiveness-heatmap-s677be1" key={model}>
                         <MatrixCell
                           cell={cell}
                           isSelected={selectedCellKey === key}
@@ -327,13 +320,7 @@ export default function ContextEffectivenessHeatmap({ config: _config = {} }: { 
         {selectedCell != null ? (
           <ExamplesPanel cell={selectedCell} segmentLabel={selectedSegmentLabel} />
         ) : (
-          <div
-            style={{
-              padding: '10px 12px',
-              borderRadius: 6,
-              border: '1px solid var(--ds-line-soft)',
-              background: 'var(--ds-surface)',
-            }}
+          <div className="context-effectiveness-heatmap-s105cc1"
           >
             <Text as="div" size="xs" color="tertiary">
               Click a cell to see specific examples and token impact for that segment × model combination.

@@ -4,7 +4,8 @@ import { usePageAgent } from './usePageAgent';
 
 // Mock page-agent to avoid DOM and LLM dependency in unit tests
 vi.mock('page-agent', () => ({
-  PageAgent: vi.fn().mockImplementation(() => ({
+  // vitest 4: a mock called with `new` needs a function implementation, not an arrow (OMN-23330 AC17).
+  PageAgent: vi.fn().mockImplementation(function () { return {
     execute: vi.fn().mockResolvedValue({
       success: true,
       data: 'Adding cost-trend-panel to your dashboard.',
@@ -17,7 +18,7 @@ vi.mock('page-agent', () => ({
     }),
     dispose: vi.fn(),
     status: 'idle',
-  })),
+  }; }),
 }));
 
 // AGENT_ACTIONS and zod are imported at module level — real implementations used in tests

@@ -288,43 +288,48 @@ describe('local pages against the captured lab catalogue', () => {
     }
   });
 
-  it('Overview restores the four totals from the populated legacy aggregate (Lakshman 2026-10-19)', () => {
+  // OMN-23330 AC1/AC2 (Lakshman 2026-11-10, "All on metering"): the four cards read metering-summary.v1's all-time row,
+  // the row Usage and Delegation Evidence read, retiring the 2026-10-19 restore of the legacy aggregate.
+  it('Overview reads its four totals from metering-summary.v1, the one source every page\'s headline reads', () => {
     const page = readPage('overview');
-    const expected = { 'overview-spend':'total_cost_usd', 'overview-savings':'total_savings_usd', 'overview-measured':'run_count', 'overview-tokens':'tokens_total' };
-    for (const [id, field] of Object.entries(expected)) {
+    const expected: Record<string, { metric: string; fields: string[] }> = {
+      'overview-spend': { metric: 'spend_usd', fields: ['spend_usd'] },
+      'overview-savings': { metric: 'savings_usd', fields: ['savings_usd'] },
+      'overview-measured': { metric: 'runs_measured', fields: ['runs_measured', 'runs_total'] },
+      'overview-tokens': { metric: 'tokens_in_and_out', fields: ['tokens_in', 'tokens_out'] },
+    };
+    for (const [id, { metric, fields }] of Object.entries(expected)) {
       const component = page.components.find(c => c.component_id === id);
-      expect(component?.data_bindings).toEqual([{
-        binding_id:id+'-legacy', projection_topic:'onex.snapshot.projection.cost.savings-overview.v1',
-        ordering_authority_field:'captured_at', ordering_direction:'descending', required_fields:['window','captured_at',field],
-      }]);
+      expect(component?.data_bindings).toEqual([expect.objectContaining({
+        binding_id: `${id}-metering`, projection_topic: 'onex.snapshot.projection.metering-summary.v1',
+        ordering_authority_field: 'as_of', ordering_direction: 'descending',
+        required_fields: expect.arrayContaining(['window_kind', 'as_of', ...fields]),
+      })]);
       const config = page.dashboard.widgets.find(w=>w.data_source===id)?.config as {metric_key:string};
-      expect(config.metric_key).toBe(field);
+      expect(config.metric_key).toBe(metric);
     }
     expect(page.dashboard.widgets.filter(w => (w.config as Record<string, unknown>).config_kind === 'metric_card').map(w => (w.config as Record<string, unknown>).metric_key)).toEqual([
-      // OMN-21166 AC37: Agent calls is every call (run_count); the measured count is its labelled breakdown.
-      'total_cost_usd', 'total_savings_usd', 'run_count', 'tokens_total',
+      'spend_usd', 'savings_usd', 'runs_measured', 'tokens_in_and_out',
     ]);
     // OMN-21166 live review 2026-10-25: Lakshman deleted the secondary metrics, Spend per day, Last run, Recent runs and
     // Environment from Overview (Environment is Settings' System status section, part 26 revision 2). Overview declares
-    // its cards, quality, the activity charts' decisions and the tier mix; the cards switch to metering-summary.v1 at
-    // run time (OMN-19980).
+    // its cards, quality, the activity charts' decisions and the tier mix.
     // OMN-21970 AC2: the activity charts also bind the served per-day totals, delegation.daily.v1, now that the lab
     // serves it (the binding was held back 2026-11-03 until omnibase_infra#5585 and omnimarket#5253 landed).
     // OMN-22168 (Lakshman 2026-11-04): the status line reads local-environment.v1 and the daily trend metering-summary.v1.
     expect(new Set(page.components.flatMap(c=>(c.data_bindings??[]).map(b=>b.projection_topic)))).toEqual(new Set([
-      'onex.snapshot.projection.cost.savings-overview.v1', 'onex.snapshot.projection.delegation.decisions.v1',
+      'onex.snapshot.projection.delegation.decisions.v1',
       'onex.snapshot.projection.delegation.quality-gate.v1', 'onex.snapshot.projection.delegation.model-routing.v1',
       'onex.snapshot.projection.delegation.daily.v1',
       'onex.snapshot.projection.local-environment.v1', 'onex.snapshot.projection.metering-summary.v1',
     ]));
   });
 
-  it('Overview reads the served legacy token total directly, without inventing an input/output split', () => {
+  it('Overview\'s tokens card asks for both directions, so the total it shows is in plus out of one row', () => {
     const page = readPage('overview');
     const tokens = page.components.find(c=>c.component_id==='overview-tokens');
-    expect(tokens?.data_bindings?.[0]?.required_fields).toEqual(['window','captured_at','tokens_total']);
-    expect(tokens?.data_bindings?.[0]?.required_fields).not.toContain('tokens_in');
-    expect(tokens?.data_bindings?.[0]?.required_fields).not.toContain('tokens_out');
+    expect(tokens?.data_bindings?.[0]?.required_fields).toEqual(expect.arrayContaining(['tokens_in', 'tokens_out']));
+    expect(tokens?.data_bindings?.[0]?.required_fields).not.toContain('tokens_total');
   });
 
   it('Overview never reads local_token_pct, a literal 0 the view does not measure', () => {

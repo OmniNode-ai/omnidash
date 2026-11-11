@@ -14,6 +14,9 @@ import type {
   EvalSignal,
   InstructionEvalConfig,
 } from './instruction-eval.types';
+import { localeString as fmtLocaleString } from '@/theme/format';
+// OMN-23330 AC25: this file's fixed inline styles are classes in InstructionEvalHeatmap.static.css.
+import './InstructionEvalHeatmap.static.css';
 
 // ── Color helpers (shared vocabulary with ContextEffectivenessHeatmap) ─────────
 
@@ -100,7 +103,7 @@ function PassRateCell({ result }: { result: EvalResult | undefined }) {
   return (
     <td style={cellTd}>
       <div
-        title={`${result.model} · ${fmtTask(result.task)} · ${CONTEXT_MODE_LABELS[result.context_mode]}\n${pct}% pass · ${Math.round(result.output_tokens).toLocaleString()} out tokens · ${result.runs} runs`}
+        title={`${result.model} · ${fmtTask(result.task)} · ${CONTEXT_MODE_LABELS[result.context_mode]}\n${pct}% pass · ${fmtLocaleString(Math.round(result.output_tokens))} out tokens · ${result.runs} runs`}
         style={{
           ...cellBox,
           border: `1px solid ${signalBorder(signal)}`,
@@ -111,7 +114,7 @@ function PassRateCell({ result }: { result: EvalResult | undefined }) {
           {pct}%
         </Text>
         <Text as="span" size="xs" color="tertiary">
-          {Math.round(result.output_tokens).toLocaleString()}t
+          {fmtLocaleString(Math.round(result.output_tokens))}t
         </Text>
       </div>
     </td>
@@ -156,9 +159,9 @@ function Legend() {
     { signal: 'harmful', label: 'Fail', detail: '≤25%' },
   ];
   return (
-    <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center' }}>
+    <div className="instruction-eval-heatmap-s76cf35">
       {items.map(({ signal, label, detail }) => (
-        <div key={signal} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+        <div className="instruction-eval-heatmap-s3e64da" key={signal}>
           <div
             style={{
               width: 12, height: 12, borderRadius: 3,
@@ -180,16 +183,15 @@ function Legend() {
 function EmptyState({ isLoading }: { isLoading: boolean }) {
   if (isLoading) {
     return (
-      <div style={{ padding: '24px 0', textAlign: 'center' }}>
+      <div className="instruction-eval-heatmap-s911fe9">
         <Text as="div" size="sm" color="tertiary">Loading projection data…</Text>
       </div>
     );
   }
   return (
-    <div
+    <div className="instruction-eval-heatmap-s911fe9"
       role="status"
       aria-label="No instruction-eval data. Rows appear once the instruction-eval runner emits results."
-      style={{ padding: '24px 0', textAlign: 'center' }}
     >
       <Text as="div" size="sm" color="tertiary">
         No instruction-eval data yet. Rows appear once the instruction-eval runner emits results.
@@ -223,7 +225,7 @@ export default function InstructionEvalHeatmap({ config: _config = {} }: { confi
       title="Instruction Eval — Context Dilution"
       isLive={hasRows}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div className="instruction-eval-heatmap-sb0831f">
         {!hasRows ? (
           <EmptyState isLoading={isLoading} />
         ) : (
@@ -236,8 +238,8 @@ export default function InstructionEvalHeatmap({ config: _config = {} }: { confi
 
             <Legend />
 
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ borderCollapse: 'separate', borderSpacing: 3 }}>
+            <div className="instruction-eval-heatmap-s42d445">
+              <table className="instruction-eval-heatmap-s83a5a3">
                 <thead>
                   <tr>
                     <th style={{ ...headTh, textAlign: 'left', minWidth: 88, position: 'sticky', left: 0, background: 'var(--ds-surface, transparent)' }}>
@@ -303,7 +305,7 @@ export default function InstructionEvalHeatmap({ config: _config = {} }: { confi
             </div>
 
             <Text as="div" size="xs" color="tertiary">
-              {(rawRows ?? []).length} aggregated cells · {totalRuns.toLocaleString()} eval runs ·
+              {(rawRows ?? []).length} aggregated cells · {fmtLocaleString(totalRuns)} eval runs ·
               {' '}{models.length} models × {tasks.length} tasks × {CONTEXT_MODES.length} context modes
             </Text>
           </>

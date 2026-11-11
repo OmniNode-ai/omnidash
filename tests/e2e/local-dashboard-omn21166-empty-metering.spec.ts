@@ -1,5 +1,5 @@
 import { expect, test } from 'playwright/test';
-import { chartRows, keepRealClock, narrowTo, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chartRows, keepRealClock, meteringAll, narrowTo, prefix, serveCharts } from './omn21166-chart-fixtures';
 // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): the window radios sit in one dropdown; chooseWindow opens it and proves it closed.
 import { chooseWindow } from './overview-window-menu';
 // This spec dates its rows from the real clock, so the browser keeps it (see FIXTURE_NOW).
@@ -38,7 +38,8 @@ test('missing daily metering never claims no runs; measured zero still renders e
   await chooseWindow(page, 'Today (UTC)');
   const summary = page.locator('.local-overview-summary');
   for (const id of ['overview-spend', 'overview-savings', 'overview-measured', 'overview-tokens']) {
-    await expect(summary.locator(`[data-component="${id}"]`)).toContainText('Not measured: daily totals unavailable (UTC)');
+    // OMN-23330 AC1/AC2 (Lakshman 2026-11-10, "All on metering"): the cards read metering-summary.v1, which serves no row.
+    await expect(summary.locator(`[data-component="${id}"]`)).toContainText('Not measured: no metering rows served');
   }
   await expect(page.getByRole('button', { name: /3 runs, 2 passed, 1 failed/ })).toBeVisible();
   await expect(summary).not.toContainText('no runs today');
@@ -46,14 +47,15 @@ test('missing daily metering never claims no runs; measured zero still renders e
   // so only the four metering-backed cards are checked for a measured value.
   await expect(summary.locator(['overview-spend', 'overview-savings', 'overview-measured', 'overview-tokens']
     .map(id => `[data-component="${id}"] [data-measured="true"]`).join(', '))).toHaveCount(0);
-  await serveCharts(page, { ...chartRows, [prefix + 'cost.savings-overview.v1']: [{ window: 'all', captured_at: `${day}T11:00:00Z`, total_cost_usd: 0, total_savings_usd: 0, run_count: 1, measured_run_count: 1, tokens_total: 0 }], [prefix + 'metering-summary.v1']: [{
+  await serveCharts(page, { ...chartRows, [prefix + 'metering-summary.v1']: [meteringAll({ window: 'all', captured_at: `${day}T11:00:00Z`, total_cost_usd: 0, total_savings_usd: 0, run_count: 1, measured_run_count: 1, tokens_total: 0 }), {
     window_kind: 'day', window_start: day, as_of: `${day}T11:00:00Z`,
     baseline_model: 'baseline-a', baseline_state: 'resolved', pricing_manifest_version: '1',
     spend_usd: '0.000000', savings_usd: '0.000000', runs_total: 1, runs_measured: 1,
     runs_unknown_tokens: 0, runs_unknown_spend: 0, tokens_in: 0, tokens_out: 0,
   }] });
   await page.getByRole('button', { name: 'Refresh', exact: true }).click();
-  await expect(summary.locator('[data-component="overview-spend"] .local-dashboard-metric')).toHaveText('Not measured: daily totals unavailable (UTC)');
+  // Today's served day row is a measured zero, drawn exactly.
+  await expect(summary.locator('[data-component="overview-spend"] .local-dashboard-metric')).toHaveText('$0.00');
   await chooseWindow(page, 'All time');
   await expect(summary.locator('[data-component="overview-spend"] .local-dashboard-metric')).toHaveText('$0.00');
   await expect(summary.locator('[data-component="overview-savings"] .local-dashboard-metric')).toHaveText('$0.00');

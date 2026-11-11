@@ -2,6 +2,9 @@ import { Text } from '@/components/ui/typography';
 import type { SwarmRunRow } from './swarm-control-plane.types';
 import { normalizeStatus } from './swarm-control-plane.types';
 import { fmtMs, fmtUsd } from './format';
+import { fixed as fmtFixed } from '@/theme/format';
+// OMN-23330 AC25: this file's fixed inline styles are classes in SwarmSubtaskCard.static.css.
+import './SwarmSubtaskCard.static.css';
 
 function StatusBadge({ status }: { status: string }) {
   const color = status === 'succeeded' ? 'ok'
@@ -36,7 +39,7 @@ function StatusBadge({ status }: { status: string }) {
 
 function MetricPair({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+    <div className="swarm-subtask-card-sb6d841">
       <Text as="span" size="xs" color="tertiary">{label}</Text>
       <Text as="span" size="xs" family="mono" color="secondary">{value}</Text>
     </div>
@@ -49,30 +52,21 @@ export function SwarmSubtaskCard({ run }: { run: SwarmRunRow }) {
   const hasModels = run.models_used.length > 0;
 
   return (
-    <div
-      style={{
-        border: '1px solid var(--ds-line)',
-        borderRadius: 8,
-        padding: 12,
-        background: 'var(--ds-surface)',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 10,
-      }}
+    <div className="swarm-subtask-card-sb78a29"
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-        <div style={{ minWidth: 0 }}>
-          <Text as="div" size="xs" family="mono" color="tertiary" style={{ overflowWrap: 'break-word' }}>
+      <div className="swarm-subtask-card-sd74d06">
+        <div className="swarm-subtask-card-s2cd52a">
+          <Text className="swarm-subtask-card-s0eca93" as="div" size="xs" family="mono" color="tertiary">
             {run.run_id}
           </Text>
-          <Text as="div" size="xs" color="tertiary" style={{ marginTop: 2 }}>
+          <Text className="swarm-subtask-card-saeb83f" as="div" size="xs" color="tertiary">
             correlation: {run.correlation_id.slice(0, 16)}…
           </Text>
         </div>
         <StatusBadge status={status} />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
+      <div className="swarm-subtask-card-s0896aa">
         <MetricPair label="subtasks" value={hasSubtasks ? String(run.subtask_count) : '-'} />
         <MetricPair label="succeeded" value={hasSubtasks ? String(run.succeeded_count) : '-'} />
         <MetricPair label="failed" value={hasSubtasks ? String(run.failed_count) : '-'} />
@@ -83,22 +77,16 @@ export function SwarmSubtaskCard({ run }: { run: SwarmRunRow }) {
         <MetricPair label="savings" value={run.savings_usd > 0 ? fmtUsd(run.savings_usd) : '-'} />
         <MetricPair
           label="speedup"
-          value={run.parallelism_speedup_ratio > 1 ? `${run.parallelism_speedup_ratio.toFixed(2)}×` : '-'}
+          value={run.parallelism_speedup_ratio > 1 ? `${fmtFixed(run.parallelism_speedup_ratio, 2)}×` : '-'}
         />
       </div>
 
       {hasModels && (
         <div>
-          <Text as="div" size="xs" color="tertiary" style={{ marginBottom: 4 }}>Models used</Text>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+          <Text className="swarm-subtask-card-s3eaa7b" as="div" size="xs" color="tertiary">Models used</Text>
+          <div className="swarm-subtask-card-s5404ea">
             {run.models_used.map((m) => (
-              <Text key={m} as="span" size="xs" family="mono" color="secondary"
-                style={{
-                  padding: '2px 6px',
-                  border: '1px solid var(--ds-line-soft)',
-                  borderRadius: 4,
-                  background: 'var(--ds-surface-2)',
-                }}
+              <Text className="swarm-subtask-card-s38fb0f" key={m} as="span" size="xs" family="mono" color="secondary"
               >
                 {m}
               </Text>

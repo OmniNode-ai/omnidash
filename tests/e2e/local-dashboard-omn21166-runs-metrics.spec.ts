@@ -35,7 +35,7 @@ test('fractional median duration retains milliseconds instead of the integer cou
   // OMN-22168: Run analysis is a row of tabs; the duration distribution is How long runs take.
   await chooseChartTab(page, 'How long runs take');
   await expect(page.getByText('Median 512 ms', { exact: true })).toBeVisible();
-  await expect(page.locator('article[data-kpi-card="Median duration"] .local-dashboard-metric')).toHaveAttribute('title', '511.5 ms');
+  await expect(page.locator('article[data-kpi-card="Median duration"] .local-dashboard-metric')).toHaveAttribute('title', '512 ms'); // OMN-23330 AC9: whole milliseconds
   await expect(page.getByText('Not measured ms', { exact: true })).toHaveCount(0);
   await page.screenshot({ path: info.outputPath('fractional-duration.png') });
 });

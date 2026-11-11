@@ -17,6 +17,9 @@ import type { StackedSlice } from '@/components/dashboard/cost-trend/StackedChar
 import { Text } from '@/components/ui/typography';
 import type { IBarChartAdapter, BarChartAdapterProps } from '@shared/types/chart-adapter-bar';
 import type { EmptyStateReason } from '@shared/types/chart-config';
+import { localeDate as fmtLocaleDate } from '@/theme/format';
+// OMN-23330 AC25: this file's fixed inline styles are classes in BarChart.static.css.
+import './BarChart.static.css';
 
 const DEFAULT_EMPTY_MESSAGES: Record<EmptyStateReason, string> = {
   'no-data': 'No data available',
@@ -147,20 +150,12 @@ export function BarChart<T extends Record<string, unknown> = Record<string, unkn
       reasonConfig?.message ?? emptyState?.defaultMessage ?? DEFAULT_EMPTY_MESSAGES[emptyReason];
 
     return (
-      <div
+      <div className="bar-chart-s447571"
         data-testid="barchart-canvas"
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: 200,
-          gap: 8,
-        }}
       >
         <Text data-empty-reason={emptyReason}>{message}</Text>
         {reasonConfig?.cta && (
-          <Text style={{ opacity: 0.6 }}>{reasonConfig.cta}</Text>
+          <Text className="bar-chart-sbfc11c">{reasonConfig.cta}</Text>
         )}
       </div>
     );
@@ -173,13 +168,13 @@ export function BarChart<T extends Record<string, unknown> = Record<string, unkn
     // Attempt ISO date parse for friendly labels; fall back to raw string.
     const d = new Date(bucket);
     if (!isNaN(d.getTime())) {
-      return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      return fmtLocaleDate(d, undefined, { month: 'short', day: 'numeric' });
     }
     return bucket;
   };
 
   return (
-    <div data-testid="barchart-canvas" style={{ width: '100%' }}>
+    <div className="bar-chart-s69d66e" data-testid="barchart-canvas">
       <StackedChart
         stacked={stacked!}
         allModels={allModels}

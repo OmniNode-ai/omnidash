@@ -28,9 +28,10 @@ describe('ModelUsagePanel', () => {
     expect(values()).not.toContain('0');
   });
 
-  it('M2: a share above zero but under 0.1% reads <0.1%', () => {
-    render(<ModelUsagePanel row={{ total_delegations: 2001, by_model: [
-      { model_name: 'local-a', total_count: 2000, pct_of_total: 0.9995 }, { model_name: 'cloud-b', total_count: 1, pct_of_total: 0.0005 }] }} />);
+  // OMN-23330 AC9 sets the one share rule (src/theme/format formatShare): a nonzero share under 0.05% reads <0.1%.
+  it('M2: a share above zero but under 0.05% reads <0.1%', () => {
+    render(<ModelUsagePanel row={{ total_delegations: 2501, by_model: [
+      { model_name: 'local-a', total_count: 2500, pct_of_total: 0.9996 }, { model_name: 'cloud-b', total_count: 1, pct_of_total: 0.0004 }] }} />);
     expect(values()).toContain('1 · <0.1%');
   });
 

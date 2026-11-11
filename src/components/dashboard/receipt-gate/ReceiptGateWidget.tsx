@@ -5,6 +5,9 @@ import { CardHeader } from '@/components/primitives';
 import { useProjectionQueryWithContract } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { Text } from '@/components/ui/typography';
+import { refreshInterval } from '@/theme/refresh';
+// OMN-23330 AC25: this file's fixed inline styles are classes in ReceiptGateWidget.static.css.
+import './ReceiptGateWidget.static.css';
 
 // ── Projection row shape ─────────────────────────────────────────────
 
@@ -80,7 +83,7 @@ function Stamp({ pass }: { pass: boolean }) {
 
 function StaleBanner({ freshness }: { freshness: string | null }) {
   return (
-    <Text as="div" size="sm" color="bad" style={{ marginBottom: 8 }}>
+    <Text className="receipt-gate-widget-s7f3cba" as="div" size="sm" color="bad">
       Data may be stale{freshness ? ` (last snapshot: ${freshness})` : ''}.
     </Text>
   );
@@ -92,7 +95,7 @@ export default function ReceiptGateWidget() {
   const { data, is_degraded, freshness, isLoading, error } = useProjectionQueryWithContract<ReceiptGateRow>({
     topic: TOPICS.receiptGate,
     contract: RECEIPT_GATE_CONTRACT,
-    refetchInterval: 30_000,
+    refetchInterval: refreshInterval(),
   });
 
   const gates = useMemo(() => data, [data]);
@@ -113,7 +116,7 @@ export default function ReceiptGateWidget() {
       emptyMessage="No receipt gate data"
       emptyHint="Receipt gate data appears after verification receipts are produced"
     >
-      <div style={{ width: '100%' }}>
+      <div className="receipt-gate-widget-s69d66e">
         {is_degraded && <StaleBanner freshness={freshness} />}
 
         <CardHeader
@@ -141,21 +144,21 @@ export default function ReceiptGateWidget() {
         />
 
         {/* Progress meter */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-          <div className="mono tnum" style={{ "fontSize": 28, "fontWeight": 800, color: 'var(--ds-ok)' }}>
+        <div className="receipt-gate-widget-s7f1517">
+          <div className="mono tnum receipt-gate-widget-s809d79">
             {passed}
-            <span style={{ "color": 'var(--ds-ink-3)', "fontSize": 18, "fontWeight": 600 }}>/{total}</span>
+            <span className="receipt-gate-widget-s0a60c7">/{total}</span>
           </div>
-          <div style={{ flex: 1 }}>
-            <div className="eyebrow" style={{ color: 'var(--ds-ok)' }}>gates passed</div>
-            <div style={{ height: 4, background: 'var(--ds-line)', borderRadius: 2, marginTop: 6, overflow: 'hidden' }}>
+          <div className="receipt-gate-widget-see3d55">
+            <div className="eyebrow receipt-gate-widget-s231281">gates passed</div>
+            <div className="receipt-gate-widget-sf413dd">
               <div style={{ width: total > 0 ? `${(passed / total) * 100}%` : '0%', height: '100%', background: 'var(--ds-ok)', transition: 'width .25s' }} />
             </div>
           </div>
         </div>
 
         {/* Gates list */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+        <div className="receipt-gate-widget-s30160b">
           {gates.map((g, i) => (
             <div
               key={g.id}
@@ -169,25 +172,16 @@ export default function ReceiptGateWidget() {
               }}
             >
               <CheckMark pass={g.pass} />
-              <div style={{ minWidth: 0 }}>
-                <div style={{ "fontSize": 13, "fontWeight": 600, "color": 'var(--ds-ink)' }}>{g.name}</div>
+              <div className="receipt-gate-widget-s2cd52a">
+                <div className="receipt-gate-widget-s13bec8">{g.name}</div>
                 <div
-                  className="mono"
-                  style={{
-                    "fontSize": 10,
-                    "color": 'var(--ds-ink-3)',
-                    marginTop: 2,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
+                  className="mono receipt-gate-widget-s5a3509"
                 >
                   {g.detail}
                 </div>
               </div>
               <div
-                className="mono"
-                style={{ "fontSize": 9, "color": 'var(--ds-ink-4)', "letterSpacing": '0.16em', "fontWeight": 700 }}
+                className="mono receipt-gate-widget-s181847"
               >
                 g.{String(i + 1).padStart(2, '0')}
               </div>
@@ -197,35 +191,26 @@ export default function ReceiptGateWidget() {
 
         {/* Receipt manifest — only shown when projection supplies manifest fields */}
         {manifest && (manifest.worker || manifest.verifier || manifest.evidence_count || manifest.signed_at) && (
-          <div
-            style={{
-              marginTop: 16,
-              padding: 12,
-              background: 'var(--ds-inset)',
-              borderRadius: 6,
-              "fontSize": 11,
-              "color": 'var(--ds-ink-2)',
-              "lineHeight": 1.6,
-            }}
+          <div className="receipt-gate-widget-sbd0ffe"
           >
-            <div className="eyebrow" style={{ marginBottom: 6 }}>receipt manifest</div>
+            <div className="eyebrow receipt-gate-widget-s4feedf">receipt manifest</div>
             <div className="mono">
               {manifest.worker && (
-                <>worker: <span style={{ color: 'var(--ds-kind-compute-ink)' }}>{manifest.worker}</span><br /></>
+                <>worker: <span className="receipt-gate-widget-s7331b6">{manifest.worker}</span><br /></>
               )}
               {manifest.verifier && (
-                <>verifier: <span style={{ color: 'var(--ds-kind-reducer-ink)' }}>{manifest.verifier}</span><br /></>
+                <>verifier: <span className="receipt-gate-widget-sc0c872">{manifest.verifier}</span><br /></>
               )}
               {manifest.evidence_count !== undefined && (
                 <>
-                  evidence: <span style={{ "color": 'var(--ds-ink)' }}>
+                  evidence: <span className="receipt-gate-widget-s3227ff">
                     {manifest.evidence_count} artifact{manifest.evidence_count !== 1 ? 's' : ''}
                     {manifest.evidence_hash ? ` · sha256:${manifest.evidence_hash}` : ''}
                   </span><br />
                 </>
               )}
               {manifest.signed_at && (
-                <>signed: <span style={{ "color": 'var(--ds-ink)' }}>{manifest.signed_at}</span></>
+                <>signed: <span className="receipt-gate-widget-s3227ff">{manifest.signed_at}</span></>
               )}
             </div>
           </div>

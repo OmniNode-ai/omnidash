@@ -1,5 +1,5 @@
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
-import { formatDashboardCount } from '@/lib/dashboard-count';
+import { formatDashboardCount, formatShortDay } from '@/theme/format';
 // OMN-20006 Amendment 1 (US-3): savings per UTC day against the one baseline, from metering-summary.v1.
 //
 // node_projection_metering_summary serves one `day` row per UTC day and one `all` row per baseline model, from one
@@ -11,10 +11,11 @@ import { formatDashboardCount } from '@/lib/dashboard-count';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionSnapshotQuery } from '@/hooks/useProjectionSnapshotQuery';
 import { TOPICS } from '@shared/types/topics';
-import { formatUsd } from './UsageByModelDayWidget';
+import { formatDashboardUsd as formatUsd } from '@/theme/format';
 import { useState } from 'react';
 import { ChevronLeft, ChevronRight } from '@/theme/design-system/icons';
 import { ColumnTip, DataTable, EmptyState } from '@/theme/design-system/components';
+import { refreshInterval } from '@/theme/refresh';
 
 /** The subset of metering-summary.v1 columns the series renders. */
 export interface MeteringSummaryRow {
@@ -101,7 +102,9 @@ function SavingsDays({ baseline, days }: { baseline: string; days: MeteringSumma
               const { text, amount } = served[start + index]!;
               return (
               <tr key={`${String(row.window_start)}-${index}`}>
-                <td data-label="Day">{isMissing(row.window_start) ? 'Not recorded' : String(row.window_start)}</td>
+                {/* OMN-23330 AC10: the day in the short form the other pages use; the served day stays as the title. */}
+                <td data-label="Day" title={isMissing(row.window_start) ? undefined : String(row.window_start)}>
+                  {isMissing(row.window_start) ? 'Not recorded' : formatShortDay(String(row.window_start))}</td>
                 <td data-label={`Savings vs ${baseline}`}><span className="local-savings-cell">
                   <span className="local-savings-value">{text}</span>
                   {amount !== null && most > 0 && <span className="local-savings-meter" aria-hidden="true">
@@ -120,7 +123,7 @@ export default function SavingsSeriesWidget() {
   const query = useProjectionSnapshotQuery<MeteringSummaryRow>({
     queryKey: ['savings-series-widget', TOPICS.meteringSummary],
     topic: TOPICS.meteringSummary,
-    refetchInterval: 30_000,
+    refetchInterval: refreshInterval(),
   });
   const rows = query.data?.rows ?? [];
   return (

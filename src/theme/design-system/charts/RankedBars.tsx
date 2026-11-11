@@ -7,6 +7,7 @@
  */
 import type { CSSProperties, ReactNode } from 'react';
 import { Link } from 'wouter';
+import './chart-scroll.css';
 
 export type RankedBarBasis = 'measured' | 'estimated' | 'unknown';
 
@@ -43,7 +44,12 @@ const BASIS_WORDS: Readonly<Record<RankedBarBasis, string>> = {
   unknown: 'not measured',
 };
 
-export function RankedBars({ label, unit, items, order = 'asc', note, footnote, layout = 'auto', many = 'sideways', ceiling }: {
+export function RankedBars({ label, unit, items, order = 'asc', note, footnote, layout = 'auto', many = 'sideways', ceiling, values = 'hover' }: {
+  /**
+   * OMN-23330 AC6 (the operator's 2026-11-09 review): 'always' prints every bar's figure; 'hover' (the 2026-10-25 ruling,
+   * "show them when hover") reveals it on pointer or keyboard focus. Every bar's accessible name carries it either way.
+   */
+  values?: 'hover' | 'always';
   /**
    * A share's whole, e.g. 100 for a percentage (Lakshman 2026-11-05, "all bargraph should fill like this", for share bars
    * only): each bar is scaled against it, not against the largest bar, and its figure is always shown. Left out for
@@ -76,40 +82,43 @@ export function RankedBars({ label, unit, items, order = 'asc', note, footnote, 
   // runs sideways. Every drawn item counts, an unserved outline included.
   const sideways = layout === 'vertical' && many === 'sideways' && ordered.length > 10;
   return (
-    <figure className={`rb-chart${layout === 'vertical' && !sideways ? ' rb-chart--vertical' : ''}${sideways ? ' rb-chart--rows' : ''}${ceiling !== undefined ? ' rb-chart--share' : ''} rb-chart--filled`} aria-label={label}>
+    <figure className={`rb-chart${layout === 'vertical' && !sideways ? ' rb-chart--vertical' : ''}${sideways ? ' rb-chart--rows' : ''}${ceiling !== undefined ? ' rb-chart--share' : ''}${values === 'always' ? ' rb-chart--values' : ''} rb-chart--filled`} aria-label={label}>
       <figcaption className="rb-head">
         <span className="rb-unit">{unit}</span>
         {note}
       </figcaption>
-      <ol className="rb-plot" style={{ '--rb-count': ordered.length } as CSSProperties}>
-        {ordered.map(item => {
-          const whole = ceiling ?? max;
-          const scaled = item.basis === 'unknown' ? undefined
-            : `${whole > 0 && item.value! > 0 ? Math.min(100, Math.round((item.value! / whole) * 1000) / 10) : 0}%`;
-          const label = `${item.name}: ${item.display}, ${BASIS_WORDS[item.basis]}`;
-          const content = <>
-            <span className="rb-value" title={item.title}>{item.display}</span>
-            <span className="rb-track" aria-hidden="true">
-              {/* The size is one variable: the bar's height when the chart is wide, its width when narrow. */}
-              {(() => {
-                const bar = <span className="rb-bar" data-pattern={item.basis === 'unknown' ? 'outline' : 'hatched'} style={scaled === undefined ? undefined : { '--rb-size': scaled } as CSSProperties} />;
-                return <span className="rb-slot">{bar}</span>;
-              })()}
-            </span>
-            {/* OMN-21970 (Lakshman 2026-11-03, option a): the name is ink for contrast; a swatch beside it carries the bar's colour. */}
-            <span className="rb-name" title={item.name}><span className="rb-swatch" aria-hidden="true" data-model-id={item.model} data-tier={item.tier} />{breakableName(item.name)}</span>
-          </>;
-          return (
-            // Focusable, so a keyboard reader reveals the value as a pointer does on hover (live review 2026-10-25). A bar
-            // with somewhere to go is a link instead (part 19 AC135, onex delegate run 9f758298), named for where it goes.
-            <li key={item.key} data-ranked-item={item.key} data-basis={item.basis} tabIndex={item.href ? undefined : 0}
-              aria-label={item.href ? undefined : label}
-              style={{ '--rb-color': item.color } as CSSProperties}>
-              {item.href ? <Link href={item.href} className="rb-link" aria-label={`${label}. ${item.opensLabel ?? 'Opens Runs'}`}>{content}</Link> : content}
-            </li>
-          );
-        })}
-      </ol>
+      {/* OMN-23330 AC4: a plot wider than its box scrolls in the kit container, its scrollbar always drawn. */}
+      <div className="ds-chart-scroll">
+        <ol className="rb-plot" style={{ '--rb-count': ordered.length } as CSSProperties}>
+          {ordered.map(item => {
+            const whole = ceiling ?? max;
+            const scaled = item.basis === 'unknown' ? undefined
+              : `${whole > 0 && item.value! > 0 ? Math.min(100, Math.round((item.value! / whole) * 1000) / 10) : 0}%`;
+            const label = `${item.name}: ${item.display}, ${BASIS_WORDS[item.basis]}`;
+            const content = <>
+              <span className="rb-value" title={item.title}>{item.display}</span>
+              <span className="rb-track" aria-hidden="true">
+                {/* The size is one variable: the bar's height when the chart is wide, its width when narrow. */}
+                {(() => {
+                  const bar = <span className="rb-bar" data-pattern={item.basis === 'unknown' ? 'outline' : 'hatched'} style={scaled === undefined ? undefined : { '--rb-size': scaled } as CSSProperties} />;
+                  return <span className="rb-slot">{bar}</span>;
+                })()}
+              </span>
+              {/* OMN-21970 (Lakshman 2026-11-03, option a): the name is ink for contrast; a swatch beside it carries the bar's colour. */}
+              <span className="rb-name" title={item.name}><span className="rb-swatch" aria-hidden="true" data-model-id={item.model} data-tier={item.tier} />{breakableName(item.name)}</span>
+            </>;
+            return (
+              // Focusable, so a keyboard reader reveals the value as a pointer does on hover (live review 2026-10-25). A bar
+              // with somewhere to go is a link instead (part 19 AC135, onex delegate run 9f758298), named for where it goes.
+              <li key={item.key} data-ranked-item={item.key} data-basis={item.basis} tabIndex={item.href ? undefined : 0}
+                aria-label={item.href ? undefined : label}
+                style={{ '--rb-color': item.color } as CSSProperties}>
+                {item.href ? <Link href={item.href} className="rb-link" aria-label={`${label}. ${item.opensLabel ?? 'Opens Runs'}`}>{content}</Link> : content}
+              </li>
+            );
+          })}
+        </ol>
+      </div>
       {footnote && <p className="rb-footnote">{footnote}</p>}
     </figure>
   );

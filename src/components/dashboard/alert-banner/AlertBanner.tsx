@@ -12,9 +12,11 @@
  */
 import { useState } from 'react';
 import { Text } from '@/components/ui/typography';
-import { readableTime } from '@/components/format/readable-time';
+import { readableTime } from '@/theme/format';
 import { validateAlertBannerRow, type AlertBannerRow } from '@shared/types/component-manifest';
 import { SEVERITY_ORDER, SEVERITY_ROLES, SeverityIcon } from '../status-grid/severity';
+// OMN-23330 AC25: this file's fixed inline styles are classes in AlertBanner.static.css.
+import './AlertBanner.static.css';
 
 export interface AlertBannerProps {
   alerts: readonly AlertBannerRow[];
@@ -44,7 +46,7 @@ function AlertLine({ alert, onDismiss, codeLabel }: { alert: AlertBannerRow; onD
         flexWrap: 'wrap',
       }}
     >
-      <Text size="sm" color={role.textColor} style={{ display: 'inline-flex' }}>
+      <Text className="alert-banner-sd87841" size="sm" color={role.textColor}>
         <SeverityIcon severity={alert.severity} size={16} />
       </Text>
       <Text size="xs" family="mono" weight="bold" color="primary">
@@ -60,7 +62,7 @@ function AlertLine({ alert, onDismiss, codeLabel }: { alert: AlertBannerRow; onD
         {/* OMN-21166 part 26 AC159: the same readable UTC as the service cards; an unparseable value shows as served. */}
         {`since ${readableTime(alert.since) ?? alert.since}`}
       </Text>
-      <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 10, alignItems: 'center' }}>
+      <span className="alert-banner-sdbdc80">
         {alert.link ? (
           <a href={alert.link} aria-label={`Open ${label} for ${alert.subject}`}>
             <Text size="xs" color="brand">
@@ -113,7 +115,7 @@ export function AlertBanner({ alerts, waitsOn, codeLabel, refusalMessage }: Aler
 
   if (valid.length === 0) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div className="alert-banner-s9808a2">
         <div
           data-testid="alert-banner-clear"
           style={{
@@ -131,7 +133,7 @@ export function AlertBanner({ alerts, waitsOn, codeLabel, refusalMessage }: Aler
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+    <div className="alert-banner-s9808a2">
       {critical.map((alert) => (
         <AlertLine
           key={alert.alert_id}
@@ -141,8 +143,8 @@ export function AlertBanner({ alerts, waitsOn, codeLabel, refusalMessage }: Aler
         />
       ))}
       {rest.length > 0 ? (
-        <div data-testid="alert-banner-collapsed" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span style={{ display: 'inline-flex', gap: 10, alignItems: 'center' }}>
+        <div className="alert-banner-s9808a2" data-testid="alert-banner-collapsed">
+          <span className="alert-banner-sc01a00">
             <Text size="xs" family="mono" color="secondary">
               {`${rest.length} more open alert${rest.length === 1 ? '' : 's'}`}
             </Text>

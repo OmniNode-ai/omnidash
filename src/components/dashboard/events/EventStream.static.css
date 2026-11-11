@@ -1,0 +1,10 @@
+/* OMN-23330 AC25: the fixed inline styles of EventStream.tsx, moved into classes with nothing else changed. Each selector
+   repeats its class so it keeps the weight the inline style had over the stylesheet rules around it. */
+.event-stream-s8d40ed.event-stream-s8d40ed.event-stream-s8d40ed { display: flex; flex-direction: column; gap: 0.5rem; }
+.event-stream-s80ff12.event-stream-s80ff12.event-stream-s80ff12 { display: flex; align-items: center; gap: 0.5rem; padding: 0.375rem 0.625rem; border: 1px solid var(--ds-line); border-radius: 6px; background: var(--ds-surface-2); }
+.event-stream-sf6885f.event-stream-sf6885f.event-stream-sf6885f { color: var(--ds-ink-3); flex-shrink: 0; }
+.event-stream-sd4d4d7.event-stream-sd4d4d7.event-stream-sd4d4d7 { flex: 1; border: 0; outline: 0; background: transparent; }
+.event-stream-s50666a.event-stream-s50666a.event-stream-s50666a { position: relative; }
+.event-stream-sb59b94.event-stream-sb59b94.event-stream-sb59b94 { padding: 2rem 0.5rem; text-align: center; }
+.event-stream-s6d87f6.event-stream-s6d87f6.event-stream-s6d87f6 { position: absolute; top: 40px; left: 50%; transform: translateX(-50%); padding: 4px 10px; background: var(--ds-brand-soft); color: var(--ds-brand-ink); border: 1px solid var(--ds-brand); border-radius: 12px; cursor: pointer; display: flex; align-items: center; gap: 4px; box-shadow: var(--ds-shadow-sm); }
+.event-stream-sc2bcea.event-stream-sc2bcea.event-stream-sc2bcea { display: flex; justify-content: space-between; align-items: center; }

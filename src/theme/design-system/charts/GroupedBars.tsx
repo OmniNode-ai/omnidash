@@ -7,6 +7,7 @@
 import { useState, type CSSProperties, type ReactNode } from 'react';
 import { ChartReadout } from './frame';
 import { SeriesLegend } from './legend';
+import './chart-scroll.css';
 
 export interface GroupedBarValue {
   key: string;
@@ -49,29 +50,32 @@ export function GroupedBars({ label, groups, legend, wrapNames = false, extraLeg
   return (
     <>
       <ChartReadout active={active !== undefined} text={active === undefined ? '' : active.label} />
-      <ul className={`ins-bars gdb-plot gdb-plot--list${wrapNames ? ' gdb-plot--names' : ''}`} aria-label={label}
-        onMouseLeave={() => setHover(null)}
-        onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setHover(null); }}>
-        {groups.map(group => (
-          // The column's full sentence (e.g. a day's unmeasured calls) is its accessible name and the readout's text.
-          <li key={group.key} className="ins-bar gdb-day" tabIndex={0} aria-label={group.label}
-            data-dim={hover !== null && hover !== group.key} onMouseEnter={() => setHover(group.key)} onFocus={() => setHover(group.key)}>
-            <span className="gdb-group">
-              {group.values.map(entry => {
-                const drawn = entry.value !== null && entry.value > 0 && max > 0;
-                return (
-                  <span key={entry.key} className="gdb-col" data-series={entry.key} data-field-tone={entry.tone}>
-                    {entry.value !== null && <b className="gdb-val">{entry.display}</b>}
-                    {drawn && <span className="gdb-bar ins-seg" style={{ height: `${(entry.value! / max) * 100}%`, color: entry.color } as CSSProperties} />}
-                  </span>
-                );
-              })}
-            </span>
-            {/* OMN-21970 (Lakshman 2026-11-03, option a): ink name for contrast; the swatch carries the model's colour. */}
-            <span className="gdb-day-label" aria-hidden="true">{group.nameColor && <span className="gdb-swatch" data-model-id={group.model} style={{ background: group.nameColor }} />}{group.name}</span>
-          </li>
-        ))}
-      </ul>
+      {/* OMN-23330 AC4: a plot wider than its box scrolls in the kit container, its scrollbar always drawn. */}
+      <div className="ds-chart-scroll">
+        <ul className={`ins-bars gdb-plot gdb-plot--list${wrapNames ? ' gdb-plot--names' : ''}`} aria-label={label}
+          onMouseLeave={() => setHover(null)}
+          onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setHover(null); }}>
+          {groups.map(group => (
+            // The column's full sentence (e.g. a day's unmeasured calls) is its accessible name and the readout's text.
+            <li key={group.key} className="ins-bar gdb-day" tabIndex={0} aria-label={group.label}
+              data-dim={hover !== null && hover !== group.key} onMouseEnter={() => setHover(group.key)} onFocus={() => setHover(group.key)}>
+              <span className="gdb-group">
+                {group.values.map(entry => {
+                  const drawn = entry.value !== null && entry.value > 0 && max > 0;
+                  return (
+                    <span key={entry.key} className="gdb-col" data-series={entry.key} data-field-tone={entry.tone}>
+                      {entry.value !== null && <b className="gdb-val">{entry.display}</b>}
+                      {drawn && <span className="gdb-bar ins-seg" style={{ height: `${(entry.value! / max) * 100}%`, color: entry.color } as CSSProperties} />}
+                    </span>
+                  );
+                })}
+              </span>
+              {/* OMN-21970 (Lakshman 2026-11-03, option a): ink name for contrast; the swatch carries the model's colour. */}
+              <span className="gdb-name-label" aria-hidden="true">{group.nameColor && <span className="gdb-swatch" data-model-id={group.model} style={{ background: group.nameColor }} />}{group.name}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
       {((legend && legend.length > 0) || extraLegend) && <div className="gdb-legends">
         {legend && legend.length > 0 && <SeriesLegend label="Series" series={legend} />}
         {extraLegend}

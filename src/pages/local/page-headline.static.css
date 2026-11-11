@@ -1,0 +1,3 @@
+/* OMN-23330 AC25: the fixed inline styles of page-headline.tsx, moved into classes with nothing else changed. Each selector
+   repeats its class so it keeps the weight the inline style had over the stylesheet rules around it. */
+.page-headline-sb3bf48.page-headline-sb3bf48.page-headline-sb3bf48 { transform: rotate(180deg); }

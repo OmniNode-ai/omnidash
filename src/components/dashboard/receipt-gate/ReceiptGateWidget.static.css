@@ -1,0 +1,20 @@
+/* OMN-23330 AC25: the fixed inline styles of ReceiptGateWidget.tsx, moved into classes with nothing else changed. Each selector
+   repeats its class so it keeps the weight the inline style had over the stylesheet rules around it. */
+.receipt-gate-widget-s7f3cba.receipt-gate-widget-s7f3cba.receipt-gate-widget-s7f3cba { margin-bottom: 8px; }
+.receipt-gate-widget-s69d66e.receipt-gate-widget-s69d66e.receipt-gate-widget-s69d66e { width: 100%; }
+.receipt-gate-widget-s7f1517.receipt-gate-widget-s7f1517.receipt-gate-widget-s7f1517 { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.receipt-gate-widget-s809d79.receipt-gate-widget-s809d79.receipt-gate-widget-s809d79 { font-size: 28px; font-weight: 800; color: var(--ds-ok); }
+.receipt-gate-widget-s0a60c7.receipt-gate-widget-s0a60c7.receipt-gate-widget-s0a60c7 { color: var(--ds-ink-3); font-size: 18px; font-weight: 600; }
+.receipt-gate-widget-see3d55.receipt-gate-widget-see3d55.receipt-gate-widget-see3d55 { flex: 1; }
+.receipt-gate-widget-s231281.receipt-gate-widget-s231281.receipt-gate-widget-s231281 { color: var(--ds-ok); }
+.receipt-gate-widget-sf413dd.receipt-gate-widget-sf413dd.receipt-gate-widget-sf413dd { height: 4px; background: var(--ds-line); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+.receipt-gate-widget-s30160b.receipt-gate-widget-s30160b.receipt-gate-widget-s30160b { display: flex; flex-direction: column; gap: 0; }
+.receipt-gate-widget-s2cd52a.receipt-gate-widget-s2cd52a.receipt-gate-widget-s2cd52a { min-width: 0; }
+.receipt-gate-widget-s13bec8.receipt-gate-widget-s13bec8.receipt-gate-widget-s13bec8 { font-size: 13px; font-weight: 600; color: var(--ds-ink); }
+.receipt-gate-widget-s5a3509.receipt-gate-widget-s5a3509.receipt-gate-widget-s5a3509 { font-size: 10px; color: var(--ds-ink-3); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.receipt-gate-widget-s181847.receipt-gate-widget-s181847.receipt-gate-widget-s181847 { font-size: 9px; color: var(--ds-ink-4); letter-spacing: 0.16em; font-weight: 700; }
+.receipt-gate-widget-sbd0ffe.receipt-gate-widget-sbd0ffe.receipt-gate-widget-sbd0ffe { margin-top: 16px; padding: 12px; background: var(--ds-inset); border-radius: 6px; font-size: 11px; color: var(--ds-ink-2); line-height: 1.6; }
+.receipt-gate-widget-s4feedf.receipt-gate-widget-s4feedf.receipt-gate-widget-s4feedf { margin-bottom: 6px; }
+.receipt-gate-widget-s7331b6.receipt-gate-widget-s7331b6.receipt-gate-widget-s7331b6 { color: var(--ds-kind-compute-ink); }
+.receipt-gate-widget-sc0c872.receipt-gate-widget-sc0c872.receipt-gate-widget-sc0c872 { color: var(--ds-kind-reducer-ink); }
+.receipt-gate-widget-s3227ff.receipt-gate-widget-s3227ff.receipt-gate-widget-s3227ff { color: var(--ds-ink); }

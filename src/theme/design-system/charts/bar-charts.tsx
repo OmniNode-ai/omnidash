@@ -1,21 +1,18 @@
-import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
-import { formatDashboardUsd } from '@/lib/dashboard-currency';
-import { formatDuration } from '@/components/format/duration';
+import { formatDashboardCount, formatFullCount } from '@/theme/format';
+import { formatDashboardUsd } from '@/theme/format';
+import { formatDuration } from '@/theme/format';
 import { shortId } from '@/components/dashboard/event-dash/primitives';
 import { useEffect, useId, useState } from 'react';
 import { ChartEmpty, ChartHeading } from './frame';
 import { SwatchToggles } from './legend';
 import { Link } from 'wouter';
 import { workflowHref } from '@/navigation/workflow-url-state';
-import ReactEChartsCore from 'echarts-for-react/lib/core';
-import * as echarts from 'echarts/core';
-import { BarChart } from 'echarts/charts';
-import { AriaComponent, GridComponent, TooltipComponent } from 'echarts/components';
-import { SVGRenderer } from 'echarts/renderers';
 import { useThemeName } from '@/theme';
+import { EChart } from './echarts-lazy';
 import { colorToNumber, tokenHex, tokenValue, type TokenName } from '@/theme/design-system/color';
+import { localeDate as fmtLocaleDate, localeString as fmtLocaleString } from '@/theme/format';
+import { exactMs, formatShortDay } from '@/theme/format';
 
-echarts.use([BarChart, GridComponent, TooltipComponent, AriaComponent, SVGRenderer]);
 
 /** Motion is a rendering preference, not a CSS-only effect: ECharts also obeys it. */
 function useChartMotion() {
@@ -64,7 +61,7 @@ function barTrack(direction: 'vertical' | 'horizontal' = 'vertical') {
 /** A served UTC day (YYYY-MM-DD) as every day axis names it, e.g. Oct 13 (part 28 AC185); any other text is kept. */
 export function dayAxisLabel(day: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(day)
-    ? new Date(`${day}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+    ? fmtLocaleDate(new Date(`${day}T00:00:00Z`), 'en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
     : day;
 }
 
@@ -302,13 +299,14 @@ function SpendChartFigure({ group, title, colourPlaces }: { group: SpendByDayGro
         series={all.map(({ series, colour }) => ({ key: series.key, label: series.name, color: colour, shown: !hidden.has(series.key) }))} />
       {shown.length === 0
         ? <ChartEmpty status>{EVERY_SERIES_HIDDEN}</ChartEmpty>
-        : <ReactEChartsCore echarts={echarts} option={{ ...optionFor(group, shown), ...motion.option }} notMerge opts={{ renderer: 'svg' }} className="local-chart-canvas" />}
+        : <EChart option={{ ...optionFor(group, shown), ...motion.option }} />}
       <div className="local-chart-inspector"><label htmlFor={dayId}>Inspect day</label>
         <select id={dayId} value={selectedDay === null ? '' : day} onChange={event => setDay(event.target.value)}>
           <option value="">Choose a served day</option>
-          {group.days.map((value, index) => <option key={`${value}-${index}`} value={index}>{value}</option>)}
+          {/* OMN-23330 AC10: days in the short form the other pages use. */}
+          {group.days.map((value, index) => <option key={`${value}-${index}`} value={index}>{formatShortDay(value)}</option>)}
         </select>
-        {selectedDay !== null && <div className="local-chart-detail" role="status"><strong>{group.days[selectedDay]}</strong>
+        {selectedDay !== null && <div className="local-chart-detail" role="status"><strong title={group.days[selectedDay]}>{formatShortDay(group.days[selectedDay] ?? '')}</strong>
           {group.series.map(series => <span key={series.key}>{series.name}: {series.served[selectedDay] == null ? 'Not measured' : formatDashboardUsd(series.served[selectedDay])}</span>)}
         </div>}
       </div>
@@ -390,8 +388,9 @@ function timingOption(bars: readonly RunTimingBar[], colours: readonly string[],
   const text = tone('--ds-ink-2');
   const line = tone('--ds-line');
   const fontFamily = typeof document === 'undefined' ? '' : getComputedStyle(document.body).fontFamily;
-  // The tooltip writes the served text exactly; the label at a bar's end reads it as a duration (OMN-21166 AC55).
-  const servedText = (index: number) => `${bars[index]?.served ?? ''} ms`;
+  // The tooltip writes the exact duration to the whole millisecond (OMN-23330 AC9, superseding OMN-21166 AC55's raw
+  // served text); the label at a bar's end reads it as a duration.
+  const servedText = (index: number) => exactMs(bars[index]?.served) ?? 'Not recorded';
   const labelText = (index: number) => formatDuration(bars[index]?.served);
   return {
     animationDuration: 250,
@@ -451,7 +450,7 @@ export function RunTimingChart({ timings, title = 'Run timing', compact = false,
   });
   return (
     <figure className="local-chart local-chart--timing" aria-label={title}>
-      <ReactEChartsCore echarts={echarts} option={{ ...timingOption(bars, colours, compact), ...motion.option }} notMerge opts={{ renderer: 'svg' }} className="local-chart-canvas" />
+      <EChart option={{ ...timingOption(bars, colours, compact), ...motion.option }} />
       <figcaption>
         {`${bars.map((bar) => bar.label).join(', ')} of this run, ${bars.length === 1 ? 'as served.' : 'each as served, side by side and not added together.'}`}
         {unmeasured.length > 0 && ` No measured value to draw for: ${unmeasured.join(', ')}.`}
@@ -492,7 +491,7 @@ function statusColour(status: string): string {
 /** A tick of a count axis; the origin carries no label, as on the money axis. */
 export function countAxisLabel(value: number): string {
   // Axis coordinates can be fractional even when every recorded count is an integer.
-  return value === 0 ? '' : value.toLocaleString('en-US');
+  return value === 0 ? '' : fmtLocaleString(value, 'en-US');
 }
 
 /** What both run charts share: the page's text colours and font, the runs along the bottom, the value axis. */
@@ -563,7 +562,7 @@ export function RunDurationChart({ runs, onOpen, title = 'Duration per run' }: {
       formatter: (params: Array<{ dataIndex: number; marker: string }>) => {
         const index = params[0]?.dataIndex ?? 0;
         const served = points[index]?.served;
-        return [...runTooltipHead(runs[index]), `${params[0]?.marker ?? ''}Duration: ${served === null || served === undefined ? 'Not recorded' : `${asText(served)} ms`}`].join('<br/>');
+        return [...runTooltipHead(runs[index]), `${params[0]?.marker ?? ''}Duration: ${served === null || served === undefined ? 'Not recorded' : exactMs(served) ?? 'Not recorded'}`].join('<br/>');
       },
     },
     series: [{
@@ -584,9 +583,10 @@ export function RunDurationChart({ runs, onOpen, title = 'Duration per run' }: {
           tone: status === 'passed' ? 'pass' : status === 'failed' ? 'fail' : undefined }))} />
       {statuses.every((status) => hidden.has(status))
         ? <ChartEmpty status>{EVERY_SERIES_HIDDEN}</ChartEmpty>
-        : <ReactEChartsCore echarts={echarts} option={option} notMerge opts={{ renderer: 'svg' }} className="local-chart-canvas" onEvents={openOnClick(runs, onOpen)} />}
+        : <EChart option={option} onEvents={openOnClick(runs, onOpen)} />}
       <RunInspector runs={runs} />
-      <figcaption>Duration of each listed run, in the list&apos;s order, in milliseconds as served. A bar opens its run.</figcaption>
+      {/* OMN-23330 AC9: the axis reads ms, s or min as the values need, so the caption names the axis, not one unit. */}
+      <figcaption>Duration of each listed run, in the list&apos;s order, in the units on the axis. A bar opens its run.</figcaption>
     </figure>
   );
 }
@@ -647,7 +647,7 @@ export function RunTokensChart({ runs, onOpen, title = 'Tokens per run' }: { run
         series={all.map(series => ({ key: series.key, label: series.name, color: series.colour, tone: series.key === 'tokensIn' ? 'tokens-in' : 'tokens-out', shown: !hidden.has(series.key) }))} />
       {shown.length === 0
         ? <ChartEmpty status>{EVERY_SERIES_HIDDEN}</ChartEmpty>
-        : <ReactEChartsCore echarts={echarts} option={option} notMerge opts={{ renderer: 'svg' }} className="local-chart-canvas" onEvents={openOnClick(runs, onOpen)} />}
+        : <EChart option={option} onEvents={openOnClick(runs, onOpen)} />}
       <RunInspector runs={runs} />
       <figcaption>Tokens in and out of each listed run, in the list&apos;s order, as served. A bar opens its run.</figcaption>
     </figure>
@@ -695,7 +695,7 @@ export function RunMetricChart({ runs, onOpen, metric }: {
       {recordedCount < runs.length && <span>{formatDashboardCount(runs.length - recordedCount)} not recorded</span>}
       {allRecordedZero && <strong>{cost ? 'Recorded costs are $0.00' : 'Recorded scores are 0'}</strong>}
     </div>
-    {measured ? <ReactEChartsCore echarts={echarts} option={option} notMerge opts={{ renderer: 'svg' }} className="local-chart-canvas" onEvents={openOnClick(runs, onOpen)} />
+    {measured ? <EChart option={option} onEvents={openOnClick(runs, onOpen)} />
       : <p className="local-dashboard-empty local-chart-unmeasured">No recorded values for these runs</p>}
     <RunInspector runs={runs} describe={valueText} />
     <figcaption>{cost ? 'Session cost when served, otherwise the run’s recorded cost. USD, with no estimates.' : 'The run’s recorded score, without averaging or inferring a pass threshold.'} Current table page and filters; missing values remain gaps.</figcaption>

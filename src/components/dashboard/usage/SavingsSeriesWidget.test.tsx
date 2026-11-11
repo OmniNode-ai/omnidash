@@ -36,7 +36,8 @@ describe('MeteringDaySeries', () => {
     // The viewer reads the baseline in the visible column title, not only in the accessible name.
     expect(within(table).getByRole('columnheader', { name: 'Savings vs claude-sonnet-5-5' })).toBeVisible();
     const rows = within(table).getAllByRole('row').slice(1);
-    expect(rows.map((r) => r.textContent)).toEqual(['2026-10-01$1.203', '2026-10-02$0.402']);
+    // OMN-23330 AC10: the day reads in the short form the other pages use.
+    expect(rows.map((r) => r.textContent)).toEqual(['Oct 1$1.203', 'Oct 2$0.402']);
     expect(screen.queryByText(/9\.99/)).not.toBeInTheDocument();
     expect(screen.queryByText(/total/i)).not.toBeInTheDocument();
   });

@@ -8,6 +8,10 @@ import { Text } from '@/components/ui/typography';
 import type { NodeKind } from '@/components/primitives';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 import { formatRedactedEventPayload } from '@/utils/redact-event-payload';
+import { localeString as fmtLocaleString } from '@/theme/format';
+import { refreshInterval } from '@/theme/refresh';
+// OMN-23330 AC25: this file's fixed inline styles are classes in LiveEventStreamWidget.static.css.
+import './LiveEventStreamWidget.static.css';
 
 // ── Data type ───────────────────────────────────────────────────────
 
@@ -22,7 +26,7 @@ interface LiveEvent {
   correlation_id?: string;
 }
 
-export const SYSTEM_EVENT_REFRESH_INTERVAL_MS = 2_000;
+export const SYSTEM_EVENT_REFRESH_INTERVAL_MS = refreshInterval('live-event-stream');
 export const LIVE_EVENT_FILTERS_STORAGE_KEY = 'omnidash:system-event-stream:filters:v1';
 
 interface LiveEventFilters {
@@ -166,7 +170,7 @@ export default function LiveEventStreamWidget() {
   const { data, isLoading, error } = useProjectionQuery<LiveEvent>({
     topic: TOPICS.liveEvents,
     queryKey: ['live-event-stream'],
-    refetchInterval: SYSTEM_EVENT_REFRESH_INTERVAL_MS,
+    refetchInterval: refreshInterval('live-event-stream'),
   });
   const [filters, setFilters] = useState<LiveEventFilters>(loadFilters);
   const dataSourceMode = useDataSourceMode();
@@ -218,96 +222,55 @@ export default function LiveEventStreamWidget() {
       isLive={isLiveDataSource(dataSourceMode)}
       fileMode={!isLiveDataSource(dataSourceMode)}
       headerExtra={
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+        <span className="live-event-stream-widget-s3e5458">
           <Text size="xs" color="tertiary" family="mono">
             {filteredEvents.length} visible · {sourceCount} sources · auto-updating
           </Text>
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--ds-ok)', boxShadow: '0 0 0 3px color-mix(in srgb, var(--ds-ok) 18%, transparent)' }} />
+          <span className="live-event-stream-widget-s5eafdb" />
         </span>
       }
     >
-      <div aria-live="polite" style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-            gap: 8,
-          }}
+      <div className="live-event-stream-widget-sb993d5" aria-live="polite">
+        <div className="live-event-stream-widget-sf9183d"
         >
           {[
-            ['Messages', events.length.toLocaleString()],
-            ['Visible', filteredEvents.length.toLocaleString()],
-            ['Sources', sourceCount.toLocaleString()],
+            ['Messages', fmtLocaleString(events.length)],
+            ['Visible', fmtLocaleString(filteredEvents.length)],
+            ['Sources', fmtLocaleString(sourceCount)],
             ['Newest', newestLabel],
           ].map(([label, value]) => (
-            <div key={label} style={{ border: '1px solid var(--ds-line)', borderRadius: 6, padding: '8px 10px', background: 'var(--ds-surface-2)' }}>
+            <div className="live-event-stream-widget-s9e764a" key={label}>
               <Text as="div" size="xs" weight="bold" color="tertiary" family="mono" transform="uppercase">{label}</Text>
-              <Text as="div" size="md" weight="bold" color="primary" family="mono" style={{ marginTop: 2 }}>{value}</Text>
+              <Text className="live-event-stream-widget-saeb83f" as="div" size="md" weight="bold" color="primary" family="mono">{value}</Text>
             </div>
           ))}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-          <div
-            style={{
-              flex: 1,
-              minWidth: 280,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '7px 10px',
-              border: '1px solid var(--ds-line)',
-              borderRadius: 6,
-              background: 'var(--ds-surface-2)',
-            }}
+        <div className="live-event-stream-widget-saf15e3">
+          <div className="live-event-stream-widget-sa164bf"
           >
-            <Search size={14} style={{ color: 'var(--ds-ink-3)', flexShrink: 0 }} />
+            <Search className="live-event-stream-widget-sf6885f" size={14} />
             <input
               type="text"
               value={filters.query}
               onChange={(e) => setFilters((current) => ({ ...current, query: e.target.value }))}
               placeholder="Filter source, topic, correlation, or payload"
               aria-label="Filter live event messages"
-              className="text-input-md"
-              style={{
-                flex: 1,
-                border: 0,
-                outline: 0,
-                background: 'transparent',
-              }}
+              className="text-input-md live-event-stream-widget-sd4d4d7"
             />
           </div>
           <select
             value={filters.eventType}
             onChange={(e) => setFilters((current) => ({ ...current, eventType: e.target.value }))}
             aria-label="Filter by event type"
-            className="text-input-md"
-            style={{
-              minHeight: 34,
-              padding: '6px 10px',
-              border: '1px solid var(--ds-line)',
-              borderRadius: 6,
-              background: 'var(--ds-surface-2)',
-              color: 'inherit',
-            }}
+            className="text-input-md live-event-stream-widget-sed5342"
           >
             <option value="all">All event types</option>
             {eventTypes.map((eventType) => (
               <option key={eventType} value={eventType}>{eventType}</option>
             ))}
           </select>
-          <label
-            style={{
-              minHeight: 34,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 7,
-              padding: '6px 10px',
-              border: '1px solid var(--ds-line)',
-              borderRadius: 6,
-              background: 'var(--ds-surface-2)',
-              cursor: 'pointer',
-            }}
+          <label className="live-event-stream-widget-scce571"
           >
             <input
               type="checkbox"
@@ -318,15 +281,15 @@ export default function LiveEventStreamWidget() {
           </label>
           {!filters.includeHeartbeats && heartbeatCount > 0 && (
             <Text as="span" size="xs" color="tertiary" family="mono">
-              {heartbeatCount.toLocaleString()} {heartbeatCount === 1 ? 'heartbeat' : 'heartbeats'} hidden
+              {fmtLocaleString(heartbeatCount)} {heartbeatCount === 1 ? 'heartbeat' : 'heartbeats'} hidden
             </Text>
           )}
         </div>
 
-        <div style={{ border: '1px solid var(--ds-line)', borderRadius: 6, overflow: 'hidden', background: 'var(--ds-surface)' }}>
+        <div className="live-event-stream-widget-s601b80">
           <BusHeader template={ROW_TEMPLATE} />
 
-          <div style={{ maxHeight: 520, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+          <div className="live-event-stream-widget-s7306f5">
             {filteredEvents.map((e, i) => {
               const kind = nodeKindForEvent(e);
               const isNewest = i === 0;
@@ -370,22 +333,11 @@ export default function LiveEventStreamWidget() {
                       {e.summary}
                     </Text>
                   </summary>
-                  <Text
+                  <Text className="live-event-stream-widget-scc9e2c"
                     as="pre"
                     size="xs"
                     color="secondary"
                     family="mono"
-                    style={{
-                      margin: '0 12px 10px 374px',
-                      maxHeight: 220,
-                      overflow: 'auto',
-                      padding: 10,
-                      borderRadius: 6,
-                      border: '1px solid var(--ds-line)',
-                      background: 'var(--ds-inset)',
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-word',
-                    }}
                   >
                     {payload}
                   </Text>
@@ -393,14 +345,11 @@ export default function LiveEventStreamWidget() {
               );
             })}
             {filteredEvents.length === 0 && (
-              <Text
+              <Text className="live-event-stream-widget-s0af041"
                 as="div"
                 size="sm"
                 color="tertiary"
                 align="center"
-                style={{
-                  padding: 18,
-                }}
               >
                 No matching messages
               </Text>

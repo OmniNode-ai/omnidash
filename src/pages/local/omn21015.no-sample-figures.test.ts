@@ -40,9 +40,8 @@ const READ_ATTRIBUTES = new Set(['title', 'aria-label', 'aria-valuetext', 'place
  * until it is either removed or added here by someone who has checked that the number is never shown as served.
  */
 const NUMBER_FALLBACKS_READ: ReadonlyArray<{ file: string; code: string; why: string }> = [
-  { file: 'src/pages/LocalDashboardPage.tsx', code: 'config.precision ?? 0', why: 'how many decimals a served figure is written with when the page declares none; not a figure' },
-  { file: 'src/pages/LocalDashboardPage.tsx', code: 'document.dashboard.refresh_interval_seconds ?? 30', why: 'how often the page reads the runtime again when the page declares no interval; never drawn' },
-  { file: 'src/pages/LocalDashboardPage.tsx', code: 'page?.dashboard.refresh_interval_seconds ?? 30', why: 'the same refresh interval, read for the timer; never drawn' },
+  // OMN-23330 AC24: formatMetric moved into the headline part.
+  { file: 'src/pages/local/page-headline.tsx', code: 'config.precision ?? 0', why: 'how many decimals a served figure is written with when the page declares none; not a figure' },
   { file: 'src/pages/LocalDashboardPage.tsx', code: '(widget?.config as Record<string, unknown> | undefined)?.page_size ?? 25', why: 'rows per page of a table when the page declares none; a layout choice, not a served count' },
   { file: 'src/pages/LocalDashboardPage.tsx', code: 'widget?.width ?? 12', why: 'grid columns a panel spans when the page declares none; layout only' },
   { file: 'src/theme/design-system/charts/bar-charts.tsx', code: 'params[0]?.dataIndex ?? 0', why: 'which point the pointer is over in the chart tooltip; an index into the served days, not a value' },

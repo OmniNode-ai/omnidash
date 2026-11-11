@@ -1,0 +1,10 @@
+/* OMN-23330 AC25: the fixed inline styles of ReadinessGate.tsx, moved into classes with nothing else changed. Each selector
+   repeats its class so it keeps the weight the inline style had over the stylesheet rules around it. */
+.readiness-gate-s8d40ed.readiness-gate-s8d40ed.readiness-gate-s8d40ed { display: flex; flex-direction: column; gap: 0.5rem; }
+.readiness-gate-s85056b.readiness-gate-s85056b.readiness-gate-s85056b { display: flex; align-items: center; gap: 0.5rem; }
+.readiness-gate-s538764.readiness-gate-s538764.readiness-gate-s538764 { margin-left: auto; }
+.readiness-gate-s5375b8.readiness-gate-s5375b8.readiness-gate-s5375b8 { border: 1px solid var(--ds-line-soft); border-radius: 6px; overflow: hidden; }
+.readiness-gate-sfdb3d2.readiness-gate-sfdb3d2.readiness-gate-sfdb3d2 { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.readiness-gate-sf77879.readiness-gate-sf77879.readiness-gate-sf77879 { width: 72px; }
+.readiness-gate-sbc0eb5.readiness-gate-sbc0eb5.readiness-gate-sbc0eb5 { width: 40%; }
+.readiness-gate-s2102bd.readiness-gate-s2102bd.readiness-gate-s2102bd { border-top: 1px solid var(--ds-line-soft); }

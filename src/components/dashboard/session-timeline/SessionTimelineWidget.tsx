@@ -4,6 +4,9 @@ import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { Text } from '@/components/ui/typography';
+import { fixed as fmtFixed, localeDate as fmtLocaleDate, localeTime as fmtLocaleTime } from '@/theme/format';
+// OMN-23330 AC25: this file's fixed inline styles are classes in SessionTimelineWidget.static.css.
+import './SessionTimelineWidget.static.css';
 
 interface TimelineEvent {
   intent_id: string;
@@ -48,13 +51,13 @@ function formatCategory(category: string): string {
 function formatTime(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '--';
-  return d.toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  return fmtLocaleTime(d, [], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '--';
-  return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  return fmtLocaleDate(d, [], { month: 'short', day: 'numeric' });
 }
 
 // ── Scatter Chart ────────────────────────────────────────────────────
@@ -82,7 +85,7 @@ function ScatterChart({ events }: { events: TimelineEvent[] }) {
   const plotH = SVG_H - PAD.top - PAD.bottom;
 
   return (
-    <svg viewBox={`0 0 ${SVG_W} ${SVG_H}`} style={{ width: '100%', height: 'auto' }}>
+    <svg className="session-timeline-widget-s6e5d05" viewBox={`0 0 ${SVG_W} ${SVG_H}`}>
       {/* Y-axis category labels */}
       {categories.map((cat, i) => {
         const y = PAD.top + (i + 0.5) * (plotH / categories.length);
@@ -121,7 +124,7 @@ function ScatterChart({ events }: { events: TimelineEvent[] }) {
             fill={confidenceColor(ev.confidence)}
             opacity={0.4 + ev.confidence * 0.6}
           >
-            <title>{`${ev.intent_category} (${(ev.confidence * 100).toFixed(0)}%) ${formatTime(ev.created_at)}`}</title>
+            <title>{`${ev.intent_category} (${fmtFixed((ev.confidence * 100), 0)}%) ${formatTime(ev.created_at)}`}</title>
           </circle>
         );
       })}
@@ -146,28 +149,14 @@ function ScatterChart({ events }: { events: TimelineEvent[] }) {
 
 function TimelineList({ events }: { events: TimelineEvent[] }) {
   return (
-    <div
-      style={{
-        maxHeight: 360,
-        overflowY: 'auto',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 0,
-      }}
+    <div className="session-timeline-widget-s8a0b35"
     >
       {events.map((ev) => {
         const confColor = confidenceColor(ev.confidence);
         return (
-          <div
+          <div className="session-timeline-widget-s847317"
             key={ev.intent_id}
             data-testid="timeline-row"
-            style={{
-              display: 'flex',
-              gap: 12,
-              padding: '8px 12px',
-              borderBottom: '1px solid var(--ds-line-soft)',
-              alignItems: 'flex-start',
-            }}
           >
             {/* Colored dot */}
             <div
@@ -181,9 +170,9 @@ function TimelineList({ events }: { events: TimelineEvent[] }) {
               }}
             />
 
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div className="session-timeline-widget-sf3acc3">
               {/* Top line: category chip + confidence + time */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <div className="session-timeline-widget-s79731f">
                 <span className="chip">
                   {formatCategory(ev.intent_category)}
                 </span>
@@ -193,21 +182,20 @@ function TimelineList({ events }: { events: TimelineEvent[] }) {
                   </span>
                 )}
                 <span className="mono tnum" style={{ color: confColor, "fontWeight": 600 }}>
-                  {(ev.confidence * 100).toFixed(0)}%
+                  {fmtFixed((ev.confidence * 100), 0)}%
                 </span>
-                <span className="mono tnum" style={{ "color": 'var(--ds-ink-3)' }}>
+                <span className="mono tnum session-timeline-widget-scdea4e">
                   {formatDate(ev.created_at)} {formatTime(ev.created_at)}
                 </span>
               </div>
 
               {/* Keywords */}
               {ev.keywords.length > 0 && (
-                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                <div className="session-timeline-widget-sf7aba4">
                   {ev.keywords.map((kw) => (
                     <span
                       key={kw}
-                      className="chip"
-                      style={{ height: 18, padding: '0 6px' }}
+                      className="chip session-timeline-widget-sdcc3a0"
                     >
                       <Text size="xs" family="mono" color="secondary">{kw}</Text>
                     </span>

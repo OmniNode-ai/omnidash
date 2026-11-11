@@ -145,7 +145,8 @@ describe('OMN-21015: where a run\'s time went', () => {
     // OMN-21166 AC55: the label at the bar's end reads as a duration; the tooltip keeps the exact served text.
     expect(option.series[0].label.formatter({ dataIndex: 1 })).toBe('4.8 s');
     expect(option.series[0].label.formatter({ dataIndex: 2 })).toBe('743 ms');
-    expect(option.tooltip.formatter({ dataIndex: 2, name: 'Duration', marker: '' })).toBe('Duration: 0743 ms');
+    // OMN-23330 AC9 supersedes the served text here: the exact figure is the whole millisecond, grouped (served "0743").
+    expect(option.tooltip.formatter({ dataIndex: 2, name: 'Duration', marker: '' })).toBe('Duration: 743 ms');
   });
 
   it('T8: a timing keeps its colour when another is not measured', () => {

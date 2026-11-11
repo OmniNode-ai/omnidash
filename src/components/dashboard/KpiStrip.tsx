@@ -7,8 +7,10 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { CardBasis } from '@/components/dashboard/CardBasis';
+import { CaptionLine } from '@/components/dashboard/CaptionLine';
 import { CountUpText } from '@/components/dashboard/CountUpText';
 import { Card, Figure } from '@/theme/design-system/components';
+import { localeDate as fmtLocaleDate } from '@/theme/format';
 
 /** A figure's served value per UTC day (oldest first), and how to write one value. */
 export interface KpiTrend {
@@ -34,7 +36,7 @@ export interface KpiItem {
   trend?: KpiTrend | null;
 }
 
-const dayName = (day: string) => new Date(`${day}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+const dayName = (day: string) => fmtLocaleDate(new Date(`${day}T00:00:00Z`), 'en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 
 /**
  * What a sparkline used to show, in words: the peak and the latest served day. A day with no served value is skipped,
@@ -72,7 +74,8 @@ export function KpiStrip({ label, items }: { label: string; items: readonly KpiI
               accent={item.accent} unavailable={item.unavailable} data-kpi-card={item.label}>
               <Figure measured={!item.unavailable} title={item.title}
                 style={{ '--figure-chars': String(item.value).length } as CSSProperties}>{!item.unavailable && typeof item.value === 'string' ? <CountUpText text={item.value} /> : item.value}</Figure>
-              {lines.length > 0 && <CardBasis label={item.label}>{lines.map(line => <p key={line} className="local-dashboard-caption">{line}</p>)}</CardBasis>}
+              {/* OMN-23330 AC27: each figure and name in the caption wears its concept's colour. */}
+              {lines.length > 0 && <CardBasis label={item.label}>{lines.map(line => <CaptionLine key={line} line={line} />)}</CardBasis>}
             </Card>
           );
         })}

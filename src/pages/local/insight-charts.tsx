@@ -1,11 +1,11 @@
-import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
+import { formatDashboardCount, formatFullCount } from '@/theme/format';
 
-import { formatDashboardUsd } from '@/lib/dashboard-currency';
-import { formatDuration } from '@/components/format/duration';
+import { formatDashboardUsd } from '@/theme/format';
+import { formatDuration } from '@/theme/format';
 import { createContext, useContext, useId, useState, type CSSProperties, type ReactNode } from 'react';
 import { millisecondsAxisLabel } from '@/theme/design-system/charts/bar-charts';
 import { passBand } from '@/pages/local/plain-text';
-import { BarTrack, ChartCard, ChartEmpty, ChartReadout, CumulativeColumns, DayColumns, Histogram, HourHeatmap, LinePlot, NamedByPanel, RankedBars, SeriesLegend, SeriesToggles, SpendColumns, dayTicks } from '@/theme/design-system/charts';
+import { BarTrack, ChartCard, ChartEmpty, ChartReadout, CumulativeColumns, DayAxis, DayColumns, Histogram, HourHeatmap, LinePlot, NamedByPanel, RankedBars, SeriesLegend, SeriesToggles, SpendColumns, dayTicks } from '@/theme/design-system/charts';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { causeHref, useSharedRunFilter } from './run-filter';
 import { failureCauseLabel } from './plain-text';
@@ -22,6 +22,7 @@ import {
 import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
 import { DashboardTabs, EmptyState, KpiTile } from '@/theme/design-system/components';
 import { Bot, CircleCheck, Clock3, ListChecks, Timer, TriangleAlert } from '@/theme/design-system/icons';
+import { fixed as fmtFixed, localeDate as fmtLocaleDate, localeString as fmtLocaleString } from '@/theme/format';
 
 /**
  * OMN-21166 AC26 (mockup build; rule change R-B, Lakshman 2026-10-18): the Overview's trends and breakdowns, counted
@@ -71,11 +72,11 @@ function verdictCoverage(withVerdict: number, runs: number): string {
 const duration = (ms: number): string => formatDuration(ms);
 
 function dayLabel(day: string): string {
-  return new Date(`${day}T00:00:00Z`).toLocaleString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  return fmtLocaleString(new Date(`${day}T00:00:00Z`), 'en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 }
 
 function weekday(day: string): string {
-  return new Date(`${day}T00:00:00Z`).toLocaleString('en-US', { weekday: 'short', timeZone: 'UTC' });
+  return fmtLocaleString(new Date(`${day}T00:00:00Z`), 'en-US', { weekday: 'short', timeZone: 'UTC' });
 }
 
 function readable(key: string): string {
@@ -102,9 +103,18 @@ function dayCounts(day: InsightDay): string {
 /** A short label above a token bar ("2.9K", "206K"); the exact count is in the day's readout and accessible name. */
 function shortCount(value: number | null): string {
   if (value === null) return '';
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(value >= 10_000_000 ? 0 : 1)}M`;
-  if (value >= 1_000) return `${(value / 1_000).toFixed(value >= 100_000 ? 0 : 1)}K`;
+  if (value >= 1_000_000) return `${fmtFixed((value / 1_000_000), value >= 10_000_000 ? 0 : 1)}M`;
+  if (value >= 1_000) return `${fmtFixed((value / 1_000), value >= 100_000 ? 0 : 1)}K`;
   return String(value);
+}
+
+/**
+ * OMN-23330 AC8: the day a readout shows while nothing is pointed at: the newest day that served something, so no blank
+ * row sits above the chart. A window that served nothing has none, and the readout names no day.
+ */
+function latestServed(days: readonly InsightDay[], served: (day: InsightDay) => boolean): InsightDay | null {
+  for (let index = days.length - 1; index >= 0; index -= 1) if (served(days[index]!)) return days[index]!;
+  return null;
 }
 
 /** A readout's separator: the same text (" · ") in its own span, so it can take room on either side in the quiet ink. */
@@ -112,7 +122,7 @@ function Sep() {
   return <span className="ins-readout-sep">{' · '}</span>;
 }
 
-function RunsPerDay({ days }: { days: InsightDay[] }) {
+export function RunsPerDay({ days }: { days: InsightDay[] }) {
   const [hover, setHover] = useState<number | null>(null);
   // OMN-21166 AC78: a day opens Runs filtered to that UTC day (the day key is already the UTC date).
   // On Runs itself the filters already chosen stay; only the day changes.
@@ -125,7 +135,7 @@ function RunsPerDay({ days }: { days: InsightDay[] }) {
   // series can be hidden; the last one shown stays on.
   const [show, setShow] = useState({ passed: true, failed: true });
   const max = Math.max(1, ...days.flatMap(day => [show.passed ? day.passed : 0, show.failed ? day.failed : 0]));
-  const active = hover === null ? null : days[hover]!;
+  const active = hover === null ? latestServed(days, day => day.runs > 0) : days[hover]!;
   const ticks = dayTicks(days, onRuns ? 14 : 8);
   const toggle = (key: 'passed' | 'failed') => setShow(current => {
     const other = key === 'passed' ? 'failed' : 'passed';
@@ -133,7 +143,7 @@ function RunsPerDay({ days }: { days: InsightDay[] }) {
   });
   return (
     <ChartCard title="Runs per day" concept="runs-daily" delay={0}>
-      <ChartReadout testId="runs-per-day-readout" active={active !== null}
+      <ChartReadout testId="runs-per-day-readout" active={hover !== null}
         text={active ? verdictsNotRead(active)
           ? <>{dayLabel(active.day)}<Sep /><span data-field-tone="basis">Verdicts not read</span></>
           : <>{dayLabel(active.day)}<Sep /><span data-field-tone="count">{count(active.passed + active.failed)} runs</span><Sep /><span data-field-tone="pass">{count(active.passed)} passed</span><Sep /><span data-field-tone="fail">{count(active.failed)} failed</span></> : ''} />
@@ -161,14 +171,15 @@ function PassRateTrend({ days }: { days: InsightDay[] }) {
   const rates = days.map(day => day.passRate);
   const known = rates.filter((rate): rate is number => rate !== null);
   const min = known.length ? Math.max(0, Math.floor(Math.min(...known) / 10) * 10 - 10) : 0;
-  const labels = days.map(day => `${dayLabel(day.day)}: ${day.passRate === null ? 'no verdicts' : `${day.passRate.toFixed(1)}% passed`} (${verdictCoverage(day.passed + day.failed, day.runs)})`);
+  const labels = days.map(day => `${dayLabel(day.day)}: ${day.passRate === null ? 'no verdicts' : `${fmtFixed(day.passRate, 1)}% passed`} (${verdictCoverage(day.passed + day.failed, day.runs)})`);
   const active = hover === null ? null : days[hover]!;
   return (
     <ChartCard title="Pass rate per day" concept="pass-rate-daily" delay={60}>
-      <ChartReadout active={active !== null} text={active ? <>{dayLabel(active.day)} · <span data-field-tone="pass" data-field-unavailable={active.passRate === null}>{active.passRate === null ? 'no verdicts' : `${active.passRate.toFixed(1)}% passed`}</span> · <span data-field-tone="basis">{verdictCoverage(active.passed + active.failed, active.runs)}</span></> : `Scale from ${min}% to 100%`} />
+      <ChartReadout active={active !== null} text={active ? <>{dayLabel(active.day)} · <span data-field-tone="pass" data-field-unavailable={active.passRate === null}>{active.passRate === null ? 'no verdicts' : `${fmtFixed(active.passRate, 1)}% passed`}</span> · <span data-field-tone="basis">{verdictCoverage(active.passed + active.failed, active.runs)}</span></> : `Scale from ${min}% to 100%`} />
       <LinePlot label="Pass rate per day" values={rates} keys={days.map(day => day.day)} labels={labels} min={min} max={100}
         hover={hover} onHover={setHover} color={PASS} />
-      <div className="ins-axis"><span>{dayLabel(days[0]!.day)}</span><span>{dayLabel(days[days.length - 1]!.day)}</span></div>
+      {/* OMN-23330 AC31: the kit's one DayAxis, first and last day on the line's end points. */}
+      <DayAxis days={days.map(day => day.day)} ticks={new Set([0, days.length - 1])} place="point" format={dayLabel} />
     </ChartCard>
   );
 }
@@ -242,7 +253,7 @@ function DurationHistogram({ runs }: { runs: InsightRun[] }) {
       <Histogram label="Duration buckets" hover={hover} onHover={setHover} color="var(--ds-field-duration)"
         buckets={buckets.map((runsInBucket, index) => ({ key: String(index), ariaLabel: `${name(index)}: ${runsWord(runsInBucket)}`, value: runsInBucket }))} />
       {/* The axis ends name whole units, as the chart axes do ("1 min+", not "1 min 0 s+"). */}
-      <div className="ins-axis"><span>{duration(edges[0]!)}</span><span>{millisecondsAxisLabel(edges[edges.length - 2]!)}+</span></div>
+      <div className="ins-value-axis"><span>{duration(edges[0]!)}</span><span>{millisecondsAxisLabel(edges[edges.length - 2]!)}+</span></div>
     </ChartCard>
   );
 }
@@ -318,18 +329,18 @@ function ChartSection({ title, children }: { title: string; concept?: string; ch
   return <section className="overview-chart-section" aria-label={title}><div className="overview-chart-row">{children}</div></section>;
 }
 
-function TokensPerDay({ days }: { days: InsightDay[] }) {
+export function TokensPerDay({ days }: { days: InsightDay[] }) {
   const [hover, setHover] = useState<number | null>(null);
   // The scale comes from the days that recorded tokens; a day without a count draws no bar.
   const max = Math.max(1, ...days.flatMap(day => [day.tokensIn, day.tokensOut]).filter((value): value is number => value !== null));
   const side = (value: number | null, missing: number, direction: 'in' | 'out') => `${value === null ? 'not recorded' : formatFullCount(value)} ${direction}${value !== null && missing > 0 ? ` (partial: ${count(missing)} ${missing === 1 ? 'run' : 'runs'} not recorded)` : ''}`;
   const label = (day: InsightDay) => `${dayLabel(day.day)}: ${side(day.tokensIn, day.tokensInUnmeasured, 'in')}, ${side(day.tokensOut, day.tokensOutUnmeasured, 'out')}`;
-  const active = hover === null ? null : days[hover]!;
+  const active = hover === null ? latestServed(days, day => day.tokensIn !== null || day.tokensOut !== null) : days[hover]!;
   const [location] = useLocation();
   const ticks = dayTicks(days, location === '/runs' ? 14 : 8);
   return (
     <ChartCard title="Tokens per day" concept="tokens-daily" delay={420}>
-      <ChartReadout active={active !== null} text={active ? <>{dayLabel(active.day)}<Sep /><span data-field-tone="tokens-in" data-field-unavailable={active.tokensIn === null}>{side(active.tokensIn, active.tokensInUnmeasured, 'in')}</span>, <span data-field-tone="tokens-out" data-field-unavailable={active.tokensOut === null}>{side(active.tokensOut, active.tokensOutUnmeasured, 'out')}</span></> : ''} />
+      <ChartReadout active={hover !== null} text={active ? <>{dayLabel(active.day)}<Sep /><span data-field-tone="tokens-in" data-field-unavailable={active.tokensIn === null}>{side(active.tokensIn, active.tokensInUnmeasured, 'in')}</span>, <span data-field-tone="tokens-out" data-field-unavailable={active.tokensOut === null}>{side(active.tokensOut, active.tokensOutUnmeasured, 'out')}</span></> : ''} />
       <DayColumns label="Tokens per day" days={days.map((day, index) => ({
         key: day.day,
         ariaLabel: label(day),
@@ -377,13 +388,13 @@ export function PassRateSparkline({ part = 'all' }: { part?: 'all' | 'headline' 
   const comparisonDays = window.kind === 'days' ? window.days : MAX_ALL_TIME_DAYS;
   const comparison = window.kind === 'days' ? compareWindow(context.decisions, context.now, window.days) : null;
   const current = summary(currentRuns);
-  const rate = current.passRate === null ? 'Not recorded' : `${current.passRate.toFixed(1)}%`;
+  const rate = current.passRate === null ? 'Not recorded' : `${fmtFixed(current.passRate, 1)}%`;
   const deltaText = comparison === null ? null
     : comparison.passRateDeltaPoints === null
       ? comparison.previousComplete
         ? `Previous ${comparisonDays === 1 ? 'day' : `${comparisonDays} days`} has no recorded verdicts to compare`
         : `Previous ${comparisonDays === 1 ? 'day' : `${comparisonDays} days`} not fully returned`
-      : `${comparison.passRateDeltaPoints > 0 ? '▲' : comparison.passRateDeltaPoints < 0 ? '▼' : '—'} ${Math.abs(comparison.passRateDeltaPoints).toFixed(1)} percentage points vs previous ${comparisonDays === 1 ? 'day' : `${comparisonDays} days`} (${verdictCoverage(comparison.previousVerdicts, comparison.previousRuns)})`;
+      : `${comparison.passRateDeltaPoints > 0 ? '▲' : comparison.passRateDeltaPoints < 0 ? '▼' : '—'} ${fmtFixed(Math.abs(comparison.passRateDeltaPoints), 1)} percentage points vs previous ${comparisonDays === 1 ? 'day' : `${comparisonDays} days`} (${verdictCoverage(comparison.previousVerdicts, comparison.previousRuns)})`;
   // OMN-21166 part 11: this rate is over the latest returned runs, not every check the meter above counts, so its
   // label names that population beside the figure.
   const trend = <PassRateTrend days={seriesForDays(currentRuns, plottedDays(runs, context.now, window))} />;
@@ -494,7 +505,7 @@ function RunWindowKpis({ runs, decisions, label, comparisonEnabled, now, days }:
       ? delta(comparison.runsDelta, value => `${value} runs`) : 'Previous window not fully returned';
   const medianDelta = !comparisonEnabled ? null
     : comparison?.previousComplete && comparison.medianLatencyDelta !== null
-      ? delta(comparison.medianLatencyDelta, value => `${(value / 1000).toFixed(2)} s`) : 'Previous window not fully returned';
+      ? delta(comparison.medianLatencyDelta, value => `${fmtFixed((value / 1000), 2)} s`) : 'Previous window not fully returned';
   const median = summaryNow.medianLatency === null ? 'Not recorded' : duration(summaryNow.medianLatency);
   return (
     <section className="ins-window-kpis ins-window-kpis--runs" aria-label={`Runs in ${selectedLabel}`}>
@@ -513,7 +524,7 @@ function MeteringWindowKpis({ current, previous, days, label, comparisonEnabled,
   const savedReady = unavailable === null && current.available && current.saved !== null;
   const servedDayCount = current.days.filter(day => day.served).length;
   const savedPct = current.saved !== null && current.counterfactual !== null && current.counterfactual > 0
-    ? `${(current.saved / current.counterfactual * 100).toFixed(1)}% below ${current.baseline ?? 'the served baseline'}` : 'Baseline comparison not recorded';
+    ? `${fmtFixed((current.saved / current.counterfactual * 100), 1)}% below ${current.baseline ?? 'the served baseline'}` : 'Baseline comparison not recorded';
   const paidNote = unavailable ?? current.reason ?? (!current.windowComplete
     ? `${servedDayCount} of ${days} daily rows served; the selected window is incomplete.`
     : current.spend === null ? 'One or more daily spend values are not recorded; paid total unavailable.'
@@ -563,7 +574,7 @@ function MoneyWindowCharts({ rows, now, days, unavailable }: { rows: readonly un
   const cumulativeValues = data.cumulativeSaved.filter((value): value is number => value !== null);
   const cumulativeMax = Math.max(0.01, ...cumulativeValues);
   const selected = activeSpend === null ? null : data.days[activeSpend]!;
-  const dateLabel = (day: string) => new Date(`${day}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  const dateLabel = (day: string) => fmtLocaleDate(new Date(`${day}T00:00:00Z`), 'en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
   const detail = (day: typeof data.days[number]) => `${dateLabel(day.day)} · Paid ${usd(day.spend)} · Saved ${usd(day.saved)} · All-cloud ${usd(day.counterfactual)}`;
   return (
     <ChartSection concept="spend-daily" title="Daily paid vs all-cloud">

@@ -1,5 +1,5 @@
 import { ArrowDown, ArrowUp } from '@/theme/design-system/icons';
-import { formatDashboardCount, formatFullCount, wholeCount } from '@/lib/dashboard-count';
+import { formatDashboardCount, formatFullCount, wholeCount } from '@/theme/format';
 
 /** One display for directional counts: short by the dashboard count rule (OMN-22168), the exact count on focus and hover. */
 export function TokenDirections({ input, output }: { input: unknown; output: unknown }) {
@@ -8,8 +8,10 @@ export function TokenDirections({ input, output }: { input: unknown; output: unk
       const count = wholeCount(value);
       const text = count === null ? 'Not measured' : formatFullCount(count.toString());
       const short = count === null ? 'Not measured' : formatDashboardCount(count.toString());
+      // OMN-23330 (identity census, WCAG 2.5.3 label in name): the name starts with the figure as drawn, then the exact count.
+      const name = short === text ? `${label} tokens: ${text}` : `${label} tokens: ${short}, exactly ${text}`;
       return <span key={tone} className="local-token-direction" data-field-tone={tone} data-field-unavailable={count === null}
-        tabIndex={0} aria-label={`${label} tokens: ${text}`} title={`${label} tokens: ${text}`}>
+        tabIndex={0} aria-label={name} title={`${label} tokens: ${text}`}>
         <Icon size={15} aria-hidden="true" /><strong>{short}</strong>
       </span>;
     })}

@@ -1,6 +1,7 @@
 import { expect, test } from 'playwright/test';
 import { chartRows, narrowTo, prefix, serveCharts } from './omn21166-chart-fixtures';
 import { chooseChartTab } from './chart-tabs';
+import { formatShortDay } from '../../src/theme/format/share-and-day';
 // Failure modes: unbounded table, unequal adjacent panes, token panel on wrong row,
 // keyboard pagination broken, mobile overflow and display precision changing raw chart data.
 test.use({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce', trace: 'on' });
@@ -53,7 +54,9 @@ for (const theme of ['light', 'dark']) {
     await chooseChartTab(page, 'Savings per day');
     const next = savings.getByRole('button', { name: 'Next savings days for baseline-a' });
     await next.focus(); await page.keyboard.press('Enter');
-    await expect(table.locator('tbody tr').first()).toContainText(days[8]!.window_start);
+    // OMN-23330 AC10: the day reads in the short form ("Sep 2"), the served day kept as the cell's title.
+    await expect(table.locator('tbody tr').first().locator('td').first()).toHaveText(formatShortDay(days[8]!.window_start));
+    await expect(table.locator('tbody tr').first().locator('td').first()).toHaveAttribute('title', days[8]!.window_start);
     await page.screenshot({ path: info.outputPath(`usage-${theme}-desktop.png`), fullPage: true });
     for (const width of [390, 320]) {
       await narrowTo(page, width, 844);
@@ -67,7 +70,7 @@ for (const theme of ['light', 'dark']) {
 
 test('Overview money cards truncate, preserve tiny nonzero and retain missing states', async ({ page }, info) => {
   await serveCharts(page, { ...chartRows, [prefix + 'cost.savings-overview.v1']: [{ window: 'all', captured_at: '2026-10-22T10:00:00Z', total_cost_usd: '3.5923', total_savings_usd: '1074.2157', run_count: 3 }], [prefix + 'metering-summary.v1']: [{
-    ...days[0], window_kind: 'all', window_start: '', spend_usd: '3.5923',
+    ...days[0], window_kind: 'all', window_start: '', spend_usd: '3.5923', pricing_manifest_version: '1',
     savings_usd: '1074.2157', savings_per_measured_run_usd: '0.009',
     runs_measured: 3, runs_total: 3, tokens_in: 123, tokens_out: 456,
   }] });

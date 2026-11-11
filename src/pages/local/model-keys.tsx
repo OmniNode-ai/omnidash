@@ -12,7 +12,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { ChevronRight } from '@/theme/design-system/icons';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { SettingsEmptyState } from '@/components/dashboard/SettingsEmptyState';
-import { readableTime } from '@/components/format/readable-time';
+import { readableTime } from '@/theme/format';
 import { ModelKeysError, listModelKeys, type ModelProviderId, type ModelProviderRow } from '@/services/models-api';
 import { Badge, DataTable, EmptyState, Fact, FactList } from '@/theme/design-system/components';
 
@@ -250,11 +250,19 @@ export function ModelKeys({ client = LIVE_CLIENT, keys = [], empty }: { client?:
     </DataTable>
   );
   // Revision 3 (AC161): an unread list says so once, with the terminal command that shows the same status.
-  if (listError !== null) return (
+  // OMN-23330 AC3 (live 2026-11-10: the notice sat above the two served keys): the notice is the section's statement only
+  // when no provider row is served. With keys served, their table comes first and the unread list is one line below it.
+  if (listError !== null && keysAlone === null) return (
     <section className="local-model-keys" aria-label="Model providers">
       <SettingsEmptyState icon={<ConceptIcon concept="credentials" label="Model providers" size={16} />} title="Model providers could not be read"
         action={<span className="local-dashboard-caption">See them in your terminal with <code>onex models list</code>.</span>}>{listError}</SettingsEmptyState>
+    </section>
+  );
+  if (listError !== null) return (
+    <section className="local-model-keys" aria-label="Model providers">
       {keysAlone}
+      <p className="local-dashboard-caption">Each provider&apos;s status and models could not be read: <span>{listError}</span> See them in
+        your terminal with <code>onex models list</code>.</p>
     </section>
   );
   if (rows === null) return <section className="local-model-keys" aria-label="Model providers"><EmptyState status={false}>Reading model providers…</EmptyState>{keysAlone}</section>;

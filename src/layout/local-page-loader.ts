@@ -1,4 +1,3 @@
-import meteringHeadlines from '../pages/local/overview-metering.headlines.json';
 import type { ProjectionSnapshot, ProtocolSnapshotSource } from '../data-source/protocol-snapshot-source';
 import { ProjectionReadRefusedError } from '../data-source/http-snapshot-source';
 import type { ModelComponentContract } from '../shared/types/generated/onex-models';
@@ -185,7 +184,7 @@ function isComponentContract(value: unknown): value is LocalComponentContract {
 }
 
 /** Load a dashboard and its component/binding contracts from JSON-compatible YAML. */
-export function loadLocalPageConfig(page: LocalPageName, headlineSource: 'savings' | 'metering' = 'savings'): LocalPageDocument {
+export function loadLocalPageConfig(page: LocalPageName): LocalPageDocument {
   const configPath = `../pages/local/${page}.page.yaml`;
   const contractsPath = `../pages/local/${page}.contracts.yaml`;
   const configSource = pageFiles[configPath];
@@ -204,17 +203,6 @@ export function loadLocalPageConfig(page: LocalPageName, headlineSource: 'saving
   }
   if (!contracts.components.every(isComponentContract)) {
     throw new Error(`Local dashboard component contract is invalid: ${page}`);
-  }
-  if (page === 'overview' && headlineSource === 'metering') {
-    const components: unknown[] = meteringHeadlines.components;
-    if (!components.every(isComponentContract)) throw new Error('Invalid metering headline contracts');
-    return {
-      dashboard: { ...dashboard, widgets: dashboard.widgets.map(widget =>
-        meteringHeadlines.widgets.find(candidate => candidate.data_source === widget.data_source) ?? widget) },
-      components: contracts.components.map(component =>
-        components.find(candidate => candidate.component_id === component.component_id) ?? component),
-      empty_state_reasons: emptyStates,
-    };
   }
   return {
     dashboard,
@@ -459,9 +447,17 @@ export function resolveLocalPageEmptyState(
     && page.empty_state_reasons.includes('BASELINE_UNRESOLVED')) {
     return 'BASELINE_UNRESOLVED';
   }
-  // A failed read is not an empty store: the widgets bound to it say why, and the page is not NO_RUNS_YET.
-  if (snapshots.some((snapshot) => snapshot.topic !== LOCAL_ENVIRONMENT_TOPIC && snapshot.failure)) return null;
-  if (rows.length === 0 && page.empty_state_reasons.includes('NO_RUNS_YET')) {
+  // A failed read is not an empty store: the widgets bound to it say why, and the page is not NO_RUNS_YET. An exposure
+  // the store does not serve (OMN-23330 AC1: delegation.daily.v1 on a store that predates it) is no failed read: its
+  // panel says "Not available yet" and it says nothing about runs. The page is NO_RUNS_YET only when at least one
+  // exposure that supplies its rows was read, so a store whose run exposure is not served never claims "no runs".
+  if (snapshots.some((snapshot) => snapshot.topic !== LOCAL_ENVIRONMENT_TOPIC && snapshot.failure
+    && snapshot.failure.kind !== 'not-served')) return null;
+  const rowTopics = new Set(page.components
+    .map((component) => component.data_bindings?.[0]?.projection_topic ?? '')
+    .filter((topic) => topic !== '' && ![METERING_SUMMARY_TOPIC, LOCAL_ENVIRONMENT_TOPIC].includes(topic)));
+  const readARowSource = snapshots.some((snapshot) => rowTopics.has(snapshot.topic) && !snapshot.failure);
+  if (rows.length === 0 && readARowSource && page.empty_state_reasons.includes('NO_RUNS_YET')) {
     return 'NO_RUNS_YET';
   }
   return null;

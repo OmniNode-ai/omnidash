@@ -35,36 +35,36 @@ import {
   type ContextExperimentScoreRow,
 } from '@/services/event-dash-api';
 import { fetchExposureCensus, type ExposureCensus } from '@/data-source/exposure-census';
+import { refreshInterval } from '@/theme/refresh';
 
 // Live ticker poll cadence (ms). The bus view polls newest rows so the
 // "now on bus" surface tracks real event arrival, never a simulated playback.
-const POLL_MS = 15_000;
 
 export const useDelegationDecisions = (): UseQueryResult<ProjectionResult<DelegationDecisionRow>> =>
-  useQuery({ queryKey: ['ev', 'delegation', 'decisions'], queryFn: fetchDelegationDecisions, refetchInterval: POLL_MS });
+  useQuery({ queryKey: ['ev', 'delegation', 'decisions'], queryFn: fetchDelegationDecisions, refetchInterval: refreshInterval() });
 
 export const useDelegationSummary = (): UseQueryResult<ProjectionResult<DelegationSummaryRow>> =>
-  useQuery({ queryKey: ['ev', 'delegation', 'summary'], queryFn: fetchDelegationSummary, refetchInterval: POLL_MS });
+  useQuery({ queryKey: ['ev', 'delegation', 'summary'], queryFn: fetchDelegationSummary, refetchInterval: refreshInterval() });
 
 export const useDelegationModelRouting = (): UseQueryResult<ProjectionResult<ModelRoutingRow>> =>
-  useQuery({ queryKey: ['ev', 'delegation', 'model-routing'], queryFn: fetchDelegationModelRouting, refetchInterval: POLL_MS });
+  useQuery({ queryKey: ['ev', 'delegation', 'model-routing'], queryFn: fetchDelegationModelRouting, refetchInterval: refreshInterval() });
 
 export const useDelegationQualityGate = (): UseQueryResult<ProjectionResult<QualityGateRow>> =>
-  useQuery({ queryKey: ['ev', 'delegation', 'quality-gate'], queryFn: fetchDelegationQualityGate, refetchInterval: POLL_MS });
+  useQuery({ queryKey: ['ev', 'delegation', 'quality-gate'], queryFn: fetchDelegationQualityGate, refetchInterval: refreshInterval() });
 
 export const useCostSavingsOverview = (): UseQueryResult<ProjectionResult<CostSavingsOverviewRow>> =>
-  useQuery({ queryKey: ['ev', 'cost', 'savings-overview'], queryFn: fetchCostSavingsOverview, refetchInterval: POLL_MS });
+  useQuery({ queryKey: ['ev', 'cost', 'savings-overview'], queryFn: fetchCostSavingsOverview, refetchInterval: refreshInterval() });
 
 // OMN-21166 AC50: the catalogue decides which headline source Overview reads; Evidence follows the same decision.
 export const useExposureCensus = (): UseQueryResult<ExposureCensus> =>
-  useQuery({ queryKey: ['ev', 'census'], queryFn: fetchExposureCensus, refetchInterval: POLL_MS });
+  useQuery({ queryKey: ['ev', 'census'], queryFn: fetchExposureCensus, refetchInterval: refreshInterval() });
 export const useMeteringSummary = (enabled: boolean): UseQueryResult<ProjectionResult<Record<string, unknown>>> =>
-  useQuery({ queryKey: ['ev', 'metering', 'summary'], queryFn: fetchMeteringSummary, refetchInterval: POLL_MS, enabled });
+  useQuery({ queryKey: ['ev', 'metering', 'summary'], queryFn: fetchMeteringSummary, refetchInterval: refreshInterval(), enabled });
 export const useDelegationSavings = (): UseQueryResult<ProjectionResult<SavingsRow>> =>
-  useQuery({ queryKey: ['ev', 'delegation', 'savings'], queryFn: fetchDelegationSavings, refetchInterval: POLL_MS });
+  useQuery({ queryKey: ['ev', 'delegation', 'savings'], queryFn: fetchDelegationSavings, refetchInterval: refreshInterval() });
 
 export const useDelegationTokenUsage = (): UseQueryResult<ProjectionResult<TokenUsageRow>> =>
-  useQuery({ queryKey: ['ev', 'delegation', 'token-usage'], queryFn: fetchDelegationTokenUsage, refetchInterval: POLL_MS });
+  useQuery({ queryKey: ['ev', 'delegation', 'token-usage'], queryFn: fetchDelegationTokenUsage, refetchInterval: refreshInterval() });
 
 export const useCorrelationTrace = (
   correlationId: string | null,
@@ -76,14 +76,14 @@ export const useCorrelationTrace = (
   });
 
 export const useNodeGenerations = (): UseQueryResult<ProjectionResult<NodeGenerationRow>> =>
-  useQuery({ queryKey: ['ev', 'sea', 'node-generations'], queryFn: fetchNodeGenerations, refetchInterval: POLL_MS });
+  useQuery({ queryKey: ['ev', 'sea', 'node-generations'], queryFn: fetchNodeGenerations, refetchInterval: refreshInterval() });
 
 export const useAbCompare = (): UseQueryResult<ProjectionResult<AbCompareRow>> =>
-  useQuery({ queryKey: ['ev', 'experiments', 'ab-compare'], queryFn: fetchAbCompare, refetchInterval: POLL_MS });
+  useQuery({ queryKey: ['ev', 'experiments', 'ab-compare'], queryFn: fetchAbCompare, refetchInterval: refreshInterval() });
 
 export const useContextExperimentScores = (): UseQueryResult<ProjectionResult<ContextExperimentScoreRow>> =>
   useQuery({
     queryKey: ['ev', 'experiments', 'context-scores'],
     queryFn: fetchContextExperimentScores,
-    refetchInterval: POLL_MS,
+    refetchInterval: refreshInterval(),
   });

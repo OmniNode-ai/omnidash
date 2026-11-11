@@ -5,8 +5,10 @@ import { chooseWindow } from './overview-window-menu';
 // This spec dates its rows from the real clock, so the browser keeps it (see FIXTURE_NOW).
 test.beforeEach(({ page }) => keepRealClock(page));
 
-// Failure modes: client HTTP hides SQLite backing; reading then falling back masks errors;
-// day rows replace all-time, stale/tied baselines win, missing becomes zero, or the source is unnamed.
+// OMN-23330 AC1/AC2 (Lakshman 2026-11-10, "All on metering"): Overview's headline reads metering-summary.v1 whatever
+// the catalogue says about the old cost.savings-overview.v1 aggregate; there is no source to select any more.
+// Failure modes: the aggregate's figures (99 / 98 / 97 / 96) reach a card, or its state (served, refused, erroring)
+// changes what the cards show; day rows replace all-time, stale/tied baselines win, missing becomes zero.
 const overview = prefix + 'cost.savings-overview.v1';
 const metering = prefix + 'metering-summary.v1';
 const today = new Date().toISOString().slice(0, 10);
@@ -37,7 +39,7 @@ async function serve(page: Page, backing: string, rows: unknown[] = [all, day], 
 async function totals(page: Page, values: string[]) {
   for (const [i, id] of ids.entries()) await expect(figure(page, id)).toHaveText(values[i]);
 }
-test('declared local-store absence selects metering before a savings read and restores exact all-time and Today figures', async ({ page }, info) => {
+test('with the aggregate missing from the local store, the cards show exact all-time and Today metering figures', async ({ page }, info) => {
   const requests = await serve(page, 'not_in_local_store');
   await totals(page, ['$12.30', '$2.99', '23', '6.13K']);
   for (const id of ids) await expect(card(page, id)).not.toContainText('Source:');
@@ -49,11 +51,13 @@ test('declared local-store absence selects metering before a savings read and re
   expect(requests).toContain(metering); expect(requests).not.toContain(overview);
   await page.screenshot({ path: info.outputPath('declared-sqlite-overview.png'), fullPage: true });
 });
-test('served savings catalogue retains D1 despite conflicting metering and names the selected source', async ({ page }) => {
-  await serve(page, 'bus'); await totals(page, ['$99.00', '$98.00', '97', '96']);
+test('a served aggregate with conflicting figures changes nothing: the cards stay on metering, all time and Today', async ({ page }) => {
+  const requests = await serve(page, 'bus'); await totals(page, ['$12.30', '$2.99', '23', '6.13K']);
   for (const id of ids) await expect(card(page, id)).not.toContainText('Source:');
   await chooseWindow(page, 'Today (UTC)');
-  await totals(page, ids.map(() => 'Not measured: daily totals unavailable (UTC)'));
+  await totals(page, ['$0.70', '$1.20', '3', '834']);
+  await expect(page.locator('.local-overview-summary')).not.toContainText(/\$99|\$98|\b97\b|\b96\b/);
+  expect(requests).not.toContain(overview);
 });
 test('metering chooses newest all-time and day baseline and refuses ties on all four cards', async ({ page }) => {
   await serve(page, 'not_in_local_store', [{ ...all, baseline_model: 'old', as_of: today + 'T09:00:00Z', spend_usd: 77 }, all, day, { ...day, baseline_model: 'twin' }]);
@@ -84,15 +88,16 @@ test('metering keeps measured zero and independent missing token or spend values
   await serve(page, 'not_in_local_store', [{ ...all, spend_usd: 0, savings_usd: null, runs_measured: 0, tokens_in: 0, tokens_out: 0 }]);
   await totals(page, ['$0.00', 'Not measured', '0', '0']);
 });
-test('a generic refusal never switches source to mask a producer failure', async ({ page }) => {
+test('a refused aggregate changes nothing: the cards keep their metering figures', async ({ page }) => {
   await serve(page, 'not_yet_bus_backed', [all, day], 'producer_not_deployed');
-  for (const id of ids) { await expect(card(page, id)).toContainText('Not available yet'); await expect(card(page, id)).not.toContainText('Source:'); }
+  await totals(page, ['$12.30', '$2.99', '23', '6.13K']);
+  for (const id of ids) await expect(card(page, id)).not.toContainText('Not available yet');
 });
-test('a served savings read error never falls back to metering', async ({ page }) => {
+test('a metering read error is named on every card and never replaced by the aggregate', async ({ page }) => {
   await page.route('**/projection/**', route => route.continue());
   await serveCharts(page, { ...chartRows, [overview]: [legacy], [metering]: [all, day] });
-  await page.route('**/projection/**', route => decodeURIComponent(new URL(route.request().url()).pathname.split('/').at(-1)!) === overview
+  await page.route('**/projection/**', route => decodeURIComponent(new URL(route.request().url()).pathname.split('/').at(-1)!) === metering
     ? route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'fixture producer unavailable' }) }) : route.fallback());
   await page.goto('/overview');
-  for (const id of ids) { await expect(card(page, id)).toContainText('503'); await expect(card(page, id)).not.toContainText('Source:'); }
+  for (const id of ids) { await expect(card(page, id)).toContainText('503'); await expect(card(page, id)).not.toContainText(/\$99|\$98/); }
 });

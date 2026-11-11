@@ -5,6 +5,13 @@ import { describe, expect, it } from 'vitest';
 import { LastRunCard, MeteringTotalCard, MetricCard, RecentRunsTable, RunsTable } from './LocalDashboardPage';
 import type { LocalPageDocument } from '@/layout/local-page-loader';
 
+/** OMN-23330 AC27: a caption line's whole text; its figures and names are drawn as separate toned parts. */
+const caption = (text: string | RegExp) => (_content: string, element: Element | null) =>
+  element !== null && element.classList.contains('local-dashboard-caption')
+  && (typeof text === 'string' ? element.textContent === text : text.test(element.textContent ?? ''));
+/** OMN-23330 AC27: a card's figure, now that its caption may draw the same number toned. */
+const FIGURE = { selector: '.local-dashboard-metric, .local-dashboard-metric *' };
+
 const now = Date.parse('2026-10-03T12:00:00Z');
 const run = {
   correlation_id: 'displayed-run', written_at: '2026-10-03T11:59:00Z',
@@ -60,22 +67,24 @@ describe('excluded counts beside measured figures', () => {
   it('renders the served counts, not the size or token content of any run list', () => {
     render(<MeteringTotalCard component={measured} config={config}
       rows={allRow({ runs_measured: 7, runs_total: 39, runs_unknown_tokens: 23, runs_unknown_spend: 9 })} />);
-    expect(screen.getByText('7')).toBeInTheDocument();
+    expect(screen.getByText('7', FIGURE)).toBeInTheDocument();
     // OMN-21166 live review 2026-10-25: the counts are in the card's hover.
-    expect(screen.getByText('7 of 39 runs measured')).toBeInTheDocument();
-    expect(screen.getByText('Not counted: 23 runs without token counts, 9 runs without spend')).toBeInTheDocument();
+    expect(screen.getByText(caption('7 of 39 runs measured'))).toBeInTheDocument();
+    expect(screen.getByText(caption('Not counted: 23 runs without token counts, 9 runs without spend'))).toBeInTheDocument();
   });
 
   it('makes unavailable excluded counts explicit, never inventing zero', () => {
     render(<MeteringTotalCard component={measured} config={config} rows={allRow({ runs_measured: 7, runs_total: 7 })} />);
     expect(screen.getByText('Runs not counted: Not recorded')).toBeInTheDocument();
-    expect(screen.queryByText(/Not counted: 0/)).toBeNull();
+    expect(screen.queryByText(caption(/Not counted: 0/))).toBeNull();
   });
 
   it('declares excluded counts and basis in every consuming binding', () => {
-    expect(overviewMeasured.data_bindings?.[0]?.projection_topic).toBe('onex.snapshot.projection.cost.savings-overview.v1');
-    // OMN-21166 AC37: the card reads every call; its caption shows the served run classes.
-    expect(overviewMeasured.data_bindings?.[0]?.required_fields).toEqual(['window', 'captured_at', 'run_count']);
+    // OMN-23330 AC1/AC2 (Lakshman 2026-11-10, "All on metering"): the card reads metering-summary.v1's all-time row, and
+    // its binding requires every count its caption names: measured, all runs and both excluded classes.
+    expect(overviewMeasured.data_bindings?.[0]?.projection_topic).toBe('onex.snapshot.projection.metering-summary.v1');
+    expect(overviewMeasured.data_bindings?.[0]?.required_fields).toEqual(
+      ['window_kind', 'as_of', 'runs_measured', 'runs_total', 'runs_unknown_tokens', 'runs_unknown_spend']);
     // OMN-21166 live review 2026-10-25: Overview's run tables were deleted; the Runs list is the run table that remains.
     const runs = JSON.parse(readFileSync('src/pages/local/runs.contracts.yaml', 'utf8')) as Pick<LocalPageDocument, 'components'>;
     const recent = runs.components.find(candidate => candidate.component_id === 'recent-runs')!;
@@ -87,7 +96,7 @@ describe('excluded counts beside measured figures', () => {
     const { container } = render(<MetricCard component={savings}
       config={{ metric_key: 'total_savings_usd', label: 'Savings', format: 'currency', precision: 4 }}
       row={{ total_savings_usd: 1, total_baseline_cost_usd: 2 }} caption={{ baseline_model: 'baseline-from-projection' }} />);
-    expect(screen.getByText('Baseline baseline-from-projection')).toBeInTheDocument();
+    expect(screen.getByText(caption('Baseline baseline-from-projection'))).toBeInTheDocument();
     expect(screen.getByText(/The baseline never ran\./)).toBeInTheDocument();
     expect(container.textContent).not.toMatch(/verified/i);
     for (const file of ['src/pages/LocalDashboardPage.tsx', 'src/pages/local/overview.page.yaml', 'src/pages/local/runs.page.yaml']) {

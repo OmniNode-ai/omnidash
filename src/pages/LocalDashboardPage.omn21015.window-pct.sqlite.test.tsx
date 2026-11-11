@@ -45,7 +45,7 @@ import { LocalDashboardPage, MeteringTotalCard } from './LocalDashboardPage';
 
 type Config = Parameters<typeof MeteringTotalCard>[0]['config'];
 
-const page = loadLocalPageConfig('overview', 'metering');
+const page = loadLocalPageConfig('overview');
 const savings = page.components.find((candidate) => candidate.component_id === 'overview-savings')!;
 const config = page.dashboard.widgets.find((widget) => widget.data_source === 'overview-savings')?.config as Config;
 

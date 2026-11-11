@@ -14,7 +14,7 @@ test('compact Overview preserves missing data, quality, chart access and routing
   const summary = page.getByRole('region', { name: 'Runtime summary', exact: true });
   // OMN-21166 live review 2026-10-25: five headline cards (Delegation Quality is the fifth).
   await expect(summary.getByRole('article')).toHaveCount(5);
-  await expect(summary).toContainText('Not measured: overview totals unavailable');
+  await expect(summary).toContainText('Not measured: no all-time row');
   // OMN-21166 AC86 (Lakshman 2026-10-25): the Quality meter is deleted; the same served pass rate is the card's figure.
   await expect(page.locator('[data-component="overview-quality"][data-slice="card"] .local-dashboard-metric')).toHaveText('75.0%');
   await expect(page.locator('.local-overview-surface')).toBeVisible();

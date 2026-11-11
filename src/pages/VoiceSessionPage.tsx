@@ -4,6 +4,10 @@ import { Text, Heading } from '@/components/ui/typography';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
+import { fixed as fmtFixed, localeTime as fmtLocaleTime } from '@/theme/format';
+import { refreshInterval } from '@/theme/refresh';
+// OMN-23330 AC25: this file's fixed inline styles are classes in VoiceSessionPage.static.css.
+import './VoiceSessionPage.static.css';
 
 interface VoiceSession {
   session_id: string;
@@ -35,7 +39,7 @@ function formatDuration(ms: number): string {
 function formatTimestamp(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '--';
-  return d.toLocaleTimeString(undefined, { hour12: false });
+  return fmtLocaleTime(d, undefined, { hour12: false });
 }
 
 function AudioTimeline({
@@ -51,14 +55,7 @@ function AudioTimeline({
 }) {
   if (totalDuration === 0) return null;
   return (
-    <div
-      style={{
-        position: 'relative',
-        height: 48,
-        background: 'var(--ds-surface-2, var(--ds-surface))',
-        borderRadius: 6,
-        overflow: 'hidden',
-      }}
+    <div className="voice-session-page-s5b00cd"
       aria-label="Audio timeline"
     >
       {turns.map((turn) => {
@@ -100,13 +97,13 @@ function AudioTimeline({
 function TranscriptPanel({ turns, activeTurnId }: { turns: TranscriptTurn[]; activeTurnId: string | null }) {
   if (turns.length === 0) {
     return (
-      <div style={{ padding: 24, textAlign: 'center' }}>
+      <div className="voice-session-page-s0830bd">
         <Text size="sm" color="tertiary">No transcript available</Text>
       </div>
     );
   }
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '12px 14px' }}>
+    <div className="voice-session-page-s96ad66">
       {turns.map((turn) => {
         const isAgent = turn.speaker === 'agent';
         const isActive = turn.turn_id === activeTurnId;
@@ -134,8 +131,8 @@ function TranscriptPanel({ turns, activeTurnId }: { turns: TranscriptTurn[]; act
               }}
             >
               {isAgent
-                ? <Mic size={12} style={{ color: 'var(--ds-status-ok)' }} />
-                : <MicOff size={12} style={{ color: 'var(--ds-warn)' }} />
+                ? <Mic className="voice-session-page-s7c94dd" size={12} />
+                : <MicOff className="voice-session-page-s4f4bdb" size={12} />
               }
             </div>
             <div
@@ -149,9 +146,9 @@ function TranscriptPanel({ turns, activeTurnId }: { turns: TranscriptTurn[]; act
                 border: isActive ? '1px solid var(--ds-brand, var(--ds-hue-blue))' : '1px solid var(--ds-line, var(--ds-line-soft))',
               }}
             >
-              <Text size="xs" color="tertiary" family="mono" style={{ marginBottom: 4, display: 'block' }}>
+              <Text className="voice-session-page-s4624c7" size="xs" color="tertiary" family="mono">
                 {turn.speaker} · {formatDuration(turn.start_ms)}
-                {turn.confidence !== null && ` · ${(turn.confidence * 100).toFixed(0)}% conf`}
+                {turn.confidence !== null && ` · ${fmtFixed((turn.confidence * 100), 0)}% conf`}
               </Text>
               <Text size="sm" color="primary">{turn.text}</Text>
             </div>
@@ -167,7 +164,7 @@ export function VoiceSessionPage() {
   const { data: sessions, isLoading, error } = useProjectionQuery<VoiceSession>({
     topic: TOPICS.voiceSessions,
     queryKey: ['voice-sessions'],
-    refetchInterval: 10_000,
+    refetchInterval: refreshInterval(),
   });
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -188,13 +185,13 @@ export function VoiceSessionPage() {
       <div className="dash-header">
         <div className="dash-title-wrap">
           <div className="dash-title">Voice Sessions</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+          <div className="voice-session-page-s636ba8">
             <Text size="sm" color="secondary">
               {isLoading ? 'Loading…' : error ? 'Server unavailable' : isLiveDataSource(dataSourceMode) ? 'LIVE' : 'Fixture data'}
             </Text>
           </div>
         </div>
-        <div className="header-actions" style={{ gap: 12 }}>
+        <div className="header-actions voice-session-page-sb6e62f">
           {activeCount > 0 && (
             <Text size="sm" color="ok">{activeCount} active</Text>
           )}
@@ -202,25 +199,19 @@ export function VoiceSessionPage() {
         </div>
       </div>
 
-      <div className="dash-body" style={{ padding: '24px 28px', overflowY: 'auto' }}>
+      <div className="dash-body voice-session-page-sea0c4d">
         {isLoading && <Text size="sm" color="tertiary">Loading voice sessions…</Text>}
 
         {!isLoading && (
-          <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 20 }}>
+          <div className="voice-session-page-sd418a0">
             {/* Session list */}
-            <div
-              style={{
-                background: 'var(--ds-surface, var(--ds-page))',
-                border: '1px solid var(--ds-line, var(--ds-line-soft))',
-                borderRadius: 8,
-                overflow: 'hidden',
-              }}
+            <div className="voice-session-page-s543027"
             >
-              <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--ds-line, var(--ds-line-soft))' }}>
+              <div className="voice-session-page-safb590">
                 <Text size="xs" weight="semibold" color="tertiary" transform="uppercase">Sessions</Text>
               </div>
               {sorted.length === 0 && (
-                <div style={{ padding: 20, textAlign: 'center' }}>
+                <div className="voice-session-page-s672d71">
                   <Text size="sm" color="tertiary">
                     {error ? 'Server unavailable — no data' : 'No voice sessions recorded'}
                   </Text>
@@ -243,7 +234,7 @@ export function VoiceSessionPage() {
                     background: sess.session_id === selectedId ? 'color-mix(in oklch, var(--ds-brand, var(--ds-hue-blue)) 8%, transparent)' : 'transparent',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div className="voice-session-page-s204b18">
                     <Text size="xs" family="mono" color="primary" truncate>{sess.session_id.slice(0, 14)}</Text>
                     {sess.is_active && (
                       <Text size="xs" color="ok">● LIVE</Text>
@@ -258,32 +249,16 @@ export function VoiceSessionPage() {
             </div>
 
             {/* Session detail */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="voice-session-page-s8ef476">
               {!selected ? (
-                <div
-                  style={{
-                    background: 'var(--ds-surface, var(--ds-page))',
-                    border: '1px solid var(--ds-line, var(--ds-line-soft))',
-                    borderRadius: 8,
-                    padding: 40,
-                    textAlign: 'center',
-                  }}
+                <div className="voice-session-page-sfe0e02"
                 >
                   <Text color="tertiary" size="sm">Select a session to view transcript</Text>
                 </div>
               ) : (
                 <>
                   {/* Session metadata */}
-                  <div
-                    style={{
-                      background: 'var(--ds-surface, var(--ds-page))',
-                      border: '1px solid var(--ds-line, var(--ds-line-soft))',
-                      borderRadius: 8,
-                      padding: '14px 18px',
-                      display: 'flex',
-                      gap: 24,
-                      flexWrap: 'wrap',
-                    }}
+                  <div className="voice-session-page-s457570"
                   >
                     <div>
                       <Text size="xs" color="tertiary" transform="uppercase" weight="semibold">Agent</Text>
@@ -307,20 +282,14 @@ export function VoiceSessionPage() {
 
                   {/* Audio timeline */}
                   {selected.transcript_turns.length > 0 && (
-                    <div
-                      style={{
-                        background: 'var(--ds-surface, var(--ds-page))',
-                        border: '1px solid var(--ds-line, var(--ds-line-soft))',
-                        borderRadius: 8,
-                        padding: '14px 18px',
-                      }}
+                    <div className="voice-session-page-sac883a"
                     >
-                      <div style={{ marginBottom: 10, display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div className="voice-session-page-sbc65cd">
                         <Heading level={3} size="sm">Audio Timeline</Heading>
                         <Text size="xs" color="tertiary">
-                          <span style={{ color: 'var(--ds-status-ok)' }}>■</span> agent
+                          <span className="voice-session-page-s7c94dd">■</span> agent
                           {' '}
-                          <span style={{ color: 'var(--ds-warn)' }}>■</span> user
+                          <span className="voice-session-page-s4f4bdb">■</span> user
                         </Text>
                       </div>
                       <AudioTimeline
@@ -333,17 +302,9 @@ export function VoiceSessionPage() {
                   )}
 
                   {/* Transcript */}
-                  <div
-                    style={{
-                      background: 'var(--ds-surface, var(--ds-page))',
-                      border: '1px solid var(--ds-line, var(--ds-line-soft))',
-                      borderRadius: 8,
-                      overflow: 'hidden',
-                      maxHeight: 520,
-                      overflowY: 'auto',
-                    }}
+                  <div className="voice-session-page-s0728b3"
                   >
-                    <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--ds-line, var(--ds-line-soft))', position: 'sticky', top: 0, background: 'var(--ds-surface, var(--ds-page))' }}>
+                    <div className="voice-session-page-s866c04">
                       <Heading level={3} size="sm">Transcript</Heading>
                     </div>
                     <TranscriptPanel turns={selected.transcript_turns} activeTurnId={activeTurnId} />

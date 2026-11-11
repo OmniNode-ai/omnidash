@@ -106,6 +106,9 @@ export default [
       // headers (the HeadersInit-preservation review defect CodeRabbit caught
       // late on omnidash#258). Enforced locally so it fails before review.
       'local/no-fetch-header-overwrite': 'error',
+      // OMN-23330 AC20: number and date formatting goes through src/theme/format (the rule exempts that folder, tests and
+      // stories), so money, counts, shares, dates and durations read the same on every page.
+      'local/no-adhoc-format': 'error',
       'react-hooks/rules-of-hooks': 'error',
       // OMN-14764 (F-19-C): `exhaustive-deps` is now `error`. It was `warn`
       // relying on the "max-warnings=0" lint surface, but a `warn` stops

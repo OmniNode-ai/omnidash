@@ -1,0 +1,5 @@
+/* OMN-23330 AC25: the fixed inline styles of WorkEventsWidget.tsx, moved into classes with nothing else changed. Each selector
+   repeats its class so it keeps the weight the inline style had over the stylesheet rules around it. */
+.work-events-widget-s6d812f.work-events-widget-s6d812f.work-events-widget-s6d812f { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.work-events-widget-s355eed.work-events-widget-s355eed.work-events-widget-s355eed { display: flex; flex-direction: column; gap: 8px; }
+.work-events-widget-s535d45.work-events-widget-s535d45.work-events-widget-s535d45 { display: grid; grid-template-columns: minmax(180px, 1fr) 80px 120px; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--ds-line-soft); }

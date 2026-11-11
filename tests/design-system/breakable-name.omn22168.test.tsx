@@ -1,8 +1,7 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { breakableName } from '@/theme/design-system/charts/RankedBars';
+import { pageStylesheet } from '@/tests/page-stylesheet';
 
 /**
  * OMN-22168 (live review 2026-11-04): on Overview's Model usage a model id such as thinkingmachines/inkling:free wrapped
@@ -10,7 +9,7 @@ import { breakableName } from '@/theme/design-system/charts/RankedBars';
  * Failure modes: N1 the text a reader or a test reads changes; N2 a join gets no break opportunity, or a plain name gets
  * one; N3 the Model usage rule lets the browser break anywhere again, which fills each line to the last letter.
  */
-const css = readFileSync(resolve(__dirname, '../../src/styles/seven-page-design.css'), 'utf8');
+const css = pageStylesheet('seven-page-design');
 // Each call reads its own render, so several names in one test never match each other.
 const shown = (name: string) => render(<span>{breakableName(name)}</span>).container.firstElementChild as HTMLElement;
 

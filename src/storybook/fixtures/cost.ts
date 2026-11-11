@@ -1,4 +1,5 @@
 import type { CostDataPoint } from '@/components/dashboard/cost-trend/CostTrend2D';
+import { fixed as fmtFixed } from '@/theme/format';
 
 export interface BuildCostDataPointsOptions {
   /** Specific list of model names to use. Default: 4 representative models. */
@@ -76,7 +77,7 @@ export function buildCostDataPoints(
       out.push({
         bucket_time: bucketTime,
         model_name: models[m],
-        total_cost_usd: cost.toFixed(6),
+        total_cost_usd: fmtFixed(cost, 6),
         total_tokens: totalTokens,
         prompt_tokens: promptTokens,
         completion_tokens: completionTokens,

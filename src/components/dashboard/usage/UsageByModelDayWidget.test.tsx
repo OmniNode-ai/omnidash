@@ -36,7 +36,9 @@ describe('UsageByModelDayTable', () => {
     const rows = screen.getAllByRole('row').slice(1);
     expect(rows).toHaveLength(4);
     const glm = within(rows[1]!);
-    for (const value of ['2026-10-02', 'glm-4.6', '300', '30', '3']) expect(glm.getByText(value)).toBeInTheDocument();
+    // OMN-23330 AC10: the day reads "Oct 2", as on the other pages; the served day stays as the cell's title.
+    for (const value of ['Oct 2', 'glm-4.6', '300', '30', '3']) expect(glm.getByText(value)).toBeInTheDocument();
+    expect(glm.getByText('Oct 2').closest('td')).toHaveAttribute('title', '2026-10-02');
     expect(screen.queryByText(/total/i)).not.toBeInTheDocument();
   });
 

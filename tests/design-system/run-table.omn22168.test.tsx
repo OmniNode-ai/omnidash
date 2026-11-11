@@ -14,7 +14,7 @@
 //   J6 the Model column fits the longest model name on the page, so short names leave no gap before Tokens.
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { formatDashboardUsd } from '@/lib/dashboard-currency';
+import { formatDashboardUsd } from '@/theme/format';
 import { RunsTable, runModelColumnWidth } from '@/pages/LocalDashboardPage';
 
 describe('J1: dashboard money is cut, never rounded up', () => {

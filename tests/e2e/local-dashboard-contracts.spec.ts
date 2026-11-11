@@ -67,11 +67,11 @@ const fixtures: Record<string, unknown[]> = {
       },
     ],
   }],
-  // D1: Overview reads the legacy all row, deliberately conflicting with
-  // metering so a headline cannot silently switch back to that source.
+  // OMN-23330 AC1/AC2 (Lakshman 2026-11-10, "All on metering"): Overview reads the metering all row; the retired
+  // aggregate is served with conflicting figures ($9.99) so a headline cannot silently switch back to it.
   [OVERVIEW]: [{
     window: 'all', captured_at: '2026-10-02T10:07:00Z', tokens_total: 9844, unknown_run_count: 3,
-    total_cost_usd: 0.00686, total_savings_usd: 1.2252, total_baseline_cost_usd: 1.2321,
+    total_cost_usd: 0.00686, total_savings_usd: 9.9952, total_baseline_cost_usd: 1.2321,
     run_count: 49, measured_run_count: 46, zero_token_run_count: 0,
   }],
   // The all row is the Savings total; the day row is the daily series and must not reach the card.
@@ -169,19 +169,15 @@ test('stored basis, excluded counts and modelled baseline survive native Overvie
   });
   await page.goto('/');
   // OMN-21166 AC86 (Lakshman 2026-10-25): "Additional runtime metrics" (and its Baseline spend card, the only place the
-  // metering row's baseline and "The baseline never ran." note appeared) is deleted from Overview, and the Overview
-  // headline follows cost.savings-overview.v1 (D1), which serves no baseline model. The Savings card's hover therefore
-  // says so, and names the runs the total leaves out; the metering row's baseline is held on Usage, below.
+  // metering row's baseline and "The baseline never ran." note appeared) is deleted from Overview. Since OMN-23330
+  // AC1/AC2 the headline reads that metering row, so the Savings card's caption names its baseline and pricing version,
+  // and Agent calls names the runs it measured of every run.
   const savingsCard = page.locator('[data-component="overview-savings"]');
   await expect(savingsCard.locator('.local-dashboard-metric')).toBeVisible();
   // Part 29 AC191: the basis is the card's caption, always in the page; no About button to focus.
-  await expect(savingsCard.getByText(/Baseline model not recorded/)).toBeVisible();
-  await expect(savingsCard.getByText(/3 unknown-provenance runs/)).toBeVisible();
-  await expect(page.getByText('Baseline served-baseline-model · pricing manifest v1')).toHaveCount(0);
-  // OMN-21166 AC37: Agent calls is every call; the served classes are its caption.
-  // OMN-21166 (card basis in a tooltip): the served classes sit in the card's info tooltip, shown on focus.
-  // Part 29 AC191: the basis is the card's caption, always in the page; no About button to focus.
-  await expect(page.getByText('46 measured · 3 unknown', { exact: true })).toBeVisible();
+  expect((await savingsCard.textContent())?.replaceAll('\u2011', '-')).toContain('Baseline served-baseline-model · pricing v1');
+  await expect(page.locator('[data-component="overview-measured"]')).toContainText('1 of 4 runs measured');
+  await expect(page.locator('[data-component="overview-spend"]')).toContainText('Not counted: 1 run without token counts, 2 runs without spend');
   // OMN-21166 AC86 (Lakshman 2026-10-25): Last run and Recent runs deleted from Overview; the stored basis column is
   // held on Runs below, and Overview keeps the no-cut-off check.
   await expectNoPanelCutOff(page);
@@ -234,28 +230,29 @@ test('Overview is the default page and fits 1440x900 with no unmeasured 0 (AC4)'
   // verified returned-run composition counts may contain a measured zero.
   const zeroNodes = await page.getByText('0', { exact: true }).evaluateAll(nodes => nodes.map(el => ({
     html: el.outerHTML, parent: el.parentElement?.outerHTML.slice(0, 900),
-    exempt: !!el.closest('.ins-axis, .local-tier-bars-axis, .overview-outcome-legend, figure[aria-label="Duration per run"] .local-chart-canvas svg, figure[aria-label="Tokens per run"] .local-chart-canvas svg'),
+    exempt: !!el.closest('.ins-value-axis, .local-tier-bars-axis, .overview-outcome-legend, figure[aria-label="Duration per run"] .local-chart-canvas svg, figure[aria-label="Tokens per run"] .local-chart-canvas svg'),
   })));
   await test.info().attach('numeric-zero-scope', { body: JSON.stringify(zeroNodes), contentType: 'application/json' });
   expect(zeroNodes.filter(node => !node.exempt)).toEqual([]);
   await expect(page.getByText('$0', { exact: true })).toHaveCount(0);
 
-  // D1: Savings follows cost.savings-overview.v1, never a metering row.
+  // OMN-23330 AC1/AC2: Savings follows the metering all row, never the retired aggregate or a day row.
   const savings = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Savings', exact: true }) });
-  // D1: legacy 1.2252, never the conflicting metering 1.2184 (OMN-22168: every served digit is shown).
-  await expect(savings.getByText('$1.22', { exact: true })).toBeVisible();
-  await expect(savings.getByText('$1.21', { exact: true })).toHaveCount(0);
+  // Metering 1.2184 reads $1.21 (OMN-22168: money from $1 up shows two decimals, cut); never the aggregate's $9.99.
+  await expect(savings.getByText('$1.21', { exact: true })).toBeVisible();
+  await expect(savings.getByText('$9.99', { exact: true })).toHaveCount(0);
   // OMN-21166 (card basis in a tooltip): the basis line is in the card's tooltip, shown on keyboard focus of the card.
   // Part 29 AC191: the basis is the card's caption, always in the page; no About button to focus.
-  await expect(savings.getByText('Modelled · vs cloud baseline', { exact: true })).toBeVisible();
+  await expect(savings).toContainText('Modelled vs');
   await expect(savings.getByText('$0.40', { exact: true })).toHaveCount(0);
-  // D1: all four headline tiles follow the same legacy all row.
+  // OMN-23330 AC1/AC2: all four headline tiles follow the same metering all row (45 of 46 runs measured), never the
+  // retired aggregate's 49 calls.
   const headline = (title: string) => page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: title, exact: true }) });
   await expect(headline('Actual spend').getByText('$0.0068', { exact: true })).toBeVisible();
-  await expect(headline('Agent calls').getByText('49', { exact: true })).toBeVisible();
-  await expect(headline('Agent calls').getByText('46', { exact: true })).toHaveCount(0);
+  await expect(headline('Agent calls').locator('.local-dashboard-metric')).toHaveText('45');
+  await expect(headline('Agent calls').getByText('49', { exact: true })).toHaveCount(0);
   // Part 29 AC191: the basis is the card's caption, always in the page; no About button to focus.
-  await expect(headline('Agent calls').getByText('46 measured · 3 unknown', { exact: true })).toBeVisible();
+  await expect(headline('Agent calls')).toContainText('45 of 46 runs measured');
   await expect(headline('Tokens processed').getByText('9.84K', { exact: true })).toBeVisible();
   await expect(headline('Tokens processed').getByText(/Not available yet/)).toHaveCount(0);
 
@@ -333,7 +330,8 @@ test('Usage shows measured cost beside unmeasured runs, never 0 for unmeasured, 
   // Part 29 AC194: Usage analysis also lists models; these rows are the usage-by-model-day records.
   const records = page.getByRole('table', { name: 'Usage by model and day' });
   const mixed = records.getByRole('row').filter({ hasText: 'Qwen3.8-27B' });
-  for (const value of ['2026-10-02', '162', '52', '$0.25', '1 unmeasured', '2']) {
+  // OMN-23330 AC10: the day reads in the short form ("Oct 2").
+  for (const value of ['Oct 2', '162', '52', '$0.25', '1 unmeasured', '2']) {
     await expect(mixed.getByText(value, { exact: true })).toBeVisible();
   }
   const unmeasured = records.getByRole('row').filter({ hasText: 'glm-4.6' });
@@ -344,8 +342,9 @@ test('Usage shows measured cost beside unmeasured runs, never 0 for unmeasured, 
   // OMN-22168: Savings per day is a tab of "Savings and spend"; its own heading is hidden inside the tab, which names it.
   const savings = await chartTabPanel(page, 'Savings per day');
   const series = savings.getByRole('table', { name: 'Savings per day vs claude-sonnet-5-5' });
-  const day = series.getByRole('row').filter({ hasText: '2026-10-02' });
-  for (const value of ['2026-10-02', '$0.40', '46']) await expect(day.getByText(value, { exact: true })).toBeVisible();
+  // OMN-23330 AC10: the day reads in the short form ("Oct 2"); the pattern keeps it from matching "Oct 20".
+  const day = series.getByRole('row').filter({ hasText: /^Oct 2(?!\d)/ });
+  for (const value of ['Oct 2', '$0.40', '46']) await expect(day.getByText(value, { exact: true })).toBeVisible();
   await expect(series.getByRole('row')).toHaveCount(2);
   await expect(savings.getByText('$1.21')).toHaveCount(0);
   await expect(savings.getByText(/Not available yet/)).toHaveCount(0);
@@ -589,10 +588,10 @@ test('manual Refresh rereads local exposures and preserves the Runs filter', asy
   });
   await serveFixtures(page);
   await page.goto('/');
-  // D1: refresh rereads the legacy Overview total independently of metering.
+  // Refresh rereads the metering Overview total.
   const savingsCard = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Savings', exact: true }) });
-  // OMN-22168 (Jonah 2026-11-06): money from $1 up shows two decimals, cut, so the legacy total 1.2252 reads $1.22.
-  await expect(savingsCard.getByText('$1.22', { exact: true })).toBeVisible();
+  // OMN-22168 (Jonah 2026-11-06): money from $1 up shows two decimals, cut, so the metering total 1.2184 reads $1.21.
+  await expect(savingsCard.getByText('$1.21', { exact: true })).toBeVisible();
   await page.getByTestId('nav-local-runs').click();
   await expect(page.getByText('Runs 1–2 of 2')).toBeVisible();
   await pickFilter(page, 'Status', 'passed');
@@ -609,6 +608,8 @@ test('sidebar surfaces and controls follow the theme in expanded and collapsed l
   await serveFixtures(page);
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
+  // OMN-23330 AC22: the page loads lazily; its placeholder shares the title, so read only once it is no longer busy.
+  await expect(page.locator('main[aria-busy="true"]')).toHaveCount(0);
   // OMN-21166 AC86 (Lakshman 2026-10-25): Overview has no Recent runs field view to reveal.
   await page.locator('.local-dashboard-page').evaluate(el => { el.scrollTop = 0; });
   // Compare rendered colors, not equivalent hex/rgb/oklch serializations.

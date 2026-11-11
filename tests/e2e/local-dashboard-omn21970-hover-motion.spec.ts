@@ -1,12 +1,13 @@
 import { expect, test, type Page } from 'playwright/test';
 import { serveCharts } from './omn21166-chart-fixtures';
 
-// OMN-21970 AC9 (Lakshman 2026-11-02, "Hover lift and glow"): a headline card lifts and glows in its own colour on hover,
-// and under prefers-reduced-motion it does neither. Rendered, because the unit tests read the stylesheet's rules and
+// OMN-21970 AC9 (Lakshman 2026-11-02, "Hover lift and glow"): a headline card glows in its own colour on hover, and
+// under prefers-reduced-motion it does neither. OMN-23330 AC26 (Lakshman 2026-11-09: the cards blinked moving from one
+// to the next; "hover should light it"): the card no longer lifts; it lights its border and glows, and stays put. Rendered, because the unit tests read the stylesheet's rules and
 // cannot see one rule cancelling another (Codex review of 34cfb67b1: the flat-card rule's box-shadow: none !important
 // hid the glow while every unit test passed). Failure modes:
-//   H1 the card lifts but does not glow (a later or stronger rule flattens the shadow);
-//   H2 the card neither lifts nor glows under normal motion;
+//   H1 the card lights but does not glow (a later or stronger rule flattens the shadow);
+//   H2 the card moves under the pointer (the lift AC26 removed), or neither lights nor glows under normal motion;
 //   H3 under reduced motion the card still moves or glows;
 //   H4 under reduced motion the page column still slides to its new width when the window narrows (the shell grid's
 //      column transition was unguarded, so a phone-width layout was measured mid-slide; the counts spec failed on it).
@@ -16,18 +17,22 @@ async function hovered(page: Page) {
   const card = page.locator('.local-overview-summary > .local-dashboard-panel').first();
   await expect(card).toBeVisible({ timeout: 20_000 });
   await card.hover();
-  // The lift and glow ease in over 180ms; read them once they have finished.
+  // The light and glow ease in over 110ms; read them once they have finished.
   await page.waitForTimeout(400);
-  return card.evaluate(el => ({ shadow: getComputedStyle(el).boxShadow, transform: getComputedStyle(el).transform }));
+  return card.evaluate(el => ({ shadow: getComputedStyle(el).boxShadow, transform: getComputedStyle(el).transform, border: getComputedStyle(el).borderTopColor }));
 }
 
-test('H1 H2: under normal motion a headline card lifts and glows on hover', async ({ page }) => {
+test('H1 H2: under normal motion a headline card lights and glows on hover, and stays put', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await serveCharts(page);
   await page.goto('/overview');
+  const card = page.locator('.local-overview-summary > .local-dashboard-panel').first();
+  await expect(card).toBeVisible({ timeout: 20_000 });
+  const rest = await card.evaluate(el => getComputedStyle(el).borderTopColor);
   const state = await hovered(page);
-  expect(state.transform, 'the card lifts').not.toBe('none');
+  expect(state.transform, 'the card stays put').toBe('none');
   expect(state.shadow, 'the card glows').not.toBe('none');
+  expect(state.border, 'the card lights its border').not.toBe(rest);
 });
 
 test('H3: under reduced motion a headline card neither moves nor glows on hover', async ({ page }) => {

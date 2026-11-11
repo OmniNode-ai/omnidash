@@ -1,0 +1,5 @@
+/* OMN-23330 AC25: the fixed inline styles of RoutingDecisionTable.tsx, moved into classes with nothing else changed. Each selector
+   repeats its class so it keeps the weight the inline style had over the stylesheet rules around it. */
+.routing-decision-table-s30160b.routing-decision-table-s30160b.routing-decision-table-s30160b { display: flex; flex-direction: column; gap: 0; }
+.routing-decision-table-s2ef91c.routing-decision-table-s2ef91c.routing-decision-table-s2ef91c { display: grid; grid-template-columns: 150px 130px minmax(150px, 1fr) 110px minmax(160px, 1fr); gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--ds-line); }
+.routing-decision-table-se91ef4.routing-decision-table-se91ef4.routing-decision-table-se91ef4 { display: grid; grid-template-columns: 150px 130px minmax(150px, 1fr) 110px minmax(160px, 1fr); gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--ds-line-soft); align-items: center; }

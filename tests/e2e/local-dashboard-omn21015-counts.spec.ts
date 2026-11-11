@@ -1,5 +1,5 @@
 import { expect, test } from 'playwright/test';
-import { chartRows, narrowTo, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { chartRows, narrowTo, prefix, serveCharts, meteringAll } from './omn21166-chart-fixtures';
 import { chooseChartTab } from './chart-tabs';
 test.use({ viewport: { width: 1440, height: 900 }, trace: 'on', reducedMotion: 'reduce' });
 // Real UI failures: raw headline/count table values, compacted directions, equal colors,
@@ -9,14 +9,14 @@ for (const theme of ['light', 'dark'] as const) {
     await page.emulateMedia({ colorScheme: theme });
     await page.addInitScript(value => localStorage.setItem('omnidash.theme.v1', value), theme);
     await serveCharts(page, { ...chartRows,
-      [prefix + 'cost.savings-overview.v1']: [{ window: 'all', captured_at: '2026-10-22T10:00:00Z',
+      [prefix + 'metering-summary.v1']: [meteringAll({ window: 'all', captured_at: '2026-10-22T10:00:00Z',
         total_cost_usd: '3.5923', total_savings_usd: '1074.2157', run_count: '59188',
         // Dev #462 (omnimarket#4341): cost.savings-overview.v1 serves its directions as tokens_input_total / tokens_output_total.
-        tokens_total: '309271491', tokens_input_total: '300000001', tokens_output_total: '9271490' }],
+        tokens_total: '309271491', tokens_input_total: '300000001', tokens_output_total: '9271490' }),
+        { window_kind: 'day', window_start: '2026-10-01', baseline_model: 'baseline-a', baseline_state: 'resolved',
+          savings_usd: '3.5923', runs_total: 59188 }],
       [prefix + 'usage-by-model-day.v1']: [{ usage_day: '2026-10-01', model_id: 'model-a',
         input_tokens: '300000001', output_tokens: '9271490', call_count: 59188, measured_cost_usd: '3.5923', cost_tier_name: 'local', call_share: 1 }],
-      [prefix + 'metering-summary.v1']: [{ window_kind: 'day', window_start: '2026-10-01',
-        baseline_model: 'baseline-a', baseline_state: 'resolved', savings_usd: '3.5923', runs_total: 59188 }],
     });
     await page.goto('/overview');
     await expect(page.locator('body')).toHaveClass(new RegExp(`\\btheme-${theme}\\b`));
@@ -27,10 +27,11 @@ for (const theme of ['light', 'dark'] as const) {
     // in the card's tooltip, opened as a keyboard reader opens it, by focusing the card's info button.
     // Part 29 AC191: the basis is the card's caption, always in the page; no About button to focus.
     await expect(tokens.locator('[data-field-tone="tokens-in"]')).toBeVisible();
-    await expect(tokens.locator('[data-field-tone="tokens-in"]')).toContainText('300,000,001');
-    await expect(tokens.locator('[data-field-tone="tokens-out"]')).toContainText('9,271,490');
-    await expect(tokens.getByLabel('Input tokens: 300,000,001', { exact: true })).toHaveAttribute('title', 'Input tokens: 300,000,001');
-    await expect(tokens.getByLabel('Output tokens: 9,271,490', { exact: true })).toHaveAttribute('title', 'Output tokens: 9,271,490');
+    // OMN-22168 (product owner 2026-11-07, omnidash#496): every token count reads short; the exact count is on hover.
+    await expect(tokens.locator('[data-field-tone="tokens-in"]')).toContainText('300M');
+    await expect(tokens.locator('[data-field-tone="tokens-out"]')).toContainText('9.27M');
+    await expect(tokens.getByLabel('Input tokens: 300M, exactly 300,000,001', { exact: true })).toHaveAttribute('title', 'Input tokens: 300,000,001');
+    await expect(tokens.getByLabel('Output tokens: 9.27M, exactly 9,271,490', { exact: true })).toHaveAttribute('title', 'Output tokens: 9,271,490');
     await expect(tokens.locator('.local-token-directions')).not.toContainText('Input');
     await expect(tokens.locator('.local-token-directions')).not.toContainText('Output');
     // Part 29 AC191 (lab 2026-10-27): in the caption the two directions wrap whole when a four-across card is too narrow
@@ -54,7 +55,9 @@ for (const theme of ['light', 'dark'] as const) {
     expect(Math.abs((await smallPair[0]!.boundingBox())!.y - (await smallPair[1]!.boundingBox())!.y)).toBeLessThan(2);
     await page.goto('/usage');
     await expect(page.locator('[data-component="usage-savings-series"] td[data-label="Runs"]')).toHaveText('59.18K');
-    await expect(page.locator('[data-component="usage-by-model-day"]')).toContainText('300,000,001');
+    // OMN-22168 (omnidash#496): short in the table, the whole integer on hover.
+    await expect(page.locator('[data-component="usage-by-model-day"]')).toContainText('300M');
+    await expect(page.locator('[data-component="usage-by-model-day"] [title*="300,000,001"]').first()).toBeAttached();
     await expect(page.locator('[data-component="usage-by-model-day"]')).toContainText('59.18K');
     await page.screenshot({ path: info.outputPath(`usage-counts-${theme}.png`), fullPage: true });
   });
@@ -76,14 +79,16 @@ test('metering-backed Overview uses the same compact total and arrow-only full d
   await expect(tokens.locator('.local-dashboard-metric')).toHaveText('6.13K');
   // OMN-21166 live review 2026-10-25: on the metering path the Tokens card is its compact total, and the full
   // directions (whole integers, never compacted) are its hover line, a tooltip that is the info button's description.
-  // Lakshman 2026-11-07: the directions are the two arrow rows in their colours, whole integers, never compacted.
-  await expect(tokens.locator('.local-card-caption .local-token-direction strong')).toHaveText(['5,756', '378']);
+  // Lakshman 2026-11-07: the directions are the two arrow rows in their colours; OMN-22168 (omnidash#496, the same day)
+  // reads them short, the whole integers on hover.
+  await expect(tokens.locator('.local-card-caption .local-token-direction strong')).toHaveText(['5.75K', '378']);
+  await expect(tokens.locator('.local-card-caption .local-token-direction').first()).toHaveAttribute('title', 'Input tokens: 5,756');
   await expect(tokens.getByRole('button', { name: 'About Tokens processed' })).toHaveCount(0);
   await expect(tokens).not.toContainText('Input');
   await expect(tokens).not.toContainText('Output');
 });
 
-test('Evidence selected-run directional counts remain full integers', async ({ page }, info) => {
+test('Evidence selected-run directional counts read short, the full integers on hover', async ({ page }, info) => {
   const run = { ...chartRows[prefix + 'delegation.decisions.v1']![0] as object,
     tokens_input: 300000001, tokens_output: 9271490 };
   await serveCharts(page, { ...chartRows,
@@ -92,18 +97,21 @@ test('Evidence selected-run directional counts remain full integers', async ({ p
   });
   await page.goto('/delegation-evidence');
   const selected = page.locator('[data-panel-title="SELECTED RUN"]');
-  await expect(selected.locator('[data-field-tone="tokens-in"] .v')).toHaveText('300,000,001');
-  await expect(selected.locator('[data-field-tone="tokens-out"] .v')).toHaveText('9,271,490');
+  // OMN-22168 (omnidash#496): short in view, the whole integer on hover.
+  await expect(selected.locator('[data-field-tone="tokens-in"] .v')).toHaveText('300M');
+  await expect(selected.locator('[data-field-tone="tokens-out"] .v')).toHaveText('9.27M');
+  await expect(selected.locator('[data-field-tone="tokens-in"] [title*="300,000,001"]')).toHaveCount(1);
+  await expect(selected.locator('[data-field-tone="tokens-out"] [title*="9,271,490"]')).toHaveCount(1);
   await page.screenshot({path:info.outputPath('evidence-full-directions.png'),fullPage:true});
 });
 
 test('Overview and Evidence derive missing calls from complete same-row model groups', async ({ page }, info) => {
-  await serveCharts(page, { ...chartRows, [prefix + 'cost.savings-overview.v1']: [{
+  await serveCharts(page, { ...chartRows, [prefix + 'metering-summary.v1']: [meteringAll({
     window: 'all', captured_at: '2026-10-22T10:00:00Z', run_count: null,
     measured_run_count: 59180, estimated_run_count: 0, unknown_run_count: 8,
     tokens_total: 309271491, total_cost_usd: '3.5923', total_savings_usd: '1074.2157',
     rows: [{model_id:'model-a',display_name:'Model A',task_count:59180},{model_id:'model-b',display_name:'Model B',task_count:8}],
-  }] });
+  })] });
   await page.goto('/overview');
   await expect(page.locator('[data-component="overview-measured"] .local-dashboard-metric')).toHaveText('59.18K');
   await page.goto('/delegation-evidence');
@@ -112,15 +120,17 @@ test('Overview and Evidence derive missing calls from complete same-row model gr
   await page.screenshot({path:info.outputPath('derived-calls-evidence.png'),fullPage:true});
 });
 
+// OMN-23330 AC1/AC2: the Evidence savings read the metering all row; its unpriced count (runs without spend) is not
+// served here, so the panel says so instead of borrowing delegation.savings.v1's 999.
 test('Evidence savings discloses unavailable unpriced coverage without borrowing another population', async ({page}, info) => {
   await serveCharts(page, {...chartRows,
-    [prefix+'cost.savings-overview.v1']: [{window:'all',captured_at:'2026-10-22T10:00:00Z',total_cost_usd:'3.5923',total_baseline_cost_usd:'1077.8080',total_savings_usd:'1074.2157',measured_run_count:9,unknown_run_count:2}],
+    [prefix+'metering-summary.v1']: [{ ...meteringAll({window:'all',captured_at:'2026-10-22T10:00:00Z',total_cost_usd:'3.5923',total_baseline_cost_usd:'1077.8080',total_savings_usd:'1074.2157',measured_run_count:9,unknown_run_count:2}), runs_unknown_spend: null }],
     [prefix+'delegation.savings.v1']: [{baseline_model:'separate-baseline',pricing_manifest_version:'7',unpriced_call_count:999,sessions:[]}],
   });
   await page.goto('/delegation-evidence');
   const panel=page.locator('[data-panel-title="SAVINGS vs CLOUD BASELINE"]');
   await expect(panel.locator('.big')).toHaveText('$1,074.21');
-  await expect(panel).toContainText('Unpriced runs not recorded');
+  await expect(panel).toContainText('runs with no spend recorded: not recorded');
   await expect(panel).not.toContainText('999');
   await page.screenshot({path:info.outputPath('evidence-unpriced-coverage.png'),fullPage:true});
 });

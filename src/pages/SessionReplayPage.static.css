@@ -1,0 +1,19 @@
+/* OMN-23330 AC25: the fixed inline styles of SessionReplayPage.tsx, moved into classes with nothing else changed. Each selector
+   repeats its class so it keeps the weight the inline style had over the stylesheet rules around it. */
+.session-replay-page-s780a78.session-replay-page-s780a78.session-replay-page-s780a78 { max-height: 160px; overflow: auto; padding: 8px; border-radius: 4px; border: 1px solid var(--ds-line, var(--ds-line-soft)); background: var(--ds-surface-2, var(--ds-surface)); white-space: pre-wrap; word-break: break-word; margin: 0; }
+.session-replay-page-s543027.session-replay-page-s543027.session-replay-page-s543027 { background: var(--ds-surface, var(--ds-page)); border: 1px solid var(--ds-line, var(--ds-line-soft)); border-radius: 8px; overflow: hidden; }
+.session-replay-page-safb590.session-replay-page-safb590.session-replay-page-safb590 { padding: 10px 14px; border-bottom: 1px solid var(--ds-line, var(--ds-line-soft)); }
+.session-replay-page-s872b66.session-replay-page-s872b66.session-replay-page-s872b66 { padding: 16px; }
+.session-replay-page-sea0c4d.session-replay-page-sea0c4d.session-replay-page-sea0c4d { padding: 24px 28px; overflow-y: auto; }
+.session-replay-page-s6d8474.session-replay-page-s6d8474.session-replay-page-s6d8474 { display: grid; grid-template-columns: 240px 1fr; gap: 20px; }
+.session-replay-page-s8ef476.session-replay-page-s8ef476.session-replay-page-s8ef476 { display: flex; flex-direction: column; gap: 16px; }
+.session-replay-page-sfe0e02.session-replay-page-sfe0e02.session-replay-page-sfe0e02 { background: var(--ds-surface, var(--ds-page)); border: 1px solid var(--ds-line, var(--ds-line-soft)); border-radius: 8px; padding: 40px; text-align: center; }
+.session-replay-page-sd5bf69.session-replay-page-sd5bf69.session-replay-page-sd5bf69 { background: var(--ds-surface, var(--ds-page)); border: 1px solid var(--ds-line, var(--ds-line-soft)); border-radius: 8px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; }
+.session-replay-page-sc331ff.session-replay-page-sc331ff.session-replay-page-sc331ff { color: var(--ds-ink-2); }
+.session-replay-page-s7c5c86.session-replay-page-s7c5c86.session-replay-page-s7c5c86 { all: unset; cursor: pointer; }
+.session-replay-page-s2dcb32.session-replay-page-s2dcb32.session-replay-page-s2dcb32 { color: var(--ds-brand, var(--ds-hue-blue)); }
+.session-replay-page-s6e957d.session-replay-page-s6e957d.session-replay-page-s6e957d { flex: 1; height: 4px; background: var(--ds-line, var(--ds-surface)); border-radius: 2px; overflow: hidden; }
+.session-replay-page-s8580f0.session-replay-page-s8580f0.session-replay-page-s8580f0 { max-height: 320px; overflow-y: auto; }
+.session-replay-page-sd846ee.session-replay-page-sd846ee.session-replay-page-sd846ee { padding: 10px 14px; border-bottom: 1px solid var(--ds-line, var(--ds-line-soft)); display: flex; align-items: center; gap: 10px; }
+.session-replay-page-s538764.session-replay-page-s538764.session-replay-page-s538764 { margin-left: auto; }
+.session-replay-page-s3ba727.session-replay-page-s3ba727.session-replay-page-s3ba727 { padding: 12px 14px; }

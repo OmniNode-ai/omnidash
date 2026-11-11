@@ -97,7 +97,7 @@ async function usageColors(page: Page, names: string[]) {
   for (const name of names) {
     const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     // Part 17 AC114: the model's name under its pair of bars is in the model's colour.
-    const pairName = tokens.locator('li.gdb-day').filter({ has: page.locator('.gdb-day-label', { hasText: new RegExp(`^${escaped}$`) }) }).locator('.gdb-day-label');
+    const pairName = tokens.locator('li.gdb-day').filter({ has: page.locator('.gdb-name-label', { hasText: new RegExp(`^${escaped}$`) }) }).locator('.gdb-name-label');
     await expect(pairName).toHaveCount(1);
     expect(await pairName.locator('.gdb-swatch').evaluate(el => getComputedStyle(el).backgroundColor), `${name}: Tokens by model name swatch`).toBe(result[name]);
   }
@@ -118,7 +118,7 @@ for (const selectedTheme of ['light', 'dark']) {
     await page.getByRole('button', { name: 'Refresh', exact: true }).click();
     const tokens = page.getByRole('figure', { name: 'Tokens in vs out by model', exact: true });
     // Part 17 AC114: the model pairs follow the served order; the reordered refresh puts model-b first (the highlight buttons are removed).
-    await expect(tokens.locator('li.gdb-day .gdb-day-label').first()).toHaveText('model-b');
+    await expect(tokens.locator('li.gdb-day .gdb-name-label').first()).toHaveText('model-b');
     expect(await usageColors(page, [...names].reverse())).toEqual(before);
     await page.screenshot({ path: info.outputPath('model-identity-reordered.png'), fullPage: true, animations: 'disabled' });
     await info.attach('model-colors', { body: JSON.stringify({ theme: selectedTheme, before }), contentType: 'application/json' });

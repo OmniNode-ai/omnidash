@@ -8,6 +8,9 @@ import { useProjectionSnapshotQuery } from '@/hooks/useProjectionSnapshotQuery';
 import { useDataSourceMode } from '@/hooks/useDataSourceMode';
 import { TOPICS } from '@shared/types/topics';
 import { FreshnessLine } from '@/components/dashboard/lab/FreshnessLine';
+import { refreshInterval } from '@/theme/refresh';
+// OMN-23330 AC25: this file's fixed inline styles are classes in LabRunnersWidget.static.css.
+import './LabRunnersWidget.static.css';
 
 /**
  * OMN-18773 — C6: the Runners widget.
@@ -183,18 +186,18 @@ export function LabRunnersView({
         />
       )}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div data-testid="runner-fleet-rollup" style={{ display: 'flex', gap: 16 }}>
+      <div className="lab-runners-widget-s930d87">
+        <div className="lab-runners-widget-scb387a" data-testid="runner-fleet-rollup">
           <Text as="span" size="sm" weight="semibold">Registered {totals.total}</Text>
           <Text as="span" size="sm" color="secondary">Online {totals.online}</Text>
           <Text as="span" size="sm" color="ok">Busy {totals.busy}</Text>
           <Text as="span" size="sm" color={totals.offline > 0 ? 'warn' : 'secondary'}>Offline {totals.offline}</Text>
         </div>
 
-        <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+        <div className="lab-runners-widget-s529a82">
           <div>
             <Text as="div" size="xs" weight="semibold" color="tertiary">By class</Text>
-            <div data-testid="runner-fleet-by-class" style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <div className="lab-runners-widget-s32bee0" data-testid="runner-fleet-by-class">
               {classRollup.map((entry) => (
                 <Text as="div" key={entry.label_class} size="xs" family="mono" color={entry.offline > 0 ? 'warn' : 'secondary'}>
                   {entry.label_class}: {entry.online}/{entry.total} online{entry.offline > 0 ? ` (${entry.offline} offline)` : ''}
@@ -204,7 +207,7 @@ export function LabRunnersView({
           </div>
           <div>
             <Text as="div" size="xs" weight="semibold" color="tertiary">By host</Text>
-            <div data-testid="runner-fleet-by-host" style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <div className="lab-runners-widget-s32bee0" data-testid="runner-fleet-by-host">
               {hostRollup.map((entry) => (
                 <Text as="div" key={entry.host} size="xs" family="mono" color={entry.offline > 0 ? 'warn' : 'secondary'}>
                   {entry.host}: {entry.online}/{entry.total} online{entry.offline > 0 ? ` (${entry.offline} offline)` : ''}
@@ -214,8 +217,8 @@ export function LabRunnersView({
           </div>
         </div>
 
-        <div style={{ overflowX: 'auto' }}>
-          <div style={{ minWidth: 700 }}>
+        <div className="lab-runners-widget-s42d445">
+          <div className="lab-runners-widget-sdab6d1">
             <div style={{ display: 'grid', gridTemplateColumns: grid, gap: 8, padding: '4px 0', borderBottom: '1px solid var(--ds-line)' }}>
               {header('Runner', 'runner_name')}
               {header('Class', 'label_class')}
@@ -272,7 +275,7 @@ export default function LabRunnersWidget() {
     topic: TOPICS.runnerFleet,
     queryKey: ['lab-runner-fleet'],
     enabled: availability === 'available',
-    refetchInterval: 15_000,
+    refetchInterval: refreshInterval(),
   });
 
   return (

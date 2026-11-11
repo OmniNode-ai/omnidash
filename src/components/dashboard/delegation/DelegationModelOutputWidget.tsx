@@ -4,6 +4,10 @@ import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { Text } from '@/components/ui/typography';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
+import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/theme/format';
+import { refreshInterval } from '@/theme/refresh';
+// OMN-23330 AC25: this file's fixed inline styles are classes in DelegationModelOutputWidget.static.css.
+import './DelegationModelOutputWidget.static.css';
 
 // ── Projection types (OMN-12745) ──────────────────────────────────────
 //
@@ -50,8 +54,8 @@ export interface DelegationModelOutputConfig {
 // ── Formatters ────────────────────────────────────────────────────────
 
 function fmtMs(ms: number): string {
-  if (ms >= 1000) return `${(ms / 1000).toFixed(2)}s`;
-  return `${ms.toFixed(0)}ms`;
+  if (ms >= 1000) return `${fmtFixed((ms / 1000), 2)}s`;
+  return `${fmtFixed(ms, 0)}ms`;
 }
 
 // ── Response card ─────────────────────────────────────────────────────
@@ -69,23 +73,10 @@ function ResponseCard({
     : row.generated_text.slice(0, 160) + (row.generated_text.length > 160 ? '…' : '');
 
   return (
-    <div
-      style={{
-        border: '1px solid var(--ds-line)',
-        borderRadius: 8,
-        padding: '12px 14px',
-        background: 'var(--ds-surface)',
-      }}
+    <div className="delegation-model-output-widget-s1767a6"
     >
       {/* Header row: model + task + latency */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          marginBottom: 8,
-          flexWrap: 'wrap',
-        }}
+      <div className="delegation-model-output-widget-sf626e8"
       >
         <Text as="span" size="xs" family="mono" color="primary" weight="semibold">
           {shortModel}
@@ -93,18 +84,11 @@ function ResponseCard({
         <Text as="span" size="xs" color="tertiary">
           ·
         </Text>
-        <Text
+        <Text className="delegation-model-output-widget-sc3e065"
           as="span"
           size="xs"
           family="mono"
           color="secondary"
-          style={{
-            display: 'inline-block',
-            padding: '1px 5px',
-            borderRadius: 3,
-            background: 'var(--ds-surface-2)',
-            border: '1px solid var(--ds-line-soft)',
-          }}
         >
           {row.task_type}
         </Text>
@@ -118,20 +102,15 @@ function ResponseCard({
           ·
         </Text>
         <Text as="span" size="xs" family="mono" tabularNums color="tertiary">
-          {(row.prompt_tokens + row.completion_tokens).toLocaleString()} tokens
+          {fmtLocaleString((row.prompt_tokens + row.completion_tokens))} tokens
         </Text>
       </div>
 
       {/* Generated text output */}
-      <Text
+      <Text className="delegation-model-output-widget-sbc3045"
         as="p"
         size="sm"
         color="primary"
-        style={{
-          margin: 0,
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-word',
-        }}
       >
         {displayText}
       </Text>
@@ -145,38 +124,20 @@ function HistoryRow({ row }: { row: InferenceResponseRow }) {
   const shortModel = row.model_name.split('/').pop() ?? row.model_name;
   const preview = row.generated_text.slice(0, 80) + (row.generated_text.length > 80 ? '…' : '');
   return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: '100px 80px 1fr',
-        gap: 8,
-        padding: '5px 0',
-        borderBottom: '1px solid var(--ds-line-soft)',
-        alignItems: 'start',
-      }}
+    <div className="delegation-model-output-widget-sf4c96e"
     >
-      <Text as="span" size="xs" family="mono" color="primary" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <Text className="delegation-model-output-widget-s6d812f" as="span" size="xs" family="mono" color="primary">
         {shortModel}
       </Text>
-      <Text
+      <Text className="delegation-model-output-widget-scdca35"
         as="span"
         size="xs"
         family="mono"
         color="secondary"
-        style={{
-          display: 'inline-block',
-          padding: '1px 4px',
-          borderRadius: 3,
-          background: 'var(--ds-surface-2)',
-          border: '1px solid var(--ds-line-soft)',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-        }}
       >
         {row.task_type}
       </Text>
-      <Text as="span" size="xs" color="secondary" style={{ wordBreak: 'break-word' }}>
+      <Text className="delegation-model-output-widget-s517194" as="span" size="xs" color="secondary">
         {preview}
       </Text>
     </div>
@@ -197,7 +158,7 @@ export default function DelegationModelOutputWidget(props: {
   const { data, isLoading, error } = useProjectionQuery<InferenceResponseProjection>({
     queryKey: ['delegation-model-output', TOPICS.inferenceResponseText],
     topic: TOPICS.inferenceResponseText,
-    refetchInterval: 5_000,
+    refetchInterval: refreshInterval(),
   });
 
   const projection = useMemo<InferenceResponseProjection | null>(
@@ -240,24 +201,17 @@ export default function DelegationModelOutputWidget(props: {
       fileMode={!isLiveDataSource(dataSourceMode)}
     >
       {projection && latestRow && !isEmpty && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="delegation-model-output-widget-s930d87">
           {/* Source topic pill */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div className="delegation-model-output-widget-sc779fa">
             <Text as="span" size="xs" color="tertiary">
               Source:
             </Text>
-            <Text
+            <Text className="delegation-model-output-widget-sc3e065"
               as="span"
               size="xs"
               family="mono"
               color="secondary"
-              style={{
-                display: 'inline-block',
-                padding: '1px 5px',
-                borderRadius: 3,
-                background: 'var(--ds-surface-2)',
-                border: '1px solid var(--ds-line-soft)',
-              }}
             >
               {projection.source_topic}
             </Text>
@@ -268,24 +222,16 @@ export default function DelegationModelOutputWidget(props: {
 
           {/* History */}
           {historyRows.length > 0 && (
-            <div style={{ marginTop: 4 }}>
-              <Text
+            <div className="delegation-model-output-widget-sc71373">
+              <Text className="delegation-model-output-widget-s4feedf"
                 as="div"
                 size="xs"
                 color="secondary"
                 weight="semibold"
-                style={{ marginBottom: 6 }}
               >
                 Recent responses
               </Text>
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '100px 80px 1fr',
-                  gap: 8,
-                  paddingBottom: 4,
-                  borderBottom: '1px solid var(--ds-line)',
-                }}
+              <div className="delegation-model-output-widget-s5bbe8b"
               >
                 {(['Model', 'Task', 'Preview'] as const).map((h) => (
                   <Text key={h} as="span" size="xs" color="tertiary">
@@ -301,7 +247,7 @@ export default function DelegationModelOutputWidget(props: {
 
           {/* Upstream-blocked notice */}
           {!projection.provisioned && (
-            <Text as="em" size="xs" color="tertiary" style={{ display: 'block', marginTop: 4 }}>
+            <Text className="delegation-model-output-widget-s1e7785" as="em" size="xs" color="tertiary">
               upstream-blocked — displaying fixture data (OMN-12746 redeploy required for live
               surfacing).
             </Text>

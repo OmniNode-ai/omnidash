@@ -137,10 +137,11 @@ describe('OMN-21166: Overview insight charts', () => {
     expect(screen.getByTestId('runs-per-day-readout').textContent).not.toMatch(/not recorded/);
   });
 
-  // OMN-21166 part 15 AC96: the day chart says nothing at rest; its words appear only for the day a reader points at.
-  it('C2: at rest the Runs per day readout is empty', () => {
+  // OMN-21166 part 15 AC96 kept the day chart silent at rest; OMN-23330 AC8 (the operator's 2026-11-09 review) supersedes
+  // it: at rest the readout shows the newest served day, so no blank row sits above the chart.
+  it('C2: at rest the Runs per day readout shows the newest served day', () => {
     render(<InsightsSection decisions={ROWS} now={NOW} />);
-    expect(screen.getByTestId('runs-per-day-readout')).toHaveTextContent(/^$/);
+    expect(screen.getByTestId('runs-per-day-readout')).toHaveTextContent(/^[A-Z][a-z]{2} \d{1,2} · \d+ runs? · /);
   });
 
   it('C3: the range control changes what is counted', () => {

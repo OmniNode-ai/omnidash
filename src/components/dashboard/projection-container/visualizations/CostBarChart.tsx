@@ -1,6 +1,9 @@
 import { Text } from '@/components/ui/typography';
 import type { VisualizationContract } from '@shared/types/visualization-contract';
 import { registerViz } from '../viz-registry';
+import { fixed as fmtFixed } from '@/theme/format';
+// OMN-23330 AC25: this file's fixed inline styles are classes in CostBarChart.static.css.
+import './CostBarChart.static.css';
 
 type CostTier = 'free' | 'cheap' | 'expensive';
 
@@ -72,32 +75,25 @@ export function CostBarChart({ data, contract }: CostBarChartProps) {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '8px 0' }}>
+    <div className="cost-bar-chart-s33a080">
       {rows.map((row) => (
-        <div key={row.name} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <Text as="span" size="sm" family="mono" truncate style={{ maxWidth: '60%' }} title={row.name}>
+        <div className="cost-bar-chart-s32bee0" key={row.name}>
+          <div className="cost-bar-chart-sbcda9e">
+            <Text className="cost-bar-chart-s772c5c" as="span" size="sm" family="mono" truncate title={row.name}>
               {row.name}
             </Text>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+            <div className="cost-bar-chart-sa7b04c">
               <Text as="span" size="sm" family="mono" tabularNums>
-                ${row.cost.toFixed(4)}
+                ${fmtFixed(row.cost, 4)}
               </Text>
               {row.savingsVsMax !== null && (
                 <Text as="span" size="xs" family="mono" color="secondary">
-                  saves ${row.savingsVsMax.toFixed(4)}
+                  saves ${fmtFixed(row.savingsVsMax, 4)}
                 </Text>
               )}
             </div>
           </div>
-          <div
-            style={{
-              height: 12,
-              background: 'var(--ds-surface-2)',
-              borderRadius: 3,
-              overflow: 'hidden',
-              border: '1px solid var(--ds-line-soft)',
-            }}
+          <div className="cost-bar-chart-s81bc84"
           >
             <div
               data-testid={`bar-${row.name}`}

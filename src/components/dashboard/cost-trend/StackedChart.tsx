@@ -19,6 +19,9 @@ import { useTimezone } from '@/hooks/useTimezone';
 import { Text } from '@/components/ui/typography';
 import { useTokenColors } from '@/theme/design-system/useTokenColors';
 import { colorToNumber, tokenNumber } from '@/theme/design-system/color';
+import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/theme/format';
+// OMN-23330 AC25: this file's fixed inline styles are classes in StackedChart.static.css.
+import './StackedChart.static.css';
 
 // ---------- Types ----------
 
@@ -526,16 +529,11 @@ export function StackedChart({
       onPointerLeave={handlePointerLeave}
     >
       {/* three.js canvas */}
-      <div ref={mountRef} style={{ position: 'absolute', inset: 0 }} />
+      <div className="stacked-chart-s65d002" ref={mountRef} />
 
       {/* Axis labels overlay. pointerEvents:none so the wrapper's
           move/leave handlers get the hover events. */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          pointerEvents: 'none',
-        }}
+      <div className="stacked-chart-se4e1fa"
       >
         {/* Skip the $0 tick label — the x-axis baseline already
             communicates "zero" visually, and the label sits in the
@@ -558,7 +556,7 @@ export function StackedChart({
                 whiteSpace: 'nowrap',
               }}
             >
-              {`$${t.value.toFixed(t.value >= 1 ? 2 : 4)}`}
+              {`$${fmtFixed(t.value, t.value >= 1 ? 2 : 4)}`}
             </Text>
           ))}
         {xTickLabels.map((t) => (
@@ -613,16 +611,15 @@ export function StackedChart({
                 zIndex: 1000,
               }}
             >
-              <Text as="div" family="mono" size="sm" color="secondary" style={{ marginBottom: 6 }}>
-                {new Date(tooltip.bucket).toLocaleString(undefined, { timeZone: tz })}
+              <Text className="stacked-chart-s4feedf" as="div" family="mono" size="sm" color="secondary">
+                {fmtLocaleString(new Date(tooltip.bucket), undefined, { timeZone: tz })}
               </Text>
               {/* Stack-order (top-to-bottom visually). We render the
                   rows in reverse so the top of the stacked graph is
                   the first row in the tooltip. */}
               {[...tooltip.rows].reverse().map((row) => (
-                <div
+                <div className="stacked-chart-s3088da"
                   key={row.model}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8 }}
                 >
                   <span
                     style={{
@@ -630,23 +627,19 @@ export function StackedChart({
                       background: colors.chart[row.colorIdx % colors.chart.length],
                     }}
                   />
-                  <Text family="mono" size="sm" color="primary" leading="normal" style={{ flex: 1 }}>
+                  <Text className="stacked-chart-see3d55" family="mono" size="sm" color="primary" leading="normal">
                     {row.model}
                   </Text>
                   <Text family="mono" size="sm" color="primary" leading="normal" tabularNums>
-                    ${row.cost.toFixed(4)}
+                    ${fmtFixed(row.cost, 4)}
                   </Text>
                 </div>
               ))}
-              <div
-                style={{
-                  marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--ds-line-soft)',
-                  display: 'flex', justifyContent: 'space-between', gap: 8,
-                }}
+              <div className="stacked-chart-s95be03"
               >
                 <Text family="mono" size="sm" color="secondary">total</Text>
                 <Text family="mono" size="sm" color="primary" weight="semibold">
-                  ${tooltip.total.toFixed(4)}
+                  ${fmtFixed(tooltip.total, 4)}
                 </Text>
               </div>
             </div>

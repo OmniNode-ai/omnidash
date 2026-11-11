@@ -4,15 +4,15 @@
  * served rows (tierShares), and this module draws exactly the shares it is handed.
  */
 import { useEffect, useState, type CSSProperties } from 'react';
-import { formatDashboardCount } from '@/lib/dashboard-count';
+import { formatDashboardCount } from '@/theme/format';
 import { tierColor } from '@/lib/dashboard-colors';
+import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/theme/format';
+import { formatShare } from '@/theme/format';
 
 /** A served share as a percent; a share that is not 0 or 1 never reads as 0.0% or 100.0%. */
 export function percent(share: number): string {
-  const written = share.toLocaleString('en-US', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 });
-  if (share > 0 && written === '0.0%') return '<0.1%';
-  if (share < 1 && written === '100.0%') return '>99.9%';
-  return written;
+  // OMN-23330 AC19: the one share formatter, from src/theme/format.
+  return formatShare(share);
 }
 
 export interface TierSegment {
@@ -50,7 +50,7 @@ const WHOLE_TOLERANCE = 1e-6;
 
 /** A number written without float noise (0.1 + 0.2 is 0.3, not 0.30000000000000004). */
 function units(value: number): number {
-  return Number(value.toFixed(6));
+  return Number(fmtFixed(value, 6));
 }
 
 /** The point of the ring `turn` of the way round, clockwise from twelve o'clock. */
@@ -106,7 +106,7 @@ export function TierMix({ shares: shaped, nameOf: tierLabel, variant = 'donut' }
           <p className="local-tier-bars-caption">Share of tier-routed runs · select a tier to inspect</p>
           <div className="local-tier-bars-axis" aria-hidden="true">{Array.from({ length: 5 }, (_, index) => {
             const tick = index / 4;
-            return <span key={tick}>{tick.toLocaleString('en-US', { style: 'percent' })}</span>;
+            return <span key={tick}>{fmtLocaleString(tick, 'en-US', { style: 'percent' })}</span>;
           })}</div>
           <ul className="local-tier-bars-list">
             {shaped.segments.map((segment, index) => (

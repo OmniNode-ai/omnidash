@@ -1,3 +1,4 @@
+import { localeDate as fmtLocaleDate } from '@/theme/format';
 /** Refresh the mounted local page without replacing its filters or last good rows. */
 const listeners = new Set<() => void>();
 
@@ -46,5 +47,5 @@ export function updatedLabel(readAt: string, now: number): string {
   const at = new Date(readAt);
   const time = at.toISOString().slice(11, 16);
   if (at.toISOString().slice(0, 10) === new Date(now).toISOString().slice(0, 10)) return `Updated ${time} UTC`;
-  return `Updated ${at.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}, ${time} UTC`;
+  return `Updated ${fmtLocaleDate(at, 'en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}, ${time} UTC`;
 }

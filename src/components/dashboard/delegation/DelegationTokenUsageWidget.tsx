@@ -1,4 +1,3 @@
-/* eslint-disable local/no-typography-inline -- OMN-10624 prototype widget */
 import { useMemo } from 'react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
@@ -8,8 +7,12 @@ import { KPI } from '@/components/primitives';
 
 import { useDelegationRunContextOptional } from '@/components/dashboard/delegation-control-plane/DelegationRunContext';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
-import { formatUsd, usdFractionDigits } from '@/lib/currency';
+import { formatUsd, usdFractionDigits } from '@/theme/format';
 import { useTokenColors } from '@/theme/design-system/useTokenColors';
+import { fixed as fmtFixed } from '@/theme/format';
+import { refreshInterval } from '@/theme/refresh';
+// OMN-23330 AC25: this file's fixed inline styles are classes in DelegationTokenUsageWidget.static.css.
+import './DelegationTokenUsageWidget.static.css';
 
 // ── Projection types (from llm_call_metrics SQLite table, OMN-10623) ─
 
@@ -85,9 +88,9 @@ function ProvenanceBadge({ provenance }: { provenance: TokenProvenance }) {
 // ── Token formatters ──────────────────────────────────────────────────
 
 function fmtTokens(n: number): string {
-  if (n >= 1e9) return `${(n / 1e9).toFixed(1)}B`;
-  if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
-  if (n >= 1e3) return `${(n / 1e3).toFixed(0)}K`;
+  if (n >= 1e9) return `${fmtFixed((n / 1e9), 1)}B`;
+  if (n >= 1e6) return `${fmtFixed((n / 1e6), 1)}M`;
+  if (n >= 1e3) return `${fmtFixed((n / 1e3), 0)}K`;
   return String(n);
 }
 
@@ -114,7 +117,7 @@ function ModelTokenRow({
   const widthPct = maxTokens > 0 ? (row.total_tokens / maxTokens) * 100 : 0;
 
   return (
-    <div style={{ padding: '6px 0', borderBottom: '1px solid var(--ds-line-soft)' }}>
+    <div className="delegation-token-usage-widget-scdb164">
       <div
         style={{
           display: 'grid',
@@ -124,7 +127,7 @@ function ModelTokenRow({
           marginBottom: 4,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+        <div className="delegation-token-usage-widget-s5f3741">
           <span
             aria-hidden
             style={{
@@ -136,32 +139,25 @@ function ModelTokenRow({
               flex: '0 0 auto',
             }}
           />
-          <Text as="span" size="sm" family="mono" color="primary" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <Text className="delegation-token-usage-widget-s6d812f" as="span" size="sm" family="mono" color="primary">
             {row.model_name}
           </Text>
         </div>
-        <Text as="span" size="sm" family="mono" tabularNums style={{ textAlign: 'right' }}>
+        <Text className="delegation-token-usage-widget-s13cbe0" as="span" size="sm" family="mono" tabularNums>
           {fmtTokens(row.prompt_tokens)}
         </Text>
-        <Text as="span" size="sm" family="mono" tabularNums style={{ textAlign: 'right' }}>
+        <Text className="delegation-token-usage-widget-s13cbe0" as="span" size="sm" family="mono" tabularNums>
           {fmtTokens(row.completion_tokens)}
         </Text>
         {showCost && (
-          <Text as="span" size="sm" family="mono" tabularNums style={{ textAlign: 'right', color: 'var(--ds-warn)' }}>
+          <Text className="delegation-token-usage-widget-s13cbe0" color="warn" as="span" size="sm" family="mono" tabularNums>
             {fmtUsd(row.estimated_cost_usd)}
           </Text>
         )}
       </div>
       {/* Token bar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div
-          style={{
-            flex: 1,
-            height: 6,
-            borderRadius: 3,
-            background: 'var(--ds-surface-2)',
-            overflow: 'hidden',
-          }}
+      <div className="delegation-token-usage-widget-s3088da">
+        <div className="delegation-token-usage-widget-s48c82d"
         >
           <div
             style={{
@@ -173,7 +169,7 @@ function ModelTokenRow({
             }}
           />
         </div>
-        <Text as="span" size="xs" family="mono" tabularNums color="secondary" style={{ flex: '0 0 52px', textAlign: 'right' }}>
+        <Text className="delegation-token-usage-widget-s4bd6de" as="span" size="xs" family="mono" tabularNums color="secondary">
           {fmtTokens(row.total_tokens)}
         </Text>
         {showProvenance && <ProvenanceBadge provenance={row.token_provenance} />}
@@ -189,15 +185,15 @@ function ProvenanceSummary({ summary }: { summary: Record<TokenProvenance, numbe
   if (total === 0) return null;
   const provenances: TokenProvenance[] = ['measured', 'estimated', 'unknown'];
   return (
-    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 4 }}>
+    <div className="delegation-token-usage-widget-s9841a1">
       {provenances.map((p) => {
         const count = summary[p] ?? 0;
         if (count === 0) return null;
         return (
-          <div key={p} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <div className="delegation-token-usage-widget-sdf7e07" key={p}>
             <ProvenanceBadge provenance={p} />
             <Text as="span" size="xs" family="mono" tabularNums color="secondary">
-              {((count / total) * 100).toFixed(0)}%
+              {fmtFixed(((count / total) * 100), 0)}%
             </Text>
           </div>
         );
@@ -219,7 +215,7 @@ export default function DelegationTokenUsageWidget(props: { config: DelegationTo
   const { data, isLoading: queryLoading, error: queryError } = useProjectionQuery<DelegationTokenUsageProjection>({
     queryKey: ['delegation-token-usage', TOPICS.delegationTokenUsage],
     topic: TOPICS.delegationTokenUsage,
-    refetchInterval: 5_000,
+    refetchInterval: refreshInterval(),
     enabled: !runCtx,
   });
 
@@ -257,7 +253,7 @@ export default function DelegationTokenUsageWidget(props: { config: DelegationTo
       fileMode={!isLiveDataSource(dataSourceMode)}
     >
       {projection && !isEmpty && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="delegation-token-usage-widget-s930d87">
           {/* KPI row */}
           <div
             style={{
@@ -345,7 +341,7 @@ export default function DelegationTokenUsageWidget(props: { config: DelegationTo
           ))}
 
           {!projection.provisioned && (
-            <Text as="div" size="xs" color="tertiary" style={{ marginTop: 4, fontStyle: 'italic' }}>
+            <Text className="delegation-token-usage-widget-s0934b3" as="div" size="xs" color="tertiary">
               Projection upstream-blocked — displaying contract-valid fixtures (OMN-10623).
             </Text>
           )}

@@ -9,6 +9,7 @@
  * counting from zero again, and under prefers-reduced-motion the figure is shown at once.
  */
 import { useEffect, useRef, useState } from 'react';
+import { localeString as fmtLocaleString } from '@/theme/format';
 
 export const COUNT_UP_MS = 800;
 
@@ -34,7 +35,7 @@ function frame(text: string, value: number): string {
   const [, prefix, digits, suffix] = match as unknown as [string, string, string, string];
   const decimals = digits.includes('.') ? digits.split('.')[1]!.length : 0;
   const grouped = digits.includes(',');
-  const written = value.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals, useGrouping: grouped });
+  const written = fmtLocaleString(value, 'en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals, useGrouping: grouped });
   return `${prefix}${written}${suffix}`;
 }
 

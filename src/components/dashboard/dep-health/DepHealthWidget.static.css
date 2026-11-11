@@ -1,0 +1,8 @@
+/* OMN-23330 AC25: the fixed inline styles of DepHealthWidget.tsx, moved into classes with nothing else changed. Each selector
+   repeats its class so it keeps the weight the inline style had over the stylesheet rules around it. */
+.dep-health-widget-sf6ca22.dep-health-widget-sf6ca22.dep-health-widget-sf6ca22 { padding: 6px 0; border-bottom: 1px solid var(--ds-line-soft); display: grid; grid-template-columns: 80px 120px 1fr; gap: 8px; align-items: start; }
+.dep-health-widget-s6d812f.dep-health-widget-s6d812f.dep-health-widget-s6d812f { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dep-health-widget-s72d6c3.dep-health-widget-s72d6c3.dep-health-widget-s72d6c3 { margin-bottom: 12px; }
+.dep-health-widget-s140416.dep-health-widget-s140416.dep-health-widget-s140416 { margin-bottom: 4px; padding-bottom: 2px; border-bottom: 1px solid var(--ds-line); }
+.dep-health-widget-s930d87.dep-health-widget-s930d87.dep-health-widget-s930d87 { display: flex; flex-direction: column; gap: 12px; }
+.dep-health-widget-s90575b.dep-health-widget-s90575b.dep-health-widget-s90575b { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--ds-line); }

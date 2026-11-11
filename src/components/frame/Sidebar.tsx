@@ -256,8 +256,9 @@ export function Sidebar() {
       <nav aria-label="Local" className="local-nav">
         {!collapsed && (
           <div className="sidebar-bottom-title" style={{ padding: '4px 12px 2px' }}>
-            {/* OMN-21166 part 27 AC166: section labels in the monospace of the card labels. */}
-            <Text size="xs" color="tertiary" transform="uppercase" weight="regular" family="mono">
+            {/* Section labels as the page draws them (editorial look, sans 500); OMN-23330 AC30 put that in the props, where
+                a stylesheet had overridden the monospace with !important. */}
+            <Text size="xs" color="tertiary" transform="uppercase" weight="medium" family="sans">
               Local
             </Text>
           </div>
@@ -355,13 +356,13 @@ export function Sidebar() {
       </>}
 
       <nav aria-label="Evidence" className="local-nav evidence-nav">
-        {!collapsed && <div className="mvp-nav-title"><Text size="xs" color="tertiary" transform="uppercase" weight="regular" family="mono">Evidence</Text></div>}
+        {!collapsed && <div className="mvp-nav-title"><Text size="xs" color="tertiary" transform="uppercase" weight="medium" family="sans">Evidence</Text></div>}
         {renderNavItem({ page: 'delegation-evidence', label: 'Delegation Evidence', icon: <DestinationIcon page="delegation-evidence" /> })}
       </nav>
 
       {showDeveloperTools && (
         <nav id="developer-navigation" aria-label="Developer" className="local-nav developer-nav">
-          {!collapsed && <div className="mvp-nav-title"><Text size="xs" color="tertiary" transform="uppercase" weight="regular" family="mono">Developer</Text></div>}
+          {!collapsed && <div className="mvp-nav-title"><Text size="xs" color="tertiary" transform="uppercase" weight="medium" family="sans">Developer</Text></div>}
           {DEVELOPER_PAGES.map(renderNavItem)}
         </nav>
       )}

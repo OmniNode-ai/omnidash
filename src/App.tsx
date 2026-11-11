@@ -5,26 +5,36 @@ import { Header } from './components/frame/Header';
 import { useFrameStore } from './store/store';
 import { CommandPalette, useCommandPalette } from './components/dashboard/command-dispatch/CommandPalette';
 import type { AppPage } from './store/types';
-import { LocalDashboardPage, type LocalDashboardCache } from './pages/LocalDashboardPage';
-import { SettingsPage } from './pages/SettingsPage';
+import type { LocalDashboardCache } from './pages/LocalDashboardPage';
+// OMN-23330 AC23: the entry loads the app frame's rules (sidebar, top bar, app shell), in the order their page stylesheets
+// had them; the page stylesheets themselves load with the pages that use them.
+import '@/styles/frame/seven-page-design.css';
+import '@/styles/frame/editorial.css';
 import { DestinationIcon } from './navigation/destination-icons';
 import { PAGE_LABELS, PAGE_PATHS, pageForPath } from './navigation/page-routes';
 
 // Deferred destinations must not delay the six local pages at startup.
+// OMN-23330 AC22: the local pages and Settings load with their own bundle too, so the entry carries none of their code
+// (charts, echarts, stylesheets); the entry was 1.43 MB (428 KB gzipped) with them.
+// OMN-23330 AC23: the page stylesheets load before a page's own chunk, so their links come ahead of the components'
+// stylesheets, as when they were part of the entry (a page chunk alone linked them last, after Tooltip and DataTable).
+const withPageSheets = <T,>(load: () => Promise<T>) => () => import('./theme/design-system/page-sheets').then(load);
+const LocalDashboardPage = lazy(withPageSheets(() => import('./pages/LocalDashboardPage').then((m) => ({ default: m.LocalDashboardPage }))));
+const SettingsPage = lazy(withPageSheets(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage }))));
 const DashboardView = lazy(() => import('./pages/DashboardView').then(module => ({ default: module.DashboardView })));
 const FeatureFlagDashboard = lazy(() => import('./pages/FeatureFlagDashboard').then(module => ({ default: module.FeatureFlagDashboard })));
 const InstructionEvalPage = lazy(() => import('./pages/InstructionEvalPage').then(module => ({ default: module.InstructionEvalPage })));
 
 // OMN-12943 — ported event-dash views, lazily loaded so they add zero weight to
 // the default dashboard bundle. Existing static page imports above are untouched.
-const DelegationEvidencePage = lazy(() =>
+const DelegationEvidencePage = lazy(withPageSheets(() =>
   import('./pages/DelegationEvidencePage').then((m) => ({ default: m.DelegationEvidencePage })),
-);
-const EventBusPage = lazy(() => import('./pages/EventBusPage').then((m) => ({ default: m.EventBusPage })));
-const ExperimentsPage = lazy(() => import('./pages/ExperimentsPage').then((m) => ({ default: m.ExperimentsPage })));
-const SeaControlPage = lazy(() => import('./pages/SeaControlPage').then((m) => ({ default: m.SeaControlPage })));
+));
+const EventBusPage = lazy(withPageSheets(() => import('./pages/EventBusPage').then((m) => ({ default: m.EventBusPage }))));
+const ExperimentsPage = lazy(withPageSheets(() => import('./pages/ExperimentsPage').then((m) => ({ default: m.ExperimentsPage }))));
+const SeaControlPage = lazy(withPageSheets(() => import('./pages/SeaControlPage').then((m) => ({ default: m.SeaControlPage }))));
 // OMN-18771 — Lab observability tab (C4), lazily loaded on the same seam.
-const LabPage = lazy(() => import('./pages/LabPage').then((m) => ({ default: m.LabPage })));
+const LabPage = lazy(withPageSheets(() => import('./pages/LabPage').then((m) => ({ default: m.LabPage }))));
 
 /** Keep the destination recognizable while its deferred bundle is loading. */
 function LoadingPage({ page }: { page: AppPage }) {
@@ -45,11 +55,11 @@ function PageContent({ page, navigationCache }: { page: AppPage; navigationCache
     case 'experiments':         return <Suspense fallback={<LoadingPage page={page} />}><ExperimentsPage /></Suspense>;
     case 'sea-control':         return <Suspense fallback={<LoadingPage page={page} />}><SeaControlPage /></Suspense>;
     case 'lab':                 return <Suspense fallback={<LoadingPage page={page} />}><LabPage /></Suspense>;
-    case 'local-overview':      return <LocalDashboardPage pageName="overview" navigationCache={navigationCache} />;
-    case 'local-runs':          return <LocalDashboardPage pageName="runs" syncUrl navigationCache={navigationCache} />;
-    case 'local-workflow':      return <LocalDashboardPage pageName="workflow" syncUrl navigationCache={navigationCache} />;
-    case 'local-usage':         return <LocalDashboardPage pageName="usage" navigationCache={navigationCache} />;
-    case 'local-settings':      return <SettingsPage navigationCache={navigationCache} />;
+    case 'local-overview':      return <Suspense fallback={<LoadingPage page={page} />}><LocalDashboardPage pageName="overview" navigationCache={navigationCache} /></Suspense>;
+    case 'local-runs':          return <Suspense fallback={<LoadingPage page={page} />}><LocalDashboardPage pageName="runs" syncUrl navigationCache={navigationCache} /></Suspense>;
+    case 'local-workflow':      return <Suspense fallback={<LoadingPage page={page} />}><LocalDashboardPage pageName="workflow" syncUrl navigationCache={navigationCache} /></Suspense>;
+    case 'local-usage':         return <Suspense fallback={<LoadingPage page={page} />}><LocalDashboardPage pageName="usage" navigationCache={navigationCache} /></Suspense>;
+    case 'local-settings':      return <Suspense fallback={<LoadingPage page={page} />}><SettingsPage navigationCache={navigationCache} /></Suspense>;
     default:        return <Suspense fallback={<LoadingPage page={page} />}><DashboardView /></Suspense>;
   }
 }

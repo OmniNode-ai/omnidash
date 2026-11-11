@@ -11,11 +11,13 @@
  *
  * The grid maps an upstream verdict to presentation. It never computes one.
  */
-import { readableTime } from '@/components/format/readable-time';
+import { readableTime } from '@/theme/format';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { Text } from '@/components/ui/typography';
 import { validateStatusGridRow, type StatusGridRow } from '@shared/types/component-manifest';
 import { SEVERITY_ORDER, SEVERITY_ROLES, SeverityIcon } from './severity';
+// OMN-23330 AC25: this file's fixed inline styles are classes in StatusGrid.static.css.
+import './StatusGrid.static.css';
 
 export interface StatusGridProps {
   title: string;
@@ -83,11 +85,11 @@ export function StatusGrid({ title, rows, waitsOn, isLoading, error, fileMode, c
                 minWidth: 0,
               }}
             >
-              <Text size="sm" weight="semibold" color="primary" style={{ overflowWrap: 'anywhere' }}>
+              <Text className="status-grid-sfecfda" size="sm" weight="semibold" color="primary">
                 {row.label}
               </Text>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                <Text size="xs" color={role.textColor} style={{ display: 'inline-flex' }}>
+              <span className="status-grid-s23b34f">
+                <Text className="status-grid-sd87841" size="xs" color={role.textColor}>
                   <SeverityIcon severity={row.severity} />
                 </Text>
                 {/* A class for pages that draw the served status as their status pill (Settings, OMN-22168). */}
@@ -98,7 +100,7 @@ export function StatusGrid({ title, rows, waitsOn, isLoading, error, fileMode, c
                   {role.label}
                 </Text>
               </span>
-              <Text size="xs" color="secondary" style={{ overflowWrap: 'anywhere' }}>
+              <Text className="status-grid-sfecfda" size="xs" color="secondary">
                 {row.status_reason}
               </Text>
               {/* OMN-21166 AC60/AC62: a status reads in the text face, its time as "Oct 25, 11:24:36 UTC"; the
@@ -111,14 +113,14 @@ export function StatusGrid({ title, rows, waitsOn, isLoading, error, fileMode, c
         })}
       </div>
       {counts.length > 0 ? (
-        <div data-testid="status-grid-summary" style={{ marginTop: 8 }}>
+        <div className="status-grid-s36ca0a" data-testid="status-grid-summary">
           <Text size="xs" color="tertiary">
             {counts.map((c) => `${c.n} ${SEVERITY_ROLES[c.severity].label.toLowerCase()}`).join(' · ')}
           </Text>
         </div>
       ) : null}
       {refused.length > 0 ? (
-        <div data-testid="status-grid-refused" style={{ marginTop: 6 }}>
+        <div className="status-grid-s082f6e" data-testid="status-grid-refused">
           <Text size="xs" family="mono" color="warn">
             {`${refused.length} row${refused.length === 1 ? '' : 's'} refused: ${refused.join(' | ')}`}
           </Text>

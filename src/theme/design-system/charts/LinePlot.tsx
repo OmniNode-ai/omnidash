@@ -1,4 +1,5 @@
 import { useId } from 'react';
+import { fixed as fmtFixed } from '@/theme/format';
 /**
  * OMN-22168 AC3: the line chart of the local pages (Pass rate per day). Moved from src/pages/local/insight-charts.tsx.
  * A day without a value breaks the line rather than drawing a 0, and gets no dot; every day is a focusable column.
@@ -12,7 +13,7 @@ export function linePath(values: ReadonlyArray<number | null>, min: number, max:
     if (value === null) { drawing = false; return; }
     const x = values.length > 1 ? (index / (values.length - 1)) * width : width / 2;
     const y = height - 6 - ((value - min) / span) * (height - 12);
-    path += `${drawing ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)} `;
+    path += `${drawing ? 'L' : 'M'}${fmtFixed(x, 1)} ${fmtFixed(y, 1)} `;
     drawing = true;
   });
   return path.trim();
@@ -37,7 +38,7 @@ export function smoothPath(values: ReadonlyArray<number | null>, max: number, wi
     run.push([values.length > 1 ? index * step : width / 2, height - 6 - (value / span) * (height - 12)]);
   });
   if (run.length) runs.push(run);
-  const f = (n: number) => n.toFixed(1);
+  const f = (n: number) => fmtFixed(n, 1);
   return runs.map(points => {
     let d = `M${f(points[0]![0])} ${f(points[0]![1])}`;
     if (points.length === 2) return `${d} L${f(points[1]![0])} ${f(points[1]![1])}`;
@@ -95,7 +96,9 @@ export function LinePlot({ label, values, keys, labels, min, max, hover, onHover
 }
 
 /** One line of a MultiLinePlot: its values (null breaks the line) and its colour. */
-export interface PlotLine { key: string; color: string; values: ReadonlyArray<number | null> }
+export interface PlotLine {
+  key: string; color: string; values: ReadonlyArray<number | null>;
+}
 
 /**
  * OMN-22168 (Lakshman 2026-11-04, "legend and one line chart for all"): several lines over the same days, each drawn
@@ -125,6 +128,8 @@ export function MultiLinePlot({ label, lines, keys, labels, hover, onHover, focu
   const order = lines;
   const topOf = (value: number, values: ReadonlyArray<number | null>) => ((H - 6 - (value / peak(values)) * (H - 12)) / H) * 100;
   return (
+    // The operator, 2026-11-10: values are given in the readout above the plot, never as labels over it; the plot shows
+    // where the pointer is (the guide line and a dot on each line), superseding OMN-23330 AC7's peak labels.
     <div className="ins-plot ins-plot--multi" data-focus={front ? front.key : undefined}>
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label={label}>
         {front && (
@@ -135,7 +140,7 @@ export function MultiLinePlot({ label, lines, keys, labels, hover, onHover, focu
         {front && smoothPath(front.values, peak(front.values), W, H).split(/ (?=M)/).filter(part => part.includes('C') || part.includes('L')).map((part, index) => {
           const xs = [...part.matchAll(/(-?[\d.]+) (-?[\d.]+)/g)].map(match => Number(match[1]));
           return <path key={index} className="ins-area" aria-hidden="true" fill={`url(#${fillId})`} stroke="none"
-            d={`${part} L${Math.max(...xs).toFixed(1)} ${H} L${Math.min(...xs).toFixed(1)} ${H} Z`} />;
+            d={`${part} L${fmtFixed(Math.max(...xs), 1)} ${H} L${fmtFixed(Math.min(...xs), 1)} ${H} Z`} />;
         })}
         {order.map(line => (
           <path key={line.key} className="od-draw" data-line={line.key} data-front={front ? String(line === front) : undefined}

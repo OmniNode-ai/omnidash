@@ -1,8 +1,8 @@
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import type { SwarmRunRow } from './swarm-control-plane.types';
+import { refreshInterval } from '@/theme/refresh';
 
-const REFRESH_INTERVAL_MS = 5_000;
 
 export interface SwarmSnapshot {
   runs: SwarmRunRow[];
@@ -16,7 +16,7 @@ export function useSwarmSnapshot(): SwarmSnapshot {
   const query = useProjectionQuery<SwarmRunRow>({
     queryKey: ['swarm-control-plane', 'runs'],
     topic: TOPICS.swarmRuns,
-    refetchInterval: REFRESH_INTERVAL_MS,
+    refetchInterval: refreshInterval(),
   });
 
   const runs: SwarmRunRow[] = query.data != null ? query.data : [];

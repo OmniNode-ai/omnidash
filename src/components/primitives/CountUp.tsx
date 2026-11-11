@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/theme/format';
 
 /**
  * useCountUp -- animates 0 -> value on mount, then animates between
@@ -32,7 +33,7 @@ export function useCountUp(
     return () => cancelAnimationFrame(raf);
   }, [value, duration]);
 
-  return v.toFixed(decimals);
+  return fmtFixed(v, decimals);
 }
 
 export interface CountUpProps {
@@ -57,7 +58,7 @@ export function CountUp({
   className,
 }: CountUpProps) {
   const v = useCountUp(value, { duration, decimals });
-  const formatted = Number(v).toLocaleString(undefined, {
+  const formatted = fmtLocaleString(Number(v), undefined, {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });

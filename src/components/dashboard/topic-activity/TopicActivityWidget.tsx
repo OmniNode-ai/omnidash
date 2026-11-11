@@ -9,6 +9,10 @@ import { useDataSourceMode } from '@/hooks/useDataSourceMode';
 import { TOPICS } from '@shared/types/topics';
 import { formatAge } from '@/utils/time-format';
 import { FreshnessLine } from '@/components/dashboard/lab/FreshnessLine';
+import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/theme/format';
+import { refreshInterval } from '@/theme/refresh';
+// OMN-23330 AC25: this file's fixed inline styles are classes in TopicActivityWidget.static.css.
+import './TopicActivityWidget.static.css';
 
 export interface TopicActivityRow {
   topic: string;
@@ -35,7 +39,7 @@ const TOPIC_ACTIVITY_EMPTY_REASON: EmptyStateReason = 'upstream-blocked';
 // Format only served finite numbers; null or malformed values are never zero.
 function measuredNumber(value: unknown, decimals?: number): string {
   if (typeof value !== 'number' || !Number.isFinite(value)) return 'Not measured';
-  return decimals === undefined ? value.toLocaleString() : value.toFixed(decimals);
+  return decimals === undefined ? fmtLocaleString(value) : fmtFixed(value, decimals);
 }
 
 function emptySnapshot(): ProjectionSnapshot<TopicActivityRow> {
@@ -129,21 +133,21 @@ export function TopicActivityView({
         />
       )}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div className="topic-activity-widget-s464b28">
+        <label className="topic-activity-widget-s3088da">
           <Text as="span" size="xs" color="tertiary">Topic suffix</Text>
           <input ref={topicFilterInput} aria-label="Filter topic activity by suffix" className="text-input-md" value={topicFilter} onChange={(event) => setTopicFilter(event.target.value)} />
         </label>
         {rows.length === 0 && snapshot.rows.length > 0 && (
-          <div role="status" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
+          <div className="topic-activity-widget-s69634b" role="status">
             <Text as="span" size="sm" color="secondary">No topics match this suffix.</Text>
             <button type="button" className="btn" aria-label="Clear suffix filter" onClick={() => { setTopicFilter(''); topicFilterInput.current?.focus(); }}>
               Clear filter
             </button>
           </div>
         )}
-        <div style={{ overflowX: 'auto' }}>
-          <div style={{ minWidth: 880 }}>
+        <div className="topic-activity-widget-s42d445">
+          <div className="topic-activity-widget-s000d81">
             <div style={{ display: 'grid', gridTemplateColumns: grid, gap: 8, padding: '4px 0', borderBottom: '1px solid var(--ds-line)' }}>
               {header('Topic', 'topic')}
               {header('Rate/s', 'rate_per_second')}
@@ -202,7 +206,7 @@ export default function TopicActivityWidget() {
     topic: TOPICS.topicActivity,
     queryKey: ['lab-topic-activity'],
     enabled: availability === 'available',
-    refetchInterval: 5_000,
+    refetchInterval: refreshInterval(),
   });
 
   return (

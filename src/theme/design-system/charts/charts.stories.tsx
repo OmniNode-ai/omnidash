@@ -6,7 +6,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { StoryPage, StorySection } from '../story-frame';
 import {
   BarSparkline, BarTrack, ChartCard, ChartEmpty, ChartHeading, ChartNotRecorded, ChartReadout, ComparisonTrack, CostQualityScatter,
-  CumulativeColumns, DayColumns, GroupedBars, Histogram, HourHeatmap, LinePlot, Meter, MultiLinePlot, NamedByPanel, RankedBars, RunDurationChart,
+  CumulativeColumns, DayAxis, DayColumns, GroupedBars, Histogram, HourHeatmap, LinePlot, Meter, MultiLinePlot, NamedByPanel, RankedBars, RunDurationChart,
   RunMetricChart, RunTimingChart, RunTokensChart, SeriesLegend, SeriesToggles, SpendByDayChart, SpendColumns, TierLegend, TierMix,
   type ListedRun,
 } from './index';
@@ -56,6 +56,8 @@ function Charts() {
       <DayColumns label="Runs per day" max={22} hover={null} onHover={none} dayLabel={key => key.slice(5)} days={DAYS.map((day, index) => ({
         key: day, ariaLabel: `${day}: ${COUNTS[index] ?? 'not recorded'} runs`, tick: true,
         values: [{ key: 'runs', value: COUNTS[index], color: 'var(--ds-chart-1)', label: 'Runs' }] }))} />
+      {/* OMN-23330 AC31: the one day axis on its own, on points (a line chart's ends), every other day labelled. */}
+      <DayAxis days={DAYS} place="point" ticks={new Set(DAYS.flatMap((_, index) => (index % 2 === 0 || index === DAYS.length - 1 ? [index] : [])))} />
       <Histogram label="Duration buckets" onHover={none} color="var(--ds-chart-3)" buckets={[
         { key: '0-1s', ariaLabel: '0 to 1 s: 4', value: 4 }, { key: '1-5s', ariaLabel: '1 to 5 s: 11', value: 11 },
         { key: '5-10s', ariaLabel: '5 to 10 s: not served', value: null }, { key: '10s+', ariaLabel: 'over 10 s: 2', value: 2 }]} />
