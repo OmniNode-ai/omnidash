@@ -909,13 +909,7 @@ main :is(.ev-title-icon, .local-dashboard-page-icon) svg:not(#ds-important),
 }
 
 
-.app:has(.local-dashboard-page, .ev-root[data-destination="delegation-evidence"]) .sidebar .mvp-nav-item.active:not(#ds-important),
-.app:has(.local-dashboard-page, .ev-root[data-destination="delegation-evidence"]) .sidebar .mvp-nav-item.active:hover:not(#ds-important) {
-  background: var(--ds-surface-2); color: var(--ds-ink);
-  box-shadow: none;
-}
-.app:has(.local-dashboard-page, .ev-root[data-destination="delegation-evidence"]) .sidebar .mvp-nav-item.active .dash-name { font-weight: 500; }
-.app:has(.local-dashboard-page, .ev-root[data-destination="delegation-evidence"]) .sidebar .mvp-nav-item.active .dash-name:not(#ds-important) { color: var(--ds-ink); }
+/* The selected sidebar item's fill, name and icon: src/styles/frame/editorial.css, the one place (OMN-23330, 2026-11-11). */
 /* Codex review 2026-10-27 04:17Z (MSG 01e39e9a): on a phone the stacked header lines its children up at the start
    (part 27), which shrank Usage's and Runs' headline row to 38px with its figures hidden; the row spans the page again. */
 @media (max-width: 600px) {
@@ -1561,9 +1555,11 @@ html body .local-dashboard-page section.workflow-record-group[data-field-tone] >
    1440 px "Median duration" wrapped although it fits (measured 0 px over with nowrap). Narrow cards still wrap: from
    1400 px, since at 1280 px five Overview cards are 187 px and "Delegation Quality" ran 4 px past its card. */
 @media (min-width: 1400px) {
-  /* OMN-23330 AC9 + CI: one line, and never wider than its card: a label that fits with 0 to 17 px to spare ("Median
-     duration") overflowed by 3 px on the CI runner, so a too-wide label is clipped with an ellipsis instead of widening the card. */
-  .local-overview-summary > article > h2 { white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  /* OMN-23330 AC9 + CI: one line, and never wider than its card. The card is a flex column that sizes its title to the
+     title's own width, so overflow alone never clipped it: in a fallback font (DejaVu or Liberation, as on the CI runner
+     before or without the bundled Geist) "Median duration" is 150 px in a 146.5 px card and ran 3 px past it. Capping
+     the title at the card's width clips it instead; in Geist it fits with nothing clipped. */
+  .local-overview-summary > article > h2 { white-space: nowrap; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 }
 
 /* The operator, 2026-11-10 ("in overview all 5 cards in a row"): at a desktop width (901 px and up) every Overview headline

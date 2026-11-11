@@ -179,6 +179,7 @@ svg.field-icon[data-field-tone] { color: var(--field-ink); }
 
 
 [data-field-tone="tier-mix"] { --field-ink: var(--ds-field-tier-mix); }
+[data-field-tone="share"] { --field-ink: var(--ds-field-share); }
 [data-field-tone="usage-analysis"] { --field-ink: var(--ds-field-usage-analysis); }
 [data-field-tone="runs-analysis"] { --field-ink: var(--ds-field-runs-analysis); }
 [data-field-tone="run-routes"] { --field-ink: var(--ds-field-run-routes); }

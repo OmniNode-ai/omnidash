@@ -31,11 +31,13 @@ test(`organized cards across all seven MVP pages in ${theme}`, async ({ page }, 
       await expect(page.getByText('Latest five returned runs', { exact: true })).toHaveCount(0);
       if (path === '/overview') await expect(page.getByRole('status', { name: 'Since your last visit' })).toHaveCount(0);
       const activeNav = page.locator('.sidebar .mvp-nav-item.active');
-      // OMN-21166 part 28a AC186, as restyled by the 01+20 look (Lakshman 2026-11-03, "01 + 20 do it"): the active item is the soft fill #f0f0f0 / #1f1f1f.
-      const activeBackground = theme === 'dark' ? 'rgb(31, 31, 31)' : 'rgb(240, 240, 240)';
-      await expect(activeNav).toHaveCSS('background-color', activeBackground);
+      // OMN-23330 (Lakshman 2026-11-11, "color on BG side bar selected should follow the icons colors"; replaces the
+      // 2026-11-03 "01 + 20" grey #f0f0f0 / #1f1f1f): the active item is a fill tinted with its page colour, stronger on hover.
+      const tint = (share: number) => activeNav.evaluate((el, mix) => { const probe = document.createElement('span'); el.append(probe);
+        try { probe.style.backgroundColor = mix; return getComputedStyle(probe).backgroundColor; } finally { probe.remove(); } }, `color-mix(in oklch, var(--ds-destination-accent) ${share}%, var(--ds-surface-2))`);
+      await expect(activeNav).toHaveCSS('background-color', await tint(16));
       await activeNav.hover();
-      await expect(activeNav).toHaveCSS('background-color', activeBackground);
+      await expect(activeNav).toHaveCSS('background-color', await tint(22));
       await expect(activeNav.locator('.dash-marker')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
       // OMN-21970 AC10 (Lakshman 2026-11-02, "it should be full page"): Settings has no cards; its sections sit on the page
       // with no edge. Every other page's cards keep the one subtle 1px border.

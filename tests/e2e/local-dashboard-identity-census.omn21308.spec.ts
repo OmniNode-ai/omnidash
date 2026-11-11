@@ -212,6 +212,10 @@ async function collect(page: Page): Promise<Reading[]> {
       // Choosing the tab repaints it (on-accent inside the chosen tab's filled chip), so it holds no one paint identity; the
       // chart's own concept colours are measured on the chart the tab shows.
       if (svg.closest('[role="tab"]')) { kind = 'action'; concept = 'action:chart-tab'; }
+      // OMN-23330 (Lakshman 2026-11-11, "chart icons based on chart type", "one for chart and one for table"): a chart's
+      // Chart and Table switch is the same kind of control. Its Chart glyph is the chart's type and choosing a view repaints
+      // both glyphs (on-accent inside the chosen view's fill), so it holds no one paint identity either.
+      if (svg.closest('.ds-chart-views .ds-chart-view')) { kind = 'action'; concept = 'action:chart-view'; }
       // Exact affordance icons plus a control are the action allowlist. A Bot,
       // Award, Model etc. inside a clickable semantic row is NOT an action.
       const control = svg.closest('button,a,summary,[role="button"]');

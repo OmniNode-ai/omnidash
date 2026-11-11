@@ -894,7 +894,7 @@ export function SavingsByModel({ row }: { row: Row }) {
     <section className="local-savings-by-model" aria-label="Savings by model">
       <h3 className="local-dashboard-caption local-section-heading"><ConceptIcon concept="savings" size={16} />Savings by model</h3>
       {/* OMN-21166 AC64: modelled savings are estimates, so their bars are hatched; the per-model rows are one click away. */}
-      <RankedBars layout="vertical" label="Savings by model" unit={`USD · modelled saving against ${isMissing(row.baseline_model) ? 'an unresolved baseline' : String(row.baseline_model)} · higher is better`}
+      <RankedBars layout="vertical" label="Savings by model" table={{ nameHeader: 'Model', valueHeader: 'Savings (USD)', valueFrom: 'display' }} unit={`USD · modelled saving against ${isMissing(row.baseline_model) ? 'an unresolved baseline' : String(row.baseline_model)} · higher is better`}
         order="desc" items={models.map((model, index) => {
           const name = isMissing(model.model) ? 'Unknown model' : String(model.model);
           const n = saving(model);

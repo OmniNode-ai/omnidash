@@ -14,3 +14,15 @@
 .ds-tooltip::before { content: ""; position: absolute; left: var(--tooltip-arrow-x, 50%); bottom: -5px; width: 10px; height: 10px;
   margin-left: -5px; transform: rotate(45deg); background: inherit; border: inherit; border-top: 0; border-left: 0; border-radius: 0 0 2px 0; }
 .ds-tooltip[data-side="bottom"]::before { bottom: auto; top: -5px; border: inherit; border-right: 0; border-bottom: 0; border-radius: 2px 0 0 0; }
+/* One look for every column-header tooltip, the Runs table's and every chart table's (Lakshman 2026-11-05: "not heavy
+   hover cards", "hover cards should be colorful same as their column name"; 2026-11-11: "tool tip should be same as runs
+   table and use one design system always"): sentence case, wrapping, a light card tinted with the column's colour
+   (--field-ink, set by the column's data-field-tone) with a 2px top edge and arrow in it, normal-weight text. Where a
+   table opens it (from which edge) stays with that table. */
+.ds-column-tip .ds-tooltip:not(#ds-important) { text-transform: none; letter-spacing: 0; white-space: normal; text-align: left;
+  font-family: var(--ds-font-sans, inherit); font-size: 12px; font-weight: 400; line-height: 1.4; padding: 6px 10px; box-shadow: none;
+  width: max-content; max-width: 280px; z-index: 30;
+  color: var(--ds-ink-2); background: color-mix(in oklab, var(--field-ink, var(--ds-ink-3)) 7%, var(--ds-surface));
+  border: 1px solid color-mix(in oklab, var(--field-ink, var(--ds-ink-3)) 28%, var(--ds-line)); border-top: 2px solid var(--field-ink, var(--ds-ink-3)); }
+.ds-column-tip .ds-tooltip[data-side="bottom"]:not(#ds-important)::before { top: -6px; border-top: 2px solid var(--field-ink, var(--ds-ink-3));
+  border-left: 2px solid var(--field-ink, var(--ds-ink-3)); }

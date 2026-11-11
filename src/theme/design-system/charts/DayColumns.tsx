@@ -101,7 +101,7 @@ function HistogramPlot({ label, buckets, hover = null, onHover, color, look = 'h
 /** OMN-23330 AC37: the chart, with its "Show as table" toggle over the same rows and values. */
 export function DayColumns(props: Parameters<typeof DayColumnsPlot>[0]) {
   const series = [...new Set(props.days.flatMap(day => day.values.map(value => value.key)))];
-  return <ChartTable label={props.label} columns={['Day', ...series]}
+  return <ChartTable label={props.label} shape="stacked-columns" columns={['Day', ...series]}
     rows={props.days.map(day => [day.key, ...series.map(key => day.values.find(value => value.key === key)?.value ?? null)])}>
     <DayColumnsPlot {...props} />
   </ChartTable>;
@@ -109,7 +109,7 @@ export function DayColumns(props: Parameters<typeof DayColumnsPlot>[0]) {
 
 /** OMN-23330 AC37: the chart, with its "Show as table" toggle over the same rows and values. */
 export function Histogram(props: Parameters<typeof HistogramPlot>[0]) {
-  return <ChartTable label={props.label} columns={['Range', props.label]} rows={props.buckets.map(bucket => [bucket.ariaLabel, bucket.value])}>
+  return <ChartTable label={props.label} shape="columns" columns={['Range', props.label]} rows={props.buckets.map(bucket => [bucket.ariaLabel, bucket.value])}>
     <HistogramPlot {...props} />
   </ChartTable>;
 }

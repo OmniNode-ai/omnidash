@@ -286,7 +286,7 @@ function FailedStatus({ run }: { run: Row }) {
   const detail = failureDetailText(failureDetailOf(run) ?? cause);
   const tip = <span className="local-run-failure-tip"><strong>{cause}</strong>{detail !== cause && <span>{detail}</span>}</span>;
   return <>
-    <span className="local-runs-tip" data-field-tone="failures">
+    <span className="local-runs-tip ds-column-tip" data-field-tone="failures">
       <Tooltip side="bottom" text={tip}>
         <span className="local-run-status-trigger" tabIndex={0}><OutcomePill value={statusOf(run)} /></span>
       </Tooltip>
@@ -417,13 +417,13 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
   // Lakshman 2026-11-05 ("in all columns add a tooltip so that when we hover it should tell about that column"): each header
   // explains its column on hover and on keyboard focus (the kit Tooltip), from RUN_COLUMN_TIPS.
   const plainHeader = (concept: string, label: string, extra = false) => <th data-column={concept} data-extra={extra ? '' : undefined} style={{ width: columnWidth(concept) }}>
-    <span className="local-runs-tip" data-field-tone={concept}><Tooltip text={RUN_COLUMN_TIPS[concept] ?? label} side="bottom"><span className="local-runs-head" tabIndex={0}>{headIcon(concept, label)}{label}</span></Tooltip></span>
+    <span className="local-runs-tip ds-column-tip" data-field-tone={concept}><Tooltip text={RUN_COLUMN_TIPS[concept] ?? label} side="bottom"><span className="local-runs-head" tabIndex={0}>{headIcon(concept, label)}{label}</span></Tooltip></span>
   </th>;
   const sortHeader = (key: RunSortKey, label: string, concept: string) => {
     const active = view.sort === key;
     const direction = active ? view.dir ?? 'desc' : null;
     return <th data-column={concept} style={{ width: columnWidth(concept) }} aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}>
-      <span className="local-runs-tip" data-field-tone={concept}><Tooltip text={RUN_COLUMN_TIPS[concept] ?? label} side="bottom">
+      <span className="local-runs-tip ds-column-tip" data-field-tone={concept}><Tooltip text={RUN_COLUMN_TIPS[concept] ?? label} side="bottom">
       <button type="button" className="local-sort-header" data-sort-active={active ? '' : undefined}
         onClick={() => updateView({ sort: key, dir: active && direction === 'desc' ? 'asc' : 'desc', page: 1 })}>
         {headIcon(concept, label)}{label}{/* Only a sorted column draws its arrow: an empty one still took the button's gap, so the label sat 6px
@@ -581,7 +581,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                   {plainHeader('tokens', 'Tokens')}{sortHeader('cost', 'Cost', 'cost')}
                   {/* The shared baseline is named in the header's tooltip and accessible name, not on the page. */}
                   <th data-column="savings" style={{ width: RUN_COLUMN_WIDTHS.savings }} aria-label={sharedBaseline ? `Saving vs ${sharedBaseline}` : undefined}>
-                    <span className="local-runs-tip" data-field-tone="savings"><Tooltip side="bottom" text={sharedBaseline
+                    <span className="local-runs-tip ds-column-tip" data-field-tone="savings"><Tooltip side="bottom" text={sharedBaseline
                       ? `Modelled saving vs ${sharedBaseline}: what the run's tokens would cost at ${sharedBaseline}'s prices, less what the run cost. ${sharedBaseline} never ran.`
                       : RUN_COLUMN_TIPS.savings!}>
                       <span className="local-runs-head" tabIndex={0}>{headIcon('savings', 'Saving')}Saving</span>

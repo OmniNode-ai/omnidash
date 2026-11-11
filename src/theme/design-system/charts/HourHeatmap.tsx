@@ -67,7 +67,7 @@ function HourHeatmapPlot({ label, rows, counts, cellLabel, onInspect }: {
 /** OMN-23330 AC37: the chart, with its "Show as table" toggle over the same rows and values. */
 export function HourHeatmap(props: Parameters<typeof HourHeatmapPlot>[0]) {
   const hours = Array.from({ length: 24 }, (_, hour) => `${hour}:00`);
-  return <ChartTable label={props.label} columns={['Day', ...hours]} rows={props.rows.map((row, index) => [row.label, ...(props.counts[index] ?? [])])}>
+  return <ChartTable label={props.label} shape="heatmap" columns={['Day', ...hours]} rows={props.rows.map((row, index) => [row.label, ...(props.counts[index] ?? [])])}>
     <HourHeatmapPlot {...props} />
   </ChartTable>;
 }

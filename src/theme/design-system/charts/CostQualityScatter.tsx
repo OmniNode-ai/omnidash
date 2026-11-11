@@ -56,7 +56,7 @@ function CostQualityScatterPlot({ label, points, unplotted, formatCost, legend }
 
 /** OMN-23330 AC37: the chart, with its "Show as table" toggle over the same rows and values. */
 export function CostQualityScatter(props: Parameters<typeof CostQualityScatterPlot>[0]) {
-  return <ChartTable label={props.label} columns={['Model', 'Cost', 'Pass rate', 'Runs']}
+  return <ChartTable label={props.label} shape="scatter" columns={['Model', 'Cost', 'Pass rate', 'Runs']}
     rows={props.points.map(point => [point.name, point.cost, point.rate, point.runs])}>
     <CostQualityScatterPlot {...props} />
   </ChartTable>;

@@ -90,7 +90,7 @@ function SpendByModel({ data }: { data: UsageAggregates }) {
     <figure className="local-chart usage-insight" aria-label="Spend by model">
       <h3><ConceptIcon concept="spend-model" size={16} />Spend by model</h3>
       {priced.length === 0 && <p role="status" className="ins-readout">No measured model spend served</p>}
-      <RankedBars layout="vertical" label="Measured spend per model" unit={totalUsd === null ? 'USD · measured spend' : `USD · measured spend · ${money(totalUsd)} in all`}
+      <RankedBars layout="vertical" label="Measured spend per model" table={{ nameHeader: 'Model', valueHeader: 'Spend (USD)', valueFrom: 'display' }} unit={totalUsd === null ? 'USD · measured spend' : `USD · measured spend · ${money(totalUsd)} in all`}
         items={data.models.map(model => ({
           key: model.model, name: model.model, model: model.model, value: model.measuredCost, basis: 'measured',
           display: model.measuredCost === null ? 'Not measured' : money(model.measuredCostUsd), color: modelColor(model.model),
@@ -119,7 +119,7 @@ function CostPerRun({ data, titled }: { data: UsageAggregates; titled: boolean }
   };
   return <figure className="local-chart usage-insight" aria-label="Cost per run">
     {titled && <h3><ConceptIcon concept="cost-per-run" size={16} />Cost per run</h3>}
-    <GroupedBars label="Cost per run by UTC day" groups={shown.map(day => ({
+    <GroupedBars label="Cost per run by UTC day" nameHeader="Day" groups={shown.map(day => ({
       key: day.day, name: date(day.day), label: text(day),
       values: [{ key: 'cost', value: value(day), display: value(day) === null ? 'Not measured' : money(day.measuredCostPerCallUsd), color: 'var(--ds-field-cost)', tone: 'cost' }],
     }))} />
@@ -134,7 +134,7 @@ function TokensByModel({ data, titled }: { data: UsageAggregates; titled: boolea
   return <figure className="local-chart usage-insight" aria-label="Tokens in vs out by model">
     {titled && <h3><ConceptIcon concept="tokens-model" size={16} />Tokens in vs out by model</h3>}
     {data.models.length === 0 ? <EmptyState>No token data available</EmptyState> : (
-      <GroupedBars label="Token counts by model" wrapNames
+      <GroupedBars label="Token counts by model" nameHeader="Model" wrapNames
         legend={[{ label: 'Tokens in', color: 'var(--ds-field-tokens-in)' }, { label: 'Tokens out', color: 'var(--ds-field-tokens-out)' }]}
         extraLegend={<TierLegend label="Tokens by model tier colours" models={data.models.map(model => model.model)} />}
         groups={data.models.map(model => ({
@@ -187,9 +187,10 @@ function CostByRoute({ routing, titled }: { routing: RouteRow[]; titled: boolean
       {titled && <h3><ConceptIcon concept="cost-route" size={16} />Cost by route</h3>}
       {routing.length === 0 ? <ChartNotRecorded role="status">Route cost is not served yet.</ChartNotRecorded> : <>
         <RankedBars layout="vertical" label="Cost per route" unit="USD · measured cost per route" order="desc"
+          table={{ nameHeader: 'Route', valueHeader: 'Cost (USD)', countHeader: 'Runs' }}
           items={routed.map(row => {
             const value = row.cost.usd === null ? null : Number(row.cost.usd);
-            return { key: row.key, name: row.route, tier: row.tier, basis: 'measured' as const, color: tierColor(row.tier),
+            return { key: row.key, name: row.route, tier: row.tier, basis: 'measured' as const, color: tierColor(row.tier), count: row.runs, share: row.share,
               value: value !== null && Number.isFinite(value) ? value : null,
               display: `${row.cost.text} · ${count(row.runs)} runs · ${share(row.share)}` };
           })} />

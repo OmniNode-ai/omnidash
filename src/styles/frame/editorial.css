@@ -3,10 +3,6 @@
 .sidebar:not(#ds-important) { background: var(--ds-page); border-right: 1px solid var(--ds-line); box-shadow: none; }
 .sidebar :is(a, button):not(#ds-important) { border-radius: var(--ds-radius-control); }
 .sidebar .mvp-nav-item.active, .sidebar [aria-current="page"] { font-weight: 600; }
-.sidebar .mvp-nav-item.active:not(#ds-important),
-.sidebar [aria-current="page"]:not(#ds-important) { background: var(--ds-surface-2); color: var(--ds-ink); box-shadow: none; }
-.sidebar .mvp-nav-item.active svg:not(#ds-important),
-.sidebar [aria-current="page"] svg:not(#ds-important) { color: var(--ds-ink); }
 .topbar:not(#ds-important),
 header.topbar:not(#ds-important) { background: var(--ds-page); border-bottom: 1px solid var(--ds-line); box-shadow: none; }
 .topbar :is(button, a):not(#ds-important) { border-radius: var(--ds-radius-control); }
@@ -24,15 +20,28 @@ html body .sidebar nav a svg:not(#ds-important) { color: var(--ds-ink-3); }
 html body .sidebar .mvp-nav-item:hover:not(#ds-important),
 html body .sidebar nav a:hover:not(#ds-important) { background: var(--ds-surface-2); color: var(--ds-ink); }
 html body .sidebar .mvp-nav-item:is(.active, [aria-current="page"]), html body .sidebar nav a[aria-current="page"] { font-weight: 600; }
+/* OMN-23330 (Lakshman 2026-11-11: "selected tabs should be visually visible", "color on BG side bar selected should
+   follow the icons colors"; replaces the 2026-11-03 "01 + 20" grey fill): the selected page is a fill tinted with its own
+   page colour (--ds-destination-accent, the colour its icon wears), a hairline ring in it, and its icon and name in it;
+   the name is pulled toward the ink in the light theme so it keeps 4.5:1. This block is the one place the selected item
+   is styled (tests/design-system/sidebar-active-accent.allpages.test.ts S4). */
 html body .sidebar .mvp-nav-item:is(.active, [aria-current="page"]):not(#ds-important),
 html body .sidebar nav a[aria-current="page"]:not(#ds-important) {
-  background: var(--ds-surface-2); color: var(--ds-ink); border: 0; box-shadow: none; }
+  background: color-mix(in oklch, var(--ds-destination-accent) 16%, var(--ds-surface-2)); color: var(--ds-ink); border: 0;
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--ds-destination-accent) 34%, transparent); }
+html body .sidebar .mvp-nav-item:is(.active, [aria-current="page"]):hover:not(#ds-important),
+html body .sidebar nav a[aria-current="page"]:hover:not(#ds-important) {
+  background: color-mix(in oklch, var(--ds-destination-accent) 22%, var(--ds-surface-2)); }
+html body .sidebar .mvp-nav-item:is(.active, [aria-current="page"]) .dash-name:not(#ds-important) {
+  color: color-mix(in oklch, var(--ds-destination-accent) 62%, var(--ds-ink)); }
+html[data-theme="dark"] body .sidebar .mvp-nav-item:is(.active, [aria-current="page"]) .dash-name:not(#ds-important) {
+  color: var(--ds-destination-accent); }
 html body .sidebar .mvp-nav-item:is(.active, [aria-current="page"]):not(#ds-important)::before,
 html body .sidebar .mvp-nav-item:is(.active, [aria-current="page"]):not(#ds-important)::after,
 html body .sidebar nav a[aria-current="page"]:not(#ds-important)::before,
 html body .sidebar nav a[aria-current="page"]:not(#ds-important)::after { display: none; content: none; }
 html body .sidebar .mvp-nav-item:is(.active, [aria-current="page"]) svg:not(#ds-important),
-html body .sidebar nav a[aria-current="page"] svg:not(#ds-important) { color: var(--ds-ink); }
+html body .sidebar nav a[aria-current="page"] svg:not(#ds-important) { color: var(--ds-destination-accent); }
 html body .sidebar .mvp-nav-item:focus-visible, html body .sidebar nav a:focus-visible { outline-offset: -2px; }
 html body .sidebar .mvp-nav-item:focus-visible:not(#ds-important),
 html body .sidebar nav a:focus-visible:not(#ds-important) { outline: 2px solid var(--ds-ink); }

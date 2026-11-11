@@ -347,22 +347,15 @@ html body .local-dashboard-page--overview .local-overview-charts-panel .rb-chart
 /* Column header tooltips: they open below their header, start at its left edge (so the Run column's stays on the page),
    and the first and last keep inside the table; the plain header label takes keyboard focus to show its tooltip. */
 html body .local-dashboard-page .local-runs-wrap thead .ds-tooltip-anchor { display: inline-flex; }
-html body .local-dashboard-page .local-runs-wrap thead .ds-tooltip { left: 0; transform: none; text-transform: none; letter-spacing: 0; font-family: var(--ds-font-sans, inherit); font-weight: 500; white-space: normal; }
+html body .local-dashboard-page .local-runs-wrap thead .ds-tooltip { left: 0; transform: none; }
 html body .local-dashboard-page .local-runs-wrap thead th:last-child .ds-tooltip { left: auto; right: 0; }
 /* A right-aligned number column's tooltip opens from its right edge (Saving's ran 88px past the table at 1100px). */
 html body .local-dashboard-page .local-runs-wrap thead th:is([data-column="tokens"], [data-column="cost"], [data-column="savings"], [data-column="duration"], [data-column="score"], [data-column="escalated"], [data-column="tokens-completion"]) .ds-tooltip { left: auto; right: 0; }
 /* Lakshman 2026-11-05 ("hover cards should be colorful same as their column name"): a column's tooltip wears its column's
    concept colour (the header glyph's): a tint of it, a 3px top edge in it, and the text in ink so it stays readable. */
 html body .local-dashboard-page .local-runs-wrap thead .local-runs-tip { display: inline-flex; max-width: 100%; }
-/* Lakshman 2026-11-05 ("not heavy hover cards"): a light card: a faint tint of the column's colour, a 2px top edge in it,
-   a hairline border, no shadow, normal-weight text. */
-html body .local-dashboard-page .local-runs-wrap .local-runs-tip .ds-tooltip {
-  background: color-mix(in oklab, var(--field-ink, var(--ds-ink-3)) 7%, var(--ds-surface)); color: var(--ds-ink-2);
-  border: 1px solid color-mix(in oklab, var(--field-ink, var(--ds-ink-3)) 28%, var(--ds-line)); border-top: 2px solid var(--field-ink, var(--ds-ink-3));
-  box-shadow: none; font-weight: 400; padding: 6px 10px; }
+/* The column tooltip's look (light tinted card, coloured top edge and arrow) is the kit's .ds-column-tip (tooltip.css). */
 html body .local-dashboard-page .local-runs-wrap thead th:is([data-column="tokens"], [data-column="cost"], [data-column="savings"], [data-column="duration"], [data-column="score"], [data-column="escalated"], [data-column="tokens-completion"]) .local-runs-tip { justify-content: flex-end; margin-left: auto; }
-/* A column tooltip's arrow continues its coloured top edge. */
-html body .local-dashboard-page .local-runs-wrap .local-runs-tip .ds-tooltip[data-side="bottom"]::before { top: -6px; border-top: 2px solid var(--field-ink, var(--ds-ink-3)); border-left: 2px solid var(--field-ink, var(--ds-ink-3)); }
 html body .local-dashboard-page .local-runs-wrap tbody .local-runs-tip .ds-tooltip { text-transform: none; letter-spacing: 0; white-space: normal; text-align: left; }
 html body .local-dashboard-page .local-runs-wrap tbody .local-runs-tip { display: inline-flex; }
 html body .local-dashboard-page--runs [data-component="recent-runs"] .local-runs-wrap thead :is(.local-runs-tip, .local-sort-header):not(#ds-important) { justify-content: flex-start; margin-left: 0; }
@@ -388,13 +381,7 @@ html body .local-dashboard-page .local-tier-totals > :is(dl, .local-dashboard-fi
 /* Every table's column tooltips look as the run table's do (Lakshman 2026-11-05, "do the same in usage and all other
    too"): a faint tint of the column's colour, its 2px top edge and arrow in it, a hairline, normal-weight sentence case. */
 html body :is(.local-dashboard-page, main.ev-root) .local-dashboard-table-wrap thead .local-column-tip { display: inline-flex; max-width: 100%; }
-html body :is(.local-dashboard-page, main.ev-root) .local-dashboard-table-wrap .local-column-tip .ds-tooltip {
-  background: color-mix(in oklab, var(--field-ink, var(--ds-ink-3)) 7%, var(--ds-surface)); color: var(--ds-ink-2);
-  border: 1px solid color-mix(in oklab, var(--field-ink, var(--ds-ink-3)) 28%, var(--ds-line)); border-top: 2px solid var(--field-ink, var(--ds-ink-3));
-  box-shadow: none; font-family: var(--ds-font-sans); font-size: 12px; font-weight: 400; text-transform: none; letter-spacing: 0;
-  white-space: normal; text-align: left; line-height: 1.45; padding: 6px 10px; width: max-content; max-width: 280px; z-index: 30; }
-html body :is(.local-dashboard-page, main.ev-root) .local-dashboard-table-wrap .local-column-tip .ds-tooltip[data-side="bottom"]::before {
-  top: -6px; border-top: 2px solid var(--field-ink, var(--ds-ink-3)); border-left: 2px solid var(--field-ink, var(--ds-ink-3)); }
+/* Their look is the kit's .ds-column-tip (tooltip.css), the one rule every column tooltip uses. */
 
 /* Delegation Evidence's stat tabs as Overview's and Runs' (Lakshman 2026-11-05, "make it full platform uniform"): the
    stat-tab rules above are scoped under .local-dashboard-page, which main.ev-root is not inside, so Evidence fell back to

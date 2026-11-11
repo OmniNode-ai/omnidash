@@ -16,16 +16,7 @@
     
   --entity-color-lightness: 68%;
 }
-.app:has(.local-dashboard-page) .sidebar .mvp-nav-item.active,
-.app:has(.local-dashboard-page) .sidebar .mvp-nav-item.active:hover,
-.app:has(.ev-root[data-destination="delegation-evidence"]) .sidebar .mvp-nav-item.active,
-.app:has(.ev-root[data-destination="delegation-evidence"]) .sidebar .mvp-nav-item.active:hover {
-  background: var(--ds-surface-2); color: var(--ds-ink);
-}
-.app:has(.local-dashboard-page) .sidebar .mvp-nav-item.active .dash-name,
-.app:has(.ev-root[data-destination="delegation-evidence"]) .sidebar .mvp-nav-item.active .dash-name {
-  color: var(--ds-ink);
-}
+/* The selected sidebar item is styled in one place: src/styles/frame/editorial.css (OMN-23330, 2026-11-11). */
 .app:has(.local-dashboard-page) .sidebar .mvp-nav-item .dash-marker,
 .app:has(.local-dashboard-page) .sidebar .mvp-nav-item.active .dash-marker,
 .app:has(.ev-root[data-destination="delegation-evidence"]) .sidebar .mvp-nav-item .dash-marker,

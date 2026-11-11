@@ -85,9 +85,12 @@ function GroupedBarsPlot({ label, groups, legend, wrapNames = false, extraLegend
 }
 
 /** OMN-23330 AC37: the chart, with its "Show as table" toggle over the same rows and values. */
-export function GroupedBars(props: Parameters<typeof GroupedBarsPlot>[0]) {
+export function GroupedBars({ nameHeader = 'Name', ...props }: Parameters<typeof GroupedBarsPlot>[0] & {
+  /** The table's row header: what each group is, e.g. "Model" or "Day" (operator review 2026-11-11). */
+  nameHeader?: string;
+}) {
   const keys = [...new Set(props.groups.flatMap(group => group.values.map(value => value.key)))];
-  return <ChartTable label={props.label} columns={['Name', ...keys]}
+  return <ChartTable label={props.label} shape="columns" columns={[nameHeader, ...keys]}
     rows={props.groups.map(group => [group.name, ...keys.map(key => group.values.find(value => value.key === key)?.display ?? null)])}>
     <GroupedBarsPlot {...props} />
   </ChartTable>;

@@ -763,14 +763,15 @@ test('navigation selection, hover and keyboard focus remain distinct in both the
       await expect(selected).toHaveAttribute('aria-current', 'page');
       await expect(selected).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
       await expect(selected).toHaveCSS('border-radius', '8px'); // the 01+20 control radius (was 7px)
-      const selectedBackground = await selected.evaluate(el => {
-        const color = document.createElement('div');
-        color.style.backgroundColor = getComputedStyle(el).getPropertyValue('--ds-surface-2').trim();
-        return color.style.backgroundColor;
-      });
+      // OMN-23330 (Lakshman 2026-11-11, "color on BG side bar selected should follow the icons colors"; replaces the
+      // --ds-surface-2 grey): the selected item is tinted with its own page colour, a little deeper under the pointer.
+      const tint = (share: number) => selected.evaluate((el, mix) => { const probe = document.createElement('span'); el.append(probe);
+        try { probe.style.backgroundColor = mix; return getComputedStyle(probe).backgroundColor; } finally { probe.remove(); } },
+      `color-mix(in oklch, var(--ds-destination-accent) ${share}%, var(--ds-surface-2))`);
+      const selectedBackground = await tint(16);
       await expect(selected).toHaveCSS('background-color', selectedBackground);
       await selected.hover();
-      await expect(selected).toHaveCSS('background-color', selectedBackground);
+      await expect(selected).toHaveCSS('background-color', await tint(22));
       const other = page.getByTestId(path === 'overview' ? 'nav-local-runs' : 'nav-local-overview');
       await page.mouse.move(700, 60);
       const resting = await other.evaluate(el => getComputedStyle(el).backgroundColor);

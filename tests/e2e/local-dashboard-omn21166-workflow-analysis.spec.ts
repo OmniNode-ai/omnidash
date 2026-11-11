@@ -88,8 +88,9 @@ test('compact timing ticks remain readable without overlapping', async ({ page }
   await serveCharts(page, timedRows);
   await page.goto('/workflow?correlation_id=chart-run-a');
   const chart = page.getByRole('figure', { name: 'Run timing', exact: true });
-  await expect(chart.locator('svg')).toBeVisible();
-  const ticks = await chart.locator('svg text').evaluateAll(elements => elements
+  // The plot's own canvas: since OMN-23330 (2026-11-11) the figure also holds its Chart and Table switch glyphs.
+  await expect(chart.locator('.local-chart-canvas svg')).toBeVisible();
+  const ticks = await chart.locator('.local-chart-canvas svg text').evaluateAll(elements => elements
     // OMN-21166 part 13: with the queue and execution bars served the axis runs to 70 s, so tick labels read in s and min as well as ms.
     .filter(element => /^\d[\d,.]* (ms|s)$|^\d+ min \d+ s$/.test(element.textContent?.trim() ?? ''))
     .map(element => { const rect = element.getBoundingClientRect(); return { x: rect.x, y: Math.round(rect.y), right: rect.right, width: rect.width }; })
@@ -146,7 +147,8 @@ test('phone timing labels stay inside the chart without clipping their units', a
   await page.goto('/workflow?correlation_id=chart-run-a');
   const collapse = page.getByRole('button', { name: 'Collapse sidebar', exact: true });
   if (await collapse.isVisible()) await collapse.click();
-  const svg = page.getByRole('figure', { name: 'Run timing', exact: true }).locator('svg');
+  // The plot's own canvas, not the Chart and Table switch glyphs beside it (OMN-23330, 2026-11-11).
+  const svg = page.getByRole('figure', { name: 'Run timing', exact: true }).locator('.local-chart-canvas svg');
   await expect(svg).toBeVisible();
   let previous = '';
   await expect.poll(async () => {

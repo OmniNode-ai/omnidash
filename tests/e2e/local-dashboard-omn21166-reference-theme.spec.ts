@@ -26,14 +26,20 @@ test('shared reference theme keeps all seven routes usable in light and dark', a
 });
 
 // Closer image match: filled ochre navigation and a shared muted plot/legend palette.
-test('the active navigation item is neutral and outcome plots match their semantic legend', async ({ page }, info) => {
+test('the active navigation item wears its page colour and outcome plots match their semantic legend', async ({ page }, info) => {
   await page.goto('/overview');
   if (await page.locator('html').getAttribute('data-theme') === 'dark') await page.getByRole('button', { name:'Toggle theme' }).click();
   const nav=page.getByRole('link', { name:'Overview', exact:true });
   // OMN-21166 part 28a AC186 (after part 27 AC168 replaced AC69's blue): a lifted neutral item with primary ink (light here).
   // the 01+20 look (Lakshman 2026-11-03, "01 + 20 do it"): the active item is the soft fill #f0f0f0 (was the card surface).
-  await expect(nav).toHaveCSS('background-color','rgb(240, 240, 240)');
-  await expect(nav.locator('.dash-name')).toHaveCSS('color','rgb(10, 10, 10)'); // the 01+20 ink (was #111111)
+  // OMN-23330 (Lakshman 2026-11-11, "color on BG side bar selected should follow the icons colors"): tinted with its page
+  // colour (Overview's blue), its name in that colour pulled toward the ink; replaces the 01+20 grey #f0f0f0 and ink name.
+  const expected = await nav.evaluate(el => { const probe = document.createElement('span'); el.append(probe);
+    try { probe.style.backgroundColor = 'color-mix(in oklch, var(--ds-destination-accent) 16%, var(--ds-surface-2))';
+      probe.style.color = 'color-mix(in oklch, var(--ds-destination-accent) 62%, var(--ds-ink))';
+      return { fill: getComputedStyle(probe).backgroundColor, name: getComputedStyle(probe).color }; } finally { probe.remove(); } });
+  await expect(nav).toHaveCSS('background-color', expected.fill);
+  await expect(nav.locator('.dash-name')).toHaveCSS('color', expected.name);
   const chart=page.getByRole('figure', { name:'Runs per day', exact:true });
   const passed=chart.getByRole('button', { name:'Passed', exact:true });
   await expect(passed).toHaveAttribute('aria-pressed','true');

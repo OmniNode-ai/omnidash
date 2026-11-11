@@ -48,14 +48,14 @@ function SpendColumnsPlot({ label, days, max, onHover }: { label: string; days: 
 
 /** OMN-23330 AC37: the chart, with its "Show as table" toggle over the same rows and values. */
 export function CumulativeColumns(props: Parameters<typeof CumulativeColumnsPlot>[0]) {
-  return <ChartTable label={props.label} columns={['Day', props.label]} rows={props.days.map(day => [day.key, day.value])}>
+  return <ChartTable label={props.label} shape="columns" columns={['Day', props.label]} rows={props.days.map(day => [day.key, day.value])}>
     <CumulativeColumnsPlot {...props} />
   </ChartTable>;
 }
 
 /** OMN-23330 AC37: the chart, with its "Show as table" toggle over the same rows and values. */
 export function SpendColumns(props: Parameters<typeof SpendColumnsPlot>[0]) {
-  return <ChartTable label={props.label} columns={['Day', 'Spend', 'Saved', 'Baseline']}
+  return <ChartTable label={props.label} shape="columns" columns={['Day', 'Spend', 'Saved', 'Baseline']}
     rows={props.days.map(day => [day.key, day.spend, day.saved, day.baseline])}>
     <SpendColumnsPlot {...props} />
   </ChartTable>;

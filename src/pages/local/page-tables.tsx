@@ -355,6 +355,19 @@ export function ReadFailureNotice({ snapshot, title, now, savedMessage, onRetry 
   </div>;
 }
 
+/**
+ * Lookups a panel draws without, keyed to what it draws instead (operator 2026-11-11: "what is this Not available yet:
+ * daily run totals. - if not needed remove it"): without delegation.daily.v1 the activity panel draws the same days from
+ * metering-summary.v1's day totals (OMN-22168, above), so while those are served its not-served line names nothing the
+ * reader lacks. With the fallback not served either the panel draws only the runs it read, and the line stays
+ * (OMN-21970). A lookup with no fallback is always named.
+ */
+const LOOKUP_FALLBACKS: Readonly<Record<string, string>> = { [DELEGATION_DAILY_TOPIC]: METERING_SUMMARY_TOPIC };
+function drawnWithout(topic: string, snapshots: readonly BoundProjectionSnapshot[]): boolean {
+  const fallback = LOOKUP_FALLBACKS[topic];
+  return fallback !== undefined && snapshots.some(snapshot => snapshot.topic === fallback && !snapshot.failure);
+}
+
 export function WidgetReadState({ component, snapshots, now, interval }: {
   component: LocalPageDocument['components'][number];
   snapshots: readonly BoundProjectionSnapshot[];
@@ -373,7 +386,7 @@ export function WidgetReadState({ component, snapshots, now, interval }: {
   // A table's unserved lookup does not hide its rows (rowGatingSnapshots), so it is named here instead.
   const gating = rowGatingSnapshots(component, snapshots);
   const unservedLookups = bound.filter((snapshot) => snapshot.failure?.kind === 'not-served'
-    && !snapshot.lastGoodAt && !gating.includes(snapshot));
+    && !snapshot.lastGoodAt && !gating.includes(snapshot) && !drawnWithout(snapshot.topic, snapshots));
   const readAt = primary.failure ? primary.lastGoodAt ?? null : primary.readAt;
   const stale = readAt !== null && now - timeOf(readAt) > 2 * interval * 1000;
   return (

@@ -236,9 +236,10 @@ function ModelRouting() {
   // served model (none cut to a top few), its count and share on hover.
   return (
     <Panel title="MODEL ROUTING" sub={`${formatDashboardCount(agg.total_delegations)} delegations by selected model (aggregate)`}>
-      <RankedBars label="Delegations by model" unit="Delegations · measured" order="desc" layout="vertical"
+      <RankedBars label="Delegations by model" unit="Delegations · measured" table={{ nameHeader: 'Model', countHeader: 'Delegations' }} order="desc" layout="vertical"
         items={[...byModel.entries()].map(([model, count]) => ({
-          key: model, name: model, model, value: count, basis: 'measured' as const, color: modelColor(model),
+          key: model, name: model, model, value: count, count, share: agg.total_delegations > 0 ? count / agg.total_delegations : null,
+          basis: 'measured' as const, color: modelColor(model),
           display: `${formatDashboardCount(count)} · ${sharePercent(count / agg.total_delegations)}`,
         }))} />
       <TierLegend label="Delegations by model tier colours" models={[...byModel.keys()]} />
@@ -540,7 +541,7 @@ function SavingsPanel({ money, unavailable }: { money: HeadlineMoney | null; una
       </span>
       {/* The money source names the runs it leaves out where it serves them; the savings population cannot fill it. */}
       <p className="note">{money?.basis ?? 'Unpriced runs not recorded'}</p>
-      <RankedBars label="Cost against the cloud baseline" unit="USD · baseline and saving modelled, local cost measured" order="desc" layout="vertical"
+      <RankedBars label="Cost against the cloud baseline" unit="USD · baseline and saving modelled, local cost measured" table={{ nameHeader: 'Measure', valueHeader: 'Amount (USD)' }} order="desc" layout="vertical"
         items={[
           moneyBar('baseline', 'Cloud baseline cost', cloud, 'estimated', 'var(--ds-field-baseline)'),
           moneyBar('cost', 'Local / delegated cost', money?.local, 'measured', 'var(--ds-field-cost)'),
@@ -578,6 +579,7 @@ function TokenUsage() {
       {/* Part 16 AC97 (review fix): the hatched ranked bars of every other chart, whole model names, and whether each
           count is measured or estimated said in the bar's name. */}
       <RankedBars label="Tokens per model" unit="Tokens · each bar says whether its count is measured or estimated" order="desc" layout="vertical"
+        table={{ nameHeader: 'Model', valueHeader: 'Tokens' }}
         items={models.map(m => ({
           key: m.model_id, name: m.model_name, model: m.model_id, value: m.total_tokens, color: modelColor(m.model_id),
           basis: m.token_provenance === 'measured' ? 'measured' as const : 'estimated' as const,
