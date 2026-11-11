@@ -108,14 +108,11 @@ requirements:
           does not have. Proved by: npx vitest run, npx tsc --noEmit, npm run lint and npx playwright test on the
           lab host at the base and at the head, compared failure by failure; the contract binds the full suites
           (Playwright with two workers and one retry), which fail on dev (operator 2026-11-10) -- note: Bound by the
-          operator on 2026-11-10/11: tsc and eslint, and 11 of the 13 Playwright cases that fail on dev 9cd9c7cf,
-          selected by title (one was renamed on this branch), each its own check. The other two
-          (local-dashboard-contracts.spec.ts:150 and :459) measure text layout, fail on dev too, and fail on the CI
-          runner on both attempts while passing on the lab (459: Median duration overflows by 3 px there), so they
-          prove nothing either way in CI and stay in the lab comparison. CI caps an evidence check at 300 s: full
-          Playwright takes 418 s and full vitest 274 s in CI, so the full vitest suite is proved by CI's required
-          Typecheck & Tests job and the full Playwright comparison (dev 499 passed and 13 failed; head 0 failed) is
-          recorded on the pull request.
+          operator on 2026-11-10/11: tsc and eslint, and the 13 Playwright cases that fail on dev 9cd9c7cf, selected
+          by title (one was renamed on this branch), each its own check; failing case lines go to stderr. Two of
+          them (local-dashboard-contracts.spec.ts:150 and :459) overflowed by 3 px on the CI runner until a one-line
+          headline label could no longer widen its card. The full comparison (dev 499 passed and 13 failed; head 0
+          failed) is recorded on the pull request.
       - id: "AC18"
         statement: >-
           CostTrend3DBars.tsx and CostTrend3DArea.tsx are deleted together with their own tests and stories, and
@@ -467,10 +464,10 @@ dod_evidence:
   - id: "dod-omn23330-ac17"
     description: >-
       AC17: Bound by the operator on 2026-11-10/11: tsc and eslint, and the 13 Playwright cases that fail on dev
-      9cd9c7cf, selected by title (one was renamed on this branch), each its own check. CI caps an evidence check at
-      300 s: full Playwright takes 418 s and full vitest 274 s in CI, so the full vitest suite is proved by CI's
-      required Typecheck & Tests job and the full Playwright comparison (dev 499 passed and 13 failed; head 0
-      failed) is recorded on the pull request.
+      9cd9c7cf, selected by title (one was renamed on this branch), each its own check; failing case lines go to
+      stderr. Two of them (local-dashboard-contracts.spec.ts:150 and :459) overflowed by 3 px on the CI runner until
+      a one-line headline label could no longer widen its card. The full comparison (dev 499 passed and 13 failed;
+      head 0 failed) is recorded on the pull request.
     source: "manual"
     binds_ac: ["AC17"]
     checks:
@@ -487,7 +484,9 @@ dod_evidence:
           full directional tokens in|organized cards across all seven MVP pages in|metering-backed Overview uses the
           same compact total and arrow-only full directions|daily metering tokens fill the empty model series
           honestly in|Evidence selected-run directional counts|R7 a long full count stays on one line inside its
-          headline card'
+          headline card' --reporter=list > ac17-playwright.out 2>&1; rc=$?; grep -E
+          '✘|Error:|Expected|Received|Locator|Timeout' ac17-playwright.out | head -24 | tr '\n' ' ' | cut -c1-1500
+          >&2; exit $rc
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn23330-ac18"
     description: >-
