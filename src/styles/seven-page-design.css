@@ -871,6 +871,10 @@ main :is(.ev-title-icon, .local-dashboard-page-icon) svg:not(#ds-important),
 .local-overview-summary .local-card-change[data-tone="good"] { color: var(--ds-field-pass); }
 .local-overview-summary .local-card-change[data-tone="warn"] { color: color-mix(in oklab, var(--ds-warn) 80%, var(--ds-shadow-ink)); }
 [data-theme="dark"] .local-overview-summary .local-card-change[data-tone="warn"] { color: var(--ds-warn); }
+/* OMN-23330 AC34: one line per fact in a headline figure's detail tooltip; the focus ring marks the keyboard stop. */
+.local-figure-detail-line { display: block; }
+.local-overview-summary .local-figure-detail { display: block; border-radius: 6px; }
+.local-overview-summary .local-figure-detail:focus-visible { outline: 2px solid var(--ds-focus, var(--ds-brand)); outline-offset: 2px; }
 .local-runs-week-days > div[data-selected="true"] { border-color: var(--ds-ink-3); box-shadow: inset 0 0 0 1px var(--ds-ink-3); }
 
 /* AC179: the headline card's details are a neutral popover under the card (placed by CardBasis); no arrow, no tint. */

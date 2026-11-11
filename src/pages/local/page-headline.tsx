@@ -9,7 +9,7 @@ import { CalendarDays, ChevronRight } from '@/theme/design-system/icons';
 import { formatDashboardUsd as formatUsd } from '@/theme/format';
 import { DEFAULT_RUNS_VIEW, writeRunsSearch } from '@/navigation/runs-url-state';
 import { type ActivityWindow } from '@/pages/local/insight-charts';
-import { EmptyState, Fact, FactList, Figure } from '@/theme/design-system/components';
+import { EmptyState, Fact, FactList, Figure, Tooltip } from '@/theme/design-system/components';
 import { notAvailableYet } from '@/pages/local/plain-text';
 import { dailySeries, summary as runSummary, toInsightRuns } from '@/pages/local/insights';
 import { Meter, RankedBars } from '@/theme/design-system/charts';
@@ -132,7 +132,7 @@ export function captionText(caption: Record<string, unknown> | null | undefined)
  * field is a baseline, the figure is a savings figure with no priced baseline,
  * which is BASELINE_UNRESOLVED and never a zero. No row at all is Not measured.
  */
-export function MetricCard({ component, config, row, caption, figureLine, figureLineFields = [], basisExtra }: MetricCardProps) {
+export function MetricCard({ component, config, row, caption, figureLine, figureLineFields = [], basisExtra, figureDetail = [] }: MetricCardProps & { figureDetail?: readonly string[] }) {
   if ((component.data_bindings ?? []).length === 0) {
     return <EmptyState>{notAvailableYet(PENDING_SOURCES[component.component_id]?.waitsOn)}</EmptyState>;
   }
@@ -168,8 +168,11 @@ export function MetricCard({ component, config, row, caption, figureLine, figure
   const hasDetails = Boolean((figure && figureLine) || line || modelled || basisExtra);
   return (
     <>
+      {/* OMN-23330 AC34: a measured headline figure shows its exact value (and the previous window's) on hover and focus. */}
+      <FigureDetail lines={figure ? figureDetail : []}>
       <Figure measured={figure} title={figure && config.format === 'number' ? String(row[config.metric_key]) : undefined}
         style={{ '--figure-chars': String(text).length } as CSSProperties}>{figure && typeof text === 'string' ? <CountUpText text={text} /> : text}</Figure>
+      </FigureDetail>
       {/* OMN-21166 part 12 AC73, as superseded by part 29 AC191: an Overview headline card shows its figure with its basis
           as a caption under it (first line drawn, every line kept in the page). Every other card keeps its lines in view. */}
       {OVERVIEW_HEADLINE_CARDS.has(component.component_id)
@@ -246,8 +249,11 @@ export function QualityCard({ row, change = null }: { row: Row | null; change?: 
   }
   const count = (value: unknown) => (isMissing(value) || !Number.isFinite(Number(value)) ? 'Not recorded' : formatFullCount(String(value)));
   return <>
-    <Figure measured><CountUpText text={`${fmtFixed((Number(row.overall_pass_rate) * 100), 1)}%`} /></Figure>
-    {change && <ChangeLine text={change} meaning={changeMeaning('quality')} />}
+    {/* OMN-23330 AC34: the figure is all time (no previous window), so its detail is the exact rate only. */}
+    <FigureDetail lines={[`Exact: ${fmtFixed(Number(row.overall_pass_rate) * 100, 2)}%`]}>
+      <Figure measured><CountUpText text={`${fmtFixed((Number(row.overall_pass_rate) * 100), 1)}%`} /></Figure>
+    </FigureDetail>
+    {change && <ChangeLine text={change} meaning={changeMeaning('overview-quality')} />}
     <HeadlineHover label="Delegation Quality" lines={[`${count(row.total_passed)} of ${count(row.total_checks)} runs passed the quality gate`,
       `${count(row.total_failed)} failed · deterministic checks`, 'All time: the window above does not change this figure']} />
   </>;
@@ -269,9 +275,10 @@ export function unbroken(name: string): string {
  * neither good nor bad, so their change stays neutral.
  */
 export type ChangeMeaning = 'up-good' | 'up-bad' | 'neutral';
-export function changeMeaning(metricKey: string): ChangeMeaning {
-  if (metricKey === 'spend_usd') return 'up-bad';
-  if (metricKey === 'savings_usd' || metricKey === 'quality') return 'up-good';
+// Keyed by the card (the page's own component ids), so no field is read by name here (OMN-19980 R4).
+export function changeMeaning(componentId: string): ChangeMeaning {
+  if (componentId === SPEND_CARD) return 'up-bad';
+  if (componentId === 'overview-savings' || componentId === 'overview-quality') return 'up-good';
   return 'neutral';
 }
 
@@ -456,17 +463,13 @@ function meteringRangeRow(rows: readonly unknown[], start: string, end: string):
  * draft failed (run a450aca8). A previous window the served day rows do not reach back over reads "No earlier data";
  * never a 0% or 100% from absent rows.
  */
-export function periodChangeLine(rows: readonly unknown[], window: string, metricKey: string, current: Record<string, unknown>): string | null {
-  const match = /^range:(\d{4}-\d{2}-\d{2})\.\.(\d{4}-\d{2}-\d{2})$/.exec(window);
-  if (!match) return null;
-  const DAY = 86_400_000;
-  const start = Date.parse(`${match[1]!}T00:00:00Z`);
-  const end = Date.parse(`${match[2]!}T00:00:00Z`);
-  const days = Math.round((end - start) / DAY) + 1;
-  if (!Number.isFinite(days) || days < 1) return null;
-  const iso = (time: number) => new Date(time).toISOString().slice(0, 10);
-  const previousStart = iso(start - days * DAY);
-  const previousEnd = iso(start - DAY);
+/**
+ * OMN-23330 AC34: the values a headline card's change compares: the card's own value, the previous window's (null when the
+ * served day rows do not reach back over it) and the window's length in days (null for All time and Today, which have no
+ * previous window of the same length).
+ */
+export function periodValues(rows: readonly unknown[], window: string, metricKey: string, current: Record<string, unknown>):
+  { now: number | null; before: number | null; days: number | null } {
   const valueOf = (row: Record<string, unknown>): number | null => {
     const read = (field: string) => (isMissing(row[field]) || !Number.isFinite(Number(row[field])) ? null : Number(row[field]));
     if (metricKey === TOKENS_IN_AND_OUT) {
@@ -477,12 +480,26 @@ export function periodChangeLine(rows: readonly unknown[], window: string, metri
     return read(metricKey);
   };
   const now = valueOf(current);
-  if (now === null) return null;
+  const match = /^range:(\d{4}-\d{2}-\d{2})\.\.(\d{4}-\d{2}-\d{2})$/.exec(window);
+  if (!match) return { now, before: null, days: null };
+  const DAY = 86_400_000;
+  const start = Date.parse(`${match[1]!}T00:00:00Z`);
+  const end = Date.parse(`${match[2]!}T00:00:00Z`);
+  const days = Math.round((end - start) / DAY) + 1;
+  if (!Number.isFinite(days) || days < 1) return { now, before: null, days: null };
+  const iso = (time: number) => new Date(time).toISOString().slice(0, 10);
+  const previousStart = iso(start - days * DAY);
+  const previousEnd = iso(start - DAY);
   const reachesBack = asRecords(rows).some(row => row.window_kind === 'day' && typeof row.window_start === 'string'
     && row.window_start.slice(0, 10) <= previousStart);
-  if (!reachesBack) return 'No earlier data';
+  if (!reachesBack) return { now, before: null, days };
   const previousRow = meteringRangeRow(rows, previousStart, previousEnd);
-  const before = 'row' in previousRow ? valueOf(previousRow.row) : null;
+  return { now, before: 'row' in previousRow ? valueOf(previousRow.row) : null, days };
+}
+
+export function periodChangeLine(rows: readonly unknown[], window: string, metricKey: string, current: Record<string, unknown>): string | null {
+  const { now, before, days } = periodValues(rows, window, metricKey, current);
+  if (days === null || now === null) return null;
   if (before === null) return 'No earlier data';
   const span = `vs previous ${days} days`;
   if (before === 0) return now > 0 ? 'New this period' : `No change ${span}`;
@@ -490,6 +507,28 @@ export function periodChangeLine(rows: readonly unknown[], window: string, metri
   const size = Math.abs(pct) < 10 ? fmtFixed(Math.abs(pct), 1) : String(Math.round(Math.abs(pct)));
   if (Number(size) === 0) return `No change ${span}`;
   return `${pct > 0 ? '+' : '\u2212'}${size}% ${span}`;
+}
+
+/** OMN-23330 AC34: a headline figure's exact value and, when a previous window exists, its value and the signed change. */
+export function figureDetailLines(kind: 'money' | 'count', now: number, before: number | null, days: number | null): string[] {
+  const money = kind === 'money';
+  const exact = (value: number) => {
+    const sign = value < 0 ? '−' : '';
+    return money ? `${sign}$${fmtFixed(Math.abs(value), 4)}` : `${sign}${formatFullCount(String(Math.round(Math.abs(value))))}`;
+  };
+  const lines = [`Exact: ${exact(now)}`];
+  if (before === null || days === null) return lines;
+  const change = now - before;
+  const signed = change === 0 ? exact(0) : `${change > 0 ? '+' : '−'}${exact(Math.abs(change))}`;
+  return [...lines, `Previous ${days} days: ${exact(before)}`, `Change: ${signed}`];
+}
+
+/** OMN-23330 AC34: a figure that shows its detail lines in the kit tooltip on hover and on keyboard focus. */
+export function FigureDetail({ lines, children }: { lines: readonly string[]; children: ReactNode }) {
+  if (lines.length === 0) return <>{children}</>;
+  return <Tooltip text={<>{lines.map(line => <span key={line} className="local-figure-detail-line">{line}</span>)}</>}>
+    <span className="local-figure-detail" tabIndex={0}>{children}</span>
+  </Tooltip>;
 }
 
 /** Said on an Overview panel whose exposure serves no row per window, while today is the chosen window. */
@@ -690,8 +729,12 @@ export function MeteringTotalCard({ component, config, rows, window = 'all', now
     // Live review 2026-10-25: the card shows its figure; its hover says tokens in and out in one line.
     const tokenChange = OVERVIEW_HEADLINE_CARDS.has(component.component_id) ? periodChangeLine(rows, window, TOKENS_IN_AND_OUT, row) : null;
     // Sized to its card by its length, as every headline figure is (it was the one left at 32px, clipped in a narrow card).
-    return <><Figure measured={total !== null} style={{ '--figure-chars': formatDashboardCount(total).length } as CSSProperties}>
-      {total !== null ? <CountUpText text={formatDashboardCount(total)} /> : formatDashboardCount(total)}</Figure>
+    // OMN-23330 AC34: the exact total, and the previous window's, on hover and focus.
+    const tokenValues = periodValues(rows, window, TOKENS_IN_AND_OUT, row);
+    const tokenDetail = total === null || !Number.isFinite(Number(total)) ? []
+      : figureDetailLines('count', Number(total), tokenValues.before, tokenValues.days);
+    return <><FigureDetail lines={tokenDetail}><Figure measured={total !== null} style={{ '--figure-chars': formatDashboardCount(total).length } as CSSProperties}>
+      {total !== null ? <CountUpText text={formatDashboardCount(total)} /> : formatDashboardCount(total)}</Figure></FigureDetail>
       {tokenChange && <ChangeLine text={tokenChange} />}
       {/* Lakshman 2026-11-07 ("token in and out should be different color and uniform in whole websites"): on every
           source the card's directions are the arrow rows in their two colours, not a plain "<in> in · <out> out"
@@ -724,9 +767,12 @@ export function MeteringTotalCard({ component, config, rows, window = 'all', now
     const figureComponent = { ...component, data_bindings: component.data_bindings?.map(binding => ({
       ...binding, required_fields: binding.required_fields?.filter(field => field !== pctField) })) };
     return <>
-      <MetricCard component={figureComponent} config={config} row={row} caption={null} />
+      <MetricCard component={figureComponent} config={config} row={row} caption={null} figureDetail={(() => {
+        const values = periodValues(rows, window, config.metric_key, row);
+        return values.now === null ? [] : figureDetailLines(config.format === 'currency' ? 'money' : 'count', values.now, values.before, values.days);
+      })()} />
       {/* Part 19 AC133: the change against the previous window of the same length, only on a 7, 15 or 30 day window. */}
-      {(() => { const change = periodChangeLine(rows, window, config.metric_key, row); return change && <ChangeLine text={change} meaning={changeMeaning(config.metric_key)} />; })()}
+      {(() => { const change = periodChangeLine(rows, window, config.metric_key, row); return change && <ChangeLine text={change} meaning={changeMeaning(component.component_id)} />; })()}
       {/* OMN-20008 L6: no figure, no line: the percentage shows only beside a measured saving with a named, resolved baseline. */}
       <HeadlineHover label={component.title} lines={headlineHoverLines(component.component_id, row,
         row.baseline_state === 'unresolved' || isMissing(row[config.metric_key]) || isMissing(row.baseline_model) ? null : pct, window)} />

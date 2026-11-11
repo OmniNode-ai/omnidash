@@ -13,7 +13,7 @@
 import { render } from '@testing-library/react';
 import postcss from 'postcss';
 import { describe, expect, it } from 'vitest';
-import { ChangeLine, changeMeaning, TOKENS_IN_AND_OUT } from '@/pages/local/page-headline';
+import { ChangeLine, changeMeaning } from '@/pages/local/page-headline';
 import { pageStylesheet } from '@/tests/page-stylesheet';
 
 const toneOf = (text: string, meaning: ReturnType<typeof changeMeaning>) => {
@@ -24,12 +24,12 @@ const toneOf = (text: string, meaning: ReturnType<typeof changeMeaning>) => {
 };
 
 describe('OMN-23330 AC33: a card change wears the colour of what it means', () => {
-  it('T1: each metric key maps to its meaning', () => {
-    expect(changeMeaning('spend_usd')).toBe('up-bad');
-    expect(changeMeaning('savings_usd')).toBe('up-good');
-    expect(changeMeaning('quality')).toBe('up-good');
-    expect(changeMeaning('runs_measured')).toBe('neutral');
-    expect(changeMeaning(TOKENS_IN_AND_OUT)).toBe('neutral');
+  it('T1: each card maps to its meaning', () => {
+    expect(changeMeaning('overview-spend')).toBe('up-bad');
+    expect(changeMeaning('overview-savings')).toBe('up-good');
+    expect(changeMeaning('overview-quality')).toBe('up-good');
+    expect(changeMeaning('overview-measured')).toBe('neutral');
+    expect(changeMeaning('overview-tokens')).toBe('neutral');
   });
 
   it('T1: a rise and a fall take the tone their meaning gives', () => {
