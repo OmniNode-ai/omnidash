@@ -484,8 +484,9 @@ dod_evidence:
           full directional tokens in|organized cards across all seven MVP pages in|metering-backed Overview uses the
           same compact total and arrow-only full directions|daily metering tokens fill the empty model series
           honestly in|Evidence selected-run directional counts|R7 a long full count stays on one line inside its
-          headline card' --reporter=list > ac17-playwright.out 2>&1; rc=$?; grep -E '✘|[0-9]+ failed|Error:'
-          ac17-playwright.out | head -20 >&2; exit $rc
+          headline card' --reporter=list > ac17-playwright.out 2>&1; rc=$?; grep -E
+          '✘|Error:|Expected|Received|Locator|Timeout' ac17-playwright.out | head -24 | tr '\n' ' ' | cut -c1-1500
+          >&2; exit $rc
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn23330-ac18"
     description: >-
