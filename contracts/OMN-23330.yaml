@@ -4,7 +4,7 @@ schema_version: "1.0.0"
 ticket_id: "OMN-23330"
 title: "Local dashboard: one number everywhere, readable charts, unified styles and a lighter bundle"
 summary: >-
-  Acceptance for OMN-23330, copied from the approved spec (records/plans/OMN-23330/spec.md, AC1 to AC32). Every
+  Acceptance for OMN-23330, copied from the approved spec (records/plans/OMN-23330/spec.md, AC1 to AC37). Every
   criterion with a test is bound below to the test that proves it; AC15 and AC16 read the live Dependabot alerts and
   hold once the upgrades merge; AC17 and AC32 are comparisons recorded on the pull request.
 is_seam_ticket: false
@@ -89,27 +89,30 @@ requirements:
           readback at the narrowest window in both themes
       - id: "AC15"
         statement: >-
-          omnidash dev has no open critical Dependabot alert. Proved by: gh api
-          "repos/OmniNode-ai/omnidash/dependabot/alerts?state=open" counted by severity reads 0 critical -- note:
-          Bound to npm audit over the lockfile by the operator on 2026-11-10, because the CI token cannot read
-          Dependabot alerts (HTTP 403); npm audit draws on the same GitHub advisory data: on dev it exits 1 (5
-          critical, as Dependabot), on this branch 0. The Dependabot read itself is checked after merge.
+          omnidash dev has no open critical Dependabot alert. Proved by: npm audit --package-lock-only
+          --audit-level=critical exits 0 (operator 2026-11-10: CI cannot read Dependabot alerts; on dev it exits 1
+          with 5 critical), and after merge the Dependabot read counted by severity reads 0 critical -- note: Bound
+          to npm audit over the lockfile by the operator on 2026-11-10, because the CI token cannot read Dependabot
+          alerts (HTTP 403); npm audit draws on the same GitHub advisory data: on dev it exits 1 (5 critical, as
+          Dependabot), on this branch 0. The Dependabot read itself is checked after merge.
       - id: "AC16"
         statement: >-
-          omnidash dev has no open high Dependabot alert on a runtime dependency. Proved by: the same read filtered
-          to runtime scope reads 0 high -- note: Bound to npm audit over the lockfile without dev dependencies by
-          the operator on 2026-11-10, for the same reason: on dev it exits 1 (1 critical and 14 high at runtime), on
-          this branch 0. The Dependabot read itself is checked after merge.
+          omnidash dev has no open high Dependabot alert on a runtime dependency. Proved by: npm audit
+          --package-lock-only --omit=dev --audit-level=high exits 0 (on dev it exits 1), and after merge the
+          Dependabot read filtered to runtime scope reads 0 high -- note: Bound to npm audit over the lockfile
+          without dev dependencies by the operator on 2026-11-10, for the same reason: on dev it exits 1 (1 critical
+          and 14 high at runtime), on this branch 0. The Dependabot read itself is checked after merge.
       - id: "AC17"
         statement: >-
           after the dependency upgrades the full vitest, tsc, eslint and Playwright suites show no failure that dev
           does not have. Proved by: npx vitest run, npx tsc --noEmit, npm run lint and npx playwright test on the
-          lab host at the base and at the head, compared failure by failure -- note: Bound by the operator on
-          2026-11-10/11: tsc and eslint, and the 13 Playwright cases that fail on dev 9cd9c7cf, selected by title
-          (one was renamed on this branch), each its own check. CI caps an evidence check at 300 s: full Playwright
-          takes 418 s and full vitest 274 s in CI, so the full vitest suite is proved by CI's required Typecheck &
-          Tests job and the full Playwright comparison (dev 499 passed and 13 failed; head 0 failed) is recorded on
-          the pull request.
+          lab host at the base and at the head, compared failure by failure; the contract binds the full suites
+          (Playwright with two workers and one retry), which fail on dev (operator 2026-11-10) -- note: Bound by the
+          operator on 2026-11-10/11: tsc and eslint, and the 13 Playwright cases that fail on dev 9cd9c7cf, selected
+          by title (one was renamed on this branch), each its own check. CI caps an evidence check at 300 s: full
+          Playwright takes 418 s and full vitest 274 s in CI, so the full vitest suite is proved by CI's required
+          Typecheck & Tests job and the full Playwright comparison (dev 499 passed and 13 failed; head 0 failed) is
+          recorded on the pull request.
       - id: "AC18"
         statement: >-
           CostTrend3DBars.tsx and CostTrend3DArea.tsx are deleted together with their own tests and stories, and
@@ -218,10 +221,50 @@ requirements:
           to AC14 and AC26 to AC28). Proved by: npx playwright test on the lab host at the base and at the head
           compared failure by failure, plus full-page screenshots of all seven pages in light and dark at 1440 px
           and 390 px at the commit before the consolidation and after it, whose pixel difference is zero outside the
-          regions those fixes change -- note: Bound by the operator on 2026-11-10 to the specs that pin the
+          regions those fixes change; the contract binds the specs that pin the consolidation's visible results
+          (Event-page label, badge and grid spec; kit ownership; no !important; one day axis), which fail on dev
+          (operator 2026-11-10) -- note: Bound by the operator on 2026-11-10 to the specs that pin the
           consolidation's visible results and fail on dev: the Event-page label, badge and grid spec, kit ownership
           (AC29), no !important (AC30) and one day axis (AC31). The 48-image base-against-head screenshot compare
           (tests/e2e/visual-capture.omn23330.spec.ts, tests/visual/compare.mjs) is recorded on the pull request.
+      - id: "AC33"
+        statement: >-
+          each Overview headline card's change against the previous window is coloured by what the change means: for
+          Savings and Delegation Quality a rise wears the field pass colour and a fall the warn colour; for Actual
+          spend a rise wears the warn colour and a fall the field pass colour; Agent calls and Tokens processed are
+          volume, so their change stays neutral; "No change" and "No earlier data" stay neutral; the arrow and its
+          text share the colour and meet 4.5:1 contrast in both themes; a previous value of 0 or none never shows a
+          percent. Proved by: npx vitest run tests/pages/local/card-change-tone.allpages.test.tsx on the lab host
+          (each card for a rise, a fall, no change and no earlier data, failing on the current neutral chips), plus
+          a live Chrome readback in both themes.
+      - id: "AC34"
+        statement: >-
+          hovering or focusing a headline card's figure shows its exact value (every digit, e.g. 1,144,630 tokens,
+          $5.6412) and, when a previous window exists, the previous window's value and the absolute change; in All
+          time, which has no previous window, it shows the exact value only. Proved by: npx vitest run
+          tests/pages/local/card-figure-detail.allpages.test.tsx on the lab host, plus a Playwright hover and
+          keyboard-focus readback at 1440 px.
+      - id: "AC35"
+        statement: >-
+          on every daily chart (Overview Daily trend, Runs per day and Tokens per day; the Usage day charts; the
+          Runs page day charts) today's UTC day, while it is in progress, is drawn distinctly (a dashed segment into
+          today on a line, a lighter bar on a bar chart) and its readout says "Today so far"; finished days are
+          drawn as now. Proved by: npx vitest run tests/design-system/today-in-progress.allpages.test.tsx on the lab
+          host with a fixed clock (today in progress and a finished day), plus a Playwright readback.
+      - id: "AC36"
+        statement: >-
+          on every page with the time-window control, single keys choose the window: A all time, T today, W last 7
+          days, F last 15 days, M last 30 days, Q last 90 days; "?" opens a list of these keys and Escape closes it;
+          no key acts while typing in an input, textarea, select or editable field, or with Ctrl, Cmd or Alt held.
+          Proved by: npx playwright test tests/e2e/keyboard-windows.omn23330.spec.ts on the lab host (each key
+          changes ?window= and the figures; typing the same letters in the run filter changes nothing).
+      - id: "AC37"
+        statement: >-
+          every kit chart in src/theme/design-system/charts has a "Show as table" toggle, reachable by keyboard,
+          that swaps the plot for a table of the same rows and values the chart draws (the day or bar label, then
+          each series) and back; the choice holds per chart for the session. Proved by: npx vitest run
+          tests/design-system/chart-table-twin.allpages.test.tsx on the lab host (each kit chart rendered from one
+          fixture, its table cells compared with the values it draws), plus a Playwright toggle readback.
 evidence_requirements: []
 emergency_bypass:
   enabled: false
@@ -441,7 +484,7 @@ dod_evidence:
           full directional tokens in|organized cards across all seven MVP pages in|metering-backed Overview uses the
           same compact total and arrow-only full directions|daily metering tokens fill the empty model series
           honestly in|Evidence selected-run directional counts|R7 a long full count stays on one line inside its
-          headline card'
+          headline card' --reporter=line 1>&2
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn23330-ac18"
     description: >-
@@ -624,4 +667,64 @@ dod_evidence:
         check_value: >-
           test -d node_modules || npm ci --no-audit --no-fund; npx vitest run
           tests/design-system/one-day-axis.allpages.test.tsx
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac33"
+    description: >-
+      AC33: the test that proves the criterion, red before the change and green after, run on the lab host.
+    source: "manual"
+    binds_ac: ["AC33"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          test -d node_modules || npm ci --no-audit --no-fund; npx vitest run
+          tests/pages/local/card-change-tone.allpages.test.tsx
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac34"
+    description: >-
+      AC34: the test that proves the criterion, red before the change and green after, run on the lab host.
+    source: "manual"
+    binds_ac: ["AC34"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          test -d node_modules || npm ci --no-audit --no-fund; npx vitest run
+          tests/pages/local/card-figure-detail.allpages.test.tsx
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac35"
+    description: >-
+      AC35: the test that proves the criterion, red before the change and green after, run on the lab host.
+    source: "manual"
+    binds_ac: ["AC35"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          test -d node_modules || npm ci --no-audit --no-fund; npx vitest run
+          tests/design-system/today-in-progress.allpages.test.tsx
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac36"
+    description: >-
+      AC36: the test that proves the criterion, red before the change and green after, run on the lab host.
+    source: "manual"
+    binds_ac: ["AC36"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          test -d node_modules || npm ci --no-audit --no-fund; npx vitest run
+          tests/pages/local/keyboard-windows.allpages.test.tsx
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: >-
+          test -d node_modules || npm ci --no-audit --no-fund; npx playwright test
+          tests/e2e/keyboard-windows.omn23330.spec.ts --project=chromium --workers=1 --retries=0
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn23330-ac37"
+    description: >-
+      AC37: the test that proves the criterion, red before the change and green after, run on the lab host.
+    source: "manual"
+    binds_ac: ["AC37"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          test -d node_modules || npm ci --no-audit --no-fund; npx vitest run
+          tests/design-system/chart-table-twin.allpages.test.tsx
         cwd: "${OMNI_HOME}/omnidash"
