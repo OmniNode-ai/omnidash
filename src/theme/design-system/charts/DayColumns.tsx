@@ -8,6 +8,7 @@
  */
 import { useRef, type CSSProperties } from 'react';
 import { DayAxis, isTodayInProgress } from './DayAxis';
+import { ChartTable } from './frame';
 
 export interface DayBarValue { key: string; value: number | null; color: string; label: string }
 export interface DayColumn { key: string; ariaLabel: string; tick: boolean; values: readonly DayBarValue[] }
@@ -40,7 +41,7 @@ export function dayTicks(days: readonly { day: string }[], maxLabels = 14): Set<
   return new Set(ticks);
 }
 
-export function DayColumns({ label, days, max, hover, onHover, onOpen, describedBy, dayLabel }: {
+function DayColumnsPlot({ label, days, max, hover, onHover, onOpen, describedBy, dayLabel }: {
   label: string;
   days: readonly DayColumn[];
   /** The largest value in the chart (at least 1). */
@@ -77,7 +78,7 @@ export interface HistogramBucket { key: string; ariaLabel: string; value: number
  * Part 18 AC122: one hatched series in one colour; an empty or unserved bucket draws no bar. `solid` is the flat fill
  * the cumulative savings chart uses; `max` defaults to the largest bucket.
  */
-export function Histogram({ label, buckets, hover = null, onHover, color, look = 'hatched', max: givenMax }: {
+function HistogramPlot({ label, buckets, hover = null, onHover, color, look = 'hatched', max: givenMax }: {
   label: string; buckets: readonly HistogramBucket[]; hover?: number | null; onHover: (index: number | null) => void; color: string;
   look?: 'hatched' | 'solid'; max?: number;
 }) {
@@ -95,4 +96,20 @@ export function Histogram({ label, buckets, hover = null, onHover, color, look =
       ))}
     </div>
   );
+}
+
+/** OMN-23330 AC37: the chart, with its "Show as table" toggle over the same rows and values. */
+export function DayColumns(props: Parameters<typeof DayColumnsPlot>[0]) {
+  const series = [...new Set(props.days.flatMap(day => day.values.map(value => value.key)))];
+  return <ChartTable label={props.label} columns={['Day', ...series]}
+    rows={props.days.map(day => [day.key, ...series.map(key => day.values.find(value => value.key === key)?.value ?? null)])}>
+    <DayColumnsPlot {...props} />
+  </ChartTable>;
+}
+
+/** OMN-23330 AC37: the chart, with its "Show as table" toggle over the same rows and values. */
+export function Histogram(props: Parameters<typeof HistogramPlot>[0]) {
+  return <ChartTable label={props.label} columns={['Range', props.label]} rows={props.buckets.map(bucket => [bucket.ariaLabel, bucket.value])}>
+    <HistogramPlot {...props} />
+  </ChartTable>;
 }

@@ -1,6 +1,7 @@
 import { useId, Fragment } from 'react';
 import { fixed as fmtFixed } from '@/theme/format';
 import { isTodayInProgress } from './DayAxis';
+import { ChartTable } from './frame';
 /**
  * OMN-22168 AC3: the line chart of the local pages (Pass rate per day). Moved from src/pages/local/insight-charts.tsx.
  * A day without a value breaks the line rather than drawing a 0, and gets no dot; every day is a focusable column.
@@ -73,7 +74,7 @@ function splitAtToday(keys: readonly string[], values: ReadonlyArray<number | nu
   return { solid: values.map((value, index) => (index === last ? null : value)), tail: values.map((value, index) => (index >= last - 1 ? value : null)) };
 }
 
-export function LinePlot({ label, values, keys, labels, min, max, hover, onHover, color }: {
+function LinePlotPlot({ label, values, keys, labels, min, max, hover, onHover, color }: {
   label: string;
   values: ReadonlyArray<number | null>;
   /** One stable key per point (a day). */
@@ -123,7 +124,7 @@ export interface PlotLine {
  * against its own largest value so lines of different units (runs, tokens, dollars) are all readable together. Heights
  * compare a line with itself, never with another line; each day is one focusable column whose name gives every value.
  */
-export function MultiLinePlot({ label, lines, keys, labels, hover, onHover, focus = null }: {
+function MultiLinePlotPlot({ label, lines, keys, labels, hover, onHover, focus = null }: {
   label: string;
   lines: readonly PlotLine[];
   /** One stable key per point (a day). */
@@ -193,4 +194,19 @@ export function MultiLinePlot({ label, lines, keys, labels, hover, onHover, focu
       </div>
     </div>
   );
+}
+
+/** OMN-23330 AC37: the chart, with its "Show as table" toggle over the same rows and values. */
+export function LinePlot(props: Parameters<typeof LinePlotPlot>[0]) {
+  return <ChartTable label={props.label} columns={['Day', props.label]} rows={props.keys.map((key, index) => [key, props.values[index] ?? null])}>
+    <LinePlotPlot {...props} />
+  </ChartTable>;
+}
+
+/** OMN-23330 AC37: the chart, with its "Show as table" toggle over the same rows and values. */
+export function MultiLinePlot(props: Parameters<typeof MultiLinePlotPlot>[0]) {
+  return <ChartTable label={props.label} columns={['Day', ...props.lines.map(line => line.key)]}
+    rows={props.keys.map((key, index) => [key, ...props.lines.map(line => line.values[index] ?? null)])}>
+    <MultiLinePlotPlot {...props} />
+  </ChartTable>;
 }

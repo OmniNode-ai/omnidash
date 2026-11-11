@@ -1,4 +1,5 @@
 import { isTodayInProgress } from './DayAxis';
+import { ChartTable } from './frame';
 /**
  * OMN-22168 AC3: the Overview's paid-against-all-cloud day chart. Moved from src/pages/local/insight-charts.tsx with the
  * markup unchanged. Per UTC day: the paid bar, the saved bar beside it and the all-cloud baseline as a mark; a value
@@ -16,7 +17,7 @@ export interface CumulativeDay { key: string; value: number | null; ariaLabel: s
  * The Overview's cumulative savings by UTC day, moved from src/pages/local/insight-charts.tsx with the markup unchanged.
  * A day whose total is not available draws no height; each column says its day and total in words.
  */
-export function CumulativeColumns({ label, days, max, onHover }: { label: string; days: readonly CumulativeDay[]; max: number; onHover: (index: number | null) => void }) {
+function CumulativeColumnsPlot({ label, days, max, onHover }: { label: string; days: readonly CumulativeDay[]; max: number; onHover: (index: number | null) => void }) {
   return (
     <div className="ins-bars ins-bars--short" role="group" aria-label={label} onMouseLeave={() => onHover(null)}>
       {days.map((day, index) => <button key={day.key} type="button" className="ins-bar" aria-label={day.ariaLabel} data-day={day.key} data-in-progress={isTodayInProgress(day.key) ? 'true' : undefined} onMouseEnter={() => onHover(index)} onFocus={() => onHover(index)}>
@@ -26,7 +27,7 @@ export function CumulativeColumns({ label, days, max, onHover }: { label: string
   );
 }
 
-export function SpendColumns({ label, days, max, onHover }: { label: string; days: readonly SpendDay[]; max: number; onHover: (index: number | null) => void }) {
+function SpendColumnsPlot({ label, days, max, onHover }: { label: string; days: readonly SpendDay[]; max: number; onHover: (index: number | null) => void }) {
   return (
     <>
       <div className="ins-money-bars" role="group" aria-label={label} onMouseLeave={() => onHover(null)}>
@@ -43,4 +44,19 @@ export function SpendColumns({ label, days, max, onHover }: { label: string; day
       <div className="ins-money-legend"><span data-tone="paid">Paid</span><span data-tone="saved">Saved</span><span data-tone="baseline">All-cloud baseline</span></div>
     </>
   );
+}
+
+/** OMN-23330 AC37: the chart, with its "Show as table" toggle over the same rows and values. */
+export function CumulativeColumns(props: Parameters<typeof CumulativeColumnsPlot>[0]) {
+  return <ChartTable label={props.label} columns={['Day', props.label]} rows={props.days.map(day => [day.key, day.value])}>
+    <CumulativeColumnsPlot {...props} />
+  </ChartTable>;
+}
+
+/** OMN-23330 AC37: the chart, with its "Show as table" toggle over the same rows and values. */
+export function SpendColumns(props: Parameters<typeof SpendColumnsPlot>[0]) {
+  return <ChartTable label={props.label} columns={['Day', 'Spend', 'Saved', 'Baseline']}
+    rows={props.days.map(day => [day.key, day.spend, day.saved, day.baseline])}>
+    <SpendColumnsPlot {...props} />
+  </ChartTable>;
 }

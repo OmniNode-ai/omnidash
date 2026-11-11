@@ -4,8 +4,9 @@
  * first and last hour. A cell's shade is its count over the busiest cell; an hour with no runs has no fill.
  */
 import { useId, useRef, useState, type KeyboardEvent } from 'react';
+import { ChartTable } from './frame';
 
-export function HourHeatmap({ label, rows, counts, cellLabel, onInspect }: {
+function HourHeatmapPlot({ label, rows, counts, cellLabel, onInspect }: {
   label: string;
   rows: ReadonlyArray<{ key: string; label: string }>;
   /** One array of 24 counts per row. */
@@ -61,4 +62,12 @@ export function HourHeatmap({ label, rows, counts, cellLabel, onInspect }: {
       </div>
     </>
   );
+}
+
+/** OMN-23330 AC37: the chart, with its "Show as table" toggle over the same rows and values. */
+export function HourHeatmap(props: Parameters<typeof HourHeatmapPlot>[0]) {
+  const hours = Array.from({ length: 24 }, (_, hour) => `${hour}:00`);
+  return <ChartTable label={props.label} columns={['Day', ...hours]} rows={props.rows.map((row, index) => [row.label, ...(props.counts[index] ?? [])])}>
+    <HourHeatmapPlot {...props} />
+  </ChartTable>;
 }

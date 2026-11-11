@@ -8,6 +8,7 @@ import { formatDashboardCount } from '@/theme/format';
 import { tierColor } from '@/lib/dashboard-colors';
 import { fixed as fmtFixed, localeString as fmtLocaleString } from '@/theme/format';
 import { formatShare } from '@/theme/format';
+import { ChartTable } from './frame';
 
 /** A served share as a percent; a share that is not 0 or 1 never reads as 0.0% or 100.0%. */
 export function percent(share: number): string {
@@ -82,7 +83,7 @@ export function arcPath(start: number, sweep: number): string {
  * is drawn and the reason is said. Pointing at a tier, in the list or on the ring, marks it and names it in the
  * middle; the list items take keyboard focus for the same.
  */
-export function TierMix({ shares: shaped, nameOf: tierLabel, variant = 'donut' }: { shares: TierShares; nameOf: (tier: string) => string; variant?: 'donut' | 'bars' }) {
+function TierMixPlot({ shares: shaped, nameOf: tierLabel, variant = 'donut' }: { shares: TierShares; nameOf: (tier: string) => string; variant?: 'donut' | 'bars' }) {
   const [active, setActive] = useState<number | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const selectionExists = 'segments' in shaped && shaped.segments.some(segment => segment.name === selected);
@@ -189,4 +190,14 @@ export function TierMix({ shares: shaped, nameOf: tierLabel, variant = 'donut' }
       )}
     </div>
   );
+}
+
+/** OMN-23330 AC37: the chart, with its "Show as table" toggle over the same rows and values. */
+export function TierMix(props: Parameters<typeof TierMixPlot>[0]) {
+  if ('refused' in props.shares) return <TierMixPlot {...props} />;
+  return <ChartTable label="Tier mix" columns={['Tier', 'Share of tier-routed runs', 'Runs']}
+    rows={props.shares.segments.map(segment => [props.nameOf(segment.name), segment.share,
+      typeof segment.count === 'number' || typeof segment.count === 'string' ? segment.count : null])}>
+    <TierMixPlot {...props} />
+  </ChartTable>;
 }
