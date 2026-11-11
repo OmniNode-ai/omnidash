@@ -30,7 +30,7 @@ describe('EvPageShell (OMN-13057 scroll-clip regression)', () => {
     expect(root?.classList.contains('ev-root')).toBe(true);
   });
 
-  it('renders ev-page-head as a direct child of ev-root (header element)', () => {
+  it('renders ev-page-head as the first child of ev-scroll, so the title scrolls with the page (OMN-23330 AC38)', () => {
     const { container } = render(
       <EvPageShell crumb="Test · Crumb" title="Test Title" sub="test subtitle">
         <div>child</div>
@@ -39,8 +39,9 @@ describe('EvPageShell (OMN-13057 scroll-clip regression)', () => {
     const root = container.firstElementChild!;
     const pageHead = root.querySelector('.ev-page-head');
     expect(pageHead).not.toBeNull();
-    // Must be a direct child of ev-root so the flex layout can shrink-wrap it
-    expect(pageHead?.parentElement).toBe(root);
+    // OMN-23330 AC38 (2026-11-11): the head scrolls away with the content, as the title does on Runs and Usage.
+    expect(pageHead?.parentElement?.classList.contains('ev-scroll')).toBe(true);
+    expect(pageHead?.parentElement?.firstElementChild).toBe(pageHead);
   });
 
   it('renders ev-scroll as a direct child of ev-root (the scroller element)', () => {
@@ -56,19 +57,17 @@ describe('EvPageShell (OMN-13057 scroll-clip regression)', () => {
     expect(scrollEl?.parentElement).toBe(root);
   });
 
-  it('renders ev-root with exactly two direct children: ev-page-head and ev-scroll', () => {
-    // The flex-column layout depends on exactly two flex children.
-    // ev-page-head shrinks to its content height; ev-scroll takes the remainder.
-    // Extra wrapping elements would break the flex distribution.
+  it('renders ev-root with exactly one direct child, ev-scroll, the flex child that fills the height', () => {
+    // OMN-13057's fix holds: ev-scroll is ev-root's flex child (flex:1 + min-height:0), so nothing is clipped. Since
+    // OMN-23330 AC38 the head lives inside it, so ev-scroll is the only child.
     const { container } = render(
       <EvPageShell crumb="Test · Crumb" title="Test Title" sub="test subtitle">
         <div>child</div>
       </EvPageShell>,
     );
     const root = container.firstElementChild!;
-    expect(root.children).toHaveLength(2);
-    expect(root.children[0]?.classList.contains('ev-page-head')).toBe(true);
-    expect(root.children[1]?.classList.contains('ev-scroll')).toBe(true);
+    expect(root.children).toHaveLength(1);
+    expect(root.children[0]?.classList.contains('ev-scroll')).toBe(true);
   });
 
   it('renders page content inside ev-scroll', () => {

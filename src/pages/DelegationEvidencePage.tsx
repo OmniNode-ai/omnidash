@@ -541,7 +541,7 @@ function SavingsPanel({ money, unavailable }: { money: HeadlineMoney | null; una
       </span>
       {/* The money source names the runs it leaves out where it serves them; the savings population cannot fill it. */}
       <p className="note">{money?.basis ?? 'Unpriced runs not recorded'}</p>
-      <RankedBars label="Cost against the cloud baseline" unit="USD · baseline and saving modelled, local cost measured" table={{ nameHeader: 'Measure', valueHeader: 'Amount (USD)' }} order="desc" layout="vertical"
+      <RankedBars label="Cost against the cloud baseline" unit="USD · baseline and saving modelled, local cost measured" table={{ nameHeader: 'Measure', valueHeader: 'Amount (USD)', valueFrom: 'display' }} order="desc" layout="vertical"
         items={[
           moneyBar('baseline', 'Cloud baseline cost', cloud, 'estimated', 'var(--ds-field-baseline)'),
           moneyBar('cost', 'Local / delegated cost', money?.local, 'measured', 'var(--ds-field-cost)'),

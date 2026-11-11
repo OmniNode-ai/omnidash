@@ -195,7 +195,8 @@ test('AC184 Delegation Evidence content lines up with its title on desktop and p
   await settle(page, '/delegation-evidence');
   const left = async () => page.evaluate(() => ({
     title: document.querySelector('.ev-page-head')!.getBoundingClientRect().left + parseFloat(getComputedStyle(document.querySelector('.ev-page-head')!).paddingLeft),
-    content: document.querySelector('.ev-scroll > *')!.getBoundingClientRect().left,
+    // OMN-23330 AC38: the page head now scrolls inside .ev-scroll, so the content is its grid, not its first child.
+    content: document.querySelector('.ev-scroll > .grid')!.getBoundingClientRect().left,
   }));
   const desktop = await left();
   expect(Math.abs(desktop.content - desktop.title)).toBeLessThanOrEqual(1);

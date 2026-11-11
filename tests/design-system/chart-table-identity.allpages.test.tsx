@@ -222,7 +222,7 @@ describe('OMN-23330 AC37 follow-up: a chart table reads like the Runs table', ()
   });
 
   it('I16: an amounts table names its rows and its amounts, written as money in each row\'s colour', () => {
-    render(<RankedBars label="Cost against the cloud baseline" unit="USD · baseline and saving modelled" order="desc" table={{ nameHeader: 'Measure', valueHeader: 'Amount (USD)' }} items={[
+    render(<RankedBars label="Cost against the cloud baseline" unit="USD · baseline and saving modelled" order="desc" table={{ nameHeader: 'Measure', valueHeader: 'Amount (USD)', valueFrom: 'display' }} items={[
       { key: 'b', name: 'Cloud baseline cost', value: 25.29, display: '$25.29', basis: 'estimated', color: 'rgb(1, 2, 3)' },
       { key: 's', name: 'Saved', value: 0.000628, display: '$0.000628', basis: 'estimated', color: 'rgb(4, 5, 6)' }]} />);
     fireEvent.click(screen.getByRole('button', { name: 'Show as table: Cost against the cloud baseline' }));
