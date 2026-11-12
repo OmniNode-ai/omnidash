@@ -25,7 +25,7 @@ import { LastRunCard, NewestRunLine, NoRunsYet, OverviewRunPreview, QualityPanel
 import { type OverviewWindow, QualityCard, SavingsByModel, meteringRangeFor, pickMeteringRow, qualityChangeLine } from '@/pages/local/page-headline';
 import { ModelUsagePanel, OverviewTrendPanel, TierMixPanel } from '@/pages/local/page-overview';
 import { AlertsTable, CredentialsTable } from '@/pages/local/page-settings';
-import { LocalIdentity } from '@/pages/local/page-workflow';
+import { LocalIdentity, identityMintedAt } from '@/pages/local/page-workflow';
 
 /** The raw served rows of a component's binding, before any envelope unpacking. */
 /** OMN-21970 AC3: the decisions read is complete when it walked every page (no truncated mark). */
@@ -284,7 +284,13 @@ export function TableComponent({ component, snapshots, pageSize, syncUrl, column
     // OMN-21166 part 11: the tenant comes from the native runtime row of local-environment.v1, the same row the access
     // card reads, so the identity never depends on whether any savings were recorded.
     const environment = asRecords(rawRowsFor(component, snapshots, 0));
-    return <LocalIdentity row={dashboardAccessRow(environment)} />;
+    const tenantRow = dashboardAccessRow(environment);
+    // OMN-19986 AC2: when this install's identity was minted comes from local-identity.v1 (the second binding). The
+    // row is drawn only when that exposure is served (part 18 AC130: never a row that could only read Not recorded).
+    const mintedTopic = component.data_bindings?.[1]?.projection_topic;
+    const minted = snapshots.find((snapshot) => snapshot.topic === mintedTopic);
+    return <LocalIdentity row={tenantRow}
+      minted={minted && !minted.failure ? identityMintedAt(tenantRow, asRecords(minted.rows)) : undefined} />;
   }
   // OMN-21015 AC10 (AK-2): the access card reads the native local-runtime row `onex dashboard` writes to
   // local-environment.v1 at each start (OMN-19988); another service's row or a compose row is never the dashboard's.

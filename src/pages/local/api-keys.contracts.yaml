@@ -20,6 +20,16 @@
             "mode",
             "service"
           ]
+        },
+        {
+          "binding_id": "api-keys-identity-minted",
+          "projection_topic": "onex.snapshot.projection.local-identity.v1",
+          "ordering_authority_field": "updated_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "tenant_id",
+            "minted_at"
+          ]
         }
       ],
       "supported_empty_state_reasons": [

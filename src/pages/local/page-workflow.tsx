@@ -393,12 +393,36 @@ export function WorkflowRun({ component, snapshots, requested, onOpen }: Workflo
   );
 }
 
-/** AK-1: the tenant id from a served row. Part 18 AC130: no exposure serves when the identity was minted, so that row is
- * not drawn (it could only ever read Not recorded). */
-export function LocalIdentity({ row }: { row: Record<string, unknown> | null }) {
+/**
+ * OMN-19986 AC2: the served mint time for the tenant the card shows, from local-identity.v1 rows. Selection among
+ * served rows, never a computed fact: only a row for that same tenant counts, and the newest by updated_at wins
+ * whatever order the rows arrive in. No tenant, no matching row, a tie or an unreadable time gives null (Not recorded).
+ */
+export function identityMintedAt(tenantRow: Record<string, unknown> | null, rows: readonly Row[]): string | null {
+  const tenant = tenantRow?.tenant_id;
+  if (typeof tenant !== 'string' || tenant.trim() === '') return null;
+  const stamped = rows
+    .filter((row) => row.tenant_id === tenant)
+    .map((row) => ({ row, at: typeof row.updated_at === 'string' ? Date.parse(row.updated_at) : Number.NaN }));
+  if (stamped.length === 0) return null;
+  const pick = stamped.length === 1 ? stamped[0] : (() => {
+    if (stamped.some((m) => Number.isNaN(m.at))) return undefined;
+    const newest = Math.max(...stamped.map((m) => m.at));
+    const top = stamped.filter((m) => m.at === newest);
+    return top.length === 1 ? top[0] : undefined;
+  })();
+  const minted = pick?.row.minted_at;
+  return typeof minted === 'string' ? readableTime(minted) : null;
+}
+
+/** AK-1: the tenant id from a served row. OMN-19986 AC2: when that identity was minted, from local-identity.v1, drawn
+ * only when that exposure is served (`minted` is undefined otherwise; part 18 AC130: no row that could only ever read
+ * Not recorded). */
+export function LocalIdentity({ row, minted }: { row: Record<string, unknown> | null; minted?: string | null }) {
   return (
     <FactList>
       <Fact term={<><FieldIcon label="Tenant" />Tenant</>} data-field-tone={fieldTone('Tenant')} data-field-unavailable={isUnavailableField(row?.tenant_id)} valueClassName="local-identity-value"><span>{recorded(row?.tenant_id)}</span>{typeof row?.tenant_id === 'string' && row.tenant_id.trim() !== '' && <CopyButton text={row.tenant_id} label="Copy the tenant identity" />}</Fact>
+      {minted !== undefined && <Fact term={<><ConceptIcon concept="age" label="Identity minted" />Identity minted</>}>{minted ?? 'Not recorded'}</Fact>}
     </FactList>
   );
 }
