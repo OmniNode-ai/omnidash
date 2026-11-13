@@ -94,10 +94,12 @@ describe('LastRunCard (OV-4, F16)', () => {
   it('types a cost with no matching savings session and a run with no served backend, never a blank or 0', () => {
     render(<LastRunCard now={NOW} decisions={[decision('run', '2026-10-02T10:07:00Z')]} sessions={[]} />);
     const card = screen.getByRole('region', { name: 'Last run' });
-    // This 2026-10-02 row predates OMN-20162's backend_id and host columns, so cost, backend and host are not recorded.
-    for (const label of ['Cost', 'Backend', 'Host']) {
+    // This 2026-10-02 row predates OMN-20162's backend_id and host columns, so backend and host are not recorded, and
+    // its cost was never measured (the words the Saving cell uses, OMN-24224).
+    for (const label of ['Backend', 'Host']) {
       expect(within(card).getByText(label, { selector: 'dt' }).nextElementSibling?.textContent, label).toBe('Not recorded');
     }
+    expect(within(card).getByText('Cost', { selector: 'dt' }).nextElementSibling?.textContent).toBe('Not measured');
     expect(within(card).queryByText(/Not served \(OMN-20162\)/)).not.toBeInTheDocument();
     expect(within(card).queryByText(/^\$?0(?:\.0+)?$/)).not.toBeInTheDocument();
     for (const value of within(card).getAllByRole('definition')) {

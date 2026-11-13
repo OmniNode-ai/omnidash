@@ -27,7 +27,7 @@ import { ConceptIcon, FieldIcon } from '@/components/dashboard/FieldIcon';
 import { fieldTone, isUnavailableField } from '@/components/dashboard/field-identity';
 import { useModelColor, useModelIdentityStyle } from '@/components/dashboard/model-tiers';
 import { fixed as fmtFixed, localeDate as fmtLocaleDate } from '@/theme/format';
-import { CellTime, CopyButton, CostCell, FIRST_RUN_COMMAND, Readable, type Row, RunRef, type RunViewProps, age, asRecords, byRunTime, causeOf, causeTextOf, costOf, displayCauseOf, duration, failureDetailOf, indexBy, isMissing, modelOrUnknown, newestFirst, recorded, recordedTokens, runModelledCell, statusOf, tierOf, timeOf, tokensTitle, utcDay } from '@/pages/local/page-shared';
+import { CellTime, COST_NOT_MEASURED, CopyButton, CostCell, FIRST_RUN_COMMAND, Readable, type Row, RunRef, type RunViewProps, age, asRecords, byRunTime, causeOf, causeTextOf, costOf, displayCauseOf, duration, failureDetailOf, indexBy, isMissing, modelOrUnknown, newestFirst, recorded, recordedTokens, runModelledCell, statusOf, tierOf, timeOf, tokensTitle, utcDay } from '@/pages/local/page-shared';
 import { OutcomePill } from '@/pages/local/page-workflow';
 import { RunChartsSlot, RunRoutingSlot } from '@/pages/local/page-headline';
 
@@ -90,7 +90,7 @@ export function NewestRunLine({ decisions, now = Date.now() }: { decisions: read
       <OutcomePill value={statusOf(run)} />
       <span data-field-tone="model" data-field-unavailable={isUnavailableField(modelOrUnknown(run.model_name))}>{modelOrUnknown(run.model_name)}</span>
       <span className="local-dashboard-caption">{age(run.written_at, now)}</span>
-      <span data-field-tone="cost" data-field-unavailable={costOf(undefined, run) === 'Not recorded'}>{costOf(undefined, run) === 'Not recorded' ? 'Cost not recorded' : costOf(undefined, run)}</span>
+      <span data-field-tone="cost" data-field-unavailable={costOf(undefined, run) === COST_NOT_MEASURED}>{costOf(undefined, run) === COST_NOT_MEASURED ? 'Cost not measured' : costOf(undefined, run)}</span>
       {typeof run.correlation_id === 'string' && run.correlation_id !== ''
         && <Link href={workflowHref(run.correlation_id)} aria-label={`Open run ${run.correlation_id}`}>Open run <ArrowUpRight size={12} aria-hidden="true" /></Link>}
     </p>

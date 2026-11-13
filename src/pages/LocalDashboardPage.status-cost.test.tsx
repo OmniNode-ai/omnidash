@@ -37,12 +37,13 @@ describe('Runs status and cost from the local store (OMN-20753)', () => {
     expect(within(measured).getByText('$0').getAttribute('title')).toMatch(/^\$0\.00\b/);
   });
 
-  it('Runs shows a cost never measured as Not recorded, never $0.00 (AC2)', () => {
+  it('Runs shows a cost never measured as Not measured, never $0.00 (AC2; wording OMN-24224)', () => {
     render(<RunsTable now={NOW} decisions={[MEASURED, UNMEASURED]} sessions={[]} />);
     const unmeasured = screen.getByRole('row', { name: /unmeasured-run/ });
     expect(within(unmeasured).queryByText('$0.00')).not.toBeInTheDocument();
     expect(within(unmeasured).queryByText('$0')).not.toBeInTheDocument();
-    expect(within(unmeasured).getAllByText('Not recorded').length).toBeGreaterThan(0);
+    const cost = unmeasured.querySelector('td[data-label="Cost"]');
+    expect(cost?.textContent).toBe('Not measured');
   });
 
   it('a 0-served verdict reads failed, and a missing one still reads Not recorded', () => {
