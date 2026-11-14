@@ -1,0 +1,61 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+schema_version: "1.0.0"
+ticket_id: "OMN-24458"
+title: "Overview dashboard stops re-reading the whole run history on every refresh"
+summary: >-
+  Acceptance for OMN-24458. The local dashboard pages read the decisions exposure's newest page on every load and walk
+  its since-pages only when the viewer opens the Runs page or presses Refresh there; a timer poll of any page never
+  walks. AC1 to AC3 are declared here, bound to vitest files. AC4 (the integrated reading of the h053 dashboard
+  service's requests in the dev runtime after the restart) is a runtime reading taken after install and is not a test,
+  so it is not declared here.
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-omn24458-no-timer-walk"
+    statement: >-
+      A page's timer poll reads the newest page of the decisions exposure and never its since-pages; only a first load
+      or Refresh of the Runs page walks the history.
+    acceptance:
+      - id: "AC1"
+        statement: >-
+          reading the overview on the 7-day window from a store of 120,896 runs sends one request to the run-history
+          route per refresh, not one per 500 runs -- falsifier: npx vitest run
+          src/layout/local-page-loader.omn19998-walk-budget.test.ts
+      - id: "AC2"
+        statement: >-
+          a timer refresh of any page never walks the run history; only the first load and the Refresh button do, and
+          only on the Runs page -- falsifier: npx vitest run src/pages/LocalDashboardPage.omn19998.poll.test.tsx
+      - id: "AC3"
+        statement: >-
+          a run-history read that stopped at the newest page draws no complete-history figure and the page says so --
+          falsifier: npx vitest run src/pages/LocalDashboardPage.omn19998.poll.test.tsx
+evidence_requirements: []
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
+dod_evidence:
+  - id: "dod-omn24458-walk-budget-loader"
+    description: >-
+      AC1: the loader serves a 120,896-run store with one decisions request under the page's newest-page budget and
+      with 201 requests under the old unbounded walk (the failing control in the same test), and the newest-page merge
+      keeps every run once, marks a gap truncated and surfaces a failed page.
+    source: "manual"
+    binds_ac: ["AC1"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npx vitest run src/layout/local-page-loader.omn19998-walk-budget.test.ts"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn24458-poll-page"
+    description: >-
+      AC2 and AC3: a 7-day Overview render and its next two timer polls send no since-page request against a
+      120,896-run store; the Runs page walks on first load and Refresh only, not on a timer poll; a read that stopped
+      at the newest page draws no median run time and the 400-run control does.
+    source: "manual"
+    binds_ac: ["AC2", "AC3"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npx vitest run src/pages/LocalDashboardPage.omn19998.poll.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"

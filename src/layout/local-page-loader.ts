@@ -40,6 +40,13 @@ export interface LocalPageLoadOptions {
   onSnapshot?: (snapshot: BoundProjectionSnapshot) => void;
   /** A superseded page/read must not publish late data or start dependent trace reads. */
   isCurrent?: () => boolean;
+  /**
+   * maxPages bounds the extra since-page requests of the decisions walk; 0 reads only the newest page (one request);
+   * absent means DECISIONS_WALK_MAX_PAGES (the existing behaviour, so existing callers and tests are unchanged).
+   * previous is the decisions snapshot the page already holds from its last full walk; with maxPages 0 the newest
+   * page is merged into it.
+   */
+  decisionsWalk?: { maxPages: number; previous?: BoundProjectionSnapshot };
 }
 
 /**
@@ -126,6 +133,45 @@ function newestFirst(a: unknown, b: unknown): number {
   };
   const cursor = (row: unknown) => (isRecord(row) && typeof row.projection_cursor === 'number' ? row.projection_cursor : 0);
   return at(b) - at(a) || cursor(b) - cursor(a);
+}
+
+/**
+ * The newest decisions page folded into the snapshot a page already holds from its last full walk: every run of either
+ * side once, the newest page's row winning a key clash, sorted newest first. A failed read, or a row without a run
+ * key, returns the newest page unchanged. The merge keeps the previous snapshot's completeness, except when the
+ * newest page shares no run with it and is itself truncated: runs may then sit unread between the two, so the merge
+ * stays truncated at the newest page's own cursor.
+ */
+export function mergeNewestDecisions(
+  previous: BoundProjectionSnapshot,
+  newest: BoundProjectionSnapshot,
+): BoundProjectionSnapshot {
+  if (previous.failure || newest.failure) return newest;
+  const byRun = new Map<string, unknown>();
+  const add = (rows: readonly unknown[]) => rows.every((row) => {
+    const key = runKey(row);
+    if (key === null) return false;
+    byRun.set(key, row);
+    return true;
+  });
+  if (!add(previous.rows) || !add(newest.rows)) return newest;
+  const previousKeys = new Set<string>();
+  for (const row of previous.rows) {
+    const key = runKey(row);
+    if (key !== null) previousKeys.add(key);
+  }
+  const sharesRunKey = newest.rows.some((row) => {
+    const key = runKey(row);
+    return key !== null && previousKeys.has(key);
+  });
+  const rows = [...byRun.values()].sort(newestFirst);
+  const { truncated: _truncated, nextCursor: _nextCursor, ...rest } = newest;
+  if (!sharesRunKey && newest.truncated === true) {
+    return { ...rest, rows, rowCount: rows.length, truncated: true, nextCursor: newest.nextCursor };
+  }
+  return previous.truncated === true
+    ? { ...rest, rows, rowCount: rows.length, truncated: true, nextCursor: previous.nextCursor }
+    : { ...rest, rows, rowCount: rows.length };
 }
 /**
  * One run's steps in the order the delegate orchestrator assigned (OMN-19987). It is only ever read for one run,
@@ -276,10 +322,15 @@ export async function loadLocalPageSnapshots(
    * OMN-21970 AC3: decisions.v1's first page is its newest 500 runs. When more exist it names the start of an ascending
    * walk; every page of that walk is read and merged by run, so each served run appears once. A page that fails, a
    * cursor that does not move, or a row with no key stops the walk, and the read stays marked incomplete (truncated)
-   * with the runs read so far, never presented as the whole store.
+   * with the runs read so far, never presented as the whole store. options.decisionsWalk.maxPages bounds the
+   * since-page requests; with maxPages 0 and a previous snapshot, the newest page is merged into it.
    */
   const walkDecisions = async (first: BoundProjectionSnapshot): Promise<BoundProjectionSnapshot> => {
     if (first.failure || first.truncated !== true || typeof first.nextCursor !== 'string') return first;
+    const maxPages = options.decisionsWalk?.maxPages ?? DECISIONS_WALK_MAX_PAGES;
+    if (maxPages === 0 && options.decisionsWalk?.previous) {
+      return mergeNewestDecisions(options.decisionsWalk.previous, first);
+    }
     const byRun = new Map<string, unknown>();
     const add = (rows: readonly unknown[]) => rows.every(row => {
       const key = runKey(row);
@@ -290,7 +341,7 @@ export async function loadLocalPageSnapshots(
     if (!add(first.rows)) return first;
     let cursor: string = first.nextCursor;
     let complete = false;
-    for (let pages = 0; pages < DECISIONS_WALK_MAX_PAGES; pages += 1) {
+    for (let pages = 0; pages < maxPages; pages += 1) {
       if (options.isCurrent?.() === false) break;
       const next = await readTopicResult(DELEGATION_DECISIONS_TOPIC, { since: cursor });
       if (next.failure || !add(next.rows)) break;

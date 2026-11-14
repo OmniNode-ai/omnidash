@@ -30,6 +30,7 @@ import { fieldTone } from '@/components/dashboard/field-identity';
 import { DestinationIcon } from '@/navigation/destination-icons';
 import type { AppPage } from '@/store/types';
 import { loadLocalPageConfig, loadLocalPageSnapshots, rowsForLocalComponent, resolveLocalPageEmptyState, withLastGood, newestRunId as newestWorkflowRunId, DELEGATION_DECISIONS_TOPIC, METERING_SUMMARY_TOPIC, RUN_TRACE_TOPIC, isPerRunTopic, LOCAL_READ_TIMEOUT_MS, type BoundProjectionSnapshot, type LocalPageDocument, type LocalPageName } from '@/layout/local-page-loader';
+import { decisionsWalkFor, type LocalLoadTrigger } from '@/layout/local-read-budget';
 import { ModelTiersContext } from '@/components/dashboard/model-tiers';
 import { pageRefreshMs } from '@/theme/refresh';
 import { CARD_LINKS, MAPLE_WIDTHS, MeteringTotalCard, MetricCard, OUTSIDE_WINDOW_NOTE, OverviewDayPicker, type OverviewWindow, PendingState, RUNS_SECONDARY, RunChartsSlot, RunLocallyCard, RunRoutingSlot, RunsKpis, UsageKpis, captionRowFor, meteringRangeFor, meteringTokens, pickMeteringRow, readOverviewWindow, servedMeteringDays, writeOverviewWindow } from '@/pages/local/page-headline';
@@ -182,7 +183,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
     // are all dropped, however late it answers.
     let started = 0;
     // Every read after the first keeps the last good rows on screen while it runs, and when it fails (F25).
-    async function load() {
+    async function load(trigger: LocalLoadTrigger) {
       const mine = ++started;
       const current = () => active && mine === started;
       const publish = (snapshot: BoundProjectionSnapshot) => {
@@ -230,6 +231,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
           runId: requestedRunId,
           onSnapshot: publish,
           isCurrent: current,
+          decisionsWalk: decisionsWalkFor(pageName, trigger, latest.current.find(snapshot => snapshot.topic === DELEGATION_DECISIONS_TOPIC)),
         });
         if (current()) {
           setPage(document);
@@ -259,11 +261,11 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
         if (current()) setLoading(false);
       }
     }
-    const unsubscribeRefresh = subscribeLocalPageRefresh(() => { void load(); });
-    void load();
+    const unsubscribeRefresh = subscribeLocalPageRefresh(() => { void load('manual'); });
+    void load('mount');
     // The page's declared refresh interval (requirements: the dashboard shows the runtime's data as it changes), never under
     // the one refresh setting (OMN-23330 AC21).
-    const timer = setInterval(() => { void load(); }, pageRefreshMs(document.dashboard.refresh_interval_seconds));
+    const timer = setInterval(() => { void load('timer'); }, pageRefreshMs(document.dashboard.refresh_interval_seconds));
     return () => {
       active = false;
       clearInterval(timer);
