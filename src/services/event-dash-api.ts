@@ -486,13 +486,68 @@ const walkCursor = (row: unknown): number => {
 };
 
 /**
- * OMN-21970 (ticket body: "remove the 500-run limit from every view"): Delegation Evidence's decisions read walks every
- * page the exposure serves, merges them by run so each served run appears once, and sorts newest first. A failed page,
- * a cursor that does not move, a row with no key or the page bound ends the walk, and the read stays incomplete
- * (complete false) with the runs read so far, never presented as the whole store.
+ * OMN-24472: the newest decisions page folded into the result a poll already holds from the last full walk (the shape
+ * of mergeNewestDecisions in src/layout/local-page-loader.ts): every run of either side once, the newest page's row
+ * winning a key clash, sorted newest first. A failed newest read keeps the held runs marked stale — a failed poll
+ * never drops history. A row without a run key cannot be merged, so the newest page is returned incomplete. The merge
+ * keeps the held result's completeness, except when the newest page shares no run with the held one and is itself
+ * truncated: runs may then sit unread between the two, so the merge stays incomplete at the newest page's own cursor.
  */
-export async function fetchDelegationDecisions(): Promise<ProjectionResult<DelegationDecisionRow>> {
+export function mergeNewestDecisionResults(
+  held: ProjectionResult<DelegationDecisionRow>,
+  newest: ProjectionResult<DelegationDecisionRow>,
+): ProjectionResult<DelegationDecisionRow> {
+  if (newest.rows.length === 0 && (newest.degradedReason !== null || newest.isDegraded)) {
+    return { ...held, freshness: "stale" };
+  }
+  const byRun = new Map<string, DelegationDecisionRow>();
+  const add = (rows: readonly DelegationDecisionRow[]) => rows.every(row => {
+    const key = runKey(row);
+    if (key === null) return false;
+    byRun.set(key, row);
+    return true;
+  });
+  if (!add(held.rows) || !add(newest.rows)) return { ...newest, complete: false };
+  const heldKeys = new Set<string>();
+  for (const row of held.rows) {
+    const key = runKey(row);
+    if (key !== null) heldKeys.add(key);
+  }
+  const sharesRunKey = newest.rows.some((row) => {
+    const key = runKey(row);
+    return key !== null && heldKeys.has(key);
+  });
+  const rows = [...byRun.values()].sort((a, b) => writtenAt(b) - writtenAt(a) || walkCursor(b) - walkCursor(a));
+  const { truncated: _truncated, nextCursor: _nextCursor, ...rest } = newest;
+  if (!sharesRunKey && newest.truncated === true) {
+    return { ...rest, rows, rowCount: rows.length, complete: false, truncated: true, nextCursor: newest.nextCursor };
+  }
+  return {
+    ...rest,
+    rows,
+    rowCount: rows.length,
+    ...(held.complete !== undefined ? { complete: held.complete } : {}),
+    ...(held.truncated !== undefined || held.nextCursor !== undefined
+      ? { truncated: held.truncated, nextCursor: held.nextCursor }
+      : {}),
+  };
+}
+
+/**
+ * OMN-21970 (ticket body: "remove the 500-run limit from every view"): the FIRST load walks every page the exposure
+ * serves, merges them by run so each served run appears once, and sorts newest first. A failed page, a cursor that
+ * does not move, a row with no key or the page bound ends the walk, and the read stays incomplete (complete false)
+ * with the runs read so far, never presented as the whole store. OMN-24472: every later fetch — a page timer poll —
+ * passes the held result and reads ONLY the newest page (one readProjection call, no since-page walk), merged into
+ * what is held, so a poll never walks the run history.
+ */
+export async function fetchDelegationDecisions(
+  held?: ProjectionResult<DelegationDecisionRow>,
+): Promise<ProjectionResult<DelegationDecisionRow>> {
   const first = await readProjection<DelegationDecisionRow>(TOPICS.delegationDecisions);
+  if (held !== undefined && held.rows.length > 0 && held.degradedReason === null) {
+    return mergeNewestDecisionResults(held, first);
+  }
   if (first.truncated !== true || typeof first.nextCursor !== "string") {
     return { ...first, complete: first.truncated !== true && first.degradedReason === null };
   }
