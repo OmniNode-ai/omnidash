@@ -1,0 +1,46 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+schema_version: "1.0.0"
+ticket_id: "OMN-24224"
+title: "The Runs page shows Not measured for a run with no recorded cost, never $0"
+summary: >-
+  Acceptance for OMN-24224, copied from the live ticket on 2026-11-14. AC1 and AC2 are page criteria and are declared
+  here, bound to tests/e2e/runs-unmeasured-cost.omn24224.spec.ts. The ticket's AC3 (the local delegation.savings.v1
+  exposure serves local_cost_usd as null for a run with no measured cost) is a served-data criterion owned by the
+  omnimarket pull request for this ticket and its contracts/OMN-24224.yaml, so it is not declared here.
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-omn24224-runs-cost-not-measured"
+    statement: >-
+      A run with no recorded cost reads Not measured in the Runs Cost column and the run detail, and a run measured at
+      exactly 0 keeps the muted $0.
+    acceptance:
+      - id: "AC1"
+        statement: >-
+          a run whose stored cost_usd is NULL shows Not measured in the Runs Cost column and the run detail, never $0
+          -- falsifier: npx playwright test -g unmeasured_run_cost, seeding one NULL-cost run and asserting its Cost
+          cell reads Not measured
+      - id: "AC2"
+        statement: >-
+          a run with a measured cost of exactly 0 still shows the muted $0 -- falsifier: the same Playwright test seeds
+          a measured 0 run and fails if it reads Not measured
+evidence_requirements: []
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
+dod_evidence:
+  - id: "dod-omn24224-runs-unmeasured-cost"
+    description: >-
+      AC1 and AC2 in one Playwright test. It serves three runs (null cost, measured 0, $0.25) and asserts the Cost
+      cells read Not measured, $0 (muted) and $0.25, and that the run detail cost reads Not measured with no dollar
+      sign. It fails at the test-only commit fa85fde9f4c85227e8d7062e1a11f2adb1bb95dc and passes at the fix
+      77ee385f9ff7a55c1c1cd3b10468bdffc30e18e8.
+    source: "manual"
+    binds_ac: ["AC1", "AC2"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/runs-unmeasured-cost.omn24224.spec.ts --project=chromium --workers=1 --retries=0"
+        cwd: "${OMNI_HOME}/omnidash"
