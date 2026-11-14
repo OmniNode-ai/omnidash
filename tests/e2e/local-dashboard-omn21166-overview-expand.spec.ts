@@ -1,6 +1,6 @@
 import { expect, test } from 'playwright/test';
 import { chartRows, prefix, serveCharts, meteringAll } from './omn21166-chart-fixtures';
-import { chooseChartTab } from './chart-tabs';
+import { chooseChartTab, tabNameFor } from './chart-tabs';
 
 // Part 24: the current page has visible info icons, a seven-model row chart, and no expand controls.
 // OMN-22168: the charts are tabs and the Expand control is removed; the checks below hold on the tabs.
@@ -103,7 +103,7 @@ test(`each Overview chart tab draws its whole chart at ${width}px in ${theme} th
     });
     expect(fit.inside, `${title} inside its panel`).toBe(true);
     expect(fit.sideways, `${title}: no sideways page scroll`).toBeLessThanOrEqual(0);
-    const tab = frame.getByRole('tab', { name: title, exact: true });
+    const tab = frame.getByRole('tab', { name: tabNameFor(title), exact: true });
     await tab.focus();
     await expect(tab).toBeFocused();
     await page.screenshot({ path: info.outputPath(`overview-tab-${title.replaceAll(' ', '-')}-${width}-${theme}.png`) });

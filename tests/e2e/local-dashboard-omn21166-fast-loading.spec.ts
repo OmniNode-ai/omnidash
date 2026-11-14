@@ -33,7 +33,7 @@ test('page structure and fast panels do not wait for slow catalogue or aggregate
     // OMN-21166 AC86 (Lakshman 2026-10-25): Recent runs deleted from Overview. The page structure that must not wait
     // for the catalogue is now the Runs per day heading, and the fast panel is its served day bar (3 fixture runs on Oct 17).
     // OMN-22168: the chart's own heading is hidden inside its tab (the tab names it), so the structure is the tab.
-    await expect(page.getByRole('tab', { name: 'Runs per day', exact: true })).toBeVisible({ timeout: 1000 });
+    await expect(page.getByRole('tab', { name: 'Runs', exact: true })).toBeVisible({ timeout: 1000 });
     releaseCatalogue();
     await expect(page.locator('[data-slice="runs"] button.gdb-day').first()).toHaveAccessibleName('Oct 17: 3 runs, 2 passed, 1 failed', { timeout: 1500 });
     await expect(page.locator('[data-component="overview-quality"]')).toHaveAttribute('aria-busy', 'true');

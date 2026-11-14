@@ -40,6 +40,35 @@ import { NoRunsYet } from '@/pages/local/page-runs';
 import { NoProviderKeys } from '@/pages/local/page-settings';
 import { OverviewStatusStrip } from '@/pages/local/page-overview';
 
+/** The Overview window list and the Activity breakdown tabs share it so they cannot drift (OMN-24282). */
+const WINDOW_CHOICES = [
+  ['all', 'All time', 'All time', 0],
+  ['today', 'Today', 'Today (UTC)', 1],
+  ['last-7', 'Last 7 days', 'Last 7 days (UTC)', 7],
+  ['last-15', 'Last 15 days', 'Last 15 days (UTC)', 15],
+  ['last-30', 'Last 30 days', 'Last 30 days (UTC)', 30],
+  ['last-90', 'Last 90 days', 'Last 90 days (UTC)', 90],
+] as const;
+
+/** Whether a window choice is the chosen one; the Overview window list and the Activity breakdown tabs share it (OMN-24282). */
+function windowChoiceChecked(days: number, overviewWindow: OverviewWindow, activityWindow: ActivityWindow): boolean {
+  return days === 0 ? overviewWindow === 'all' : days === 1 ? overviewWindow === 'today' : overviewWindow.startsWith('range:') && activityWindow.kind === 'days' && activityWindow.days === days;
+}
+
+/** The chosen window's label as the window list shows it, shared with the Activity breakdown tabs so they cannot drift (OMN-24282). */
+function chosenWindowLabel(overviewWindow: OverviewWindow, activityWindow: ActivityWindow): string {
+  const entry = WINDOW_CHOICES.find(([, , , days]) => windowChoiceChecked(days, overviewWindow, activityWindow));
+  if (entry) return entry[1];
+  if (overviewWindow.startsWith('day:')) return `Day ${overviewWindow.slice(4)} (UTC)`;
+  return 'All time';
+}
+
+/** The chosen window in words for the Activity breakdown tabs: the list's label with its first letter lower-cased (OMN-24282). */
+function windowWords(overviewWindow: OverviewWindow, activityWindow: ActivityWindow): string {
+  const label = chosenWindowLabel(overviewWindow, activityWindow);
+  return label.charAt(0).toLowerCase() + label.slice(1);
+}
+
 // OMN-23330 AC24: the page's parts live in src/pages/local/page-*.tsx; every name this module exported is still exported
 // from here, so no import elsewhere changes.
 // OMN-21166 part 15: CardBasis moved to components/dashboard/CardBasis so the shared KPI cards can use it.
@@ -422,17 +451,13 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
                 days={servedMeteringDays(snapshots.find(snapshot => snapshot.topic === METERING_SUMMARY_TOPIC)?.rows ?? [])} />
               {(() => {
                 // OMN-21970 AC9 (Lakshman 2026-11-02): one button opens the list of windows, the chosen one ticked.
-                const options = ([['all', 'All time', 'All time', 0], ['today', 'Today', 'Today (UTC)', 1], ['last-7', 'Last 7 days', 'Last 7 days (UTC)', 7],
-                  ['last-15', 'Last 15 days', 'Last 15 days (UTC)', 15], ['last-30', 'Last 30 days', 'Last 30 days (UTC)', 30],
-                  ['last-90', 'Last 90 days', 'Last 90 days (UTC)', 90]] as const).map(([value, label, name, days]) => {
+                const options = WINDOW_CHOICES.map(([value, label, name, days]) => {
                   const target: OverviewWindow = days === 0 ? 'all' : days === 1 ? 'today' : meteringRangeFor(days, now);
-                  const checked = days === 0 ? overviewWindow === 'all' : days === 1 ? overviewWindow === 'today'
-                    : overviewWindow.startsWith('range:') && activityWindow.kind === 'days' && activityWindow.days === days;
+                  const checked = windowChoiceChecked(days, overviewWindow, activityWindow);
                   return { value, label, name, checked,
                     onSelect: () => { setOverviewWindow(target); setActivityWindow(days === 0 ? { kind: 'all' } : { kind: 'days', days }); } };
                 });
-                const chosen = options.find(option => option.checked);
-                const current = chosen ? chosen.label : overviewWindow.startsWith('day:') ? `Day ${overviewWindow.slice(4)} (UTC)` : 'All time';
+                const current = chosenWindowLabel(overviewWindow, activityWindow);
                 return <WindowMenu labelledBy={windowId} options={options} current={current} />;
               })()}
             </div>
@@ -548,11 +573,13 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
                       const tierRows = routing && routing.by_tier && typeof routing.by_tier === 'object' && Array.isArray((routing.by_tier as Row).tiers)
                         ? asRecords((routing.by_tier as Row).tiers as unknown[]).filter(tier => tier.tier_routed !== false).length : null;
                       const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
+                      // OMN-24282: each total names the window it covers, in the window list's own words.
+                      const words = windowWords(overviewWindow, activityWindow);
                       return <DashboardTabs label="Overview charts" param="chart" tabs={[
-                        { id: 'runs', label: 'Runs per day', tone: 'var(--ds-field-runs-daily)', icon: <CalendarRange size={18} />,
-                          hint: Number.isFinite(runs) ? `${formatDashboardCount(runs)} runs` : 'Runs not recorded', panel: () => slice('runs', 'Runs per day', 'runs-daily') },
-                        { id: 'tokens', label: 'Tokens per day', tone: 'var(--ds-field-tokens-daily)', icon: <ChartArea size={18} />,
-                          hint: tokens !== null ? `${formatDashboardCount(tokens)} tokens` : 'Tokens not recorded', panel: () => slice('tokens', 'Tokens per day', 'tokens-daily') },
+                        { id: 'runs', label: 'Runs', tone: 'var(--ds-field-runs-daily)', icon: <CalendarRange size={18} />,
+                          hint: Number.isFinite(runs) ? `${formatDashboardCount(runs)} runs · ${words}` : 'Runs not recorded', panel: () => slice('runs', 'Runs per day', 'runs-daily') },
+                        { id: 'tokens', label: 'Tokens', tone: 'var(--ds-field-tokens-daily)', icon: <ChartArea size={18} />,
+                          hint: tokens !== null ? `${formatDashboardCount(tokens)} tokens · ${words}` : 'Tokens not recorded', panel: () => slice('tokens', 'Tokens per day', 'tokens-daily') },
                         { id: 'models', label: 'Model usage', tone: 'var(--ds-field-runs-model)', icon: <Bot size={18} />,
                           hint: models !== null ? `${plural(models, 'model')}${overviewWindow === 'all' ? '' : ' · all time'}` : 'Models not recorded', panel: () => renderGroup(['overview-model-usage']) },
                         { id: 'tiers', label: 'Tier mix', tone: 'var(--ds-field-tier-mix)', icon: <ChartPie size={18} />,
