@@ -7,7 +7,7 @@
  * projection value. Live data only — no fixture path.
  */
 
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 import {
   fetchDelegationDecisions,
   fetchDelegationSummary,
@@ -40,8 +40,22 @@ import { refreshInterval } from '@/theme/refresh';
 // Live ticker poll cadence (ms). The bus view polls newest rows so the
 // "now on bus" surface tracks real event arrival, never a simulated playback.
 
-export const useDelegationDecisions = (): UseQueryResult<ProjectionResult<DelegationDecisionRow>> =>
-  useQuery({ queryKey: ['ev', 'delegation', 'decisions'], queryFn: fetchDelegationDecisions, refetchInterval: refreshInterval() });
+/** OMN-24472: one key for the decisions query, so the poll can read back what the query already holds. */
+const DECISIONS_QUERY_KEY = ['ev', 'delegation', 'decisions'] as const;
+
+/**
+ * OMN-24472: the first load (nothing held yet) walks the run history inside fetchDelegationDecisions; every later
+ * fetch — a page timer poll — passes the held result so the fetcher reads only the newest page and merges it, never
+ * walking the run history again.
+ */
+export const useDelegationDecisions = (): UseQueryResult<ProjectionResult<DelegationDecisionRow>> => {
+  const queryClient = useQueryClient();
+  return useQuery({
+    queryKey: DECISIONS_QUERY_KEY,
+    queryFn: () => fetchDelegationDecisions(queryClient.getQueryData<ProjectionResult<DelegationDecisionRow>>(DECISIONS_QUERY_KEY)),
+    refetchInterval: refreshInterval(),
+  });
+};
 
 export const useDelegationSummary = (): UseQueryResult<ProjectionResult<DelegationSummaryRow>> =>
   useQuery({ queryKey: ['ev', 'delegation', 'summary'], queryFn: fetchDelegationSummary, refetchInterval: refreshInterval() });
