@@ -33,21 +33,28 @@ function visitLabel(time: number): string {
   return `${day}, ${date.toISOString().slice(11, 16)} UTC`;
 }
 
-export function SinceLastVisit({ decisions, now, onOpenFailures }: { decisions: readonly unknown[]; now: number; onOpenFailures?: () => void }) {
+export function SinceLastVisit({ decisions, now, onOpenFailures, capped = false }: {
+  decisions: readonly unknown[]; now: number; onOpenFailures?: () => void; capped?: boolean;
+}) {
   // Read once, on the first render of this visit: later refreshes keep counting from the same previous visit.
   const [previous] = useState<number | null>(readLastVisit);
+  const served = toInsightRuns(decisions);
   const shared = useSharedRunFilter();
   useEffect(() => { writeLastVisit(now); }, [now]);
   if (previous === null) return null;
-  const fresh = toInsightRuns(decisions).filter(run => run.at > previous);
+  const fresh = served.filter(run => run.at > previous);
   if (fresh.length === 0) return null;
   const failed = fresh.filter(run => run.status === 'failed').length;
+  // OMN-24473: when the read stopped at the newest page and every served run is newer than the visit, older new runs
+  // may sit unread, so the counts are a floor (a served run at or before the visit proves the read spans the visit).
+  const atLeast = capped && !served.some(run => run.at <= previous);
   return (
-    <p className="local-since-visit" role="status" aria-label="Since your last visit">
+    <p className="local-since-visit" role="status" aria-label="Since your last visit"
+      title={atLeast ? 'At least; only the newest runs were read' : undefined}>
       <span className="local-since-visit-icon" aria-hidden="true"><BellRing size={15} /></span>
       <span className="local-since-visit-title">Since your last visit · {visitLabel(previous)}</span>
-      <Badge look="since-visit" data-tone="runs">{formatDashboardCount(fresh.length)} new runs</Badge>
-      <Badge look="since-visit" data-tone="failed">{formatDashboardCount(failed)} failed</Badge>
+      <Badge look="since-visit" data-tone="runs">{formatDashboardCount(fresh.length)}{atLeast ? '+' : ''} new runs</Badge>
+      <Badge look="since-visit" data-tone="failed">{formatDashboardCount(failed)}{atLeast ? '+' : ''} failed</Badge>
       {(shared || onOpenFailures) && (
         <button type="button" className="local-since-visit-action" onClick={() => {
           if (onOpenFailures) { onOpenFailures(); return; }

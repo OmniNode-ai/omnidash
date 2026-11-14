@@ -9,9 +9,11 @@ export type LocalLoadTrigger = 'mount' | 'manual' | 'timer';
  * Only the Runs page ('runs') lists every run, so only it may walk the history, and only when the viewer opens it
  * (trigger 'mount') or presses Refresh ('manual'): it returns undefined, the loader's full walk. Every other case
  * reads only the newest page (maxPages 0):
- *   - the Runs page on a 'timer' trigger passes previous = held when held exists and has no failure, so the newest
- *     page is merged into the snapshot the page already walked;
- *   - every other page, and a missing or failed held snapshot, read the newest page alone ({ maxPages: 0 }).
+ *   - the Runs page on a 'timer' trigger passes previous = held when held exists and has no failure; OMN-24473: also
+ *     when a failed poll left the last good rows on it (lastGoodAt, set by the loader's withLastGood), passing held
+ *     without its failure and lastGoodAt so mergeNewestDecisions merges into the history the page already walked;
+ *   - every other page, a missing held snapshot, and a failed one with no last good rows read the newest page alone
+ *     ({ maxPages: 0 }).
  *
  * Why: a page's timer poll must never walk the whole run history. The decisions exposure's since-pages used to be
  * read every poll, and the dev runtime was loaded by ~180 requests a minute from the Overview page doing exactly
@@ -23,6 +25,13 @@ export function decisionsWalkFor(
   held: BoundProjectionSnapshot | undefined,
 ): LocalPageLoadOptions['decisionsWalk'] {
   if (pageName !== 'runs') return { maxPages: 0 };
-  if (trigger === 'timer') return held && !held.failure ? { maxPages: 0, previous: held } : { maxPages: 0 };
-  return undefined;
+  if (trigger !== 'timer') return undefined;
+  if (held === undefined) return { maxPages: 0 };
+  if (!held.failure) return { maxPages: 0, previous: held };
+  // One failed poll must not cost the page its full history (OMN-24473): rows a good read left behind stay on the
+  // snapshot, so the next poll merges the newest page into them. mergeNewestDecisions returns the newest page alone
+  // when previous.failure is set, so both marks are stripped; a failure without them means nothing good was kept.
+  if (typeof held.lastGoodAt !== 'string') return { maxPages: 0 };
+  const { failure: _failure, lastGoodAt: _lastGoodAt, ...previous } = held;
+  return { maxPages: 0, previous };
 }
