@@ -1,5 +1,6 @@
-// the tabs show the total for the chosen window, so each must name that window in the dropdown's own words
-// and none may say "per day" beside a total (OMN-24282, reported 2026-11-13).
+// The tabs show the total for the window chosen in the dropdown, so none may say "per day" beside a total
+// (OMN-24282, reported 2026-11-13); the dropdown names the window, so a tab shows its number alone under "Total runs" or "Total tokens", with no window
+// suffix (Lakshman 2026-11-14).
 import { expect, test } from 'playwright/test';
 import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
 import { chooseWindow, type WindowName } from './overview-window-menu';
@@ -37,29 +38,28 @@ const rows = {
   ],
 };
 
-const cases: { name: WindowName; words: string; runs: string; tokens: string }[] = [
-  { name: 'All time', words: 'all time', runs: '900 runs', tokens: '3.6K tokens' },
-  { name: 'Today (UTC)', words: 'today', runs: '5 runs', tokens: '20 tokens' },
-  { name: 'Last 7 days (UTC)', words: 'last 7 days', runs: '25 runs', tokens: '100 tokens' },
-  { name: 'Last 15 days (UTC)', words: 'last 15 days', runs: '65 runs', tokens: '260 tokens' },
-  { name: 'Last 30 days (UTC)', words: 'last 30 days', runs: '145 runs', tokens: '580 tokens' },
-  { name: 'Last 90 days (UTC)', words: 'last 90 days', runs: '305 runs', tokens: '1.22K tokens' },
+const cases: { name: WindowName; runs: string; tokens: string }[] = [
+  { name: 'All time', runs: '900 runs', tokens: '3.6K tokens' },
+  { name: 'Today (UTC)', runs: '5 runs', tokens: '20 tokens' },
+  { name: 'Last 7 days (UTC)', runs: '25 runs', tokens: '100 tokens' },
+  { name: 'Last 15 days (UTC)', runs: '65 runs', tokens: '260 tokens' },
+  { name: 'Last 30 days (UTC)', runs: '145 runs', tokens: '580 tokens' },
+  { name: 'Last 90 days (UTC)', runs: '305 runs', tokens: '1.22K tokens' },
 ];
 
 test.use({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' });
 
-test('activity_breakdown_window_label: each Runs and Tokens tab names the window its total covers, never per day', async ({ page }) => {
+test('activity_breakdown_window_label: each tab shows its total for the chosen window, never per day and never a window suffix', async ({ page }) => {
   await serveCharts(page, rows);
   await page.goto('/overview');
+  const tab = (id: string) => page.locator(`[data-tabs="chart"] [data-tab="${id}"]`);
   for (const c of cases) {
     await chooseWindow(page, c.name);
-    const runsTab = page.locator('[data-tabs="chart"] [data-tab="runs"]');
-    const tokensTab = page.locator('[data-tabs="chart"] [data-tab="tokens"]');
-    await expect(runsTab, `${c.name}: runs tab`).toContainText(c.runs);
-    await expect(runsTab, `${c.name}: runs tab`).toContainText(c.words);
-    await expect(runsTab).not.toContainText('per day');
-    await expect(tokensTab, `${c.name}: tokens tab`).toContainText(c.tokens);
-    await expect(tokensTab, `${c.name}: tokens tab`).toContainText(c.words);
-    await expect(tokensTab).not.toContainText('per day');
+    await expect(tab('runs'), `${c.name}: runs tab`).toHaveText(`Total runs${c.runs}`);
+    await expect(tab('tokens'), `${c.name}: tokens tab`).toHaveText(`Total tokens${c.tokens}`);
+    for (const id of ['runs', 'tokens', 'models', 'tiers']) {
+      await expect(tab(id), `${c.name}: ${id} tab`).not.toContainText('per day');
+      await expect(tab(id), `${c.name}: ${id} tab`).not.toContainText('·');
+    }
   }
 });

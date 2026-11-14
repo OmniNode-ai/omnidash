@@ -2,8 +2,8 @@
 // at a time. A test reaches a chart the way a reader does, by choosing its tab, and proves the choice took.
 import { expect, type Page } from 'playwright/test';
 
-/** OMN-24282: Overview's Runs and Tokens tabs are named for what they count; their charts keep the per-day titles. */
-const TAB_FOR_CHART: Readonly<Record<string, string>> = { 'Runs per day': 'Runs', 'Tokens per day': 'Tokens' };
+/** OMN-24282: Overview's Total runs and Total tokens tabs say they hold a total; their charts keep the per-day titles. */
+const TAB_FOR_CHART: Readonly<Record<string, string>> = { 'Runs per day': 'Total runs', 'Tokens per day': 'Total tokens' };
 /** The tab that holds the chart with this title (most tabs carry their chart's title). */
 export const tabNameFor = (title: string): string => TAB_FOR_CHART[title] ?? title;
 
