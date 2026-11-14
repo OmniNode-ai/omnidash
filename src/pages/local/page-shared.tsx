@@ -181,13 +181,16 @@ export function recorded(value: unknown): string {
 /**
  * A run's cost in dollars, from its delegation.savings.v1 session when one is served, else from the decision row's
  * own measured cost_usd (OMN-20753). The approved display policy truncates to two decimals,
- * preserving tiny nonzero amounts as $0.01. A cost never measured is served null and reads Not recorded, never $0.00.
+ * preserving tiny nonzero amounts as $0.01. A cost never measured is served null and reads Not measured, never $0.00,
+ * the same words as the Saving cell beside it (OMN-24224; it read "Not recorded" before).
  */
+export const COST_NOT_MEASURED = 'Not measured';
+
 export function costOf(session: Row | undefined, decision: Row): string {
   const value = isMissing(session?.local_cost_usd) ? decision.cost_usd : session?.local_cost_usd;
-  if (isMissing(value)) return 'Not recorded';
+  if (isMissing(value)) return COST_NOT_MEASURED;
   const amount = Number(value);
-  if (!Number.isFinite(amount)) return 'Not recorded';
+  if (!Number.isFinite(amount)) return COST_NOT_MEASURED;
   return formatUsd(value);
 }
 
