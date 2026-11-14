@@ -227,8 +227,10 @@ export function TableComponent({ component, snapshots, pageSize, syncUrl, column
     // Live review 2026-10-25: on Overview, quality is the fifth headline card, "Delegation Quality": its pass rate, and
     // in its hover how many runs passed the deterministic gate.
     if (component.component_id === 'overview-quality' && slice?.key === 'card') {
-      const decisions = snapshots.find(snapshot => snapshot.topic === DELEGATION_DECISIONS_TOPIC)?.rows ?? [];
-      return <QualityCard row={row} change={qualityChangeLine(decisions, activityWindow)} />;
+      const decisions = snapshots.find(snapshot => snapshot.topic === DELEGATION_DECISIONS_TOPIC);
+      // OMN-24473: a newest-page read cannot prove the rows reach back over the previous window.
+      return <QualityCard row={row} change={qualityChangeLine(decisions?.rows ?? [], activityWindow, Date.now(),
+        !decisions?.failure && decisions?.truncated !== true)} />;
     }
     return component.component_id === 'overview-quality'
       ? <QualityPanel row={row} />

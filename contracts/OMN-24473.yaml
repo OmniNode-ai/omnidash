@@ -1,0 +1,54 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+schema_version: "1.0.0"
+ticket_id: "OMN-24473"
+title: "Dashboard review gaps: partial figures labelled, held history kept across a failed refresh"
+summary: >-
+  Acceptance for OMN-24473, the review of the page timer budget (omnidash#513). A figure computed from a read that
+  stopped at the newest page is shown as not measured or as a floor, never as the window's number; one failed timer
+  poll keeps the Runs page's held history; a timer tick waits for an in-flight mount or Refresh walk. AC1 to AC3 are
+  declared here, bound to three vitest files under tests/ (the evidence gate lays only tests/ paths over the merge
+  base). AC4 (the integrated reading on the h053 dashboard service, and the recorded duration of a full read on the
+  120,896-run store) is a runtime reading taken after install and is not a test, so it is not declared here.
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-omn24473-review-gaps"
+    statement: >-
+      A figure from a newest-page read says it is partial; a failed poll does not cost the Runs page its history; a
+      timer tick never supersedes an in-flight walk.
+    acceptance:
+      - id: "AC1"
+        statement: >-
+          the Overview quality card's change line for the 7, 15, 30 and 90 day windows reads partial or unread when the
+          run history read stopped at the newest 500 runs, and shows a rate only from a read that covers the window --
+          falsifier: npx vitest run tests/pages/local/quality-change.omn19998.test.tsx
+      - id: "AC2"
+        statement: >-
+          the since-last-visit new-run and failed-run counts say they stopped at 500 when the read did -- falsifier:
+          npx vitest run tests/pages/local/since-last-visit.omn19998.test.tsx
+      - id: "AC3"
+        statement: >-
+          after one failed timer refresh the Runs page keeps its full history, and a timer refresh never replaces an
+          in-progress full read -- falsifier: npx vitest run tests/pages/LocalDashboardPage.omn19998.review.test.tsx
+evidence_requirements: []
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
+dod_evidence:
+  - id: "dod-omn24473-review-gaps"
+    description: >-
+      AC1 to AC3 in three vitest files run together. The quality file serves rows that stop short of the previous
+      window and reads not measured on a newest-page read, No earlier data on a complete read, and the rate line when a
+      row reaches back. The visit file reads 3+ and 1+ for a capped read of runs all newer than the visit and exact
+      counts otherwise. The page file checks decisionsWalkFor after a failed poll, a Runs page that keeps 1,300 runs
+      through a failed poll, and a 5,000-run walk of ten 4 s pages that a 30 s tick does not supersede. With the five
+      source files restored from origin/dev the new tests fail.
+    source: "manual"
+    binds_ac: ["AC1", "AC2", "AC3"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx vitest run tests/pages/local/quality-change.omn19998.test.tsx tests/pages/local/since-last-visit.omn19998.test.tsx tests/pages/LocalDashboardPage.omn19998.review.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"

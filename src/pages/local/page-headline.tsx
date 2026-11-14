@@ -216,9 +216,10 @@ const OVERVIEW_HEADLINE_CARDS: ReadonlySet<string> = new Set(['overview-spend', 
  * OMN-21166 part 19 AC133: Delegation Quality's change, from the returned decision rows: the pass rate over runs with a
  * verdict in the last N UTC days against the N days before, in percentage points. Rows that do not reach back over the
  * whole previous window, or a previous window with no verdict, read "No earlier data" (written by claude-920f62a6 after
- * onex delegate run a450aca8 failed).
+ * onex delegate run a450aca8 failed). A read that stopped at the newest page (`complete` false, OMN-24473) cannot
+ * prove the rows reach back: older runs were never read, so the same gap reads not measured with the count actually read.
  */
-export function qualityChangeLine(decisions: readonly unknown[], window: ActivityWindow, now: number = Date.now()): string | null {
+export function qualityChangeLine(decisions: readonly unknown[], window: ActivityWindow, now: number = Date.now(), complete: boolean = true): string | null {
   if (window.kind !== 'days' || ![7, 15, 30, 90].includes(window.days)) return null;
   const DAY = 86_400_000;
   const today = Date.parse(`${utcDay(now)}T00:00:00Z`);
@@ -226,7 +227,12 @@ export function qualityChangeLine(decisions: readonly unknown[], window: Activit
   const previousStart = utcDay(today - (2 * window.days - 1) * DAY);
   const dated = asRecords(decisions).map(row => ({ row, day: utcDay(timeOf(row.created_at ?? row.written_at)) }))
     .filter(entry => /^\d{4}-\d{2}-\d{2}$/.test(entry.day));
-  if (!dated.some(entry => entry.day <= previousStart)) return 'No earlier data';
+  // OMN-24473: one row older than previousStart proves the read covers both windows, so the rate stays valid; without
+  // one, a newest-page read has not looked far enough back to say "no earlier data".
+  if (!dated.some(entry => entry.day <= previousStart)) {
+    return complete ? 'No earlier data'
+      : `Not measured: only the newest ${formatDashboardCount(decisions.length)} runs were read`;
+  }
   const rate = (from: string, to: string) => {
     // Found 2026-11-02: the local store serves the verdict as 1 or 0, the Postgres path as true or false; both count,
     // and a run with no verdict (null) is left out.

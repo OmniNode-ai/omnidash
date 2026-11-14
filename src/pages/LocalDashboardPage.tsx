@@ -182,9 +182,14 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
     // already asked again (the newest run may have changed since), so its rows, its failure and its end of loading
     // are all dropped, however late it answers.
     let started = 0;
+    // OMN-24473: a walk in flight, counted only for viewer-initiated loads. A timer tick that supersedes it would
+    // make its end-of-walk publish never current, so a walk slower than the timer could never be shown at all; the
+    // tick waits instead. The viewer's own mount or Refresh still supersedes anything, as before.
+    let walking = 0;
     // Every read after the first keeps the last good rows on screen while it runs, and when it fails (F25).
     async function load(trigger: LocalLoadTrigger) {
       const mine = ++started;
+      if (trigger !== 'timer') walking += 1;
       const current = () => active && mine === started;
       const publish = (snapshot: BoundProjectionSnapshot) => {
         if (!current()) return;
@@ -258,6 +263,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
         }
       } finally {
         clearTimeout(catalogueTimer);
+        if (trigger !== 'timer') walking -= 1;
         if (current()) setLoading(false);
       }
     }
@@ -265,7 +271,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
     void load('mount');
     // The page's declared refresh interval (requirements: the dashboard shows the runtime's data as it changes), never under
     // the one refresh setting (OMN-23330 AC21).
-    const timer = setInterval(() => { void load('timer'); }, pageRefreshMs(document.dashboard.refresh_interval_seconds));
+    const timer = setInterval(() => { if (walking > 0) return; void load('timer'); }, pageRefreshMs(document.dashboard.refresh_interval_seconds));
     return () => {
       active = false;
       clearInterval(timer);
@@ -444,7 +450,8 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
         {pageName === 'overview' && !loading && !error && page && (() => {
           const recent = page.components.find(candidate => candidate.component_id === 'overview-recent-runs');
           const decisions = snapshots.find(snapshot => snapshot.topic === DELEGATION_DECISIONS_TOPIC);
-            return recent && decisions && !decisions.failure ? <SinceLastVisit decisions={rowsForLocalComponent(recent, snapshots)} now={now} onOpenFailures={() => navigate('/runs?status=failed')} /> : null;
+            return recent && decisions && !decisions.failure ? <SinceLastVisit decisions={rowsForLocalComponent(recent, snapshots)} now={now} capped={decisions.truncated === true}
+              onOpenFailures={() => navigate('/runs?status=failed')} /> : null;
         })()}
         {/* Live review 2026-10-25: no "Explore runs" button; the sidebar's Runs and Recent runs' "View all runs" lead there. */}
         {/* OMN-21166 AC63: the owning page's summary strip, part of its header, from the same served rows its panels
