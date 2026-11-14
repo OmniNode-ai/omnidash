@@ -6,7 +6,7 @@ title: "Overview dashboard stops re-reading the whole run history on every refre
 summary: >-
   Acceptance for OMN-24458. The local dashboard pages read the decisions exposure's newest page on every load and walk
   its since-pages only when the viewer opens the Runs page or presses Refresh there; a timer poll of any page never
-  walks. AC1 to AC3 are declared here, bound to vitest files. AC4 (the integrated reading of the h053 dashboard
+  walks. AC1 to AC3 are declared here, bound to two vitest files; the ticket text names them under src/, and they sit under tests/ because the evidence gate lays only tests/ paths over the merge base. AC4 (the integrated reading of the h053 dashboard
   service's requests in the dev runtime after the restart) is a runtime reading taken after install and is not a test,
   so it is not declared here.
 is_seam_ticket: false
@@ -50,5 +50,5 @@ dod_evidence:
     binds_ac: ["AC1", "AC2", "AC3"]
     checks:
       - check_type: "test_passes"
-        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx vitest run src/layout/local-page-loader.omn19998-walk-budget.test.ts src/pages/LocalDashboardPage.omn19998.poll.test.tsx"
+        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx vitest run tests/layout/local-page-loader.omn19998-walk-budget.test.ts tests/pages/LocalDashboardPage.omn19998.poll.test.tsx"
         cwd: "${OMNI_HOME}/omnidash"

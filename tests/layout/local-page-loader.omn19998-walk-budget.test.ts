@@ -12,9 +12,9 @@
 //   B6  a row without a run key merging into a wrong result
 //   B7  a timer poll with a previous snapshot failing to converge to the whole store in one request
 import { describe, expect, it } from 'vitest';
-import type { ProjectionSnapshot, ProtocolSnapshotSource } from '../data-source/protocol-snapshot-source';
-import type { BoundProjectionSnapshot, LocalPageLoadOptions } from './local-page-loader';
-import { DELEGATION_DECISIONS_TOPIC, loadLocalPageConfig, loadLocalPageSnapshots, mergeNewestDecisions } from './local-page-loader';
+import type { ProjectionSnapshot, ProtocolSnapshotSource } from '@/data-source/protocol-snapshot-source';
+import type { BoundProjectionSnapshot, LocalPageLoadOptions } from '@/layout/local-page-loader';
+import { DELEGATION_DECISIONS_TOPIC, loadLocalPageConfig, loadLocalPageSnapshots, mergeNewestDecisions } from '@/layout/local-page-loader';
 
 const BASE = Date.parse('2026-10-14T00:00:00Z');
 const page = loadLocalPageConfig('overview');

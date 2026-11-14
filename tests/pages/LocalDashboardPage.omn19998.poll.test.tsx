@@ -16,7 +16,7 @@ const harness = vi.hoisted(() => ({
 }));
 
 vi.mock('@/data-source', () => {
-  // The read node's decisions.v1, as src/layout/local-page-loader.omn19998-walk-budget.test.ts serves it: a request
+  // The read node's decisions.v1, as tests/layout/local-page-loader.omn19998-walk-budget.test.ts serves it: a request
   // with no `since` answers the newest 500 runs (truncated with next_cursor '0' when more exist); a `since` request
   // answers the next 500 after that cursor, truncated while more remain. Every other topic answers no rows.
   const BASE = Date.parse('2026-10-02T00:00:00Z');
@@ -79,7 +79,7 @@ vi.mock('@/data-source/exposure-census', () => ({
   }),
 }));
 
-import { LocalDashboardPage } from './LocalDashboardPage';
+import { LocalDashboardPage } from '@/pages/LocalDashboardPage';
 import { requestLocalPageRefresh } from '@/services/local-page-refresh';
 
 async function settle() {
