@@ -10,6 +10,23 @@ summary: >-
 is_seam_ticket: false
 interface_change: false
 interfaces_touched: []
+context:
+  ac_binding_provenance:
+    dod-omn24282-ac1-accepted-20261114t1145z:
+      - label: "AC1"
+        criterion_hash: "f7481e90f4d67db526ea2895952276db61406e72114e7733114de8f6e9b0fecb"
+        proposed_by: "lane=dod-closeout-bind-2026-11-14T1145Z-c0"
+        accepted_by: "lane=dod-closeout-accept-2026-11-14T1145Z-c0"
+    dod-omn24282-ac2-accepted-20261114t1145z:
+      - label: "AC2"
+        criterion_hash: "5fbf129031f17ffceffc1cf35991c4b28745cc6c5a7eee3863e82a773cef0b25"
+        proposed_by: "lane=dod-closeout-bind-2026-11-14T1145Z-c0"
+        accepted_by: "lane=dod-closeout-accept-2026-11-14T1145Z-c0"
+    dod-omn24282-ac3-accepted-20261114t1145z:
+      - label: "AC3"
+        criterion_hash: "773f2257a3f989d1035d68c0f259351ff18bfad9b82ddde80eaade21877a0bdd"
+        proposed_by: "lane=dod-closeout-bind-2026-11-14T1145Z-c0"
+        accepted_by: "lane=dod-closeout-accept-2026-11-14T1145Z-c0"
 requirements:
   - id: "req-omn24282-activity-tab-window"
     statement: >-
@@ -50,4 +67,28 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: "npm run test:e2e -- tests/e2e/activity-breakdown-window-label.omn24282.spec.ts --project=chromium --workers=1 --retries=0"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn24282-ac1-accepted-20261114t1145z"
+    description: "AC1 accepted binding (lane=dod-closeout-accept-2026-11-14T1145Z-c0): proposed by lane=dod-closeout-bind-2026-11-14T1145Z-c0, re-run green on omnidash origin/dev bad29e07 in a clean worktree on 2026-11-14 (1 passed); fails at the fix parent ba7933b5 and with src/pages/LocalDashboardPage.tsx of omnidash#511 reverted (the runs tab reads Runs per day900 runs)."
+    source: "manual"
+    binds_ac: ["AC1"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx playwright test tests/e2e/activity-breakdown-window-label.omn24282.spec.ts -g activity_breakdown_window_label --project=chromium --workers=1 --retries=0"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn24282-ac2-accepted-20261114t1145z"
+    description: "AC2 accepted binding (lane=dod-closeout-accept-2026-11-14T1145Z-c0): proposed by lane=dod-closeout-bind-2026-11-14T1145Z-c0, re-run green on omnidash origin/dev bad29e07 in a clean worktree on 2026-11-14 (1 passed); fails at the fix parent ba7933b5 and with src/pages/LocalDashboardPage.tsx of omnidash#511 reverted (the runs tab reads Runs per day900 runs)."
+    source: "manual"
+    binds_ac: ["AC2"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx playwright test tests/e2e/activity-breakdown-window-label.omn24282.spec.ts -g activity_breakdown_window_label --project=chromium --workers=1 --retries=0"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn24282-ac3-accepted-20261114t1145z"
+    description: "AC3 accepted binding (lane=dod-closeout-accept-2026-11-14T1145Z-c0): proposed by lane=dod-closeout-bind-2026-11-14T1145Z-c0, re-run green on omnidash origin/dev bad29e07 in a clean worktree on 2026-11-14 (1 passed); fails at the fix parent ba7933b5 and with src/pages/LocalDashboardPage.tsx of omnidash#511 reverted (the runs tab reads Runs per day900 runs)."
+    source: "manual"
+    binds_ac: ["AC3"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx playwright test tests/e2e/activity-breakdown-window-label.omn24282.spec.ts -g activity_breakdown_window_label --project=chromium --workers=1 --retries=0"
         cwd: "${OMNI_HOME}/omnidash"
