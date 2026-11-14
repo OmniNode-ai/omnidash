@@ -1,0 +1,53 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+schema_version: "1.0.0"
+ticket_id: "OMN-24472"
+title: "Delegation Evidence page stops re-reading the whole run history on every refresh"
+summary: >-
+  Acceptance for OMN-24472. The Delegation Evidence page's decisions read walks the exposure's since-pages once, on its
+  first load, and every later fetch (a timer poll) reads the newest page only and folds it into the runs already held.
+  AC1 to AC3 are declared here, bound to two vitest files under tests/ (the evidence gate lays only tests/ paths over
+  the merge base). AC4 (the integrated reading of the h053 dashboard service's requests in the dev runtime after the
+  restart) is a runtime reading taken after install and is not a test, so it is not declared here.
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-omn24472-evidence-timer-walk"
+    statement: >-
+      A timer poll of the Delegation Evidence decisions read sends one request with no since parameter and merges it
+      into the held runs; only the first load walks the run history.
+    acceptance:
+      - id: "AC1"
+        statement: >-
+          on a timer refresh the Delegation Evidence page reads one page of the run history and never its since-pages,
+          on a store of 120,896 runs -- falsifier: npx vitest run tests/services/event-dash-api.omn19998-timer-walk.test.ts
+      - id: "AC2"
+        statement: >-
+          the first open still reads every served run once and a read that fails or may have left a gap is marked
+          incomplete, never the whole history -- falsifier: npx vitest run
+          tests/services/event-dash-api.omn19998-timer-walk.test.ts
+      - id: "AC3"
+        statement: >-
+          the Delegation Evidence hook walks on first load and Refresh only, and a timer poll folds the newest page
+          into the held runs -- falsifier: npx vitest run tests/components/useDelegationDecisions.omn19998.test.tsx
+evidence_requirements: []
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
+dod_evidence:
+  - id: "dod-omn24472-evidence-timer-walk"
+    description: >-
+      AC1 to AC3 in two vitest files run together. The service file serves a 120,896-run store (201 requests for the
+      first load, the measured before), a poll with held runs making one request with no since parameter, a gap read as
+      incomplete, a failed newest page keeping the held runs stale, and an unusable held result falling back to the full
+      walk. The hook file renders the hook with a 1,000 ms interval, and the first fetch walks while the next two
+      ticks add exactly two requests, none with since. With src/services/event-dash-api.ts and
+      src/components/dashboard/event-dash/useEventDashData.ts restored from origin/dev the poll tests fail.
+    source: "manual"
+    binds_ac: ["AC1", "AC2", "AC3"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx vitest run tests/services/event-dash-api.omn19998-timer-walk.test.ts tests/components/useDelegationDecisions.omn19998.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
