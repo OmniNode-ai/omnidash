@@ -37,25 +37,18 @@ emergency_bypass:
   justification: ""
   follow_up_ticket_id: ""
 dod_evidence:
-  - id: "dod-omn24458-walk-budget-loader"
+  - id: "dod-omn24458-no-timer-walk"
     description: >-
-      AC1: the loader serves a 120,896-run store with one decisions request under the page's newest-page budget and
-      with 201 requests under the old unbounded walk (the failing control in the same test), and the newest-page merge
-      keeps every run once, marks a gap truncated and surfaces a failed page.
+      AC1 to AC3 in two vitest files run together. The loader file serves a 120,896-run store with one decisions request
+      under the page's newest-page budget and with 201 requests under the old unbounded walk (the failing control in the
+      same test), and checks the newest-page merge keeps every run once, marks a gap truncated and surfaces a failed
+      page. The page file checks a 7-day Overview render and its next two timer polls send no since-page request
+      against a 120,896-run store, that the Runs page walks on first load and Refresh only, and that a read that
+      stopped at the newest page draws no median run time while the 400-run control does. With src/pages/LocalDashboardPage.tsx
+      restored from origin/dev, three of the five page tests fail.
     source: "manual"
-    binds_ac: ["AC1"]
+    binds_ac: ["AC1", "AC2", "AC3"]
     checks:
       - check_type: "test_passes"
-        check_value: "npx vitest run src/layout/local-page-loader.omn19998-walk-budget.test.ts"
-        cwd: "${OMNI_HOME}/omnidash"
-  - id: "dod-omn24458-poll-page"
-    description: >-
-      AC2 and AC3: a 7-day Overview render and its next two timer polls send no since-page request against a
-      120,896-run store; the Runs page walks on first load and Refresh only, not on a timer poll; a read that stopped
-      at the newest page draws no median run time and the 400-run control does.
-    source: "manual"
-    binds_ac: ["AC2", "AC3"]
-    checks:
-      - check_type: "test_passes"
-        check_value: "npx vitest run src/pages/LocalDashboardPage.omn19998.poll.test.tsx"
+        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx vitest run src/layout/local-page-loader.omn19998-walk-budget.test.ts src/pages/LocalDashboardPage.omn19998.poll.test.tsx"
         cwd: "${OMNI_HOME}/omnidash"

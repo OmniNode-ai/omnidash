@@ -1,4 +1,4 @@
-import type { BoundProjectionSnapshot, LocalPageLoadOptions, LocalPageName } from './local-page-loader';
+import type { BoundProjectionSnapshot, LocalPageLoadOptions, LocalPageName } from '@/layout/local-page-loader';
 
 /** Why a local page started a load: the viewer opened it, pressed Refresh, or the page's timer fired. */
 export type LocalLoadTrigger = 'mount' | 'manual' | 'timer';

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // OMN-19998: a page's timer poll must never walk the run history (the decisions exposure's since-pages). The dev
 // runtime was loaded by ~180 requests a minute from the Overview page walking a 120,896-run store every 30 s poll;
-// decisionsWalkFor (src/layout/local-read-budget.ts) now bounds every load by its trigger. These tests hold the page
+// decisionsWalkFor (src/contracts/local-read-budget.ts) now bounds every load by its trigger. These tests hold the page
 // to that budget through its own timer, Refresh and first load, with the store the walk-budget loader tests serve.
 import { act, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';

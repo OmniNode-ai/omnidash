@@ -30,7 +30,7 @@ import { fieldTone } from '@/components/dashboard/field-identity';
 import { DestinationIcon } from '@/navigation/destination-icons';
 import type { AppPage } from '@/store/types';
 import { loadLocalPageConfig, loadLocalPageSnapshots, rowsForLocalComponent, resolveLocalPageEmptyState, withLastGood, newestRunId as newestWorkflowRunId, DELEGATION_DECISIONS_TOPIC, METERING_SUMMARY_TOPIC, RUN_TRACE_TOPIC, isPerRunTopic, LOCAL_READ_TIMEOUT_MS, type BoundProjectionSnapshot, type LocalPageDocument, type LocalPageName } from '@/layout/local-page-loader';
-import { decisionsWalkFor, type LocalLoadTrigger } from '@/layout/local-read-budget';
+import { decisionsWalkFor, type LocalLoadTrigger } from '@/contracts/local-read-budget';
 import { ModelTiersContext } from '@/components/dashboard/model-tiers';
 import { pageRefreshMs } from '@/theme/refresh';
 import { CARD_LINKS, MAPLE_WIDTHS, MeteringTotalCard, MetricCard, OUTSIDE_WINDOW_NOTE, OverviewDayPicker, type OverviewWindow, PendingState, RUNS_SECONDARY, RunChartsSlot, RunLocallyCard, RunRoutingSlot, RunsKpis, UsageKpis, captionRowFor, meteringRangeFor, meteringTokens, pickMeteringRow, readOverviewWindow, servedMeteringDays, writeOverviewWindow } from '@/pages/local/page-headline';
