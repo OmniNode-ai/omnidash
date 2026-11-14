@@ -548,15 +548,17 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
                       const tierRows = routing && routing.by_tier && typeof routing.by_tier === 'object' && Array.isArray((routing.by_tier as Row).tiers)
                         ? asRecords((routing.by_tier as Row).tiers as unknown[]).filter(tier => tier.tier_routed !== false).length : null;
                       const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
+                      // OMN-24282 (Lakshman 2026-11-14): the tabs say they hold a total, never "per day"; the
+                      // window is the dropdown's, so a tab shows its number alone.
                       return <DashboardTabs label="Overview charts" param="chart" tabs={[
-                        { id: 'runs', label: 'Runs per day', tone: 'var(--ds-field-runs-daily)', icon: <CalendarRange size={18} />,
+                        { id: 'runs', label: 'Total runs', tone: 'var(--ds-field-runs-daily)', icon: <CalendarRange size={18} />,
                           hint: Number.isFinite(runs) ? `${formatDashboardCount(runs)} runs` : 'Runs not recorded', panel: () => slice('runs', 'Runs per day', 'runs-daily') },
-                        { id: 'tokens', label: 'Tokens per day', tone: 'var(--ds-field-tokens-daily)', icon: <ChartArea size={18} />,
+                        { id: 'tokens', label: 'Total tokens', tone: 'var(--ds-field-tokens-daily)', icon: <ChartArea size={18} />,
                           hint: tokens !== null ? `${formatDashboardCount(tokens)} tokens` : 'Tokens not recorded', panel: () => slice('tokens', 'Tokens per day', 'tokens-daily') },
                         { id: 'models', label: 'Model usage', tone: 'var(--ds-field-runs-model)', icon: <Bot size={18} />,
-                          hint: models !== null ? `${plural(models, 'model')}${overviewWindow === 'all' ? '' : ' · all time'}` : 'Models not recorded', panel: () => renderGroup(['overview-model-usage']) },
+                          hint: models !== null ? plural(models, 'model') : 'Models not recorded', panel: () => renderGroup(['overview-model-usage']) },
                         { id: 'tiers', label: 'Tier mix', tone: 'var(--ds-field-tier-mix)', icon: <ChartPie size={18} />,
-                          hint: tierRows !== null ? `${plural(tierRows, 'tier')}${overviewWindow === 'all' ? '' : ' · all time'}` : 'Tiers not recorded', panel: () => renderGroup(['overview-tier-mix']) },
+                          hint: tierRows !== null ? plural(tierRows, 'tier') : 'Tiers not recorded', panel: () => renderGroup(['overview-tier-mix']) },
                       ]} />;
                     })()}
                     </Panel>

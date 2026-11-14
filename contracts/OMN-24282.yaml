@@ -1,0 +1,53 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+schema_version: "1.0.0"
+ticket_id: "OMN-24282"
+title: "The Overview Activity breakdown tabs name the time window their numbers cover, not per day"
+summary: >-
+  Acceptance for OMN-24282, copied from the live ticket on 2026-11-14. The Runs and Tokens tabs show the total for the
+  window chosen in the time dropdown; they are now headed "Total runs" and "Total tokens", show their number alone
+  (the dropdown names the window) and none reads "per day" (Amendment 1, approved 2026-11-14). All three criteria are bound to tests/e2e/activity-breakdown-window-label.omn24282.spec.ts.
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-omn24282-activity-tab-window"
+    statement: >-
+      Each Activity breakdown tab that shows a total says it is a total ("Total runs", "Total tokens") and shows the
+      number alone, never "per day" or a window suffix; the totals themselves are unchanged.
+    acceptance:
+      - id: "AC1"
+        statement: >-
+          the first two Activity breakdown tabs are headed "Total runs" and "Total tokens"; every tab (Total runs, Total
+          tokens, Model usage, Tier mix) shows its number alone, with no window suffix, for every dropdown choice
+          (amended 2026-11-14, Lakshman) -- falsifier: npx playwright test -g activity_breakdown_window_label, switching
+          the dropdown through every choice and failing unless the tabs read exactly "Total runs<n> runs" and "Total
+          tokens<n> tokens" and no tab contains "·"
+      - id: "AC2"
+        statement: >-
+          no tab presents a window total as a per-day figure: a tab whose number is a total does not read "per day"
+          beside that number -- falsifier: the same Playwright test fails if "per day" and the total appear in the same
+          tab
+      - id: "AC3"
+        statement: >-
+          the numbers themselves are unchanged for each window -- falsifier: the same Playwright test compares each
+          tab's number against the served fixture total for that window
+evidence_requirements: []
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
+dod_evidence:
+  - id: "dod-omn24282-activity-tab-window"
+    description: >-
+      AC1-AC3 in one Playwright test. It serves metering rows for every Overview window (all time 900 runs, today 5,
+      last 7 days 25, last 15 days 65, last 30 days 145, last 90 days 305, tokens four per run) and, for each dropdown
+      choice, checks that the Total runs and Total tokens tabs show exactly that window's total, and that no tab reads
+      per day or carries a window suffix. It fails on dev ba7933b5778923c51aab50054ed1f878a21e3e69 (the runs tab reads
+      "Runs per day900 runs" with All time chosen) and passes with the fix.
+    source: "manual"
+    binds_ac: ["AC1", "AC2", "AC3"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/activity-breakdown-window-label.omn24282.spec.ts --project=chromium --workers=1 --retries=0"
+        cwd: "${OMNI_HOME}/omnidash"

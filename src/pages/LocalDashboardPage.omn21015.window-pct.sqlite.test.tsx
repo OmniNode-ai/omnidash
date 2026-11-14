@@ -155,8 +155,10 @@ describe('OMN-21015 AC7: the Overview page', () => {
   const NOTE = 'All time: this panel does not follow the window above.';
   // OMN-22168: the four Overview charts are tabs, each drawn when its tab is chosen; the chart's panel is read after
   // choosing its tab.
+  // OMN-24282: the Total runs and Total tokens tabs say they hold a total; their charts keep the per-day headings.
+  const TAB_FOR: Record<string, string> = { 'Runs per day': 'Total runs', 'Tokens per day': 'Total tokens' };
   const article = (title: string) => {
-    const tab = screen.queryByRole('tab', { name: title });
+    const tab = screen.queryByRole('tab', { name: TAB_FOR[title] ?? title });
     if (tab) fireEvent.click(tab);
     return screen.getByRole('heading', { name: title }).closest('article') as HTMLElement;
   };
