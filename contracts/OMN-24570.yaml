@@ -1,0 +1,65 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+schema_version: "1.0.0"
+ticket_id: "OMN-24570"
+title: "Bring the dashboard back on bounded reads: first load and Refresh read one page"
+summary: >-
+  Acceptance for OMN-24570. No dashboard page reads the decisions run history on a first load, a Refresh or a timed
+  refresh: every page sends the same number of projection requests over a 600-run store and a 120,896-run store, and
+  older runs are read one page per press of a Load more runs control on the Runs page and the Delegation Evidence page.
+  AC1 to AC3 are declared here, bound to vitest files under tests/ (the evidence gate lays only tests/ paths over the
+  merge base). AC4 (the integrated reading of the h053 dashboard service over 30 minutes in the dev runtime, against the
+  10-minute reading with the dashboard off) is a runtime reading taken after the merged build is served and is not a
+  test, so it is not declared here.
+is_seam_ticket: true
+interface_change: false
+interfaces_touched:
+  - "topics"
+  - "public_api"
+  - "database"
+requirements:
+  - id: "req-omn24570-bounded-first-load"
+    statement: >-
+      A page's first load and Refresh read the newest page of the decisions exposure only, so the number of projection
+      requests a page sends is the same for any store size; older runs are read one page per Load more press.
+    acceptance:
+      - id: "AC1"
+        statement: >-
+          no dashboard page reads the run history on a first load, a Refresh or a timed refresh: every page sends the same
+          number of requests over a 600-run store and a 120,896-run store -- falsifier: npx vitest run
+          tests/pages/App.omn19998.request-budget.test.tsx
+      - id: "AC2"
+        statement: >-
+          the page loader and the Delegation Evidence read send exactly one request per Load more press and none for the
+          older runs on first load or refresh -- falsifier: npx vitest run
+          tests/layout/local-page-loader.omn19998-page-bound.test.ts
+          tests/services/event-dash-api.omn19998-first-load-bound.test.ts
+      - id: "AC3"
+        statement: >-
+          the Runs page and the Delegation Evidence page show a Load more runs control only while older runs remain, and
+          one press reads one page -- falsifier: npx vitest run
+          tests/pages/LocalDashboardPage.omn19998.load-more.test.tsx
+          tests/pages/DelegationEvidencePage.omn19998.load-more.test.tsx
+evidence_requirements: []
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
+dod_evidence:
+  - id: "dod-omn24570-bounded-first-load"
+    description: >-
+      AC1 to AC3 in five vitest files run together. The app request budget test mounts the real app at all 13 page paths
+      over a recording fake of the projection API serving a 600-run and a 120,896-run store and holds first-load and
+      refresh-cycle request counts equal for the two stores with no since parameter; on the head before this change it
+      fails on the Runs, Delegation Evidence, Event Bus and Experiments pages (203, 208, 202 and 203 first-load reads on
+      the large store against 5, 10, 4 and 5). The loader and service files hold one request per Load more press, a
+      failed or stuck page leaving the held runs unchanged, and a complete store sending none. The two page files hold the
+      control's presence, one request per press, and its absence once the walk ends. With
+      src/contracts/local-read-budget.ts, src/layout/local-page-loader.ts, src/services/event-dash-api.ts and
+      src/components/dashboard/event-dash/useEventDashData.ts restored from origin/dev these tests fail.
+    source: "manual"
+    binds_ac: ["AC1", "AC2", "AC3"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx vitest run tests/pages/App.omn19998.request-budget.test.tsx tests/layout/local-page-loader.omn19998-page-bound.test.ts tests/services/event-dash-api.omn19998-first-load-bound.test.ts tests/pages/LocalDashboardPage.omn19998.load-more.test.tsx tests/pages/DelegationEvidencePage.omn19998.load-more.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
