@@ -153,7 +153,7 @@ export function MeteringDayTable({ title, rows, columns }: {
  */
 export interface PanelSlice { key: string; title: string; concept: string }
 
-export function TableComponent({ component, snapshots, pageSize, syncUrl, columns, activityWindow, meteringView = 'all', slice }: {
+export function TableComponent({ component, snapshots, pageSize, syncUrl, columns, activityWindow, meteringView = 'all', slice, onLoadMore, loadingMore, loadMoreError }: {
   slice?: PanelSlice;
   component: LocalPageDocument['components'][number];
   snapshots: readonly BoundProjectionSnapshot[];
@@ -162,6 +162,10 @@ export function TableComponent({ component, snapshots, pageSize, syncUrl, column
   columns: readonly DeclaredColumn[];
   activityWindow: ActivityWindow;
   meteringView?: 'all' | 'kpis' | 'daily';
+  /** OMN-19998: the Runs page's Load more control, handed to its run list table only (the final RunsTable return). */
+  onLoadMore?: () => void;
+  loadingMore?: boolean;
+  loadMoreError?: string | null;
 }) {
   const [, navigate] = useLocation();
   const rows = rowsForLocalComponent(component, snapshots);
@@ -300,7 +304,8 @@ export function TableComponent({ component, snapshots, pageSize, syncUrl, column
   // one run of "Not recorded". A table that reads another exposure needs its own renderer named here.
   if (component.component_id === 'status-alerts') return <AlertsTable rows={rows} columns={columns} />;
   return rows.length === 0 ? <NoRunsYet /> : <RunsTable decisions={rows} sessions={lookup} pageSize={pageSize} syncUrl={syncUrl}
-    truncated={snapshots.find(snapshot => snapshot.topic === DELEGATION_DECISIONS_TOPIC)?.truncated} />;
+    truncated={snapshots.find(snapshot => snapshot.topic === DELEGATION_DECISIONS_TOPIC)?.truncated}
+    onLoadMore={onLoadMore} loadingMore={loadingMore} loadMoreError={loadMoreError} />;
 }
 
 /** Resolve a widget's bindings once per exposure; contracts can request several fields from one topic. */

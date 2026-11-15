@@ -173,6 +173,60 @@ export function mergeNewestDecisions(
     ? { ...rest, rows, rowCount: rows.length, truncated: true, nextCursor: previous.nextCursor }
     : { ...rest, rows, rowCount: rows.length };
 }
+
+/**
+ * OMN-19998: one page of older runs, the viewer's Load more control. No page walks the decisions history any more; a
+ * truncated snapshot it holds names where the walk stopped, and each press reads EXACTLY ONE more page from there:
+ * source.readSnapshot(DELEGATION_DECISIONS_TOPIC, { since: held.nextCursor }). A held snapshot that is not truncated
+ * (or carries no string cursor) has nothing older to read, so nothing is sent. The page's rows fold into held.rows by
+ * run key, newest first; truncated and nextCursor come from the page, a page that is not truncated ends the walk (no
+ * truncated, no nextCursor on the result), and the result keeps the rest of held's fields. A thrown read, a row with
+ * no run key, or a page whose nextCursor equals the cursor sent (stuck) returns held unchanged with a failure.
+ */
+export async function loadMoreDecisions(
+  source: ProtocolSnapshotSource,
+  held: BoundProjectionSnapshot,
+): Promise<{ snapshot: BoundProjectionSnapshot; failure?: ProjectionReadFailure }> {
+  if (held.truncated !== true || typeof held.nextCursor !== 'string') return { snapshot: held };
+  const cursor = held.nextCursor;
+  const read = source.readSnapshot?.(DELEGATION_DECISIONS_TOPIC, { since: cursor });
+  if (!read) {
+    return { snapshot: held, failure: { kind: 'error', message: `${DELEGATION_DECISIONS_TOPIC}: this source does not serve snapshots` } };
+  }
+  let page: ProjectionSnapshot;
+  try {
+    page = await read;
+  } catch (cause) {
+    const text = cause instanceof Error ? cause.message : String(cause);
+    return { snapshot: held, failure: { kind: 'error', message: `${DELEGATION_DECISIONS_TOPIC}: ${text}` } };
+  }
+  const byRun = new Map<string, unknown>();
+  const add = (rows: readonly unknown[]) => rows.every((row) => {
+    const key = runKey(row);
+    if (key === null) return false;
+    byRun.set(key, row);
+    return true;
+  });
+  if (!add(held.rows) || !add(page.rows)) {
+    return { snapshot: held, failure: { kind: 'error', message: `${DELEGATION_DECISIONS_TOPIC}: a row without a run key cannot be merged` } };
+  }
+  if (page.truncated === true && page.nextCursor === cursor) {
+    return { snapshot: held, failure: { kind: 'error', message: `${DELEGATION_DECISIONS_TOPIC}: the next page repeats its cursor` } };
+  }
+  const rows = [...byRun.values()].sort(newestFirst);
+  const { truncated: _truncated, nextCursor: _nextCursor, ...rest } = held;
+  return page.truncated === true
+    ? {
+      snapshot: {
+        ...rest,
+        rows,
+        rowCount: rows.length,
+        truncated: true,
+        ...(typeof page.nextCursor === 'string' ? { nextCursor: page.nextCursor } : {}),
+      },
+    }
+    : { snapshot: { ...rest, rows, rowCount: rows.length } };
+}
 /**
  * One run's steps in the order the delegate orchestrator assigned (OMN-19987). It is only ever read for one run,
  * with ?correlation_id=: unfiltered it serves every run's steps together, which no page shows.

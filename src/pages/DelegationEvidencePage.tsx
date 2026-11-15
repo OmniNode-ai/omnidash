@@ -39,6 +39,7 @@ import {
   useDelegationSavings,
   useDelegationSummary,
   useDelegationTokenUsage,
+  useLoadMoreDelegationDecisions,
   useMeteringSummary,
 } from '@/components/dashboard/event-dash/useEventDashData';
 import type {
@@ -889,6 +890,9 @@ export function DelegationEvidencePage() {
   const tokensQ = useDelegationTokenUsage();
   const savingsQ = useDelegationSavings();
   const decisionsQ = useDelegationDecisions();
+  // OMN-19998: no read of this page walks the run history, so the truncated decisions sample offers the viewer the
+  // Load more control: one press, one older page (useLoadMoreDelegationDecisions), below the runs table.
+  const { canLoadMore, loading, loadMore } = useLoadMoreDelegationDecisions();
 
   const summary = summaryQ.data?.rows[0];
   const fixtureNotice = summary ? fixtureNoticeOf(summary) : null;
@@ -969,7 +973,17 @@ export function DelegationEvidencePage() {
           <EvEmpty title="No delegation decisions" reason={plainUnservedReason(decisionsQ.data?.degradedReason)} note="No delegation decisions recorded yet." />
         </Panel>
       ) : (
-        <RecentDelegations decisions={decisions} available={samplesAvailable} />
+        <>
+          <RecentDelegations decisions={decisions} available={samplesAvailable} />
+          {/* OMN-19998: the Runs table's pager class; one press reads one more page of runs from the oldest end, and
+              the line never claims the rows shown are contiguous or the whole store. */}
+          {canLoadMore && (
+            <div className="local-dashboard-pager">
+              <button type="button" aria-label="Load more runs" disabled={loading} onClick={() => void loadMore()}>{loading ? 'Loading…' : 'Load more runs'}</button>
+              <span>Showing the runs read so far; each press reads one more page of runs from the oldest end.</span>
+            </div>
+          )}
+        </>
       )}
     </EvPageShell>
     </ModelTiersContext.Provider>

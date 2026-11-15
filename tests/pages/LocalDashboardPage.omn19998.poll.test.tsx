@@ -114,30 +114,35 @@ describe('OMN-19998: a page timer poll never walks the run history', () => {
     expect(decisionsCalls()).toHaveLength(3);
   });
 
-  it('the Runs page walks the history on first load only, not on a timer poll', async () => {
+  it('the Runs page reads only the newest page on first load, and a timer poll reads no more', async () => {
     harness.runs = 1_300;
     render(<LocalDashboardPage pageName="runs" />);
     await settle();
-    // The mount walk reads the newest page, then every since-page to the whole store: cursors '0', '500', '1000'
-    // (the last page short: 300 runs), 1,300 distinct runs in all — 4 decisions requests, as the walk-budget
-    // exemplar's store serves a 1,300-run store.
-    expect(sinceCursors()).toEqual(['0', '500', '1000']);
-    expect(screen.getByText(/^Runs 1–25 of 1\.3K$/)).toBeInTheDocument();
+    // OMN-19998: no load walks the run history any more — the mount reads exactly one newest page (500 of this
+    // 1,300-run store, marked truncated), where it used to walk since-pages '0', '500' and '1000' to the whole store.
+    // The older runs are the viewer's to read, one page per press (LocalDashboardPage.omn19998.load-more.test.tsx).
+    expect(sinceCursors()).toEqual([]);
+    expect(decisionsCalls()).toHaveLength(1);
+    expect(screen.getByText(/^Runs 1–25 of 500$/)).toBeInTheDocument();
     await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
-    // The timer poll reads only the newest page and merges it into the walked snapshot: no new since-page request,
-    // and the table still holds the full 1,300 runs.
-    expect(sinceCursors()).toEqual(['0', '500', '1000']);
-    expect(screen.getByText(/^Runs 1–25 of 1\.3K$/)).toBeInTheDocument();
+    // The timer poll reads only the newest page and merges it into the held snapshot: no since-page request, and the
+    // table keeps the 500 runs the mount read.
+    expect(sinceCursors()).toEqual([]);
+    expect(decisionsCalls()).toHaveLength(2);
+    expect(screen.getByText(/^Runs 1–25 of 500$/)).toBeInTheDocument();
   });
 
-  it('the Runs page Refresh button walks again', async () => {
+  it('the Runs page Refresh button reads the newest page again, not the history', async () => {
     harness.runs = 1_300;
     render(<LocalDashboardPage pageName="runs" />);
     await settle();
-    const walked = sinceCursors().length;
     await act(async () => { requestLocalPageRefresh(); await vi.advanceTimersByTimeAsync(0); });
-    // A manual refresh is the viewer asking for the whole history again (decisionsWalkFor returns the full walk).
-    expect(sinceCursors()).toHaveLength(walked * 2);
+    await settle();
+    // OMN-19998: a Refresh is bounded like every load (decisionsWalkFor passes the held snapshot as previous), so it
+    // re-reads the newest page and merges it into the rows the page holds; it no longer walks the history again.
+    expect(sinceCursors()).toEqual([]);
+    expect(decisionsCalls()).toHaveLength(2);
+    expect(screen.getByText(/^Runs 1–25 of 500$/)).toBeInTheDocument();
   });
 
   it('a read of 400 runs is the whole store: the Overview strip states the median run time (control for the next test)', async () => {
