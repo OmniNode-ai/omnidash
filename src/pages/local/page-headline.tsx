@@ -385,7 +385,8 @@ export function readOverviewWindow(search: string, now: number = Date.now()): { 
   if (window === null && day === null) return { ...all, malformed: false };
   if (window !== null && day !== null) return { ...all, malformed: true };
   if (window !== null) {
-    const days = WINDOW_DAYS[window];
+    // OMN-24616 AC5: an own key only, so ?window=constructor is malformed instead of a prototype function.
+    const days = Object.hasOwn(WINDOW_DAYS, window) ? WINDOW_DAYS[window] : undefined;
     if (days === undefined) return { ...all, malformed: true };
     return { overview: days === 1 ? 'today' : meteringRangeFor(days, now), activity: { kind: 'days', days }, malformed: false };
   }

@@ -61,6 +61,7 @@ import { Bot, FileJson, FileSpreadsheet, ListChecks, TriangleAlert } from '@/the
 import { fixed as fmtFixed } from '@/theme/format';
 // OMN-23330 AC25: this file's fixed inline styles are classes in DelegationEvidencePage.static.css.
 import './DelegationEvidencePage.static.css';
+import { csvCell } from '@/lib/csv-cell';
 
 /**
  * OMN-21166 AC72 pass 1: a rate on Evidence reads to one decimal, as Overview writes the same served rate (91.6%, not
@@ -829,11 +830,6 @@ const sampleOrder = (a: DelegationDecisionRow, b: DelegationDecisionRow) =>
 
 function downloadDecisionSample(rows: readonly DelegationDecisionRow[], format: 'csv' | 'json') {
   const keys = [...new Set(rows.flatMap(row => Object.keys(row as unknown as Record<string, unknown>)))];
-  const csvCell = (value: unknown) => {
-    const text = value == null ? '' : typeof value === 'object' ? JSON.stringify(value) : String(value);
-    const safe = /^[=+@-]/.test(text) ? `'${text}` : text;
-    return `"${safe.replace(/"/g, '""')}"`;
-  };
   const body = format === 'json' ? JSON.stringify(rows, null, 2)
     : [keys.map(csvCell).join(','), ...rows.map(row => keys.map(key => csvCell((row as unknown as Record<string, unknown>)[key])).join(','))].join('\r\n');
   const url = URL.createObjectURL(new Blob([body], { type: format === 'json' ? 'application/json' : 'text/csv;charset=utf-8' }));

@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'wouter';
 import { FrameLayout } from './components/frame/FrameLayout';
 import { Header } from './components/frame/Header';
+import { PageErrorBoundary } from './components/frame/PageErrorBoundary';
 import { useFrameStore } from './store/store';
 import { CommandPalette, useCommandPalette } from './components/dashboard/command-dispatch/CommandPalette';
 import type { AppPage } from './store/types';
@@ -91,7 +92,12 @@ export function App() {
             <p>This URL does not match a dashboard page.</p>
             <Link href="/overview">Go to Overview</Link>
           </main>
-        ) : <PageContent key={page} page={page} navigationCache={navigationCache.current} />}
+        ) : (
+          // OMN-24616 AC5: a page that throws while rendering shows its failure here; the frame stays.
+          <PageErrorBoundary key={page} title={PAGE_LABELS[page]}>
+            <PageContent page={page} navigationCache={navigationCache.current} />
+          </PageErrorBoundary>
+        )}
       </FrameLayout>
       {/* Assistant deferred for MVP at composition: its hooks never mount. */}
       {isOpen && <CommandPalette onClose={close} />}
