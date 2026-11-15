@@ -13,10 +13,18 @@ requirements:
   acceptance:
   - id: AC1
     statement: 'AC1: every job in .github/workflows runs on a literal ubuntu label, no non-comment workflow line names omnibase-ci or an OMNI_*_RUNS_ON_JSON variable, the Public Runner Placement job is unconditional, hosted and carries a positive control, the pre-commit hook pins the same core release, and CI Summary requires the job -- falsifier: uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/ci/test_public_runner_placement_omn19998.py -q --noconftest -p no:cacheprovider -c /dev/null fails at the merge base, where five workflow files fall back to the fleet and neither the job nor the hook exists.'
+- id: req-omn19998-compat-removal-omnidash
+  statement: 'RULING 2026-11-15T17:59:49Z: the compat repository is removed and nothing may use it. The workflow comment and the test docstring that named it no longer do.'
+  acceptance:
+  - id: AC2
+    statement: 'AC2: neither .github/workflows/workflow-script-refs.yml nor tests/ci/test_workflow_script_refs_exist.py names the retired compat package, and the detection pattern matches both spellings of it -- falsifier: uv run --no-project --python 3.12 --with pytest python -m pytest tests/ci/test_omnibase_compat_refs_removed_omn19998.py -q --noconftest -p no:cacheprovider -c /dev/null fails at the merge base, where both files still name it'
 evidence_requirements:
 - kind: tests
   description: The placement tests read every workflow file, the ci.yml job, .pre-commit-config.yaml and the CI Summary script.
   command: uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/ci/test_public_runner_placement_omn19998.py -q --noconftest -p no:cacheprovider -c /dev/null
+- kind: tests
+  description: The two edited files name no retired compat package; the pattern matches both spellings.
+  command: uv run --no-project --python 3.12 --with pytest python -m pytest tests/ci/test_omnibase_compat_refs_removed_omn19998.py -q --noconftest -p no:cacheprovider -c /dev/null
 emergency_bypass:
   enabled: false
   justification: ''
@@ -30,3 +38,11 @@ dod_evidence:
     check_value: uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/ci/test_public_runner_placement_omn19998.py -q --noconftest -p no:cacheprovider -c /dev/null
   binds_ac:
   - AC1
+- id: dod-omn19998-compat-removal-omnidash
+  description: 'AC2: the two edited files carry no reference to the retired compat package and the pattern has a positive control. At the merge base both file cases fail. No network or lab services are needed.'
+  source: manual
+  checks:
+  - check_type: test_passes
+    check_value: uv run --no-project --python 3.12 --with pytest python -m pytest tests/ci/test_omnibase_compat_refs_removed_omn19998.py -q --noconftest -p no:cacheprovider -c /dev/null
+  binds_ac:
+  - AC2
