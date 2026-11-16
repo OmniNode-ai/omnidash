@@ -1,0 +1,40 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+schema_version: "1.0.0"
+ticket_id: "OMN-24616"
+title: "The local dashboard pages compute figures from partial reads, hard-code lists and show one value several ways"
+summary: >-
+  Acceptance for OMN-24616, copied from the live ticket on 2026-11-16. This pull request delivers AC2 (every rate on
+  one scale, shown once as a percent), so AC2 is declared here and bound to its test. The other criteria are
+  declared by the pull requests for this ticket that deliver them.
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-omn24616-one-rate-scale"
+    statement: >-
+      Every rate on the local pages is held as a 0-1 share and written once as a percent, so a chart and its table
+      read the same number.
+    acceptance:
+      - id: "AC2"
+        statement: >-
+          every rate is held on one scale and shown once as a percent, so Pass rate per day reads 80.6% in both chart
+          and table -- falsifier: npx vitest rendering the table view of a 0.806 daily rate fails unless the cell
+          reads 80.6%
+evidence_requirements: []
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
+dod_evidence:
+  - id: "dod-omn24616-ac2"
+    description: >-
+      AC2 in pass-rate-scale.omn24616.test.tsx. It serves 25 passed and 6 failed runs on one day, asserts the run
+      summary holds the pass rate as a share (0.806), and opens Pass rate per day as a table: the chart label and the
+      table cell read 80.6% and no cell reads 8064.5%. Both tests fail on dev
+      d7278ead539f77122af0fcc83980e8bcd4bbac27.
+    source: "manual"
+    binds_ac: ["AC2"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm test -- --run src/pages/local/pass-rate-scale.omn24616.test.tsx"
