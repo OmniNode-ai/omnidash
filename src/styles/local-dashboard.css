@@ -478,6 +478,12 @@
 }
 .local-run-neighbours a:hover { border-color: var(--ds-link); color: var(--ds-link); }
 .local-run-neighbours a:focus-visible { outline: 2px solid var(--ds-brand); outline-offset: 2px; }
+/* OMN-24616 AC7: the way back to the Runs view a run was opened from, styled as the neighbour links beside it. */
+.local-run-back { display: inline-block; margin-left: 12px; padding: 4px 10px; border: 1px solid var(--ds-line);
+  border-radius: var(--ds-radius-control); background: var(--ds-surface-2); color: inherit; font-size: 0.8125rem;
+  text-decoration: none; vertical-align: middle; }
+.local-run-back:hover { border-color: var(--ds-link); color: var(--ds-link); }
+.local-run-back:focus-visible { outline: 2px solid var(--ds-brand); outline-offset: 2px; }
 /* A value in a run's row that sets its filter: it reads as the text it is, with a dotted line to say it can be pressed. */
 .local-cell-filter {
   padding: 0;

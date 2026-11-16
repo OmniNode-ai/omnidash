@@ -7,7 +7,9 @@
 //   E2 a malformed body, a malformed row or a degraded answer with no reason is read as an empty success
 //   E3 a failed trace read after a served decision says nothing was recorded for the run
 //   E4 a failed headline read shows "Not measured" with no reason
-import { act, cleanup, render, screen } from '@testing-library/react';
+//   E5 a failed trace read in an opened run says the prompt and answer were not recorded
+//   E6 a degraded answer with an empty rows array, or a nested row that is not an object, reads as served
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Router } from 'wouter';
 import { memoryLocation } from 'wouter/memory-location';
@@ -90,6 +92,8 @@ describe('OMN-24616 AC5: Delegation Evidence on the real read path', () => {
     expect(screen.getByText('malformed projection response: row 1 rows is missing')).toBeTruthy();
     expect(screen.getByText('malformed projection response: row 1 by_model is missing')).toBeTruthy();
     expect(screen.getAllByText('the runtime reported this read as degraded').length).toBeGreaterThanOrEqual(1);
+    // The summary and metering reads served {"rows":[null]}: refused by the row check, named on the headline cards.
+    expect(screen.getAllByText('Could not read: malformed projection response: row 1 is null').length).toBeGreaterThanOrEqual(4);
   });
 
   it('E3: a failed trace read after a served decision is a failed read, not "nothing was recorded"', async () => {
@@ -103,5 +107,26 @@ describe('OMN-24616 AC5: Delegation Evidence on the real read path', () => {
     await renderPage();
     expect(screen.getByText('Could not read the correlation trace')).toBeTruthy();
     expect(screen.queryByText('Nothing was recorded for this run yet.')).toBeNull();
+    // E5: the same failure in a run opened from Recent delegations.
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Open run run-1' })); });
+    for (let tick = 0; tick < 10; tick += 1) await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
+    expect(screen.getByText(/^Could not read the run:/)).toBeTruthy();
+    expect(screen.queryByText('Prompt and answer not recorded for this run')).toBeNull();
+  });
+
+  it('E6: a degraded answer with an empty rows array, and nested rows that are not objects, are failed reads', async () => {
+    network.serve = (topic) => {
+      if (topic.includes('decisions')) return { status: 200, body: { status: 'degraded', reason: 'table not found', rows: [] } };
+      if (topic.includes('model-routing')) return { status: 200, body: { rows: [{ total_delegations: 1, rows: [null] }] } };
+      if (topic.includes('token-usage')) return { status: 200, body: { rows: [{ by_model: [null] }] } };
+      if (topic.includes('quality-gate')) return { status: 200, body: { rows: [{ failure_categories: [null] }] } };
+      return { status: 200, body: { rows: [] } };
+    };
+    await renderPage();
+    expectNoEmptyNotes();
+    expect(screen.getAllByText('table not found').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('malformed projection response: row 1 rows item 1 is null')).toBeTruthy();
+    expect(screen.getByText('malformed projection response: row 1 by_model item 1 is null')).toBeTruthy();
+    expect(screen.getAllByText('malformed projection response: row 1 failure_categories item 1 is null').length).toBeGreaterThanOrEqual(1);
   });
 });

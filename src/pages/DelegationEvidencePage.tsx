@@ -125,7 +125,8 @@ export function plainUnservedReason(reason: string | null | undefined): string |
  */
 export function failedReadReason(data: { failureReason: string | null } | undefined, error: unknown): string | null {
   if (data === undefined) return error ? readFailureReason(error) : null;
-  return data.failureReason === null ? null : plainUnservedReason(data.failureReason) ?? data.failureReason;
+  if (data.failureReason === null || data.failureReason === undefined) return null;
+  return plainUnservedReason(data.failureReason) ?? data.failureReason;
 }
 
 export function readFailureReason(error: unknown): string {
@@ -491,7 +492,8 @@ export function FailureTriage({ decisions, available, complete = false }: { deci
   return <Panel title="FAILURE TRIAGE" sub="Where quality failed">
     <DashboardTabs label="Failure triage" param="triage" tabs={[
       { id: 'category', label: 'By category', tone: 'var(--ds-field-failures)', icon: <TriangleAlert size={18} />,
-        hint: failedChecks === null ? 'Failed checks not served' : `${formatDashboardCount(failedChecks)} failed checks`,
+        hint: failedReadReason(qualityQ.data, qualityQ.error) !== null ? 'Could not read the quality gate'
+          : failedChecks === null ? 'Failed checks not served' : `${formatDashboardCount(failedChecks)} failed checks`,
         panel: () => <div className="ev-triage-panel">
         {qualityQ.isLoading ? <EvEmpty title="Loading quality checks…" /> : !quality
           ? (failedReadReason(qualityQ.data, qualityQ.error) !== null
@@ -547,6 +549,7 @@ function SavingsPanel({ money, unavailable, headlineFailure = null }: {
   money: HeadlineMoney | null; unavailable: string; headlineFailure?: string | null;
 }) {
   const { data, isLoading, error } = useDelegationSavings();
+  const savingsFailure = data === undefined ? null : failedReadReason(data, null);
   // OMN-24616 AC5: the panel's figures come from the metering headline. When that read failed the panel still draws
   // its figures as Not measured (AC38: never $0) and says why; the savings topic lends only a fallback baseline name.
   if (!data) {
@@ -569,7 +572,9 @@ function SavingsPanel({ money, unavailable, headlineFailure = null }: {
   return (
     <Panel
       title="SAVINGS vs CLOUD BASELINE"
-      sub={baselineModel ? `Modelled vs ${String(baselineModel)}` : 'Baseline model not recorded'}
+      sub={baselineModel ? `Modelled vs ${String(baselineModel)}`
+        : headlineFailure !== null ? undefined
+        : savingsFailure !== null ? `Baseline model: ${savingsFailure}` : 'Baseline model not recorded'}
       right={pricing ? <span className="src-tag">{pricing}</span> : undefined}
     >
       {headlineFailure !== null && <p className="note" role="status">Could not read the metering summary: {headlineFailure}</p>}
@@ -578,7 +583,7 @@ function SavingsPanel({ money, unavailable, headlineFailure = null }: {
         <span className="note">cumulative savings (modelled) over {money ? servedCount(money.measuredRuns) : 'Not measured'} measured runs</span>
       </span>
       {/* The money source names the runs it leaves out where it serves them; the savings population cannot fill it. */}
-      <p className="note">{money?.basis ?? 'Unpriced runs not recorded'}</p>
+      {headlineFailure === null && <p className="note">{money?.basis ?? 'Unpriced runs not recorded'}</p>}
       <RankedBars label="Cost against the cloud baseline" unit="USD · baseline and saving modelled, local cost measured" table={{ nameHeader: 'Measure', valueHeader: 'Amount (USD)', valueFrom: 'display' }} order="desc" layout="vertical"
         items={[
           moneyBar('baseline', 'Cloud baseline cost', cloud, 'estimated', 'var(--ds-field-baseline)'),
@@ -595,6 +600,10 @@ function TokenUsage() {
   const modelColor = useModelColor();
   const { data, isLoading, error } = useDelegationTokenUsage();
   const failure = failedReadReason(data, error);
+  if (data && failure !== null && /^(topic not served|HTTP 40[34]|HTTP 503)/.test(data.failureReason ?? '')) {
+    // OMN-21166 part 13: a runtime that does not serve token usage gets one line, not an empty card; it names why.
+    return <p className="ev-unserved-line" role="status">Token usage by model: {failure}</p>;
+  }
   if (!data || failure !== null) {
     return <Panel title="TOKEN USAGE">{isLoading && !data
       ? <EvEmpty title="Loading…" />

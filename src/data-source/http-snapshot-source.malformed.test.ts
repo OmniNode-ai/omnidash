@@ -23,6 +23,8 @@ describe('HttpSnapshotSource refuses a malformed 200 body', () => {
     ['an envelope whose rows is not an array', { rows: 'nope', row_count: 3 }],
     ['a bare string', 'Internal error'],
     ['null', null],
+    ['an envelope with a null row', { rows: [null], row_count: 1 }],
+    ['a plain array holding a string', ['a row']],
   ] as const) {
     it(`readSnapshot refuses ${name}`, async () => {
       answer(body);
