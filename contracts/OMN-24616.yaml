@@ -4,9 +4,9 @@ schema_version: "1.0.0"
 ticket_id: "OMN-24616"
 title: "The local dashboard pages compute figures from partial reads, hard-code lists and show one value several ways"
 summary: >-
-  Acceptance for OMN-24616, copied from the live ticket on 2026-11-16. This pull request delivers AC2 (every rate on
-  one scale, shown once as a percent), so AC2 is declared here and bound to its test. The other criteria are
-  declared by the pull requests for this ticket that deliver them.
+  Acceptance for OMN-24616, copied from the live ticket on 2026-11-16. This pull request is stacked on the first one
+  (AC5 and AC7) and adds AC2 (every rate on one scale, shown once as a percent). AC2, AC5 and AC7 are declared here
+  and bound to their tests. AC1, AC3, AC4 and AC8 are in the third pull request for this ticket.
 is_seam_ticket: false
 interface_change: false
 interfaces_touched: []
@@ -21,6 +21,28 @@ requirements:
           every rate is held on one scale and shown once as a percent, so Pass rate per day reads 80.6% in both chart
           and table -- falsifier: npx vitest rendering the table view of a 0.806 daily rate fails unless the cell
           reads 80.6%
+  - id: "req-omn24616-served-reads-refuse-malformed-answers"
+    statement: >-
+      Every served response a local page reads is parsed, and a failed, refused or malformed read shows its reason and
+      no figure.
+    acceptance:
+      - id: "AC5"
+        statement: >-
+          every served response a local page reads is parsed with a schema before use; a failed, refused or malformed
+          read shows its reason and no figure, never Loading... or an empty success, and every local page sits in an
+          error boundary that names the failure -- falsifier: npx vitest serving a malformed body and a refusal for
+          each endpoint fails unless the page shows the reason, and npx playwright test opening
+          /overview?window=constructor fails if the page goes blank
+  - id: "req-omn24616-runs-export-and-way-back"
+    statement: >-
+      Runs export writes no cell a spreadsheet would run as a formula, and a run opened from Runs leads back to the
+      same Runs view.
+    acceptance:
+      - id: "AC7"
+        statement: >-
+          Runs export neutralises cells that start with =, +, - or @, and a run opened from Runs shows a Runs
+          breadcrumb and a back link to the same Runs view -- falsifier: npx vitest exporting =HYPERLINK(x) fails
+          unless the cell is neutralised, and npx playwright test fails unless the back link returns to Runs
 evidence_requirements: []
 emergency_bypass:
   enabled: false
@@ -38,3 +60,30 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: "npm test -- --run src/pages/local/pass-rate-scale.omn24616.test.tsx"
+  - id: "dod-omn24616-ac7"
+    description: >-
+      AC7 in three test files. csv-cell.test.ts and runs-sort-export.csv.test.ts export a served =HYPERLINK(x) and
+      cells starting with +, - and @, and assert each is neutralised. runs-back-link.omn24616.test.tsx opens a run
+      from a filtered Runs view and asserts the run address carries that view, the Workflow breadcrumb links Runs
+      back to it, a crafted from parameter (another site, another page) is refused, and a run opened elsewhere shows
+      no Runs crumb. Three of its four tests fail on dev d7278ead539f77122af0fcc83980e8bcd4bbac27.
+    source: "manual"
+    binds_ac: ["AC7"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm test -- --run src/theme/format/csv-cell.test.ts src/pages/local/runs-sort-export.csv.test.ts src/navigation/runs-back-link.omn24616.test.tsx"
+  - id: "dod-omn24616-ac5"
+    description: >-
+      AC5 per endpoint. http-snapshot-source.malformed.test.ts refuses a snapshot body that is neither an envelope nor
+      rows; served-responses.omn24616.test.ts refuses a projection body without a rows array, a log-entries body that
+      is not rows, and a provider row with a malformed field, each with its reason, and still reads a well-formed one;
+      DelegationEvidencePage.omn24616-failed-read.test.tsx renders the page with every read failed and finds the
+      reason on each panel and no Loading or "recorded yet"; model-keys.omn24616-malformed.test.tsx shows the provider
+      table's malformed-row reason and no provider; App.page-error-boundary.test.tsx keeps the frame up when a page
+      throws; page-headline.window-param.test.ts reads a constructor window key as no window. The malformed-body and
+      failed-read tests fail on dev.
+    source: "manual"
+    binds_ac: ["AC5"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm test -- --run src/data-source/http-snapshot-source.malformed.test.ts tests/services/served-responses.omn24616.test.ts src/pages/DelegationEvidencePage.omn24616-failed-read.test.tsx tests/pages/local/model-keys.omn24616-malformed.test.tsx src/App.page-error-boundary.test.tsx src/pages/local/page-headline.window-param.test.ts"

@@ -21,7 +21,30 @@ export function writeWorkflowRunId(search: string, runId: string | null): string
   return params.toString();
 }
 
-/** The Workflow address for one run: the link a run in the Runs list carries. */
-export function workflowHref(runId: string): string {
-  return `${PAGE_PATHS['local-workflow']}?${writeWorkflowRunId('', runId)}`;
+const FROM_PARAM = 'from';
+
+/**
+ * OMN-24616 AC7: the Runs view a run was opened from, or null. Only this dashboard's own Runs address, bare or with its
+ * query, is accepted, so a crafted value can send no one to another site or another page.
+ */
+export function runsViewOrNull(from: string | null | undefined): string | null {
+  if (typeof from !== 'string') return null;
+  const runs = PAGE_PATHS['local-runs'];
+  return from === runs || from.startsWith(`${runs}?`) ? from : null;
+}
+
+/** OMN-24616 AC7: the Runs view the Workflow address says it was opened from, or null. */
+export function readWorkflowFrom(search: string): string | null {
+  return runsViewOrNull(new URLSearchParams(search).get(FROM_PARAM));
+}
+
+/**
+ * The Workflow address for one run: the link a run in the Runs list carries. OMN-24616 AC7: opened from Runs, it also
+ * carries that Runs view, so the run page can lead back to the same filters.
+ */
+export function workflowHref(runId: string, from?: string | null): string {
+  const params = new URLSearchParams(writeWorkflowRunId('', runId));
+  const view = runsViewOrNull(from);
+  if (view !== null) params.set(FROM_PARAM, view);
+  return `${PAGE_PATHS['local-workflow']}?${params.toString()}`;
 }

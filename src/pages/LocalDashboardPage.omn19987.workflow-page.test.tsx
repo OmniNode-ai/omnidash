@@ -216,7 +216,8 @@ describe('OMN-19987 / OMN-21015 AC9: the Workflow page shows one run, asked for 
     window.history.replaceState(null, '', '/runs');
     render(<Pages />);
     const link = await screen.findByRole('link', { name: OLDER });
-    expect(link.getAttribute('href')).toBe(`/workflow?correlation_id=${OLDER}`);
+    // OMN-24616 AC7: opened from Runs, the run address carries the Runs view it came from.
+    expect(link.getAttribute('href')).toBe(`/workflow?correlation_id=${OLDER}&from=%2Fruns`);
     fireEvent.click(link);
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Run path' })).toBeInTheDocument());
     await shows(`task of ${OLDER}`);

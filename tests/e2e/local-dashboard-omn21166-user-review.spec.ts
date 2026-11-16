@@ -40,7 +40,8 @@ test('long failures have keyboard-accessible full text and searches keep exact r
   await expect(trigger).toHaveCount(1);
   await trigger.focus();
   await expect(page.getByRole('tooltip')).toContainText(detail.trim());
-  await expect(page.locator('.local-runs-wrap a')).toHaveAttribute('href', '/workflow?correlation_id=chart-run-b');
+  // OMN-24616 AC7: opened from Runs, the run address also carries the Runs view it came from.
+  await expect(page.locator('.local-runs-wrap a')).toHaveAttribute('href', /^\/workflow\?correlation_id=chart-run-b&from=%2Fruns(%3F|$)/);
   await page.screenshot({ path: info.outputPath('run-failure-details.png') });
   await page.keyboard.press('Escape');
   await expect(page.getByRole('tooltip')).toHaveCount(0);
