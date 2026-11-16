@@ -509,8 +509,8 @@ function RunWindowKpis({ runs, decisions, label, comparisonEnabled, now, days }:
       ? delta(comparison.runsDelta, value => `${value} runs`) : 'Previous window not fully returned';
   const medianDelta = !comparisonEnabled ? null
     : comparison?.previousComplete && comparison.medianLatencyDelta !== null
-      ? delta(comparison.medianLatencyDelta, value => `${fmtFixed((value / 1000), 2)} s`) : 'Previous window not fully returned';
-  const median = summaryNow.medianLatency === null ? 'Not recorded' : duration(summaryNow.medianLatency);
+      ? delta(comparison.medianLatencyDelta, value => `${value < 0 ? '-' : ''}${duration(Math.abs(value))}`) : 'Previous window not fully returned';
+  const median = summaryNow.medianLatency === null ? NOT_MEASURED : duration(summaryNow.medianLatency);
   return (
     <section className="ins-window-kpis ins-window-kpis--runs" aria-label={`Runs in ${selectedLabel}`}>
       <KpiTile tone="count" label="Runs" value={count(summaryNow.runs)}><small>{selectedLabel} · counted from the returned decision rows</small>{runDelta !== null && <small>{runDelta}</small>}</KpiTile>

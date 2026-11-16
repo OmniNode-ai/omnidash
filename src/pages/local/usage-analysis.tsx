@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Link } from 'wouter';
 
-import { formatDashboardUsd, formatShare } from '@/theme/format';
+import { formatDashboardUsd, formatDuration, formatShare, NOT_MEASURED } from '@/theme/format';
 import { ColumnTip, DashboardTabs, DashboardToggle, DataTable, EmptyState, InfoTip, Panel, PanelTitle } from '@/theme/design-system/components';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { tierLabel } from '@/pages/local/plain-text';
@@ -14,7 +14,7 @@ import {
 import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
 import { BarSparkline, CostQualityScatter, DayAxis, breakableName } from '@/theme/design-system/charts';
 import { ChartLine, Gauge, Layers, LayoutGrid } from '@/theme/design-system/icons';
-import { fixed as fmtFixed, localeDate as fmtLocaleDate } from '@/theme/format';
+import { localeDate as fmtLocaleDate } from '@/theme/format';
 
 /**
  * OMN-21166 part 29 (revision 6) AC194 and AC195: Usage analysis, read from the latest N served decisions (Langfuse's
@@ -55,7 +55,7 @@ type SortKey = 'name' | 'runs' | 'spend' | 'pass' | 'p50' | 'p95' | 'last';
 const dayLabel = (day: string) => fmtLocaleDate(new Date(`${day}T00:00:00Z`), 'en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 // OMN-22168 (Jonah 2026-11-06): every dollar figure follows the display rule (two decimals, up to four under $1, cut).
 const usd = (value: number) => formatDashboardUsd(value);
-const latency = (value: number | null) => (value === null ? 'Not recorded' : value >= 1000 ? `${fmtFixed((value / 1000), 1)} s` : `${Math.round(value)} ms`);
+const latency = (value: number | null) => (value === null ? NOT_MEASURED : formatDuration(value));
 const passText = (totals: Totals) => (totals.verdicts === 0 ? 'No verdicts' : `${formatShare(totals.passed / totals.verdicts)} (${totals.passed} of ${totals.verdicts})`);
 const money = (value: number | null, measured: number, runs: number) => (value === null ? 'Not measured' : `${formatDashboardUsd(value)} (${measured} of ${runs} measured)`);
 const lastText = (value: string | null) => (value === null ? 'Not recorded'

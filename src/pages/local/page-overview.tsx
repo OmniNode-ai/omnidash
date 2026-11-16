@@ -1,6 +1,6 @@
 // OMN-23330 AC24: part of the local pages, split out of LocalDashboardPage.tsx (3,926 lines) with no change to what
 // any page draws. Overview panels: model usage, the status strip, the Daily trend and the tier mix.
-import { formatDashboardCount, formatFullCount } from '@/theme/format';
+import { formatDashboardCount, formatDuration, formatFullCount } from '@/theme/format';
 import { useId, useState, type CSSProperties } from 'react';
 import { tierColor, tierConcept } from '@/lib/dashboard-colors';
 import { Link } from 'wouter';
@@ -14,7 +14,7 @@ import { toInsightRuns } from '@/pages/local/insights';
 import { ChartReadout, DayAxis, MultiLinePlot, RankedBars, SeriesToggles, useSeriesToggles } from '@/theme/design-system/charts';
 import { ConceptIcon, FieldIcon } from '@/components/dashboard/FieldIcon';
 import { TierLegend, useModelColor, useModelIdentityStyle } from '@/components/dashboard/model-tiers';
-import { fixed as fmtFixed, localeDate as fmtLocaleDate } from '@/theme/format';
+import { localeDate as fmtLocaleDate } from '@/theme/format';
 import { formatShare } from '@/theme/format';
 import { type Row, asRecords, isMissing, recorded, recordedCount, utcDay } from '@/pages/local/page-shared';
 import { type OverviewWindow, pickMeteringRow } from '@/pages/local/page-headline';
@@ -89,7 +89,7 @@ export function OverviewStatusStrip({ env, decisions, routing, now, window = 'al
   const latencies = inWindow.map(run => run.latencyMs).filter((value): value is number => value !== null).sort((a, b) => a - b);
   const median = latencies.length === 0 ? null : latencies[Math.floor((latencies.length - 1) / 2)]!;
   // Lakshman 2026-11-04 ("colourful and remove 500 latest runs text"): the median reads plainly, without the read's size.
-  const speed = median === null ? null : `Median run ${fmtFixed((median / 1000), 1)} s`;
+  const speed = median === null ? null : `Median run ${formatDuration(median)}`;
   const reason = state === 'attention' && env && !isMissing(env.reason) ? String(env.reason) : null;
   return (
     <div className="local-overview-status" role="status" aria-label="Runtime status" data-state={state}>
