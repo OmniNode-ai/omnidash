@@ -1,0 +1,44 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+schema_version: "1.0.0"
+ticket_id: "OMN-24616"
+title: "The local dashboard pages compute figures from partial reads, hard-code lists and show one value several ways"
+summary: >-
+  Acceptance for OMN-24616, copied from the live ticket on 2026-11-16. This pull request delivers AC7 whole (Runs
+  export neutralises formula cells, and a run opened from Runs has a Runs breadcrumb back to the same Runs view), so
+  AC7 is declared here and bound to its tests. It also carries part of AC5 (malformed snapshot reads refused, page
+  error boundaries, malformed window keys), which is not declared because AC5 also needs the schema checks on the
+  model and event reads; the pull request that completes AC5 declares it. AC1 to AC4, AC6 and AC8 follow in later
+  pull requests for this ticket.
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-omn24616-runs-export-and-way-back"
+    statement: >-
+      Runs export writes no cell a spreadsheet would run as a formula, and a run opened from Runs leads back to the
+      same Runs view.
+    acceptance:
+      - id: "AC7"
+        statement: >-
+          Runs export neutralises cells that start with =, +, - or @, and a run opened from Runs shows a Runs
+          breadcrumb and a back link to the same Runs view -- falsifier: npx vitest exporting =HYPERLINK(x) fails
+          unless the cell is neutralised, and npx playwright test fails unless the back link returns to Runs
+evidence_requirements: []
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
+dod_evidence:
+  - id: "dod-omn24616-ac7"
+    description: >-
+      AC7 in three test files. csv-cell.test.ts and runs-sort-export.csv.test.ts export a served =HYPERLINK(x) and
+      cells starting with +, - and @, and assert each is neutralised. runs-back-link.omn24616.test.tsx opens a run
+      from a filtered Runs view and asserts the run address carries that view, the Workflow breadcrumb links Runs
+      back to it, a crafted from parameter (another site, another page) is refused, and a run opened elsewhere shows
+      no Runs crumb. Three of its four tests fail on dev d7278ead539f77122af0fcc83980e8bcd4bbac27.
+    source: "manual"
+    binds_ac: ["AC7"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm test -- --run src/theme/format/csv-cell.test.ts src/pages/local/runs-sort-export.csv.test.ts src/navigation/runs-back-link.omn24616.test.tsx"
