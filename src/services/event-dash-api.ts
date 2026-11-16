@@ -64,6 +64,13 @@ export interface ProjectionResult<T> {
   isDegraded: boolean;
   /** Backend-supplied reason when degraded/unknown (verbatim), else null. */
   degradedReason: string | null;
+  /**
+   * OMN-24616 AC5: why this read failed -- refused, an HTTP error, a malformed body or row, a topic not served, or a
+   * read the runtime reported degraded with no rows -- and null only when the runtime served rows. isDegraded is also
+   * true for stale served rows, so a page decides "failed" from this field alone and never shows an empty-success
+   * note beside it.
+   */
+  failureReason: string | null;
   /** OMN-21970: true when the exposure said this answer is one truncated page, so the rows are not all there is. */
   truncated?: boolean;
   /** OMN-21970: where the next page starts (next_cursor), passed back as `since`. */
@@ -113,55 +120,47 @@ function describeRows(body: Record<string, unknown>): string {
   return `rows is ${rows === null ? "null" : `a ${typeof rows}`}`;
 }
 
+/** A read that served nothing usable: no rows, its reason in both the degraded and the failure field. */
+function failedRead<T>(reason: string, freshness: ProjectionFreshness = "unknown"): ProjectionResult<T> {
+  return { rows: [], rowCount: 0, freshness, latestEventAt: null, isDegraded: true, degradedReason: reason, failureReason: reason };
+}
+
+/** A value's kind in words, for a malformed-row reason. */
+function describeValue(value: unknown): string {
+  if (value === undefined) return "missing";
+  if (value === null) return "null";
+  if (Array.isArray(value)) return "a list";
+  return `a ${typeof value}`;
+}
+
 function normalize<T>(body: unknown): ProjectionResult<T> {
   if (!isRecord(body)) {
-    return {
-      rows: [],
-      rowCount: 0,
-      freshness: "unknown",
-      latestEventAt: null,
-      isDegraded: true,
-      degradedReason: "malformed projection response",
-    };
+    return failedRead<T>("malformed projection response");
   }
   const env = body as RawEnvelope;
 
   // Shape 3: unknown topic.
   const errStr = asString(env.error);
   if (errStr) {
-    return {
-      rows: [],
-      rowCount: 0,
-      freshness: "unknown",
-      latestEventAt: null,
-      isDegraded: true,
-      degradedReason: `topic not served (${errStr})`,
-    };
+    return failedRead<T>(`topic not served (${errStr})`);
   }
 
   // Shape 2: degraded status with a reason (no rows array).
   const statusStr = asString(env.status);
   if (statusStr === "degraded" && !Array.isArray(env.rows)) {
-    return {
-      rows: [],
-      rowCount: 0,
-      freshness: "degraded",
-      latestEventAt: null,
-      isDegraded: true,
-      degradedReason: asString(env.reason),
-    };
+    // A degraded answer with no reason text is still a failed read (review 517 finding 4).
+    const reason = asString(env.reason);
+    return { ...failedRead<T>(reason ?? "the runtime reported this read as degraded", "degraded"), degradedReason: reason };
   }
 
   // OMN-24616 AC5: anything else without a rows array is a malformed answer, never an empty, successful read.
   if (!Array.isArray(env.rows)) {
-    return {
-      rows: [],
-      rowCount: 0,
-      freshness: "unknown",
-      latestEventAt: null,
-      isDegraded: true,
-      degradedReason: `malformed projection response: ${describeRows(body)}`,
-    };
+    return failedRead<T>(`malformed projection response: ${describeRows(body)}`);
+  }
+  // OMN-24616 AC5: every row is an object before any page reads a field from it (review 517 finding 6).
+  const badRow = env.rows.findIndex((row) => !isRecord(row));
+  if (badRow >= 0) {
+    return failedRead<T>(`malformed projection response: row ${badRow + 1} is ${describeValue(env.rows[badRow])}`);
   }
 
   // Shape 1: served envelope.
@@ -176,6 +175,7 @@ function normalize<T>(body: unknown): ProjectionResult<T> {
     latestEventAt: asString(env.latest_event_at),
     isDegraded: freshness !== "fresh",
     degradedReason: null,
+    failureReason: null,
     ...(env.truncated === true ? { truncated: true } : {}),
     ...(typeof env.next_cursor === "string" ? { nextCursor: env.next_cursor } : {}),
   };
@@ -184,6 +184,7 @@ function normalize<T>(body: unknown): ProjectionResult<T> {
 async function readProjection<T>(
   topic: string,
   query?: string,
+  rowProblem?: (row: Record<string, unknown>) => string | null,
 ): Promise<ProjectionResult<T>> {
   // OMN-18159. The ONE place a projection read decides its tenant, so a widget
   // cannot forget to scope and no widget carries a copy of which exposures are
@@ -193,14 +194,7 @@ async function readProjection<T>(
   // sees names the missing configuration instead of a bare status code.
   const tenant = await resolveTenantFor(topic);
   if (tenant.kind === 'refused') {
-    return {
-      rows: [],
-      rowCount: 0,
-      freshness: 'unknown',
-      latestEventAt: null,
-      isDegraded: true,
-      degradedReason: tenant.reason,
-    };
+    return failedRead<T>(tenant.reason);
   }
   const scopedQuery =
     tenant.kind === 'scoped'
@@ -212,17 +206,22 @@ async function readProjection<T>(
   const url = projectionUrl(topic, scopedQuery);
   const res = await authedFetch(url);
   if (!res.ok) {
-    return {
-      rows: [],
-      rowCount: 0,
-      freshness: "unknown",
-      latestEventAt: null,
-      isDegraded: true,
-      degradedReason: `HTTP ${res.status}`,
-    };
+    return failedRead<T>(`HTTP ${res.status}`);
   }
   const body = (await res.json().catch(() => null)) as unknown;
-  return normalize<T>(body);
+  const result = normalize<T>(body);
+  if (result.failureReason !== null || rowProblem === undefined) return result;
+  // OMN-24616 AC5: the topic's own row shape, checked before a page reads it (review 517 finding 6).
+  for (const [index, row] of (result.rows as unknown as Record<string, unknown>[]).entries()) {
+    const problem = rowProblem(row);
+    if (problem !== null) return failedRead<T>(`malformed projection response: row ${index + 1} ${problem}`);
+  }
+  return result;
+}
+
+/** A row field that must be a list, for a topic's row check. */
+function listField(field: string): (row: Record<string, unknown>) => string | null {
+  return (row) => (Array.isArray(row[field]) ? null : `${field} is ${describeValue(row[field])}`);
 }
 
 // ── Delegation row types (decisions / summary / routing / quality / savings / tokens) ──
@@ -564,11 +563,11 @@ export async function fetchDelegationDecisions(
   held?: ProjectionResult<DelegationDecisionRow>,
 ): Promise<ProjectionResult<DelegationDecisionRow>> {
   const first = await readProjection<DelegationDecisionRow>(TOPICS.delegationDecisions);
-  if (held !== undefined && held.rows.length > 0 && held.degradedReason === null) {
+  if (held !== undefined && held.rows.length > 0 && held.failureReason === null) {
     return mergeNewestDecisionResults(held, first);
   }
   if (first.truncated !== true || typeof first.nextCursor !== "string") {
-    return { ...first, complete: first.truncated !== true && first.degradedReason === null };
+    return { ...first, complete: first.truncated !== true && first.failureReason === null };
   }
   const byRun = new Map<string, DelegationDecisionRow>();
   const add = (rows: readonly DelegationDecisionRow[]) => rows.every(row => {
@@ -582,7 +581,7 @@ export async function fetchDelegationDecisions(
   let complete = false;
   for (let pages = 0; pages < DECISIONS_WALK_MAX_PAGES; pages += 1) {
     const next = await readProjection<DelegationDecisionRow>(TOPICS.delegationDecisions, `since=${encodeURIComponent(cursor)}`);
-    if (next.degradedReason !== null && next.rows.length === 0) break;
+    if (next.failureReason !== null) break;
     if (!add(next.rows)) break;
     if (next.truncated !== true) { complete = true; break; }
     if (typeof next.nextCursor !== "string" || next.nextCursor === cursor) break;
@@ -598,7 +597,7 @@ export const fetchDelegationSummary = (): Promise<
 
 export const fetchDelegationModelRouting = (): Promise<
   ProjectionResult<ModelRoutingRow>
-> => readProjection<ModelRoutingRow>(TOPICS.delegationModelRouting);
+> => readProjection<ModelRoutingRow>(TOPICS.delegationModelRouting, undefined, listField("rows"));
 
 export const fetchDelegationQualityGate = (): Promise<
   ProjectionResult<QualityGateRow>
@@ -622,7 +621,7 @@ export const fetchDelegationSavings = (): Promise<
 
 export const fetchDelegationTokenUsage = (): Promise<
   ProjectionResult<TokenUsageRow>
-> => readProjection<TokenUsageRow>(TOPICS.delegationTokenUsage);
+> => readProjection<TokenUsageRow>(TOPICS.delegationTokenUsage, undefined, listField("by_model"));
 
 export const fetchCorrelationTrace = (
   correlationId: string,
@@ -750,17 +749,16 @@ export const LOG_ENTRIES_ENDPOINT = "/api/projections/log-entries";
 
 /**
  * Fetch log entries for a single correlation_id from the log-entries projection
- * endpoint. Returns an empty array on any HTTP error or in file-source mode
- * (where no proxy is registered — the caller may catch the error and surface a
- * graceful empty state).
+ * endpoint. OMN-24616 AC5: an HTTP error or a malformed body is refused with its reason, never read as "no log
+ * entries"; the caller shows the reason.
  */
 export async function fetchLogEntries(
   correlationId: string,
 ): Promise<LogEntryRow[]> {
   const url = `${LOG_ENTRIES_ENDPOINT}?correlation_id=${encodeURIComponent(correlationId)}`;
   const res = await authedFetch(url);
-  if (!res.ok) return [];
-  const body = (await res.json()) as unknown;
+  if (!res.ok) throw new Error(`log-entries read failed: HTTP ${res.status}`);
+  const body = (await res.json().catch(() => null)) as unknown;
   if (Array.isArray(body)) return body as LogEntryRow[];
   if (isRecord(body) && Array.isArray(body.rows)) return body.rows as LogEntryRow[];
   // OMN-24616 AC5: a 200 that is not rows is refused with its reason, never read as "no log entries".

@@ -4,8 +4,8 @@ import { MODEL_CALL_TIME_LABEL, RUN_DURATION, runDurationOf } from '@/contracts/
 import { formatDashboardCount } from '@/theme/format';
 import { readableTime } from '@/theme/format';
 import { useId, useState, type CSSProperties, type ReactNode } from 'react';
-import { Link } from 'wouter';
-import { normaliseRunId, workflowHref } from '@/navigation/workflow-url-state';
+import { Link, useSearch } from 'wouter';
+import { normaliseRunId, readWorkflowFrom, workflowHref } from '@/navigation/workflow-url-state';
 import { RunTimingChart, runTimingBars } from '@/theme/design-system/charts';
 import { breakableName } from '@/theme/design-system/charts';
 import { Badge, EmptyState, Fact, FactList, StatusChip } from '@/theme/design-system/components';
@@ -96,6 +96,12 @@ export function RunSummary({ decision, showAnalysis = false }: { decision: Row |
   );
 }
 
+/** OMN-24616 AC7: opened from Runs, the run page has a back link to that same Runs view, filters included. */
+function RunsBackLink() {
+  const from = readWorkflowFrom(useSearch());
+  return from === null ? null : <Link href={from} className="local-run-back">Back to Runs</Link>;
+}
+
 /**
  * OMN-21015: from one run to the next. A run that is among the served runs links to the run before it and the run
  * after it in the list's newest-first order, so the runs are walked without going back to the list. Only a run with a
@@ -103,6 +109,8 @@ export function RunSummary({ decision, showAnalysis = false }: { decision: Row |
  * has no place between them and gets no links.
  */
 export function RunNeighbours({ decisions, runId }: { decisions: readonly unknown[]; runId: string }) {
+  // OMN-24616 AC7: stepping to a neighbouring run keeps the Runs view it was opened from (review 517 finding 11).
+  const from = readWorkflowFrom(useSearch());
   const ids = newestFirst(decisions)
     .map((run) => run.correlation_id)
     .filter((id): id is string => typeof id === 'string' && id !== '');
@@ -114,8 +122,8 @@ export function RunNeighbours({ decisions, runId }: { decisions: readonly unknow
   return (
     // It stands in the run's title line, beside the id it leads away from, so it is a span with the navigation role.
     <span className="local-run-neighbours" role="navigation" aria-label="Neighbouring runs">
-      {newer !== undefined && <Link href={workflowHref(newer)} title={newer} data-direction="newer">Newer run</Link>}
-      {older !== undefined && <Link href={workflowHref(older)} title={older} data-direction="older">Older run</Link>}
+      {newer !== undefined && <Link href={workflowHref(newer, from)} title={newer} data-direction="newer">Newer run</Link>}
+      {older !== undefined && <Link href={workflowHref(older, from)} title={older} data-direction="older">Older run</Link>}
     </span>
   );
 }
@@ -350,6 +358,7 @@ export function WorkflowRun({ component, snapshots, requested, onOpen }: Workflo
         Run <code>{runId}</code>
         {requested === null && <span className="local-run-tag">newest run</span>}
         <CopyButton text={runId} label="Copy the run id" />
+        <RunsBackLink />
         <RunNeighbours decisions={decisions} runId={runId} />
       </p>
       {decisionsNotServed}

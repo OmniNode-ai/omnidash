@@ -5,8 +5,8 @@ import { shortId } from '@/components/dashboard/event-dash/primitives';
 import { useEffect, useId, useState } from 'react';
 import { ChartEmpty, ChartHeading, ChartTable } from './frame';
 import { SwatchToggles } from './legend';
-import { Link } from 'wouter';
-import { workflowHref } from '@/navigation/workflow-url-state';
+import { Link, useLocation, useSearch } from 'wouter';
+import { runsViewToCarry, workflowHref } from '@/navigation/workflow-url-state';
 import { useThemeName } from '@/theme';
 import { EChart } from './echarts-lazy';
 import { tokenHex, tokenValue, type TokenName } from '@/theme/design-system/color';
@@ -67,6 +67,9 @@ export function dayAxisLabel(day: string) {
 
 function RunInspector({ runs, describe }: { runs: readonly ListedRun[]; describe?: (run: ListedRun) => string }) {
   const [selected, setSelected] = useState('');
+  // OMN-24616 AC7: opened from a chart on Runs, the run page leads back to that Runs view (review 517 finding 11).
+  const [path] = useLocation();
+  const backTo = runsViewToCarry(path, useSearch());
   const id = useId();
   const run = runs.find(item => item.id === selected);
   // The full identity, never a bar index, survives a refresh. A removed run clears selection.
@@ -80,7 +83,7 @@ function RunInspector({ runs, describe }: { runs: readonly ListedRun[]; describe
     </select>
     {run && <div className="local-chart-detail" role="status"><span><strong>{run.model}</strong><span className="local-chart-detail-id">{run.id}</span></span>
       <span>{describe ? describe(run) : `${run.status} · ${point(run.duration).served === null ? 'Not recorded' : formatDuration(point(run.duration).served)}`}</span>
-      <Link href={workflowHref(run.id!)} className="local-chart-open">Open run</Link></div>}
+      <Link href={workflowHref(run.id!, backTo)} className="local-chart-open">Open run</Link></div>}
   </div>;
 }
 

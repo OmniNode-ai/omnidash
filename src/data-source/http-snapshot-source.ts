@@ -46,9 +46,15 @@ function describeBody(body: unknown): string {
 
 /** The rows of a served body: an envelope's rows or a plain array; anything else is refused. */
 function rowsOf(topic: string, body: unknown): { rows: unknown[]; envelope: ProjectionEnvelope | null } {
-  if (isProjectionEnvelope(body)) return { rows: body.rows, envelope: body };
-  if (Array.isArray(body)) return { rows: body, envelope: null };
-  throw new ProjectionReadMalformedError(topic, describeBody(body));
+  const read = isProjectionEnvelope(body) ? { rows: body.rows, envelope: body }
+    : Array.isArray(body) ? { rows: body, envelope: null } : null;
+  if (read === null) throw new ProjectionReadMalformedError(topic, describeBody(body));
+  const bad = read.rows.findIndex(row => typeof row !== 'object' || row === null || Array.isArray(row));
+  if (bad >= 0) {
+    const row = read.rows[bad];
+    throw new ProjectionReadMalformedError(topic, `row ${bad + 1} is ${row === null ? 'null' : Array.isArray(row) ? 'a list' : `a ${typeof row}`}`);
+  }
+  return read;
 }
 
 async function refusalOf(topic: string, res: Response): Promise<ProjectionReadRefusedError> {

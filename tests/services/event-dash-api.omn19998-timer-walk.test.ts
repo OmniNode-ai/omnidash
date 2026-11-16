@@ -143,7 +143,8 @@ describe('OMN-24472: a page timer poll never walks the run history', () => {
     const degraded = serve(1200);
     const full = await fetchDelegationDecisions();
     const beforeDegraded = degraded.urls.length;
-    await fetchDelegationDecisions({ ...full, degradedReason: 'HTTP 503', isDegraded: true });
+    // OMN-24616 AC5: a failed read carries its failureReason, as readProjection's failure path writes it.
+    await fetchDelegationDecisions({ ...full, degradedReason: 'HTTP 503', failureReason: 'HTTP 503', isDegraded: true });
     expect(degraded.urls.length - beforeDegraded).toBeGreaterThan(1);
   });
 

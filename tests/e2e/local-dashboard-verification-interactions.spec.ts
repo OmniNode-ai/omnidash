@@ -39,14 +39,14 @@ test('a refresh inserting a newer run preserves the selected full run id', async
   const chart = page.getByRole('figure', { name: 'Duration per run', exact: true });
   const selector = chart.getByLabel('Inspect run', { exact: true });
   await selector.selectOption(runIds[1]);
-  await expect(chart.getByRole('link', { name: 'Open run', exact: true })).toHaveAttribute('href', /correlation_id=chart-run-b$/);
+  await expect(chart.getByRole('link', { name: 'Open run', exact: true })).toHaveAttribute('href', /correlation_id=chart-run-b&from=%2Fruns(%3F[^&]*)?$/);
   decisions.unshift({ ...decisions[0], correlation_id: 'newer-run', created_at: '2026-10-18T10:00:00Z', written_at: '2026-10-18T10:00:00Z' });
   const response = page.waitForResponse(r => r.url().includes(encodeURIComponent(topic)) || r.url().includes('/' + topic));
   await page.getByRole('button', { name: 'Refresh', exact: true }).click();
   await response;
   await expect(selector.getByRole('option', { name: /newer-run/ })).toHaveCount(1);
   await expect(selector).toHaveValue(runIds[1]);
-  await expect(chart.getByRole('link', { name: 'Open run', exact: true })).toHaveAttribute('href', /correlation_id=chart-run-b$/);
+  await expect(chart.getByRole('link', { name: 'Open run', exact: true })).toHaveAttribute('href', /correlation_id=chart-run-b&from=%2Fruns(%3F[^&]*)?$/);
   await page.screenshot({ path: info.outputPath('inserted-refresh-identity.png'), fullPage: true });
 });
 
@@ -57,7 +57,7 @@ test('filtering the selected run off the chart clears it without selecting anoth
   const chart = page.getByRole('figure', { name: 'Duration per run', exact: true });
   const selector = chart.getByLabel('Inspect run', { exact: true });
   await selector.selectOption(runIds[1]);
-  await expect(chart.getByRole('link', { name: 'Open run', exact: true })).toHaveAttribute('href', /correlation_id=chart-run-b$/);
+  await expect(chart.getByRole('link', { name: 'Open run', exact: true })).toHaveAttribute('href', /correlation_id=chart-run-b&from=%2Fruns(%3F[^&]*)?$/);
   await pickFilter(page, 'Model', 'model-a');
   await expect(selector.getByRole('option')).toHaveCount(3);
   await expect(selector).toHaveValue('');
@@ -79,7 +79,7 @@ test('chart run identity stays exact after pagination removes the selection', as
   // OMN-21166 part 18 AC118: the run charts sit first inside Runs' one closed "More analysis"; open it first.
   const chart = page.getByRole('figure', { name: 'Duration per run', exact: true });
   await chart.getByLabel('Inspect run', { exact: true }).selectOption('paged-run-1');
-  await expect(chart.getByRole('link', { name: 'Open run', exact: true })).toHaveAttribute('href', /correlation_id=paged-run-1$/);
+  await expect(chart.getByRole('link', { name: 'Open run', exact: true })).toHaveAttribute('href', /correlation_id=paged-run-1&from=%2Fruns(%3F[^&]*)?$/);
   await page.getByRole('button', { name: 'Next page', exact: true }).click();
   // An off-page run must never silently turn into that page's row at the same index.
   await expect(chart.getByLabel('Inspect run', { exact: true })).toHaveValue('');
@@ -95,7 +95,7 @@ test('a reordered refresh never substitutes another id for the selected run', as
   // OMN-21166 part 18 AC118: the run charts sit first inside Runs' one closed "More analysis"; open it first.
   const chart = page.getByRole('figure', { name: 'Duration per run', exact: true });
   await chart.getByLabel('Inspect run', { exact: true }).selectOption(runIds[1]);
-  await expect(chart.getByRole('link', { name: 'Open run', exact: true })).toHaveAttribute('href', /correlation_id=chart-run-b$/);
+  await expect(chart.getByRole('link', { name: 'Open run', exact: true })).toHaveAttribute('href', /correlation_id=chart-run-b&from=%2Fruns(%3F[^&]*)?$/);
   [decisions[0].created_at, decisions[1].created_at] = [decisions[1].created_at, decisions[0].created_at];
   [decisions[0].written_at, decisions[1].written_at] = [decisions[1].written_at, decisions[0].written_at];
   const refreshed = page.waitForResponse(response => response.url().includes(encodeURIComponent(topic)) || response.url().includes('/' + topic));
@@ -103,7 +103,7 @@ test('a reordered refresh never substitutes another id for the selected run', as
   await refreshed;
   await expect(chart.getByLabel('Inspect run', { exact: true }).getByRole('option').nth(1)).toHaveAttribute('value', runIds[1]);
   await expect(chart.getByLabel('Inspect run', { exact: true })).toHaveValue(runIds[1]);
-  await expect(chart.getByRole('link', { name: 'Open run', exact: true })).toHaveAttribute('href', /correlation_id=chart-run-b$/);
+  await expect(chart.getByRole('link', { name: 'Open run', exact: true })).toHaveAttribute('href', /correlation_id=chart-run-b&from=%2Fruns(%3F[^&]*)?$/);
   await page.screenshot({ path: info.outputPath('reordered-refreshed-identity.png'), fullPage: true });
 });
 
@@ -120,7 +120,7 @@ test('a run with no recorded id is absent from the chart selector and cannot rep
   expect(await options.evaluateAll(elements => elements.map(element => (element as HTMLOptionElement).value))).toEqual(['', runIds[1]]);
   await expect(chart.getByRole('link', { name: 'Open run', exact: true })).toHaveCount(0);
   await chart.getByLabel('Inspect run', { exact: true }).selectOption(runIds[1]);
-  await expect(chart.getByRole('link', { name: 'Open run', exact: true })).toHaveAttribute('href', /correlation_id=chart-run-b$/);
+  await expect(chart.getByRole('link', { name: 'Open run', exact: true })).toHaveAttribute('href', /correlation_id=chart-run-b&from=%2Fruns(%3F[^&]*)?$/);
   await page.screenshot({ path: info.outputPath('missing-id-selector.png') });
 });
 

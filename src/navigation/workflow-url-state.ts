@@ -39,6 +39,16 @@ export function readWorkflowFrom(search: string): string | null {
 }
 
 /**
+ * OMN-24616 AC7: the Runs view a run link on the current page carries -- the Runs view itself on Runs, or the view the
+ * Workflow address was opened from, so Newer run and Older run keep the way back -- and null anywhere else.
+ */
+export function runsViewToCarry(path: string, search: string): string | null {
+  if (path === PAGE_PATHS['local-runs']) return runsViewOrNull(search ? `${path}?${search}` : path);
+  if (path === PAGE_PATHS['local-workflow']) return readWorkflowFrom(search);
+  return null;
+}
+
+/**
  * The Workflow address for one run: the link a run in the Runs list carries. OMN-24616 AC7: opened from Runs, it also
  * carries that Runs view, so the run page can lead back to the same filters.
  */
