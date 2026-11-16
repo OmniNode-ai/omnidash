@@ -10,7 +10,7 @@ for (const scenario of [
   { name: 'decision with empty session baseline', decision: 'recorded-baseline', session: null, expected: 'recorded-baseline' },
   { name: 'decision with older conflicting session baseline', decision: 'recorded-baseline', session: 'older-baseline', expected: 'recorded-baseline' },
   { name: 'legacy session baseline only', decision: null, session: 'legacy-baseline', expected: 'legacy-baseline' },
-  { name: 'neither record provides a baseline', decision: null, session: null, expected: 'Not recorded' },
+  { name: 'neither record provides a baseline', decision: null, session: null, expected: 'Not measured' },
 ]) {
   test(`Runs baseline provenance: ${scenario.name}`, async ({ page }, info) => {
     await serveCharts(page, { ...chartRows,

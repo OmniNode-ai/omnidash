@@ -1,5 +1,6 @@
 // OMN-23330 AC24: part of the local pages, split out of LocalDashboardPage.tsx (3,926 lines) with no change to what
 // any page draws. The Workflow page: one run, its summary, neighbours and timeline.
+import { MODEL_CALL_TIME_LABEL, RUN_DURATION, runDurationOf } from '@/contracts/run-duration';
 import { formatDashboardCount } from '@/theme/format';
 import { readableTime } from '@/theme/format';
 import { useId, useState, type CSSProperties, type ReactNode } from 'react';
@@ -55,18 +56,19 @@ export function RunSummary({ decision, showAnalysis = false }: { decision: Row |
     ['Requested model', recorded(decision.requested_model)],
     // The three timings stand together and last, in the order their bars are drawn in under the tiles.
     ['Queue wait', duration(decision.queue_wait_ms)],
-    ['Execution', duration(decision.execution_ms)],
-    ['Duration', duration(decision.latency_ms)],
+    // OMN-24615 AC8: Duration is the served run duration, as on Runs; the model call is its own, named tile.
+    [RUN_DURATION.label, duration(runDurationOf(decision))],
+    [MODEL_CALL_TIME_LABEL, duration(decision.latency_ms)],
   ];
   const timings = [
     { key: 'queue_wait_ms', label: 'Queue wait', value: decision.queue_wait_ms },
-    { key: 'execution_ms', label: 'Execution', value: decision.execution_ms },
-    { key: 'latency_ms', label: 'Duration', value: decision.latency_ms },
+    { key: RUN_DURATION.column, label: RUN_DURATION.label, value: runDurationOf(decision) },
+    { key: 'latency_ms', label: MODEL_CALL_TIME_LABEL, value: decision.latency_ms },
   ];
   // OMN-21166 part 13: a chart whose one drawable bar is the total duration repeats the Duration tile, so it is left
   // out; the chart's own rule decides what is drawable, and the tiles still say Not recorded for the rest.
   const drawable = runTimingBars(timings).bars;
-  const onlyTotal = drawable.length === 1 && drawable[0]!.label === 'Duration';
+  const onlyTotal = drawable.length === 1 && drawable[0]!.label === RUN_DURATION.label;
   const timingChart = onlyTotal ? null : <RunTimingChart timings={timings} compact={showAnalysis} />;
   return (
     <section aria-label="Run summary" className="local-dashboard-run-summary">
@@ -75,7 +77,7 @@ export function RunSummary({ decision, showAnalysis = false }: { decision: Row |
           { name: 'Run outcome', concept: 'run-outcome', labels: ['Cause', 'Quality score', 'Required bar', 'Task type'], help: 'Final status and quality result from this run’s decision record.' },
           { name: 'Routing and model', concept: 'routing-model', labels: ['Model', 'Requested model', 'Backend', 'Host', 'Route tier'], help: 'The requested model and recorded answering route. Not recorded means the run supplied no value.' },
           { name: 'Tokens and completion', concept: 'tokens-completion', labels: ['Tokens in', 'Tokens out', 'Finish reason', 'Truncated', 'Escalations'], help: 'Token counts and completion details recorded for this run.' },
-          { name: 'Timing', concept: 'timing', labels: ['Queue wait', 'Execution', 'Duration'], help: 'Recorded decision timings. Duration here is the latency field; timeline steps carry separate durations.' },
+          { name: 'Timing', concept: 'timing', labels: ['Queue wait', RUN_DURATION.label, MODEL_CALL_TIME_LABEL], help: 'Recorded decision timings. Duration is the whole run (execution_ms) and Model call time the model call (latency_ms); timeline steps carry separate durations.' },
         ].map(({ name, concept, labels, help }, index) => <section key={name} className="local-run-summary-group" data-field-tone={concept} tabIndex={0} aria-labelledby={`${sectionId}-${index}`} aria-describedby={`${sectionId}-${index}-help`}>
           <h3 className="local-dashboard-caption" id={`${sectionId}-${index}`}><ConceptIcon concept={concept} label={name} size={16} />{name}</h3>
           <FactList>

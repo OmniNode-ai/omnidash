@@ -16,7 +16,7 @@ function decision(id: string, writtenAt: string, extra: Record<string, unknown> 
     model_name: 'Qwen3.8-27B',
     quality_gate_passed: true,
     quality_gate_detail: 'completed',
-    latency_ms: 813,
+    execution_ms: 813,
     tokens_input: 162,
     tokens_output: 52,
     task_type: 'summarization',
@@ -41,7 +41,7 @@ function session(id: string, createdAt: string, extra: Record<string, unknown> =
     savings_usd: 0.844000,
     usage_source: 'measured',
     task_type: 'summarization',
-    latency_ms: 813,
+    execution_ms: 813,
     tokens_to_compliance: 214,
     ...extra,
   };

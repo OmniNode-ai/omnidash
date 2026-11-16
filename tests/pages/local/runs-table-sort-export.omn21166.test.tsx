@@ -9,7 +9,7 @@ import { RunsTable } from '@/pages/LocalDashboardPage';
 
 const decision = (id: string, latency: number | null, model: string, minute: number) => ({
   correlation_id: id, written_at: `2026-10-25T10:${String(minute).padStart(2, '0')}:00Z`, created_at: `2026-10-25T10:${String(minute).padStart(2, '0')}:00Z`,
-  quality_gate_passed: true, model_name: model, latency_ms: latency, tokens_input: 10, tokens_output: 2, task_type: 'document',
+  quality_gate_passed: true, model_name: model, execution_ms: latency, tokens_input: 10, tokens_output: 2, task_type: 'document',
 });
 const DECISIONS = [decision('run-a', 900, 'local-a', 1), decision('run-b', 10000, 'local-a', 2), decision('run-c', null, 'cloud-b', 3), decision('run-d', 45000, 'local-a', 4)];
 

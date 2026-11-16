@@ -1,5 +1,6 @@
 // OMN-23330 AC24: part of the local pages, split out of LocalDashboardPage.tsx (3,926 lines) with no change to what
 // any page draws. The Runs page: the run list, its table, filters and column widths.
+import { runDurationOf } from '@/contracts/run-duration';
 import { formatDashboardCount } from '@/theme/format';
 import { readableTime } from '@/theme/format';
 import { exactMs } from '@/theme/format';
@@ -51,7 +52,7 @@ export function LastRunCard({ decisions, sessions, now = Date.now(), compact = f
     // OMN-20162's columns: the backend and host of the attempt that accepted the run.
     ['Backend', recorded(last.backend_id)],
     ['Host', recorded(last.host)],
-    ['Duration', duration(last.latency_ms)],
+    ['Duration', duration(runDurationOf(last))],
     ['Tokens in', recordedTokens(last.tokens_input)],
     ['Tokens out', recordedTokens(last.tokens_output)],
     ['Cost', costOf(session, last)],
@@ -105,7 +106,7 @@ export function OverviewRunPreview({ decisions, sessions, now = Date.now() }: Ru
     <ul className="local-run-preview" aria-label="Recent runs preview">{recent.map((run, index) => <li key={String(run.correlation_id ?? index)}>
       {/* OMN-21166 Maple grid: one dense row per run (id, model, outcome, duration, age); the whole id is the link's name. */}
       <div><RunRef id={run.correlation_id} short /><span data-field-tone="model" data-field-unavailable={isUnavailableField(modelOrUnknown(run.model_name))}>{modelOrUnknown(run.model_name)}</span></div>
-      <div><OutcomePill value={statusOf(run)} /><span data-field-tone="duration" data-field-unavailable={isMissing(run.latency_ms)}>{duration(run.latency_ms)}</span><span className="local-dashboard-caption">{age(run.written_at, now)}</span></div>
+      <div><OutcomePill value={statusOf(run)} /><span data-field-tone="duration" data-field-unavailable={isMissing(runDurationOf(run))}>{duration(runDurationOf(run))}</span><span className="local-dashboard-caption">{age(run.written_at, now)}</span></div>
     </li>)}</ul>
     <p className="local-dashboard-caption local-recent-footer"><Link href={PAGE_PATHS['local-runs']}>View all runs <ArrowUpRight size={12} aria-hidden="true" /></Link></p>
     <details className="local-recent-fields">
@@ -136,7 +137,7 @@ export function RecentRunsTable({ decisions, sessions, now = Date.now(), showCha
   const listed: ListedRun[] = recent.map(run => ({
     id: typeof run.correlation_id === 'string' && run.correlation_id !== '' ? run.correlation_id : null,
     status: statusOf(run), model: modelOrUnknown(run.model_name),
-    duration: run.latency_ms, tokensIn: run.tokens_input, tokensOut: run.tokens_output,
+    duration: runDurationOf(run), tokensIn: run.tokens_input, tokensOut: run.tokens_output,
   }));
   return (
     <>
@@ -178,7 +179,7 @@ export function RecentRunsTable({ decisions, sessions, now = Date.now(), showCha
               <td data-label="Status"><span className="local-recent-value"><OutcomePill value={statusOf(decision)} /></span></td>
               <td className="local-dashboard-cell-token" data-label="Model"><span className="local-recent-value">{modelOrUnknown(decision.model_name)}</span></td>
               <td data-label="Cost"><span className="local-recent-value">{costOf(session, decision)}</span></td>
-              <td data-label="Duration"><span className="local-recent-value">{duration(decision.latency_ms)}</span></td>
+              <td data-label="Duration"><span className="local-recent-value">{duration(runDurationOf(decision))}</span></td>
               <td data-label="Age"><span className="local-recent-value">{age(decision.written_at, now)}</span></td>
               <td data-label="Cause">{causeOf(decision) === 'none' ? <NoFailure /> : <span className="local-recent-value" data-failure-cause={causeOf(decision)} title={failureDetailOf(decision) ? failureDetailText(failureDetailOf(decision)!) : undefined}>{displayCauseOf(decision)}</span>}</td>
               <td data-label="Task type"><span className="local-recent-value">{isMissing(decision.task_type) ? recorded(decision.task_type) : taskLabel(decision.task_type)}</span></td>
@@ -410,7 +411,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
     id: typeof run.correlation_id === 'string' && run.correlation_id !== '' ? run.correlation_id : null,
     status: statusOf(run),
     model: modelOrUnknown(run.model_name),
-    duration: run.latency_ms,
+    duration: runDurationOf(run),
     tokensIn: run.tokens_input,
     tokensOut: run.tokens_output,
     cost: isMissing(bySession.get(String(run.correlation_id))?.local_cost_usd) ? run.cost_usd : bySession.get(String(run.correlation_id))?.local_cost_usd,
@@ -667,7 +668,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                       ? <>Not measured<span className="local-visually-hidden">{saving.slice('Not measured'.length)}</span></> : saving}{!isMissing(basis) && String(basis) !== 'measured' && !saving.startsWith('Not measured') && <span className="local-run-tag">{String(basis)}</span>}</td>
                   <td data-label="Baseline model" className="local-dashboard-cell-token" data-extra="">{recorded(baselineOf(run))}</td>
                   <td data-label="Basis" data-extra="">{recorded(basis)}</td>
-                  <td data-label="Duration" data-num="" title={exactMs(run.latency_ms)}>{duration(run.latency_ms)}</td>
+                  <td data-label="Duration" data-num="" title={exactMs(runDurationOf(run))}>{duration(runDurationOf(run))}</td>
                   <td data-label="Task type" data-extra="">{isMissing(run.task_type) ? recorded(run.task_type) : <span className="local-task-cell"><TaskIcon task={String(run.task_type)} />{taskLabel(run.task_type)}</span>}</td>
                   <td data-label="Tokens to compliance" data-extra="" data-num="" title={tokensTitle(run.tokens_to_compliance)}>{recordedTokens(run.tokens_to_compliance)}</td>
                   <td data-label="Route tier" data-extra="">{tierOf(run)}</td>
@@ -701,7 +702,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                     <Fact key="Tokens out" term={<><ConceptIcon concept="tokens-out" size={13} />Tokens out</>} data-field-tone="tokens-out" data-field-unavailable={isMissing(run.tokens_output)} valueTitle={tokensTitle(run.tokens_output, 'out')}>{recordedTokens(run.tokens_output)}</Fact>];
                   case 'cost': return [<Fact key="Cost" term={<><ConceptIcon concept="cost" size={13} />Cost</>} data-field-tone="cost">{costOf(selectedSession, run)}</Fact>];
                   case 'savings': return [<Fact key="Modelled saving" term={<><ConceptIcon concept="savings" size={13} />Modelled saving</>} data-field-tone="savings">{runModelledCell(run)}</Fact>];
-                  case 'duration': return [<Fact key="Duration" term={<><ConceptIcon concept="duration" size={13} />Duration</>} data-field-tone="duration">{duration(run.latency_ms)}</Fact>];
+                  case 'duration': return [<Fact key="Duration" term={<><ConceptIcon concept="duration" size={13} />Duration</>} data-field-tone="duration">{duration(runDurationOf(run))}</Fact>];
                   case 'backend': return [<Fact key="Backend" term={<><ConceptIcon concept="backend" size={13} />Backend</>} data-field-tone="backend">{recorded(run.backend_id)}</Fact>];
                   case 'host': return [<Fact key="Host" term={<><ConceptIcon concept="host" size={13} />Host</>} data-field-tone="host">{recorded(run.host)}</Fact>];
                   case 'baseline': return [<Fact key="Baseline model" term={<><ConceptIcon concept="baseline" size={13} />Baseline model</>} data-field-tone="baseline">{recorded(isMissing(run.savings_baseline_model) ? selectedSession?.baseline_model : run.savings_baseline_model)}</Fact>];

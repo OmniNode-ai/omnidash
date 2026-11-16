@@ -33,7 +33,7 @@ function meteringRow(overrides: Record<string, unknown> = {}): Record<string, un
 const decisions = [
   {
     correlation_id: 'corr-19981-measured', written_at: '2026-10-02T10:07:00Z', created_at: '2026-10-02T10:07:00Z',
-    model_name: 'Qwen3.8-27B', quality_gate_passed: true, quality_gate_detail: 'completed', latency_ms: 813,
+    model_name: 'Qwen3.8-27B', quality_gate_passed: true, quality_gate_detail: 'completed', execution_ms: 813, latency_ms: 813,
     tokens_input: 162, tokens_output: 52, task_type: 'summarization', cost_tier_name: 'local', actual_score: '1.000',
     tokens_to_compliance: 214, data_source: 'real',
     // OMN-20225: the accepting attempt's backend and host (OMN-20162 columns) and the tier's cost regime.
@@ -41,7 +41,7 @@ const decisions = [
   },
   {
     correlation_id: 'corr-19981-unmeasured', written_at: '2026-10-02T10:01:00Z', created_at: '2026-10-02T10:01:00Z',
-    model_name: 'Qwen3.8-27B', quality_gate_passed: true, quality_gate_detail: 'completed', latency_ms: null,
+    model_name: 'Qwen3.8-27B', quality_gate_passed: true, quality_gate_detail: 'completed', execution_ms: null, latency_ms: null,
     tokens_input: 161, tokens_output: 36, task_type: 'summarization', cost_tier_name: 'local', actual_score: null,
     tokens_to_compliance: null, data_source: 'real',
   },
@@ -206,7 +206,7 @@ test('stored basis, excluded counts and modelled baseline survive native Overvie
     expect(basisColumn).toBeGreaterThanOrEqual(0);
     for (const [index, basis] of bases.entries()) {
       const row = runTable.locator('tbody tr').filter({ hasText: `provenance-${index}` });
-      await expect(row.locator('td').nth(basisColumn)).toHaveText(basis ?? 'Not recorded');
+      await expect(row.locator('td').nth(basisColumn)).toHaveText(basis ?? 'Not measured');
     }
     await expect(page.getByText('must-not-substitute', { exact: true })).toHaveCount(0);
     await expect(page.getByText(/verified/i)).toHaveCount(0);
@@ -335,7 +335,7 @@ test('Usage shows measured cost beside unmeasured runs, never 0 for unmeasured, 
     await expect(mixed.getByText(value, { exact: true })).toBeVisible();
   }
   const unmeasured = records.getByRole('row').filter({ hasText: 'glm-4.6' });
-  await expect(unmeasured.getByText('Not measured', { exact: true })).toBeVisible();
+  await expect(unmeasured.locator('td[data-label="Cost (measured)"]').getByText('Not measured', { exact: true })).toBeVisible();
   await expect(page.getByText(/9\.25/)).toHaveCount(0);
   await expect(page.getByText('$0', { exact: true })).toHaveCount(0);
   await expect(page.getByText('0', { exact: true })).toHaveCount(0);
@@ -376,7 +376,7 @@ test('Overview and Runs show each run\'s backend, host, tier and score, typed wh
   const runHeaders = (await page.locator('table thead th').allTextContents()).map((h) => h.trim());
   for (const header of ['Backend', 'Host']) {
     expect(runHeaders.indexOf(header), header).toBeGreaterThanOrEqual(0);
-    await expect(unmeasuredRun.getByRole('cell').nth(runHeaders.indexOf(header)), header).toHaveText('Not recorded');
+    await expect(unmeasuredRun.getByRole('cell').nth(runHeaders.indexOf(header)), header).toHaveText('Not measured');
   }
   await expect(page.getByText('Not served (OMN-20162)')).toHaveCount(0);
   await expectNoPanelCutOff(page);

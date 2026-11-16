@@ -78,7 +78,7 @@ test('zero remains measured and missing metadata is neutral instead of looking l
   const input = page.locator('[data-summary-field="Tokens in"] dd');
   const output = page.locator('[data-summary-field="Tokens out"] dd');
   await expect(input).toHaveText('0');
-  await expect(output).toHaveText('Not recorded');
+  await expect(output).toHaveText('Not measured');
   expect(await color(input)).not.toBe(await color(output));
   await expect(page.locator('[data-summary-field="Quality score"] dd')).toHaveText('0.987654');
   await expect(page.locator('[data-summary-field="Required bar"] dd')).toHaveText('0.800');
