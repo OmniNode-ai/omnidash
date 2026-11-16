@@ -76,13 +76,12 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
   const destination: AppPage = embedded ? 'local-settings' : `local-${pageName}` as AppPage;
   const Frame = embedded ? 'div' : 'main';
   const [snapshots, setSnapshots] = useState<BoundProjectionSnapshot[]>([]);
-  // OMN-21166 AC77: Overview and Usage tell the top bar when their rows were last read from the runtime.
-  const servedRead = pageName === 'overview' || pageName === 'usage' ? latestServedRead(snapshots) : null;
+  // OMN-21166 AC77, OMN-24616 AC6: every page tells the top bar when its rows were last read from the runtime.
+  const servedRead = latestServedRead(snapshots);
   useEffect(() => {
-    if (pageName !== 'overview' && pageName !== 'usage') return undefined;
-    publishLocalPageRead(pageName, servedRead);
+    publishLocalPageRead(destination, servedRead);
     return () => publishLocalPageRead(null, null);
-  }, [pageName, servedRead]);
+  }, [destination, servedRead]);
   const [error, setError] = useState<string | null>(null);
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);

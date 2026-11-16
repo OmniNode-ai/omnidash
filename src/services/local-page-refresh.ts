@@ -11,9 +11,11 @@ export function subscribeLocalPageRefresh(listener: () => void): () => void {
   return () => { listeners.delete(listener); };
 }
 
-// OMN-21166 AC77: Overview and Usage publish when the runtime's rows were last read, and the top bar shows it beside
-// Refresh. It is the served read time, never the browser clock.
-type PublishedRead = { page: 'overview' | 'usage' | null; readAt: string | null };
+import type { AppPage } from '@/store/types';
+
+// OMN-21166 AC77, OMN-24616 AC6: every page publishes when the runtime's rows were last read, and the top bar shows it
+// beside Refresh on that page only. It is the time the read finished, never the clock when the header draws.
+type PublishedRead = { page: AppPage | null; readAt: string | null };
 let published: PublishedRead = { page: null, readAt: null };
 const readListeners = new Set<() => void>();
 

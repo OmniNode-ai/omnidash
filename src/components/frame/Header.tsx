@@ -35,7 +35,7 @@ export function Header() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   // OMN-21166 AC77: the page's latest served read, shown only on the page that published it.
   const read = useSyncExternalStore(subscribeLocalPageRead, currentLocalPageRead);
-  const readAt = read.page !== null && page === `local-${read.page}` ? read.readAt : null;
+  const readAt = read.page !== null && page === read.page ? read.readAt : null;
 
   const nextThemeName = availableThemes[(availableThemes.indexOf(theme) + 1) % availableThemes.length];
   const nextTheme = () => setTheme(nextThemeName);

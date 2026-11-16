@@ -9,7 +9,8 @@ import { NOT_MEASURED } from '@/theme/format';
  * projection returns no rows / is degraded renders an explicit honest state.
  */
 
-import { useState, type ReactNode, type CSSProperties } from 'react';
+import { useEffect, useState, type ReactNode, type CSSProperties } from 'react';
+import { publishLocalPageRead } from '@/services/local-page-refresh';
 import { formatDashboardUsd as formatUsd } from '@/theme/format';
 import { isUnavailableField } from '@/components/dashboard/field-identity';
 import { EvPageShell } from '@/components/dashboard/event-dash/EvPageShell';
@@ -900,6 +901,15 @@ export function DelegationEvidencePage() {
   // from the one all-time metering-summary.v1 row Overview's and Usage's headline cards read, so the three pages show
   // one figure per concept.
   const meteringQ = useMeteringSummary(true);
+  // OMN-24616 AC6: the top bar's Updated time, from when this page's newest read finished.
+  const finished = [summaryQ, tokensQ, savingsQ, decisionsQ, meteringQ]
+    .map(query => query.dataUpdatedAt)
+    .filter((at): at is number => typeof at === 'number' && at > 0);
+  const servedRead = finished.length > 0 ? new Date(Math.max(...finished)).toISOString() : null;
+  useEffect(() => {
+    publishLocalPageRead('delegation-evidence', servedRead);
+    return () => publishLocalPageRead(null, null);
+  }, [servedRead]);
   const headline = meteringHeadline(meteringQ.data?.rows, meteringQ.isLoading);
 
   // Include the savings source in freshness alongside the other headline projections.
