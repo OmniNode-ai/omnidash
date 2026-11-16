@@ -128,11 +128,16 @@ describe('OMN-21015: the Runs page draws the runs it lists', () => {
     const links = within(screen.getByRole('table')).getAllByRole('link').map((link) => link.getAttribute('href'));
     expect(links[1]).toContain('bbbbbbbb-0000-4000-8000-000000000002');
     expect(links[2]).toContain('aaaaaaaa-0000-4000-8000-000000000001');
+    // OMN-24616 AC7: a bar opens the same run as its table row; each address also carries the Runs view it was opened
+    // from, which includes the chart chosen, so the run ids are compared rather than the whole address.
+    const runOf = (href: string | null | undefined) => new URLSearchParams((href ?? '').slice((href ?? '').indexOf('?'))).get('correlation_id');
     chart('Duration per run').onEvents!.click!({ dataIndex: 1 });
-    expect(`${window.location.pathname}${window.location.search}`).toBe(links[1]);
+    expect(window.location.pathname).toBe('/workflow');
+    expect(runOf(window.location.search)).toBe(runOf(links[1]));
     window.history.replaceState(null, '', '/runs');
     chart('Tokens per run').onEvents!.click!({ dataIndex: 2 });
-    expect(`${window.location.pathname}${window.location.search}`).toBe(links[2]);
+    expect(window.location.pathname).toBe('/workflow');
+    expect(runOf(window.location.search)).toBe(runOf(links[2]));
   });
 
   it('R6: a run with no recorded id has a bar and opens nothing', () => {

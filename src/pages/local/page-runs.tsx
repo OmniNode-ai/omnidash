@@ -13,6 +13,7 @@ import { DEFAULT_RUNS_VIEW, readRunsSearch, writeRunsSearch, type RunsViewState 
 import { runsToCsv, runsToJson, sortRuns, type RunSortKey } from '@/pages/local/runs-sort-export';
 import { PAGE_PATHS } from '@/navigation/page-routes';
 import { workflowHref } from '@/navigation/workflow-url-state';
+import { useWorkflowHref } from '@/navigation/use-workflow-href';
 import { RunDurationChart, RunMetricChart, RunTokensChart, type ListedRun } from '@/theme/design-system/charts';
 import { PassRateMeter } from '@/pages/local/shares';
 import { breakableName } from '@/theme/design-system/charts';
@@ -121,6 +122,8 @@ export function OverviewRunPreview({ decisions, sessions, now = Date.now() }: Ru
 export function RecentRunsTable({ decisions, sessions, now = Date.now(), showCharts = false }: RunViewProps & { showCharts?: boolean }) {
   const [showAllFields, setShowAllFields] = useState(false);
   const [, navigate] = useLocation();
+  // OMN-24616 AC7: a run opened from these charts carries the Runs view, so its page leads back to it.
+  const hrefFor = useWorkflowHref();
   const tableId = useId();
   const bySession = indexBy(sessions, 'session_id');
   // OMN-21166 (approved mockup): the latest runs filter by served verdict and, from the trends, by failure cause.
@@ -157,8 +160,8 @@ export function RecentRunsTable({ decisions, sessions, now = Date.now(), showCha
         </label>
       </div>
       {showCharts && <section className="local-overview-run-charts" aria-label="Latest ten run charts">
-        <RunDurationChart runs={listed} onOpen={id => navigate(workflowHref(id))} />
-        <RunTokensChart runs={listed} onOpen={id => navigate(workflowHref(id))} />
+        <RunDurationChart runs={listed} onOpen={id => navigate(hrefFor(id))} />
+        <RunTokensChart runs={listed} onOpen={id => navigate(hrefFor(id))} />
       </section>}
       {recent.length === 0 && <EmptyState>No runs match this filter</EmptyState>}
       <DataTable fit className={`local-recent-runs-wrap${showAllFields ? ' local-recent-runs-wrap--all' : ''}`} region="Recent run fields" id={tableId}>
@@ -413,7 +416,9 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
     cost: isMissing(bySession.get(String(run.correlation_id))?.local_cost_usd) ? run.cost_usd : bySession.get(String(run.correlation_id))?.local_cost_usd,
     score: run.actual_score,
   }));
-  const openRun = (runId: string) => navigate(workflowHref(runId));
+  // OMN-24616 AC7: a run opened from the Runs table carries this Runs view, so its page leads back to it.
+  const hrefFor = useWorkflowHref();
+  const openRun = (runId: string) => navigate(hrefFor(runId));
   const filtered = status !== 'all' || cause !== 'all' || model !== 'all' || backend !== 'all' || tier !== 'all' || span !== 'all' || day !== '' || task !== 'all' || query !== '';
   const selectedRun = selectedRunId === null ? undefined : runs.find(run => run.correlation_id === selectedRunId);
   const selectedSession = selectedRun ? bySession.get(String(selectedRun.correlation_id)) : undefined;
@@ -719,7 +724,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
               })}
             </FactList>
             {/* A link that reads as one (2026-11-11, "should be like clickable link"): the run-link colour, with an arrow. */}
-            <p className="local-run-open"><Link className="ds-run-link" href={workflowHref(String(selectedRun.correlation_id))}>Open full run<ArrowUpRight size={14} aria-hidden="true" /></Link></p>
+            <p className="local-run-open"><Link className="ds-run-link" href={hrefFor(String(selectedRun.correlation_id))}>Open full run<ArrowUpRight size={14} aria-hidden="true" /></Link></p>
             </div>}
           </Dialog>
           </div>
