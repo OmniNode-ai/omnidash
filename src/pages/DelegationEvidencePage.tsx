@@ -179,8 +179,8 @@ function SelectedRun({ correlationId, decision }: { correlationId: string | null
     return (
       <Panel title="SELECTED RUN" sub={shortId(correlationId)}>
         {isLoading
-          ? <EvEmpty title="Loading correlation trace…" />
-          : <EvEmpty title="Could not read the correlation trace" reason={readFailureReason(error)} />}
+          ? <EvEmpty title="Loading data…" />
+          : <EvEmpty title="Run steps is unavailable." reason={readFailureReason(error)} />}
       </Panel>
     );
   }
@@ -230,8 +230,8 @@ function ModelRouting() {
   const { data, isLoading, error } = useDelegationModelRouting();
   if (!data) {
     return <Panel title="MODEL ROUTING">{isLoading
-      ? <EvEmpty title="Loading…" />
-      : <EvEmpty title="Could not read model routing" reason={readFailureReason(error)} />}</Panel>;
+      ? <EvEmpty title="Loading data…" />
+      : <EvEmpty title="Routing data is unavailable." reason={readFailureReason(error)} />}</Panel>;
   }
   const agg = data.rows[0];
   if (!agg || agg.rows.length === 0) {
@@ -265,8 +265,8 @@ function QualityGate() {
   const { data, isLoading, error } = useDelegationQualityGate();
   if (!data) {
     return <Panel title="QUALITY GATE">{isLoading
-      ? <EvEmpty title="Loading…" />
-      : <EvEmpty title="Could not read the quality gate" reason={readFailureReason(error)} />}</Panel>;
+      ? <EvEmpty title="Loading data…" />
+      : <EvEmpty title="Quality data is unavailable." reason={readFailureReason(error)} />}</Panel>;
   }
   const q = data.rows[0];
   if (!q) {
@@ -478,7 +478,7 @@ export function FailureTriage({ decisions, available, complete = false }: { deci
       { id: 'category', label: 'By category', tone: 'var(--ds-field-failures)', icon: <TriangleAlert size={18} />,
         hint: failedChecks === null ? 'Failed checks not served' : `${formatDashboardCount(failedChecks)} failed checks`,
         panel: () => <div className="ev-triage-panel">
-        {qualityQ.isLoading ? <EvEmpty title="Loading quality checks…" /> : !quality
+        {qualityQ.isLoading ? <EvEmpty title="Loading data…" /> : !quality
           ? <EvEmpty title="No quality-gate rows" reason={plainUnservedReason(qualityQ.data?.degradedReason ?? (qualityQ.error ? 'The runtime could not answer' : null))} />
           : <>
             <p className="note">All-time quality checks · {failedChecks === null ? 'Failed checks not served' : `${formatDashboardCount(failedChecks)} failed checks`}</p>
@@ -530,8 +530,8 @@ function SavingsPanel({ money, unavailable }: { money: HeadlineMoney | null; una
   const { data, isLoading, error } = useDelegationSavings();
   if (!data) {
     return <Panel title="SAVINGS vs CLOUD BASELINE">{isLoading
-      ? <EvEmpty title="Loading…" />
-      : <EvEmpty title="Could not read savings" reason={readFailureReason(error)} />}</Panel>;
+      ? <EvEmpty title="Loading data…" />
+      : <EvEmpty title="Cost data is unavailable." reason={readFailureReason(error)} />}</Panel>;
   }
   // delegation.savings.v1 supplies the baseline model and pricing version only when the headline row serves neither.
   const s = data.rows[0];
@@ -574,8 +574,8 @@ function TokenUsage() {
   const { data, isLoading, error } = useDelegationTokenUsage();
   if (!data) {
     return <Panel title="TOKEN USAGE">{isLoading
-      ? <EvEmpty title="Loading…" />
-      : <EvEmpty title="Could not read token usage" reason={readFailureReason(error)} />}</Panel>;
+      ? <EvEmpty title="Loading data…" />
+      : <EvEmpty title="Usage data is unavailable." reason={readFailureReason(error)} />}</Panel>;
   }
   const t = data.rows[0];
   if (!t) {
@@ -627,10 +627,10 @@ function DecisionDetail({ row }: { row: DelegationDecisionRow }) {
         ]}
       />
       {isLoading ? (
-        <div className="note">Loading the run…</div>
+        <div className="note">Loading data…</div>
       ) : !data ? (
         /* OMN-24616 AC5: a failed read is not "not recorded". */
-        <div className="note">Could not read the run: {readFailureReason(error)}</div>
+        <div className="note">Run steps is unavailable. {readFailureReason(error)}</div>
       ) : trace && (trace.prompt_text || trace.response_text) ? (
         <div className="grid cols-2">
           {trace.prompt_text ? <CodeBlock title="Prompt" lang="text" code={trace.prompt_text} /> : <div className="note">Prompt not recorded</div>}
@@ -987,11 +987,11 @@ export function DelegationEvidencePage() {
       </div>
 
       {decisionsQ.isLoading ? (
-        <Panel title="RECENT DELEGATIONS">{sampleExport}<EvEmpty title="Loading…" /></Panel>
+        <Panel title="RECENT DELEGATIONS">{sampleExport}<EvEmpty title="Loading data…" /></Panel>
       ) : !decisionsQ.data ? (
         <Panel title="RECENT DELEGATIONS">
           {sampleExport}
-          <EvEmpty title="Could not read delegation decisions" reason={readFailureReason(decisionsQ.error)} />
+          <EvEmpty title="Run data is unavailable." reason={readFailureReason(decisionsQ.error)} />
         </Panel>
       ) : decisions.length === 0 ? (
         <Panel title="RECENT DELEGATIONS">

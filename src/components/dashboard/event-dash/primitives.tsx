@@ -1,4 +1,5 @@
 import { formatDashboardCount } from '@/theme/format';
+import { EmptyState } from '@/theme/design-system/components';
 import { formatDuration, NOT_MEASURED } from '@/theme/format';
 /**
  * OMN-12943 — shared UI primitives for the ported event-dash views.
@@ -401,12 +402,13 @@ export function EvEmpty({
       </div>
     );
   }
+  // OMN-24616 AC6: the other pages' empty state component, announced as a status as theirs is.
   return (
-    <div className="ev-empty">
+    <EmptyState as="div" className="ev-empty">
       <div className="ev-empty-title">{title}</div>
       {reason ? <div className="ev-empty-reason">{readableReason(reason)}</div> : null}
       {note ? <div className="ev-empty-note">{note}</div> : null}
-    </div>
+    </EmptyState>
   );
 }
 
