@@ -330,7 +330,7 @@ export function RunLocallyCard({ row }: { row: Record<string, unknown> | null })
         <Meter kind="routing-share" label="Local share of all runs" min={0} max={100} now={share * 100} valueText={text} share={share} />
       </div>
       <FactList look="routing-counts">
-        <Fact term={<><ConceptIcon concept="local-run" size={15} />Local runs</>} data-routing-count="local">{recordedCount(byTier.local_call_count)}</Fact>
+        <Fact term={<><ConceptIcon concept="local-run" size={15} />Local runs</>} data-routing-count="local-runs">{recordedCount(byTier.local_call_count)}</Fact>
         <Fact term={<><FieldIcon label="All runs" size={15} />All runs</>} data-routing-count="total">{recordedCount(byTier.total_call_count)}</Fact>
         <Fact term={<><FieldIcon label="Without a tier" size={15} />Without a tier</>} data-routing-count="untiered" data-field-tone="unrouted">{recordedCount(byTier.not_tier_routed_count)}</Fact>
       </FactList>

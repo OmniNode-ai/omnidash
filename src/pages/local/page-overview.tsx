@@ -244,7 +244,7 @@ export function TierMixPanel({ row, compact = false }: { row: Row | null; compac
       <section aria-label="Tier mix">
         {/* OMN-23330 AC6: each tier's runs and share are printed, not left to hover. */}
         <RankedBars label="Runs by tier" unit="" table={{ nameHeader: 'Tier', countHeader: 'Runs' }} order="desc" layout="vertical" values="always"
-          items={tiers.filter(tier => tier.cost_tier_name !== 'not_tier_routed').map((tier, index) => {
+          items={tiers.filter(tier => tier.tier_routed !== false && tier.tier_routed !== 0).map((tier, index) => {
             const name = String(tier.cost_tier_name);
             const pct = share(tier.pct_of_tier_routed);
             // Part 19 AC135 with part 23 AC145: a served tier opens Runs filtered to it (?tier=<served name>).
@@ -270,7 +270,7 @@ export function TierMixPanel({ row, compact = false }: { row: Row | null; compac
             const concept = tierConcept(name) ?? 'tier-other';
             const tone = TIER_TONES[name] ?? 'other';
             // Part 18 AC120: a share is of the tier-routed runs, so runs outside the tier routing have none.
-            const routed = name !== 'not_tier_routed' && (tier.tier_routed === true || tier.tier_routed === 1);
+            const routed = tier.tier_routed === true || tier.tier_routed === 1;
             return [
             <tr className="local-routing-tier-row" data-tone={tone} style={{ '--tier-color': tierColor(name) } as CSSProperties} key={`${name}-${index}`}>
               {/* A served share is a long decimal and a name has no break opportunity: each may break inside itself, as

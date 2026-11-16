@@ -75,7 +75,7 @@ function routeSpendByTier(row: Row): RouteRow[] {
       share: typeof tier.pct_of_tier_routed === 'number' ? tier.pct_of_tier_routed : null,
       cost: routeCost(tier),
       // Part 17 AC115: runs outside the tier routing have no share of the tier-routed runs.
-      tierRouted: (tier.tier_routed === true || tier.tier_routed === 1) && name !== 'not_tier_routed',
+      tierRouted: tier.tier_routed === true || tier.tier_routed === 1,
     };
   }) : [];
 }
