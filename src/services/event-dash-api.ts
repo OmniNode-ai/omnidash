@@ -231,13 +231,17 @@ async function readProjection<T>(
  * allowed (the page shows it as not measured). Each item is checked, so a nested row a panel reads is an object
  * (review 517 round 2, finding 2).
  */
-function listOfRecords(field: string, nullable = false): (row: Record<string, unknown>) => string | null {
+function listOfRecords(field: string, nullable = false, named?: string): (row: Record<string, unknown>) => string | null {
   return (row) => {
     const value = row[field];
     if (nullable && (value === undefined || value === null)) return null;
     if (!Array.isArray(value)) return `${field} is ${describeValue(value)}`;
     const bad = value.findIndex((item) => !isRecord(item));
-    return bad >= 0 ? `${field} item ${bad + 1} is ${describeValue(value[bad])}` : null;
+    if (bad >= 0) return `${field} item ${bad + 1} is ${describeValue(value[bad])}`;
+    if (named === undefined) return null;
+    // A nested row the page names by this field must carry it as text (review 517 round 3, finding 1).
+    const unnamed = value.findIndex((item) => typeof (item as Record<string, unknown>)[named] !== "string");
+    return unnamed >= 0 ? `${field} item ${unnamed + 1} ${named} is ${describeValue((value[unnamed] as Record<string, unknown>)[named])}` : null;
   };
 }
 
@@ -619,7 +623,7 @@ export const fetchDelegationSummary = (): Promise<
 
 export const fetchDelegationModelRouting = (): Promise<
   ProjectionResult<ModelRoutingRow>
-> => readProjection<ModelRoutingRow>(TOPICS.delegationModelRouting, undefined, listOfRecords("rows"));
+> => readProjection<ModelRoutingRow>(TOPICS.delegationModelRouting, undefined, listOfRecords("rows", false, "model_name"));
 
 export const fetchDelegationQualityGate = (): Promise<
   ProjectionResult<QualityGateRow>
@@ -645,7 +649,7 @@ export const fetchDelegationSavings = (): Promise<
 
 export const fetchDelegationTokenUsage = (): Promise<
   ProjectionResult<TokenUsageRow>
-> => readProjection<TokenUsageRow>(TOPICS.delegationTokenUsage, undefined, listOfRecords("by_model"));
+> => readProjection<TokenUsageRow>(TOPICS.delegationTokenUsage, undefined, listOfRecords("by_model", false, "model_name"));
 
 export const fetchCorrelationTrace = (
   correlationId: string,

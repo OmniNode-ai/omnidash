@@ -9,6 +9,7 @@
 //   E4 a failed headline read shows "Not measured" with no reason
 //   E5 a failed trace read in an opened run says the prompt and answer were not recorded
 //   E6 a degraded answer with an empty rows array, or a nested row that is not an object, reads as served
+//   E7 a nested row without its name crashes the page; a run with no id leaves Selected run waiting, its task "undefined"
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Router } from 'wouter';
@@ -128,5 +129,20 @@ describe('OMN-24616 AC5: Delegation Evidence on the real read path', () => {
     expect(screen.getByText('malformed projection response: row 1 rows item 1 is null')).toBeTruthy();
     expect(screen.getByText('malformed projection response: row 1 by_model item 1 is null')).toBeTruthy();
     expect(screen.getAllByText('malformed projection response: row 1 failure_categories item 1 is null').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('E7: nested rows without a name are named failed reads; decisions without an id say none can be opened', async () => {
+    network.serve = (topic) => {
+      if (topic.includes('decisions')) return { status: 200, body: { rows: [{ written_at: '2026-11-16T10:00:00Z', model_name: 'm' }] } };
+      if (topic.includes('model-routing')) return { status: 200, body: { rows: [{ total_delegations: 1, rows: [{ count: 1 }] }] } };
+      if (topic.includes('token-usage')) return { status: 200, body: { rows: [{ by_model: [{ total_tokens: 5 }] }] } };
+      return { status: 200, body: { rows: [] } };
+    };
+    await renderPage();
+    expect(screen.getByText('malformed projection response: row 1 rows item 1 model_name is missing')).toBeTruthy();
+    expect(screen.getByText('malformed projection response: row 1 by_model item 1 model_name is missing')).toBeTruthy();
+    expect(screen.getByText('The served decisions carry no run id, so none can be opened.')).toBeTruthy();
+    expect(screen.queryByText('Awaiting a delegation decision on the bus.')).toBeNull();
+    expect(screen.queryByText('undefined')).toBeNull();
   });
 });

@@ -175,8 +175,8 @@ function Chain({ steps }: { steps: ChainStep[] }) {
 
 // ── selected run (latest decision → correlation trace) ───────────────────────
 
-function SelectedRun({ correlationId, decision, decisionsFailure }: {
-  correlationId: string | null; decision?: DelegationDecisionRow; decisionsFailure?: string | null;
+function SelectedRun({ correlationId, decision, decisionsFailure, unidentified = false }: {
+  correlationId: string | null; decision?: DelegationDecisionRow; decisionsFailure?: string | null; unidentified?: boolean;
 }) {
   const { data, isLoading, error } = useCorrelationTrace(correlationId);
   if (!correlationId) {
@@ -184,7 +184,9 @@ function SelectedRun({ correlationId, decision, decisionsFailure }: {
       <Panel title="SELECTED RUN">
         {decisionsFailure
           ? <EvEmpty title="Could not read delegation decisions" reason={decisionsFailure} />
-          : <EvEmpty title="No delegation selected" note="Awaiting a delegation decision on the bus." />}
+          : unidentified
+            ? <EvEmpty title="No delegation selected" note="The served decisions carry no run id, so none can be opened." />
+            : <EvEmpty title="No delegation selected" note="Awaiting a delegation decision on the bus." />}
       </Panel>
     );
   }
@@ -941,7 +943,8 @@ export function DelegationEvidencePage() {
   const summary = summaryQ.data?.rows[0];
   const fixtureNotice = summary ? fixtureNoticeOf(summary) : null;
   const decisions = decisionsQ.data?.rows ?? [];
-  const latestCid = decisions[0]?.correlation_id ?? null;
+  const latestDecision = decisions.find(row => typeof row.correlation_id === 'string' && row.correlation_id !== '');
+  const latestCid = latestDecision?.correlation_id ?? null;
 
   // OMN-21166 AC37/AC50, OMN-23330 AC1/AC2 (Lakshman 2026-11-10, "All on metering"): savings, tokens and runs come
   // from the one all-time metering-summary.v1 row Overview's and Usage's headline cards read, so the three pages show
@@ -1007,7 +1010,8 @@ export function DelegationEvidencePage() {
           selected run and its quality gate each take a full row too; side by side, the shorter one left an empty column
           (measured at 1440 px on 2026-11-10: Selected run ended 291 px above Quality gate). */}
       <div className="maple-grid ev-maple-grid">
-        <div className="maple-cell maple-cell--full"><SelectedRun correlationId={latestCid} decision={decisions[0]} decisionsFailure={decisionsFailure} /></div>
+        <div className="maple-cell maple-cell--full"><SelectedRun correlationId={latestCid} decision={latestDecision} decisionsFailure={decisionsFailure}
+          unidentified={latestCid === null && decisions.length > 0} /></div>
         <div className="maple-cell maple-cell--full ev-qg-cell"><QualityGate /></div>
         <div className="maple-cell maple-cell--full"><FailureTriage decisions={decisions}
           available={!decisionsQ.isLoading && !!decisionsQ.data && decisionsFailure === null}
