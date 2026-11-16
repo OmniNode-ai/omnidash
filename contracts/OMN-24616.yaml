@@ -5,7 +5,9 @@ ticket_id: "OMN-24616"
 title: "The local dashboard pages compute figures from partial reads, hard-code lists and show one value several ways"
 summary: >-
   Acceptance for OMN-24616, copied from the live ticket on 2026-11-16. This pull request is stacked on the first one
-  (AC5 and AC7) and adds AC2 (every rate on one scale, shown once as a percent). AC2, AC5 and AC7 are declared here
+  (AC5 and AC7) and adds AC2 (every rate on one scale, shown once as a percent) and AC6 (one formatter set: one missing-value
+  word, one precision per quantity, an Updated time on every page, and Delegation Evidence's states in the shared
+  component and words). AC2, AC5, AC6 and AC7 are declared here
   and bound to their tests. AC1, AC3, AC4 and AC8 are in the third pull request for this ticket.
 is_seam_ticket: false
 interface_change: false
@@ -16,6 +18,12 @@ requirements:
       Every rate on the local pages is held as a 0-1 share and written once as a percent, so a chart and its table
       read the same number.
     acceptance:
+      - id: "AC6"
+        statement: >-
+          one formatter set serves every page: a missing value reads Not measured, durations, shares and money follow
+          one rule each, every page header shows its Updated time, and Delegation Evidence uses the same components and
+          loading and error wording as the other pages -- falsifier: npx playwright test over the six pages fails on a
+          second spelling of a missing value, a page without an Updated time, or two precisions for one quantity
       - id: "AC2"
         statement: >-
           every rate is held on one scale and shown once as a percent, so Pass rate per day reads 80.6% in both chart
@@ -87,3 +95,15 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: "npm test -- --run src/data-source/http-snapshot-source.malformed.test.ts tests/services/served-responses.omn24616.test.ts src/pages/DelegationEvidencePage.omn24616-failed-read.test.tsx tests/pages/local/model-keys.omn24616-malformed.test.tsx src/App.page-error-boundary.test.tsx src/pages/local/page-headline.window-param.test.ts"
+  - id: "dod-omn24616-ac6"
+    description: >-
+      AC6: header-updated.omn24616.test.tsx (every page shows its Updated time), usage-analysis.omn24616-share and
+      -duration tests (one share and one duration rule), DelegationEvidencePage.omn24616-shared-states.test.tsx (the
+      shared empty state and the local loading and error words), and the Playwright spec
+      tests/e2e/one-formatter-set.omn24616.spec.ts over the six pages, which failed on 5 of 6 pages before the
+      fixes and passes 6 of 6 after.
+    source: "manual"
+    binds_ac: ["AC6"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm test -- --run tests/pages/local/header-updated.omn24616.test.tsx src/pages/local/usage-analysis.omn24616-share.test.tsx src/pages/local/usage-analysis.omn24616-duration.test.tsx src/pages/DelegationEvidencePage.omn24616-shared-states.test.tsx"
