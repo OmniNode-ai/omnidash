@@ -2,6 +2,7 @@
 // any page draws. Headline cards: the metric card, the Overview window and range, metering totals and the KPI rows.
 import { formatDashboardCount, formatFullCount, wholeCount } from '@/theme/format';
 import { exactMs, formatDuration } from '@/theme/format';
+import { LOCAL_WINDOWS, ROLLING_WINDOW_DAYS } from '@/contracts/local-windows';
 import { TokenDirections } from '@/components/dashboard/usage/TokenDirections';
 import { exactTokens } from '@/components/dashboard/usage/TokenCount';
 import { createContext, useId, useState, type CSSProperties, type ReactNode } from 'react';
@@ -220,7 +221,7 @@ const OVERVIEW_HEADLINE_CARDS: ReadonlySet<string> = new Set(['overview-spend', 
  * prove the rows reach back: older runs were never read, so the same gap reads not measured with the count actually read.
  */
 export function qualityChangeLine(decisions: readonly unknown[], window: ActivityWindow, now: number = Date.now(), complete: boolean = true): string | null {
-  if (window.kind !== 'days' || ![7, 15, 30, 90].includes(window.days)) return null;
+  if (window.kind !== 'days' || !ROLLING_WINDOW_DAYS.includes(window.days)) return null;
   const DAY = 86_400_000;
   const today = Date.parse(`${utcDay(now)}T00:00:00Z`);
   const currentStart = utcDay(today - (window.days - 1) * DAY);
@@ -373,7 +374,10 @@ export const CARD_LINKS: Readonly<Record<string, { href: string; page: string }>
 };
 
 // OMN-21970 (Lakshman 2026-11-02, "add 90 days also"): 90 joins the windows.
-const WINDOW_DAYS: Readonly<Record<string, number>> = { today: 1, '7d': 7, '15d': 15, '30d': 30, '90d': 90 };
+// OMN-24616 AC4: the address keys from the one declared window list.
+const WINDOW_DAYS: Readonly<Record<string, number>> = Object.fromEntries(
+  LOCAL_WINDOWS.filter(window => window.urlKey !== '').map(window => [window.urlKey, window.days]),
+);
 
 /** OMN-21166 part 19 AC136 (onex delegate run abfb8d86, UTC-safe): the Overview window from its address. `?window=today`,
  * `7d`, `15d`, `30d` or `90d`, or `?day=YYYY-MM-DD`; anything else is all time and marked malformed so the address is corrected. */

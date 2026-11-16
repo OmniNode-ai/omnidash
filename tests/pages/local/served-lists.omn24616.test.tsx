@@ -7,12 +7,14 @@
 //   L1  a provider the declared source does not know loses its place after the known ones
 //   L2  a provider the declared source does not know is renamed ("Acme-labs") instead of keeping its served name
 //   L3  a provider, tier or task type the code has never seen does not render by its served name
+//   G2  a window-length list remains under src/pages/local instead of the one declared list
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { ModelKeys, type ModelKeysClient } from '@/pages/local/model-keys';
 import { taskLabel, tierLabel } from '@/pages/local/plain-text';
+import { LOCAL_WINDOWS } from '@/contracts/local-windows';
 import type { ModelProviderRow } from '@/services/models-api';
 
 const LOCAL = join(process.cwd(), 'src/pages/local');
@@ -34,6 +36,15 @@ describe('OMN-24616 AC4: no provider or tier list of the pages\' own', () => {
       .map((line, index) => ({ path, line: index + 1, text: line }))
       .filter(({ text }) => !text.trim().startsWith('//') && !text.trim().startsWith('*') && PROVIDER_OR_TIER.test(text)));
     expect(offending.map(({ path, line, text }) => `${path.slice(LOCAL.length + 1)}:${line}: ${text.trim()}`)).toEqual([]);
+  });
+
+  it('G2: no window-length list under src/pages/local; the declared list drives them', () => {
+    const WINDOW_LIST = /\[7, 15, 30, 90\]|'last-(7|15|30|90)'|'(7|15|30|90)d'|days: (7|15|30|90),? label/;
+    const offending = sources(LOCAL).flatMap((path) => readFileSync(path, 'utf8').split('\n')
+      .map((line, index) => ({ path, line: index + 1, text: line }))
+      .filter(({ text }) => !text.trim().startsWith('//') && !text.trim().startsWith('*') && WINDOW_LIST.test(text)));
+    expect(offending.map(({ path, line, text }) => `${path.slice(LOCAL.length + 1)}:${line}: ${text.trim()}`)).toEqual([]);
+    expect(LOCAL_WINDOWS.map(window => window.days)).toEqual([0, 1, 7, 15, 30, 90]);
   });
 
   it('L1, L2, L3: known providers by the declared source, any other by its served name, in the served order', async () => {

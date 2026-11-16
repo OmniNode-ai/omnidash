@@ -1,5 +1,6 @@
 import { formatDashboardCount, formatFullCount } from '@/theme/format';
 
+import { LOCAL_WINDOWS } from '@/contracts/local-windows';
 import { formatDashboardUsd } from '@/theme/format';
 import { formatDuration } from '@/theme/format';
 import { createContext, useContext, useId, useState, type CSSProperties, type ReactNode } from 'react';
@@ -31,13 +32,9 @@ import { fixed as fmtFixed, localeDate as fmtLocaleDate, localeString as fmtLoca
  * keyboard can focus, with the same numbers in its name and in the chart's readout.
  */
 
-const RANGES = [
-  { days: 1, label: '1 day' },
-  { days: 7, label: '7 days' },
-  { days: 15, label: '15 days' },
-  { days: 30, label: '30 days' },
-  { days: 90, label: '90 days' },
-] as const;
+// OMN-24616 AC4: the chart range buttons from the one declared window list.
+const RANGES = LOCAL_WINDOWS.filter(window => window.days > 0)
+  .map(window => ({ days: window.days, label: `${window.days} ${window.days === 1 ? 'day' : 'days'}` }));
 
 const PASS = 'var(--ds-field-pass)';
 const FAIL = 'var(--ds-field-fail)';

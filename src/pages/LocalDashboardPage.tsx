@@ -3,6 +3,7 @@ import '@/theme/design-system/page-sheets';
 import { formatDashboardCount } from '@/theme/format';
 import { PricingFacts } from '@/pages/local/pricing';
 import { WindowMenu } from '@/pages/local/window-menu';
+import { LOCAL_WINDOWS } from '@/contracts/local-windows';
 import { readableTime } from '@/theme/format';
 import { dailyMeteringTokens } from '@/lib/daily-metering-tokens';
 import { DailyMeteringTokens } from '@/components/dashboard/usage/DailyMeteringTokens';
@@ -430,9 +431,8 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
                 days={servedMeteringDays(snapshots.find(snapshot => snapshot.topic === METERING_SUMMARY_TOPIC)?.rows ?? [])} />
               {(() => {
                 // OMN-21970 AC9 (Lakshman 2026-11-02): one button opens the list of windows, the chosen one ticked.
-                const options = ([['all', 'All time', 'All time', 0], ['today', 'Today', 'Today (UTC)', 1], ['last-7', 'Last 7 days', 'Last 7 days (UTC)', 7],
-                  ['last-15', 'Last 15 days', 'Last 15 days (UTC)', 15], ['last-30', 'Last 30 days', 'Last 30 days (UTC)', 30],
-                  ['last-90', 'Last 90 days', 'Last 90 days (UTC)', 90]] as const).map(([value, label, name, days]) => {
+                // OMN-24616 AC4: the windows from the one declared list.
+                const options = LOCAL_WINDOWS.map(({ value, label, name, days }) => {
                   const target: OverviewWindow = days === 0 ? 'all' : days === 1 ? 'today' : meteringRangeFor(days, now);
                   const checked = days === 0 ? overviewWindow === 'all' : days === 1 ? overviewWindow === 'today'
                     : overviewWindow.startsWith('range:') && activityWindow.kind === 'days' && activityWindow.days === days;
