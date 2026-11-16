@@ -4,16 +4,29 @@ schema_version: "1.0.0"
 ticket_id: "OMN-24616"
 title: "The local dashboard pages compute figures from partial reads, hard-code lists and show one value several ways"
 summary: >-
-  Acceptance for OMN-24616, copied from the live ticket on 2026-11-16. This pull request delivers AC7 whole (Runs
-  export neutralises formula cells, and a run opened from Runs has a Runs breadcrumb back to the same Runs view), so
-  AC7 is declared here and bound to its tests. It also carries part of AC5 (malformed snapshot reads refused, page
-  error boundaries, malformed window keys), which is not declared because AC5 also needs the schema checks on the
-  model and event reads; the pull request that completes AC5 declares it. AC1 to AC4, AC6 and AC8 follow in later
-  pull requests for this ticket.
+  Acceptance for OMN-24616, copied from the live ticket on 2026-11-16. This pull request delivers AC5 and AC7 whole.
+  AC5: the snapshot, projection, log-entry and model-provider reads each refuse a malformed answer with its reason
+  instead of reading it as an empty success; Delegation Evidence and the provider table show that reason and no
+  figure, never Loading or "recorded yet"; every local page sits in an error boundary; and a malformed window key is
+  read as all time with the page kept up. AC7: Runs export neutralises formula cells, and a run opened from Runs has a Runs breadcrumb back to
+  the same Runs view. Both are declared here and bound to their tests. AC1 to AC4, AC6 and AC8 follow in later pull
+  requests for this ticket.
 is_seam_ticket: false
 interface_change: false
 interfaces_touched: []
 requirements:
+  - id: "req-omn24616-served-reads-refuse-malformed-answers"
+    statement: >-
+      Every served response a local page reads is parsed, and a failed, refused or malformed read shows its reason and
+      no figure.
+    acceptance:
+      - id: "AC5"
+        statement: >-
+          every served response a local page reads is parsed with a schema before use; a failed, refused or malformed
+          read shows its reason and no figure, never Loading... or an empty success, and every local page sits in an
+          error boundary that names the failure -- falsifier: npx vitest serving a malformed body and a refusal for
+          each endpoint fails unless the page shows the reason, and npx playwright test opening
+          /overview?window=constructor fails if the page goes blank
   - id: "req-omn24616-runs-export-and-way-back"
     statement: >-
       Runs export writes no cell a spreadsheet would run as a formula, and a run opened from Runs leads back to the
@@ -42,3 +55,18 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: "npm test -- --run src/theme/format/csv-cell.test.ts src/pages/local/runs-sort-export.csv.test.ts src/navigation/runs-back-link.omn24616.test.tsx"
+  - id: "dod-omn24616-ac5"
+    description: >-
+      AC5 per endpoint. http-snapshot-source.malformed.test.ts refuses a snapshot body that is neither an envelope nor
+      rows; served-responses.omn24616.test.ts refuses a projection body without a rows array, a log-entries body that
+      is not rows, and a provider row with a malformed field, each with its reason, and still reads a well-formed one;
+      DelegationEvidencePage.omn24616-failed-read.test.tsx renders the page with every read failed and finds the
+      reason on each panel and no Loading or "recorded yet"; model-keys.omn24616-malformed.test.tsx shows the provider
+      table's malformed-row reason and no provider; App.page-error-boundary.test.tsx keeps the frame up when a page
+      throws; page-headline.window-param.test.ts reads a constructor window key as no window. The malformed-body and
+      failed-read tests fail on dev.
+    source: "manual"
+    binds_ac: ["AC5"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm test -- --run src/data-source/http-snapshot-source.malformed.test.ts tests/services/served-responses.omn24616.test.ts src/pages/DelegationEvidencePage.omn24616-failed-read.test.tsx tests/pages/local/model-keys.omn24616-malformed.test.tsx src/App.page-error-boundary.test.tsx src/pages/local/page-headline.window-param.test.ts"

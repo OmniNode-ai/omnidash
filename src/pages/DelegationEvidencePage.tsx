@@ -117,6 +117,11 @@ export function plainUnservedReason(reason: string | null | undefined): string |
   return code >= 500 ? 'The runtime could not answer' : reason;
 }
 
+/** OMN-24616 AC5: why a read gave no data -- the error's own text, so a failed read never sits on Loading. */
+export function readFailureReason(error: unknown): string {
+  return error instanceof Error && error.message ? error.message : 'The read failed and gave no reason';
+}
+
 // ── golden chain (stage labels justified by the trace row) ───────────────────
 
 interface ChainStep {
@@ -160,7 +165,7 @@ function Chain({ steps }: { steps: ChainStep[] }) {
 // ── selected run (latest decision → correlation trace) ───────────────────────
 
 function SelectedRun({ correlationId, decision }: { correlationId: string | null; decision?: DelegationDecisionRow }) {
-  const { data, isLoading } = useCorrelationTrace(correlationId);
+  const { data, isLoading, error } = useCorrelationTrace(correlationId);
   if (!correlationId) {
     return (
       <Panel title="SELECTED RUN">
@@ -168,10 +173,12 @@ function SelectedRun({ correlationId, decision }: { correlationId: string | null
       </Panel>
     );
   }
-  if (isLoading || !data) {
+  if (!data) {
     return (
       <Panel title="SELECTED RUN" sub={shortId(correlationId)}>
-        <EvEmpty title="Loading correlation trace…" />
+        {isLoading
+          ? <EvEmpty title="Loading correlation trace…" />
+          : <EvEmpty title="Could not read the correlation trace" reason={readFailureReason(error)} />}
       </Panel>
     );
   }
@@ -218,9 +225,11 @@ function SelectedRun({ correlationId, decision }: { correlationId: string | null
 
 function ModelRouting() {
   const modelColor = useModelColor();
-  const { data, isLoading } = useDelegationModelRouting();
-  if (isLoading || !data) {
-    return <Panel title="MODEL ROUTING"><EvEmpty title="Loading…" /></Panel>;
+  const { data, isLoading, error } = useDelegationModelRouting();
+  if (!data) {
+    return <Panel title="MODEL ROUTING">{isLoading
+      ? <EvEmpty title="Loading…" />
+      : <EvEmpty title="Could not read model routing" reason={readFailureReason(error)} />}</Panel>;
   }
   const agg = data.rows[0];
   if (!agg || agg.rows.length === 0) {
@@ -251,9 +260,11 @@ function ModelRouting() {
 // ── quality gate ─────────────────────────────────────────────────────────────
 
 function QualityGate() {
-  const { data, isLoading } = useDelegationQualityGate();
-  if (isLoading || !data) {
-    return <Panel title="QUALITY GATE"><EvEmpty title="Loading…" /></Panel>;
+  const { data, isLoading, error } = useDelegationQualityGate();
+  if (!data) {
+    return <Panel title="QUALITY GATE">{isLoading
+      ? <EvEmpty title="Loading…" />
+      : <EvEmpty title="Could not read the quality gate" reason={readFailureReason(error)} />}</Panel>;
   }
   const q = data.rows[0];
   if (!q) {
@@ -514,9 +525,11 @@ interface HeadlineMoney {
 }
 
 function SavingsPanel({ money, unavailable }: { money: HeadlineMoney | null; unavailable: string }) {
-  const { data, isLoading } = useDelegationSavings();
-  if (isLoading || !data) {
-    return <Panel title="SAVINGS vs CLOUD BASELINE"><EvEmpty title="Loading…" /></Panel>;
+  const { data, isLoading, error } = useDelegationSavings();
+  if (!data) {
+    return <Panel title="SAVINGS vs CLOUD BASELINE">{isLoading
+      ? <EvEmpty title="Loading…" />
+      : <EvEmpty title="Could not read savings" reason={readFailureReason(error)} />}</Panel>;
   }
   // delegation.savings.v1 supplies the baseline model and pricing version only when the headline row serves neither.
   const s = data.rows[0];
@@ -556,9 +569,11 @@ function SavingsPanel({ money, unavailable }: { money: HeadlineMoney | null; una
 
 function TokenUsage() {
   const modelColor = useModelColor();
-  const { data, isLoading } = useDelegationTokenUsage();
-  if (isLoading || !data) {
-    return <Panel title="TOKEN USAGE"><EvEmpty title="Loading…" /></Panel>;
+  const { data, isLoading, error } = useDelegationTokenUsage();
+  if (!data) {
+    return <Panel title="TOKEN USAGE">{isLoading
+      ? <EvEmpty title="Loading…" />
+      : <EvEmpty title="Could not read token usage" reason={readFailureReason(error)} />}</Panel>;
   }
   const t = data.rows[0];
   if (!t) {
@@ -594,7 +609,7 @@ function TokenUsage() {
 // ── recent delegations table (decisions → expand → correlation trace) ────────
 
 function DecisionDetail({ row }: { row: DelegationDecisionRow }) {
-  const { data, isLoading } = useCorrelationTrace(row.correlation_id);
+  const { data, isLoading, error } = useCorrelationTrace(row.correlation_id);
   const trace = data?.rows[0];
   return (
     <>
@@ -611,6 +626,9 @@ function DecisionDetail({ row }: { row: DelegationDecisionRow }) {
       />
       {isLoading ? (
         <div className="note">Loading the run…</div>
+      ) : !data ? (
+        /* OMN-24616 AC5: a failed read is not "not recorded". */
+        <div className="note">Could not read the run: {readFailureReason(error)}</div>
       ) : trace && (trace.prompt_text || trace.response_text) ? (
         <div className="grid cols-2">
           {trace.prompt_text ? <CodeBlock title="Prompt" lang="text" code={trace.prompt_text} /> : <div className="note">Prompt not recorded</div>}
@@ -959,10 +977,17 @@ export function DelegationEvidencePage() {
 
       {decisionsQ.isLoading ? (
         <Panel title="RECENT DELEGATIONS">{sampleExport}<EvEmpty title="Loading…" /></Panel>
+      ) : !decisionsQ.data ? (
+        <Panel title="RECENT DELEGATIONS">
+          {sampleExport}
+          <EvEmpty title="Could not read delegation decisions" reason={readFailureReason(decisionsQ.error)} />
+        </Panel>
       ) : decisions.length === 0 ? (
         <Panel title="RECENT DELEGATIONS">
           {sampleExport}
-          <EvEmpty title="No delegation decisions" reason={plainUnservedReason(decisionsQ.data?.degradedReason)} note="No delegation decisions recorded yet." />
+          {/* OMN-24616 AC5: "recorded yet" only when the read itself succeeded. */}
+          <EvEmpty title="No delegation decisions" reason={plainUnservedReason(decisionsQ.data.degradedReason)}
+            note={decisionsQ.data.degradedReason ? undefined : 'No delegation decisions recorded yet.'} />
         </Panel>
       ) : (
         <RecentDelegations decisions={decisions} available={samplesAvailable} />

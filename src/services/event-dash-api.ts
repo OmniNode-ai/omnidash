@@ -106,6 +106,13 @@ function isRecord(v: unknown): v is Record<string, unknown> {
  *   2. `{ status: 'degraded', reason: "table '...' not found at startup" }`
  *   3. `{ error: 'unknown_topic', available_topics: [...] }`
  */
+/** What a body that should carry rows carried instead, for the reason the page shows (OMN-24616 AC5). */
+function describeRows(body: Record<string, unknown>): string {
+  if (!("rows" in body)) return "no rows";
+  const rows = body.rows;
+  return `rows is ${rows === null ? "null" : `a ${typeof rows}`}`;
+}
+
 function normalize<T>(body: unknown): ProjectionResult<T> {
   if (!isRecord(body)) {
     return {
@@ -145,8 +152,20 @@ function normalize<T>(body: unknown): ProjectionResult<T> {
     };
   }
 
+  // OMN-24616 AC5: anything else without a rows array is a malformed answer, never an empty, successful read.
+  if (!Array.isArray(env.rows)) {
+    return {
+      rows: [],
+      rowCount: 0,
+      freshness: "unknown",
+      latestEventAt: null,
+      isDegraded: true,
+      degradedReason: `malformed projection response: ${describeRows(body)}`,
+    };
+  }
+
   // Shape 1: served envelope.
-  const rows = Array.isArray(env.rows) ? (env.rows as T[]) : [];
+  const rows = env.rows as T[];
   const freshness = asFreshness(env.data_freshness);
   const rowCount =
     typeof env.row_count === "number" ? env.row_count : rows.length;
@@ -742,12 +761,12 @@ export async function fetchLogEntries(
   const res = await authedFetch(url);
   if (!res.ok) return [];
   const body = (await res.json()) as unknown;
-  const rows = Array.isArray(body)
-    ? (body as LogEntryRow[])
-    : Array.isArray((body as { rows?: LogEntryRow[] }).rows)
-      ? ((body as { rows: LogEntryRow[] }).rows)
-      : [];
-  return rows;
+  if (Array.isArray(body)) return body as LogEntryRow[];
+  if (isRecord(body) && Array.isArray(body.rows)) return body.rows as LogEntryRow[];
+  // OMN-24616 AC5: a 200 that is not rows is refused with its reason, never read as "no log entries".
+  throw new Error(
+    `malformed log-entries response: ${isRecord(body) ? describeRows(body) : `a ${body === null ? "null" : typeof body}`}`,
+  );
 }
 
 export const fetchRegistration = (): Promise<
