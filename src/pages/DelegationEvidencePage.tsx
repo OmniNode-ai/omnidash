@@ -1,4 +1,5 @@
 import { formatDashboardCount } from '@/theme/format';
+import { NOT_MEASURED } from '@/theme/format';
 /**
  * OMN-12943 — Delegation Evidence (ported from prototype view-delegation.jsx).
  *
@@ -271,10 +272,10 @@ function QualityGate() {
   return (
     <Panel title="QUALITY GATE" sub="All quality checks served · deterministic checks">
       <div className="ev-qg-stats">
-        <span className="stat-inline"><span className="big c-amber delegation-evidence-page-s2424da">{servedNumber(q.overall_pass_rate) === null ? 'Not served' : passRate(q.overall_pass_rate)}</span><span className="note">pass rate</span></span>
-        <span className="stat-inline" data-field-tone="pass"><span className="big c-green delegation-evidence-page-s2424da">{passed === null ? 'Not served' : formatDashboardCount(passed)}</span><span className="note">pass</span></span>
-        <span className="stat-inline" data-field-tone="fail"><span className="big c-red delegation-evidence-page-s5c8ea5">{failed === null ? 'Not served' : formatDashboardCount(failed)}</span><span className="note">fail</span></span>
-        <span className="stat-inline"><span className="big">{servedNumber(q.escalation_rate) === null ? 'Not served' : passRate(q.escalation_rate)}</span><span className="note">escalation rate</span></span>
+        <span className="stat-inline"><span className="big c-amber delegation-evidence-page-s2424da">{servedNumber(q.overall_pass_rate) === null ? NOT_MEASURED : passRate(q.overall_pass_rate)}</span><span className="note">pass rate</span></span>
+        <span className="stat-inline" data-field-tone="pass"><span className="big c-green delegation-evidence-page-s2424da">{passed === null ? NOT_MEASURED : formatDashboardCount(passed)}</span><span className="note">pass</span></span>
+        <span className="stat-inline" data-field-tone="fail"><span className="big c-red delegation-evidence-page-s5c8ea5">{failed === null ? NOT_MEASURED : formatDashboardCount(failed)}</span><span className="note">fail</span></span>
+        <span className="stat-inline"><span className="big">{servedNumber(q.escalation_rate) === null ? NOT_MEASURED : passRate(q.escalation_rate)}</span><span className="note">escalation rate</span></span>
       </div>
       <div className="bar-track ev-qg-bar">
         <div className="bar-fill m-green" data-field-tone="pass" data-semantic-concept="field:pass" data-semantic-label="Passed checks" style={{ background: 'var(--ds-field-pass)', width: total && passed !== null ? `${(passed / total) * 100}%` : '0%' }} />
@@ -287,7 +288,7 @@ function QualityGate() {
       <div className="divider" />
       <div className="ev-qg-categories">
       <div className="section-label">Failure categories</div>
-      {categories === null ? <p className="note">Not served</p> : categories.length === 0 ? <p className="note">0 failure categories</p> : (
+      {categories === null ? <p className="note">{NOT_MEASURED}</p> : categories.length === 0 ? <p className="note">0 failure categories</p> : (
         // OMN-22168 (Lakshman 2026-11-05, "full platform uniform"): every served category stays ranked, the top five in view
         // and the rest one click away (the panel had run 14,197px down the page), each name in the page's sans text, two
         // lines at most, its whole text on hover.
@@ -300,7 +301,7 @@ function QualityGate() {
               return <li data-quality-category key={`${String(category.category)}-${index}`}>
                 <span className="ev-quality-name" title={reason.title}>{reason.text}</span>
                 <span className="ev-quality-track"><span style={{ width: count !== null && largestCategory > 0 ? `${count / largestCategory * 100}%` : '0%' }} /></span>
-                <span className="mono">{count === null ? 'Not served' : formatDashboardCount(count)}</span>
+                <span className="mono">{count === null ? NOT_MEASURED : formatDashboardCount(count)}</span>
               </li>;
             })}
           </ol>;
@@ -314,16 +315,16 @@ function QualityGate() {
 }
 
 /** A served check name in words ("score vs required bar"); the served key stays in the data attribute. */
-const checkName = (value: unknown) => (isUnavailableField(value) ? 'Not served' : String(value).replace(/_+/g, ' '));
+const checkName = (value: unknown) => (isUnavailableField(value) ? NOT_MEASURED : String(value).replace(/_+/g, ' '));
 const servedNumber = (value: unknown): number | null =>
   isUnavailableField(value) || !Number.isFinite(Number(value)) ? null : Number(value);
 const wholeTokens = (value: unknown) => {
   const n = servedNumber(value);
-  return n === null ? 'Not served' : <TokenCount value={Math.round(n)} missing="Not served" />;
+  return n === null ? NOT_MEASURED : <TokenCount value={Math.round(n)} missing={NOT_MEASURED} />;
 };
 const attempts = (value: unknown) => {
   const n = servedNumber(value);
-  return n === null ? 'Not served' : fmtFixed(n, 1);
+  return n === null ? NOT_MEASURED : fmtFixed(n, 1);
 };
 
 /**
@@ -345,9 +346,9 @@ function AcceptanceChecks({ q }: { q: QualityGateRow }) {
           {checks.map((check, index) => (
             <li key={`${String(check.check_type)}-${index}`} data-check-type={String(check.check_type ?? '')}>
               <span>{checkName(check.check_type)}</span>
-              <span data-field-tone="pass">{servedNumber(check.passed) === null ? 'Not served' : formatDashboardCount(check.passed)} passed</span>
-              <span data-field-tone="fail">{servedNumber(check.failed) === null ? 'Not served' : formatDashboardCount(check.failed)} failed</span>
-              <span>{servedNumber(check.pass_rate) === null ? 'Not served' : passRate(check.pass_rate)}</span>
+              <span data-field-tone="pass">{servedNumber(check.passed) === null ? NOT_MEASURED : formatDashboardCount(check.passed)} passed</span>
+              <span data-field-tone="fail">{servedNumber(check.failed) === null ? NOT_MEASURED : formatDashboardCount(check.failed)} failed</span>
+              <span>{servedNumber(check.pass_rate) === null ? NOT_MEASURED : passRate(check.pass_rate)}</span>
             </li>
           ))}
         </ul>
@@ -366,7 +367,7 @@ function AcceptanceChecks({ q }: { q: QualityGateRow }) {
               <span className="mono local-model-identity" data-semantic-concept={isUnavailableField(model.model_name) ? undefined : `model:${String(model.model_name)}`} style={modelIdentityStyle(String(model.model_name ?? ''))}>{isUnavailableField(model.model_name) ? 'Unknown model' : String(model.model_name)}</span>
               <span>{wholeTokens(model.avg_tokens)} tokens</span>
               <span>{attempts(model.avg_attempts)} attempts</span>
-              <span>{servedNumber(model.sample_count) === null ? 'Not served' : `${formatDashboardCount(model.sample_count)} ${servedNumber(model.sample_count) === 1 ? 'run' : 'runs'}`}</span>
+              <span>{servedNumber(model.sample_count) === null ? NOT_MEASURED : `${formatDashboardCount(model.sample_count)} ${servedNumber(model.sample_count) === 1 ? 'run' : 'runs'}`}</span>
             </li>
           ))}
         </ul>);
@@ -409,7 +410,7 @@ export function TriageRows({ rows, denominator, kind }: {
       const share = row.count === null || denominator === null || denominator === 0 ? null : row.count / denominator;
       return <li data-triage-row key={`${kind}-${row.id ?? row.name}`}>
         <a href={row.href} title={row.title} aria-label={`View failed runs for ${row.name}`}>{row.name}</a>
-        <span className="mono">{row.count === null ? 'Not served' : formatDashboardCount(row.count)} · {share === null ? 'Share not served' : sharePercent(share)}</span>
+        <span className="mono">{row.count === null ? NOT_MEASURED : formatDashboardCount(row.count)} · {share === null ? 'Share not served' : sharePercent(share)}</span>
         {/* OMN-22168 (Lakshman 2026-11-04, "make it modern"): the share drawn as a bar; none where the share is not served. */}
         {share !== null && <span className="ev-triage-share" aria-hidden="true" data-identity-decoration="share-bar"
           style={{ '--share': `${Number(fmtFixed((share * 100), 3))}%` } as CSSProperties} />}
@@ -474,7 +475,7 @@ export function FailureTriage({ decisions, available, complete = false }: { deci
             <div className="section-label">Checks by type</div>
             {checks === null ? <p className="note">Check types not served</p> : checks.length === 0 ? <p className="note">No failed checks by type.</p> :
               <ol className="ev-triage-rows" aria-label="Failures by check type">{checks.map(item => <li data-triage-row key={item.name}>
-                <span>{item.name}</span><span className="mono">{item.count === null ? 'Not served' : formatDashboardCount(item.count)} · {item.count === null || item.total === null || item.total === 0
+                <span>{item.name}</span><span className="mono">{item.count === null ? NOT_MEASURED : formatDashboardCount(item.count)} · {item.count === null || item.total === null || item.total === 0
                   ? 'Share not served' : sharePercent(item.count / item.total)} of this check type</span>
               </li>)}</ol>}
           </>}

@@ -2,6 +2,7 @@ import { formatDashboardCount, formatFullCount } from '@/theme/format';
 
 import { formatDashboardUsd, formatShare } from '@/theme/format';
 import { formatDuration } from '@/theme/format';
+import { NOT_MEASURED } from '@/theme/format';
 import { createContext, useContext, useId, useState, type CSSProperties, type ReactNode } from 'react';
 import { millisecondsAxisLabel } from '@/theme/design-system/charts/bar-charts';
 import { passBand } from '@/pages/local/plain-text';
@@ -488,7 +489,7 @@ function ChartHeading({ title, concept, detail }: { title: string; concept: stri
 }
 
 function usd(value: number | null): string {
-  return value === null ? 'Not served' : formatDashboardUsd(value);
+  return value === null ? NOT_MEASURED : formatDashboardUsd(value);
 }
 
 function delta(value: number | null, format: (value: number) => string): string {
@@ -545,8 +546,8 @@ function MeteringWindowKpis({ current, previous, days, label, comparisonEnabled,
     : previousComplete && current.saved !== null && previous.saved !== null
       ? delta(current.saved - previous.saved, value => usd(value)) : 'Previous window not fully returned';
   return <section className="ins-window-kpis ins-window-kpis--metering" aria-label={`Metered spend summary for ${label}`}>
-    <KpiTile tone="cost" label="You paid" value={paidReady ? usd(current.spend) : 'Unavailable'} unavailable={!paidReady}><small>{paidNote}</small>{paidDelta !== null && <small>{paidDelta}</small>}</KpiTile>
-    <KpiTile tone="savings" label="Saved" value={savedReady ? usd(current.saved) : 'Unavailable'} unavailable={!savedReady}><small>{savedNote}</small>{savedDelta !== null && <small>{savedDelta}</small>}</KpiTile>
+    <KpiTile tone="cost" label="You paid" value={paidReady ? usd(current.spend) : NOT_MEASURED} unavailable={!paidReady}><small>{paidNote}</small>{paidDelta !== null && <small>{paidDelta}</small>}</KpiTile>
+    <KpiTile tone="savings" label="Saved" value={savedReady ? usd(current.saved) : NOT_MEASURED} unavailable={!savedReady}><small>{savedNote}</small>{savedDelta !== null && <small>{savedDelta}</small>}</KpiTile>
   </section>;
 }
 
@@ -560,7 +561,7 @@ function MeteringAllTimeKpis({ rows, label, unavailable }: { rows: readonly unkn
   const paidReady = reason === null && total.spend !== null;
   const paidNote = reason ?? (total.spend === null ? 'The all-time spend total is not recorded.' : 'All-time total, as served.');
   return <section className="ins-window-kpis ins-window-kpis--metering" aria-label={`Metered spend summary for ${label}`}>
-    <KpiTile tone="cost" label="You paid" value={paidReady ? usd(total.spend) : 'Unavailable'} unavailable={!paidReady}><small>{paidNote}</small></KpiTile>
+    <KpiTile tone="cost" label="You paid" value={paidReady ? usd(total.spend) : NOT_MEASURED} unavailable={!paidReady}><small>{paidNote}</small></KpiTile>
   </section>;
 }
 
