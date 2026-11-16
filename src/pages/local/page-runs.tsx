@@ -13,7 +13,7 @@ import { DEFAULT_RUNS_VIEW, readRunsSearch, writeRunsSearch, type RunsViewState 
 import { runsToCsv, runsToJson, sortRuns, type RunSortKey } from '@/pages/local/runs-sort-export';
 import { PAGE_PATHS } from '@/navigation/page-routes';
 import { workflowHref } from '@/navigation/workflow-url-state';
-import { useWorkflowHref } from '@/navigation/use-workflow-href';
+import { useWorkflowHref } from '@/hooks/useWorkflowHref';
 import { RunDurationChart, RunMetricChart, RunTokensChart, type ListedRun } from '@/theme/design-system/charts';
 import { PassRateMeter } from '@/pages/local/shares';
 import { breakableName } from '@/theme/design-system/charts';

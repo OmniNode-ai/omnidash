@@ -8,7 +8,7 @@ import { useRef, useState } from 'react';
 import { Link } from 'wouter';
 import { Check, Copy } from '@/theme/design-system/icons';
 import { formatDashboardUsd as formatUsd } from '@/theme/format';
-import { useWorkflowHref } from '@/navigation/use-workflow-href';
+import { useWorkflowHref } from '@/hooks/useWorkflowHref';
 import { failureCauseLabel, failureDetailText, tierLabel } from '@/pages/local/plain-text';
 import { causeLabelOf } from '@/pages/local/run-filter';
 import { typedFailureCauseOf } from '@/pages/local/insights';

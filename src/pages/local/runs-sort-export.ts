@@ -1,7 +1,7 @@
 // OMN-21166 part 14 (AC75, AC76): sort the Runs list by time, duration or cost, and export exactly the rows the search
 // and filters show. Both read the served rows only; nothing here adds, rounds or fills a value.
 
-import { csvCell } from '@/lib/csv-cell';
+import { csvCell } from '@/theme/format/csv-cell';
 
 type Row = Record<string, unknown>;
 export type RunSortKey = 'created' | 'duration' | 'cost';

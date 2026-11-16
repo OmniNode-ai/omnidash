@@ -61,7 +61,7 @@ import { Bot, FileJson, FileSpreadsheet, ListChecks, TriangleAlert } from '@/the
 import { fixed as fmtFixed } from '@/theme/format';
 // OMN-23330 AC25: this file's fixed inline styles are classes in DelegationEvidencePage.static.css.
 import './DelegationEvidencePage.static.css';
-import { csvCell } from '@/lib/csv-cell';
+import { csvCell } from '@/theme/format/csv-cell';
 
 /**
  * OMN-21166 AC72 pass 1: a rate on Evidence reads to one decimal, as Overview writes the same served rate (91.6%, not

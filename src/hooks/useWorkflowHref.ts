@@ -1,6 +1,6 @@
 import { useLocation, useSearch } from 'wouter';
-import { PAGE_PATHS } from './page-routes';
-import { workflowHref } from './workflow-url-state';
+import { PAGE_PATHS } from '@/navigation/page-routes';
+import { workflowHref } from '@/navigation/workflow-url-state';
 
 /**
  * OMN-24616 AC7: the Workflow address of a run as linked from where the reader is. On Runs it carries the Runs view
