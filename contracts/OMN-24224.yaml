@@ -18,6 +18,11 @@ context:
         criterion_hash: "a2895cab9bc54422010f786d65a0caf0519fee8bc034dfdcc7fdff0de27e5016"
         proposed_by: "lane=dod-closeout-bind-2026-11-16T1145Z-c0"
         accepted_by: "lane=dod-closeout-accept-2026-11-16T1145Z-c0"
+    dod-omn24224-ac1-accepted-20261116t1945z:
+      - label: "AC1"
+        criterion_hash: "f04d019220579d26951b59f2c080639c8e6af78b16f88037455bf8bcac8c578b"
+        proposed_by: "lane=dod-closeout-bind-2026-11-16T1945Z-c0"
+        accepted_by: "lane=dod-closeout-accept-2026-11-16T1945Z-c0"
 requirements:
   - id: "req-omn24224-runs-cost-not-measured"
     statement: >-
@@ -55,6 +60,14 @@ dod_evidence:
     description: "AC2 accepted binding (lane=dod-closeout-accept-2026-11-16T1145Z-c0): proposed by lane=dod-closeout-bind-2026-11-16T1145Z-c0, re-run green on omnidash origin/dev d7278ead in a clean worktree on 2026-11-16 (1 passed); with src/pages/local/page-runs.tsx and src/pages/local/page-shared.tsx of omnidash#510 reverted at d7278ead the spec fails (expected Not measured, received Not recorded). The measured-zero muted $0 predates omnidash#510; the spec guards it alongside the null-cost cell."
     source: "manual"
     binds_ac: ["AC2"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx playwright test tests/e2e/runs-unmeasured-cost.omn24224.spec.ts -g unmeasured_run_cost --project=chromium --workers=1 --retries=0 --reporter=list"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn24224-ac1-accepted-20261116t1945z"
+    description: "AC1 accepted binding (lane=dod-closeout-accept-2026-11-16T1945Z-c0): proposed by lane=dod-closeout-bind-2026-11-16T1945Z-c0, re-run green on omnidash origin/dev 37470cfe in a clean worktree on 2026-11-16 (1 passed); with src/pages/local/page-runs.tsx and src/pages/local/page-shared.tsx of omnidash#510 reverted at 37470cfe the spec fails (expected Not measured, received Not recorded). Merged-dev proof only: the installed product reads Not measured once an omnidash release after v1.1.12 carries #510."
+    source: "manual"
+    binds_ac: ["AC1"]
     checks:
       - check_type: "test_passes"
         check_value: "npm ci --prefer-offline --no-audit --no-fund && npx playwright test tests/e2e/runs-unmeasured-cost.omn24224.spec.ts -g unmeasured_run_cost --project=chromium --workers=1 --retries=0 --reporter=list"
