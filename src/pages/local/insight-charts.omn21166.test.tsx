@@ -67,11 +67,13 @@ describe('OMN-21166: Overview insight charts', () => {
 
   // Review failures: the30-day drawing cap must not imply all served rows are
   // plotted; undated rows cannot silently vanish; partial token days are not totals.
-  it('C13: discloses the plotted subset when all-time served rows exceed30days', () => {
+  // OMN-24616 AC3 (replacing the 30-day drawing cap): All plots every served day, so no subset is left to disclose.
+  it('C13: All plots every served day, with no 30-day cap', () => {
     render(<InsightsWindowContext.Provider value="all"><InsightsSection decisions={[row('2026-09-01T08:00:00Z'), row('2026-10-18T08:00:00Z')]} now={NOW} /></InsightsWindowContext.Provider>);
     expect(screen.getByTestId('insights-total')).toHaveTextContent('Latest 2 served runs');
-    expect(screen.getByTestId('insights-total')).toHaveTextContent('1 of 2 selected runs plotted');
+    expect(screen.getByTestId('insights-total')).not.toHaveTextContent('plotted');
     expect(screen.getByTestId('insights-total')).toHaveTextContent('All served dates');
+    expect(within(screen.getByRole('group', { name: 'Runs per day' })).getByRole('button', { name: /^Sep 1:/ })).toBeInTheDocument();
   });
   it('C14: keeps undated rows in the served denominator and names their exclusion', () => {
     render(<InsightsWindowContext.Provider value="all"><InsightsSection decisions={[row('2026-10-18T08:00:00Z'), row('not-a-time')]} now={NOW} /></InsightsWindowContext.Provider>);

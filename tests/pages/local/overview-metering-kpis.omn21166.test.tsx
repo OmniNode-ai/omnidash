@@ -48,16 +48,16 @@ describe('AC42: metering KPIs for the All and custom windows', () => {
     expect(summary).not.toHaveTextContent('Unavailable');
   });
 
-  it('a custom range partly outside the served day rows, or with an unserved day, stays unavailable with a reason', () => {
+  it('a custom range partly outside the served day rows stays unavailable with a reason; a day inside it with no runs adds zero', () => {
     const outside = kpis({ kind: 'custom', start: '2026-10-12', end: '2026-10-16' });
     expect(within(outside).getAllByText('Unavailable')).toHaveLength(2);
     expect(outside).toHaveTextContent(/outside the dates with served daily rows/);
     expect(outside).not.toHaveTextContent('$');
     outside.unmount();
+    // OMN-24616 AC3: the runtime writes no row for a day with no runs, so that day adds zero and the range has values.
     const gap = kpis({ kind: 'custom', start: '2026-10-12', end: '2026-10-14' });
-    expect(within(gap).getAllByText('Unavailable')).toHaveLength(2);
-    expect(gap).toHaveTextContent('2 of 3 daily rows served');
-    expect(gap).not.toHaveTextContent('$');
+    expect(within(gap).queryAllByText('Unavailable')).toHaveLength(0);
+    expect(gap).toHaveTextContent('$');
   });
 
   it('a custom range with no served day rows never shows $0.00, and an end before the start stays typed', () => {
