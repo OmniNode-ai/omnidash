@@ -1,0 +1,40 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+schema_version: "1.0.0"
+ticket_id: "OMN-24616"
+title: "The local dashboard pages compute figures from partial reads, hard-code lists and show one value several ways"
+summary: >-
+  Acceptance for OMN-24616, copied from the live ticket on 2026-11-16. This pull request delivers AC8: Settings shows
+  the baseline price itself, from the resolved baseline metering-summary.v1 serves, and the model provider status is
+  re-read by Refresh and the poll like the keys table beside it. AC8 is declared here and bound to its tests. AC5 and
+  AC7 are in the first pull request for this ticket, AC2 and AC6 in the second; whichever lands later merges the
+  contracts.
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-omn24616-settings-price-and-status"
+    statement: >-
+      Settings shows the baseline price per million tokens, and provider status follows Refresh and the poll.
+    acceptance:
+      - id: "AC8"
+        statement: >-
+          Settings shows the baseline price itself, and provider status is re-read by Refresh and the poll like the
+          keys table beside it -- falsifier: npx playwright test fails unless the price per million tokens is shown
+          and a provider status change appears after Refresh
+evidence_requirements: []
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
+dod_evidence:
+  - id: "dod-omn24616-ac8"
+    description: >-
+      AC8 in settings-price-and-status.omn24616.test.tsx: the served baseline price per 1k reads as the price per
+      million tokens, a row with no price reads Not measured, and a provider status change appears after Refresh and
+      after the poll. All four tests fail on dev 37470cfeaafb0175c8f4b6fdf577b116bfde3e3b.
+    source: "manual"
+    binds_ac: ["AC8"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm test -- --run tests/pages/local/settings-price-and-status.omn24616.test.tsx"
