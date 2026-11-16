@@ -257,7 +257,7 @@ export function QualityCard({ row, change = null }: { row: Row | null; change?: 
   return <>
     {/* OMN-23330 AC34: the figure is all time (no previous window), so its detail is the exact rate only. */}
     <FigureDetail lines={[`Exact: ${fmtFixed(Number(row.overall_pass_rate) * 100, 2)}%`]}>
-      <Figure measured><CountUpText text={`${fmtFixed((Number(row.overall_pass_rate) * 100), 1)}%`} /></Figure>
+      <Figure measured><CountUpText text={formatShare(Number(row.overall_pass_rate))} /></Figure>
     </FigureDetail>
     {change && <ChangeLine text={change} meaning={changeMeaning('overview-quality')} />}
     <HeadlineHover label="Delegation Quality" lines={[`${count(row.total_passed)} of ${count(row.total_checks)} runs passed the quality gate`,

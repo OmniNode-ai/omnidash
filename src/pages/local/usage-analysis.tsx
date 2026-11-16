@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Link } from 'wouter';
 
-import { formatDashboardUsd } from '@/theme/format';
+import { formatDashboardUsd, formatShare } from '@/theme/format';
 import { ColumnTip, DashboardTabs, DashboardToggle, DataTable, EmptyState, InfoTip, Panel, PanelTitle } from '@/theme/design-system/components';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { tierLabel } from '@/pages/local/plain-text';
@@ -56,7 +56,7 @@ const dayLabel = (day: string) => fmtLocaleDate(new Date(`${day}T00:00:00Z`), 'e
 // OMN-22168 (Jonah 2026-11-06): every dollar figure follows the display rule (two decimals, up to four under $1, cut).
 const usd = (value: number) => formatDashboardUsd(value);
 const latency = (value: number | null) => (value === null ? 'Not recorded' : value >= 1000 ? `${fmtFixed((value / 1000), 1)} s` : `${Math.round(value)} ms`);
-const passText = (totals: Totals) => (totals.verdicts === 0 ? 'No verdicts' : `${fmtFixed(((totals.passed / totals.verdicts) * 100), 1)}% (${totals.passed} of ${totals.verdicts})`);
+const passText = (totals: Totals) => (totals.verdicts === 0 ? 'No verdicts' : `${formatShare(totals.passed / totals.verdicts)} (${totals.passed} of ${totals.verdicts})`);
 const money = (value: number | null, measured: number, runs: number) => (value === null ? 'Not measured' : `${formatDashboardUsd(value)} (${measured} of ${runs} measured)`);
 const lastText = (value: string | null) => (value === null ? 'Not recorded'
   : `${dayLabel(value.slice(0, 10))}, ${new Date(value).toISOString().slice(11, 16)} UTC`);
@@ -167,7 +167,7 @@ const MATRIX_COLUMNS: ReadonlyArray<{ value: Extract<GroupBy, 'task' | 'tier'>; 
 function matrixFigure(totals: Totals, metric: MatrixMetric): [string, string] {
   switch (metric) {
     case 'pass': return totals.verdicts === 0 ? ['No verdicts', runCount(totals.runs)]
-      : [`${fmtFixed(((totals.passed / totals.verdicts) * 100), 1)}%`, `${totals.passed} of ${totals.verdicts}`];
+      : [`${formatShare(totals.passed / totals.verdicts)}`, `${totals.passed} of ${totals.verdicts}`];
     case 'p95': return [latency(totals.p95), `${totals.latencies} recorded`];
     case 'cost': return totals.spend === null ? ['Not measured', runCount(totals.runs)] : [usd(totals.spend / totals.spendMeasured), `${totals.spendMeasured} measured`];
     case 'runs': return [String(totals.runs), totals.verdicts === 0 ? 'no verdicts' : `${totals.passed} of ${totals.verdicts} passed`];
@@ -234,7 +234,7 @@ function trendLabel(day: TrendDay, metric: TrendMetric): string {
   if (day.state === 'no-runs') return `${date}: no runs`;
   const runs = `${day.runs} ${day.runs === 1 ? 'run' : 'runs'}`;
   if (metric === 'p95') return day.p95 === null ? `${date}: latency not recorded, ${runs}` : `${date}: p95 ${latency(day.p95)}, ${runs}`;
-  return day.state === 'no-verdicts' ? `${date}: no verdicts, ${runs}` : `${date}: ${fmtFixed(((day.passed / day.verdicts) * 100), 1)}% passed (${day.passed} of ${day.verdicts}), ${runs}`;
+  return day.state === 'no-verdicts' ? `${date}: no verdicts, ${runs}` : `${date}: ${formatShare(day.passed / day.verdicts)} passed (${day.passed} of ${day.verdicts}), ${runs}`;
 }
 
 /**
@@ -333,7 +333,7 @@ export function RunsTotals({ rows, sample, complete = false }: { rows: readonly 
   return <p className="local-dashboard-caption local-runs-totals" data-runs-totals aria-live="polite">
     <span data-total="runs">{`${totals.runs} ${totals.runs === 1 ? 'run' : 'runs'}`}</span>{' · '}
     <span data-total="spend">{totals.spend === null ? 'spend not measured' : `${formatDashboardUsd(totals.spend)} spend (${totals.spendMeasured} with a recorded cost)`}</span>{' · '}
-    <span data-total="pass">{totals.verdicts === 0 ? 'no verdicts' : `${fmtFixed(((totals.passed / totals.verdicts) * 100), 1)}% passed (${totals.passed} of ${totals.verdicts})`}</span>{' · '}
+    <span data-total="pass">{totals.verdicts === 0 ? 'no verdicts' : `${formatShare(totals.passed / totals.verdicts)} passed (${totals.passed} of ${totals.verdicts})`}</span>{' · '}
     <span data-total="p95">{totals.p95 === null ? 'p95 not recorded' : `p95 ${latency(totals.p95)}`}</span>{' · '}
     {/* "Measured" is Overview's word for runs with token counts and a cost; this counts runs with a recorded cost. */}
     <span className="local-runs-totals-scope">{`current filter · ${complete ? 'all' : 'latest'} ${sample} served runs`}</span>
