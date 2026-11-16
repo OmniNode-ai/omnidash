@@ -78,10 +78,12 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
   const [snapshots, setSnapshots] = useState<BoundProjectionSnapshot[]>([]);
   // OMN-21166 AC77, OMN-24616 AC6: every page tells the top bar when its rows were last read from the runtime.
   const servedRead = latestServedRead(snapshots);
+  // Each mounted part publishes under its own source, so Settings' four sections never overwrite each other's read.
+  const readSource = useId();
   useEffect(() => {
-    publishLocalPageRead(destination, servedRead);
-    return () => publishLocalPageRead(null, null);
-  }, [destination, servedRead]);
+    publishLocalPageRead(destination, servedRead, readSource);
+    return () => publishLocalPageRead(null, null, readSource);
+  }, [destination, servedRead, readSource]);
   const [error, setError] = useState<string | null>(null);
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);

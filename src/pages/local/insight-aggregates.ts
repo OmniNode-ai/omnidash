@@ -341,8 +341,8 @@ export function durationDistribution(runs: readonly InsightRun[]): { labels: str
   const buckets = new Array<number>(edges.length - 1).fill(0);
   let unrecorded = 0;
   for (const run of runs) {
-    if (run.latencyMs === null) { unrecorded += 1; continue; }
-    const index = edges.findIndex((edge, i) => i < edges.length - 1 && run.latencyMs! >= edge && run.latencyMs! < edges[i + 1]!);
+    if (run.durationMs === null) { unrecorded += 1; continue; }
+    const index = edges.findIndex((edge, i) => i < edges.length - 1 && run.durationMs! >= edge && run.durationMs! < edges[i + 1]!);
     if (index >= 0) buckets[index] = buckets[index]! + 1;
   }
   return { labels: buckets.map((_, index) => durationBucketLabel(index)), buckets, unrecorded };

@@ -101,7 +101,7 @@ describe('UsageKpis', () => {
 
 const run = (id: string, over: Record<string, unknown> = {}) => ({
   correlation_id: id, created_at: '2026-10-25T10:00:00Z', written_at: '2026-10-25T10:00:00Z', quality_gate_passed: 1,
-  terminal_ok: 1, latency_ms: 1000, model_name: 'm', cost_tier_name: 'local', task_type: 'document', ...over,
+  terminal_ok: 1, execution_ms: 1000, model_name: 'm', cost_tier_name: 'local', task_type: 'document', ...over,
 });
 
 describe('RunsKpis', () => {
@@ -115,10 +115,10 @@ describe('RunsKpis', () => {
     expect(tooltip(cards(strip)[1]!)).toContain('3 of 3 runs have a verdict');
   });
 
-  it('K1: reads durations and escalations that no row records as Not recorded, never 0', () => {
-    render(<RunsKpis now={Date.parse('2026-10-25T12:00:00Z')} rows={[run('a', { latency_ms: null }), run('b', { latency_ms: null })]} />);
+  it('K1: reads durations and escalations that no row records as Not measured, never 0', () => {
+    render(<RunsKpis now={Date.parse('2026-10-25T12:00:00Z')} rows={[run('a', { execution_ms: null }), run('b', { execution_ms: null })]} />);
     const strip = screen.getByRole('region', { name: 'Run summary' });
-    expect(within(strip).getAllByText('Not recorded').length).toBeGreaterThanOrEqual(3);
+    expect(within(strip).getAllByText('Not measured').length).toBeGreaterThanOrEqual(3);
     expect(within(strip).queryByText('0 ms')).toBeNull();
   });
 

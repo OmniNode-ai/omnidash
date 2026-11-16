@@ -22,7 +22,7 @@ const NOW = Date.parse('2026-10-18T09:30:00Z');
 
 function row(at: string | null, extra: Record<string, unknown> = {}): Record<string, unknown> {
   return {
-    written_at: at, quality_gate_passed: 1, quality_gate_detail: 'completed', latency_ms: 500,
+    written_at: at, quality_gate_passed: 1, quality_gate_detail: 'completed', execution_ms: 500,
     tokens_input: 200, tokens_output: 20, cost_usd: 0,
     cost_tier_name: 'local', task_type: 'document', model_name: 'Qwen3.8-27B', ...extra,
   };
@@ -42,7 +42,7 @@ describe('OMN-21166: insights over served decision rows', () => {
   });
 
   it('F2: a missing duration is counted as unrecorded, not in the first bucket', () => {
-    const runs = toInsightRuns([row('2026-10-18T08:00:00Z', { latency_ms: 120 }), row('2026-10-18T08:01:00Z', { latency_ms: null }), row('2026-10-18T08:02:00Z', { latency_ms: 1800 })]);
+    const runs = toInsightRuns([row('2026-10-18T08:00:00Z', { execution_ms: 120 }), row('2026-10-18T08:01:00Z', { execution_ms: null }), row('2026-10-18T08:02:00Z', { execution_ms: 1800 })]);
     const result = durationBuckets(runs, [0, 250, 1000, Infinity]);
     expect(result.buckets).toEqual([1, 0, 1]);
     expect(result.unrecorded).toBe(1);
@@ -58,7 +58,7 @@ describe('OMN-21166: insights over served decision rows', () => {
     { values: [120, 500, 1800], expected: 500 },
     { values: [null, null], expected: null },
   ])('median keeps zero, excludes missing values and averages an even middle: $values', ({ values, expected }) => {
-    const runs = toInsightRuns(values.map(latency_ms => row('2026-10-18T08:00:00Z', { latency_ms })));
+    const runs = toInsightRuns(values.map(execution_ms => row('2026-10-18T08:00:00Z', { execution_ms })));
     expect(summary(runs).medianLatency).toBe(expected);
   });
 

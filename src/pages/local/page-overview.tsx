@@ -1,5 +1,6 @@
 // OMN-23330 AC24: part of the local pages, split out of LocalDashboardPage.tsx (3,926 lines) with no change to what
 // any page draws. Overview panels: model usage, the status strip, the Daily trend and the tier mix.
+import { NOT_MEASURED } from '@/theme/format';
 import { formatDashboardCount, formatDuration, formatFullCount } from '@/theme/format';
 import { useId, useState, type CSSProperties } from 'react';
 import { tierColor, tierConcept } from '@/lib/dashboard-colors';
@@ -39,7 +40,7 @@ export function ModelUsagePanel({ row }: { row: Row | null }) {
           // Part 19 AC135: a named model opens Runs filtered to it; a model the rows do not name opens nothing.
           const href = isMissing(model.model_name) ? undefined : `/runs?${writeRunsSearch('', { ...DEFAULT_RUNS_VIEW, model: name })}`;
           return { key: `${name}-${index}`, name, model: isMissing(model.model_name) ? undefined : name, value: runs, count: runs, share: pct, basis: 'measured' as const, color: modelColor(name), href, opensLabel: `Opens Runs filtered to ${name}`,
-            display: runs === null ? 'Not recorded'
+            display: runs === null ? NOT_MEASURED
               : `${recordedCount(model.total_count)}${pct === null ? '' : ` · ${formatShare(pct)}`}` };
         })} />
       <TierLegend label="Model usage tier colours" models={models.map(model => (isMissing(model.model_name) ? '' : String(model.model_name)))} />
@@ -86,7 +87,7 @@ export function OverviewStatusStrip({ env, decisions, routing, now, window = 'al
   const oldestRead = runs.reduce<string | null>((oldest, run) => (oldest === null || run.day < oldest ? run.day : oldest), null);
   const covered = complete || (oldestRead !== null && from !== '' && oldestRead < from);
   const inWindow = covered ? runs.filter(run => run.day >= from && run.day <= to) : [];
-  const latencies = inWindow.map(run => run.latencyMs).filter((value): value is number => value !== null).sort((a, b) => a - b);
+  const latencies = inWindow.map(run => run.durationMs).filter((value): value is number => value !== null).sort((a, b) => a - b);
   const median = latencies.length === 0 ? null : latencies[Math.floor((latencies.length - 1) / 2)]!;
   // Lakshman 2026-11-04 ("colourful and remove 500 latest runs text"): the median reads plainly, without the read's size.
   const speed = median === null ? null : `Median run ${formatDuration(median)}`;
@@ -251,7 +252,7 @@ export function TierMixPanel({ row, compact = false }: { row: Row | null; compac
             const href = isMissing(tier.cost_tier_name) ? undefined : `/runs?${writeRunsSearch('', { ...DEFAULT_RUNS_VIEW, tier: name })}`;
             return { key: `${name}-${index}`, name: tierLabel(name), value: pct === null ? null : pct * 100, count: share(tier.count), share: pct, basis: 'measured' as const, color: tierColor(name), href, opensLabel: `Opens Runs filtered to ${tierLabel(name)}`,
               // A served share above zero but under 0.1% reads "<0.1%", never a rounded 0.0% that hides a real tier.
-              display: pct === null ? 'Not recorded' : `${recordedCount(tier.count)} · ${formatShare(pct)}` };
+              display: pct === null ? NOT_MEASURED : `${recordedCount(tier.count)} · ${formatShare(pct)}` };
           })} />
         <p className="local-dashboard-caption">{`${recordedCount(byTier.tier_routed_total)} tier-routed · ${recordedCount(byTier.not_tier_routed_count)} not tier-routed · ${recordedCount(byTier.total_tasks)} runs`}</p>
       </section>

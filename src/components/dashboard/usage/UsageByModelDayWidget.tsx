@@ -70,7 +70,7 @@ function measuredCost(value: unknown): string {
 }
 
 function unmeasured(value: unknown): string {
-  if (isMissing(value)) return 'Not recorded';
+  if (isMissing(value)) return NOT_MEASURED;
   return Number(value) === 0 ? 'none' : `${formatDashboardCount(value)} unmeasured`;
 }
 
@@ -177,15 +177,15 @@ export function UsageByModelDayTable({ rows, interactive = false }: { rows: read
             {/* The model's swatch beside its name, as Usage analysis and the decision matrix draw a model (Lakshman 2026-11-05). */}
             <td data-label="Model"><span className="usage-model-name">{!isMissing(row.model_id) && <span className="gdb-swatch" aria-hidden="true"
               data-model-id={model(row.model_id)} style={{ background: modelColor(model(row.model_id)) }} />}{model(row.model_id)}</span></td>
-            <td data-label="Tokens in" data-field-tone="tokens-in" data-field-unavailable={isMissing(row.input_tokens)}>{isMissing(row.input_tokens) ? recorded(row.input_tokens) : <TokenCount value={row.input_tokens} direction="in" />}</td>
-            <td data-label="Tokens out" data-field-tone="tokens-out" data-field-unavailable={isMissing(row.output_tokens)}>{isMissing(row.output_tokens) ? recorded(row.output_tokens) : <TokenCount value={row.output_tokens} direction="out" />}</td>
+            <td data-label="Tokens in" data-field-tone="tokens-in" data-field-unavailable={isMissing(row.input_tokens)}>{isMissing(row.input_tokens) ? NOT_MEASURED : <TokenCount value={row.input_tokens} direction="in" />}</td>
+            <td data-label="Tokens out" data-field-tone="tokens-out" data-field-unavailable={isMissing(row.output_tokens)}>{isMissing(row.output_tokens) ? NOT_MEASURED : <TokenCount value={row.output_tokens} direction="out" />}</td>
             <td data-label="Cost (measured)">{!isMissing(row.measured_cost_usd) && Number(row.measured_cost_usd) === 0
               ? <span className="local-cost-free" title={measuredCost(row.measured_cost_usd)}>{measuredCost(row.measured_cost_usd).replace(/\.0+$/, '')}</span>
               : measuredCost(row.measured_cost_usd)}</td>
             <td data-label="Unmeasured">{unmeasured(row.unmeasured_call_count) === 'none'
               ? <span className="local-run-quiet" title="No unmeasured calls">—</span> : unmeasured(row.unmeasured_call_count)}</td>
             <td data-label="Tier">{tier(row.cost_tier_name)}</td>
-            <td data-label="Calls">{isMissing(row.call_count) ? 'Not recorded' : formatDashboardCount(row.call_count)}</td>
+            <td data-label="Calls">{isMissing(row.call_count) ? NOT_MEASURED : formatDashboardCount(row.call_count)}</td>
             <td data-label="Share of calls"><span className="local-share-cell">{!isMissing(row.call_share) && Number.isFinite(Number(row.call_share))
               && <span className="local-share-meter" aria-hidden="true" data-identity-decoration="share-bar"><i
                 data-share-band={passBand(Math.min(Math.max(Number(row.call_share), 0), 1) * 100, 100)}
@@ -292,7 +292,7 @@ export function UsageTokensChart({ rows, days = 14 }: { rows: readonly unknown[]
             <li key={day} data-token-day={day} aria-label={label} tabIndex={0} data-dim={hover !== null && hover !== day}
               onMouseEnter={() => setHover(day)} onFocus={() => setHover(day)}>
               {/* A day whose every count is not recorded has no total; a day with some not recorded totals only the rest. */}
-              <span className="utc-value">{models.length > 0 && models.every(([, cell]) => cell.missing && cell.value === 0) ? 'Not recorded'
+              <span className="utc-value">{models.length > 0 && models.every(([, cell]) => cell.missing && cell.value === 0) ? NOT_MEASURED
                 : `${formatDashboardCount(dayTotal)}${models.some(([, cell]) => cell.missing) ? ' (partial)' : ''}`}</span>
               <span className="utc-track">
                 <span className="utc-stack" style={{ height: `${max > 0 ? Math.round((dayTotal / max) * 1000) / 10 : 0}%` }}>

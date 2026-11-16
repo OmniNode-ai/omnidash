@@ -1,5 +1,6 @@
 // OMN-23330 AC24: part of the local pages, split out of LocalDashboardPage.tsx (3,926 lines) with no change to what
 // any page draws. Headline cards: the metric card, the Overview window and range, metering totals and the KPI rows.
+import { NOT_MEASURED } from '@/theme/format';
 import { formatDashboardCount, formatFullCount, wholeCount } from '@/theme/format';
 import { exactMs, formatDuration } from '@/theme/format';
 import { TokenDirections } from '@/components/dashboard/usage/TokenDirections';
@@ -804,7 +805,7 @@ export function RunsKpis({ rows, now, complete = false }: { rows: readonly unkno
   const runs = toInsightRuns(rows);
   if (runs.length === 0) return null;
   const totals = runSummary(runs);
-  const latencies = runs.map(run => run.latencyMs).filter((value): value is number => value !== null).sort((a, b) => a - b);
+  const latencies = runs.map(run => run.durationMs).filter((value): value is number => value !== null).sort((a, b) => a - b);
   const p95 = latencies.length === 0 ? null : latencies[Math.max(0, Math.ceil(latencies.length * 0.95) - 1)]!;
   const escalationServed = asRecords(rows).filter(row => !isMissing(row.escalation_count) && Number.isFinite(Number(row.escalation_count)));
   const escalated = escalationServed.filter(row => Number(row.escalation_count) > 0).length;
@@ -819,18 +820,18 @@ export function RunsKpis({ rows, now, complete = false }: { rows: readonly unkno
       lines: [complete ? `All ${formatDashboardCount(totals.runs)} served runs` : `Latest ${formatDashboardCount(totals.runs)} returned runs`],
       trend: { days: dayKeys, values: days.map(day => (day.runs > 0 ? day.runs : null)), format: value => formatDashboardCount(value) } },
     // OMN-24616 AC2: the rate and its trend are 0-1 shares, written by the one share formatter.
-    { label: 'Pass rate', value: totals.passRate === null ? 'Not recorded' : formatShare(totals.passRate), unavailable: totals.passRate === null,
+    { label: 'Pass rate', value: totals.passRate === null ? NOT_MEASURED : formatShare(totals.passRate), unavailable: totals.passRate === null,
       accent: 'var(--ds-field-pass)', concept: 'pass',
       lines: [`${formatDashboardCount(totals.passed + totals.failed)} of ${formatDashboardCount(totals.runs)} runs have a verdict`],
       trend: { days: dayKeys, values: days.map(day => day.passRate), format: value => formatShare(value) } },
-    { label: 'Median duration', value: totals.medianLatency === null ? 'Not recorded' : formatDuration(totals.medianLatency), unavailable: totals.medianLatency === null,
+    { label: 'Median duration', value: totals.medianLatency === null ? NOT_MEASURED : formatDuration(totals.medianLatency), unavailable: totals.medianLatency === null,
       title: totals.medianLatency === null ? undefined : exactMs(totals.medianLatency), accent: 'var(--ds-field-duration)', concept: 'duration',
       lines: [totals.medianLatency === null ? null : `Exactly ${exactMs(totals.medianLatency)}`, `${formatDashboardCount(runs.length - latencies.length)} without a duration`] },
-    { label: 'p95 duration', value: p95 === null ? 'Not recorded' : formatDuration(p95), unavailable: p95 === null, title: p95 === null ? undefined : exactMs(p95),
+    { label: 'p95 duration', value: p95 === null ? NOT_MEASURED : formatDuration(p95), unavailable: p95 === null, title: p95 === null ? undefined : exactMs(p95),
       accent: 'var(--ds-field-duration-p95)', concept: 'duration-p95', lines: [p95 === null ? null : `Exactly ${exactMs(p95)}`, `Over ${formatDashboardCount(latencies.length)} recorded durations`] },
     { label: 'Failed', value: formatDashboardCount(totals.failed), accent: 'var(--ds-field-fail)', concept: 'fail',
       lines: [totals.unrecorded > 0 ? `${formatDashboardCount(totals.unrecorded)} without a verdict` : 'Of the returned runs'] },
-    { label: 'Escalated', value: escalationServed.length === 0 ? 'Not recorded' : formatDashboardCount(escalated), unavailable: escalationServed.length === 0,
+    { label: 'Escalated', value: escalationServed.length === 0 ? NOT_MEASURED : formatDashboardCount(escalated), unavailable: escalationServed.length === 0,
       accent: 'var(--ds-field-escalated)', concept: 'escalated',
       lines: [escalationServed.length === 0 ? null : `Of ${formatDashboardCount(escalationServed.length)} runs recording escalations`] },
   ];

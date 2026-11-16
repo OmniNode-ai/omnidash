@@ -391,7 +391,7 @@ export function PassRateSparkline({ part = 'all' }: { part?: 'all' | 'headline' 
   const comparisonDays = window.kind === 'days' ? window.days : MAX_ALL_TIME_DAYS;
   const comparison = window.kind === 'days' ? compareWindow(context.decisions, context.now, window.days) : null;
   const current = summary(currentRuns);
-  const rate = current.passRate === null ? 'Not recorded' : formatShare(current.passRate);
+  const rate = current.passRate === null ? NOT_MEASURED : formatShare(current.passRate);
   const deltaText = comparison === null ? null
     : comparison.passRateDeltaPoints === null
       ? comparison.previousComplete
@@ -502,7 +502,7 @@ function RunWindowKpis({ runs, decisions, label, comparisonEnabled, now, days }:
 }) {
   const comparison = comparisonEnabled ? compareWindow(decisions, now, days) : null;
   const selectedLabel = label;
-  const durationMissing = runs.filter(run => run.latencyMs === null).length;
+  const durationMissing = runs.filter(run => run.durationMs === null).length;
   const summaryNow = summary(runs);
   const runDelta = !comparisonEnabled ? null
     : comparison?.previousComplete && comparison.runsDelta !== null
@@ -749,7 +749,7 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
                 hint: plural(runs.filter(run => run.status === 'failed').length, 'failed run'),
                 panel: () => <FailureCauses runs={runs} onInspectFailure={onInspectFailure} /> },
               { id: 'duration', label: 'How long runs take', tone: 'var(--ds-field-duration)', icon: <Timer size={18} />,
-                hint: `${formatDashboardCount(runs.filter(run => run.latencyMs !== null).length)} timed`, panel: () => <DurationHistogram runs={runs} /> },
+                hint: `${formatDashboardCount(runs.filter(run => run.durationMs !== null).length)} timed`, panel: () => <DurationHistogram runs={runs} /> },
               { id: 'models', label: 'Model scoreboard', tone: 'var(--ds-field-quality-model)', icon: <Bot size={18} />,
                 hint: plural(distinct(run => run.model), 'model'), panel: () => <ModelScoreboard runs={runs} /> },
               { id: 'hours', label: 'When runs happen', tone: 'var(--ds-field-activity-hourly)', icon: <Clock3 size={18} />,

@@ -10,6 +10,8 @@
  * per-run exception covers the Runs table alone), so the Overview's savings stay on the served spend-by-day chart.
  */
 
+import { runDurationOf } from '@/contracts/run-duration';
+
 export type InsightStatus = 'passed' | 'failed' | null;
 
 export interface InsightRun {
@@ -20,7 +22,7 @@ export interface InsightRun {
   hour: number;
   status: InsightStatus;
   cause: string | null;
-  latencyMs: number | null;
+  durationMs: number | null;
   cost: number | null;
   tokensIn: number | null;
   tokensOut: number | null;
@@ -109,7 +111,8 @@ export function toInsightRuns(rows: readonly unknown[]): InsightRun[] {
       hour: new Date(at).getUTCHours(),
       status,
       cause: status === 'failed' ? failureCauseOf(row) : null,
-      latencyMs: numberOf(row.latency_ms),
+      // OMN-24615 AC8: the run's served duration (execution_ms), never the model call time.
+      durationMs: numberOf(runDurationOf(row)),
       cost: numberOf(row.cost_usd),
       tokensIn: numberOf(row.tokens_input),
       tokensOut: numberOf(row.tokens_output),
@@ -168,7 +171,7 @@ export function summary(runs: readonly InsightRun[]): InsightSummary {
   const none = { sum: 0, missing: 0 };
   const tokensIn = runs.length === 0 ? none : measuredSum(runs.map(run => run.tokensIn));
   const tokensOut = runs.length === 0 ? none : measuredSum(runs.map(run => run.tokensOut));
-  const latencies = runs.map(run => run.latencyMs).filter((value): value is number => value !== null).sort((a, b) => a - b);
+  const latencies = runs.map(run => run.durationMs).filter((value): value is number => value !== null).sort((a, b) => a - b);
   const middle = Math.floor(latencies.length / 2);
   const medianLatency = latencies.length === 0 ? null
     : latencies.length % 2 === 1 ? latencies[middle]!
@@ -216,8 +219,8 @@ export function durationBuckets(runs: readonly InsightRun[], edges: readonly num
   const buckets = new Array<number>(Math.max(0, edges.length - 1)).fill(0);
   let unrecorded = 0;
   for (const run of runs) {
-    if (run.latencyMs === null) { unrecorded += 1; continue; }
-    const index = edges.findIndex((edge, i) => i < edges.length - 1 && run.latencyMs! >= edge && run.latencyMs! < edges[i + 1]!);
+    if (run.durationMs === null) { unrecorded += 1; continue; }
+    const index = edges.findIndex((edge, i) => i < edges.length - 1 && run.durationMs! >= edge && run.durationMs! < edges[i + 1]!);
     if (index >= 0) buckets[index] = buckets[index]! + 1;
   }
   return { buckets, unrecorded };

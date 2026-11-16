@@ -1,5 +1,6 @@
 // OMN-23330 AC24: part of the local pages, split out of LocalDashboardPage.tsx (3,926 lines) with no change to what
 // any page draws. The Runs page: the run list, its table, filters and column widths.
+import { NOT_MEASURED } from '@/theme/format';
 import { runDurationOf } from '@/contracts/run-duration';
 import { formatDashboardCount } from '@/theme/format';
 import { readableTime } from '@/theme/format';
@@ -655,7 +656,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                   <td data-label="Host" className="local-dashboard-cell-token" data-extra="">{breakableHost(recorded(run.host))}</td>
                   {/* Item 4: tokens in and out in one cell; their total is the two added, so it is not a column of its own. */}
                   <td data-label="Tokens" data-num="" title={`${tokensTitle(run.tokens_input, 'in') ?? 'Tokens in not recorded'}, ${tokensTitle(run.tokens_output, 'out') ?? 'tokens out not recorded'}`}>
-                    {isMissing(run.tokens_input) && isMissing(run.tokens_output) ? 'Not recorded'
+                    {isMissing(run.tokens_input) && isMissing(run.tokens_output) ? NOT_MEASURED
                       : <><span data-field-tone="tokens-in" data-field-unavailable={isMissing(run.tokens_input)}>{recordedTokens(run.tokens_input)}</span><span className="local-run-quiet"> / </span><span data-field-tone="tokens-out" data-field-unavailable={isMissing(run.tokens_output)}>{recordedTokens(run.tokens_output)}</span></>}
                   </td>
                   <td data-label="Cost" data-num=""><CostCell session={session} run={run} /></td>
@@ -842,7 +843,7 @@ function tierModelCost(model: Row): string {
 /**
  * OMN-21166 (Lakshman, live review 2026-10-25: "before Tier mix we need to add Model usage"): each model's runs, all
  * time, from delegation.model-routing.v1's served by_model (total_count and pct_of_total, over every run). Nothing is
- * counted or divided here; a model served without a count says Not recorded.
+ * counted or divided here; a model served without a count says Not measured.
  */
 /** What each Runs view switch adds to the run list, shown on hover and keyboard focus. */
 /**

@@ -18,7 +18,7 @@ const NOW = Date.UTC(2026, 10, 4, 18, 30, 0);
 const ENV = { service: 'local-runtime', observed_state: 'running', verdict: 'running', reason: 'onex dashboard is serving 77 exposures',
   last_seen: '2026-11-04T18:29:00Z' };
 const run = (minutesAgo: number, latency: number) => ({ correlation_id: `r${minutesAgo}`, created_at: new Date(NOW - minutesAgo * 60_000).toISOString(),
-  written_at: new Date(NOW - minutesAgo * 60_000).toISOString(), latency_ms: latency, quality_gate_passed: true });
+  written_at: new Date(NOW - minutesAgo * 60_000).toISOString(), execution_ms: latency, quality_gate_passed: true });
 const DECISIONS = [run(3, 9000), run(10, 4000), run(30, 20000)];
 const ROUTING = { total_delegations: 2484, rows: [
   { model_name: 'qwen', task_type: 'document', count: 1700 }, { model_name: 'qwen', task_type: 'review', count: 172 },

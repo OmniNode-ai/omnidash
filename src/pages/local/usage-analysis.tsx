@@ -58,7 +58,7 @@ const usd = (value: number) => formatDashboardUsd(value);
 const latency = (value: number | null) => (value === null ? NOT_MEASURED : formatDuration(value));
 const passText = (totals: Totals) => (totals.verdicts === 0 ? 'No verdicts' : `${formatShare(totals.passed / totals.verdicts)} (${totals.passed} of ${totals.verdicts})`);
 const money = (value: number | null, measured: number, runs: number) => (value === null ? 'Not measured' : `${formatDashboardUsd(value)} (${measured} of ${runs} measured)`);
-const lastText = (value: string | null) => (value === null ? 'Not recorded'
+const lastText = (value: string | null) => (value === null ? NOT_MEASURED
   : `${dayLabel(value.slice(0, 10))}, ${new Date(value).toISOString().slice(11, 16)} UTC`);
 
 function sortValue(group: Group, key: SortKey): number | string {

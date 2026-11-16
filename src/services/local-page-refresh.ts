@@ -18,10 +18,27 @@ import type { AppPage } from '@/store/types';
 type PublishedRead = { page: AppPage | null; readAt: string | null };
 let published: PublishedRead = { page: null, readAt: null };
 const readListeners = new Set<() => void>();
+const reads = new Map<string, { page: AppPage; readAt: string | null }>();
 
-export function publishLocalPageRead(page: PublishedRead['page'], readAt: string | null): void {
-  if (published.page === page && published.readAt === readAt) return;
-  published = { page, readAt };
+/**
+ * Publish when a page's rows were last read. A page drawn in several parts (Settings mounts its four sections at once)
+ * publishes each part under its own source; the top bar shows the newest read of the page most recently published.
+ * Publishing a null page withdraws that source's read, or every read for the default source.
+ */
+export function publishLocalPageRead(page: PublishedRead['page'], readAt: string | null, source = 'page'): void {
+  if (page === null) {
+    if (source === 'page') reads.clear();
+    else reads.delete(source);
+  } else {
+    reads.delete(source);
+    reads.set(source, { page, readAt });
+  }
+  const entries = [...reads.values()];
+  const current = entries.length > 0 ? entries[entries.length - 1]!.page : null;
+  const times = entries.filter(entry => entry.page === current && entry.readAt !== null).map(entry => entry.readAt!);
+  const newest = times.length > 0 ? times.reduce((a, b) => (Date.parse(b) > Date.parse(a) ? b : a)) : null;
+  if (published.page === current && published.readAt === newest) return;
+  published = { page: current, readAt: newest };
   for (const listener of readListeners) listener();
 }
 

@@ -7,6 +7,7 @@
 //   H3  Runs never publishes its read, so its header stays empty
 //   H4  Delegation Evidence never publishes its read
 //   H5  a refused read (resolved as data with failureReason) moves Evidence's Updated time
+//   H6  one part of a page drawn in several parts (Settings) overwrites, or on leaving clears, another part's read
 import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Router } from 'wouter';
@@ -84,6 +85,16 @@ describe('OMN-24616 AC6: the Updated time on every page header', () => {
     hooks.refusedSummary = false;
     at('/delegation-evidence', <DelegationEvidencePage />);
     await vi.waitFor(() => expect(currentLocalPageRead()).toEqual({ page: 'delegation-evidence', readAt: '2026-10-25T10:07:00.000Z' }));
+  });
+
+  it('H6: Settings\' parts each publish; the header shows the newest, and a part leaving withdraws only its own', () => {
+    act(() => {
+      publishLocalPageRead('local-settings', '2026-10-25T10:05:00Z', 'credentials');
+      publishLocalPageRead('local-settings', '2026-10-25T10:00:00Z', 'status');
+    });
+    expect(currentLocalPageRead()).toEqual({ page: 'local-settings', readAt: '2026-10-25T10:05:00Z' });
+    act(() => publishLocalPageRead(null, null, 'credentials'));
+    expect(currentLocalPageRead()).toEqual({ page: 'local-settings', readAt: '2026-10-25T10:00:00Z' });
   });
 
   it('H5: a refused read does not move Delegation Evidence\'s Updated time', async () => {

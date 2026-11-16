@@ -70,10 +70,10 @@ import { csvCell } from '@/theme/format/csv-cell';
  * 92%), and a rate above zero never reads 0%.
  */
 const passRate = (value: number | null | undefined): string =>
-  value == null || !Number.isFinite(value) ? '—' : sharePercent(value);
+  value == null || !Number.isFinite(value) ? NOT_MEASURED : sharePercent(value);
 
 const recordedMoney = (value: unknown) => isUnavailableField(value) || !Number.isFinite(Number(value))
-  ? 'Not recorded' : formatUsd(value);
+  ? NOT_MEASURED : formatUsd(value);
 
 function decisionModelledSaving(decision: DelegationDecisionRow | undefined): string {
   if (!decision) return 'Not measured';
@@ -217,7 +217,7 @@ function SelectedRun({ correlationId, decision, decisionsFailure }: {
           { k: 'Correlation', v: row.correlation_id, accent: true },
           { k: 'Task type', v: taskLabel(row.task_type) },
           { k: 'Model', v: row.model_name },
-          { k: 'Latency', v: fmtLatency(row.latency_ms) },
+          { k: 'Model call time', v: fmtLatency(row.latency_ms) },
           { k: 'Tokens in', v: <TokenCount value={row.tokens_input} direction="in" /> },
           { k: 'Tokens out', v: <TokenCount value={row.tokens_output} direction="out" /> },
           // A measured zero is the run table's muted "$0", the served text its title (OMN-22168, "full platform uniform").
@@ -647,7 +647,7 @@ function DecisionDetail({ row }: { row: DelegationDecisionRow }) {
           { k: 'Model', v: row.model_name },
           { k: 'Quality detail', v: row.quality_gate_detail ? escalationReason(row.quality_gate_detail).text : '—' },
           { k: 'Tokens in / out', v: <><span data-field-tone="tokens-in" data-field-unavailable={row.tokens_input == null}><TokenCount value={row.tokens_input} direction="in" /></span>{' / '}<span data-field-tone="tokens-out" data-field-unavailable={row.tokens_output == null}><TokenCount value={row.tokens_output} direction="out" /></span></> },
-          { k: 'Latency', v: fmtLatency(row.latency_ms) },
+          { k: 'Model call time', v: fmtLatency(row.latency_ms) },
           { k: 'Created', v: readableTime(row.created_at) ?? row.created_at },
         ]}
       />
@@ -685,7 +685,7 @@ function RecentDelegations({ decisions, available }: { decisions: DelegationDeci
       column is as wide as its longest name, so nothing breaks at the joins. */}{r.model_name}</span> },
     { key: 'state', label: 'State', width: '120px', concept: 'run-outcome', tip: 'Whether the run passed or failed its quality gate.', render: (r) => <StateBadge passed={r.quality_gate_passed} /> },
     { key: 'tokens', label: 'Tokens', num: true, width: '112px', concept: 'tokens', tip: 'Tokens the run took to reach a compliant answer.', render: (r) => formatDashboardCount(r.tokens_to_compliance) },
-    { key: 'latency_ms', label: 'Latency', num: true, width: '120px', concept: 'duration', tip: 'How long the run took, end to end.', render: (r) => fmtLatency(r.latency_ms) },
+    { key: 'latency_ms', label: 'Model call time', num: true, width: '120px', concept: 'duration', tip: 'How long the model call took (latency_ms). A run\'s whole duration is on Runs.', render: (r) => fmtLatency(r.latency_ms) },
     // OMN-21166 AC60: the time reads as on the other pages; the served value is the title.
     { key: 'created_at', label: 'Created', num: true, width: '200px', concept: 'age', tip: 'When the run was recorded, in UTC. Hover a time for the exact value.', render: (r) => <span className="dim" title={r.created_at}>{readableTime(r.created_at) ?? r.created_at}</span> },
   ];

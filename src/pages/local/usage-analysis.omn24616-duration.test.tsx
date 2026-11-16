@@ -15,7 +15,7 @@ const NOW = Date.parse('2026-11-16T12:00:00Z');
 const run = (index: number) => ({
   correlation_id: `run-${index}`, written_at: new Date(NOW - index * 1000).toISOString(),
   created_at: new Date(NOW - index * 1000).toISOString(), terminal_ok: 1, quality_gate_passed: 1,
-  latency_ms: 75_000, cost_usd: '0.01', model_name: 'm', cost_tier_name: 'local', task_type: 'document',
+  execution_ms: 75_000, cost_usd: '0.01', model_name: 'm', cost_tier_name: 'local', task_type: 'document',
 });
 
 afterEach(() => cleanup());

@@ -5,6 +5,8 @@
  * a verdict, and latency percentiles use only recorded latencies (nearest rank). A day before the sample's first day
  * is not covered, never 0. Savings are not summed here: OMN-19980 AC2d keeps every savings figure on metering-summary.v1.
  */
+import { runDurationOf } from '@/contracts/run-duration';
+
 type Row = Record<string, unknown>;
 
 export type GroupBy = 'model' | 'tier' | 'task' | 'backend';
@@ -69,7 +71,8 @@ export function totalsOf(rows: readonly unknown[]): Totals {
   const records = asRecords(rows);
   const costs = records.map(row => number(row.cost_usd)).filter((value): value is number => value !== null);
   const verdicts = records.map(row => verdict(row.quality_gate_passed)).filter((value): value is boolean => value !== null);
-  const latencies = records.map(row => number(row.latency_ms)).filter((value): value is number => value !== null && value >= 0);
+  // OMN-24615 AC8: the run's served duration (execution_ms), as on Runs.
+  const latencies = records.map(row => number(runDurationOf(row))).filter((value): value is number => value !== null && value >= 0);
   const stamps = records.map(stampOf).filter((value): value is string => value !== null);
   return {
     runs: records.length,
