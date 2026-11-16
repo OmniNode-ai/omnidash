@@ -4,15 +4,34 @@ schema_version: "1.0.0"
 ticket_id: "OMN-24616"
 title: "The local dashboard pages compute figures from partial reads, hard-code lists and show one value several ways"
 summary: >-
-  Acceptance for OMN-24616, copied from the live ticket on 2026-11-16. This pull request delivers AC8: Settings shows
-  the baseline price itself, from the resolved baseline metering-summary.v1 serves, and the model provider status is
-  re-read by Refresh and the poll like the keys table beside it. AC8 is declared here and bound to its tests. AC5 and
+  Acceptance for OMN-24616, copied from the live ticket on 2026-11-16. This pull request delivers AC3, AC4 and AC8.
+  AC3: a day with no runs adds zero to a window total, and All time, custom-range and Usage charts span the served
+  data with no 30-day cap. AC4: provider, tier and window lists come from one declared source outside the pages, an
+  unknown key renders by its served name, and the local pages have no command palette (decision D3). AC8: Settings
+  shows the baseline price itself, and the model provider status is re-read by Refresh and the poll. Each is declared
+  here and bound to its tests. AC5 and
   AC7 are in the first pull request for this ticket, AC2 and AC6 in the second; whichever lands later merges the
   contracts.
 is_seam_ticket: false
 interface_change: false
 interfaces_touched: []
 requirements:
+  - id: "req-omn24616-windows-and-served-lists"
+    statement: >-
+      Window totals count a day with no runs as zero, charts follow the served data with no fixed cap, and the pages
+      keep no provider, tier, window or node-id list of their own.
+    acceptance:
+      - id: "AC3"
+        statement: >-
+          a window with days that have no runs shows zero for those days, not Unavailable, and every chart honours the
+          selected window with no fixed 30-day cap -- falsifier: npx vitest with a 7-day window holding 2 days of runs
+          fails unless the spend and savings tiles show values, and a 90-day window fails unless 90 days are plotted
+      - id: "AC4"
+        statement: >-
+          the local pages hold no provider, tier, task-type, window or node-id list of their own; each comes from GET
+          /models, the served rows or one contract-declared source -- falsifier: npx vitest serving a provider, a tier
+          and a task type the code has never seen fails unless each renders by its served name, and a grep test fails
+          on a provider-id or tier-id literal under src/pages/local
   - id: "req-omn24616-settings-price-and-status"
     statement: >-
       Settings shows the baseline price per million tokens, and provider status follows Refresh and the poll.
@@ -38,3 +57,24 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: "npm test -- --run tests/pages/local/settings-price-and-status.omn24616.test.tsx"
+  - id: "dod-omn24616-ac3"
+    description: >-
+      AC3: insights.omn21166-mockup.test.ts sums a 7-day window holding one served day as a value (a missing day adds
+      zero) and walks every subset of served days and nulls; overview-metering-kpis.omn21166.test.tsx shows values for
+      a custom range with a quiet day inside it; insight-charts.omn21166.test.tsx C13 plots every served day for All
+      time. C13 fails against the 30-day cap.
+    source: "manual"
+    binds_ac: ["AC3"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm test -- --run tests/pages/local/insights.omn21166-mockup.test.ts tests/pages/local/overview-metering-kpis.omn21166.test.tsx src/pages/local/insight-charts.omn21166.test.tsx"
+  - id: "dod-omn24616-ac4"
+    description: >-
+      AC4: served-lists.omn24616.test.tsx scans src/pages/local for provider-id, tier-id and window-list literals and
+      renders an unseen provider, tier and task type by their served names; command-palette-local.omn24616.test.tsx
+      opens no palette on Overview and keeps it on the canvas dashboard. Both fail before the change.
+    source: "manual"
+    binds_ac: ["AC4"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm test -- --run tests/pages/local/served-lists.omn24616.test.tsx tests/app/command-palette-local.omn24616.test.tsx"
