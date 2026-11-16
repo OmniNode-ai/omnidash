@@ -24,7 +24,8 @@ export function decisionsWalkFor(
   trigger: LocalLoadTrigger,
   held: BoundProjectionSnapshot | undefined,
 ): LocalPageLoadOptions['decisionsWalk'] {
-  if (pageName !== 'runs') return { maxPages: 0 };
+  // OMN-24616 AC1 (decision D1): Usage's analysis is a window figure too, so it walks every page as Runs does.
+  if (pageName !== 'runs' && pageName !== 'usage') return { maxPages: 0 };
   if (trigger !== 'timer') return undefined;
   if (held === undefined) return { maxPages: 0 };
   if (!held.failure) return { maxPages: 0, previous: held };

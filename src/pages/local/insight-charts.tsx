@@ -9,7 +9,7 @@ import { passBand } from '@/pages/local/plain-text';
 import { BarTrack, ChartCard, ChartEmpty, ChartReadout, CumulativeColumns, DayAxis, DayColumns, Histogram, HourHeatmap, LinePlot, NamedByPanel, RankedBars, SeriesLegend, SeriesToggles, SpendColumns, dayTicks } from '@/theme/design-system/charts';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { causeHref, useSharedRunFilter } from './run-filter';
-import { failureCauseLabel } from './plain-text';
+import { escalationReason, failureCauseLabel } from './plain-text';
 import { Link, useLocation, useSearch } from 'wouter';
 import { DEFAULT_RUNS_VIEW, readRunsSearch, writeRunsSearch } from '@/navigation/runs-url-state';
 import {
@@ -318,6 +318,55 @@ function FailureCauses({ runs, onInspectFailure, limit }: { runs: InsightRun[]; 
         </ul>
       )}
       {limit !== undefined && all.length > limit && <p className="local-dashboard-caption"><Link href="/runs?status=failed">{`All ${count(all.length)} causes on Runs`}</Link></p>}
+    </ChartCard>
+  );
+}
+
+/** A served failure category: the quality gate's failed checks of one kind (delegation.quality-gate.v1). */
+export interface ServedFailureCategory { category: string; count: number }
+
+/** The quality-gate row's failure_categories as served (an array, or its JSON text), or null when it serves none. */
+export function servedFailureCategories(value: unknown): ServedFailureCategory[] | null {
+  let parsed: unknown = value;
+  if (typeof value === 'string') {
+    try { parsed = JSON.parse(value); } catch { return null; }
+  }
+  if (!Array.isArray(parsed)) return null;
+  return parsed.flatMap((item: unknown) => {
+    if (item === null || typeof item !== 'object') return [];
+    const { category, count } = item as { category?: unknown; count?: unknown };
+    const served = typeof count === 'number' ? count : Number(count);
+    return typeof category === 'string' && Number.isFinite(served) ? [{ category, count: served }] : [];
+  });
+}
+
+/**
+ * OMN-24616 AC1: Overview's "Why runs failed" from the quality gate's served counts, which cover every run, instead of
+ * counting the newest page of rows. A category opens every failed run, as on Delegation Evidence.
+ */
+function ServedFailureCategories({ categories, limit }: { categories: readonly ServedFailureCategory[]; limit?: number }) {
+  const ranked = [...categories].sort((a, b) => b.count - a.count || a.category.localeCompare(b.category));
+  const list = limit === undefined ? ranked : ranked.slice(0, limit);
+  const max = Math.max(1, ...list.map(entry => entry.count));
+  return (
+    <ChartCard title="Why runs failed" concept="failures" delay={360}>
+      {list.length === 0 ? <ChartEmpty>No failed quality checks served</ChartEmpty> : (
+        <ul className="ins-list" aria-label="Failure causes">
+          {list.map((entry, index) => {
+            const reason = escalationReason(entry.category);
+            const name = reason.text.charAt(0).toUpperCase() + reason.text.slice(1);
+            return (
+              <li key={entry.category} className="ins-list-row ins-list-row--plain" style={{ '--ins-swatch': [FAIL, 'var(--ds-chart-7)', 'var(--ds-chart-5)', 'var(--ds-chart-4)', 'var(--ds-chart-3)'][index % 5] } as CSSProperties}>
+                <span className="ins-list-name" data-failure-category={entry.category} title={reason.title}>{name}</span>
+                <BarTrack share={entry.count / max} delay={index * 60} />
+                <span className="ins-list-value" data-field-tone="fail">{count(entry.count)}</span>
+                <span className="ins-list-seen"><Link href="/runs?status=failed" aria-label={`View failed runs (${name})`}>View failed runs</Link></span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <p className="local-dashboard-caption">Failed quality checks by category, as the quality gate serves them for every run.</p>
     </ChartCard>
   );
 }
@@ -656,12 +705,14 @@ export function chartLimitLine(undatedCount: number): string | null {
   return parts.length > 0 ? parts.join(' · ') : null;
 }
 
-export function InsightsSection({ decisions, now, view = 'all', onInspectFailure, more, servedDays = null, complete = false }: {
+export function InsightsSection({ decisions, now, view = 'all', onInspectFailure, more, servedDays = null, complete = false, servedFailures = null }: {
   decisions: readonly unknown[]; now: number; view?: 'all' | 'summary' | 'analysis' | 'runs' | 'tokens' | 'failures'; onInspectFailure?: (cause: string) => void;
   /** OMN-21970 AC2: delegation.daily.v1's per-day totals; when served, the daily charts draw them instead of the rows. */
   servedDays?: readonly ServedDay[] | null;
   /** OMN-21970 AC3: true when the decisions read walked every page, so the rows are every served run. */
   complete?: boolean;
+  /** OMN-24616 AC1: the quality gate's served failure categories; when served, the failure list shows them. */
+  servedFailures?: readonly ServedFailureCategory[] | null;
   /** OMN-21166 part 13: on the summary view, further detail shown inside the section's closed "More activity". */
   more?: ReactNode;
 }) {
@@ -714,7 +765,8 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
             {/* Live review 2026-10-25: no "More activity" on Overview; part 15 AC96: no "Explore" links, the sidebar reaches Runs and Usage. */}
             </>
             : view === 'tokens' ? <TokensPerDay days={chartDays} />
-              : <FailureCauses runs={runs} limit={5} onInspectFailure={onInspectFailure} />}
+              : servedFailures !== null ? <ServedFailureCategories categories={servedFailures} limit={5} />
+                : <FailureCauses runs={runs} limit={5} onInspectFailure={onInspectFailure} />}
       </div>
       </NamedByPanel.Provider>
     );
@@ -738,7 +790,8 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
         <div className="overview-chart-sections">
           {view === 'all' && <RunWindowKpis runs={runs} decisions={decisions} now={now} days={window.kind === 'days' ? window.days : chartDaysList.length} label={windowCaption(window)} comparisonEnabled={window.kind === 'days'} />}
           {view !== 'analysis' && <ChartSection concept="activity" title="Activity over time"><RunsPerDay days={chartDays} /><TokensPerDay days={chartDays} /></ChartSection>}
-          {view === 'summary' && <ChartSection concept="quality-outcomes" title="Why runs failed"><FailureCauses runs={runs} limit={3} /></ChartSection>}
+          {view === 'summary' && <ChartSection concept="quality-outcomes" title="Why runs failed">{servedFailures !== null
+            ? <ServedFailureCategories categories={servedFailures} limit={3} /> : <FailureCauses runs={runs} limit={3} />}</ChartSection>}
           {/* Lakshman 2026-11-05 ("run page should be fully organised and logically ... visually attractive"): on Runs the six
               analysis charts are one full-width row of tabs, one big chart at a time, as the run charts above them; each
               hint counts what that chart draws, never a computed figure. */}
