@@ -1,7 +1,8 @@
 /**
  * OMN-21166 AC55: one duration formatter for every page; the exact milliseconds stay in the element's title.
- * A missing or malformed duration reads "Not recorded", never "0 s".
+ * A missing or malformed duration reads "Not measured" (OMN-24616 AC6), never "0 s".
  */
+import { NOT_MEASURED } from './primitives';
 
 /** A served duration in milliseconds: a finite, non-negative number or plain decimal text; anything else is null. */
 function servedMs(value: unknown): number | null {
@@ -15,7 +16,7 @@ function servedMs(value: unknown): number | null {
 /** "999 ms", "12.2 s", "1 min 4 s", "1 h 0 min"; rounding never crosses a unit boundary unannounced. */
 export function formatDuration(value: unknown): string {
   const ms = servedMs(value);
-  if (ms === null) return 'Not recorded';
+  if (ms === null) return NOT_MEASURED;
   if (Math.round(ms) < 1000) return `${Math.round(ms)} ms`;
   const tenths = Math.round(ms / 100);
   if (tenths < 600) return `${(tenths / 10).toFixed(1)} s`;

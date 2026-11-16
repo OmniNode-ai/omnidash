@@ -97,7 +97,7 @@ describe('LastRunCard (OV-4, F16)', () => {
     // This 2026-10-02 row predates OMN-20162's backend_id and host columns, so backend and host are not recorded, and
     // its cost was never measured (the words the Saving cell uses, OMN-24224).
     for (const label of ['Backend', 'Host']) {
-      expect(within(card).getByText(label, { selector: 'dt' }).nextElementSibling?.textContent, label).toBe('Not recorded');
+      expect(within(card).getByText(label, { selector: 'dt' }).nextElementSibling?.textContent, label).toBe('Not measured');
     }
     expect(within(card).getByText('Cost', { selector: 'dt' }).nextElementSibling?.textContent).toBe('Not measured');
     expect(within(card).queryByText(/Not served \(OMN-20162\)/)).not.toBeInTheDocument();
@@ -180,7 +180,7 @@ describe('RunsTable rows, status, cause and filters (RU-1, F18, F28)', () => {
     const row = screen.getByRole('row', { name: /run-d/ });
     expect(within(row).getByText('failed')).toBeInTheDocument();
     expect(within(row).getByText('provider timeout after 30s')).toBeInTheDocument();
-    expect(within(row).getAllByText('Not recorded').length).toBeGreaterThan(0);
+    expect(within(row).getAllByText('Not measured').length).toBeGreaterThan(0);
     expect(screen.getAllByRole('row').slice(1)).toHaveLength(4);
   });
 
@@ -277,7 +277,7 @@ describe('NO_RUNS_YET (RU-4, F19)', () => {
 });
 
 describe('Baseline model label (F20, OMN-19980 AC2b)', () => {
-  it('reads Not recorded for a null baseline model, with no session baseline price or saving beside it', () => {
+  it('reads Not measured for a null baseline model, with no session baseline price or saving beside it', () => {
     render(<RunsTable
       now={NOW}
       decisions={[decision('no-baseline-name', '2026-10-02T10:07:00Z')]}
@@ -287,7 +287,7 @@ describe('Baseline model label (F20, OMN-19980 AC2b)', () => {
     // The label stays (ruling 2026-10-05: keep labels); the dollars beside it came off.
     const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent?.trim());
     const cells = within(row).getAllByRole('cell');
-    expect(cells[headers.indexOf('Baseline model')]?.textContent).toBe('Not recorded');
+    expect(cells[headers.indexOf('Baseline model')]?.textContent).toBe('Not measured');
     // OMN-21015 AC3: the per-run saving comes only from the decisions row's own served figure; this row serves none, so
     // the cell is typed, and the session's savings_usd (0.000844) is still never shown.
     expect(cells[headers.indexOf('Saving')]?.textContent).toBe('Not measured');

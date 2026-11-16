@@ -52,14 +52,14 @@ describe('OMN-21166 AC27: Runs opens compact, all fields one switch away', () =>
     expect(screen.getByRole('tooltip').textContent).toBe(`Malformed output${READABLE_CAUSE}`);
   });
 
-  it('P4: a task type carries its own icon; a missing one reads Not recorded with no icon', () => {
+  it('P4: a task type carries its own icon; a missing one reads Not measured with no icon', () => {
     render(<RunsTable now={NOW} decisions={[run('run-c'), run('run-d', { task_type: null, written_at: '2026-10-16T22:10:00Z', created_at: '2026-10-16T22:10:00Z' })]} sessions={[]} />);
     const task = within(wrap()).getByText('code generation', { exact: true }).closest('td')!;
     expect(task.querySelector('svg.lucide-code-xml')).not.toBeNull();
     const missing = screen.getByRole('row', { name: /run-d/ });
     const cells = within(missing).getAllByRole('cell');
     const index = within(wrap()).getAllByRole('columnheader').findIndex(cell => cell.textContent === 'Task type');
-    expect(cells[index]!.textContent).toBe('Not recorded');
+    expect(cells[index]!.textContent).toBe('Not measured');
     expect(cells[index]!.querySelector('svg')).toBeNull();
   });
 });

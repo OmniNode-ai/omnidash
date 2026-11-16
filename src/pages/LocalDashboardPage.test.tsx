@@ -53,7 +53,7 @@ describe('RunsTable', () => {
 
     const row = screen.getByRole('row', { name: /session-unresolved/ });
     const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent?.trim());
-    expect(within(row).getAllByRole('cell')[headers.indexOf('Baseline model')]?.textContent).toBe('Not recorded');
+    expect(within(row).getAllByRole('cell')[headers.indexOf('Baseline model')]?.textContent).toBe('Not measured');
     expect(within(row).queryByText(/^\$?0(?:\.0+)?$/)).not.toBeInTheDocument();
   });
 

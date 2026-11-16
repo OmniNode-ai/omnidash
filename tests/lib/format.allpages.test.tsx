@@ -29,7 +29,7 @@ describe('OMN-23330 AC19: one format module', () => {
     expect(formatShare(0.0004999)).toBe('<0.1%');
     expect(formatShare(0.0005)).toBe('0.1%');
     expect(formatShare(0)).toBe('0.0%');
-    expect(formatShare(null)).toBe('Not recorded');
+    expect(formatShare(null)).toBe('Not measured');
     expect(formatShare('0.25')).toBe('25.0%');
     expect(formatShare(0.99996)).toBe('>99.9%');
     expect(formatShare(1)).toBe('100.0%');

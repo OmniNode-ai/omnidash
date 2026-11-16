@@ -9,7 +9,7 @@
 //   T1  the timings are served and the summary shows no tile for one, or no chart;
 //   T2  a bar is not the served value, is drawn under another timing's name, or the bars are in another order;
 //   T3  a timing the row does not carry gets a bar (of zero or anything else), or its tile reads 0 ms;
-//   T4  a served zero is dropped from the chart or reads Not recorded: a measured zero is a figure;
+//   T4  a served zero is dropped from the chart or reads Not measured: a measured zero is a figure;
 //   T5  no timing is measured and an empty chart is drawn;
 //   T6  the bars are stacked or a total is drawn: the runtime serves no sum of these;
 //   T7  a bar's label or tooltip shows a number the chart made, not the served text;
@@ -66,19 +66,19 @@ describe('OMN-21015: where a run\'s time went', () => {
     expect(drawn()).toEqual([['Queue wait', 12], ['Execution', 4788], ['Duration', 743]]);
   });
 
-  it('T3: a timing the row does not carry has no bar and its tile says Not recorded', () => {
+  it('T3: a timing the row does not carry has no bar and its tile says Not measured', () => {
     render(<RunSummary decision={run({ queue_wait_ms: null })} />);
     const shown = fields();
-    expect(shown['Queue wait']).toBe('Not recorded');
+    expect(shown['Queue wait']).toBe('Not measured');
     expect(drawn()).toEqual([['Execution', 4788], ['Duration', 743]]);
     expect(within(summary()).getByRole('figure', { name: 'Run timing' }).textContent).toContain('No measured value to draw for: Queue wait');
   });
 
   // OMN-21166 part 13: with only the total measured, a one-bar chart would repeat the Duration tile, so none is drawn.
-  it('T11: with only the duration measured no chart is drawn and the other tiles say Not recorded', () => {
+  it('T11: with only the duration measured no chart is drawn and the other tiles say Not measured', () => {
     render(<RunSummary decision={run({ queue_wait_ms: null, execution_ms: undefined })} />);
     const shown = fields();
-    expect([shown['Queue wait'], shown.Execution, shown.Duration]).toEqual(['Not recorded', 'Not recorded', '743 ms']);
+    expect([shown['Queue wait'], shown.Execution, shown.Duration]).toEqual(['Not measured', 'Not measured', '743 ms']);
     expect(within(summary()).queryByRole('figure', { name: 'Run timing' })).toBeNull();
   });
 
@@ -124,7 +124,7 @@ describe('OMN-21015: where a run\'s time went', () => {
     render(<RunSummary decision={run({ queue_wait_ms: null, execution_ms: null, latency_ms: null })} />);
     expect(within(summary()).queryByRole('figure')).toBeNull();
     expect(harness.handed).toHaveLength(0);
-    expect(fields().Duration).toBe('Not recorded');
+    expect(fields().Duration).toBe('Not measured');
   });
 
   it('T6: one bar per timing, never stacked, and no total', () => {
@@ -159,16 +159,16 @@ describe('OMN-21015: where a run\'s time went', () => {
     expect(fewer).toEqual([all[1], all[2]]);
   });
 
-  it('T9: the requested model is shown as served, and a missing one says Not recorded', () => {
+  it('T9: the requested model is shown as served, and a missing one says Not measured', () => {
     render(<RunSummary decision={run()} />);
     expect(fields()['Requested model']).toBe('asked-model');
     // The answering model keeps its own tile; the two are never merged.
     expect(fields().Model).toBe('local-model');
   });
 
-  it('T9: a run whose row names no requested model says Not recorded, not the answering model', () => {
+  it('T9: a run whose row names no requested model says Not measured, not the answering model', () => {
     render(<RunSummary decision={run({ requested_model: null })} />);
-    expect(fields()['Requested model']).toBe('Not recorded');
+    expect(fields()['Requested model']).toBe('Not measured');
   });
 
   it('T10: the Workflow contract declares each new field, and each is in the lab capture or on the served-since list', () => {

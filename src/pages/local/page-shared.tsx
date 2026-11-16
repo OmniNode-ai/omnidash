@@ -3,6 +3,7 @@
 import { formatDashboardCount } from '@/theme/format';
 import { readableTime } from '@/theme/format';
 import { formatDuration } from '@/theme/format';
+import { NOT_MEASURED } from '@/theme/format';
 import { exactTokens } from '@/components/dashboard/usage/TokenCount';
 import { useRef, useState } from 'react';
 import { Link } from 'wouter';
@@ -164,18 +165,18 @@ export function Readable({ value, kind }: { value: unknown; kind: 'percent' | 'd
 }
 
 export function recordedCount(value: unknown): string {
-  return isMissing(value) ? 'Not recorded' : formatDashboardCount(value);
+  return isMissing(value) ? NOT_MEASURED : formatDashboardCount(value);
 }
 // OMN-22168: a token count reads short by the dashboard count rule; its exact count is the hover title.
 export function recordedTokens(value: unknown): string {
-  return isMissing(value) ? 'Not recorded' : formatDashboardCount(value);
+  return isMissing(value) ? NOT_MEASURED : formatDashboardCount(value);
 }
 export function tokensTitle(value: unknown, direction?: 'in' | 'out'): string | undefined {
   return isMissing(value) ? undefined : exactTokens(value, direction);
 }
 
 export function recorded(value: unknown): string {
-  return isMissing(value) ? 'Not recorded' : String(value);
+  return isMissing(value) ? NOT_MEASURED : String(value);
 }
 
 /**
@@ -184,7 +185,7 @@ export function recorded(value: unknown): string {
  * preserving tiny nonzero amounts as $0.01. A cost never measured is served null and reads Not measured, never $0.00,
  * the same words as the Saving cell beside it (OMN-24224; it read "Not recorded" before).
  */
-export const COST_NOT_MEASURED = 'Not measured';
+export const COST_NOT_MEASURED = NOT_MEASURED;
 
 export function costOf(session: Row | undefined, decision: Row): string {
   const value = isMissing(session?.local_cost_usd) ? decision.cost_usd : session?.local_cost_usd;
@@ -235,19 +236,19 @@ export function runModelledCell(run: Row, withBaseline = true): string {
 
 /** The route tier as served, with its cost regime beside it when the row carries one (OMN-13649, OMN-20225). */
 export function tierOf(decision: Row): string {
-  if (isMissing(decision.cost_tier_name)) return 'Not recorded';
+  if (isMissing(decision.cost_tier_name)) return NOT_MEASURED;
   const name = tierLabel(decision.cost_tier_name);
   return isMissing(decision.cost_tier_type) ? name : `${name} (${tierLabel(decision.cost_tier_type).toLowerCase()})`;
 }
 
 /** OMN-21166 AC55: "12.2 s", one formatter for every page; the exact served milliseconds go in the title. */
 export function duration(value: unknown): string {
-  return isMissing(value) ? 'Not recorded' : formatDuration(value);
+  return isMissing(value) ? NOT_MEASURED : formatDuration(value);
 }
 
 export function age(value: unknown, now: number): string {
   const time = timeOf(value);
-  if (!Number.isFinite(time)) return 'Not recorded';
+  if (!Number.isFinite(time)) return NOT_MEASURED;
   const seconds = Math.max(0, Math.round((now - time) / 1000));
   if (seconds < 60) return `${seconds}s ago`;
   const minutes = Math.floor(seconds / 60);

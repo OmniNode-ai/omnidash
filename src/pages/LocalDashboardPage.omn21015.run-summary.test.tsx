@@ -6,9 +6,9 @@
 //
 // Failure modes, each with a test below:
 //   X1  a served field of the run is missing from its summary;
-//   X2  a field the run's row does not carry reads 0, "no" or blank instead of Not recorded;
+//   X2  a field the run's row does not carry reads 0, "no" or blank instead of Not measured;
 //   X3  Truncated shows the raw 0 or 1, says "no" for a row that does not say, or "yes" for a run that was not cut;
-//   X4  a served zero (no escalations, no tokens out) is hidden as Not recorded: a measured zero is a figure;
+//   X4  a served zero (no escalations, no tokens out) is hidden as Not measured: a measured zero is a figure;
 //   X5  the page reads a field its contract does not declare, or one the captured lab catalogue does not serve.
 import { readFileSync } from 'node:fs';
 import { render, screen, within } from '@testing-library/react';
@@ -38,10 +38,10 @@ describe('OMN-21015: the run summary shows the run\'s served facts', () => {
     expect(shown.Model).toBe('local-model');
   });
 
-  it('X2: a fact the row does not carry says Not recorded', () => {
+  it('X2: a fact the row does not carry says Not measured', () => {
     render(<RunSummary decision={run({ required_bar: null, tokens_input: undefined, tokens_output: null, finish_reason: '', truncated: null, escalation_count: undefined })} />);
     const shown = fields();
-    expect(NEW.map((label) => shown[label])).toEqual(NEW.map(() => 'Not recorded'));
+    expect(NEW.map((label) => shown[label])).toEqual(NEW.map(() => 'Not measured'));
   });
 
   it.each([

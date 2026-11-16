@@ -3,6 +3,9 @@
  * module (local/no-adhoc-format refuses them anywhere else). Each is the platform call it names, unchanged.
  */
 
+/** OMN-24616 AC6 (decision D2): the one word every page shows for a value that is missing or not served. */
+export const NOT_MEASURED = 'Not measured';
+
 /** `value.toFixed(digits)`. */
 export function fixed(value: number, digits?: number): string {
   return value.toFixed(digits);

@@ -113,30 +113,30 @@ describe('OMN-20225 AC4: no accepting backend is a typed not-recorded state, nev
     ['null', null],
     ['an empty string', ''],
     ['absent', undefined],
-  ])('a run whose backend_id is %s shows Not recorded under Backend in every view', (_label, value) => {
+  ])('a run whose backend_id is %s shows Not measured under Backend in every view', (_label, value) => {
     const run = decision('no-backend', { backend_id: value });
     if (value === undefined) delete run.backend_id;
     const { unmount } = render(<RecentRunsTable now={NOW} decisions={[run]} sessions={[]} />);
     const recent = screen.getByRole('row', { name: /no-backend/ });
-    expect(cellUnder(recent, 'Backend').textContent?.trim()).toBe('Not recorded');
+    expect(cellUnder(recent, 'Backend').textContent?.trim()).toBe('Not measured');
     unmount();
 
     const runs = render(<RunsTable now={NOW} decisions={[run]} sessions={[]} />);
-    expect(cellUnder(screen.getByRole('row', { name: /no-backend/ }), 'Backend').textContent?.trim()).toBe('Not recorded');
+    expect(cellUnder(screen.getByRole('row', { name: /no-backend/ }), 'Backend').textContent?.trim()).toBe('Not measured');
     runs.unmount();
 
     render(<LastRunCard now={NOW} decisions={[run]} sessions={[]} />);
-    expect(lastRunValue('Backend')).toBe('Not recorded');
+    expect(lastRunValue('Backend')).toBe('Not measured');
   });
 
   it('a missing host is typed on its own, and the backend that is served still shows', () => {
     render(<RunsTable now={NOW} decisions={[decision('no-host', { host: null })]} sessions={[]} />);
     const row = screen.getByRole('row', { name: /no-host/ });
-    expect(cellUnder(row, 'Host').textContent?.trim()).toBe('Not recorded');
+    expect(cellUnder(row, 'Host').textContent?.trim()).toBe('Not measured');
     expect(cellUnder(row, 'Backend')).toHaveTextContent('local-heavy-reasoning');
   });
 
-  it('a run with no tier type shows the tier name alone, and no tier at all is Not recorded', () => {
+  it('a run with no tier type shows the tier name alone, and no tier at all is Not measured', () => {
     render(<RunsTable
       now={NOW}
       decisions={[
@@ -146,7 +146,7 @@ describe('OMN-20225 AC4: no accepting backend is a typed not-recorded state, nev
       sessions={[]}
     />);
     expect(cellUnder(screen.getByRole('row', { name: /tier-name-only/ }), 'Route tier').textContent?.trim()).toBe('Local');
-    expect(cellUnder(screen.getByRole('row', { name: /no-tier/ }), 'Route tier').textContent?.trim()).toBe('Not recorded');
+    expect(cellUnder(screen.getByRole('row', { name: /no-tier/ }), 'Route tier').textContent?.trim()).toBe('Not measured');
   });
 });
 
@@ -184,7 +184,7 @@ describe('OMN-20225 AC3: the quality and tier-mix panels show served fields and 
   it('the quality panel types a field the row does not carry, and an absent row is not a zero', () => {
     const { unmount } = render(<QualityPanel row={{ ...quality, avg_required_bar: null }} />);
     const term = screen.getByText('Average required bar', { selector: 'dt' });
-    expect(term.nextElementSibling?.textContent?.trim()).toBe('Not recorded');
+    expect(term.nextElementSibling?.textContent?.trim()).toBe('Not measured');
     unmount();
     render(<QualityPanel row={null} />);
     expect(screen.getByRole('status')).toHaveTextContent('No quality checks served yet');

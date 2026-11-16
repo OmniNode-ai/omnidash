@@ -20,7 +20,7 @@ const run = {
 };
 const cases = [
   ['measured', 'measured'], ['estimated', 'estimated'], ['unknown', 'unknown'],
-  [undefined, 'Not recorded'], [null, 'Not recorded'], ['', 'Not recorded'],
+  [undefined, 'Not measured'], [null, 'Not measured'], ['', 'Not measured'],
 ] as const;
 
 function sessions(basis: unknown) {
