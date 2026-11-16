@@ -14,6 +14,7 @@ import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { SettingsEmptyState } from '@/components/dashboard/SettingsEmptyState';
 import { readableTime } from '@/theme/format';
 import { ModelKeysError, listModelKeys, type ModelProviderId, type ModelProviderRow } from '@/services/models-api';
+import { subscribeLocalPageRefresh } from '@/services/local-page-refresh';
 import { Badge, ColumnTip, DataTable, EmptyState, Fact, FactList } from '@/theme/design-system/components';
 import { KEY_HEADERS } from '@/pages/local/page-runs';
 
@@ -211,9 +212,17 @@ function message(error: unknown): string {
  * key whose provider GET /models does not list keeps its own row; Expires and Bound host appear only when a key records
  * one. Revoked keys are the page's key history, not this table.
  */
-export function ModelKeys({ client = LIVE_CLIENT, keys = [], empty }: { client?: ModelKeysClient; keys?: readonly CredentialKeyRow[]; empty?: ReactNode }) {
+export function ModelKeys({ client = LIVE_CLIENT, keys = [], empty, refreshMs = 30_000 }: { client?: ModelKeysClient; keys?: readonly CredentialKeyRow[]; empty?: ReactNode; refreshMs?: number }) {
   const [rows, setRows] = useState<ModelProviderRow[] | null>(null);
   const [listError, setListError] = useState<string | null>(null);
+  // OMN-24616 AC8: provider status is re-read by Refresh and the poll, as the keys table beside it is.
+  const [reads, setReads] = useState(0);
+  useEffect(() => {
+    const reread = () => setReads(count => count + 1);
+    const unsubscribe = subscribeLocalPageRefresh(reread);
+    const timer = setInterval(reread, refreshMs);
+    return () => { unsubscribe(); clearInterval(timer); };
+  }, [refreshMs]);
 
   useEffect(() => {
     let live = true;
@@ -232,7 +241,7 @@ export function ModelKeys({ client = LIVE_CLIENT, keys = [], empty }: { client?:
       },
     );
     return () => { live = false; };
-  }, [client]);
+  }, [client, reads]);
 
   // Part 18 AC128: the served keys never depend on GET /models. While it loads, or when it cannot be read, they are listed
   // on their own beside the reason.
