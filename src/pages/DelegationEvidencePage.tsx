@@ -354,7 +354,7 @@ function AcceptanceChecks({ q }: { q: QualityGateRow }) {
     <section className="ev-acceptance" aria-label="Acceptance checks">
       <div className="divider" />
       <div className="section-label">Acceptance checks</div>
-      {q.by_check_type == null ? <p className="note">Checks by type: Not served</p> : checks.length === 0 ? <p className="note">0 check types</p> : (
+      {q.by_check_type == null ? <p className="note">Checks by type: {NOT_MEASURED}</p> : checks.length === 0 ? <p className="note">0 check types</p> : (
         <ul className="ev-acceptance-checks" aria-label="Checks by type">
           {checks.map((check, index) => (
             <li key={`${String(check.check_type)}-${index}`} data-check-type={String(check.check_type ?? '')}>
@@ -371,7 +371,7 @@ function AcceptanceChecks({ q }: { q: QualityGateRow }) {
         { k: 'Average tokens to comply', v: wholeTokens(q.avg_tokens_to_compliance) },
         { k: 'Average attempts', v: attempts(q.avg_compliance_attempts) },
       ]} />
-      {q.tokens_to_compliance_by_model == null ? <p className="note">Tokens to comply by model: Not served</p> : byModel.length === 0 ? <p className="note">0 models</p> : (
+      {q.tokens_to_compliance_by_model == null ? <p className="note">Tokens to comply by model: {NOT_MEASURED}</p> : byModel.length === 0 ? <p className="note">0 models</p> : (
         // The top models in view, the rest one click away, as the cause lists (OMN-22168: thirteen rows ran down the panel).
         <>{[byModel.slice(0, MODEL_PREVIEW), byModel.slice(MODEL_PREVIEW)].map((part, partIndex) => part.length === 0 ? null : (() => { const list = (
         <ul className="ev-acceptance-models" aria-label={partIndex === 0 ? 'Tokens to comply by model' : 'More tokens to comply by model'}>

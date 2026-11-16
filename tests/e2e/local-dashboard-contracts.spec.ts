@@ -254,7 +254,7 @@ test('Overview is the default page and fits 1440x900 with no unmeasured 0 (AC4)'
   // Part 29 AC191: the basis is the card's caption, always in the page; no About button to focus.
   await expect(headline('Agent calls')).toContainText('45 of 46 runs measured');
   await expect(headline('Tokens processed').getByText('9.84K', { exact: true })).toBeVisible();
-  await expect(headline('Tokens processed').getByText(/Not available yet/)).toHaveCount(0);
+  await expect(headline('Tokens processed').getByText(/Not measured yet/)).toHaveCount(0);
 
   // The headline cards sit above the fold, Tokens processed among them (requirement Q3). OMN-21166 AC86 (Lakshman
   // 2026-10-25): the newest run (requirement Q2) is waived and its row is deleted from Overview, so only the five
@@ -347,7 +347,7 @@ test('Usage shows measured cost beside unmeasured runs, never 0 for unmeasured, 
   for (const value of ['Oct 2', '$0.40', '46']) await expect(day.getByText(value, { exact: true })).toBeVisible();
   await expect(series.getByRole('row')).toHaveCount(2);
   await expect(savings.getByText('$1.21')).toHaveCount(0);
-  await expect(savings.getByText(/Not available yet/)).toHaveCount(0);
+  await expect(savings.getByText(/Not measured yet/)).toHaveCount(0);
   await expectNoPanelCutOff(page);
 
   await page.screenshot({ path: screenshotPath('local-dashboard-usage-1440x900.png'), fullPage: false });

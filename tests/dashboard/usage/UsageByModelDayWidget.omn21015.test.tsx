@@ -56,14 +56,15 @@ describe('OMN-21015 AC4: the Usage table shows each row tier and share of calls 
     expect([cells(0)[tier], cells(1)[tier]]).toEqual(['Local', 'Cheap cloud']);
   });
 
-  it('S3: the served share reads as a percentage, to two decimals at most', () => {
+  // OMN-24616 AC6: a share follows the one share rule (formatShare), one decimal.
+  it('S3: the served share reads as a percentage, to one decimal', () => {
     render(<UsageByModelDayTable rows={[
       row({ call_share: 0.75 }),
       row({ model_id: 'gemini', cost_tier_name: 'cheap_cloud', call_count: 1, call_share: 0.16666666666666666 }),
       row({ usage_day: '2026-10-13', call_share: 1 }),
     ]} />);
     const share = headers().indexOf('Share of calls');
-    expect([0, 1, 2].map((i) => cells(i)[share])).toEqual(['75%', '16.67%', '100%']);
+    expect([0, 1, 2].map((i) => cells(i)[share])).toEqual(['75.0%', '16.7%', '100.0%']);
   });
 
   it('S4: a call with no tier reads Not tier-routed, never a tier called not_tier_routed', () => {
@@ -71,13 +72,13 @@ describe('OMN-21015 AC4: the Usage table shows each row tier and share of calls 
     expect(cells(0)[headers().indexOf('Tier')]).toBe('Not tier-routed');
   });
 
-  it('S5: no served share, or no served tier, reads Not recorded; nothing is worked out from the counts', () => {
+  it('S5: no served share reads Not measured and no served tier Not recorded; nothing is worked out from the counts', () => {
     // An older row that serves neither a tier nor a share: the two keys are absent, not null.
     const older = Object.fromEntries(Object.entries(row({ call_count: 3 })).filter(([key]) => key !== 'cost_tier_name' && key !== 'call_share'));
     render(<UsageByModelDayTable rows={[row({ call_share: null }), older]} />);
     const share = headers().indexOf('Share of calls');
     const tier = headers().indexOf('Tier');
-    expect([cells(0)[share], cells(1)[share], cells(1)[tier]]).toEqual(['Not recorded', 'Not recorded', 'Not recorded']);
+    expect([cells(0)[share], cells(1)[share], cells(1)[tier]]).toEqual(['Not measured', 'Not measured', 'Not recorded']);
     expect(screen.queryByText(/^100%$|^0%$/)).not.toBeInTheDocument();
   });
 

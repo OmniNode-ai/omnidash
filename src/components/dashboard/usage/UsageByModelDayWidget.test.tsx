@@ -53,7 +53,7 @@ describe('UsageByModelDayTable', () => {
   it('renders Not measured for a day and model with no measured run, never 0 (AC4)', () => {
     render(<UsageByModelDayTable rows={[row({ cost_usd: 4, measured_cost_usd: null, unmeasured_call_count: 1, call_count: 1 })]} />);
     const cells = within(screen.getAllByRole('row')[1]!);
-    expect(cells.getByText('Not measured')).toBeInTheDocument();
+    expect(cells.getAllByText('Not measured').length).toBeGreaterThan(0);
     expect(cells.getByText('1 unmeasured')).toBeInTheDocument();
     expect(screen.queryByText(/^\$?0(?:\.0+)?$/)).not.toBeInTheDocument();
     expect(screen.queryByText(/\$4.00/)).not.toBeInTheDocument();
@@ -66,7 +66,8 @@ describe('UsageByModelDayTable', () => {
     const cells = within(screen.getAllByRole('row')[1]!);
     expect(cells.getByText('$0')).toHaveAttribute('title', '$0.00');
     expect(cells.getByTitle('No unmeasured calls')).toHaveTextContent('—');
-    expect(screen.queryByText('Not measured')).not.toBeInTheDocument();
+    // OMN-24616 AC6: this fixture serves no share, so only the share cell reads Not measured; the measured zero does not.
+    expect(screen.queryAllByText('Not measured').every(node => node.closest('td')?.getAttribute('data-label') === 'Share of calls')).toBe(true);
   });
 
   it('formats a Postgres NUMERIC as served money, up to four decimals under $1 (Jonah 2026-11-06), trailing zeros trimmed', () => {

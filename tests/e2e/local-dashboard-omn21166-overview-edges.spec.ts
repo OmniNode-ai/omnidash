@@ -143,7 +143,7 @@ test('E5 499 or 500 runs draw with no read-limit line, even when the walk could 
   // only a walk that could not finish says so. Here every page is truncated and its next_cursor never moves, so the walk
   // stops at the 500 runs it read.
   // The daily totals topic (OMN-21970 AC2) is declared, empty, as a current runtime serves it, so the panel carries only
-  // this case's own line and not also the "Not available yet: daily run totals" notice of an older runtime.
+  // this case's own line and not also the "Not measured yet: daily run totals" notice of an older runtime.
   await open(page, { [decisionsTopic]: runs(500), [prefix + 'delegation.daily.v1']: [] });
   await expect(runsPanel(page).getByTestId('insights-total'), 'a complete read of 500 runs has no limit line').toHaveCount(0);
   const stuck = runs(500);

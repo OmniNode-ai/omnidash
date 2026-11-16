@@ -6,7 +6,7 @@ import { isUnavailableField } from '@/components/dashboard/field-identity';
  */
 
 /** The one plain waiting line for a figure whose source is not served yet. */
-export const NOT_AVAILABLE_YET = 'Not available yet';
+export const NOT_AVAILABLE_YET = 'Not measured yet';
 
 // EnumDelegationTerminalFailureCause names what decided a run. These are
 // presentation labels only: the original enum still owns filtering and URLs.

@@ -129,10 +129,10 @@ describe('LocalDashboardPage widget states (F26, F27)', () => {
     render(<LocalDashboardPage pageName="overview" />);
     await settle();
     const spend = screen.getByRole('heading', { name: 'Actual spend' }).closest('article')!;
-    expect(within(spend).getByText('Not available yet: usage summary.')).toBeInTheDocument();
+    expect(within(spend).getByText('Not measured yet: usage summary.')).toBeInTheDocument();
     // OMN-21166 live review 2026-10-25: Last run left Overview; Runs per day reads the served decisions instead.
     const runsPerDay = screen.getByRole('heading', { name: 'Runs per day' }).closest('article')!;
-    expect(within(runsPerDay).queryByText(/Not available yet/)).toBeNull();
+    expect(within(runsPerDay).queryByText(/Not measured yet/)).toBeNull();
     expect(screen.queryByRole('alert', { name: /page/i })).not.toBeInTheDocument();
   });
 
@@ -141,7 +141,7 @@ describe('LocalDashboardPage widget states (F26, F27)', () => {
     render(<LocalDashboardPage pageName="overview" />);
     await settle();
     const runsPerDay = screen.getByRole('heading', { name: 'Runs per day' }).closest('article')!;
-    expect(within(runsPerDay).getByText(/Not available yet: daily run totals/)).toBeInTheDocument();
+    expect(within(runsPerDay).getByText(/Not measured yet: daily run totals/)).toBeInTheDocument();
     expect(within(runsPerDay).getByRole('group', { name: 'Runs per day' })).toBeInTheDocument();
     expect(within(runsPerDay).getAllByRole('button', { name: /: 1 run,/ }).length).toBe(1);
   });
@@ -155,7 +155,7 @@ describe('LocalDashboardPage widget states (F26, F27)', () => {
     await settle();
 
     const runs = screen.getByRole('heading', { name: 'Recent runs' }).closest('article')!;
-    expect(within(runs).getByRole('status')).toHaveTextContent('Not available yet: run savings.');
+    expect(within(runs).getByRole('status')).toHaveTextContent('Not measured yet: run savings.');
     expect(within(runs).getByRole('table')).toBeInTheDocument();
     expect(within(runs).getByText('run-1')).toBeInTheDocument();
     expect(within(runs).queryByRole('alert')).not.toBeInTheDocument();
@@ -289,7 +289,7 @@ describe('Partial pages (FR-3, CR-2, CR-3, AK-3, F24)', () => {
     expect(within(row).getByTitle('$0.00')).toHaveTextContent('$0');
     expect(within(row).getByTitle('No unmeasured calls')).toHaveTextContent('—');
     const unmeasured = screen.getByRole('row', { name: /served-model/ });
-    expect(within(unmeasured).getByText('Not measured')).toBeInTheDocument();
+    expect(within(unmeasured).getAllByText('Not measured').length).toBeGreaterThan(0);
     expect(within(unmeasured).getByText('1 unmeasured')).toBeInTheDocument();
   });
 
@@ -313,7 +313,7 @@ describe('Partial pages (FR-3, CR-2, CR-3, AK-3, F24)', () => {
     // The all row is the Overview headline (OV-3): served to this panel too, but never rendered as a day.
     expect(within(table).getAllByRole('row')).toHaveLength(3);
     expect(within(panel).queryByText('$1.21')).not.toBeInTheDocument();
-    expect(within(panel).queryByText(/Not available yet/)).not.toBeInTheDocument();
+    expect(within(panel).queryByText(/Not measured yet/)).not.toBeInTheDocument();
   });
 
   it('Usage says in plain words what the savings series waits on while that exposure is not served (US-3)', async () => {
@@ -321,7 +321,7 @@ describe('Partial pages (FR-3, CR-2, CR-3, AK-3, F24)', () => {
     render(<LocalDashboardPage pageName="usage" />);
     await settle();
     const panel = screen.getByRole('heading', { name: 'Savings per day' }).closest('article')!;
-    expect(within(panel).getByRole('status')).toHaveTextContent('Not available yet: usage summary.');
+    expect(within(panel).getByRole('status')).toHaveTextContent('Not measured yet: usage summary.');
     expect(within(panel).getByRole('status').textContent).not.toMatch(/metering-summary|\.v1/);
     expect(within(panel).queryByText(/^\$?0(?:\.0+)?$/)).not.toBeInTheDocument();
   });
@@ -349,7 +349,7 @@ describe('Partial pages (FR-3, CR-2, CR-3, AK-3, F24)', () => {
     render(<LocalDashboardPage pageName="api-keys" embedded />);
     await settle();
     expect(screen.getAllByText('Access details are not available yet')).toHaveLength(1);
-    expect(screen.queryByText(/Not available yet: dashboard access details/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Not measured yet: dashboard access details/)).not.toBeInTheDocument();
   });
 
   it('API Keys preserves served local identity without the deferred Cloud Keys panel (OMN-21166 AC5)', async () => {

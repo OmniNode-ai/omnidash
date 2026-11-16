@@ -68,13 +68,13 @@ describe('RunLocallyCard (OMN-20009 AC1, AC2, AC4)', () => {
   it('H4: a row without local_call_share says what it waits on', () => {
     const { local_call_share: _drop, ...older } = labByTier;
     render(<RunLocallyCard row={{ by_tier: older }} />);
-    expect(screen.getByText('Not available yet: share of runs kept local')).toBeInTheDocument();
+    expect(screen.getByText('Not measured yet: share of runs kept local')).toBeInTheDocument();
     expect(screen.queryByText(/%/)).toBeNull();
   });
 
   it('H4: a row without by_tier says what it waits on', () => {
     render(<RunLocallyCard row={{ total_delegations: 3 }} />);
-    expect(screen.getByText('Not available yet: share of runs kept local')).toBeInTheDocument();
+    expect(screen.getByText('Not measured yet: share of runs kept local')).toBeInTheDocument();
   });
 
   it('H5: a null share is Not measured, never 0%', () => {

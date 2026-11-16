@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
 // SPDX-License-Identifier: MIT
 // @vitest-environment jsdom
-// OMN-23330 follow-up (operator review of the live Overview, 2026-11-11: "what is this Not available yet: daily run
+// OMN-23330 follow-up (operator review of the live Overview, 2026-11-11: "what is this Not measured yet: daily run
 // totals. - if not needed remove it"). Overview's activity panel binds delegation.daily.v1 as a lookup; a local install
-// does not serve it, and the panel printed "Not available yet: daily run totals." although it draws the same days from
+// does not serve it, and the panel printed "Not measured yet: daily run totals." although it draws the same days from
 // metering-summary.v1's day totals without it (page-tables.tsx, OMN-22168), so the line named nothing the reader lacks.
 // Failure modes:
 //   F1  a lookup the panel draws without (it has a fallback) is still announced as not available;
@@ -39,11 +39,11 @@ describe('OMN-23330: a lookup the panel draws without is not announced', () => {
 
   it('F2: a lookup with no fallback is still announced', () => {
     panel([SAVINGS]);
-    expect(screen.getByText(/^Not available yet/)).toBeTruthy();
+    expect(screen.getByText(/^Not measured yet/)).toBeTruthy();
   });
 
   it('F3: with the metering day totals not served either, the missing daily run totals are still named', () => {
     panel([DAILY], [notServed(METERING)]);
-    expect(screen.getByText(/Not available yet: daily run totals/)).toBeTruthy();
+    expect(screen.getByText(/Not measured yet: daily run totals/)).toBeTruthy();
   });
 });

@@ -1051,11 +1051,11 @@ describe('OMN-19980 AC2c: a savings card with no served source says what it wait
 
   /**
    * AC2c in plain words (OMN-21166 AC39): an unbound savings card waits on the approved savings source, and its text
-   * says what is missing ("Not available yet: <what>") without naming the exposure. The exposure stays in code.
+   * says what is missing ("Not measured yet: <what>") without naming the exposure. The exposure stays in code.
    */
   function waitsOnApprovedSavings(id: string, text: string): boolean {
     const pending = PENDING_SOURCES[id];
-    return pending?.exposure === ALLOWED_SAVINGS_SOURCE && text === `Not available yet: ${pending.waitsOn}`;
+    return pending?.exposure === ALLOWED_SAVINGS_SOURCE && text === `Not measured yet: ${pending.waitsOn}`;
   }
 
   it('every unbound savings card says what it waits on, in plain words, and shows no figure', () => {
@@ -1070,7 +1070,7 @@ describe('OMN-19980 AC2c: a savings card with no served source says what it wait
     // Control: a card the pages leave unbound for its savings figure says what it waits on, in plain words.
     const named = render(createElement(PendingState, { componentId: 'overview-avg-saving-per-call' }));
     expect(waitsOnApprovedSavings('overview-avg-saving-per-call', named.container.textContent ?? '')).toBe(true);
-    expect(named.container.textContent).toBe('Not available yet: savings per run');
+    expect(named.container.textContent).toBe('Not measured yet: savings per run');
     named.unmount();
   });
 
@@ -1078,7 +1078,7 @@ describe('OMN-19980 AC2c: a savings card with no served source says what it wait
     const pages = plant([plantedComponent('planted-unnamed-savings', [], ['upstream-blocked'], 'metric_card')],
       [{ data_source: 'planted-unnamed-savings', config: metric('savings_usd') }]);
     const planted = unboundSavingsTexts(pages).find((entry) => entry.id === 'planted-unnamed-savings');
-    expect(planted?.text).toBe('Not available yet');
+    expect(planted?.text).toBe('Not measured yet');
     expect(waitsOnApprovedSavings('planted-unnamed-savings', planted?.text ?? '')).toBe(false);
   });
 });

@@ -224,7 +224,7 @@ function TaskMix({ runs }: { runs: InsightRun[] }) {
           const look = taskLook(group.key);
           const judged = group.passed + group.failed;
           const name = group.key === NOT_RECORDED ? NOT_RECORDED : readable(group.key);
-          const pass = judged ? `${Math.round((group.passed / judged) * 100)}%` : 'No verdicts';
+          const pass = judged ? formatShare(group.passed / judged) : 'No verdicts';
           return (
             <li key={group.key} className="ins-list-row ins-task-row" style={{ '--ins-swatch': look.color } as CSSProperties}
               aria-label={`${name}: ${count(group.runs)} runs, pass rate ${pass}, ${verdictCoverage(judged, group.runs)}`}>
@@ -273,7 +273,7 @@ function ModelScoreboard({ runs }: { runs: InsightRun[] }) {
           const judged = group.passed + group.failed;
           const rate = judged ? (group.passed / judged) * 100 : null;
           return { key: group.key, name: group.key, model: group.key, value: rate, basis: 'measured' as const, color: modelColor(group.key),
-            display: rate === null ? 'No verdicts' : `${Math.round(rate)}%`, title: `${count(group.runs)} runs · ${verdictCoverage(judged, group.runs)}` };
+            display: rate === null ? 'No verdicts' : formatShare(group.passed / judged), title: `${count(group.runs)} runs · ${verdictCoverage(judged, group.runs)}` };
         })}
         // Each model's verdict coverage in plain text under the bars, so keyboard and touch readers have it too.
         footnote={groups.map(group => `${group.key}: ${verdictCoverage(group.passed + group.failed, group.runs)}`).join(' · ')} />

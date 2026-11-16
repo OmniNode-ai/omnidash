@@ -1,4 +1,5 @@
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
+import { formatShare, NOT_MEASURED } from '@/theme/format';
 import { passBand, tierLabel } from '@/pages/local/plain-text';
 import { formatDashboardCount, formatFullCount } from '@/theme/format';
 
@@ -44,7 +45,7 @@ import { formatDashboardUsd as formatUsd, formatShortDay } from '@/theme/format'
 import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
 import { ColumnTip, DataTable, Dropdown, EmptyState, TokenCount } from '@/theme/design-system/components';
 import { ChartReadout } from '@/theme/design-system/charts/frame';
-import { localeDate as fmtLocaleDate, localeString as fmtLocaleString } from '@/theme/format';
+import { localeDate as fmtLocaleDate } from '@/theme/format';
 import { refreshInterval } from '@/theme/refresh';
 
 export const NO_USAGE_ROWS = 'No usage rows yet';
@@ -104,10 +105,11 @@ function shortDay(value: unknown): string {
   return isMissing(value) ? recorded(value) : formatShortDay(String(value));
 }
 
+// OMN-24616 AC6: the one share rule (formatShare) and the one missing-value word.
 function callShare(value: unknown): string {
   const share = Number(value);
-  if (isMissing(value) || !Number.isFinite(share)) return 'Not recorded';
-  return fmtLocaleString(share, 'en-US', { style: 'percent', maximumFractionDigits: 2 });
+  if (isMissing(value) || !Number.isFinite(share)) return NOT_MEASURED;
+  return formatShare(share);
 }
 
 function asRows(rows: readonly unknown[]): UsageByModelDayRow[] {
