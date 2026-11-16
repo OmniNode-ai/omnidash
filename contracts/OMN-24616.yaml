@@ -4,7 +4,8 @@ schema_version: "1.0.0"
 ticket_id: "OMN-24616"
 title: "The local dashboard pages compute figures from partial reads, hard-code lists and show one value several ways"
 summary: >-
-  Acceptance for OMN-24616, copied from the live ticket on 2026-11-16. This pull request delivers AC3, AC4 and AC8.
+  Acceptance for OMN-24616, copied from the live ticket on 2026-11-16. This pull request delivers AC1, AC3, AC4 and AC8. AC1: Usage reads every page of runs (decision D1) and Overview's
+  failure list reads the quality gate's served counts.
   AC3: a day with no runs adds zero to a window total, and All time, custom-range and Usage charts span the served
   data with no 30-day cap. AC4: provider, tier and window lists come from one declared source outside the pages, an
   unknown key renders by its served name, and the local pages have no command palette (decision D3). AC8: Settings
@@ -21,6 +22,11 @@ requirements:
       Window totals count a day with no runs as zero, charts follow the served data with no fixed cap, and the pages
       keep no provider, tier, window or node-id list of their own.
     acceptance:
+      - id: "AC1"
+        statement: >-
+          no local page computes a window figure from a partial page of rows; each comes from a served aggregate, or the
+          page states how many runs it covers -- falsifier: npx vitest with 501 served decisions and a served aggregate
+          fails unless Usage analysis and Overview's failure list show the served values
       - id: "AC3"
         statement: >-
           a window with days that have no runs shows zero for those days, not Unavailable, and every chart honours the
@@ -78,3 +84,13 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: "npm test -- --run tests/pages/local/served-lists.omn24616.test.tsx tests/app/command-palette-local.omn24616.test.tsx"
+  - id: "dod-omn24616-ac1"
+    description: >-
+      AC1 in served-figures.omn24616.test.tsx: Usage walks every page of decisions, and with 501 decisions and a served
+      failure category of 576 Overview's failure list shows 576, not the rows' 205. All three tests fail before the
+      change.
+    source: "manual"
+    binds_ac: ["AC1"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm test -- --run tests/pages/local/served-figures.omn24616.test.tsx"
