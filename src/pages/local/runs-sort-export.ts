@@ -55,5 +55,5 @@ export function runsToCsv(rows: readonly Row[]): string {
   if (rows.length === 0) return '';
   const fields: string[] = [];
   for (const row of rows) for (const field of Object.keys(row)) if (!fields.includes(field)) fields.push(field);
-  return [fields.join(','), ...rows.map(row => fields.map(field => csvCell(row[field])).join(','))].join('\r\n');
+  return [fields.map(field => csvCell(field)).join(','), ...rows.map(row => fields.map(field => csvCell(row[field])).join(','))].join('\r\n');
 }

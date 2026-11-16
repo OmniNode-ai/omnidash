@@ -118,6 +118,16 @@ export function plainUnservedReason(reason: string | null | undefined): string |
 }
 
 /** OMN-24616 AC5: why a read gave no data -- the error's own text, so a failed read never sits on Loading. */
+/**
+ * OMN-24616 AC5: why a read failed -- a query that rejected, or a read that resolved with the runtime's refusal, an
+ * HTTP error or a malformed body (failureReason) -- or null when the runtime served rows. A failed read never shows an
+ * empty-success note (review 517 findings 1-4).
+ */
+export function failedReadReason(data: { failureReason: string | null } | undefined, error: unknown): string | null {
+  if (data === undefined) return error ? readFailureReason(error) : null;
+  return data.failureReason === null ? null : plainUnservedReason(data.failureReason) ?? data.failureReason;
+}
+
 export function readFailureReason(error: unknown): string {
   return error instanceof Error && error.message ? error.message : 'The read failed and gave no reason';
 }
@@ -164,21 +174,26 @@ function Chain({ steps }: { steps: ChainStep[] }) {
 
 // ── selected run (latest decision → correlation trace) ───────────────────────
 
-function SelectedRun({ correlationId, decision }: { correlationId: string | null; decision?: DelegationDecisionRow }) {
+function SelectedRun({ correlationId, decision, decisionsFailure }: {
+  correlationId: string | null; decision?: DelegationDecisionRow; decisionsFailure?: string | null;
+}) {
   const { data, isLoading, error } = useCorrelationTrace(correlationId);
   if (!correlationId) {
     return (
       <Panel title="SELECTED RUN">
-        <EvEmpty title="No delegation selected" note="Awaiting a delegation decision on the bus." />
+        {decisionsFailure
+          ? <EvEmpty title="Could not read delegation decisions" reason={decisionsFailure} />
+          : <EvEmpty title="No delegation selected" note="Awaiting a delegation decision on the bus." />}
       </Panel>
     );
   }
-  if (!data) {
+  const failure = failedReadReason(data, error);
+  if (!data || failure !== null) {
     return (
       <Panel title="SELECTED RUN" sub={shortId(correlationId)}>
-        {isLoading
+        {isLoading && !data
           ? <EvEmpty title="Loading correlation trace…" />
-          : <EvEmpty title="Could not read the correlation trace" reason={readFailureReason(error)} />}
+          : <EvEmpty title="Could not read the correlation trace" reason={failure ?? readFailureReason(error)} />}
       </Panel>
     );
   }
@@ -186,7 +201,7 @@ function SelectedRun({ correlationId, decision }: { correlationId: string | null
   if (!row) {
     return (
       <Panel title="SELECTED RUN" sub={shortId(correlationId)}>
-        <EvEmpty title="No trace rows for this correlation" reason={plainUnservedReason(data.degradedReason)} note="Nothing was recorded for this run yet." />
+        <EvEmpty title="No trace rows for this correlation" note="Nothing was recorded for this run yet." />
       </Panel>
     );
   }
@@ -226,16 +241,17 @@ function SelectedRun({ correlationId, decision }: { correlationId: string | null
 function ModelRouting() {
   const modelColor = useModelColor();
   const { data, isLoading, error } = useDelegationModelRouting();
-  if (!data) {
-    return <Panel title="MODEL ROUTING">{isLoading
+  const failure = failedReadReason(data, error);
+  if (!data || failure !== null) {
+    return <Panel title="MODEL ROUTING">{isLoading && !data
       ? <EvEmpty title="Loading…" />
-      : <EvEmpty title="Could not read model routing" reason={readFailureReason(error)} />}</Panel>;
+      : <EvEmpty title="Could not read model routing" reason={failure ?? readFailureReason(error)} />}</Panel>;
   }
   const agg = data.rows[0];
   if (!agg || agg.rows.length === 0) {
     return (
       <Panel title="MODEL ROUTING">
-        <EvEmpty title="No routing aggregate" reason={plainUnservedReason(data.degradedReason)} note="No routing data yet." />
+        <EvEmpty title="No routing aggregate" note="No routing data yet." />
       </Panel>
     );
   }
@@ -261,16 +277,17 @@ function ModelRouting() {
 
 function QualityGate() {
   const { data, isLoading, error } = useDelegationQualityGate();
-  if (!data) {
-    return <Panel title="QUALITY GATE">{isLoading
+  const failure = failedReadReason(data, error);
+  if (!data || failure !== null) {
+    return <Panel title="QUALITY GATE">{isLoading && !data
       ? <EvEmpty title="Loading…" />
-      : <EvEmpty title="Could not read the quality gate" reason={readFailureReason(error)} />}</Panel>;
+      : <EvEmpty title="Could not read the quality gate" reason={failure ?? readFailureReason(error)} />}</Panel>;
   }
   const q = data.rows[0];
   if (!q) {
     return (
       <Panel title="QUALITY GATE">
-        <EvEmpty title="No quality-gate rows" reason={plainUnservedReason(data.degradedReason)} />
+        <EvEmpty title="No quality-gate rows" note="The runtime served no quality-gate row." />
       </Panel>
     );
   }
@@ -477,7 +494,9 @@ export function FailureTriage({ decisions, available, complete = false }: { deci
         hint: failedChecks === null ? 'Failed checks not served' : `${formatDashboardCount(failedChecks)} failed checks`,
         panel: () => <div className="ev-triage-panel">
         {qualityQ.isLoading ? <EvEmpty title="Loading quality checks…" /> : !quality
-          ? <EvEmpty title="No quality-gate rows" reason={plainUnservedReason(qualityQ.data?.degradedReason ?? (qualityQ.error ? 'The runtime could not answer' : null))} />
+          ? (failedReadReason(qualityQ.data, qualityQ.error) !== null
+            ? <EvEmpty title="Could not read the quality gate" reason={failedReadReason(qualityQ.data, qualityQ.error)} />
+            : <EvEmpty title="No quality-gate rows" note="The runtime served no quality-gate row." />)
           : <>
             <p className="note">All-time quality checks · {failedChecks === null ? 'Failed checks not served' : `${formatDashboardCount(failedChecks)} failed checks`}</p>
             <p className="note">Served runs do not record their failure category; a category opens every failed run.</p>
@@ -524,8 +543,12 @@ interface HeadlineMoney {
   basis: string | null;
 }
 
-function SavingsPanel({ money, unavailable }: { money: HeadlineMoney | null; unavailable: string }) {
+function SavingsPanel({ money, unavailable, headlineFailure = null }: {
+  money: HeadlineMoney | null; unavailable: string; headlineFailure?: string | null;
+}) {
   const { data, isLoading, error } = useDelegationSavings();
+  // OMN-24616 AC5: the panel's figures come from the metering headline. When that read failed the panel still draws
+  // its figures as Not measured (AC38: never $0) and says why; the savings topic lends only a fallback baseline name.
   if (!data) {
     return <Panel title="SAVINGS vs CLOUD BASELINE">{isLoading
       ? <EvEmpty title="Loading…" />
@@ -549,6 +572,7 @@ function SavingsPanel({ money, unavailable }: { money: HeadlineMoney | null; una
       sub={baselineModel ? `Modelled vs ${String(baselineModel)}` : 'Baseline model not recorded'}
       right={pricing ? <span className="src-tag">{pricing}</span> : undefined}
     >
+      {headlineFailure !== null && <p className="note" role="status">Could not read the metering summary: {headlineFailure}</p>}
       <span className="stat-inline ev-savings-hero" data-field-tone="savings">
         <span className="big c-amber" style={{ color: money && finite(money.saved) ? 'var(--ds-field-savings)' : 'var(--ds-field-unavailable)' }}>{money ? servedUsd(money.saved) : unavailable}</span>
         <span className="note">cumulative savings (modelled) over {money ? servedCount(money.measuredRuns) : 'Not measured'} measured runs</span>
@@ -570,17 +594,18 @@ function SavingsPanel({ money, unavailable }: { money: HeadlineMoney | null; una
 function TokenUsage() {
   const modelColor = useModelColor();
   const { data, isLoading, error } = useDelegationTokenUsage();
-  if (!data) {
-    return <Panel title="TOKEN USAGE">{isLoading
+  const failure = failedReadReason(data, error);
+  if (!data || failure !== null) {
+    return <Panel title="TOKEN USAGE">{isLoading && !data
       ? <EvEmpty title="Loading…" />
-      : <EvEmpty title="Could not read token usage" reason={readFailureReason(error)} />}</Panel>;
+      : <EvEmpty title="Could not read token usage" reason={failure ?? readFailureReason(error)} />}</Panel>;
   }
   const t = data.rows[0];
   if (!t) {
     // OMN-21166 part 13: when nothing is served the panel is one line, not an empty card (Usage owns token figures).
     return (
       <p className="ev-unserved-line" role="status">
-        Token usage by model: {plainUnservedReason(data.degradedReason) ?? 'not available yet'}
+        Token usage by model: Not measured
       </p>
     );
   }
@@ -626,9 +651,9 @@ function DecisionDetail({ row }: { row: DelegationDecisionRow }) {
       />
       {isLoading ? (
         <div className="note">Loading the run…</div>
-      ) : !data ? (
-        /* OMN-24616 AC5: a failed read is not "not recorded". */
-        <div className="note">Could not read the run: {readFailureReason(error)}</div>
+      ) : !data || data.failureReason !== null ? (
+        /* OMN-24616 AC5: a failed read, rejected or refused, is not "not recorded" (review 517 finding 1). */
+        <div className="note">Could not read the run: {failedReadReason(data, error) ?? readFailureReason(error)}</div>
       ) : trace && (trace.prompt_text || trace.response_text) ? (
         <div className="grid cols-2">
           {trace.prompt_text ? <CodeBlock title="Prompt" lang="text" code={trace.prompt_text} /> : <div className="note">Prompt not recorded</div>}
@@ -824,12 +849,12 @@ export function withoutFloatNoise(value: unknown): unknown {
 }
 
 /** AC207: the equation reads one all-time metering row, never the latest decision sample. */
-function SavingsBridge({ rows, loading }: { rows: readonly unknown[] | undefined; loading: boolean }) {
+function SavingsBridge({ rows, loading, failure = null }: { rows: readonly unknown[] | undefined; loading: boolean; failure?: string | null }) {
   const canonical = meteringHeadline(rows, loading);
   const money = canonical.money;
   return <Panel title="SAVINGS BRIDGE" sub="All-time metering">
     <section className="ev-savings-bridge" aria-label="Savings bridge">
-      <p className="note">{moneyBasis(money)}</p>
+      <p className="note">{failure !== null ? `Could not read the metering summary: ${failure}` : moneyBasis(money)}</p>
       <div className="ev-savings-equation">
         {/* Each figure in its field's colour, as Overview's headline figures (OMN-22168). */}
         <div data-field-tone="baseline"><span className="section-label">Baseline cost (modelled)</span>{money ? <BridgeFigure value={money.cloud} /> : canonical.unavailable}</div>
@@ -913,7 +938,12 @@ export function DelegationEvidencePage() {
   // from the one all-time metering-summary.v1 row Overview's and Usage's headline cards read, so the three pages show
   // one figure per concept.
   const meteringQ = useMeteringSummary(true);
-  const headline = meteringHeadline(meteringQ.data?.rows, meteringQ.isLoading);
+  const headline = meteringHeadline(meteringQ.data?.failureReason ? undefined : meteringQ.data?.rows, meteringQ.isLoading);
+  // OMN-24616 AC5: a headline figure that is missing because its read failed says why (review 517 finding 5).
+  const meteringFailure = meteringQ.isLoading ? null : failedReadReason(meteringQ.data, meteringQ.error);
+  const summaryFailure = summaryQ.isLoading ? null : failedReadReason(summaryQ.data, summaryQ.error);
+  const decisionsFailure = decisionsQ.isLoading ? null : failedReadReason(decisionsQ.data, decisionsQ.error);
+  const failedLine = (reason: string | null) => (reason === null ? null : `Could not read: ${reason}`);
 
   // Include the savings source in freshness alongside the other headline projections.
   // so the header reflects the composite data state, not a single query's freshness.
@@ -932,7 +962,7 @@ export function DelegationEvidencePage() {
   ) : null;
 
   // The decision sample's export, drawn inside the Recent delegations panel in every state.
-  const samplesAvailable = !decisionsQ.isLoading && !!decisionsQ.data && !decisionsQ.data.degradedReason;
+  const samplesAvailable = !decisionsQ.isLoading && !!decisionsQ.data && decisionsFailure === null;
   const sampleExport = <DecisionSampleExport decisions={decisions} available={samplesAvailable} />;
   return (
     // OMN-21970 AC5: a model is its tier's colour here too, from the served runs and token rows that name both.
@@ -951,12 +981,16 @@ export function DelegationEvidencePage() {
       <KpiStrip label="Delegation summary" items={[
         // Part 29 AC191: one fact per line, so the drawn caption is the short first one ('Of N runs') and the exclusions
         // stay in the page instead of being cut off.
-        { label: 'Delegations', value: headline.runs, accent: 'var(--ds-field-calls)', concept: 'calls', lines: headline.runsSub ? String(headline.runsSub).split(' \u00b7 ') : [] },
+        { label: 'Delegations', value: headline.runs, accent: 'var(--ds-field-calls)', concept: 'calls',
+          lines: meteringFailure !== null ? [failedLine(meteringFailure)] : headline.runsSub ? String(headline.runsSub).split(' \u00b7 ') : [] },
         { label: 'Quality pass', value: summary ? passRate(summary.qualityGatePassRate) : 'Not measured', unavailable: !summary,
-          accent: 'var(--ds-field-pass)', concept: 'pass', lines: [withFixtureNotice('deterministic gate', fixtureNotice)] },
-        { label: 'Savings (modelled)', value: headline.savings, accent: 'var(--ds-field-savings)', concept: 'savings', lines: [moneyBasis(headline.money)] },
+          accent: 'var(--ds-field-pass)', concept: 'pass',
+          lines: [summaryFailure !== null ? failedLine(summaryFailure) : withFixtureNotice('deterministic gate', fixtureNotice)] },
+        { label: 'Savings (modelled)', value: headline.savings, accent: 'var(--ds-field-savings)', concept: 'savings',
+          lines: [meteringFailure !== null ? failedLine(meteringFailure) : moneyBasis(headline.money)] },
         { label: 'Tokens', value: headline.tokens, accent: 'var(--ds-field-tokens)', concept: 'tokens',
-          lines: [summary ? withFixtureNotice(`avg ${formatDuration(summary.avgLatencyMs)} latency`, fixtureNotice) : null] },
+          lines: [meteringFailure !== null ? failedLine(meteringFailure)
+            : summary ? withFixtureNotice(`avg ${formatDuration(summary.avgLatencyMs)} latency`, fixtureNotice) : null] },
       ]} />
 
       {/* OMN-21166 Maple grid, as on the local pages: each panel and bar chart on its own full row, as on Overview (live
@@ -964,30 +998,29 @@ export function DelegationEvidencePage() {
           selected run and its quality gate each take a full row too; side by side, the shorter one left an empty column
           (measured at 1440 px on 2026-11-10: Selected run ended 291 px above Quality gate). */}
       <div className="maple-grid ev-maple-grid">
-        <div className="maple-cell maple-cell--full"><SelectedRun correlationId={latestCid} decision={decisions[0]} /></div>
+        <div className="maple-cell maple-cell--full"><SelectedRun correlationId={latestCid} decision={decisions[0]} decisionsFailure={decisionsFailure} /></div>
         <div className="maple-cell maple-cell--full ev-qg-cell"><QualityGate /></div>
         <div className="maple-cell maple-cell--full"><FailureTriage decisions={decisions}
-          available={!decisionsQ.isLoading && !!decisionsQ.data && !decisionsQ.data.degradedReason}
+          available={!decisionsQ.isLoading && !!decisionsQ.data && decisionsFailure === null}
           complete={decisionsQ.data?.complete === true} /></div>
         <div className="maple-cell maple-cell--full"><ModelRouting /></div>
-        <div className="maple-cell maple-cell--full"><SavingsPanel money={headline.money} unavailable={headline.unavailable} /></div>
-        <div className="maple-cell maple-cell--full"><SavingsBridge rows={meteringQ.data?.rows} loading={meteringQ.isLoading} /></div>
+        <div className="maple-cell maple-cell--full"><SavingsPanel money={headline.money} unavailable={headline.unavailable} headlineFailure={meteringFailure} /></div>
+        <div className="maple-cell maple-cell--full"><SavingsBridge rows={meteringQ.data?.failureReason ? undefined : meteringQ.data?.rows} loading={meteringQ.isLoading} failure={meteringFailure} /></div>
         <div className="maple-cell maple-cell--full"><TokenUsage /></div>
       </div>
 
       {decisionsQ.isLoading ? (
         <Panel title="RECENT DELEGATIONS">{sampleExport}<EvEmpty title="Loading…" /></Panel>
-      ) : !decisionsQ.data ? (
+      ) : !decisionsQ.data || decisionsFailure !== null ? (
         <Panel title="RECENT DELEGATIONS">
           {sampleExport}
-          <EvEmpty title="Could not read delegation decisions" reason={readFailureReason(decisionsQ.error)} />
+          <EvEmpty title="Could not read delegation decisions" reason={decisionsFailure ?? readFailureReason(decisionsQ.error)} />
         </Panel>
       ) : decisions.length === 0 ? (
         <Panel title="RECENT DELEGATIONS">
           {sampleExport}
-          {/* OMN-24616 AC5: "recorded yet" only when the read itself succeeded. */}
-          <EvEmpty title="No delegation decisions" reason={plainUnservedReason(decisionsQ.data.degradedReason)}
-            note={decisionsQ.data.degradedReason ? undefined : 'No delegation decisions recorded yet.'} />
+          {/* OMN-24616 AC5: "recorded yet" only when the read itself succeeded (review 517 finding 4). */}
+          <EvEmpty title="No delegation decisions" note="No delegation decisions recorded yet." />
         </Panel>
       ) : (
         <RecentDelegations decisions={decisions} available={samplesAvailable} />

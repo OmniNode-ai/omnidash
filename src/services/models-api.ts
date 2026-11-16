@@ -14,7 +14,7 @@ export type ModelProviderId = 'gemini' | 'openrouter' | 'openai' | 'ollama';
 export interface ModelTest {
   provider: string;
   status: 'passed' | 'failed' | 'not_set_up';
-  tested_at: string;
+  tested_at?: string | null;
   backend_id?: string | null;
   model?: string | null;
   endpoint?: string | null;
@@ -85,7 +85,7 @@ function malformedField(row: unknown): string | null {
   if (test === null || test === undefined) return null;
   if (!isRecord(test)) return 'last_test';
   if (typeof test.status !== 'string' || !TEST_STATUSES.has(test.status)) return 'last_test.status';
-  if (typeof test.tested_at !== 'string') return 'last_test.tested_at';
+  if (!optionalText(test.tested_at)) return 'last_test.tested_at';
   for (const field of ['backend_id', 'model', 'endpoint', 'reason'] as const) {
     if (!optionalText(test[field])) return `last_test.${field}`;
   }

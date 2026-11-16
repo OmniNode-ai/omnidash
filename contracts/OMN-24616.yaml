@@ -55,6 +55,17 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: "npm test -- --run src/theme/format/csv-cell.test.ts src/pages/local/runs-sort-export.csv.test.ts src/navigation/runs-back-link.omn24616.test.tsx"
+  - id: "dod-omn24616-ac7-e2e"
+    description: >-
+      AC7's falsifier in a browser: tests/e2e/runs-back.omn24616.spec.ts opens a run from a filtered Runs view and fails
+      unless the Runs breadcrumb and the Back to Runs link both return to that same view, and a neighbouring run keeps
+      the way back. Hosted CI has no browser, so the local Done gate runs it.
+    source: "manual"
+    execution_scope: "local_done_gate"
+    binds_ac: ["AC7"]
+    checks:
+      - check_type: "command"
+        check_value: "npx playwright test tests/e2e/runs-back.omn24616.spec.ts --project=chromium"
   - id: "dod-omn24616-ac5"
     description: >-
       AC5 per endpoint. http-snapshot-source.malformed.test.ts refuses a snapshot body that is neither an envelope nor
@@ -69,4 +80,4 @@ dod_evidence:
     binds_ac: ["AC5"]
     checks:
       - check_type: "test_passes"
-        check_value: "npm test -- --run src/data-source/http-snapshot-source.malformed.test.ts tests/services/served-responses.omn24616.test.ts src/pages/DelegationEvidencePage.omn24616-failed-read.test.tsx tests/pages/local/model-keys.omn24616-malformed.test.tsx src/App.page-error-boundary.test.tsx src/pages/local/page-headline.window-param.test.ts"
+        check_value: "npm test -- --run src/data-source/http-snapshot-source.malformed.test.ts tests/services/served-responses.omn24616.test.ts src/pages/DelegationEvidencePage.omn24616-failed-read.test.tsx src/pages/DelegationEvidencePage.omn24616-real-path.test.tsx tests/pages/local/model-keys.omn24616-malformed.test.tsx src/App.page-error-boundary.test.tsx src/pages/local/page-headline.window-param.test.ts"
