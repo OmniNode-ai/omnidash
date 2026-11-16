@@ -46,8 +46,9 @@ export function compareWindow(rows: readonly unknown[], now: number, days: numbe
   return {
     currentPassRate: current.passRate,
     previousPassRate: previousComplete ? previous.passRate : null,
+    // OMN-24616 AC2: the rates are 0-1 shares; a change between them is written in percentage points.
     passRateDeltaPoints: previousComplete && current.passRate !== null && previous.passRate !== null
-      ? current.passRate - previous.passRate : null,
+      ? (current.passRate - previous.passRate) * 100 : null,
     previousComplete,
     currentRuns: current.runs,
     previousRuns: previous.runs,

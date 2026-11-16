@@ -178,7 +178,9 @@ export function summary(runs: readonly InsightRun[]): InsightSummary {
     passed,
     failed,
     unrecorded: runs.length - passed - failed,
-    passRate: passed + failed > 0 ? (passed / (passed + failed)) * 100 : null,
+    // OMN-24616 AC2: a rate is held as a 0-1 share, as the served aggregates hold it, and only formatShare writes it as
+    // a percent; holding it as a percent here made a table that formats shares read 80.6% as 8064.5%.
+    passRate: passed + failed > 0 ? passed / (passed + failed) : null,
     spend: spend.sum,
     spendUnmeasured: spend.missing,
     tokensIn: tokensIn.sum,

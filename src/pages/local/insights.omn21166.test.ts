@@ -33,7 +33,8 @@ describe('OMN-21166: insights over served decision rows', () => {
     const runs = toInsightRuns([row('2026-10-18T08:00:00Z'), row('2026-10-18T08:01:00Z', { quality_gate_passed: null }), row('2026-10-18T08:02:00Z', { quality_gate_passed: 0, quality_gate_detail: 'MALFORMED: x' })]);
     const s = summary(runs);
     expect([s.runs, s.passed, s.failed, s.unrecorded]).toEqual([3, 1, 1, 1]);
-    expect(s.passRate).toBeCloseTo(50, 6);
+    // OMN-24616 AC2: the pass rate is a 0-1 share.
+    expect(s.passRate).toBeCloseTo(0.5, 6);
   });
 
   it('F1: with no recorded verdict at all the pass rate is unknown, not 0%', () => {

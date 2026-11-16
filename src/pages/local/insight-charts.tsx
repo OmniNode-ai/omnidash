@@ -1,6 +1,6 @@
 import { formatDashboardCount, formatFullCount } from '@/theme/format';
 
-import { formatDashboardUsd } from '@/theme/format';
+import { formatDashboardUsd, formatShare } from '@/theme/format';
 import { formatDuration } from '@/theme/format';
 import { createContext, useContext, useId, useState, type CSSProperties, type ReactNode } from 'react';
 import { millisecondsAxisLabel } from '@/theme/design-system/charts/bar-charts';
@@ -170,13 +170,14 @@ function PassRateTrend({ days }: { days: InsightDay[] }) {
   const [hover, setHover] = useState<number | null>(null);
   const rates = days.map(day => day.passRate);
   const known = rates.filter((rate): rate is number => rate !== null);
-  const min = known.length ? Math.max(0, Math.floor(Math.min(...known) / 10) * 10 - 10) : 0;
-  const labels = days.map(day => `${dayLabel(day.day)}: ${day.passRate === null ? 'no verdicts' : `${fmtFixed(day.passRate, 1)}% passed`} (${verdictCoverage(day.passed + day.failed, day.runs)})`);
+  // OMN-24616 AC2: rates are 0-1 shares; the scale floor is the lowest share rounded down to a tenth, less one tenth.
+  const min = known.length ? Math.max(0, Math.floor(Math.min(...known) * 10) / 10 - 0.1) : 0;
+  const labels = days.map(day => `${dayLabel(day.day)}: ${day.passRate === null ? 'no verdicts' : `${formatShare(day.passRate)} passed`} (${verdictCoverage(day.passed + day.failed, day.runs)})`);
   const active = hover === null ? null : days[hover]!;
   return (
     <ChartCard title="Pass rate per day" concept="pass-rate-daily" delay={60}>
-      <ChartReadout active={active !== null} day={active?.day} text={active ? <>{dayLabel(active.day)} · <span data-field-tone="pass" data-field-unavailable={active.passRate === null}>{active.passRate === null ? 'no verdicts' : `${fmtFixed(active.passRate, 1)}% passed`}</span> · <span data-field-tone="basis">{verdictCoverage(active.passed + active.failed, active.runs)}</span></> : `Scale from ${min}% to 100%`} />
-      <LinePlot label="Pass rate per day" values={rates} keys={days.map(day => day.day)} labels={labels} min={min} max={100}
+      <ChartReadout active={active !== null} day={active?.day} text={active ? <>{dayLabel(active.day)} · <span data-field-tone="pass" data-field-unavailable={active.passRate === null}>{active.passRate === null ? 'no verdicts' : `${formatShare(active.passRate)} passed`}</span> · <span data-field-tone="basis">{verdictCoverage(active.passed + active.failed, active.runs)}</span></> : `Scale from ${Math.round(min * 100)}% to 100%`} />
+      <LinePlot label="Pass rate per day" values={rates} keys={days.map(day => day.day)} labels={labels} min={min} max={1}
         hover={hover} onHover={setHover} color={PASS} />
       {/* OMN-23330 AC31: the kit's one DayAxis, first and last day on the line's end points. */}
       <DayAxis days={days.map(day => day.day)} ticks={new Set([0, days.length - 1])} place="point" format={dayLabel} />
@@ -389,7 +390,7 @@ export function PassRateSparkline({ part = 'all' }: { part?: 'all' | 'headline' 
   const comparisonDays = window.kind === 'days' ? window.days : MAX_ALL_TIME_DAYS;
   const comparison = window.kind === 'days' ? compareWindow(context.decisions, context.now, window.days) : null;
   const current = summary(currentRuns);
-  const rate = current.passRate === null ? 'Not recorded' : `${fmtFixed(current.passRate, 1)}%`;
+  const rate = current.passRate === null ? 'Not recorded' : formatShare(current.passRate);
   const deltaText = comparison === null ? null
     : comparison.passRateDeltaPoints === null
       ? comparison.previousComplete
@@ -462,7 +463,8 @@ function withServedTotals(days: readonly InsightDay[], servedDays: readonly Serv
     return {
       ...day,
       runs: served.runs, passed: served.passed, failed: served.failed, unrecorded: served.unrecorded,
-      passRate: served.passed + served.failed > 0 ? (served.passed / (served.passed + served.failed)) * 100 : null,
+      // OMN-24616 AC2: a 0-1 share, as summary() holds it.
+      passRate: served.passed + served.failed > 0 ? served.passed / (served.passed + served.failed) : null,
       tokensIn: served.tokensIn, tokensOut: served.tokensOut,
       tokensInUnmeasured: served.tokensInUnmeasured, tokensOutUnmeasured: served.tokensOutUnmeasured,
     };

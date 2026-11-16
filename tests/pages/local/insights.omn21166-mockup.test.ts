@@ -26,8 +26,9 @@ it('AC26 compares equal-length windows and refuses a delta when the returned row
     currentPassRate: number | null; previousPassRate: number | null; passRateDeltaPoints: number | null; previousComplete: boolean;
   };
   expect(full).toMatchObject({
-    currentPassRate: 100,
-    previousPassRate: 50,
+    // OMN-24616 AC2: the rates are 0-1 shares; the delta below stays in percentage points.
+    currentPassRate: 1,
+    previousPassRate: 0.5,
     passRateDeltaPoints: 50,
     previousComplete: true,
   });

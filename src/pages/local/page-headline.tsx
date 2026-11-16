@@ -6,7 +6,7 @@ import { TokenDirections } from '@/components/dashboard/usage/TokenDirections';
 import { exactTokens } from '@/components/dashboard/usage/TokenCount';
 import { createContext, useId, useState, type CSSProperties, type ReactNode } from 'react';
 import { CalendarDays, ChevronRight } from '@/theme/design-system/icons';
-import { formatDashboardUsd as formatUsd } from '@/theme/format';
+import { formatDashboardUsd as formatUsd, formatShare } from '@/theme/format';
 import { DEFAULT_RUNS_VIEW, writeRunsSearch } from '@/navigation/runs-url-state';
 import { type ActivityWindow } from '@/pages/local/insight-charts';
 import { EmptyState, Fact, FactList, Figure, Tooltip } from '@/theme/design-system/components';
@@ -817,10 +817,11 @@ export function RunsKpis({ rows, now, complete = false }: { rows: readonly unkno
       // OMN-21970 AC3: a read that walked every page holds every served run, so the caption does not call them the latest.
       lines: [complete ? `All ${formatDashboardCount(totals.runs)} served runs` : `Latest ${formatDashboardCount(totals.runs)} returned runs`],
       trend: { days: dayKeys, values: days.map(day => (day.runs > 0 ? day.runs : null)), format: value => formatDashboardCount(value) } },
-    { label: 'Pass rate', value: totals.passRate === null ? 'Not recorded' : `${fmtFixed(totals.passRate, 1)}%`, unavailable: totals.passRate === null,
+    // OMN-24616 AC2: the rate and its trend are 0-1 shares, written by the one share formatter.
+    { label: 'Pass rate', value: totals.passRate === null ? 'Not recorded' : formatShare(totals.passRate), unavailable: totals.passRate === null,
       accent: 'var(--ds-field-pass)', concept: 'pass',
       lines: [`${formatDashboardCount(totals.passed + totals.failed)} of ${formatDashboardCount(totals.runs)} runs have a verdict`],
-      trend: { days: dayKeys, values: days.map(day => day.passRate), format: value => `${fmtFixed(value, 1)}%` } },
+      trend: { days: dayKeys, values: days.map(day => day.passRate), format: value => formatShare(value) } },
     { label: 'Median duration', value: totals.medianLatency === null ? 'Not recorded' : formatDuration(totals.medianLatency), unavailable: totals.medianLatency === null,
       title: totals.medianLatency === null ? undefined : exactMs(totals.medianLatency), accent: 'var(--ds-field-duration)', concept: 'duration',
       lines: [totals.medianLatency === null ? null : `Exactly ${exactMs(totals.medianLatency)}`, `${formatDashboardCount(runs.length - latencies.length)} without a duration`] },
