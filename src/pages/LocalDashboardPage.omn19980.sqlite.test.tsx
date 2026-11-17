@@ -173,7 +173,7 @@ describe('OMN-19980 AC2c: a savings card with nothing measured or served says so
     served();
     await open('overview');
     const card = panel('Savings');
-    expect(within(card).getByText('Not measured yet: usage summary.')).toBeInTheDocument();
+    expect(within(card).getByText('Not measured: usage summary.')).toBeInTheDocument();
     noFigure(card);
   });
 
@@ -247,7 +247,7 @@ describe('OMN-19980 Step B: the Overview Savings total is metering-summary.v1\'s
     served();
     await open('overview');
     const savings = panel('Savings');
-    expect(within(savings).getByText('Not measured yet: usage summary.')).toBeInTheDocument();
+    expect(within(savings).getByText('Not measured: usage summary.')).toBeInTheDocument();
     noFigure(savings);
   });
 
@@ -329,7 +329,7 @@ describe('OMN-19980 Step B (Amendment 2): Spend, Measured runs and Tokens read t
     expect(within(measured).queryByText(/Estimated runs excluded/)).toBeNull();
     const tokens = panel('Tokens processed');
     expect(within(tokens).getByText('2.14K')).toBeInTheDocument();
-    expect(within(tokens).queryByText(/Not measured yet/)).toBeNull();
+    expect(within(tokens).queryByText(/Not measured/)).toBeNull();
     expect(within(tokens).queryByText(/111/)).toBeNull();
   });
 
@@ -337,7 +337,7 @@ describe('OMN-19980 Step B (Amendment 2): Spend, Measured runs and Tokens read t
     served();
     await open('overview');
     for (const title of HEADLINES) {
-      expect(within(panel(title)).getByText('Not measured yet: usage summary.'), title).toBeInTheDocument();
+      expect(within(panel(title)).getByText('Not measured: usage summary.'), title).toBeInTheDocument();
       expect(figure(title), title).toEqual([]);
       expect(captions(title), title).toEqual([]);
     }

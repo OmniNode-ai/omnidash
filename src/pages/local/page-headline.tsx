@@ -105,12 +105,12 @@ export function captionText(caption: Record<string, unknown> | null | undefined)
       ? 'Pricing manifest not recorded' : `pricing manifest ${pricingLabel(fields.pricing_manifest_version)}`);
   }
   // OMN-21304 AC4: an exposure that serves no count of unpriced runs says so, rather than standing another count in.
-  if ('unpriced_not_served' in fields) parts.push('Unpriced runs not recorded');
+  if ('unpriced_not_served' in fields) parts.push('Unpriced runs not measured');
   // OMN-21304 AC4: the runs the total leaves out, each served class under its own name; a missing count is not 0.
   if (Array.isArray(fields.excluded_runs)) {
     const classes = (fields.excluded_runs as Array<[unknown, string, string]>).map(([value, one, many]) => {
       const n = countOf(value);
-      return n === null ? `${many}: not recorded` : `${formatDashboardCount(n)} ${n === 1 ? one : many}`;
+      return n === null ? `${many}: not measured` : `${formatDashboardCount(n)} ${n === 1 ? one : many}`;
     });
     parts.push(`Not in this total: ${classes.join(', ')}`);
   }
@@ -691,8 +691,8 @@ export function headlineHoverLines(componentId: string, row: Row, pctLine: strin
   const unknownSpend = row.runs_unknown_spend;
   const excluded = isMissing(unknownTokens) && isMissing(unknownSpend) ? `Runs not counted: ${NOT_MEASURED}` : (() => {
     const parts = [
-      isMissing(unknownTokens) ? 'runs without token counts: Not recorded' : Number(unknownTokens) > 0 ? `${count(unknownTokens)} ${Number(unknownTokens) === 1 ? 'run' : 'runs'} without token counts` : null,
-      isMissing(unknownSpend) ? 'runs without spend: Not recorded' : Number(unknownSpend) > 0 ? `${count(unknownSpend)} ${Number(unknownSpend) === 1 ? 'run' : 'runs'} without spend` : null,
+      isMissing(unknownTokens) ? 'runs without token counts: Not measured' : Number(unknownTokens) > 0 ? `${count(unknownTokens)} ${Number(unknownTokens) === 1 ? 'run' : 'runs'} without token counts` : null,
+      isMissing(unknownSpend) ? 'runs without spend: Not measured' : Number(unknownSpend) > 0 ? `${count(unknownSpend)} ${Number(unknownSpend) === 1 ? 'run' : 'runs'} without spend` : null,
     ].filter((part): part is string => part !== null);
     return parts.length === 0 ? null : `Not counted: ${parts.join(', ')}`;
   })();

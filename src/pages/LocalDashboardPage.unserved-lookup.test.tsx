@@ -99,7 +99,7 @@ describe('Runs with a savings lookup this store does not serve (OMN-19994 AC1)',
     render(<LocalDashboardPage pageName="runs" />);
     const runs = await waitFor(() => panel('Recent runs'));
     await waitFor(() => expect(within(runs).getByRole('link', { name: RUN_ID })).toBeInTheDocument());
-    expect(within(runs).getByText('Not measured yet: run savings.')).toBeInTheDocument();
+    expect(within(runs).getByText('Not measured: run savings.')).toBeInTheDocument();
     expect(within(runs).queryByRole('alert')).toBeNull();
     expect(screen.queryByText(/HTTP 503/)).toBeNull();
   });
@@ -109,7 +109,7 @@ describe('Runs with a savings lookup this store does not serve (OMN-19994 AC1)',
     render(<LocalDashboardPage pageName="runs" />);
     const runs = await waitFor(() => panel('Recent runs'));
     await waitFor(() => expect(within(runs).getByRole('link', { name: RUN_ID })).toBeInTheDocument());
-    expect(within(runs).getByText('Not measured yet: run savings.')).toBeInTheDocument();
+    expect(within(runs).getByText('Not measured: run savings.')).toBeInTheDocument();
     expect(within(runs).queryByRole('alert')).toBeNull();
   });
 
@@ -130,14 +130,14 @@ describe('Runs with a savings lookup this store does not serve (OMN-19994 AC1)',
     expect(within(within(runs).getByRole('alert')).getByText('Technical details', { selector: 'summary' })).toBeInTheDocument();
     expect(within(runs).queryByText(RUN_ID)).toBeNull();
     // The decisions 503 is an error, never the run records' not-served state (the test below shows that text exists).
-    expect(within(runs).queryByText(/^Not measured yet: run records/)).toBeNull();
+    expect(within(runs).queryByText(/^Not measured: run records/)).toBeNull();
   });
 
   it('says the run table itself is not served when the decisions table is missing', async () => {
     lab.answers[DECISIONS] = { ...TABLE_MISSING, body: { ...(TABLE_MISSING.body as object), topic: DECISIONS } };
     render(<LocalDashboardPage pageName="runs" />);
     const runs = await waitFor(() => panel('Recent runs'));
-    await waitFor(() => expect(within(runs).getByText('Not measured yet: run records.')).toBeInTheDocument());
+    await waitFor(() => expect(within(runs).getByText('Not measured: run records.')).toBeInTheDocument());
     expect(within(runs).queryByText(RUN_ID)).toBeNull();
     expect(screen.queryByText(/HTTP 503/)).toBeNull();
   });

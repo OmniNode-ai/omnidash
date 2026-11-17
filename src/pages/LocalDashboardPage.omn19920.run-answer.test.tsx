@@ -219,7 +219,7 @@ describe('OMN-19920: one run whole on the Workflow page', () => {
   it('R2s: correlation-trace.v1 not served is said, never asked, and never shown as an empty answer', async () => {
     lab.catalogue = [DECISIONS, RUN_TRACE, SAVINGS];
     open(`/workflow?correlation_id=${OLDER}`);
-    await waitFor(() => expect(answerCard().textContent).toContain('Not measured yet'));
+    await waitFor(() => expect(answerCard().textContent).toContain('Not measured'));
     expect(answerCard().textContent).not.toContain('No answer recorded');
     expect(answerAsks()).toEqual([]);
   });
@@ -386,7 +386,7 @@ describe('OMN-19920: one run whole on the Workflow page', () => {
       // OMN-21166 part 15 AC96: a real answer carries no "Data source: real" line; any other source is still named.
       ['answered', read({ rows: [answerRow(NEWEST, 'Hello')], rowCount: 1 }), ['Hello']],
       ['answered from fixtures', read({ rows: [answerRow(NEWEST, 'Hello', { data_source: 'fixture' })], rowCount: 1 }), ['Hello', 'Data source: fixture']],
-      ['not served', read({ failure: { kind: 'not-served', message: `Not served: ${ANSWERS} (this store has no table for it)` } }), ['Not measured yet']],
+      ['not served', read({ failure: { kind: 'not-served', message: `Not served: ${ANSWERS} (this store has no table for it)` } }), ['Not measured']],
       ['no tenant', read({ failure: { kind: 'tenant-not-configured', message: `Tenant not configured. No tenant_id for ${ANSWERS}` } }), ['No tenant is configured']],
       ['read failed', read({ failure: { kind: 'error', message: `${ANSWERS}: HTTP 500 Internal Server Error` } }), ['The answer could not be read', 'HTTP 500']],
       ['read failed, no status', read({ failure: { kind: 'error', message: `${ANSWERS}: projection_database_unavailable` } }), ['The answer could not be read']],

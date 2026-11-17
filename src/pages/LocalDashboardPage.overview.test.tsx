@@ -156,7 +156,7 @@ describe('MetricCard captions and pending sources (Amendment 4)', () => {
       config={{ metric_key: 'tokens_in_and_out', label: 'Tokens in and out', format: 'number', precision: 0 }}
       row={{ tokens_total: 56800 }}
     />);
-    expect(screen.getByText('Not measured yet')).toBeInTheDocument();
+    expect(screen.getByText('Not measured')).toBeInTheDocument();
     expect(screen.queryByText(/56,800/)).not.toBeInTheDocument();
   });
 });

@@ -443,7 +443,7 @@ export function TriageRows({ rows, denominator, kind }: {
       const share = row.count === null || denominator === null || denominator === 0 ? null : row.count / denominator;
       return <li data-triage-row key={`${kind}-${row.id ?? row.name}`}>
         <a href={row.href} title={row.title} aria-label={`View failed runs for ${row.name}`}>{row.name}</a>
-        <span className="mono">{row.count === null ? NOT_MEASURED : formatDashboardCount(row.count)} · {share === null ? 'Share not served' : sharePercent(share)}</span>
+        <span className="mono">{row.count === null ? NOT_MEASURED : formatDashboardCount(row.count)} · {share === null ? 'Share not measured' : sharePercent(share)}</span>
         {/* OMN-22168 (Lakshman 2026-11-04, "make it modern"): the share drawn as a bar; none where the share is not served. */}
         {share !== null && <span className="ev-triage-share" aria-hidden="true" data-identity-decoration="share-bar"
           style={{ '--share': `${Number(fmtFixed((share * 100), 3))}%` } as CSSProperties} />}
@@ -497,22 +497,22 @@ export function FailureTriage({ decisions, available, complete = false }: { deci
     <DashboardTabs label="Failure triage" param="triage" tabs={[
       { id: 'category', label: 'By category', tone: 'var(--ds-field-failures)', icon: <TriangleAlert size={18} />,
         hint: failedReadReason(qualityQ.data, qualityQ.error) !== null ? 'Quality data is unavailable.'
-          : failedChecks === null ? 'Failed checks not served' : `${formatDashboardCount(failedChecks)} failed checks`,
+          : failedChecks === null ? 'Failed checks not measured' : `${formatDashboardCount(failedChecks)} failed checks`,
         panel: () => <div className="ev-triage-panel">
         {qualityQ.isLoading ? <EvEmpty title="Loading data…" /> : !quality
           ? (failedReadReason(qualityQ.data, qualityQ.error) !== null
             ? <EvEmpty title="Quality data is unavailable." reason={failedReadReason(qualityQ.data, qualityQ.error)} />
             : <EvEmpty title="No quality-gate rows" note="The runtime served no quality-gate row." />)
           : <>
-            <p className="note">All-time quality checks · {failedChecks === null ? 'Failed checks not served' : `${formatDashboardCount(failedChecks)} failed checks`}</p>
+            <p className="note">All-time quality checks · {failedChecks === null ? 'Failed checks not measured' : `${formatDashboardCount(failedChecks)} failed checks`}</p>
             <p className="note">Served runs do not record their failure category; a category opens every failed run.</p>
             <div className="section-label">Failure categories</div>
-            {categories === null ? <p className="note">Categories not served</p> : <TriageRows rows={categories} denominator={failedChecks} kind="category" />}
+            {categories === null ? <p className="note">Categories not measured</p> : <TriageRows rows={categories} denominator={failedChecks} kind="category" />}
             <div className="section-label">Checks by type</div>
-            {checks === null ? <p className="note">Check types not served</p> : checks.length === 0 ? <p className="note">No failed checks by type.</p> :
+            {checks === null ? <p className="note">Check types not measured</p> : checks.length === 0 ? <p className="note">No failed checks by type.</p> :
               <ol className="ev-triage-rows" aria-label="Failures by check type">{checks.map(item => <li data-triage-row key={item.name}>
                 <span>{item.name}</span><span className="mono">{item.count === null ? NOT_MEASURED : formatDashboardCount(item.count)} · {item.count === null || item.total === null || item.total === 0
-                  ? 'Share not served' : sharePercent(item.count / item.total)} of this check type</span>
+                  ? 'Share not measured' : sharePercent(item.count / item.total)} of this check type</span>
               </li>)}</ol>}
           </>}
       </div> },
@@ -587,7 +587,7 @@ function SavingsPanel({ money, unavailable, headlineFailure = null }: {
         <span className="note">cumulative savings (modelled) over {money ? servedCount(money.measuredRuns) : 'Not measured'} measured runs</span>
       </span>
       {/* The money source names the runs it leaves out where it serves them; the savings population cannot fill it. */}
-      {headlineFailure === null && <p className="note">{money?.basis ?? 'Unpriced runs not recorded'}</p>}
+      {headlineFailure === null && <p className="note">{money?.basis ?? 'Unpriced runs not measured'}</p>}
       <RankedBars label="Cost against the cloud baseline" unit="USD · baseline and saving modelled, local cost measured" table={{ nameHeader: 'Measure', valueHeader: 'Amount (USD)', valueFrom: 'display' }} order="desc" layout="vertical"
         items={[
           moneyBar('baseline', 'Cloud baseline cost', cloud, 'estimated', 'var(--ds-field-baseline)'),

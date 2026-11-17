@@ -90,7 +90,7 @@ const USAGE_TIPS: Record<string, string> = {
   'Tokens in': 'Tokens sent to the model that day, in this tier.',
   'Tokens out': 'Tokens the model returned that day, in this tier.',
   'Cost (measured)': 'The measured cost of the calls. A grey $0 is a free call.',
-  Unmeasured: 'Calls whose cost was not recorded. A dash means none.',
+  Unmeasured: 'Calls whose cost was not measured. A dash means none.',
   Tier: 'The cost tier the calls were routed to.',
   Calls: 'Calls to the model that day, in this tier.',
   'Share of calls': 'This row\'s calls out of all calls that UTC day.',
@@ -275,17 +275,17 @@ export function UsageTokensChart({ rows, days = 14 }: { rows: readonly unknown[]
         const models = [...day.entries()];
         const allMissing = models.length > 0 && models.every(([, cell]) => cell.missing && cell.value === 0);
         return <ChartReadout active day={hover} text={<>{short(hover)}<span className="ins-readout-sep">{' · '}</span>
-          <span data-field-tone={`tokens-${direction}`}>{allMissing ? `tokens ${direction} not recorded`
+          <span data-field-tone={`tokens-${direction}`}>{allMissing ? `tokens ${direction} not measured`
             : `${formatFullCount(total(hover))} tokens ${direction}${models.some(([, cell]) => cell.missing) ? ' (partial)' : ''}`}</span>
           {models.map(([name, cell]) => <span key={name}><span className="ins-readout-sep">{' · '}</span>
             <i className="utc-readout-swatch" aria-hidden="true" style={{ background: modelColor(name) }} />
-            {`${name} ${cell.missing && cell.value === 0 ? 'not recorded' : formatFullCount(cell.value)}`}</span>)}</>} />;
+            {`${name} ${cell.missing && cell.value === 0 ? 'not measured' : formatFullCount(cell.value)}`}</span>)}</>} />;
       })()}
       <ol className="utc-plot" style={{ '--utc-count': shown.length } as CSSProperties} onMouseLeave={() => setHover(null)}
         onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setHover(null); }}>
         {shown.map(day => {
           const models = [...byDay.get(day)!.entries()];
-          const label = `${day}: ${models.map(([name, cell]) => `${name}: ${cell.missing && cell.value === 0 ? 'not recorded' : `${formatFullCount(cell.value)}${cell.missing ? ' (some rows not recorded)' : ''}`}`).join('; ')}`;
+          const label = `${day}: ${models.map(([name, cell]) => `${name}: ${cell.missing && cell.value === 0 ? 'not measured' : `${formatFullCount(cell.value)}${cell.missing ? ' (some rows not recorded)' : ''}`}`).join('; ')}`;
           const dayTotal = total(day);
           return (
             // Focusable, so a keyboard reader reveals the day's total as a pointer does on hover (live review 2026-10-26).

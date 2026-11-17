@@ -8,7 +8,11 @@ import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
 test.use({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' });
 
 const PAGES = ['/overview', '/runs', '/workflow', '/usage', '/settings', '/delegation-evidence'];
-const OTHER_SPELLINGS = /\b(Not served|Unavailable|Not available)\b/;
+// Review of #518 (finding 2): lowercase "not served" / "not available" and the "Not measured yet" variant are second
+// spellings too (Lakshman 2026-11-17: a missing figure reads "Not measured", a missing label "Not recorded"). A
+// lowercase "unavailable" is left out on purpose: it is a failed read's title ("Run data is unavailable."), not a
+// missing figure.
+const OTHER_SPELLINGS = /\b(?:Not served|not served|Not available|not available|Unavailable|Not measured yet)\b/;
 // A percent with no decimal, or with two or more, outside "<0.1%".
 const OTHER_PRECISION = /(?<![\d.<])\d+%|\d+\.\d{2,}%/;
 

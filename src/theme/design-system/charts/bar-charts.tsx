@@ -688,7 +688,7 @@ export function RunMetricChart({ runs, onOpen, metric }: {
       trigger: 'axis', axisPointer: { type: 'shadow' },
       formatter: (params: Array<{ dataIndex: number }>) => {
         const run = runs[params[0]?.dataIndex ?? 0];
-        return [...runTooltipHead(run), run ? asText(valueText(run)) : 'Not recorded'].join('<br/>');
+        return [...runTooltipHead(run), run ? asText(valueText(run)) : 'Not measured'].join('<br/>');
       },
     },
     series: [{ name: label, type: 'bar', barMaxWidth: 28, ...barTrack(),
@@ -700,7 +700,7 @@ export function RunMetricChart({ runs, onOpen, metric }: {
     <ChartHeading title={title} detail={cost ? 'Recorded cost · USD' : 'Recorded quality score · original scale'} concept={cost ? 'cost' : 'score'} />
     <div className="local-chart-coverage">
       <span>{formatDashboardCount(recordedCount)} of {formatDashboardCount(runs.length)} recorded</span>
-      {recordedCount < runs.length && <span>{formatDashboardCount(runs.length - recordedCount)} not recorded</span>}
+      {recordedCount < runs.length && <span>{formatDashboardCount(runs.length - recordedCount)} not measured</span>}
       {allRecordedZero && <strong>{cost ? 'Recorded costs are $0.00' : 'Recorded scores are 0'}</strong>}
     </div>
     {measured ? <ChartTable label={title} shape="columns" columns={['Run', label]} rows={runs.map(run => [runLabel(run), point(run[metric]).value])}>

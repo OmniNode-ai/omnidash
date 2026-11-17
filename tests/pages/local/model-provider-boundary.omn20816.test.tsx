@@ -50,7 +50,7 @@ it.each(['healthy', 'pending', 'missing', 'failed'])('AC1: %s credentials do not
   expect(region.querySelector('input, textarea, select, form, button, [contenteditable="true"]')).toBeNull();
   if (state === 'healthy') { expect(await within(table).findByText('onex models add gemini')).toBeVisible(); expect(screen.queryByText('No provider credentials recorded')).toBeNull(); }
   if (state === 'pending') expect(screen.getByText('Loading data…')).toBeVisible();
-  if (state === 'missing') expect(await screen.findByText('Not measured yet: credentials.')).toBeVisible();
+  if (state === 'missing') expect(await screen.findByText('Not measured: credentials.')).toBeVisible();
   if (state === 'failed') expect(await screen.findByRole('alert')).toHaveTextContent('data is unavailable.');
 });
 
@@ -59,7 +59,7 @@ it('AC1: a failed models read retains its typed message independently of missing
   h.list.mockRejectedValue(new ModelKeysError(503, 'server', 'Model provider service unavailable'));
   render(<LocalDashboardPage pageName="credentials" />);
   expect(await screen.findByText('Model provider service unavailable')).toBeVisible();
-  expect(await screen.findByText('Not measured yet: credentials.')).toBeVisible();
+  expect(await screen.findByText('Not measured: credentials.')).toBeVisible();
   expect(screen.queryByRole('table', { name: 'Model providers' })).toBeNull();
   expect(h.list).toHaveBeenCalledTimes(1);
 });
