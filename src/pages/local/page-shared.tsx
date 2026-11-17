@@ -3,7 +3,7 @@
 import { formatDashboardCount } from '@/theme/format';
 import { readableTime } from '@/theme/format';
 import { formatDuration } from '@/theme/format';
-import { NOT_MEASURED } from '@/theme/format';
+import { NOT_MEASURED, NOT_RECORDED } from '@/theme/format';
 import { exactTokens } from '@/components/dashboard/usage/TokenCount';
 import { useRef, useState } from 'react';
 import { Link } from 'wouter';
@@ -151,10 +151,10 @@ export function causeTextOf(decision: Row | undefined): string {
 /**
  * OMN-21166 (Lakshman, 2026-10-18): a served fraction or long decimal written for reading (0.8095238095238095 reads
  * 81.0% as a percent, 0.85 as a decimal), with the exact served text kept as the title. A value that is not a number
- * is shown as served; a missing one reads Not recorded.
+ * is shown as served; a missing one is a figure and reads Not measured (OMN-24616 AC6).
  */
 export function Readable({ value, kind }: { value: unknown; kind: 'percent' | 'decimal' | 'count' }) {
-  if (isMissing(value)) return <>{recorded(value)}</>;
+  if (isMissing(value)) return <>{measuredText(value)}</>;
   const number = typeof value === 'number' ? value : typeof value === 'string' && value.trim() !== '' ? Number(value) : NaN;
   if (kind === 'count') return <span className="local-readable" title={String(value)}>{formatDashboardCount(value)}</span>;
   if (!Number.isFinite(number)) return <>{String(value)}</>;
@@ -175,7 +175,13 @@ export function tokensTitle(value: unknown, direction?: 'in' | 'out'): string | 
   return isMissing(value) ? undefined : exactTokens(value, direction);
 }
 
+/** A label as served (backend, host, task type, a time); a missing one reads Not recorded (OMN-24616 AC6). */
 export function recorded(value: unknown): string {
+  return isMissing(value) ? NOT_RECORDED : String(value);
+}
+
+/** A figure as served (quality score, required bar, a count); a missing one reads Not measured (OMN-24616 AC6). */
+export function measuredText(value: unknown): string {
   return isMissing(value) ? NOT_MEASURED : String(value);
 }
 
@@ -236,7 +242,7 @@ export function runModelledCell(run: Row, withBaseline = true): string {
 
 /** The route tier as served, with its cost regime beside it when the row carries one (OMN-13649, OMN-20225). */
 export function tierOf(decision: Row): string {
-  if (isMissing(decision.cost_tier_name)) return NOT_MEASURED;
+  if (isMissing(decision.cost_tier_name)) return NOT_RECORDED;
   const name = tierLabel(decision.cost_tier_name);
   return isMissing(decision.cost_tier_type) ? name : `${name} (${tierLabel(decision.cost_tier_type).toLowerCase()})`;
 }
@@ -248,7 +254,7 @@ export function duration(value: unknown): string {
 
 export function age(value: unknown, now: number): string {
   const time = timeOf(value);
-  if (!Number.isFinite(time)) return NOT_MEASURED;
+  if (!Number.isFinite(time)) return NOT_RECORDED;
   const seconds = Math.max(0, Math.round((now - time) / 1000));
   if (seconds < 60) return `${seconds}s ago`;
   const minutes = Math.floor(seconds / 60);

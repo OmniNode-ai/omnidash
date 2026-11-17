@@ -206,7 +206,7 @@ test('stored basis, excluded counts and modelled baseline survive native Overvie
     expect(basisColumn).toBeGreaterThanOrEqual(0);
     for (const [index, basis] of bases.entries()) {
       const row = runTable.locator('tbody tr').filter({ hasText: `provenance-${index}` });
-      await expect(row.locator('td').nth(basisColumn)).toHaveText(basis ?? 'Not measured');
+      await expect(row.locator('td').nth(basisColumn)).toHaveText(basis ?? 'Not recorded');
     }
     await expect(page.getByText('must-not-substitute', { exact: true })).toHaveCount(0);
     await expect(page.getByText(/verified/i)).toHaveCount(0);
@@ -376,7 +376,7 @@ test('Overview and Runs show each run\'s backend, host, tier and score, typed wh
   const runHeaders = (await page.locator('table thead th').allTextContents()).map((h) => h.trim());
   for (const header of ['Backend', 'Host']) {
     expect(runHeaders.indexOf(header), header).toBeGreaterThanOrEqual(0);
-    await expect(unmeasuredRun.getByRole('cell').nth(runHeaders.indexOf(header)), header).toHaveText('Not measured');
+    await expect(unmeasuredRun.getByRole('cell').nth(runHeaders.indexOf(header)), header).toHaveText('Not recorded');
   }
   await expect(page.getByText('Not served (OMN-20162)')).toHaveCount(0);
   await expectNoPanelCutOff(page);

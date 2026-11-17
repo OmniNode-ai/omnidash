@@ -15,7 +15,7 @@ import { fieldTone, isUnavailableField } from '@/components/dashboard/field-iden
 import { RunAnswer, RunTraceText, WorkflowDecisionCharts, WorkflowRecordDetails, WorkflowRoutingFlow } from '@/pages/local/workflow-analysis';
 import { rowsForLocalBinding, DELEGATION_DECISIONS_TOPIC, RUN_TRACE_TOPIC, CORRELATION_TRACE_TOPIC, RUN_DECISION_SNAPSHOT, type BoundProjectionSnapshot, type LocalPageDocument } from '@/layout/local-page-loader';
 import { useModelIdentityStyle } from '@/components/dashboard/model-tiers';
-import { CopyButton, type Row, asRecords, causeTextOf, duration, isMissing, modelOrUnknown, newestFirst, recorded, recordedCount, recordedTokens, statusOf, tierOf, tokensTitle } from '@/pages/local/page-shared';
+import { CopyButton, type Row, asRecords, causeTextOf, duration, isMissing, measuredText, modelOrUnknown, newestFirst, recorded, recordedCount, recordedTokens, statusOf, tierOf, tokensTitle } from '@/pages/local/page-shared';
 import { NoRunsYet } from '@/pages/local/page-runs';
 
 /** A served flag as a word. The stores serve it as 1 and 0 or as true and false; anything else is shown as served. */
@@ -37,7 +37,7 @@ export function RunSummary({ decision, showAnalysis = false }: { decision: Row |
   const status = statusOf(decision);
   const fields: Array<[string, string]> = [
     ...(status === 'failed' ? [['Cause', causeTextOf(decision)] as [string, string]] : []),
-    ['Quality score', recorded(decision.actual_score)],
+    ['Quality score', measuredText(decision.actual_score)],
     ['Task type', isMissing(decision.task_type) ? recorded(decision.task_type) : taskLabel(decision.task_type)],
     ['Model', modelOrUnknown(decision.model_name)],
     ['Backend', recorded(decision.backend_id)],
@@ -45,7 +45,7 @@ export function RunSummary({ decision, showAnalysis = false }: { decision: Row |
     ['Route tier', tierOf(decision)],
     // OMN-21015: more of what the run's own row serves, each as served. A served zero is a figure and is shown; a
     // fact the row does not carry says Not recorded.
-    ['Required bar', recorded(decision.required_bar)],
+    ['Required bar', measuredText(decision.required_bar)],
     ['Tokens in', recordedTokens(decision.tokens_input)],
     ['Tokens out', recordedTokens(decision.tokens_output)],
     ['Finish reason', recorded(decision.finish_reason)],

@@ -147,5 +147,5 @@ test('measured zero cost has a visible explanation and keeps missing costs separ
   const chart = page.getByRole('figure', { name: 'Cost per run', exact: true });
   await expect(chart).toContainText('2 of 3 recorded');
   await expect(chart).toContainText('Recorded costs are $0');
-  await expect(chart).toContainText('1 not recorded');
+  await expect(chart).toContainText('1 not measured');
 });

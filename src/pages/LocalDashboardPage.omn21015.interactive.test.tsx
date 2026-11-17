@@ -71,7 +71,7 @@ describe('OMN-21015 U1: a timestamp in a run table', () => {
     expect(timeCell('run-iso')).toBe('Oct 13, 10:52:43 UTC');
     expect(screen.getByRole('link', { name: 'run-iso' }).closest('tr')?.querySelector('time')?.getAttribute('datetime')).toBe('2026-10-13T10:52:43.446325+00:00');
     expect(timeCell('run-odd')).toBe('yesterday at noon');
-    expect(timeCell('run-none')).toBe('Not measured');
+    expect(timeCell('run-none')).toBe('Not recorded');
   });
 });
 

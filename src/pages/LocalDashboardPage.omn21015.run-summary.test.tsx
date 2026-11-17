@@ -38,10 +38,11 @@ describe('OMN-21015: the run summary shows the run\'s served facts', () => {
     expect(shown.Model).toBe('local-model');
   });
 
-  it('X2: a fact the row does not carry says Not measured', () => {
+  // OMN-24616 AC6 (Lakshman 2026-11-17): a missing figure reads Not measured, a missing label Not recorded.
+  it('X2: a fact the row does not carry says Not measured (a figure) or Not recorded (a label)', () => {
     render(<RunSummary decision={run({ required_bar: null, tokens_input: undefined, tokens_output: null, finish_reason: '', truncated: null, escalation_count: undefined })} />);
     const shown = fields();
-    expect(NEW.map((label) => shown[label])).toEqual(NEW.map(() => 'Not measured'));
+    expect(NEW.map((label) => shown[label])).toEqual(['Not measured', 'Not measured', 'Not measured', 'Not recorded', 'Not recorded', 'Not measured']);
   });
 
   it.each([

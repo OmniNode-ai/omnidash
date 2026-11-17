@@ -56,5 +56,11 @@ test('a run detail writes its missing timings and tokens as Not measured, in the
   await expect(region).toBeVisible();
   const text = await region.innerText();
   expect(text, 'positive control').toContain('Not measured');
-  expect(text.match(/Not recorded/g) ?? []).toEqual([]);
+  // A missing label in the same summary (backend, host, requested model) reads Not recorded (Lakshman 2026-11-17), so
+  // the check is per fact: no timing or token figure reads Not recorded.
+  const facts = await region.evaluate(el => [...el.querySelectorAll('dt')].map(dt => [dt.textContent?.trim() ?? '',
+    dt.nextElementSibling?.textContent?.trim() ?? '']));
+  const figures = facts.filter(([term]) => /token|time|duration|latency|score|bar|cost|escalation/i.test(term!));
+  expect(figures.some(([, value]) => value!.startsWith('Not measured')), 'positive control: a missing figure').toBe(true);
+  expect(figures.filter(([, value]) => /Not recorded/.test(value!))).toEqual([]);
 });

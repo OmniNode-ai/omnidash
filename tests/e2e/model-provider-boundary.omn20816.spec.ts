@@ -68,7 +68,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
           await expect(page.getByText('No provider credentials recorded')).toHaveCount(0);
         }
         if (state === 'pending') await expect(page.getByText('Loading data…', { exact: true })).toBeVisible();
-        if (['missing', 'models-failed'].includes(state)) await expect(page.getByText('Not measured yet: credentials.', { exact: true })).toBeVisible();
+        if (['missing', 'models-failed'].includes(state)) await expect(page.getByText('Not measured: credentials.', { exact: true })).toBeVisible();
         if (state === 'failed') await expect(page.getByRole('alert')).toContainText('data is unavailable.');
         expect(modelRequests).toEqual(['GET']);
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);

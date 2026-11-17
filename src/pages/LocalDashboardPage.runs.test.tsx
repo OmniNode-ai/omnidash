@@ -97,7 +97,7 @@ describe('LastRunCard (OV-4, F16)', () => {
     // This 2026-10-02 row predates OMN-20162's backend_id and host columns, so backend and host are not recorded, and
     // its cost was never measured (the words the Saving cell uses, OMN-24224).
     for (const label of ['Backend', 'Host']) {
-      expect(within(card).getByText(label, { selector: 'dt' }).nextElementSibling?.textContent, label).toBe('Not measured');
+      expect(within(card).getByText(label, { selector: 'dt' }).nextElementSibling?.textContent, label).toBe('Not recorded');
     }
     expect(within(card).getByText('Cost', { selector: 'dt' }).nextElementSibling?.textContent).toBe('Not measured');
     expect(within(card).queryByText(/Not served \(OMN-20162\)/)).not.toBeInTheDocument();
@@ -287,7 +287,7 @@ describe('Baseline model label (F20, OMN-19980 AC2b)', () => {
     // The label stays (ruling 2026-10-05: keep labels); the dollars beside it came off.
     const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent?.trim());
     const cells = within(row).getAllByRole('cell');
-    expect(cells[headers.indexOf('Baseline model')]?.textContent).toBe('Not measured');
+    expect(cells[headers.indexOf('Baseline model')]?.textContent).toBe('Not recorded');
     // OMN-21015 AC3: the per-run saving comes only from the decisions row's own served figure; this row serves none, so
     // the cell is typed, and the session's savings_usd (0.000844) is still never shown.
     expect(cells[headers.indexOf('Saving')]?.textContent).toBe('Not measured');

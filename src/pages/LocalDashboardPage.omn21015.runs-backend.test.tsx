@@ -50,7 +50,7 @@ describe('RunsTable filters by backend (OMN-21015 AC8, RU-1)', () => {
   it('offers each served backend once, and the unserved one by its typed name', () => {
     render(<RunsTable now={NOW} decisions={decisions} sessions={[]} />);
     const options = dropdownOptions('Backend');
-    expect(options).toEqual(['all', 'Not measured', 'byok-gemini', 'local-qwen-coder']);
+    expect(options).toEqual(['all', 'Not recorded', 'byok-gemini', 'local-qwen-coder']);
   });
 
   it('lists no row of another backend once one is chosen', () => {
@@ -62,9 +62,9 @@ describe('RunsTable filters by backend (OMN-21015 AC8, RU-1)', () => {
     expect(rows.some((text) => text.includes('run-gemini') || text.includes('run-unserved'))).toBe(false);
   });
 
-  it('finds the run whose backend was not served under Not measured, and only there', () => {
+  it('finds the run whose backend was not served under Not recorded, and only there', () => {
     render(<RunsTable now={NOW} decisions={decisions} sessions={[]} />);
-    chooseDropdown('Backend', 'Not measured');
+    chooseDropdown('Backend', 'Not recorded');
     const rows = listedRuns();
     expect(rows).toHaveLength(1);
     expect(rows[0]).toContain('run-unserved');

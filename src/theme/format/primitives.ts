@@ -5,6 +5,8 @@
 
 /** OMN-24616 AC6 (decision D2): the one word every page shows for a value that is missing or not served. */
 export const NOT_MEASURED = 'Not measured';
+/** OMN-24616 AC6 (Lakshman 2026-11-17): the word for a missing label (model, tier, host, a time); a figure reads NOT_MEASURED. */
+export const NOT_RECORDED = 'Not recorded';
 
 /** `value.toFixed(digits)`. */
 export function fixed(value: number, digits?: number): string {

@@ -75,9 +75,9 @@ describe('OMN-21015: a run\'s model and backend set the filter from its row', ()
 
   it('Q4: a run with no recorded backend filters to the runs with none', () => {
     render(<RunsTable now={NOW} decisions={RUNS} sessions={[]} />);
-    fireEvent.click(within(rowOf('run-3')).getByRole('button', { name: 'Show only runs of backend Not measured' }));
+    fireEvent.click(within(rowOf('run-3')).getByRole('button', { name: 'Show only runs of backend Not recorded' }));
     expect(rowIds()).toEqual(['run-3']);
-    expect(select('Backend')).toBe('Not measured');
+    expect(select('Backend')).toBe('Not recorded');
   });
 
   it('Q5, Q6: Clear filters is there only while a filter is set, and clears every one', () => {

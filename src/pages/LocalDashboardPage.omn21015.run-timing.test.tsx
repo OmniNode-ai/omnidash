@@ -166,9 +166,9 @@ describe('OMN-21015: where a run\'s time went', () => {
     expect(fields().Model).toBe('local-model');
   });
 
-  it('T9: a run whose row names no requested model says Not measured, not the answering model', () => {
+  it('T9: a run whose row names no requested model says Not recorded, not the answering model', () => {
     render(<RunSummary decision={run({ requested_model: null })} />);
-    expect(fields()['Requested model']).toBe('Not measured');
+    expect(fields()['Requested model']).toBe('Not recorded');
   });
 
   it('T10: the Workflow contract declares each new field, and each is in the lab capture or on the served-since list', () => {
