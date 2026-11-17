@@ -12,7 +12,9 @@
 //   D2  both reads fail and the page says the run has no decision instead of naming the failed read;
 //   D3  a run the store has no decision for stops saying so (the existing missing-decision behaviour);
 //   D4  the one-run read answers another run's row and it is shown under this run;
-//   D5  the one-run decision read is not sent, or is sent without this run's id or the tenant.
+//   D5  the one-run decision read is not sent, or is sent without this run's id or the tenant;
+//   D6  the one-run read fails while an incomplete list (truncated, cursor not moving) lacks the run, and the page
+//       says the run has no decision, although only a successful read for this run can say that (Codex review).
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -153,6 +155,16 @@ describe('OMN-23413 AC48: a run\'s served decision is shown beside its trace', (
     openRun(RUN);
     await settled();
     await waitFor(() => expect(panel().textContent).toContain('No decision is served for this run'));
+    expect(panel().textContent).not.toContain(`backend-of-${OTHER}`);
+  });
+
+  it('D6: the run\'s own read fails and an incomplete list lacks it, and the page names the failed read', async () => {
+    lab.list = { status: 200, body: { rows: [decision(OTHER)], row_count: 1, truncated: true, next_cursor: '0' } };
+    lab.one = () => failed;
+    openRun(RUN);
+    await settled();
+    await waitFor(() => expect(panel().textContent).toMatch(/decision could not be read/i));
+    expect(panel().textContent).not.toContain('No decision is served for this run');
     expect(panel().textContent).not.toContain(`backend-of-${OTHER}`);
   });
 

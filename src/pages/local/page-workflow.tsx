@@ -342,15 +342,15 @@ export function WorkflowRun({ component, snapshots, requested, onOpen }: Workflo
   const stepsUnread = Boolean(stepsRead?.failure) && !stepsRead?.lastGoodAt;
   const foreign = rows.some((row) => row.correlation_id !== runId);
   // OMN-23413 AC48: the run's decision is its own row, read for this run alone, else the list's row for the same id.
-  // Never another run's row. When neither read answered, the summary names the failed read; it never claims the run
-  // has no decision, which only a successful read can say.
+  // Never another run's row. Only a successful read FOR THIS RUN can say it has no decision: a list that lacks the
+  // run proves nothing (it may be one page, or a walk that stopped), so when the run's own read failed the summary
+  // names that failure. Only where no run read exists does the list decide, as before.
   const runDecisionRead = snapshots.find((snapshot) => snapshot.topic === RUN_DECISION_SNAPSHOT && snapshot.runId === runId);
   const decision = asRecords(runDecisionRead?.rows ?? []).find((row) => row.correlation_id === runId)
     ?? decisions.find((row) => row.correlation_id === runId);
   const unread = (read: BoundProjectionSnapshot | undefined) => Boolean(read?.failure) && !read?.lastGoodAt;
-  const decisionUnreadBy = decision === undefined && unread(decisionsRead) && (runDecisionRead === undefined || unread(runDecisionRead))
-    ? (runDecisionRead?.failure ?? decisionsRead?.failure)
-    : undefined;
+  const deciding = runDecisionRead ?? decisionsRead;
+  const decisionUnreadBy = decision === undefined && unread(deciding) ? deciding?.failure : undefined;
   return (
     <div>
       <RunPicker key={requested ?? ''} requested={requested} onOpen={onOpen} />
