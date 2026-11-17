@@ -14,8 +14,10 @@
 //   D4  the one-run read answers another run's row and it is shown under this run;
 //   D5  the one-run decision read is not sent, or is sent without this run's id or the tenant;
 //   D6  the one-run read fails while an incomplete list (truncated, cursor not moving) lacks the run, and the page
-//       says the run has no decision, although only a successful read for this run can say that (Codex review).
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+//       says the run has no decision, although only a successful read for this run can say that (Codex review);
+//   D7  (AC47) the run's correlation id is labelled "Receipt id": a delegated answer's run id (the receipt
+//       folder's run_id) is a different id, so the label sends a reader to the wrong receipt.
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const TENANT = 'c94fa3c5-ea87-4dbb-a4fc-424343bac7a0';
@@ -27,9 +29,9 @@ vi.mock('@/config/generated/data-source-defaults', () => ({
   PROJECTION_TENANT_ID_DEFAULT: 'c94fa3c5-ea87-4dbb-a4fc-424343bac7a0',
 }));
 
-import { LocalDashboardPage } from './LocalDashboardPage';
+import { LocalDashboardPage } from '@/pages/LocalDashboardPage';
 import { resetExposureMetadataCache } from '@/data-source/projection-tenant';
-import recordedChain from './local/omn19987.run-trace.recorded.json';
+import recordedChain from '@/pages/local/omn19987.run-trace.recorded.json';
 
 const DECISIONS = 'onex.snapshot.projection.delegation.decisions.v1';
 const SAVINGS = 'onex.snapshot.projection.delegation.savings.v1';
@@ -60,7 +62,7 @@ const lab = {
   /** The decisions list read (no correlation_id). */
   list: served([]) as Answer,
   /** A read of one run's decision (?correlation_id=<id>). */
-  one: ((_id: string) => served([])) as (id: string) => Answer,
+  one: (() => served([])) as (id: string) => Answer,
   requests: [] as URL[],
 };
 
@@ -109,6 +111,12 @@ afterEach(() => {
 
 function panel(): HTMLElement {
   return screen.getByRole('heading', { name: 'Run path' }).closest('article') as HTMLElement;
+}
+
+/** Every label and its value the panel shows, from its definition lists. */
+function fieldsShown(): Record<string, string> {
+  return Object.fromEntries(within(panel()).getAllByRole('term')
+    .map((term) => [term.textContent ?? '', term.nextElementSibling?.textContent ?? '']));
 }
 
 function openRun(id: string) {
@@ -176,5 +184,12 @@ describe('OMN-23413 AC48: a run\'s served decision is shown beside its trace', (
     const ask = lab.requests.find((url) =>
       decodeURIComponent(url.pathname).endsWith(DECISIONS) && url.searchParams.get('correlation_id') === RUN)!;
     expect(ask.searchParams.get('tenant')).toBe(TENANT);
+  });
+
+  it('D7: the run\'s correlation id is labelled "Correlation id", never "Receipt id" (AC47)', async () => {
+    openRun(RUN);
+    await settled();
+    await waitFor(() => expect(fieldsShown()['Correlation id']).toBe(RUN));
+    expect(fieldsShown()['Receipt id']).toBeUndefined();
   });
 });

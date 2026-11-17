@@ -1,0 +1,51 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+schema_version: "1.0.0"
+ticket_id: "OMN-23413"
+title: "Workflow page: a run's own decision beside its trace, and its correlation id named for what it is"
+summary: >-
+  The omnidash part of OMN-23413 (Amendment 15/16, dashboard criteria). AC48: a completed run with a stored decision
+  shows its own served summary beside its trace; a failed read is named, and only a successful read for this run may
+  say it has no decision. AC47 (this repo's part): the run's identity is labelled "Correlation id", the id the
+  delegated answer's dashboard path and `onex dashboard open --correlation-id` use; the receipt-id footer and the CLI
+  live in omniclaude and omnimarket under their own contracts. Both are bound to one vitest file under tests/ (the
+  evidence gate lays only tests/ paths over the merge base).
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-omn23413-workflow-run-decision"
+    statement: >-
+      The Workflow page shows a run's own served decision beside its trace, names a failed decision read instead of
+      claiming the run has none, never shows another run's row, and labels the run's id as its correlation id.
+    acceptance:
+      - id: "AC48"
+        statement: >-
+          a completed run whose decision is stored shows its decision summary even when the decisions list read fails;
+          when the run's own read fails the page names the failed read and never says "No decision is served for this
+          run"; a run with no stored decision still says so; another run's row is never shown under it -- falsifier:
+          npx vitest run tests/pages/LocalDashboardPage.omn23413.workflow-decision.test.tsx (D1-D6)
+      - id: "AC47"
+        statement: >-
+          the Workflow record's identity field shows the run's correlation id labelled "Correlation id", never "Receipt
+          id" -- falsifier: npx vitest run tests/pages/LocalDashboardPage.omn23413.workflow-decision.test.tsx (D7)
+evidence_requirements: []
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
+dod_evidence:
+  - id: "dod-omn23413-workflow-run-decision"
+    description: >-
+      AC48 and AC47 in one vitest file over the real HttpSnapshotSource path, fetch stubbed so the decisions list read
+      and the one-run read (?correlation_id=) answer separately. D1 list 500 shows the run's decision; D2 both reads
+      500 names the failed read; D3 a run with no decision says so; D4 another run's row is not shown; D5 the one-run
+      read carries the run id and tenant; D6 a failed one-run read beside an incomplete list names the failure; D7 the
+      identity label. D1, D2, D5 and D6 failed before the fix (omnidash e8873750, 0a873629); the label assertion failed
+      before 1e34cba0. Verified in headless Chromium on the built bundle over a copy of a real store.
+    source: "manual"
+    binds_ac: ["AC48", "AC47"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npx vitest run tests/pages/LocalDashboardPage.omn23413.workflow-decision.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
