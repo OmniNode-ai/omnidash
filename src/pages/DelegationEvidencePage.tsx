@@ -660,7 +660,9 @@ function DecisionDetail({ row }: { row: DelegationDecisionRow }) {
           { k: 'Created', v: readableTime(row.created_at) ?? row.created_at },
         ]}
       />
-      {isLoading ? (
+      {!row.correlation_id ? (
+        <div className="note">This run has no recorded id, so its trace cannot be read.</div>
+      ) : isLoading ? (
         <div className="note">Loading the run…</div>
       ) : !data || data.failureReason !== null ? (
         /* OMN-24616 AC5: a failed read, rejected or refused, is not "not recorded" (review 517 finding 1). */
@@ -710,7 +712,7 @@ function RecentDelegations({ decisions, available }: { decisions: DelegationDeci
         columns={cols}
         rows={decisions}
         pageSize={25}
-        rowKey={(r) => r.correlation_id}
+        rowKey={(r) => r.correlation_id || `run with no recorded id, created ${r.created_at ?? 'at an unrecorded time'}`}
         onOpen={setOpened}
       />
       <Dialog open={opened !== null} title="Selected run" onClose={() => setOpened(null)}

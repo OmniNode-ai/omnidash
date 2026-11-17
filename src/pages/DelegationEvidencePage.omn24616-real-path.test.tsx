@@ -144,5 +144,10 @@ describe('OMN-24616 AC5: Delegation Evidence on the real read path', () => {
     expect(screen.getByText('The served decisions carry no run id, so none can be opened.')).toBeTruthy();
     expect(screen.queryByText('Awaiting a delegation decision on the bus.')).toBeNull();
     expect(screen.queryByText('undefined')).toBeNull();
+    // The id-less run is listed under its write time and opens to say no trace can be read, never a failed read.
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^Open run run with no recorded id/ })); });
+    expect(screen.getByText('This run has no recorded id, so its trace cannot be read.')).toBeTruthy();
+    expect(screen.queryByText(/^Could not read the run:/)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Open run undefined' })).toBeNull();
   });
 });
