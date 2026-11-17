@@ -89,8 +89,10 @@ function writerOf(value: unknown): unknown {
 /** Facts a run with none of them leaves out (a run with no lineage names no retry); every other fact says Not recorded. */
 const OPTIONAL_FACTS = new Set(['Tokens to compliance', 'Routed model', 'Answering backend', 'Score source', 'Recorded by', 'Retry of', 'Lineage']);
 const RECORD_GROUPS: ReadonlyArray<{ name: string; concept: string; facts: (decision: Run) => Array<[string, unknown]> }> = [
-  // OMN-19920 AC5: the run's receipt identity. receipt.json records the correlation id as receipt_id.
-  { name: 'Identity', concept: 'identity', facts: decision => [['Receipt id', decision.correlation_id], ['Session', decision.session_id],
+  // OMN-19920 AC5, OMN-23413 AC47: the run's identity, named for what it is. receipt.json records this id as
+  // receipt_id, but the id a delegated answer calls its run (the receipt's folder, run.json's run_id) is another
+  // id, so "Receipt id" sent readers to the wrong one. The record serves only the correlation id.
+  { name: 'Identity', concept: 'identity', facts: decision => [['Correlation id', decision.correlation_id], ['Session', decision.session_id],
     // OMN-21166 AC66: a retried run names the run it retried and how; a run with no lineage leaves both out.
     ['Retry of', decision.parent_correlation_id], ['Lineage', decision.lineage_kind]] },
   { name: 'Recorded times', concept: 'age', facts: decision => [['Created at', decision.created_at], ['Written at', decision.written_at],
