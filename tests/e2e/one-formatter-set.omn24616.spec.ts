@@ -15,6 +15,9 @@ const PAGES = ['/overview', '/runs', '/workflow', '/usage', '/settings', '/deleg
 const OTHER_SPELLINGS = /\b(?:Not served|not served|Not available|not available|Unavailable|Not measured yet)\b/;
 // A percent with no decimal, or with two or more, outside "<0.1%".
 const OTHER_PRECISION = /(?<![\d.<])\d+%|\d+\.\d{2,}%/;
+// The one exception (Lakshman 2026-11-17): the savings card's baseline comparison stays a whole percent, as OMN-20008
+// AC5 decided (Jonah, 4f0e618d): "42% below the claude-sonnet-5-5 baseline (modelled)". Only that line is exempt.
+const BASELINE_COMPARISON = /\d+% (?:below|above) the .+? baseline \(modelled\)/g;
 
 for (const path of PAGES) {
   test(`${path} writes a missing value one way, shows its Updated time, and one precision per share`, async ({ page }) => {
@@ -24,7 +27,7 @@ for (const path of PAGES) {
     await expect(page.getByText('Loading data…')).toHaveCount(0);
     const text = await page.locator('main').innerText();
     expect(text.match(OTHER_SPELLINGS)?.[0] ?? null).toBeNull();
-    expect(text.match(OTHER_PRECISION)?.[0] ?? null).toBeNull();
+    expect(text.replace(BASELINE_COMPARISON, '').match(OTHER_PRECISION)?.[0] ?? null).toBeNull();
   });
 }
 
