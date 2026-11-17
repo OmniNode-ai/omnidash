@@ -59,13 +59,12 @@ dod_evidence:
     description: >-
       AC7's falsifier in a browser: tests/e2e/runs-back.omn24616.spec.ts opens a run from a filtered Runs view and fails
       unless the Runs breadcrumb and the Back to Runs link both return to that same view, and a neighbouring run keeps
-      the way back. Hosted CI has no browser, so the local Done gate runs it.
+      the way back.
     source: "manual"
-    execution_scope: "local_done_gate"
     binds_ac: ["AC7"]
     checks:
-      - check_type: "command"
-        check_value: "npx playwright test tests/e2e/runs-back.omn24616.spec.ts --project=chromium"
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx playwright test tests/e2e/runs-back.omn24616.spec.ts --project=chromium --workers=1 --retries=0"
   - id: "dod-omn24616-ac5"
     description: >-
       AC5 per endpoint. http-snapshot-source.malformed.test.ts refuses a snapshot body that is neither an envelope nor
