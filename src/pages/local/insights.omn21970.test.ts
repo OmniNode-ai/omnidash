@@ -4,7 +4,7 @@
  * OMN-21970 AC4 and AC7: a day with no runs is zero, a day whose runs carry no token counts is not recorded.
  *
  * Failures caught:
- * - a day with no served runs reads "not recorded in, not recorded out" (the 2026-10-28 report), when it had nothing
+ * - a day with no served runs reads "not measured in, not measured out" (the 2026-10-28 report), when it had nothing
  *   to record;
  * - a day whose runs really carry no token counts is drawn as zero instead of not recorded;
  * - a partly measured day loses its measured tokens or its count of unmeasured runs.

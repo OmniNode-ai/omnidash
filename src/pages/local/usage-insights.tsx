@@ -98,7 +98,7 @@ function SpendByModel({ data }: { data: UsageAggregates }) {
           // Part 29 AC193: each model opens Runs filtered to it.
           href: `/runs?${writeRunsSearch('', { ...DEFAULT_RUNS_VIEW, model: model.model })}`, opensLabel: `Opens Runs filtered to ${model.model}`,
         }))}
-        footnote={gaps.length > 0 ? gaps.map(model => `${model.model}: ${model.unmeasuredCalls === null ? 'unmeasured runs not recorded' : `${count(model.unmeasuredCalls)} unmeasured`}`).join(' · ') : undefined} />
+        footnote={gaps.length > 0 ? gaps.map(model => `${model.model}: ${model.unmeasuredCalls === null ? 'unmeasured-run count not measured' : `${count(model.unmeasuredCalls)} unmeasured`}`).join(' · ') : undefined} />
       <TierLegend label="Spend by model tier colours" models={data.models.map(model => model.model)} />
       <p className="local-dashboard-caption">Measured spend only, summed from the latest {USAGE_WINDOW_DAYS} UTC days of served usage rows.</p>
     </figure>
@@ -186,7 +186,7 @@ function CostByRoute({ routing, titled }: { routing: RouteRow[]; titled: boolean
   return (
     <section className="local-chart usage-cost-by-route" aria-label="Cost by route">
       {titled && <h3><ConceptIcon concept="cost-route" size={16} />Cost by route</h3>}
-      {routing.length === 0 ? <ChartNotRecorded role="status">Route cost is not served yet.</ChartNotRecorded> : <>
+      {routing.length === 0 ? <ChartNotRecorded role="status">Route cost is not measured.</ChartNotRecorded> : <>
         <RankedBars layout="vertical" label="Cost per route" unit="USD · measured cost per route" order="desc"
           table={{ nameHeader: 'Route', valueHeader: 'Cost (USD)', countHeader: 'Runs' }}
           items={routed.map(row => {

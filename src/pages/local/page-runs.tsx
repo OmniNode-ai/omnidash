@@ -655,7 +655,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                   </>}
                   <td data-label="Host" className="local-dashboard-cell-token" data-extra="">{breakableHost(recorded(run.host))}</td>
                   {/* Item 4: tokens in and out in one cell; their total is the two added, so it is not a column of its own. */}
-                  <td data-label="Tokens" data-num="" title={`${tokensTitle(run.tokens_input, 'in') ?? 'Tokens in not recorded'}, ${tokensTitle(run.tokens_output, 'out') ?? 'tokens out not recorded'}`}>
+                  <td data-label="Tokens" data-num="" title={`${tokensTitle(run.tokens_input, 'in') ?? 'Tokens in not measured'}, ${tokensTitle(run.tokens_output, 'out') ?? 'tokens out not measured'}`}>
                     {isMissing(run.tokens_input) && isMissing(run.tokens_output) ? NOT_MEASURED
                       : <><span data-field-tone="tokens-in" data-field-unavailable={isMissing(run.tokens_input)}>{recordedTokens(run.tokens_input)}</span><span className="local-run-quiet"> / </span><span data-field-tone="tokens-out" data-field-unavailable={isMissing(run.tokens_output)}>{recordedTokens(run.tokens_output)}</span></>}
                   </td>

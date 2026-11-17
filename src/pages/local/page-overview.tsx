@@ -168,7 +168,7 @@ export function OverviewTrendPanel({ rows, columns, window, now }: {
     const noun = column.header.toLowerCase();
     return column.format !== 'currency' && value === 1 && noun.endsWith('s') ? noun.slice(0, -1) : noun;
   };
-  const say = (value: number | null, column: DeclaredColumn, compact: boolean) => (value === null ? 'not recorded'
+  const say = (value: number | null, column: DeclaredColumn, compact: boolean) => (value === null ? 'not measured'
     : `${column.format === 'currency' ? formatUsd(value) : compact ? formatDashboardCount(value) : formatFullCount(String(value))} ${unit(value, column)}`);
   const visible = columns.filter(column => shown[slug(column.header)]);
   const lines = visible.map(column => {

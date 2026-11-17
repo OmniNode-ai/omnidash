@@ -182,10 +182,10 @@ test('E2 huge token counts stay inside their chart', async ({ page }, info) => {
   await shot(page, info, 'e2-huge-tokens');
 });
 
-test('E4 every token count not recorded: no token bar, and the day says not recorded', async ({ page }, info) => {
+test('E4 every token count not measured: no token bar, and the day says not measured', async ({ page }, info) => {
   await open(page, { [decisionsTopic]: runs(20, () => ({ tokens_input: null, tokens_output: null })) });
   await expect((await tokensPanel(page)).locator('.gdb-bar')).toHaveCount(0);
-  await expect((await tokensPanel(page)).locator('.gdb-day').first()).toHaveAccessibleName(/not recorded in, not recorded out/);
+  await expect((await tokensPanel(page)).locator('.gdb-day').first()).toHaveAccessibleName(/not measured in, not measured out/);
   await invariants(page, 'tokens not recorded', { twoColumns: true });
   await shot(page, info, 'e4-tokens-not-recorded');
 });

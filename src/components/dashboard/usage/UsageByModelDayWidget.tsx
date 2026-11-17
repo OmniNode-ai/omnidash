@@ -301,7 +301,7 @@ export function UsageTokensChart({ rows, days = 14 }: { rows: readonly unknown[]
                   ))}
                 </span>
               </span>
-              {models.some(([, cell]) => cell.missing) && <span className="utc-missing" data-token-missing aria-hidden="true">n/r</span>}
+              {models.some(([, cell]) => cell.missing) && <span className="utc-missing" data-token-missing aria-hidden="true">n/m</span>}
               <span className="utc-day">{short(day)}</span>
             </li>
           );
@@ -314,7 +314,7 @@ export function UsageTokensChart({ rows, days = 14 }: { rows: readonly unknown[]
         </ul>
         <TierLegend label="Tokens per day tier colours" models={names} />
       </div>
-      <figcaption className="local-dashboard-caption">{`Tokens ${direction} per UTC day, latest ${shown.length} served ${shown.length === 1 ? 'day' : 'days'}; n/r marks a day with a count not recorded.`}</figcaption>
+      <figcaption className="local-dashboard-caption">{`Tokens ${direction} per UTC day, latest ${shown.length} served ${shown.length === 1 ? 'day' : 'days'}; n/m marks a day with a count not measured.`}</figcaption>
     </figure>
   );
 }

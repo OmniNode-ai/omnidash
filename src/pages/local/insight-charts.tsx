@@ -336,7 +336,7 @@ export function TokensPerDay({ days }: { days: InsightDay[] }) {
   const [hover, setHover] = useState<number | null>(null);
   // The scale comes from the days that recorded tokens; a day without a count draws no bar.
   const max = Math.max(1, ...days.flatMap(day => [day.tokensIn, day.tokensOut]).filter((value): value is number => value !== null));
-  const side = (value: number | null, missing: number, direction: 'in' | 'out') => `${value === null ? 'not recorded' : formatFullCount(value)} ${direction}${value !== null && missing > 0 ? ` (partial: ${count(missing)} ${missing === 1 ? 'run' : 'runs'} not recorded)` : ''}`;
+  const side = (value: number | null, missing: number, direction: 'in' | 'out') => `${value === null ? 'not measured' : formatFullCount(value)} ${direction}${value !== null && missing > 0 ? ` (partial: ${count(missing)} ${missing === 1 ? 'run' : 'runs'} not recorded)` : ''}`;
   const label = (day: InsightDay) => `${dayLabel(day.day)}: ${side(day.tokensIn, day.tokensInUnmeasured, 'in')}, ${side(day.tokensOut, day.tokensOutUnmeasured, 'out')}`;
   const active = hover === null ? latestServed(days, day => day.tokensIn !== null || day.tokensOut !== null) : days[hover]!;
   const [location] = useLocation();
