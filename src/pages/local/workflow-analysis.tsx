@@ -48,7 +48,7 @@ function Comparison({ title, kind, values }: {
         </button>;
       })}
     </div>
-    {selected !== null && <p className="local-dashboard-caption" role="status">{values[selected]!.label}: {kind === 'tokens' ? (measured(values[selected]!.value) === null ? NOT_MEASURED : formatFullCount(values[selected]!.value)) : recorded(values[selected]!.value)}</p>}
+    {selected !== null && <p className="local-dashboard-caption" role="status">{values[selected]!.label}: {kind === 'tokens' ? (measured(values[selected]!.value) === null ? NOT_MEASURED : formatFullCount(values[selected]!.value)) : measured(values[selected]!.value) === null ? NOT_MEASURED : recorded(values[selected]!.value)}</p>}
   </figure>;
 }
 

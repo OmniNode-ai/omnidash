@@ -194,12 +194,20 @@ export function RunTimeline({ steps, run, stepText }: {
         // says "not recorded" once, naming every missing fact, where it said it up to six times (its duration, its start,
         // under its bar and in each routing chip).
         const routing = kind === 'routing_decision';
-        const missingFacts = [
+        // OMN-24616 AC6 (Lakshman 2026-11-17): a missing figure (duration, confidence) reads Not measured, a missing
+        // label (start, reason, candidates) Not recorded; both stay one statement per step.
+        const missingLabels = [
           ...(isMissing(row.started_at) ? ['start'] : []),
-          ...(isMissing(row.duration_ms) ? ['duration'] : []),
           ...(routing && isMissing(row.reason) ? ['reason'] : []),
           ...(routing && candidates.length === 0 ? ['candidates'] : []),
+        ];
+        const missingFigures = [
+          ...(isMissing(row.duration_ms) ? ['duration'] : []),
           ...(routing && isMissing(row.confidence) ? ['confidence'] : []),
+        ];
+        const missingFacts = [
+          ...(missingLabels.length > 0 ? [`Not recorded: ${missingLabels.join(', ')}`] : []),
+          ...(missingFigures.length > 0 ? [`Not measured: ${missingFigures.join(', ')}`] : []),
         ];
         // Each served detail under its own name; a detail the row does not carry is left out, never shown empty.
         const details: Array<[string, string]> = [
@@ -243,7 +251,7 @@ export function RunTimeline({ steps, run, stepText }: {
               </div>;
             })()}
             {missingFacts.length > 0 && <p className="local-run-step-missing local-dashboard-caption" data-not-recorded>
-              {`Not recorded: ${missingFacts.join(', ')}`}</p>}
+              {missingFacts.join(' · ')}</p>}
             {details.length > 0 && (
               <div className="local-run-chips">
                 {details.map(([name, value]) => (

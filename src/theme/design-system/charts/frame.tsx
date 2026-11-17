@@ -89,7 +89,8 @@ function cellText(cell: ChartTableCell, column: TableColumn): string {
 
 /* What each column holds, said the way the Runs table's header tooltips say it (src/pages/local/page-runs.tsx
    RUN_COLUMN_TIPS); every header has one (operator review 2026-11-11). */
-const NOT_RECORDED = ' "Not recorded" means no value was served for that row.';
+// cellText writes an empty cell as NOT_MEASURED (OMN-24616 AC6), so the tip names that spelling.
+const MISSING_TIP = ' "Not measured" means no value was served for that row.';
 const FIELD_TIPS: Readonly<Record<string, string>> = {
   calls: 'How many runs were recorded.',
   identity: 'The run\'s id, its first 8 characters as the Runs table shows it.',
@@ -112,12 +113,12 @@ const FIELD_TIPS: Readonly<Record<string, string>> = {
 function columnTip(column: TableColumn, index: number): string {
   if (column.kind === 'day') return 'The UTC day. Today\'s row counts only what has been recorded so far.';
   if (column.tone === 'pass') return column.kind === 'share'
-    ? `The share of runs that passed their quality gate, to one decimal.${NOT_RECORDED}`
-    : `Runs that passed their quality gate.${NOT_RECORDED}`;
+    ? `The share of runs that passed their quality gate, to one decimal.${MISSING_TIP}`
+    : `Runs that passed their quality gate.${MISSING_TIP}`;
   const known = column.tone ? FIELD_TIPS[column.tone] : undefined;
-  if (known) return index === 0 ? known : `${known}${NOT_RECORDED}`;
-  if (column.kind === 'share') return `${column.label}, as a share of the whole, to one decimal.${NOT_RECORDED}`;
-  return index === 0 ? `${column.label}: the row the values beside it belong to.` : `${column.label}, as the chart draws it.${NOT_RECORDED}`;
+  if (known) return index === 0 ? known : `${known}${MISSING_TIP}`;
+  if (column.kind === 'share') return `${column.label}, as a share of the whole, to one decimal.${MISSING_TIP}`;
+  return index === 0 ? `${column.label}: the row the values beside it belong to.` : `${column.label}, as the chart draws it.${MISSING_TIP}`;
 }
 
 /** A row-naming first column (a model, a tier) gets two shares of the table's width; a day and every value column one. */
