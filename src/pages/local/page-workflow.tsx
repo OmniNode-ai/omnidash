@@ -12,7 +12,7 @@ import { failureCauseLabel, plainFailureMessage, taskLabel, tierLabel } from '@/
 import { ConceptIcon, FieldIcon } from '@/components/dashboard/FieldIcon';
 import { fieldTone, isUnavailableField } from '@/components/dashboard/field-identity';
 import { RunAnswer, RunTraceText, WorkflowDecisionCharts, WorkflowRecordDetails, WorkflowRoutingFlow } from '@/pages/local/workflow-analysis';
-import { rowsForLocalBinding, DELEGATION_DECISIONS_TOPIC, RUN_TRACE_TOPIC, CORRELATION_TRACE_TOPIC, type BoundProjectionSnapshot, type LocalPageDocument } from '@/layout/local-page-loader';
+import { rowsForLocalBinding, DELEGATION_DECISIONS_TOPIC, RUN_TRACE_TOPIC, CORRELATION_TRACE_TOPIC, RUN_DECISION_SNAPSHOT, type BoundProjectionSnapshot, type LocalPageDocument } from '@/layout/local-page-loader';
 import { useModelIdentityStyle } from '@/components/dashboard/model-tiers';
 import { CopyButton, type Row, asRecords, causeTextOf, duration, isMissing, modelOrUnknown, newestFirst, recorded, recordedCount, recordedTokens, statusOf, tierOf, tokensTitle } from '@/pages/local/page-shared';
 import { NoRunsYet } from '@/pages/local/page-runs';
@@ -341,6 +341,16 @@ export function WorkflowRun({ component, snapshots, requested, onOpen }: Workflo
   // A failed or unserved steps read with no last good rows is named by the panel's read state, never as "no steps".
   const stepsUnread = Boolean(stepsRead?.failure) && !stepsRead?.lastGoodAt;
   const foreign = rows.some((row) => row.correlation_id !== runId);
+  // OMN-23413 AC48: the run's decision is its own row, read for this run alone, else the list's row for the same id.
+  // Never another run's row. Only a successful read FOR THIS RUN can say it has no decision: a list that lacks the
+  // run proves nothing (it may be one page, or a walk that stopped), so when the run's own read failed the summary
+  // names that failure. Only where no run read exists does the list decide, as before.
+  const runDecisionRead = snapshots.find((snapshot) => snapshot.topic === RUN_DECISION_SNAPSHOT && snapshot.runId === runId);
+  const decision = asRecords(runDecisionRead?.rows ?? []).find((row) => row.correlation_id === runId)
+    ?? decisions.find((row) => row.correlation_id === runId);
+  const unread = (read: BoundProjectionSnapshot | undefined) => Boolean(read?.failure) && !read?.lastGoodAt;
+  const deciding = runDecisionRead ?? decisionsRead;
+  const decisionUnreadBy = decision === undefined && unread(deciding) ? deciding?.failure : undefined;
   return (
     <div>
       <RunPicker key={requested ?? ''} requested={requested} onOpen={onOpen} />
@@ -351,11 +361,12 @@ export function WorkflowRun({ component, snapshots, requested, onOpen }: Workflo
         <RunNeighbours decisions={decisions} runId={runId} />
       </p>
       {decisionsNotServed}
-      {!foreign && rows.length === 0 && (() => {
-        const decision = decisions.find(row => row.correlation_id === runId);
-        return decision ? <WorkflowRoutingFlow decision={decision} outcome={statusOf(decision)} /> : null;
-      })()}
-      {!decisionsNotServed && <RunSummary decision={decisions.find((row) => row.correlation_id === runId)} showAnalysis />}
+      {!foreign && rows.length === 0 && decision
+        ? <WorkflowRoutingFlow decision={decision} outcome={statusOf(decision)} />
+        : null}
+      {!decisionsNotServed && (decisionUnreadBy
+        ? <EmptyState>{plainFailureMessage(decisionUnreadBy, { topic: DELEGATION_DECISIONS_TOPIC, subject: "This run's decision" })}</EmptyState>
+        : <RunSummary decision={decision} showAnalysis />)}
       {stepsUnread ? null : foreign ? (
         <p className="local-dashboard-error" role="alert">run-trace.v1 answered steps of another run; none are shown</p>
       ) : null}
@@ -370,7 +381,7 @@ export function WorkflowRun({ component, snapshots, requested, onOpen }: Workflo
           {/* A titled card as every other part of the run (Lakshman 2026-11-05). */}
           <section className="local-run-timeline workflow-analysis-card workflow-run-timeline-card" aria-label="Run timeline">
             <h3 className="local-dashboard-caption" data-page-heading tabIndex={-1}><ConceptIcon concept="stage-timing" label="Run timeline" size={16} />Run timeline</h3>
-            <RunTimeline steps={rows} run={decisions.find((row) => row.correlation_id === runId)}
+            <RunTimeline steps={rows} run={decision}
               stepText={(component.data_bindings ?? []).some((binding) => binding.projection_topic === CORRELATION_TRACE_TOPIC) ? {
                 prompt: <RunTraceText kind="prompt" read={snapshots.find((snapshot) => snapshot.topic === CORRELATION_TRACE_TOPIC)} runId={runId} />,
                 answer: <RunTraceText kind="answer" read={snapshots.find((snapshot) => snapshot.topic === CORRELATION_TRACE_TOPIC)} runId={runId} />,
@@ -387,7 +398,7 @@ export function WorkflowRun({ component, snapshots, requested, onOpen }: Workflo
           outcome fields above, and the stage chart repeated the Run timeline's step durations (their own comments said so),
           so they are gone; the recorded fields, shown nowhere else, stay. */}
       <div className="local-more local-more--open" data-section="Recorded run details">
-        <WorkflowRecordDetails decision={decisions.find((row) => row.correlation_id === runId)} steps={[]} />
+        <WorkflowRecordDetails decision={decision} steps={[]} />
       </div>
     </div>
   );
