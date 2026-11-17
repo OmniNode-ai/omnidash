@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef } from 'react';
-import { Link, useLocation } from 'wouter';
+import { Link, useLocation, useSearch } from 'wouter';
 import { FrameLayout } from './components/frame/FrameLayout';
 import { Header } from './components/frame/Header';
 import { PageErrorBoundary } from './components/frame/PageErrorBoundary';
@@ -67,6 +67,7 @@ function PageContent({ page, navigationCache }: { page: AppPage; navigationCache
 
 export function App() {
   const [location, navigate] = useLocation();
+  const search = useSearch();
   const page = pageForPath(location);
   const { isOpen, close } = useCommandPalette();
   const navigationCache = useRef<LocalDashboardCache>({ context: null, snapshots: new Map() });
@@ -94,7 +95,7 @@ export function App() {
           </main>
         ) : (
           // OMN-24616 AC5: a page that throws while rendering shows its failure here; the frame stays.
-          <PageErrorBoundary key={page} title={PAGE_LABELS[page]}>
+          <PageErrorBoundary key={page} resetKey={`${location}?${search}`} title={PAGE_LABELS[page]}>
             <PageContent page={page} navigationCache={navigationCache.current} />
           </PageErrorBoundary>
         )}

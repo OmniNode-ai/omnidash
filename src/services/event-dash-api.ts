@@ -155,6 +155,13 @@ function normalize<T>(body: unknown): ProjectionResult<T> {
     return { ...failedRead<T>(reason ?? "the runtime reported this read as degraded", "degraded"), degradedReason: reason };
   }
 
+  // A degraded answer that still carries a rows array: with no rows it failed, with its reason; with rows it is stale
+  // served data and reads as such (review 517 round 2, finding 1).
+  if (Array.isArray(env.rows) && env.rows.length === 0 && (statusStr === "degraded" || env.data_freshness === "degraded")) {
+    const reason = asString(env.reason);
+    return { ...failedRead<T>(reason ?? "the runtime reported this read as degraded", "degraded"), degradedReason: reason };
+  }
+
   // OMN-24616 AC5: anything else without a rows array is a malformed answer, never an empty, successful read.
   if (!Array.isArray(env.rows)) {
     return failedRead<T>(`malformed projection response: ${describeRows(body)}`);
@@ -221,9 +228,28 @@ async function readProjection<T>(
   return result;
 }
 
-/** A row field that must be a list, for a topic's row check. */
-function listField(field: string): (row: Record<string, unknown>) => string | null {
-  return (row) => (Array.isArray(row[field]) ? null : `${field} is ${describeValue(row[field])}`);
+/**
+ * A row field that must be a list of objects, for a topic's row check; with nullable set, a missing or null field is
+ * allowed (the page shows it as not measured). Each item is checked, so a nested row a panel reads is an object
+ * (review 517 round 2, finding 2).
+ */
+function listOfRecords(field: string, nullable = false, named?: string): (row: Record<string, unknown>) => string | null {
+  return (row) => {
+    const value = row[field];
+    if (nullable && (value === undefined || value === null)) return null;
+    if (!Array.isArray(value)) return `${field} is ${describeValue(value)}`;
+    const bad = value.findIndex((item) => !isRecord(item));
+    if (bad >= 0) return `${field} item ${bad + 1} is ${describeValue(value[bad])}`;
+    if (named === undefined) return null;
+    // A nested row the page names by this field must carry it as text (review 517 round 3, finding 1).
+    const unnamed = value.findIndex((item) => typeof (item as Record<string, unknown>)[named] !== "string");
+    return unnamed >= 0 ? `${field} item ${unnamed + 1} ${named} is ${describeValue((value[unnamed] as Record<string, unknown>)[named])}` : null;
+  };
+}
+
+/** Every row check of a topic, first problem wins. */
+function allOf(...checks: Array<(row: Record<string, unknown>) => string | null>): (row: Record<string, unknown>) => string | null {
+  return (row) => checks.map((check) => check(row)).find((problem) => problem !== null) ?? null;
 }
 
 // ── Delegation row types (decisions / summary / routing / quality / savings / tokens) ──
@@ -599,11 +625,13 @@ export const fetchDelegationSummary = (): Promise<
 
 export const fetchDelegationModelRouting = (): Promise<
   ProjectionResult<ModelRoutingRow>
-> => readProjection<ModelRoutingRow>(TOPICS.delegationModelRouting, undefined, listField("rows"));
+> => readProjection<ModelRoutingRow>(TOPICS.delegationModelRouting, undefined, listOfRecords("rows", false, "model_name"));
 
 export const fetchDelegationQualityGate = (): Promise<
   ProjectionResult<QualityGateRow>
-> => readProjection<QualityGateRow>(TOPICS.delegationQualityGate);
+> => readProjection<QualityGateRow>(TOPICS.delegationQualityGate, undefined, allOf(
+  listOfRecords("failure_categories", true), listOfRecords("by_check_type", true), listOfRecords("tokens_to_compliance_by_model", true),
+));
 
 export const fetchCostSavingsOverview = (): Promise<
   ProjectionResult<CostSavingsOverviewRow>
@@ -623,7 +651,7 @@ export const fetchDelegationSavings = (): Promise<
 
 export const fetchDelegationTokenUsage = (): Promise<
   ProjectionResult<TokenUsageRow>
-> => readProjection<TokenUsageRow>(TOPICS.delegationTokenUsage, undefined, listField("by_model"));
+> => readProjection<TokenUsageRow>(TOPICS.delegationTokenUsage, undefined, listOfRecords("by_model", false, "model_name"));
 
 export const fetchCorrelationTrace = (
   correlationId: string,

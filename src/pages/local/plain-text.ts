@@ -116,6 +116,8 @@ export function tierLabel(name: unknown): string {
 
 /** OMN-21166: a task type as words ("code generation"); the served key stays the filter and URL value. */
 export function taskLabel(name: unknown): string {
+  // A task type the run did not serve is a missing label (review 517 round 3, finding 2), never "undefined".
+  if (name === null || name === undefined || String(name).trim() === '') return 'Not recorded';
   return String(name).trim().replace(/_+/g, ' ');
 }
 

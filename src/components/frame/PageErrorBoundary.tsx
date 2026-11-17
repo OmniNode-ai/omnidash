@@ -4,10 +4,14 @@ import { Link } from 'wouter';
 /**
  * OMN-24616 AC5: one boundary around each page. A render error on a page shows that page's failure with its reason,
  * inside the app frame, instead of unmounting the whole app (a blank window). The App keys it by page, so moving to
- * another page starts it clean.
+ * another page starts it clean, and passes the address as resetKey: a crash caused by a query parameter
+ * (/overview?window=<bad>) is left by any new address on the same page, its own "Go to Overview" link included. A
+ * healthy page is never remounted when only the address changes.
  */
 interface Props {
   title: string;
+  /** The address the page was rendered for; a change clears a shown failure. */
+  resetKey?: string;
   children: ReactNode;
 }
 
@@ -24,6 +28,12 @@ export class PageErrorBoundary extends Component<Props, State> {
 
   override componentDidCatch(error: unknown, info: ErrorInfo) {
     console.error(`[PageErrorBoundary] ${this.props.title} failed to render:`, error, info.componentStack);
+  }
+
+  override componentDidUpdate(previous: Props) {
+    if (this.state.message !== null && previous.resetKey !== this.props.resetKey) {
+      this.setState({ message: null });
+    }
   }
 
   override render() {

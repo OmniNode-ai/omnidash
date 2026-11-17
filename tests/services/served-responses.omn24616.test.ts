@@ -60,6 +60,11 @@ describe('log entries refuse a malformed body', () => {
     serve({ entries: [] });
     await expect(fetchLogEntries('run-1')).rejects.toThrow(/malformed.*no rows/);
   });
+
+  it('L2: an HTTP error is refused with its status, never read as no entries', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 503, json: async () => ({}) }));
+    await expect(fetchLogEntries('run-1')).rejects.toThrow(/HTTP 503/);
+  });
 });
 
 describe('the provider list parses every row', () => {
