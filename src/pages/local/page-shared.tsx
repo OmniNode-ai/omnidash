@@ -8,7 +8,7 @@ import { useRef, useState } from 'react';
 import { Link } from 'wouter';
 import { Check, Copy } from '@/theme/design-system/icons';
 import { formatDashboardUsd as formatUsd } from '@/theme/format';
-import { workflowHref } from '@/navigation/workflow-url-state';
+import { useWorkflowHref } from '@/hooks/useWorkflowHref';
 import { failureCauseLabel, failureDetailText, tierLabel } from '@/pages/local/plain-text';
 import { causeLabelOf } from '@/pages/local/run-filter';
 import { typedFailureCauseOf } from '@/pages/local/insights';
@@ -271,9 +271,11 @@ export interface RunViewProps {
  * nothing to open, so it reads Not recorded and is not a link.
  */
 export function RunRef({ id, short = false }: { id: unknown; short?: boolean }) {
+  // OMN-24616 AC7: on Runs the link carries the Runs view, so the run page can lead back to it.
+  const hrefFor = useWorkflowHref();
   // `short` (OMN-21166 R-A): a run table shows a long id's head and tail; the link target and title keep the whole id.
   return typeof id === 'string' && id !== ''
-    ? <Link className="ds-run-link" href={workflowHref(id)} title={id} aria-label={short ? id : undefined}>{short ? shortId(id) : id}</Link>
+    ? <Link className="ds-run-link" href={hrefFor(id)} title={id} aria-label={short ? id : undefined}>{short ? shortId(id) : id}</Link>
     : <>{recorded(id)}</>;
 }
 

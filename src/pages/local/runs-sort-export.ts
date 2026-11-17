@@ -1,6 +1,8 @@
 // OMN-21166 part 14 (AC75, AC76): sort the Runs list by time, duration or cost, and export exactly the rows the search
 // and filters show. Both read the served rows only; nothing here adds, rounds or fills a value.
 
+import { csvCell } from '@/theme/format/csv-cell';
+
 type Row = Record<string, unknown>;
 export type RunSortKey = 'created' | 'duration' | 'cost';
 export type RunSortDirection = 'asc' | 'desc';
@@ -48,16 +50,10 @@ export function runsToJson(rows: readonly Row[]): string {
   return JSON.stringify(rows, null, 2);
 }
 
-function csvCell(value: unknown): string {
-  if (value === null || value === undefined) return '';
-  const text = typeof value === 'object' ? JSON.stringify(value) : String(value);
-  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-}
-
 /** The served rows as CSV: one column per served field, in the order first seen; a missing value is an empty cell. */
 export function runsToCsv(rows: readonly Row[]): string {
   if (rows.length === 0) return '';
   const fields: string[] = [];
   for (const row of rows) for (const field of Object.keys(row)) if (!fields.includes(field)) fields.push(field);
-  return [fields.join(','), ...rows.map(row => fields.map(field => csvCell(row[field])).join(','))].join('\r\n');
+  return [fields.map(field => csvCell(field)).join(','), ...rows.map(row => fields.map(field => csvCell(row[field])).join(','))].join('\r\n');
 }

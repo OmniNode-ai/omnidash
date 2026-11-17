@@ -92,6 +92,7 @@ test('A refused decision read cannot present zero as a served export sample', as
   await expect(sample).toContainText('Not measured');
   await expect(sample).not.toContainText('Latest 0 served decisions');
   await expect(sample.getByRole('button', { name: 'Export JSON' })).toBeDisabled();
-  await expect(page.locator('[data-panel-title="QUALITY GATE"]')).toContainText('No quality-gate rows');
+  // OMN-24616 AC5: the refused read is named as a failed read with its reason, never an empty one.
+  await expect(page.locator('[data-panel-title="QUALITY GATE"]')).toContainText('Could not read the quality gate');
   await info.attach('evidence-refused-read', { body: JSON.stringify({ decisions: 503, qualityGate: 503, sample: 'Not measured' }), contentType: 'application/json' });
 });
