@@ -179,9 +179,9 @@ describe('OMN-21015: the Runs page draws the runs it lists', () => {
     expect(both).toBe('eeeeeeee-0000-4000-8000-000000000005<br/>passed · model-a<br/>Tokens in: 162<br/>Tokens out: 52');
   });
 
-  it('R8: the tooltip says Not recorded for a run with no value', () => {
+  it('R8: the tooltip says Not measured for a run with no value', () => {
     open([RUNS[0], decision('dddddddd-0000-4000-8000-000000000004', 40, { execution_ms: null })]);
-    expect(chart('Duration per run').option.tooltip.formatter([{ dataIndex: 0, seriesIndex: 0, marker: '' }])).toContain('Duration: Not recorded');
+    expect(chart('Duration per run').option.tooltip.formatter([{ dataIndex: 0, seriesIndex: 0, marker: '' }])).toContain('Duration: Not measured');
   });
 
   it('R9: when no run matches the filters there is no chart', () => {

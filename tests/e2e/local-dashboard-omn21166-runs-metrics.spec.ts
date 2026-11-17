@@ -62,7 +62,7 @@ test('cost and score show precise served values, zero and unknown, and open exac
     await chart.getByLabel('Inspect run').selectOption(runIds[1]);
     await expect(chart.getByRole('status')).toContainText(chart === cost ? '$0' : 'Score: 0');
     await chart.getByLabel('Inspect run').selectOption(runIds[2]);
-    await expect(chart.getByRole('status')).toContainText('Not recorded');
+    await expect(chart.getByRole('status')).toContainText('Not measured');
   }
   await chooseChartTab(page, 'Cost per run');
   await cost.getByLabel('Inspect run').selectOption(runIds[1]);
@@ -100,7 +100,7 @@ test('missing and malformed metric values remain explicit instead of zero charts
     await expect(chart).toContainText('No recorded values for these runs');
     await expect(chart.locator('.local-chart-canvas')).toHaveCount(0);
     await chart.getByLabel('Inspect run').selectOption(runIds[0]);
-    await expect(chart.getByRole('status')).toContainText('Not recorded');
+    await expect(chart.getByRole('status')).toContainText('Not measured');
   }
   await page.screenshot({ path: info.outputPath('metrics-unrecorded.png') });
 });

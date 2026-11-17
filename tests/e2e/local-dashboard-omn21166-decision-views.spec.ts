@@ -95,7 +95,7 @@ test('AC203 Model by task shows each cell with its own denominator, a small-samp
   // D5: the metric toggle changes the figure in each cell.
   await page.getByRole('radiogroup', { name: 'Matrix metric', exact: true }).getByRole('radio', { name: 'Runs', exact: true }).check();
   await expect(cell('model-a', 'summarization')).toContainText('6');
-  await page.getByRole('radiogroup', { name: 'Matrix metric', exact: true }).getByRole('radio', { name: 'p95 latency', exact: true }).check();
+  await page.getByRole('radiogroup', { name: 'Matrix metric', exact: true }).getByRole('radio', { name: 'p95 duration', exact: true }).check();
   await expect(cell('model-a', 'summarization')).toContainText('900 ms');
   await page.getByRole('radiogroup', { name: 'Matrix metric', exact: true }).getByRole('radio', { name: 'Cost per measured run', exact: true }).check();
   await expect(cell('model-a', 'summarization')).toContainText('$0.00');
@@ -128,8 +128,8 @@ test('AC204 Quality over time draws covered days only, says no verdicts, and eac
   await expect(day('2026-10-15')).toHaveAttribute('aria-label', 'Oct 15: 33.3% passed (1 of 3), 3 runs');
   await expect(day('2026-10-16')).toHaveAttribute('aria-label', 'Oct 16: 100.0% passed (3 of 3), 3 runs');
   await expect(day('2026-10-17')).toHaveAttribute('aria-label', 'Oct 17: 66.7% passed (2 of 3), 3 runs');
-  // The latency toggle draws p95 per day from recorded latencies.
-  await page.getByRole('radiogroup', { name: 'Trend metric', exact: true }).getByRole('radio', { name: 'p95 latency', exact: true }).check();
+  // The duration toggle draws p95 per day from recorded run durations.
+  await page.getByRole('radiogroup', { name: 'Trend metric', exact: true }).getByRole('radio', { name: 'p95 duration', exact: true }).check();
   await expect(day('2026-10-15')).toHaveAttribute('aria-label', 'Oct 15: p95 900 ms, 3 runs');
   // By model: one row per model, in order of runs.
   await page.getByRole('radiogroup', { name: 'Trend series', exact: true }).getByRole('radio', { name: 'By model', exact: true }).check();

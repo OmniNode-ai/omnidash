@@ -8,6 +8,7 @@
 //   H4  Delegation Evidence never publishes its read
 //   H5  a refused read (resolved as data with failureReason) moves Evidence's Updated time
 //   H6  one part of a page drawn in several parts (Settings) overwrites, or on leaving clears, another part's read
+//   H7  a refused decisions poll, which keeps the held rows, moves Evidence's Updated time
 import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Router } from 'wouter';
@@ -31,7 +32,7 @@ vi.mock('@/data-source/exposure-census', () => ({
     rows: [{ topic: 'onex.snapshot.projection.delegation.decisions.v1', backing: 'bus', reachability: 'reachable', refusal: null }],
   }),
 }));
-const hooks = vi.hoisted(() => ({ refusedSummary: false }));
+const hooks = vi.hoisted(() => ({ refusedSummary: false, refusedPoll: false }));
 vi.mock('@/components/dashboard/event-dash/useEventDashData', async (importOriginal) => {
   const real = await importOriginal<Record<string, unknown>>();
   const result = (failureReason: string | null) => ({ rows: [], rowCount: 0, freshness: 'fresh', latestEventAt: null,
@@ -39,7 +40,9 @@ vi.mock('@/components/dashboard/event-dash/useEventDashData', async (importOrigi
   // A served read at 10:07; with refusedSummary set, the summary read is refused later, at 10:09.
   const read = (name: string) => () => (name === 'useDelegationSummary' && hooks.refusedSummary
     ? { data: result('HTTP 503'), isLoading: false, dataUpdatedAt: Date.parse('2026-10-25T10:09:00Z') }
-    : { data: result(null), isLoading: false, dataUpdatedAt: Date.parse('2026-10-25T10:07:00Z') });
+    : name === 'useDelegationDecisions' && hooks.refusedPoll
+      ? { data: { ...result(null), freshness: 'stale', pollFailureReason: 'HTTP 503' }, isLoading: false, dataUpdatedAt: Date.parse('2026-10-25T10:09:00Z') }
+      : { data: result(null), isLoading: false, dataUpdatedAt: Date.parse('2026-10-25T10:07:00Z') });
   return Object.fromEntries(Object.entries(real).map(([name, value]) => [name, name.startsWith('use') ? read(name) : value]));
 });
 
@@ -97,8 +100,17 @@ describe('OMN-24616 AC6: the Updated time on every page header', () => {
     expect(currentLocalPageRead()).toEqual({ page: 'local-settings', readAt: '2026-10-25T10:00:00Z' });
   });
 
+  it('H7: a refused decisions poll keeps its rows and does not move Delegation Evidence\'s Updated time', async () => {
+    hooks.refusedSummary = false;
+    hooks.refusedPoll = true;
+    at('/delegation-evidence', <DelegationEvidencePage />);
+    await vi.waitFor(() => expect(currentLocalPageRead()).toEqual({ page: 'delegation-evidence', readAt: '2026-10-25T10:07:00.000Z' }));
+    hooks.refusedPoll = false;
+  });
+
   it('H5: a refused read does not move Delegation Evidence\'s Updated time', async () => {
     hooks.refusedSummary = true;
+    hooks.refusedPoll = false;
     at('/delegation-evidence', <DelegationEvidencePage />);
     await vi.waitFor(() => expect(currentLocalPageRead()).toEqual({ page: 'delegation-evidence', readAt: '2026-10-25T10:07:00.000Z' }));
   });

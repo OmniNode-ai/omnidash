@@ -1,4 +1,5 @@
 import { formatDashboardCount, formatFullCount } from '@/theme/format';
+import { NOT_MEASURED } from '@/theme/format';
 import { formatDashboardUsd } from '@/theme/format';
 import { formatDuration } from '@/theme/format';
 import { shortId } from '@/components/dashboard/event-dash/primitives';
@@ -82,7 +83,7 @@ function RunInspector({ runs, describe }: { runs: readonly ListedRun[]; describe
       {runs.filter(item => item.id !== null).map((item, index) => <option key={`${item.id}-${index}`} value={item.id!} title={item.id!}>{shortId(item.id!)} · {item.model}</option>)}
     </select>
     {run && <div className="local-chart-detail" role="status"><span><strong>{run.model}</strong><span className="local-chart-detail-id">{run.id}</span></span>
-      <span>{describe ? describe(run) : `${run.status} · ${point(run.duration).served === null ? 'Not recorded' : formatDuration(point(run.duration).served)}`}</span>
+      <span>{describe ? describe(run) : `${run.status} · ${point(run.duration).served === null ? NOT_MEASURED : formatDuration(point(run.duration).served)}`}</span>
       <Link href={workflowHref(run.id!, backTo)} className="local-chart-open">Open run</Link></div>}
   </div>;
 }
@@ -396,7 +397,7 @@ function timingOption(bars: readonly RunTimingBar[], colours: readonly string[],
   const fontFamily = typeof document === 'undefined' ? '' : getComputedStyle(document.body).fontFamily;
   // The tooltip writes the exact duration to the whole millisecond (OMN-23330 AC9, superseding OMN-21166 AC55's raw
   // served text); the label at a bar's end reads it as a duration.
-  const servedText = (index: number) => exactMs(bars[index]?.served) ?? 'Not recorded';
+  const servedText = (index: number) => exactMs(bars[index]?.served) ?? NOT_MEASURED;
   const labelText = (index: number) => formatDuration(bars[index]?.served);
   return {
     animationDuration: 250,
@@ -563,7 +564,7 @@ export function RunDurationChart({ runs, onOpen, title = 'Duration per run' }: {
       formatter: (params: Array<{ dataIndex: number; marker: string }>) => {
         const index = params[0]?.dataIndex ?? 0;
         const served = points[index]?.served;
-        return [...runTooltipHead(runs[index]), `${params[0]?.marker ?? ''}Duration: ${served === null || served === undefined ? 'Not recorded' : exactMs(served) ?? 'Not recorded'}`].join('<br/>');
+        return [...runTooltipHead(runs[index]), `${params[0]?.marker ?? ''}Duration: ${served === null || served === undefined ? NOT_MEASURED : exactMs(served) ?? NOT_MEASURED}`].join('<br/>');
       },
     },
     series: [{
@@ -630,7 +631,7 @@ export function RunTokensChart({ runs, onOpen, title = 'Tokens per run' }: { run
         const index = params[0]?.dataIndex ?? 0;
         const lines = params.map((param) => {
           const served = shown[param.seriesIndex]?.points[index]?.served;
-          return `${param.marker}${asText(param.seriesName)}: ${served === null || served === undefined ? 'Not recorded' : asText(formatFullCount(served))}`;
+          return `${param.marker}${asText(param.seriesName)}: ${served === null || served === undefined ? NOT_MEASURED : asText(formatFullCount(served))}`;
         });
         return [...runTooltipHead(runs[index]), ...lines].join('<br/>');
       },
@@ -677,7 +678,7 @@ export function RunMetricChart({ runs, onOpen, metric }: {
   const color = tone(cost ? '--ds-run-cost-accent' : '--ds-run-score-accent');
   const valueText = (run: ListedRun) => {
     const served = point(run[metric]).served;
-    return `${label}: ${served === null ? 'Not recorded' : cost ? formatDashboardUsd(served) : served}`;
+    return `${label}: ${served === null ? NOT_MEASURED : cost ? formatDashboardUsd(served) : served}`;
   };
   const option = {
     ...runChartFrame(runs, value => value === 0 ? '' : cost ? formatDashboardUsd(value) : String(value)),

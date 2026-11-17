@@ -254,7 +254,7 @@ export function QualityCard({ row, change = null }: { row: Row | null; change?: 
   if (!row || isMissing(row.overall_pass_rate) || !Number.isFinite(Number(row.overall_pass_rate))) {
     return <Figure measured={false}>Not measured</Figure>;
   }
-  const count = (value: unknown) => (isMissing(value) || !Number.isFinite(Number(value)) ? 'Not recorded' : formatFullCount(String(value)));
+  const count = (value: unknown) => (isMissing(value) || !Number.isFinite(Number(value)) ? NOT_MEASURED : formatFullCount(String(value)));
   return <>
     {/* OMN-23330 AC34: the figure is all time (no previous window), so its detail is the exact rate only. */}
     <FigureDetail lines={[`Exact: ${fmtFixed(Number(row.overall_pass_rate) * 100, 2)}%`]}>
@@ -686,10 +686,10 @@ export function OverviewDayPicker({ days, value, onChange, now = Date.now() }: {
  * the card that owns that field.
  */
 export function headlineHoverLines(componentId: string, row: Row, pctLine: string | null, window: OverviewWindow = 'all'): string[] {
-  const count = (value: unknown) => (isMissing(value) || !Number.isFinite(Number(value)) ? 'Not recorded' : formatFullCount(String(value)));
+  const count = (value: unknown) => (isMissing(value) || !Number.isFinite(Number(value)) ? NOT_MEASURED : formatFullCount(String(value)));
   const unknownTokens = row.runs_unknown_tokens;
   const unknownSpend = row.runs_unknown_spend;
-  const excluded = isMissing(unknownTokens) && isMissing(unknownSpend) ? 'Runs not counted: Not recorded' : (() => {
+  const excluded = isMissing(unknownTokens) && isMissing(unknownSpend) ? `Runs not counted: ${NOT_MEASURED}` : (() => {
     const parts = [
       isMissing(unknownTokens) ? 'runs without token counts: Not recorded' : Number(unknownTokens) > 0 ? `${count(unknownTokens)} ${Number(unknownTokens) === 1 ? 'run' : 'runs'} without token counts` : null,
       isMissing(unknownSpend) ? 'runs without spend: Not recorded' : Number(unknownSpend) > 0 ? `${count(unknownSpend)} ${Number(unknownSpend) === 1 ? 'run' : 'runs'} without spend` : null,

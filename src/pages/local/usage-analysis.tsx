@@ -115,7 +115,7 @@ function GroupsView({ decisionRows }: { decisionRows: readonly unknown[] }) {
     <DashboardToggle label="Group by" options={GROUPS.map(group => toned(group.by, group.label, group.concept))} value={by} onChange={setBy} />
     <DataTable data-analysis-table aria-label={`Usage by ${label.toLowerCase()}`}>
         <thead><tr>{header('name', label)}{header('runs', 'Runs')}{header('spend', 'Spend')}
-          {header('pass', 'Pass rate')}{header('p50', 'p50 latency')}{header('p95', 'p95 latency')}
+          {header('pass', 'Pass rate')}{header('p50', 'p50 duration')}{header('p95', 'p95 duration')}
           {header('last', 'Last run')}<th scope="col" data-col="spark"><ColumnTip tone="runs-daily" tip={`Runs per UTC day over the latest ${SPARK_DAYS} days. A dashed slot is a day before the sample.`}><span className="local-table-head" data-field-tone="runs-daily" tabIndex={0}><ConceptIcon concept="runs-daily" label="Runs per day" size={13} />Runs per day<span className="local-visually-hidden">{` (${SPARK_DAYS} days)`}</span></span></ColumnTip></th></tr></thead>
         <tbody>{sorted.map(group => <tr key={group.name}>
           <th scope="row" data-model-name={by === 'model' && group.name !== NOT_RECORDED ? '' : undefined}
@@ -136,8 +136,8 @@ function GroupsView({ decisionRows }: { decisionRows: readonly unknown[] }) {
           <td data-cell="pass" data-label="Pass rate" data-pass-band={passBand(group.passed, group.verdicts)}>{group.verdicts === 0
             ? <span className="local-pass-pill">{passText(group)}</span>
             : <><span className="local-pass-pill">{passText(group).split(' (')[0]}</span><span className="local-cell-sub local-cell-sub--line">{` (${passText(group).split(' (')[1]}`}</span></>}</td>
-          <td data-cell="p50" data-label="p50 latency">{latency(group.p50)}</td>
-          <td data-cell="p95" data-label="p95 latency">{latency(group.p95)}</td>
+          <td data-cell="p50" data-label="p50 duration">{latency(group.p50)}</td>
+          <td data-cell="p95" data-label="p95 duration">{latency(group.p95)}</td>
           <td data-cell="last" data-label="Last run">{lastText(group.last)}</td>
           <td data-cell="spark" data-label={`Runs per day (${SPARK_DAYS} days)`}><Sparkline group={group} /></td>
         </tr>)}</tbody>
@@ -157,7 +157,7 @@ const runsHref = (filters: ReadonlyArray<Partial<RunsViewState> | null>, extra: 
 const runCount = (runs: number) => `${runs} ${runs === 1 ? 'run' : 'runs'}`;
 type MatrixMetric = 'pass' | 'p95' | 'cost' | 'runs';
 const MATRIX_METRICS: ReadonlyArray<{ value: MatrixMetric; label: string; concept: string }> = [
-  { value: 'pass', label: 'Pass rate', concept: 'pass' }, { value: 'p95', label: 'p95 latency', concept: 'duration-p95' },
+  { value: 'pass', label: 'Pass rate', concept: 'pass' }, { value: 'p95', label: 'p95 duration', concept: 'duration-p95' },
   { value: 'cost', label: 'Cost per measured run', concept: 'cost' }, { value: 'runs', label: 'Runs', concept: 'delegations' },
 ];
 const MATRIX_COLUMNS: ReadonlyArray<{ value: Extract<GroupBy, 'task' | 'tier'>; label: string; concept: string }> = [
@@ -233,7 +233,7 @@ function trendLabel(day: TrendDay, metric: TrendMetric): string {
   if (day.state === 'not-covered') return `${date}: not covered by the sample`;
   if (day.state === 'no-runs') return `${date}: no runs`;
   const runs = `${day.runs} ${day.runs === 1 ? 'run' : 'runs'}`;
-  if (metric === 'p95') return day.p95 === null ? `${date}: latency not recorded, ${runs}` : `${date}: p95 ${latency(day.p95)}, ${runs}`;
+  if (metric === 'p95') return day.p95 === null ? `${date}: p95 not measured, ${runs}` : `${date}: p95 ${latency(day.p95)}, ${runs}`;
   return day.state === 'no-verdicts' ? `${date}: no verdicts, ${runs}` : `${date}: ${formatShare(day.passed / day.verdicts)} passed (${day.passed} of ${day.verdicts}), ${runs}`;
 }
 
@@ -255,19 +255,19 @@ function QualityTrend({ decisionRows }: { decisionRows: readonly unknown[] }) {
   const firstRow = useRef<HTMLOListElement>(null);
   return <figure className="local-chart usage-trend" data-quality-trend data-metric={metric} aria-label="Quality over time">
     <div className="local-dashboard-toggles">
-      <DashboardToggle label="Trend metric" options={[toned('pass' as const, 'Pass rate', 'pass'), toned('p95' as const, 'p95 latency', 'duration-p95')]} value={metric} onChange={setMetric} />
+      <DashboardToggle label="Trend metric" options={[toned('pass' as const, 'Pass rate', 'pass'), toned('p95' as const, 'p95 duration', 'duration-p95')]} value={metric} onChange={setMetric} />
       <DashboardToggle label="Trend series" options={TREND_SERIES.map(option => toned(option.value, option.label, TREND_CONCEPT[option.value]))} value={by} onChange={setBy} />
     </div>
     <figcaption className="local-dashboard-caption">{metric === 'pass'
       ? 'Pass rate per UTC day over runs with a verdict; an outlined day is before the sample, a dashed one has runs but no verdicts.'
-      : `p95 latency per UTC day from recorded latencies; the tallest bar is ${latency(peak)}.`}</figcaption>
+      : `p95 run duration per UTC day from recorded run durations; the tallest bar is ${latency(peak)}.`}</figcaption>
     <div className="usage-trend-rows">
       {series.map((line, lineIndex) => <div key={line.name} className="usage-trend-row" data-series={line.name}
         style={by === 'model' && line.filter && line.name !== NOT_RECORDED ? { '--model-color': modelColor(line.name) } as CSSProperties : undefined}>
         <span className="usage-trend-name" data-model-name={by === 'model' && line.filter && line.name !== NOT_RECORDED ? '' : undefined}
           data-semantic-concept={by === 'model' && line.filter && line.name !== NOT_RECORDED ? `model:${line.name}` : undefined}
           style={by === 'model' && line.filter && line.name !== NOT_RECORDED ? { '--model-color': modelColor(line.name) } as CSSProperties : undefined}>{line.name}</span>
-        <ol ref={lineIndex === 0 ? firstRow : undefined} className="usage-trend-days" aria-label={`${line.name}, ${metric === 'pass' ? 'pass rate' : 'p95 latency'} per day`}>
+        <ol ref={lineIndex === 0 ? firstRow : undefined} className="usage-trend-days" aria-label={`${line.name}, ${metric === 'pass' ? 'pass rate' : 'p95 duration'} per day`}>
           {line.days.map(day => {
             const label = trendLabel(day, metric);
             const value = height(day);
@@ -307,12 +307,12 @@ export function UsageAnalysis({ decisionRows, complete = false }: { decisionRows
     <p className="local-dashboard-caption">
       {/* OMN-21970 AC3: a read that walked every page holds every served run, so it is not called the latest. */}
       {`From ${complete ? 'all' : 'the latest'} ${sample} served runs${coverage ? `, covering ${dayLabel(coverage.first)} to ${dayLabel(coverage.last)}` : ''}. `}
-      <InfoTip side="bottom" label="How these views count" text="Spend counts measured runs, pass rate counts runs with a verdict, latency counts recorded latencies (nearest rank). Savings are on the charts above (metering)." />
+      <InfoTip side="bottom" label="How these views count" text="Spend counts measured runs, pass rate counts runs with a verdict, duration counts recorded run durations (nearest rank). Savings are on the charts above (metering)." />
     </p>
     {/* OMN-22168 (Lakshman 2026-11-05, "fix all pages and make it uniform"): Overview's stat tabs, one per view; each hint
         says what the view shows, and the one count is the served sample's model groups. */}
     <DashboardTabs label="Usage analysis views" param="analysis" tabs={[
-      { id: 'groups', label: 'Groups', tone: 'var(--ds-field-usage-analysis)', icon: <Layers size={18} />, hint: 'Spend, pass rate, latency',
+      { id: 'groups', label: 'Groups', tone: 'var(--ds-field-usage-analysis)', icon: <Layers size={18} />, hint: 'Spend, pass rate, duration',
         panel: () => <GroupsView decisionRows={decisionRows} /> },
       { id: 'matrix', label: 'Model by task', tone: 'var(--ds-field-routing-model)', icon: <LayoutGrid size={18} />,
         hint: `${models.length} ${models.length === 1 ? 'model' : 'models'} by task`, panel: () => <DecisionMatrix decisionRows={decisionRows} /> },
@@ -334,7 +334,7 @@ export function RunsTotals({ rows, sample, complete = false }: { rows: readonly 
     <span data-total="runs">{`${totals.runs} ${totals.runs === 1 ? 'run' : 'runs'}`}</span>{' · '}
     <span data-total="spend">{totals.spend === null ? 'spend not measured' : `${formatDashboardUsd(totals.spend)} spend (${totals.spendMeasured} with a recorded cost)`}</span>{' · '}
     <span data-total="pass">{totals.verdicts === 0 ? 'no verdicts' : `${formatShare(totals.passed / totals.verdicts)} passed (${totals.passed} of ${totals.verdicts})`}</span>{' · '}
-    <span data-total="p95">{totals.p95 === null ? 'p95 not recorded' : `p95 ${latency(totals.p95)}`}</span>{' · '}
+    <span data-total="p95">{totals.p95 === null ? 'p95 not measured' : `p95 ${latency(totals.p95)}`}</span>{' · '}
     {/* "Measured" is Overview's word for runs with token counts and a cost; this counts runs with a recorded cost. */}
     <span className="local-runs-totals-scope">{`current filter · ${complete ? 'all' : 'latest'} ${sample} served runs`}</span>
   </p>;

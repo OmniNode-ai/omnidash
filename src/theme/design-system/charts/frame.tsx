@@ -3,6 +3,7 @@
  * tooltip, in words, for pointer and keyboard alike), the empty state and the not-recorded state. Moved from
  * src/pages/local/insight-charts.tsx; the markup is unchanged.
  */
+import { NOT_MEASURED } from '@/theme/format';
 import { createContext, useContext, useId, useState, type CSSProperties, type HTMLAttributes, type ReactNode } from 'react';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import {
@@ -77,7 +78,7 @@ function tableColumn(given: string, index: number, chartLabel = ''): TableColumn
 
 /** A cell written as the pages write that kind of value; a cell the chart already wrote as text stays as written. */
 function cellText(cell: ChartTableCell, column: TableColumn): string {
-  if (cell === null) return 'Not recorded';
+  if (cell === null) return NOT_MEASURED;
   if (typeof cell === 'string') return column.kind === 'day' ? formatShortDay(cell) : cell;
   // OMN-23330 AC41: money by the one display rule the rest of the local pages use (Jonah 2026-11-06: two decimals at $1
   // and above, up to four below $1), so an amount reads the same in a chart's table and beside it.

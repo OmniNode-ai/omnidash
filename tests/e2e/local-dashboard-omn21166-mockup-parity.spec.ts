@@ -252,8 +252,8 @@ test('AC29 Usage exposes measured model spend, per-call cost, tokens, and honest
   const tokens = page.getByRole('figure', { name: 'Tokens in vs out by model', exact: true });
   await expect(tokens.getByRole('listitem', { name: /model-a/ })).toBeVisible();
   await expect(tokens.getByRole('listitem', { name: 'model-a: 80 tokens in, 20 tokens out', exact: true })).toBeVisible();
-  // Part 17 AC114: a count that is not recorded reads not recorded and draws no bar, never 0.
-  const modelB = tokens.getByRole('listitem', { name: 'model-b: Not recorded tokens in, 3 tokens out', exact: true });
+  // Part 17 AC114: a count that is not recorded reads not measured and draws no bar, never 0 (OMN-24616 AC6).
+  const modelB = tokens.getByRole('listitem', { name: 'model-b: Not measured tokens in, 3 tokens out', exact: true });
   await expect(modelB).toBeVisible();
   await expect(modelB.locator('.gdb-col[data-series="in"] .gdb-bar')).toHaveCount(0);
   await expect(page.getByRole('table', { name: 'Usage by model and day', exact: true })).toContainText('model-b');

@@ -944,7 +944,7 @@ export function DelegationEvidencePage() {
   // A refused or malformed read resolves as data too, so only a read that served rows moves the time (review 518
   // finding 5): the header never says rows were read when nothing was served.
   const finished = [summaryQ, tokensQ, savingsQ, decisionsQ, meteringQ]
-    .filter(query => query.data !== undefined && query.data.failureReason === null)
+    .filter(query => query.data !== undefined && query.data.failureReason === null && !query.data.pollFailureReason)
     .map(query => query.dataUpdatedAt)
     .filter((at): at is number => typeof at === 'number' && at > 0);
   const servedRead = finished.length > 0 ? new Date(Math.max(...finished)).toISOString() : null;

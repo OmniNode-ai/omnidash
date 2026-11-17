@@ -148,6 +148,18 @@ describe('OMN-24472: a page timer poll never walks the run history', () => {
     expect(degraded.urls.length - beforeDegraded).toBeGreaterThan(1);
   });
 
+  // OMN-24616 AC6: a refused newest page keeps the held rows and says the poll failed, so no page reads it as a new read.
+  it('T7: a refused newest page keeps the held rows and carries the poll\'s reason', () => {
+    const held = resultOf(Array.from({ length: 3 }, (_, index) => runRow(3 - index)), { complete: true, truncated: false, nextCursor: null });
+    const refused: ProjectionResult<DelegationDecisionRow> = {
+      rows: [], rowCount: 0, freshness: 'unknown', latestEventAt: null, isDegraded: true, degradedReason: 'HTTP 503', failureReason: 'HTTP 503',
+    };
+    const merged = mergeNewestDecisionResults(held, refused);
+    expect(merged.rows).toHaveLength(3);
+    expect(merged.pollFailureReason).toBe('HTTP 503');
+    expect(merged.failureReason ?? null).toBeNull();
+  });
+
   // T6: the newest-page merge losing runs, double-counting the overlap, or flipping a complete previous.
   it('T6: held 600 complete + a newest page of 100 new runs with overlap merges to 700 distinct runs, newest first, complete', () => {
     const held = resultOf(Array.from({ length: 600 }, (_, index) => runRow(600 - index)), { complete: true, truncated: false, nextCursor: null });

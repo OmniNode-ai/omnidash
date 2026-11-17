@@ -361,7 +361,7 @@ describe('OMN-19980 Step B (Amendment 2): Spend, Measured runs and Tokens read t
     await open('overview');
     for (const title of HEADLINES) expect(figure(title), title).toEqual(['Not measured']);
     // The run counts that are served still say why nothing was measured; they are counts, not the figure.
-    expect(captions('Agent calls')).toEqual(['Not recorded of 4 runs measured', 'Not counted: 4 runs without token counts']);
+    expect(captions('Agent calls')).toEqual(['Not measured of 4 runs measured', 'Not counted: 4 runs without token counts']);
   });
 
   it('M5: after a baseline change every card reads the all row refreshed last, the same row as Savings', async () => {

@@ -1,4 +1,5 @@
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
+import { NOT_MEASURED } from '@/theme/format';
 import { ChartNotRecorded, RankedBars } from '@/theme/design-system/charts';
 import { UsageAnalysis } from './usage-analysis';
 import { DEFAULT_RUNS_VIEW, writeRunsSearch } from '@/navigation/runs-url-state';
@@ -27,7 +28,7 @@ function money(value: number | string | null): string {
 }
 
 function count(value: number | null): string {
-  return value === null ? 'Not recorded' : formatDashboardCount(value);
+  return value === null ? NOT_MEASURED : formatDashboardCount(value);
 }
 
 function share(value: number | null): string {
@@ -130,7 +131,7 @@ function CostPerRun({ data, titled }: { data: UsageAggregates; titled: boolean }
 /** Part 17 AC114: tokens in and out per model as hatched grouped bars; a count not recorded draws no bar. */
 function TokensByModel({ data, titled }: { data: UsageAggregates; titled: boolean }) {
   const modelColor = useModelColor();
-  const words = (value: number | null) => (value === null ? 'Not recorded' : formatFullCount(value));
+  const words = (value: number | null) => (value === null ? NOT_MEASURED : formatFullCount(value));
   return <figure className="local-chart usage-insight" aria-label="Tokens in vs out by model">
     {titled && <h3><ConceptIcon concept="tokens-model" size={16} />Tokens in vs out by model</h3>}
     {data.models.length === 0 ? <EmptyState>No token data available</EmptyState> : (

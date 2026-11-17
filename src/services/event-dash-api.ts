@@ -75,6 +75,8 @@ export interface ProjectionResult<T> {
   truncated?: boolean;
   /** OMN-21970: where the next page starts (next_cursor), passed back as `since`. */
   nextCursor?: string | null;
+  /** OMN-24616 AC6: on a held decisions result, why the newest poll was not served; its rows are the held ones. */
+  pollFailureReason?: string | null;
   /** OMN-21970: on the decisions read, true when every page was read, so the rows are every served run. */
   complete?: boolean;
 }
@@ -516,7 +518,7 @@ export function mergeNewestDecisionResults(
   newest: ProjectionResult<DelegationDecisionRow>,
 ): ProjectionResult<DelegationDecisionRow> {
   if (newest.rows.length === 0 && (newest.degradedReason !== null || newest.isDegraded)) {
-    return { ...held, freshness: "stale" };
+    return { ...held, freshness: "stale", pollFailureReason: newest.failureReason ?? newest.degradedReason ?? "the newest read was not served" };
   }
   const byRun = new Map<string, DelegationDecisionRow>();
   const add = (rows: readonly DelegationDecisionRow[]) => rows.every(row => {
