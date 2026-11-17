@@ -80,5 +80,13 @@ describe('OMN-24616 AC1: window figures from served aggregates', () => {
     expect(screen.queryByText('Why runs failed')).toBeNull();
     expect(text).toMatch(/all time/i);
     expect(text).not.toMatch(/for every run/);
+    // Re-review of #521 at 9e24227f: the section around the served card is named for assistive tech too.
+    expect(screen.getByRole('region', { name: 'Failed checks by category' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: /why runs failed/i })).toBeNull();
+  });
+
+  it('A5 control: the row-counted list, which is about runs, keeps its section name', () => {
+    overview(null);
+    expect(screen.getByRole('region', { name: 'Why runs failed' })).toBeInTheDocument();
   });
 });

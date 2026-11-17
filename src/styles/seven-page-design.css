@@ -104,10 +104,11 @@ main.ev-root .ev-acceptance-checks > li > :first-child, main.ev-root .ev-accepta
 /* Labels keep the sentence case they are written in ("Quality gate refused"), as everywhere else on the pages. */
 .local-dashboard-page .ins-list-name { text-transform: none; }
 
-/* Overview › Why runs failed (AC65): the one card spans the row and takes only the height of its rows. */
-.local-dashboard-page section.overview-chart-section[aria-label="Why runs failed"] > .overview-chart-row { grid-template-columns: minmax(0, 1fr); }
-.local-dashboard-page section.overview-chart-section[aria-label="Why runs failed"] figure { min-height: 0; height: auto; display: block; }
-.local-dashboard-page section.overview-chart-section[aria-label="Why runs failed"] figure > * { max-width: none; }
+/* Overview › Why runs failed, or Failed checks by category when the quality gate serves its counts (AC65, OMN-24616):
+   the one card spans the row and takes only the height of its rows. */
+.local-dashboard-page section.overview-chart-section:is([aria-label="Why runs failed"], [aria-label="Failed checks by category"]) > .overview-chart-row { grid-template-columns: minmax(0, 1fr); }
+.local-dashboard-page section.overview-chart-section:is([aria-label="Why runs failed"], [aria-label="Failed checks by category"]) figure { min-height: 0; height: auto; display: block; }
+.local-dashboard-page section.overview-chart-section:is([aria-label="Why runs failed"], [aria-label="Failed checks by category"]) figure > * { max-width: none; }
 
 /* ═════════════════════════════════════════════════════════════════════════════════════════════════════════════
  * OMN-21166 part 11 — the new look of the seven pages (reference: dense observability views). Quiet surfaces,

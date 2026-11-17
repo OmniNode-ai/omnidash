@@ -791,7 +791,7 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
         <div className="overview-chart-sections">
           {view === 'all' && <RunWindowKpis runs={runs} decisions={decisions} now={now} days={window.kind === 'days' ? window.days : chartDaysList.length} label={windowCaption(window)} comparisonEnabled={window.kind === 'days'} />}
           {view !== 'analysis' && <ChartSection concept="activity" title="Activity over time"><RunsPerDay days={chartDays} /><TokensPerDay days={chartDays} /></ChartSection>}
-          {view === 'summary' && <ChartSection concept="quality-outcomes" title="Why runs failed">{servedFailures !== null
+          {view === 'summary' && <ChartSection concept="quality-outcomes" title={servedFailures !== null ? 'Failed checks by category' : 'Why runs failed'}>{servedFailures !== null
             ? <ServedFailureCategories categories={servedFailures} limit={3} /> : <FailureCauses runs={runs} limit={3} />}</ChartSection>}
           {/* Lakshman 2026-11-05 ("run page should be fully organised and logically ... visually attractive"): on Runs the six
               analysis charts are one full-width row of tabs, one big chart at a time, as the run charts above them; each
