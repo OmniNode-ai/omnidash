@@ -2,7 +2,7 @@
 // OMN-19920: one run whole on the Workflow page. Selecting a run in Runs opens Workflow for its correlation id; that
 // view already shows the run's model, backend, tokens, recorded cost and status from delegation.decisions.v1. It now
 // also shows the run's answer, read from delegation.correlation-trace.v1 for exactly that correlation id (the per-run
-// detail surface over delegation_events, keyed on correlation_id), its typed cause when it failed, and its receipt id.
+// detail surface over delegation_events, keyed on correlation_id), its typed cause when it failed, and its correlation id.
 // The saving against the named baseline is NOT in this change: it waits on a ruling about the per-run saving guard.
 //
 // "SQLite mode" here is the local store `onex dashboard` serves: the page reads it through the same HTTP projection
@@ -20,7 +20,7 @@
 //   R2f the exposure answers a row of another correlation id and it is shown as this run's answer;
 //   R3  a failed run's typed cause is not on the view (AC5): the served terminal_failure_cause loses to the
 //       quality_gate_detail text, or a failed run with no typed cause loses its detail;
-//   R4  the receipt id is missing, or is not the run's correlation id (the id receipt.json records as receipt_id) (AC5);
+//   R4  the run's correlation id is missing, is another run's, or is labelled a receipt id (AC5; OMN-23413 AC47);
 //   R5  the answer is rendered as markup: HTML in the answer creates elements (an img with an onerror handler runs),
 //       or markdown is turned into HTML (AC6);
 //   R5l a very long answer floods the page instead of being folded, or is cut so the whole text is lost;
@@ -271,10 +271,13 @@ describe('OMN-19920: one run whole on the Workflow page', () => {
     expect(shown.Cause).not.toContain('provider_timeout');
   });
 
-  it('R4: the receipt id is the run\'s correlation id', async () => {
+  // OMN-23413 AC47: a delegation's receipt has its own run id (a205d3ab…) beside the correlation id (058298c2…), and
+  // the record serves only the correlation id. Labelling it "Receipt id" sent a reader to the wrong receipt.
+  it('R4: the run\'s correlation id is labelled as such, never as a receipt id', async () => {
     open(`/workflow?correlation_id=${OLDER}`);
     await shows(`backend-of-${OLDER}`);
-    expect(fieldsShown()['Receipt id']).toBe(OLDER);
+    expect(fieldsShown()['Correlation id']).toBe(OLDER);
+    expect(fieldsShown()['Receipt id']).toBeUndefined();
   });
 
   it.each([
