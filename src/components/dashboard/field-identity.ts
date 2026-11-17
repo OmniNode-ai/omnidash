@@ -10,7 +10,7 @@ export const FIELD_TONES: Readonly<Record<string, string>> = {
   'required bar': 'threshold', 'required threshold': 'threshold', 'average required bar': 'threshold',
   model: 'model', 'requested model': 'model', 'routed model': 'model', 'active model': 'model',
   age: 'age', 'created at': 'age', 'written at': 'written', created: 'age', minted: 'age',
-  run: 'identity', correlation: 'identity', 'receipt id': 'identity', tenant: 'tenant', session: 'session',
+  run: 'identity', correlation: 'identity', 'correlation id': 'identity', 'receipt id': 'identity', tenant: 'tenant', session: 'session',
   duration: 'duration', latency: 'duration', 'model call time': 'duration', 'avg gen latency': 'duration',
   cost: 'cost', 'local cost': 'cost', 'actual spend': 'cost', 'est. cost': 'cost',
   'recorded cost (usd)': 'cost', 'local / delegated cost': 'cost',
