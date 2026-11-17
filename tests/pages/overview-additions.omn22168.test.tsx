@@ -66,7 +66,7 @@ describe('status strip', () => {
     render(<OverviewStatusStrip env={ENV} decisions={DECISIONS} routing={{ ...ROUTING, total_delegations: 5000 }} now={NOW} />);
     expect(screen.getByRole('status', { name: 'Runtime status' }).textContent).toContain('5,000 runs');
     render(<OverviewStatusStrip env={ENV} decisions={DECISIONS} routing={{ ...ROUTING, total_delegations: null }} now={NOW} />);
-    expect(screen.getAllByRole('status', { name: 'Runtime status' })[1]!.textContent).toContain('Runs not recorded');
+    expect(screen.getAllByRole('status', { name: 'Runtime status' })[1]!.textContent).toContain('Runs not measured');
   });
 
   it('S5: a read that did not cover the window shows no median, never one over the latest runs only', () => {

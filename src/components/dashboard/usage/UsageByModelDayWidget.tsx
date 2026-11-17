@@ -285,7 +285,7 @@ export function UsageTokensChart({ rows, days = 14 }: { rows: readonly unknown[]
         onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setHover(null); }}>
         {shown.map(day => {
           const models = [...byDay.get(day)!.entries()];
-          const label = `${day}: ${models.map(([name, cell]) => `${name}: ${cell.missing && cell.value === 0 ? 'not measured' : `${formatFullCount(cell.value)}${cell.missing ? ' (some rows not recorded)' : ''}`}`).join('; ')}`;
+          const label = `${day}: ${models.map(([name, cell]) => `${name}: ${cell.missing && cell.value === 0 ? 'not measured' : `${formatFullCount(cell.value)}${cell.missing ? ' (some rows not measured)' : ''}`}`).join('; ')}`;
           const dayTotal = total(day);
           return (
             // Focusable, so a keyboard reader reveals the day's total as a pointer does on hover (live review 2026-10-26).

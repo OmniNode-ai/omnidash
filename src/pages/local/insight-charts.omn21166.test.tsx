@@ -82,9 +82,9 @@ describe('OMN-21166: Overview insight charts', () => {
     render(<InsightsSection decisions={[row('2026-10-18T08:00:00Z'), row('2026-10-18T08:01:00Z', { tokens_input: null, tokens_output: 5 })]} now={NOW} />);
     const figure = screen.getByRole('figure', { name: /^Tokens per day$/ });
     const bar = within(screen.getByRole('group', { name: 'Tokens per day' })).getByRole('button', { name: /^Oct 18:/ });
-    expect(bar).toHaveAccessibleName('Oct 18: 200 in (partial: 1 run not recorded), 25 out');
+    expect(bar).toHaveAccessibleName('Oct 18: 200 in (partial: 1 run not measured), 25 out');
     fireEvent.focus(bar);
-    expect(figure.querySelector('[aria-live="polite"]')).toHaveTextContent('200 in (partial: 1 run not recorded)');
+    expect(figure.querySelector('[aria-live="polite"]')).toHaveTextContent('200 in (partial: 1 run not measured)');
     expect(figure.querySelector('[aria-live="polite"]')).toHaveTextContent('25 out');
   });
 

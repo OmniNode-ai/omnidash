@@ -44,7 +44,7 @@ describe('Overview trend', () => {
     draw(ROWS);
     expect(points()).toEqual([
       'Nov 1: 120 runs, 50,000 tokens in, $0.01 spend', 'Nov 2: 300 runs, 120,000 tokens in, $0.05 spend',
-      'Nov 3: not recorded', 'Nov 4: 1,234 runs, 900,000 tokens in, $0.12 spend']);
+      'Nov 3: not measured', 'Nov 4: 1,234 runs, 900,000 tokens in, $0.12 spend']);
     // Three lines, each with a break at Nov 3 (two segments: "M .. L .." then "M ..").
     const paths = lines();
     expect(paths).toHaveLength(3);
@@ -67,12 +67,12 @@ describe('Overview trend', () => {
 
   it('T3: the Overview window limits the days drawn', () => {
     draw(ROWS, 'range:2026-11-03..2026-11-04');
-    expect(points()).toEqual(['Nov 3: not recorded', 'Nov 4: 1,234 runs, 900,000 tokens in, $0.12 spend']);
+    expect(points()).toEqual(['Nov 3: not measured', 'Nov 4: 1,234 runs, 900,000 tokens in, $0.12 spend']);
   });
 
   it('T4: a day served by two rows is a gap, never one of the two values', () => {
     draw([...ROWS, day('2026-11-02', 7, 7, 7)]);
-    expect(points()[1]).toBe('Nov 2: not recorded (two rows for this day)');
+    expect(points()[1]).toBe('Nov 2: not measured (two rows for this day)');
   });
 
   it('T5: no day rows shows an empty state, and the all-time row is never a day', () => {

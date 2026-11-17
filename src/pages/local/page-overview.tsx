@@ -77,7 +77,7 @@ export function OverviewStatusStrip({ env, decisions, routing, now, window = 'al
   const windowRuns = picked && 'row' in picked && !isMissing(picked.row.runs_total) ? Number(picked.row.runs_total) : NaN;
   const served = Number.isFinite(windowRuns) ? windowRuns
     : window === 'all' && routing && !isMissing(routing.total_delegations) ? Number(routing.total_delegations) : NaN;
-  const total = Number.isFinite(served) ? `${formatFullCount(String(served))} runs` : 'Runs not recorded';
+  const total = Number.isFinite(served) ? `${formatFullCount(String(served))} runs` : 'Runs not measured';
   // The median run time is the window's runs only, and it is shown only when the runs read cover the whole window (the
   // read's oldest run is on or before the window's first day, or the read holds every run): otherwise it would be the
   // median of the latest runs, not of the window (Lakshman 2026-11-04, "make sure all information written is correct").
@@ -175,8 +175,8 @@ export function OverviewTrendPanel({ rows, columns, window, now }: {
     const values = days.map(day => valueOf(day, column));
     return { key: slug(column.header), color: TREND_TONES[column.header] ?? 'var(--ds-ink-2)', values };
   });
-  const dayText = (day: string, compact: boolean) => (byDay.has(day) ? twice(day) ? 'not recorded (two rows for this day)'
-    : visible.map(column => say(valueOf(day, column), column, compact)).join(', ') : 'not recorded');
+  const dayText = (day: string, compact: boolean) => (byDay.has(day) ? twice(day) ? 'not measured (two rows for this day)'
+    : visible.map(column => say(valueOf(day, column), column, compact)).join(', ') : 'not measured');
   // OMN-23330 AC8: with nothing pointed at, the readout shows the newest served day, so no blank row sits above the chart.
   const active = hover === null ? [...days].reverse().find(day => byDay.has(day)) : days[hover];
   // Lakshman 2026-11-05 ("this look congested and bad"): one line is in front (the legend chip under the pointer, else

@@ -717,7 +717,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                         valueText={`Quality score ${recorded(run.actual_score)}; required bar ${recorded(run.required_bar)}`}
                         share={selectedScore} mark={Number.isFinite(selectedRequiredBar) ? selectedRequiredBar : null} />
                     </Fact>,
-                    <Fact key="Required bar" term={<><ConceptIcon concept="threshold" size={13} />Required bar</>} data-field-tone="threshold">{isMissing(run.required_bar) ? 'bar not recorded' : recorded(run.required_bar)}</Fact>];
+                    <Fact key="Required bar" term={<><ConceptIcon concept="threshold" size={13} />Required bar</>} data-field-tone="threshold">{isMissing(run.required_bar) ? 'bar not measured' : recorded(run.required_bar)}</Fact>];
                   case 'routing-model': return [<Fact key="Requested model" term={<><ConceptIcon concept="routing-model" size={13} />Requested model</>} data-field-tone="routing-model">{recorded(run.requested_model)}</Fact>];
                   case 'completion': return [<Fact key="Finish reason" term={<><ConceptIcon concept="completion" size={13} />Finish reason</>} data-field-tone="completion">{recorded(run.finish_reason)}</Fact>];
                   case 'escalated': return [<Fact key="Escalations" term={<><ConceptIcon concept="escalated" size={13} />Escalations</>} data-field-tone="escalated">{recorded(run.escalation_count)}</Fact>];

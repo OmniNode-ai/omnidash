@@ -250,7 +250,7 @@ function DurationHistogram({ runs }: { runs: InsightRun[] }) {
   const name = (index: number) => durationBucketLabel(index);
   const median = summary(runs).medianLatency;
   return (
-    <ChartCard title="How long runs take" concept="duration" note={`${count(unrecorded)} not recorded`} delay={240}>
+    <ChartCard title="How long runs take" concept="duration" note={`${count(unrecorded)} not measured`} delay={240}>
       <ChartReadout active={hover !== null} text={hover === null ? (median === null ? 'No durations recorded' : <>Median <span data-field-tone="duration">{duration(median)}</span></>) : <><span data-field-tone="duration">{name(hover)}</span> · <span data-field-tone="count">{count(buckets[hover]!)} runs</span></>} />
       <Histogram label="Duration buckets" hover={hover} onHover={setHover} color="var(--ds-field-duration)"
         buckets={buckets.map((runsInBucket, index) => ({ key: String(index), ariaLabel: `${name(index)}: ${runsWord(runsInBucket)}`, value: runsInBucket }))} />
@@ -336,7 +336,7 @@ export function TokensPerDay({ days }: { days: InsightDay[] }) {
   const [hover, setHover] = useState<number | null>(null);
   // The scale comes from the days that recorded tokens; a day without a count draws no bar.
   const max = Math.max(1, ...days.flatMap(day => [day.tokensIn, day.tokensOut]).filter((value): value is number => value !== null));
-  const side = (value: number | null, missing: number, direction: 'in' | 'out') => `${value === null ? 'not measured' : formatFullCount(value)} ${direction}${value !== null && missing > 0 ? ` (partial: ${count(missing)} ${missing === 1 ? 'run' : 'runs'} not recorded)` : ''}`;
+  const side = (value: number | null, missing: number, direction: 'in' | 'out') => `${value === null ? 'not measured' : formatFullCount(value)} ${direction}${value !== null && missing > 0 ? ` (partial: ${count(missing)} ${missing === 1 ? 'run' : 'runs'} not measured)` : ''}`;
   const label = (day: InsightDay) => `${dayLabel(day.day)}: ${side(day.tokensIn, day.tokensInUnmeasured, 'in')}, ${side(day.tokensOut, day.tokensOutUnmeasured, 'out')}`;
   const active = hover === null ? latestServed(days, day => day.tokensIn !== null || day.tokensOut !== null) : days[hover]!;
   const [location] = useLocation();
@@ -514,7 +514,7 @@ function RunWindowKpis({ runs, decisions, label, comparisonEnabled, now, days }:
   return (
     <section className="ins-window-kpis ins-window-kpis--runs" aria-label={`Runs in ${selectedLabel}`}>
       <KpiTile tone="count" label="Runs" value={count(summaryNow.runs)}><small>{selectedLabel} · counted from the returned decision rows</small>{runDelta !== null && <small>{runDelta}</small>}</KpiTile>
-      <KpiTile tone="duration" label="Median duration" value={median} unavailable={summaryNow.medianLatency === null}><small>{count(durationMissing)} duration values not recorded</small>{medianDelta !== null && <small>{medianDelta}</small>}</KpiTile>
+      <KpiTile tone="duration" label="Median duration" value={median} unavailable={summaryNow.medianLatency === null}><small>{count(durationMissing)} duration values not measured</small>{medianDelta !== null && <small>{medianDelta}</small>}</KpiTile>
     </section>
   );
 }
@@ -528,14 +528,14 @@ function MeteringWindowKpis({ current, previous, days, label, comparisonEnabled,
   const savedReady = unavailable === null && current.available && current.saved !== null;
   const servedDayCount = current.days.filter(day => day.served).length;
   const savedPct = current.saved !== null && current.counterfactual !== null && current.counterfactual > 0
-    ? `${fmtFixed((current.saved / current.counterfactual * 100), 1)}% below ${current.baseline ?? 'the served baseline'}` : 'Baseline comparison not recorded';
+    ? `${fmtFixed((current.saved / current.counterfactual * 100), 1)}% below ${current.baseline ?? 'the served baseline'}` : 'Baseline comparison not measured';
   const paidNote = unavailable ?? current.reason ?? (!current.windowComplete
     ? `${servedDayCount} of ${days} daily rows served; the selected window is incomplete.`
-    : current.spend === null ? 'One or more daily spend values are not recorded; paid total unavailable.'
+    : current.spend === null ? 'One or more daily spend values are not measured; paid total unavailable.'
       : `${servedDayCount} served day rows.`);
   const savedNote = unavailable ?? current.reason ?? (!current.windowComplete
     ? `${servedDayCount} of ${days} daily rows served; the selected window is incomplete.`
-    : current.saved === null ? 'One or more daily savings values are not recorded; saved total unavailable.'
+    : current.saved === null ? 'One or more daily savings values are not measured; saved total unavailable.'
       : `${servedDayCount} served day rows · ${savedPct}`);
   const previousComplete = comparisonEnabled && unavailable === null && current.available && current.windowComplete
     && previous !== null && previous.available && previous.windowComplete;
@@ -559,7 +559,7 @@ function MeteringAllTimeKpis({ rows, label, unavailable }: { rows: readonly unkn
   const total = meteringAllTimeTotals(rows);
   const reason = unavailable ?? total.reason;
   const paidReady = reason === null && total.spend !== null;
-  const paidNote = reason ?? (total.spend === null ? 'The all-time spend total is not recorded.' : 'All-time total, as served.');
+  const paidNote = reason ?? (total.spend === null ? 'The all-time spend total is not measured.' : 'All-time total, as served.');
   return <section className="ins-window-kpis ins-window-kpis--metering" aria-label={`Metered spend summary for ${label}`}>
     <KpiTile tone="cost" label="You paid" value={paidReady ? usd(total.spend) : NOT_MEASURED} unavailable={!paidReady}><small>{paidNote}</small></KpiTile>
   </section>;
@@ -587,15 +587,15 @@ function MoneyWindowCharts({ rows, now, days, unavailable }: { rows: readonly un
         {selected && <p className="ins-readout" role="status">{detail(selected)}</p>}
         <SpendColumns label="Spend vs all-cloud by UTC day" max={max} onHover={setActiveSpend} days={data.days.map(day => ({
           key: day.day, ariaLabel: detail(day), dayText: dateLabel(day.day), spend: day.spend, saved: day.saved, baseline: day.counterfactual,
-          valuesText: `${day.spend === null ? 'Paid not recorded' : usd(day.spend)} · ${day.saved === null ? 'saved not recorded' : `${usd(day.saved)} saved`}` }))} />
+          valuesText: `${day.spend === null ? 'Paid not measured' : usd(day.spend)} · ${day.saved === null ? 'saved not measured' : `${usd(day.saved)} saved`}` }))} />
         <figcaption>Saved uses the served daily savings value. {data.windowComplete ? 'Returned rows cover the selected window.' : 'The returned rows do not cover the full selected window.'}{data.days.some(day => day.served && day.saved === null) ? ' At least one served day has no recorded savings value.' : ''}</figcaption>
       </figure>
       <figure className="local-chart ins-cumulative-chart" aria-label="Cumulative savings">
         <ChartHeading concept="savings" title="Cumulative savings" detail={`${days === 1 ? 'Today (UTC)' : `Last ${days} UTC days`} · ${data.baseline ?? 'baseline not recorded'}`} />
-        <p className="ins-readout" role="status">{activeCumulative === null ? `${data.windowComplete && data.saved !== null ? 'Window total' : 'Served rows only · cumulative incomplete'}: ${usd(data.cumulativeSaved[data.cumulativeSaved.length - 1] ?? null)}` : `${dateLabel(data.days[activeCumulative]!.day)} · cumulative ${usd(data.cumulativeSaved[activeCumulative] ?? null)}${!data.days[activeCumulative]!.served ? ' · no served day row; total carried forward' : data.days[activeCumulative]!.saved === null ? ' · savings value not recorded; cumulative unavailable' : ''}`}</p>
+        <p className="ins-readout" role="status">{activeCumulative === null ? `${data.windowComplete && data.saved !== null ? 'Window total' : 'Served rows only · cumulative incomplete'}: ${usd(data.cumulativeSaved[data.cumulativeSaved.length - 1] ?? null)}` : `${dateLabel(data.days[activeCumulative]!.day)} · cumulative ${usd(data.cumulativeSaved[activeCumulative] ?? null)}${!data.days[activeCumulative]!.served ? ' · no served day row; total carried forward' : data.days[activeCumulative]!.saved === null ? ' · savings value not measured; cumulative unavailable' : ''}`}</p>
         <CumulativeColumns label="Cumulative savings by UTC day" max={cumulativeMax} onHover={setActiveCumulative}
           days={data.cumulativeSaved.map((value, index) => ({ key: data.days[index]!.day, value,
-            ariaLabel: `${dateLabel(data.days[index]!.day)}: cumulative ${usd(value)}${!data.days[index]!.served ? ', no served day row; prior total carried forward' : data.days[index]!.saved === null ? ', savings value not recorded' : ''}` }))} />
+            ariaLabel: `${dateLabel(data.days[index]!.day)}: cumulative ${usd(value)}${!data.days[index]!.served ? ', no served day row; prior total carried forward' : data.days[index]!.saved === null ? ', savings value not measured' : ''}` }))} />
         <figcaption>Missing rows carry the prior total forward. A served row without a savings value makes the cumulative total unavailable from that day onward.</figcaption>
       </figure>
     </ChartSection>

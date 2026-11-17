@@ -189,7 +189,7 @@ export interface MeteringAllTime {
  */
 export function meteringAllTimeTotals(rows: readonly unknown[]): MeteringAllTime {
   const row = latestAllRow(rows);
-  if (row === 'none') return unavailableAllTime('All-time metering totals are not served yet.');
+  if (row === 'none') return unavailableAllTime('All-time metering totals are not measured.');
   if (row === 'ambiguous') return unavailableAllTime('All-time metering totals are unavailable: two all-time rows were served for the same time.');
   return { available: true, reason: null, baseline: baselineOf(row), spend: number(row.spend_usd) };
 }
