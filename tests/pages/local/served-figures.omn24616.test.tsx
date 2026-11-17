@@ -6,10 +6,17 @@
 //   A1  Usage reads only the newest page of decisions, so its analysis covers a partial page (decision D1: walk all)
 //   A2  Overview's failure list counts the served page of rows instead of the quality gate's served counts
 //   A3  a quality row that serves no categories hides the row-counted list instead of falling back to it
-import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+//   A4  (review of #521, finding 2) Overview's panel never reads the quality gate snapshot: the wiring in page-tables is
+//       unexercised by A2 and A3, which hand the categories to the component themselves
+//   A5  (review of #521, finding 1; Lakshman 2026-11-17 "label it honestly") the served list counts failed quality CHECKS
+//       over all time, so it must not be titled as failed runs or read as following the Overview window
+import { cleanup, render, screen, within } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
 import { decisionsWalkFor } from '@/contracts/local-read-budget';
 import { InsightsSection, servedFailureCategories } from '@/pages/local/insight-charts';
+import { TableComponent } from '@/pages/local/page-tables';
+
+afterEach(cleanup);
 
 const NOW = Date.parse('2026-11-16T12:00:00Z');
 const decision = (index: number, failed: boolean) => ({
@@ -38,5 +45,40 @@ describe('OMN-24616 AC1: window figures from served aggregates', () => {
     expect(servedFailureCategories(undefined)).toBeNull();
     render(<InsightsSection decisions={rows} now={NOW} view="summary" complete={false} servedFailures={null} />);
     expect(within(screen.getByRole('list', { name: 'Failure causes' })).getByText('205')).toBeInTheDocument();
+  });
+
+  // The Overview activity panel as the page draws it: decisions plus the quality gate's served row.
+  const overview = (quality: object | null) => {
+    const DECISIONS = 'onex.snapshot.projection.delegation.decisions.v1';
+    const QUALITY = 'onex.snapshot.projection.delegation.quality-gate.v1';
+    const component = { component_id: 'overview-insights', component_kind: 'table', title: 'Trends and breakdowns',
+      data_bindings: [DECISIONS, QUALITY].map((topic, index) => ({ binding_id: `b${index}`, projection_topic: topic })) };
+    const snapshots = [{ topic: DECISIONS, rows, readAt: '2026-11-16T11:59:59Z', truncated: true },
+      ...(quality === null ? [] : [{ topic: QUALITY, rows: [quality], readAt: '2026-11-16T11:59:59Z' }])];
+    render(<TableComponent component={component as never} snapshots={snapshots as never} pageSize={25} syncUrl={false}
+      columns={[]} activityWindow={{ kind: 'days', days: 7 }} />);
+  };
+
+  it('A4: the Overview panel reads the quality gate snapshot it is served, not only the rows', () => {
+    overview({ failure_categories: JSON.stringify([{ category: 'missing tests', count: 576, pct_of_failures: 1 }]) });
+    const list = screen.getByRole('list', { name: 'Failure causes' });
+    expect(within(list).getByText('576')).toBeInTheDocument();
+    expect(within(list).queryByText('205')).toBeNull();
+  });
+
+  it('A4 control: without a quality gate snapshot the panel counts the rows it read', () => {
+    overview(null);
+    expect(within(screen.getByRole('list', { name: 'Failure causes' })).getByText('205')).toBeInTheDocument();
+  });
+
+  it('A5: the served list is titled as failed quality checks, over all time, never as runs in the window', () => {
+    overview({ failure_categories: JSON.stringify([{ category: 'missing tests', count: 576, pct_of_failures: 1 }]) });
+    const card = screen.getByRole('list', { name: 'Failure causes' }).closest('figure, section, article, .ins-card, [data-chart-card]')
+      ?? screen.getByRole('list', { name: 'Failure causes' }).parentElement!;
+    const text = card.textContent ?? '';
+    expect(screen.getByText('Failed checks by category')).toBeInTheDocument();
+    expect(screen.queryByText('Why runs failed')).toBeNull();
+    expect(text).toMatch(/all time/i);
+    expect(text).not.toMatch(/for every run/);
   });
 });

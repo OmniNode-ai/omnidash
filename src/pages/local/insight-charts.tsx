@@ -341,15 +341,16 @@ export function servedFailureCategories(value: unknown): ServedFailureCategory[]
 }
 
 /**
- * OMN-24616 AC1: Overview's "Why runs failed" from the quality gate's served counts, which cover every run, instead of
- * counting the newest page of rows. A category opens every failed run, as on Delegation Evidence.
+ * OMN-24616 AC1: Overview's failure list from the quality gate's served counts instead of counting the newest page of
+ * rows. Those counts are failed quality CHECKS over all time (one served row), not failed runs in the Overview window,
+ * so the card says so (review of #521, Lakshman 2026-11-17: "label it honestly"). A category opens every failed run.
  */
 function ServedFailureCategories({ categories, limit }: { categories: readonly ServedFailureCategory[]; limit?: number }) {
   const ranked = [...categories].sort((a, b) => b.count - a.count || a.category.localeCompare(b.category));
   const list = limit === undefined ? ranked : ranked.slice(0, limit);
   const max = Math.max(1, ...list.map(entry => entry.count));
   return (
-    <ChartCard title="Why runs failed" concept="failures" delay={360}>
+    <ChartCard title="Failed checks by category" concept="failures" note="all time" delay={360}>
       {list.length === 0 ? <ChartEmpty>No failed quality checks served</ChartEmpty> : (
         <ul className="ins-list" aria-label="Failure causes">
           {list.map((entry, index) => {
@@ -366,7 +367,7 @@ function ServedFailureCategories({ categories, limit }: { categories: readonly S
           })}
         </ul>
       )}
-      <p className="local-dashboard-caption">Failed quality checks by category, as the quality gate serves them for every run.</p>
+      <p className="local-dashboard-caption">Counts failed quality checks by category from the quality gate, all time; not limited to the selected window.</p>
     </ChartCard>
   );
 }
