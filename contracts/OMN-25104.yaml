@@ -1,22 +1,24 @@
 schema_version: "1.0.0"
 ticket_id: "OMN-25104"
-title: "The Overview Done figure counts the served done items, never 0 for an unread or empty store"
+title: "The Done card computes its figure from the served done items, never 0 for an unread or empty store (not yet on the Overview page)"
 summary: >-
   omnimarket's node_projection_done_items serves onex.snapshot.projection.done-items.v1, one row per done ticket
   (omnimarket#6418). ServedCountCard is the Done figure: the count of the served rows, computed from them alone,
   with Not measured and the reason when the read fails, serves no rows, or serves a row without its ticket, never 0.
   No omnidash code reads work_ledger_rows. Binding the card on the Overview page follows once the lab serves the
-  exposure, because the pages bind only exposures the captured lab catalogue marks ok.
+  exposure, because the pages bind only exposures the captured lab catalogue marks ok. Until that follow-up lands,
+  this contract proves the card's logic only: no page shows the Done figure yet, so passing it does not meet the
+  ticket's AC3 for the visible figure, and OMN-25104 must not close on it.
 is_seam_ticket: false
 interface_change: false
 interfaces_touched: []
 requirements:
   - id: "req-done-figure"
-    statement: "The dashboard's Done figure is the count of rows in the served done-items projection, and reads no ledger table."
+    statement: "The Done card's figure is the count of rows in the served done-items projection, and no dashboard code reads a ledger table. Placing the card on the Overview page is a follow-up."
     acceptance:
       - id: "AC3"
         statement: >-
-          AC3: the dashboard's Done figure equals the count of rows in the served projection, shows Not measured
+          AC3 (card logic part): the Done card's figure equals the count of rows in the served projection, shows Not measured
           with the reason for a failed or empty read, never 0, and no dashboard code reads work_ledger_rows
           -- falsifier: npx vitest run -t done_figure_from_served_projection, which fails on dev
           8c242112ca302691004579aded22417226c195bc because the card does not exist
@@ -32,7 +34,7 @@ dod_evidence:
   - id: "dod-omn25104-ac3"
     description: >-
       AC3 in served-count-card.omn25104.test.tsx: three served rows read 3; a failed read and an empty read read Not
-      measured with their reason, never 0; a row without a ticket reads Not measured; no source under src names work_ledger_rows. The file fails on dev
+      measured with their reason, never 0; a row without a usable ticket among good rows reads Not measured; no source under src names work_ledger_rows. The file fails on dev
       8c242112ca302691004579aded22417226c195bc, where the card does not exist.
     source: "manual"
     binds_ac: ["AC3"]
