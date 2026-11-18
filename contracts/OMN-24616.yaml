@@ -15,6 +15,28 @@ summary: >-
 is_seam_ticket: false
 interface_change: false
 interfaces_touched: []
+context:
+  ac_binding_provenance:
+    dod-omn24616-ac1-accepted-20261118t0545z:
+      - label: "AC1"
+        criterion_hash: "b084dcce3a69a890e69593ce0a3698b9a6b60e09505f0dc10947aab54f1d23e0"
+        proposed_by: "lane=dod-closeout-bind-2026-11-18T0545Z-c1"
+        accepted_by: "lane=dod-closeout-accept-2026-11-18T0545Z-c1"
+    dod-omn24616-ac3-accepted-20261118t0545z:
+      - label: "AC3"
+        criterion_hash: "b2a822e0ce78d8a14848167b17faff57437b00f411732856be8dd0b3485254c0"
+        proposed_by: "lane=dod-closeout-bind-2026-11-18T0545Z-c1"
+        accepted_by: "lane=dod-closeout-accept-2026-11-18T0545Z-c1"
+    dod-omn24616-ac4-accepted-20261118t0545z:
+      - label: "AC4"
+        criterion_hash: "a3a42921615be27059fd2db8906481d40426451d41629dff0e980a56dbd28c9f"
+        proposed_by: "lane=dod-closeout-bind-2026-11-18T0545Z-c1"
+        accepted_by: "lane=dod-closeout-accept-2026-11-18T0545Z-c1"
+    dod-omn24616-ac8-accepted-20261118t0545z:
+      - label: "AC8"
+        criterion_hash: "e0820228f780813d02fa0192321df76dde08622ed4289cb9b73d8808e3fe86cb"
+        proposed_by: "lane=dod-closeout-bind-2026-11-18T0545Z-c1"
+        accepted_by: "lane=dod-closeout-accept-2026-11-18T0545Z-c1"
 requirements:
   - id: "req-omn24616-windows-and-served-lists"
     statement: >-
@@ -200,3 +222,35 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx playwright test tests/e2e/one-formatter-set.omn24616.spec.ts --project=chromium --workers=1 --retries=0"
+  - id: "dod-omn24616-ac1-accepted-20261118t0545z"
+    description: "AC1 accepted binding (lane=dod-closeout-accept-2026-11-18T0545Z-c1): proposed by lane=dod-closeout-bind-2026-11-18T0545Z-c1, re-run green on omnidash origin/dev 8c242112 in a clean worktree on 2026-11-18 (7 passed); with the product changes of omnidash#521 (8c242112) reverted at dev, 5 of 7 fail."
+    source: "manual"
+    binds_ac: ["AC1"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm test -- --run tests/pages/local/served-figures.omn24616.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn24616-ac3-accepted-20261118t0545z"
+    description: "AC3 accepted binding (lane=dod-closeout-accept-2026-11-18T0545Z-c1): proposed by lane=dod-closeout-bind-2026-11-18T0545Z-c1, re-run green on omnidash origin/dev 8c242112 in a clean worktree on 2026-11-18 (31 passed); with the product changes of omnidash#521 (8c242112) reverted at dev, 4 of 31 fail."
+    source: "manual"
+    binds_ac: ["AC3"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm test -- --run tests/pages/local/insights.omn21166-mockup.test.ts tests/pages/local/overview-metering-kpis.omn21166.test.tsx src/pages/local/insight-charts.omn21166.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn24616-ac4-accepted-20261118t0545z"
+    description: "AC4 accepted binding (lane=dod-closeout-accept-2026-11-18T0545Z-c1): proposed by lane=dod-closeout-bind-2026-11-18T0545Z-c1, re-run green on omnidash origin/dev 8c242112 in a clean worktree on 2026-11-18 (6 passed); with the product changes of omnidash#521 (8c242112) reverted at dev, both files fail."
+    source: "manual"
+    binds_ac: ["AC4"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm test -- --run tests/pages/local/served-lists.omn24616.test.tsx tests/app/command-palette-local.omn24616.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn24616-ac8-accepted-20261118t0545z"
+    description: "AC8 accepted binding (lane=dod-closeout-accept-2026-11-18T0545Z-c1): proposed by lane=dod-closeout-bind-2026-11-18T0545Z-c1, re-run green on omnidash origin/dev 8c242112 in a clean worktree on 2026-11-18 (4 passed); with the product changes of omnidash#521 (8c242112) reverted at dev, 4 of 4 fail."
+    source: "manual"
+    binds_ac: ["AC8"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm test -- --run tests/pages/local/settings-price-and-status.omn24616.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
