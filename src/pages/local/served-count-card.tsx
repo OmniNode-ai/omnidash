@@ -14,6 +14,14 @@ export function doneItemsCount(rows: ServedRows): number | null {
   return rows.every(row => hasText(row.ticket)) ? rows.length : null;
 }
 
+/**
+ * Changes running, from floor-integration-rows.v1: one row per merged change, so the figure is the number of rows
+ * whose state is running (null if a row has no state). Served rows with none running are a measured 0.
+ */
+export function runningRowsCount(rows: ServedRows): number | null {
+  return rows.every(row => hasText(row.state)) ? rows.filter(row => row.state === 'running').length : null;
+}
+
 export function ServedCountCard({ label, rows, failure, count, emptyCaption = 'The read returned no rows.' }: {
   label: string;
   rows: ServedRows;
