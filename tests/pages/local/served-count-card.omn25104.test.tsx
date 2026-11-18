@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// OMN-25104 AC3: the Overview Done figure is the count of served done-items.v1 rows, never 0 for an unread or empty store.
+// OMN-25104 AC3 (card logic): the Done card figure is the count of served done-items.v1 rows, never 0 for an unread or empty store.
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { cleanup, render } from '@testing-library/react';
@@ -51,15 +51,20 @@ describe('ServedCountCard', () => {
     expect(figure?.textContent).not.toBe('0');
   });
 
-  it('done_figure_from_served_projection a row without ticket shows Not measured', () => {
-    const rows = [
-      { ticket: '' },
+  it('done_figure_from_served_projection a row without ticket among good rows shows Not measured', () => {
+    const cases: Record<string, unknown>[][] = [
+      [{ ticket: 'T1' }, { ticket: '  ' }, {}],
+      [{ ticket: 'T1' }, { ticket: 42 }],
     ];
-    const { container } = render(
-      <ServedCountCard label="Done" rows={rows} failure={null} count={doneItemsCount(rows)} />
-    );
-    const figure = container.querySelector('.local-dashboard-metric');
-    expect(figure?.textContent).toBe('Not measured');
+    for (const rows of cases) {
+      expect(doneItemsCount(rows)).toBeNull();
+      const { container } = render(
+        <ServedCountCard label="Done" rows={rows} failure={null} count={doneItemsCount(rows)} />
+      );
+      expect(container.querySelector('.local-dashboard-metric')?.textContent).toBe('Not measured');
+      expect(container.querySelector('.local-dashboard-caption')?.textContent).toContain('missing the field');
+      cleanup();
+    }
   });
 
   it('done_figure_from_served_projection reads no ledger table: no source under src names work_ledger_rows', () => {
