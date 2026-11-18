@@ -17,7 +17,8 @@ const OTHER_SPELLINGS = /\b(?:Not served|not served|Not available|not available|
 const OTHER_PRECISION = /(?<![\d.<])\d+%|\d+\.\d{2,}%/;
 // The one exception (Lakshman 2026-11-17): the savings card's baseline comparison stays a whole percent, as OMN-20008
 // AC5 decided (Jonah, 4f0e618d): "42% below the claude-sonnet-5-5 baseline (modelled)". Only that line is exempt.
-const BASELINE_COMPARISON = /\d+% (?:below|above) the .+? baseline \(modelled\)/g;
+// The lookbehind keeps the exemption to a whole percent: "12.34% below ..." is not stripped, so its two decimals fail.
+const BASELINE_COMPARISON = /(?<![\d.])\d+% (?:below|above) the .+? baseline \(modelled\)/g;
 
 for (const path of PAGES) {
   test(`${path} writes a missing value one way, shows its Updated time, and one precision per share`, async ({ page }) => {
