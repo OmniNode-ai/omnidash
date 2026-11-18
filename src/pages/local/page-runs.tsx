@@ -826,11 +826,11 @@ export function ShareMeter({ value }: { value: unknown }) {
   </span>;
 }
 
-/** A model's cost in the tier table, in the run table's short muted form when it is a measured zero ("$0"). */
+/** A model's cost in the tier table, muted like the run table's when it is a measured zero ("$0.00", OMN-24616 AC6). */
 export function TierModelCostCell({ model }: { model: Row }) {
   const text = tierModelCost(model);
   return !isMissing(model.cost_usd) && Number(model.cost_usd) === 0 && /^\$0\.0+$/.test(text)
-    ? <span className="local-cost-free" title={text}>{text.replace(/\.0+$/, '')}</span> : <>{text}</>;
+    ? <span className="local-cost-free" title={text}>{text}</span> : <>{text}</>;
 }
 
 function tierModelCost(model: Row): string {

@@ -125,12 +125,12 @@ function GroupsView({ decisionRows }: { decisionRows: readonly unknown[] }) {
               : by === 'tier' ? tierLabel(group.name) : breakableName(group.name)}</th>
           {/* data-label names each value when a phone stacks the rows as cards (Codex MSG 753d170c). */}
           <td data-cell="runs" data-label="Runs">{group.runs}</td>
-          {/* A measured zero spend is the run table's muted "$0" with the served text as its title (Lakshman 2026-11-05). */}
+          {/* A measured zero spend is the run table's muted "$0.00" with the served text as its title (OMN-24616 AC6). */}
           {/* The figure first, its count muted beside it (Lakshman 2026-11-05, "table needs fixing - make it modern"); the
               cell's text is unchanged. */}
           <td data-cell="spend" data-label="Spend">{group.spend === null ? money(group.spend, group.spendMeasured, group.runs) : <>
             {group.spend === 0
-              ? <span className="local-cost-free" title={formatDashboardUsd(group.spend)}>{formatDashboardUsd(group.spend).replace(/\.0+$/, '')}</span>
+              ? <span className="local-cost-free" title={formatDashboardUsd(group.spend)}>{formatDashboardUsd(group.spend)}</span>
               : <span className="local-cell-figure">{formatDashboardUsd(group.spend)}</span>}
             <span className="local-cell-sub local-cell-sub--line">{` (${group.spendMeasured} of ${group.runs} measured)`}</span></>}</td>
           <td data-cell="pass" data-label="Pass rate" data-pass-band={passBand(group.passed, group.verdicts)}>{group.verdicts === 0

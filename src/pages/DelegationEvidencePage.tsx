@@ -223,9 +223,9 @@ function SelectedRun({ correlationId, decision, decisionsFailure, unidentified =
           { k: 'Model call time', v: fmtLatency(row.latency_ms) },
           { k: 'Tokens in', v: <TokenCount value={row.tokens_input} direction="in" /> },
           { k: 'Tokens out', v: <TokenCount value={row.tokens_output} direction="out" /> },
-          // A measured zero is the run table's muted "$0", the served text its title (OMN-22168, "full platform uniform").
+          // A measured zero is the run table's muted "$0.00", the served text its title (OMN-22168; OMN-24616 AC6).
           { k: 'Cost', v: recordedMoney(row.cost_usd) === formatUsd(0)
-            ? <span className="local-cost-free" title={recordedMoney(row.cost_usd)}>{recordedMoney(row.cost_usd).replace(/\.0+$/, '')}</span>
+            ? <span className="local-cost-free" title={recordedMoney(row.cost_usd)}>{recordedMoney(row.cost_usd)}</span>
             : recordedMoney(row.cost_usd) },
           // OMN-21166 AC37: the run's one modelled saving, the figure Runs shows (delegation.decisions.v1), not the
           // event's legacy cost_savings_usd, which is 0 for a run the savings writer never priced.

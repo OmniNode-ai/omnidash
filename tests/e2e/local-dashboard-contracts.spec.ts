@@ -235,6 +235,7 @@ test('Overview is the default page and fits 1440x900 with no unmeasured 0 (AC4)'
   await test.info().attach('numeric-zero-scope', { body: JSON.stringify(zeroNodes), contentType: 'application/json' });
   expect(zeroNodes.filter(node => !node.exempt)).toEqual([]);
   await expect(page.getByText('$0', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('$0.00', { exact: true })).toHaveCount(0);
 
   // OMN-23330 AC1/AC2: Savings follows the metering all row, never the retired aggregate or a day row.
   const savings = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Savings', exact: true }) });
@@ -338,6 +339,7 @@ test('Usage shows measured cost beside unmeasured runs, never 0 for unmeasured, 
   await expect(unmeasured.locator('td[data-label="Cost (measured)"]').getByText('Not measured', { exact: true })).toBeVisible();
   await expect(page.getByText(/9\.25/)).toHaveCount(0);
   await expect(page.getByText('$0', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('$0.00', { exact: true })).toHaveCount(0);
   await expect(page.getByText('0', { exact: true })).toHaveCount(0);
   // OMN-22168: Savings per day is a tab of "Savings and spend"; its own heading is hidden inside the tab, which names it.
   const savings = await chartTabPanel(page, 'Savings per day');

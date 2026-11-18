@@ -59,12 +59,12 @@ describe('UsageByModelDayTable', () => {
     expect(screen.queryByText(/\$4.00/)).not.toBeInTheDocument();
   });
 
-  // OMN-22168 (Lakshman 2026-11-05): as the run table writes them, a measured zero is the muted "$0" with the served
-  // "$0.00" as its title, and no unmeasured run is a quiet dash titled so.
-  it('renders a measured zero as a zero ($0, served $0.00) and no unmeasured run as a dash', () => {
+  // OMN-22168; OMN-24616 AC6 (Lakshman 2026-11-18, "$0.00" everywhere): as the run table writes them, a measured zero is
+  // the muted "$0.00" with the served "$0.00" as its title, and no unmeasured run is a quiet dash titled so.
+  it('renders a measured zero as a muted $0.00 and no unmeasured run as a dash', () => {
     render(<UsageByModelDayTable rows={[row({ cost_usd: 0, measured_cost_usd: 0, unmeasured_call_count: 0 })]} />);
     const cells = within(screen.getAllByRole('row')[1]!);
-    expect(cells.getByText('$0')).toHaveAttribute('title', '$0.00');
+    expect(cells.getByText('$0.00')).toHaveAttribute('title', '$0.00');
     expect(cells.getByTitle('No unmeasured calls')).toHaveTextContent('—');
     // OMN-24616 AC6: this fixture serves no share, so only the share cell reads Not measured; the measured zero does not.
     expect(screen.queryAllByText('Not measured').every(node => node.closest('td')?.getAttribute('data-label') === 'Share of calls')).toBe(true);

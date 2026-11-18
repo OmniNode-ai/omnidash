@@ -202,19 +202,19 @@ export function costOf(session: Row | undefined, decision: Row): string {
 }
 
 /**
- * Run table item 8 (Lakshman 2026-11-05): a measured zero cost reads "$0", muted, so a free run is told apart from a
+ * Run table item 8 (Lakshman 2026-11-05): a measured zero cost is muted, so a free run is told apart from a
  * priced one at a glance; the route is named in its title only ("we are showing them model"), and every other cost is
  * costOf's text.
  */
 export function CostCell({ session, run }: { session: Row | undefined; run: Row }) {
   const text = costOf(session, run);
   const value = isMissing(session?.local_cost_usd) ? run.cost_usd : session?.local_cost_usd;
-  // Lakshman 2026-11-05 (a free cheap-frontier run read "$0.00" in ink beside the local runs' grey "$0"): every served
-  // zero takes the short, muted form, whatever the route; the route is named in its title. The short form drops the
-  // served zero's empty cents ("$0.00" to "$0"); the figure is still the served one.
+  // Lakshman 2026-11-05 (a free cheap-frontier run read in ink beside the local runs' grey zero): every served zero is
+  // muted, whatever the route; the route is named in its title. OMN-24616 AC6 (Lakshman 2026-11-18, "$0.00" everywhere,
+  // reversing the 11-05 short "$0"): it reads "$0.00", the one money rule's zero, so one amount is never written two ways.
   const route = isMissing(run.cost_tier_name) ? '' : `, ${tierLabel(run.cost_tier_name).toLowerCase()} route`;
   return !isMissing(value) && Number(value) === 0
-    ? <span className="local-cost-free" title={`${text}${route}`}>{text.replace(/\.0+$/, '')}</span> : <>{text}</>;
+    ? <span className="local-cost-free" title={`${text}${route}`}>{text}</span> : <>{text}</>;
 }
 
 /** A plain decimal as the store serves it: optional minus, digits, optional fraction. No exponent, no grouping. */
