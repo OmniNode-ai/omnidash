@@ -3,7 +3,7 @@
 // and a failed or empty read shows Not measured with the reason, never 0. Drafted through onex delegate run 930765b7.
 import { cleanup, render } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { ServedCountCard, type ServedRows, runningRowsCount } from './served-count-card';
+import { ServedCountCard, type ServedRows, runningRowsCount } from '@/pages/local/served-count-card';
 
 afterEach(cleanup);
 

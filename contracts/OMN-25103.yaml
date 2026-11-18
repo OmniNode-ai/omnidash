@@ -27,7 +27,7 @@ requirements:
 evidence_requirements:
   - kind: "tests"
     description: "The Running figure tests."
-    command: "npm test -- --run src/pages/local/served-count-card.omn25103.test.tsx"
+    command: "npm test -- --run tests/pages/local/served-count-card.omn25103.test.tsx"
 emergency_bypass:
   enabled: false
   justification: ""
@@ -41,7 +41,7 @@ dod_evidence:
     binds_ac: ["AC2"]
     checks:
       - check_type: "test_passes"
-        check_value: "npm test -- --run src/pages/local/served-count-card.omn25103.test.tsx -t running_figure_from_served_projection"
+        check_value: "npm test -- --run tests/pages/local/served-count-card.omn25103.test.tsx -t running_figure_from_served_projection"
   - id: "dod-omn25103-ac3"
     description: >-
       AC3 in served-count-card.omn25103.test.tsx: a failed read and an empty read read Not measured, the failed one
@@ -50,4 +50,4 @@ dod_evidence:
     binds_ac: ["AC3"]
     checks:
       - check_type: "test_passes"
-        check_value: "npm test -- --run src/pages/local/served-count-card.omn25103.test.tsx -t running_figure_unavailable"
+        check_value: "npm test -- --run tests/pages/local/served-count-card.omn25103.test.tsx -t running_figure_unavailable"
