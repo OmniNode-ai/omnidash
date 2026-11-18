@@ -187,8 +187,9 @@ test('AC197 Workflow draws the run as a waterfall: bars only for steps with a st
   expect(read[3]!.left!).toBeCloseTo(430 / 730, 2);
   expect(read[3]!.width!).toBeCloseTo(300 / 730, 2);
   for (const row of read.slice(4)) {
-    // OMN-23330 AC13: the step says "Not recorded" once, naming its missing start or duration.
-    expect(row.text).toMatch(/Not recorded: .*(start|duration)/);
+    // OMN-23330 AC13: the step names its missing start (a label, "Not recorded") or duration (a figure, "Not measured",
+    // OMN-24616 AC6).
+    expect(row.text).toMatch(/Not recorded: .*start|Not measured: .*duration/);
     expect(row.width, 'no bar without both times').toBeNull();
   }
   // Attempts are the served attempt steps, each its own row; with them present no escalation-count sentence stands in.

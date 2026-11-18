@@ -9,7 +9,7 @@
 //   T1  the timings are served and the summary shows no tile for one, or no chart;
 //   T2  a bar is not the served value, is drawn under another timing's name, or the bars are in another order;
 //   T3  a timing the row does not carry gets a bar (of zero or anything else), or its tile reads 0 ms;
-//   T4  a served zero is dropped from the chart or reads Not recorded: a measured zero is a figure;
+//   T4  a served zero is dropped from the chart or reads Not measured: a measured zero is a figure;
 //   T5  no timing is measured and an empty chart is drawn;
 //   T6  the bars are stacked or a total is drawn: the runtime serves no sum of these;
 //   T7  a bar's label or tooltip shows a number the chart made, not the served text;
@@ -58,32 +58,32 @@ describe('OMN-21015: where a run\'s time went', () => {
     render(<RunSummary decision={run()} />);
     const shown = fields();
     // OMN-21166 AC55: the tiles read as durations (4788 ms reads 4.8 s); a sub-second value keeps its ms.
-    expect([shown['Queue wait'], shown.Execution, shown.Duration]).toEqual(['12 ms', '4.8 s', '743 ms']);
+    expect([shown['Queue wait'], shown.Duration, shown['Model call time']]).toEqual(['12 ms', '4.8 s', '743 ms']);
     // The three timing tiles stand together, last in the summary, in the order the bars are drawn in.
-    expect(Object.keys(shown).slice(-3)).toEqual(['Queue wait', 'Execution', 'Duration']);
+    expect(Object.keys(shown).slice(-3)).toEqual(['Queue wait', 'Duration', 'Model call time']);
     expect(within(summary()).getByRole('figure', { name: 'Run timing' })).toBeTruthy();
     expect(harness.handed).toHaveLength(1);
-    expect(drawn()).toEqual([['Queue wait', 12], ['Execution', 4788], ['Duration', 743]]);
+    expect(drawn()).toEqual([['Queue wait', 12], ['Duration', 4788], ['Model call time', 743]]);
   });
 
-  it('T3: a timing the row does not carry has no bar and its tile says Not recorded', () => {
+  it('T3: a timing the row does not carry has no bar and its tile says Not measured', () => {
     render(<RunSummary decision={run({ queue_wait_ms: null })} />);
     const shown = fields();
-    expect(shown['Queue wait']).toBe('Not recorded');
-    expect(drawn()).toEqual([['Execution', 4788], ['Duration', 743]]);
+    expect(shown['Queue wait']).toBe('Not measured');
+    expect(drawn()).toEqual([['Duration', 4788], ['Model call time', 743]]);
     expect(within(summary()).getByRole('figure', { name: 'Run timing' }).textContent).toContain('No measured value to draw for: Queue wait');
   });
 
   // OMN-21166 part 13: with only the total measured, a one-bar chart would repeat the Duration tile, so none is drawn.
-  it('T11: with only the duration measured no chart is drawn and the other tiles say Not recorded', () => {
-    render(<RunSummary decision={run({ queue_wait_ms: null, execution_ms: undefined })} />);
+  it('T11: with only the duration measured no chart is drawn and the other tiles say Not measured', () => {
+    render(<RunSummary decision={run({ queue_wait_ms: null, latency_ms: undefined })} />);
     const shown = fields();
-    expect([shown['Queue wait'], shown.Execution, shown.Duration]).toEqual(['Not recorded', 'Not recorded', '743 ms']);
+    expect([shown['Queue wait'], shown.Duration, shown['Model call time']]).toEqual(['Not measured', '4.8 s', 'Not measured']);
     expect(within(summary()).queryByRole('figure', { name: 'Run timing' })).toBeNull();
   });
 
   it('T11: a duration with one other timing that is not a number draws no chart either', () => {
-    render(<RunSummary decision={run({ queue_wait_ms: 'soon', execution_ms: -5 })} />);
+    render(<RunSummary decision={run({ queue_wait_ms: 'soon', latency_ms: -5 })} />);
     expect(within(summary()).queryByRole('figure', { name: 'Run timing' })).toBeNull();
   });
 
@@ -91,22 +91,22 @@ describe('OMN-21015: where a run\'s time went', () => {
     render(<RunSummary decision={run()} />);
     const caption = within(summary()).getByRole('figure', { name: 'Run timing' }).querySelector('figcaption')?.textContent;
     // OMN-22168 (Lakshman 2026-11-05): the axis reads seconds, so the caption no longer says milliseconds.
-    expect(caption).toBe('Queue wait, Execution, Duration of this run, each as served, side by side and not added together.');
+    expect(caption).toBe('Queue wait, Duration, Model call time of this run, each as served, side by side and not added together.');
   });
 
   it('T3: a timing that is not a number is not drawn', () => {
     render(<RunSummary decision={run({ queue_wait_ms: 'soon' })} />);
-    expect(drawn()).toEqual([['Execution', 4788], ['Duration', 743]]);
+    expect(drawn()).toEqual([['Duration', 4788], ['Model call time', 743]]);
   });
 
   it.each([
-    ['a number', 12, [['Queue wait', 12], ['Execution', 4788], ['Duration', 743]]],
-    ['a decimal as text', '12', [['Queue wait', 12], ['Execution', 4788], ['Duration', 743]]],
-    ['a list holding a number', [12], [['Execution', 4788], ['Duration', 743]]],
-    ['a list holding text', ['12'], [['Execution', 4788], ['Duration', 743]]],
-    ['an object', { ms: 12 }, [['Execution', 4788], ['Duration', 743]]],
-    ['a boolean', true, [['Execution', 4788], ['Duration', 743]]],
-    ['an empty text', '', [['Execution', 4788], ['Duration', 743]]],
+    ['a number', 12, [['Queue wait', 12], ['Duration', 4788], ['Model call time', 743]]],
+    ['a decimal as text', '12', [['Queue wait', 12], ['Duration', 4788], ['Model call time', 743]]],
+    ['a list holding a number', [12], [['Duration', 4788], ['Model call time', 743]]],
+    ['a list holding text', ['12'], [['Duration', 4788], ['Model call time', 743]]],
+    ['an object', { ms: 12 }, [['Duration', 4788], ['Model call time', 743]]],
+    ['a boolean', true, [['Duration', 4788], ['Model call time', 743]]],
+    ['an empty text', '', [['Duration', 4788], ['Model call time', 743]]],
   ])('T12: a queue wait served as %s is drawn only when it is one number', (_, served, bars) => {
     render(<RunSummary decision={run({ queue_wait_ms: served })} />);
     expect(drawn()).toEqual(bars);
@@ -115,7 +115,7 @@ describe('OMN-21015: where a run\'s time went', () => {
   it('T4: a served zero is a figure: it keeps its tile, its place in the chart and its label', () => {
     render(<RunSummary decision={run({ queue_wait_ms: 0 })} />);
     expect(fields()['Queue wait']).toBe('0 ms');
-    expect(drawn()).toEqual([['Queue wait', 0], ['Execution', 4788], ['Duration', 743]]);
+    expect(drawn()).toEqual([['Queue wait', 0], ['Duration', 4788], ['Model call time', 743]]);
     expect(harness.handed[0]!.series[0].label.formatter({ dataIndex: 0 })).toBe('0 ms');
     expect(within(summary()).getByRole('figure', { name: 'Run timing' }).textContent).not.toContain('No measured value');
   });
@@ -124,7 +124,7 @@ describe('OMN-21015: where a run\'s time went', () => {
     render(<RunSummary decision={run({ queue_wait_ms: null, execution_ms: null, latency_ms: null })} />);
     expect(within(summary()).queryByRole('figure')).toBeNull();
     expect(harness.handed).toHaveLength(0);
-    expect(fields().Duration).toBe('Not recorded');
+    expect(fields().Duration).toBe('Not measured');
   });
 
   it('T6: one bar per timing, never stacked, and no total', () => {
@@ -146,7 +146,7 @@ describe('OMN-21015: where a run\'s time went', () => {
     expect(option.series[0].label.formatter({ dataIndex: 1 })).toBe('4.8 s');
     expect(option.series[0].label.formatter({ dataIndex: 2 })).toBe('743 ms');
     // OMN-23330 AC9 supersedes the served text here: the exact figure is the whole millisecond, grouped (served "0743").
-    expect(option.tooltip.formatter({ dataIndex: 2, name: 'Duration', marker: '' })).toBe('Duration: 743 ms');
+    expect(option.tooltip.formatter({ dataIndex: 2, name: 'Model call time', marker: '' })).toBe('Model call time: 743 ms');
   });
 
   it('T8: a timing keeps its colour when another is not measured', () => {
@@ -159,7 +159,7 @@ describe('OMN-21015: where a run\'s time went', () => {
     expect(fewer).toEqual([all[1], all[2]]);
   });
 
-  it('T9: the requested model is shown as served, and a missing one says Not recorded', () => {
+  it('T9: the requested model is shown as served, and a missing one says Not measured', () => {
     render(<RunSummary decision={run()} />);
     expect(fields()['Requested model']).toBe('asked-model');
     // The answering model keeps its own tile; the two are never merged.

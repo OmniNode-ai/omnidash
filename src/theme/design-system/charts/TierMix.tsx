@@ -117,7 +117,7 @@ function TierMixPlot({ shares: shaped, nameOf: tierLabel, variant = 'donut' }: {
                   onClick={() => setSelected(segment.name)}>
                   <span className="local-tier-bar-name"><span className="local-share-swatch" data-tone={TIER_TONES[segment.name] ?? 'other'} style={tierStyle(segment.name)} aria-hidden="true" />{tierLabel(segment.name)}</span>
                   <span className="local-tier-bar-track" aria-hidden="true"><span data-testid={`tier-bar-${segment.name}`} style={{ width: `${segment.share * 100}%` }} /></span>
-                  <span className="local-tier-bar-value"><strong>{percent(segment.share)}</strong><span>{segment.count == null ? 'Count not recorded' : `${formatDashboardCount(segment.count)} runs`}</span></span>
+                  <span className="local-tier-bar-value"><strong>{percent(segment.share)}</strong><span>{segment.count == null ? 'Count not measured' : `${formatDashboardCount(segment.count)} runs`}</span></span>
                 </button>
               </li>
             ))}

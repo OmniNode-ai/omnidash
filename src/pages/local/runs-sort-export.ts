@@ -1,6 +1,7 @@
 // OMN-21166 part 14 (AC75, AC76): sort the Runs list by time, duration or cost, and export exactly the rows the search
 // and filters show. Both read the served rows only; nothing here adds, rounds or fills a value.
 
+import { runDurationOf } from '@/contracts/run-duration';
 import { csvCell } from '@/theme/format/csv-cell';
 
 type Row = Record<string, unknown>;
@@ -30,7 +31,7 @@ export function sortRuns<T extends Row>(rows: readonly T[], key: RunSortKey, dir
   sessionFor: (runId: string) => Row | undefined): T[] {
   const valueOf = (run: T): number | null => {
     if (key === 'created') return recordedTime(run.created_at);
-    if (key === 'duration') return recordedNumber(run.latency_ms);
+    if (key === 'duration') return recordedNumber(runDurationOf(run));
     const session = sessionFor(String(run.correlation_id));
     const sessionCost = recordedNumber(session?.local_cost_usd);
     return sessionCost ?? recordedNumber(run.cost_usd);

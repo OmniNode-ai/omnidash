@@ -1,7 +1,8 @@
 import { formatDashboardCount, formatFullCount } from '@/theme/format';
 
-import { formatDashboardUsd } from '@/theme/format';
+import { formatDashboardUsd, formatShare } from '@/theme/format';
 import { formatDuration } from '@/theme/format';
+import { NOT_MEASURED } from '@/theme/format';
 import { createContext, useContext, useId, useState, type CSSProperties, type ReactNode } from 'react';
 import { millisecondsAxisLabel } from '@/theme/design-system/charts/bar-charts';
 import { passBand } from '@/pages/local/plain-text';
@@ -170,13 +171,14 @@ function PassRateTrend({ days }: { days: InsightDay[] }) {
   const [hover, setHover] = useState<number | null>(null);
   const rates = days.map(day => day.passRate);
   const known = rates.filter((rate): rate is number => rate !== null);
-  const min = known.length ? Math.max(0, Math.floor(Math.min(...known) / 10) * 10 - 10) : 0;
-  const labels = days.map(day => `${dayLabel(day.day)}: ${day.passRate === null ? 'no verdicts' : `${fmtFixed(day.passRate, 1)}% passed`} (${verdictCoverage(day.passed + day.failed, day.runs)})`);
+  // OMN-24616 AC2: rates are 0-1 shares; the scale floor is the lowest share rounded down to a tenth, less one tenth.
+  const min = known.length ? Math.max(0, Math.floor(Math.min(...known) * 10) / 10 - 0.1) : 0;
+  const labels = days.map(day => `${dayLabel(day.day)}: ${day.passRate === null ? 'no verdicts' : `${formatShare(day.passRate)} passed`} (${verdictCoverage(day.passed + day.failed, day.runs)})`);
   const active = hover === null ? null : days[hover]!;
   return (
     <ChartCard title="Pass rate per day" concept="pass-rate-daily" delay={60}>
-      <ChartReadout active={active !== null} day={active?.day} text={active ? <>{dayLabel(active.day)} · <span data-field-tone="pass" data-field-unavailable={active.passRate === null}>{active.passRate === null ? 'no verdicts' : `${fmtFixed(active.passRate, 1)}% passed`}</span> · <span data-field-tone="basis">{verdictCoverage(active.passed + active.failed, active.runs)}</span></> : `Scale from ${min}% to 100%`} />
-      <LinePlot label="Pass rate per day" values={rates} keys={days.map(day => day.day)} labels={labels} min={min} max={100}
+      <ChartReadout active={active !== null} day={active?.day} text={active ? <>{dayLabel(active.day)} · <span data-field-tone="pass" data-field-unavailable={active.passRate === null}>{active.passRate === null ? 'no verdicts' : `${formatShare(active.passRate)} passed`}</span> · <span data-field-tone="basis">{verdictCoverage(active.passed + active.failed, active.runs)}</span></> : `Scale from ${Math.round(min * 100)}% to 100%`} />
+      <LinePlot label="Pass rate per day" values={rates} keys={days.map(day => day.day)} labels={labels} min={min} max={1}
         hover={hover} onHover={setHover} color={PASS} />
       {/* OMN-23330 AC31: the kit's one DayAxis, first and last day on the line's end points. */}
       <DayAxis days={days.map(day => day.day)} ticks={new Set([0, days.length - 1])} place="point" format={dayLabel} />
@@ -222,7 +224,7 @@ function TaskMix({ runs }: { runs: InsightRun[] }) {
           const look = taskLook(group.key);
           const judged = group.passed + group.failed;
           const name = group.key === NOT_RECORDED ? NOT_RECORDED : readable(group.key);
-          const pass = judged ? `${Math.round((group.passed / judged) * 100)}%` : 'No verdicts';
+          const pass = judged ? formatShare(group.passed / judged) : 'No verdicts';
           return (
             <li key={group.key} className="ins-list-row ins-task-row" style={{ '--ins-swatch': look.color } as CSSProperties}
               aria-label={`${name}: ${count(group.runs)} runs, pass rate ${pass}, ${verdictCoverage(judged, group.runs)}`}>
@@ -248,7 +250,7 @@ function DurationHistogram({ runs }: { runs: InsightRun[] }) {
   const name = (index: number) => durationBucketLabel(index);
   const median = summary(runs).medianLatency;
   return (
-    <ChartCard title="How long runs take" concept="duration" note={`${count(unrecorded)} not recorded`} delay={240}>
+    <ChartCard title="How long runs take" concept="duration" note={`${count(unrecorded)} not measured`} delay={240}>
       <ChartReadout active={hover !== null} text={hover === null ? (median === null ? 'No durations recorded' : <>Median <span data-field-tone="duration">{duration(median)}</span></>) : <><span data-field-tone="duration">{name(hover)}</span> · <span data-field-tone="count">{count(buckets[hover]!)} runs</span></>} />
       <Histogram label="Duration buckets" hover={hover} onHover={setHover} color="var(--ds-field-duration)"
         buckets={buckets.map((runsInBucket, index) => ({ key: String(index), ariaLabel: `${name(index)}: ${runsWord(runsInBucket)}`, value: runsInBucket }))} />
@@ -271,7 +273,7 @@ function ModelScoreboard({ runs }: { runs: InsightRun[] }) {
           const judged = group.passed + group.failed;
           const rate = judged ? (group.passed / judged) * 100 : null;
           return { key: group.key, name: group.key, model: group.key, value: rate, basis: 'measured' as const, color: modelColor(group.key),
-            display: rate === null ? 'No verdicts' : `${Math.round(rate)}%`, title: `${count(group.runs)} runs · ${verdictCoverage(judged, group.runs)}` };
+            display: rate === null ? 'No verdicts' : formatShare(group.passed / judged), title: `${count(group.runs)} runs · ${verdictCoverage(judged, group.runs)}` };
         })}
         // Each model's verdict coverage in plain text under the bars, so keyboard and touch readers have it too.
         footnote={groups.map(group => `${group.key}: ${verdictCoverage(group.passed + group.failed, group.runs)}`).join(' · ')} />
@@ -334,7 +336,7 @@ export function TokensPerDay({ days }: { days: InsightDay[] }) {
   const [hover, setHover] = useState<number | null>(null);
   // The scale comes from the days that recorded tokens; a day without a count draws no bar.
   const max = Math.max(1, ...days.flatMap(day => [day.tokensIn, day.tokensOut]).filter((value): value is number => value !== null));
-  const side = (value: number | null, missing: number, direction: 'in' | 'out') => `${value === null ? 'not recorded' : formatFullCount(value)} ${direction}${value !== null && missing > 0 ? ` (partial: ${count(missing)} ${missing === 1 ? 'run' : 'runs'} not recorded)` : ''}`;
+  const side = (value: number | null, missing: number, direction: 'in' | 'out') => `${value === null ? 'not measured' : formatFullCount(value)} ${direction}${value !== null && missing > 0 ? ` (partial: ${count(missing)} ${missing === 1 ? 'run' : 'runs'} not measured)` : ''}`;
   const label = (day: InsightDay) => `${dayLabel(day.day)}: ${side(day.tokensIn, day.tokensInUnmeasured, 'in')}, ${side(day.tokensOut, day.tokensOutUnmeasured, 'out')}`;
   const active = hover === null ? latestServed(days, day => day.tokensIn !== null || day.tokensOut !== null) : days[hover]!;
   const [location] = useLocation();
@@ -389,7 +391,7 @@ export function PassRateSparkline({ part = 'all' }: { part?: 'all' | 'headline' 
   const comparisonDays = window.kind === 'days' ? window.days : MAX_ALL_TIME_DAYS;
   const comparison = window.kind === 'days' ? compareWindow(context.decisions, context.now, window.days) : null;
   const current = summary(currentRuns);
-  const rate = current.passRate === null ? 'Not recorded' : `${fmtFixed(current.passRate, 1)}%`;
+  const rate = current.passRate === null ? NOT_MEASURED : formatShare(current.passRate);
   const deltaText = comparison === null ? null
     : comparison.passRateDeltaPoints === null
       ? comparison.previousComplete
@@ -462,7 +464,8 @@ function withServedTotals(days: readonly InsightDay[], servedDays: readonly Serv
     return {
       ...day,
       runs: served.runs, passed: served.passed, failed: served.failed, unrecorded: served.unrecorded,
-      passRate: served.passed + served.failed > 0 ? (served.passed / (served.passed + served.failed)) * 100 : null,
+      // OMN-24616 AC2: a 0-1 share, as summary() holds it.
+      passRate: served.passed + served.failed > 0 ? served.passed / (served.passed + served.failed) : null,
       tokensIn: served.tokensIn, tokensOut: served.tokensOut,
       tokensInUnmeasured: served.tokensInUnmeasured, tokensOutUnmeasured: served.tokensOutUnmeasured,
     };
@@ -486,7 +489,7 @@ function ChartHeading({ title, concept, detail }: { title: string; concept: stri
 }
 
 function usd(value: number | null): string {
-  return value === null ? 'Not served' : formatDashboardUsd(value);
+  return value === null ? NOT_MEASURED : formatDashboardUsd(value);
 }
 
 function delta(value: number | null, format: (value: number) => string): string {
@@ -499,19 +502,19 @@ function RunWindowKpis({ runs, decisions, label, comparisonEnabled, now, days }:
 }) {
   const comparison = comparisonEnabled ? compareWindow(decisions, now, days) : null;
   const selectedLabel = label;
-  const durationMissing = runs.filter(run => run.latencyMs === null).length;
+  const durationMissing = runs.filter(run => run.durationMs === null).length;
   const summaryNow = summary(runs);
   const runDelta = !comparisonEnabled ? null
     : comparison?.previousComplete && comparison.runsDelta !== null
       ? delta(comparison.runsDelta, value => `${value} runs`) : 'Previous window not fully returned';
   const medianDelta = !comparisonEnabled ? null
     : comparison?.previousComplete && comparison.medianLatencyDelta !== null
-      ? delta(comparison.medianLatencyDelta, value => `${fmtFixed((value / 1000), 2)} s`) : 'Previous window not fully returned';
-  const median = summaryNow.medianLatency === null ? 'Not recorded' : duration(summaryNow.medianLatency);
+      ? delta(comparison.medianLatencyDelta, value => `${value < 0 ? '-' : ''}${duration(Math.abs(value))}`) : 'Previous window not fully returned';
+  const median = summaryNow.medianLatency === null ? NOT_MEASURED : duration(summaryNow.medianLatency);
   return (
     <section className="ins-window-kpis ins-window-kpis--runs" aria-label={`Runs in ${selectedLabel}`}>
       <KpiTile tone="count" label="Runs" value={count(summaryNow.runs)}><small>{selectedLabel} · counted from the returned decision rows</small>{runDelta !== null && <small>{runDelta}</small>}</KpiTile>
-      <KpiTile tone="duration" label="Median duration" value={median} unavailable={summaryNow.medianLatency === null}><small>{count(durationMissing)} duration values not recorded</small>{medianDelta !== null && <small>{medianDelta}</small>}</KpiTile>
+      <KpiTile tone="duration" label="Median duration" value={median} unavailable={summaryNow.medianLatency === null}><small>{count(durationMissing)} duration values not measured</small>{medianDelta !== null && <small>{medianDelta}</small>}</KpiTile>
     </section>
   );
 }
@@ -525,14 +528,14 @@ function MeteringWindowKpis({ current, previous, days, label, comparisonEnabled,
   const savedReady = unavailable === null && current.available && current.saved !== null;
   const servedDayCount = current.days.filter(day => day.served).length;
   const savedPct = current.saved !== null && current.counterfactual !== null && current.counterfactual > 0
-    ? `${fmtFixed((current.saved / current.counterfactual * 100), 1)}% below ${current.baseline ?? 'the served baseline'}` : 'Baseline comparison not recorded';
+    ? `${fmtFixed((current.saved / current.counterfactual * 100), 1)}% below ${current.baseline ?? 'the served baseline'}` : 'Baseline comparison not measured';
   const paidNote = unavailable ?? current.reason ?? (!current.windowComplete
     ? `${servedDayCount} of ${days} daily rows served; the selected window is incomplete.`
-    : current.spend === null ? 'One or more daily spend values are not recorded; paid total unavailable.'
+    : current.spend === null ? 'One or more daily spend values are not measured; paid total unavailable.'
       : `${servedDayCount} served day rows.`);
   const savedNote = unavailable ?? current.reason ?? (!current.windowComplete
     ? `${servedDayCount} of ${days} daily rows served; the selected window is incomplete.`
-    : current.saved === null ? 'One or more daily savings values are not recorded; saved total unavailable.'
+    : current.saved === null ? 'One or more daily savings values are not measured; saved total unavailable.'
       : `${servedDayCount} served day rows · ${savedPct}`);
   const previousComplete = comparisonEnabled && unavailable === null && current.available && current.windowComplete
     && previous !== null && previous.available && previous.windowComplete;
@@ -543,8 +546,8 @@ function MeteringWindowKpis({ current, previous, days, label, comparisonEnabled,
     : previousComplete && current.saved !== null && previous.saved !== null
       ? delta(current.saved - previous.saved, value => usd(value)) : 'Previous window not fully returned';
   return <section className="ins-window-kpis ins-window-kpis--metering" aria-label={`Metered spend summary for ${label}`}>
-    <KpiTile tone="cost" label="You paid" value={paidReady ? usd(current.spend) : 'Unavailable'} unavailable={!paidReady}><small>{paidNote}</small>{paidDelta !== null && <small>{paidDelta}</small>}</KpiTile>
-    <KpiTile tone="savings" label="Saved" value={savedReady ? usd(current.saved) : 'Unavailable'} unavailable={!savedReady}><small>{savedNote}</small>{savedDelta !== null && <small>{savedDelta}</small>}</KpiTile>
+    <KpiTile tone="cost" label="You paid" value={paidReady ? usd(current.spend) : NOT_MEASURED} unavailable={!paidReady}><small>{paidNote}</small>{paidDelta !== null && <small>{paidDelta}</small>}</KpiTile>
+    <KpiTile tone="savings" label="Saved" value={savedReady ? usd(current.saved) : NOT_MEASURED} unavailable={!savedReady}><small>{savedNote}</small>{savedDelta !== null && <small>{savedDelta}</small>}</KpiTile>
   </section>;
 }
 
@@ -556,9 +559,9 @@ function MeteringAllTimeKpis({ rows, label, unavailable }: { rows: readonly unkn
   const total = meteringAllTimeTotals(rows);
   const reason = unavailable ?? total.reason;
   const paidReady = reason === null && total.spend !== null;
-  const paidNote = reason ?? (total.spend === null ? 'The all-time spend total is not recorded.' : 'All-time total, as served.');
+  const paidNote = reason ?? (total.spend === null ? 'The all-time spend total is not measured.' : 'All-time total, as served.');
   return <section className="ins-window-kpis ins-window-kpis--metering" aria-label={`Metered spend summary for ${label}`}>
-    <KpiTile tone="cost" label="You paid" value={paidReady ? usd(total.spend) : 'Unavailable'} unavailable={!paidReady}><small>{paidNote}</small></KpiTile>
+    <KpiTile tone="cost" label="You paid" value={paidReady ? usd(total.spend) : NOT_MEASURED} unavailable={!paidReady}><small>{paidNote}</small></KpiTile>
   </section>;
 }
 
@@ -584,15 +587,15 @@ function MoneyWindowCharts({ rows, now, days, unavailable }: { rows: readonly un
         {selected && <p className="ins-readout" role="status">{detail(selected)}</p>}
         <SpendColumns label="Spend vs all-cloud by UTC day" max={max} onHover={setActiveSpend} days={data.days.map(day => ({
           key: day.day, ariaLabel: detail(day), dayText: dateLabel(day.day), spend: day.spend, saved: day.saved, baseline: day.counterfactual,
-          valuesText: `${day.spend === null ? 'Paid not recorded' : usd(day.spend)} · ${day.saved === null ? 'saved not recorded' : `${usd(day.saved)} saved`}` }))} />
+          valuesText: `${day.spend === null ? 'Paid not measured' : usd(day.spend)} · ${day.saved === null ? 'saved not measured' : `${usd(day.saved)} saved`}` }))} />
         <figcaption>Saved uses the served daily savings value. {data.windowComplete ? 'Returned rows cover the selected window.' : 'The returned rows do not cover the full selected window.'}{data.days.some(day => day.served && day.saved === null) ? ' At least one served day has no recorded savings value.' : ''}</figcaption>
       </figure>
       <figure className="local-chart ins-cumulative-chart" aria-label="Cumulative savings">
         <ChartHeading concept="savings" title="Cumulative savings" detail={`${days === 1 ? 'Today (UTC)' : `Last ${days} UTC days`} · ${data.baseline ?? 'baseline not recorded'}`} />
-        <p className="ins-readout" role="status">{activeCumulative === null ? `${data.windowComplete && data.saved !== null ? 'Window total' : 'Served rows only · cumulative incomplete'}: ${usd(data.cumulativeSaved[data.cumulativeSaved.length - 1] ?? null)}` : `${dateLabel(data.days[activeCumulative]!.day)} · cumulative ${usd(data.cumulativeSaved[activeCumulative] ?? null)}${!data.days[activeCumulative]!.served ? ' · no served day row; total carried forward' : data.days[activeCumulative]!.saved === null ? ' · savings value not recorded; cumulative unavailable' : ''}`}</p>
+        <p className="ins-readout" role="status">{activeCumulative === null ? `${data.windowComplete && data.saved !== null ? 'Window total' : 'Served rows only · cumulative incomplete'}: ${usd(data.cumulativeSaved[data.cumulativeSaved.length - 1] ?? null)}` : `${dateLabel(data.days[activeCumulative]!.day)} · cumulative ${usd(data.cumulativeSaved[activeCumulative] ?? null)}${!data.days[activeCumulative]!.served ? ' · no served day row; total carried forward' : data.days[activeCumulative]!.saved === null ? ' · savings value not measured; cumulative unavailable' : ''}`}</p>
         <CumulativeColumns label="Cumulative savings by UTC day" max={cumulativeMax} onHover={setActiveCumulative}
           days={data.cumulativeSaved.map((value, index) => ({ key: data.days[index]!.day, value,
-            ariaLabel: `${dateLabel(data.days[index]!.day)}: cumulative ${usd(value)}${!data.days[index]!.served ? ', no served day row; prior total carried forward' : data.days[index]!.saved === null ? ', savings value not recorded' : ''}` }))} />
+            ariaLabel: `${dateLabel(data.days[index]!.day)}: cumulative ${usd(value)}${!data.days[index]!.served ? ', no served day row; prior total carried forward' : data.days[index]!.saved === null ? ', savings value not measured' : ''}` }))} />
         <figcaption>Missing rows carry the prior total forward. A served row without a savings value makes the cumulative total unavailable from that day onward.</figcaption>
       </figure>
     </ChartSection>
@@ -746,7 +749,7 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
                 hint: plural(runs.filter(run => run.status === 'failed').length, 'failed run'),
                 panel: () => <FailureCauses runs={runs} onInspectFailure={onInspectFailure} /> },
               { id: 'duration', label: 'How long runs take', tone: 'var(--ds-field-duration)', icon: <Timer size={18} />,
-                hint: `${formatDashboardCount(runs.filter(run => run.latencyMs !== null).length)} timed`, panel: () => <DurationHistogram runs={runs} /> },
+                hint: `${formatDashboardCount(runs.filter(run => run.durationMs !== null).length)} timed`, panel: () => <DurationHistogram runs={runs} /> },
               { id: 'models', label: 'Model scoreboard', tone: 'var(--ds-field-quality-model)', icon: <Bot size={18} />,
                 hint: plural(distinct(run => run.model), 'model'), panel: () => <ModelScoreboard runs={runs} /> },
               { id: 'hours', label: 'When runs happen', tone: 'var(--ds-field-activity-hourly)', icon: <Clock3 size={18} />,

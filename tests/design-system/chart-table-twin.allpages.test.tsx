@@ -34,18 +34,18 @@ const none = () => undefined;
 const DAYS = ['2026-11-08', '2026-11-09'];
 
 const CASES: ReadonlyArray<{ name: string; icon: string; label: string; chart: () => ReactElement; rows: string[][] }> = [
-  { name: 'DayColumns', icon: 'chart-column-stacked', label: 'Runs per day', rows: [['Nov 9', '5', 'Not recorded'], ['Nov 8', '3', '1']],
+  { name: 'DayColumns', icon: 'chart-column-stacked', label: 'Runs per day', rows: [['Nov 9', '5', 'Not measured'], ['Nov 8', '3', '1']],
     chart: () => <DayColumns label="Runs per day" max={5} hover={null} onHover={none} dayLabel={k => k}
       days={[{ key: DAYS[0]!, ariaLabel: 'a', tick: true, values: [{ key: 'passed', value: 3, color: 'g', label: '3' }, { key: 'failed', value: 1, color: 'r', label: '1' }] },
         { key: DAYS[1]!, ariaLabel: 'b', tick: true, values: [{ key: 'passed', value: 5, color: 'g', label: '5' }, { key: 'failed', value: null, color: 'r', label: '' }] }]} /> },
   { name: 'Histogram', icon: 'chart-column', label: 'Durations', rows: [['under 1 s', '4'], ['1 to 5 s', '2']],
     chart: () => <Histogram label="Durations" onHover={none} color="blue" buckets={[{ key: 'a', ariaLabel: 'under 1 s', value: 4 }, { key: 'b', ariaLabel: '1 to 5 s', value: 2 }]} /> },
-  { name: 'LinePlot', icon: 'chart-line', label: 'Pass rate per day', rows: [['Nov 9', 'Not recorded'], ['Nov 8', '50.0%']],
+  { name: 'LinePlot', icon: 'chart-line', label: 'Pass rate per day', rows: [['Nov 9', 'Not measured'], ['Nov 8', '50.0%']],
     chart: () => <LinePlot label="Pass rate per day" keys={DAYS} labels={DAYS} values={[0.5, null]} min={0} max={1} hover={null} onHover={none} color="g" /> },
   { name: 'MultiLinePlot', icon: 'chart-spline', label: 'Daily trend', rows: [['Nov 9', '12', '$3.00'], ['Nov 8', '10', '$2.50']],
     chart: () => <MultiLinePlot label="Daily trend" keys={DAYS} labels={DAYS} hover={null} onHover={none}
       lines={[{ key: 'runs', color: 'a', values: [10, 12] }, { key: 'spend', color: 'b', values: [2.5, 3] }]} /> },
-  { name: 'SpendColumns', icon: 'chart-column', label: 'Spend per day', rows: [['Nov 8', '$1.00', '$2.00', 'Not recorded']],
+  { name: 'SpendColumns', icon: 'chart-column', label: 'Spend per day', rows: [['Nov 8', '$1.00', '$2.00', 'Not measured']],
     chart: () => <SpendColumns label="Spend per day" max={3} onHover={none} days={[{ key: DAYS[0]!, ariaLabel: 'a', dayText: 'Nov 8', valuesText: '', spend: 1, saved: 2, baseline: null }]} /> },
   { name: 'CumulativeColumns', icon: 'chart-column', label: 'Saved so far', rows: [['Nov 8', '$7.00']],
     chart: () => <CumulativeColumns label="Saved so far" max={7} onHover={none} days={[{ key: DAYS[0]!, ariaLabel: 'a', value: 7 }]} /> },

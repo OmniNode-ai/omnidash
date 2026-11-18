@@ -41,9 +41,9 @@ describe('OMN-23330 AC13: the Workflow timeline says "not recorded" once per ste
     const { container } = render(<RunTimeline steps={[{ step_sequence: 1, step_kind: 'provider_call', outcome: 'succeeded',
       started_at: '2026-11-10T01:00:00Z' }]} />);
     const [step] = steps(container);
-    expect(count(step!.textContent ?? '')).toBe(1);
+    // OMN-24616 AC6 (Lakshman 2026-11-17): the missing duration is a figure, so the one statement reads Not measured.
+    expect(count(step!.textContent ?? '')).toBe(0);
     const said = step!.querySelector('[data-not-recorded]')?.textContent ?? '';
-    expect(said).toContain('duration');
-    expect(said).not.toContain('start');
+    expect(said).toBe('Not measured: duration');
   });
 });

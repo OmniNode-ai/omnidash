@@ -1,5 +1,7 @@
 // OMN-23330 AC24: part of the local pages, split out of LocalDashboardPage.tsx (3,926 lines) with no change to what
 // any page draws. The Runs page: the run list, its table, filters and column widths.
+import { NOT_MEASURED } from '@/theme/format';
+import { runDurationOf } from '@/contracts/run-duration';
 import { formatDashboardCount } from '@/theme/format';
 import { readableTime } from '@/theme/format';
 import { exactMs } from '@/theme/format';
@@ -28,7 +30,7 @@ import { ConceptIcon, FieldIcon } from '@/components/dashboard/FieldIcon';
 import { fieldTone, isUnavailableField } from '@/components/dashboard/field-identity';
 import { useModelColor, useModelIdentityStyle } from '@/components/dashboard/model-tiers';
 import { fixed as fmtFixed, localeDate as fmtLocaleDate } from '@/theme/format';
-import { CellTime, COST_NOT_MEASURED, CopyButton, CostCell, FIRST_RUN_COMMAND, Readable, type Row, RunRef, type RunViewProps, age, asRecords, byRunTime, causeOf, causeTextOf, costOf, displayCauseOf, duration, failureDetailOf, indexBy, isMissing, modelOrUnknown, newestFirst, recorded, recordedTokens, runModelledCell, statusOf, tierOf, timeOf, tokensTitle, utcDay } from '@/pages/local/page-shared';
+import { CellTime, COST_NOT_MEASURED, CopyButton, CostCell, FIRST_RUN_COMMAND, Readable, type Row, RunRef, type RunViewProps, age, asRecords, byRunTime, causeOf, causeTextOf, costOf, displayCauseOf, duration, failureDetailOf, indexBy, isMissing, measuredText, modelOrUnknown, newestFirst, recorded, recordedTokens, runModelledCell, statusOf, tierOf, timeOf, tokensTitle, utcDay } from '@/pages/local/page-shared';
 import { OutcomePill } from '@/pages/local/page-workflow';
 import { RunChartsSlot, RunRoutingSlot } from '@/pages/local/page-headline';
 
@@ -46,12 +48,12 @@ export function LastRunCard({ decisions, sessions, now = Date.now(), compact = f
     ...(status === 'failed' ? [['Cause', causeTextOf(last)] as [string, ReactNode]] : []),
     ['Model', modelOrUnknown(last.model_name)],
     ['Age', age(last.written_at, now)],
-    ['Quality score', recorded(last.actual_score)],
+    ['Quality score', measuredText(last.actual_score)],
     ['Run', <RunRef id={last.correlation_id} key="run" />],
     // OMN-20162's columns: the backend and host of the attempt that accepted the run.
     ['Backend', recorded(last.backend_id)],
     ['Host', recorded(last.host)],
-    ['Duration', duration(last.latency_ms)],
+    ['Duration', duration(runDurationOf(last))],
     ['Tokens in', recordedTokens(last.tokens_input)],
     ['Tokens out', recordedTokens(last.tokens_output)],
     ['Cost', costOf(session, last)],
@@ -105,7 +107,7 @@ export function OverviewRunPreview({ decisions, sessions, now = Date.now() }: Ru
     <ul className="local-run-preview" aria-label="Recent runs preview">{recent.map((run, index) => <li key={String(run.correlation_id ?? index)}>
       {/* OMN-21166 Maple grid: one dense row per run (id, model, outcome, duration, age); the whole id is the link's name. */}
       <div><RunRef id={run.correlation_id} short /><span data-field-tone="model" data-field-unavailable={isUnavailableField(modelOrUnknown(run.model_name))}>{modelOrUnknown(run.model_name)}</span></div>
-      <div><OutcomePill value={statusOf(run)} /><span data-field-tone="duration" data-field-unavailable={isMissing(run.latency_ms)}>{duration(run.latency_ms)}</span><span className="local-dashboard-caption">{age(run.written_at, now)}</span></div>
+      <div><OutcomePill value={statusOf(run)} /><span data-field-tone="duration" data-field-unavailable={isMissing(runDurationOf(run))}>{duration(runDurationOf(run))}</span><span className="local-dashboard-caption">{age(run.written_at, now)}</span></div>
     </li>)}</ul>
     <p className="local-dashboard-caption local-recent-footer"><Link href={PAGE_PATHS['local-runs']}>View all runs <ArrowUpRight size={12} aria-hidden="true" /></Link></p>
     <details className="local-recent-fields">
@@ -136,7 +138,7 @@ export function RecentRunsTable({ decisions, sessions, now = Date.now(), showCha
   const listed: ListedRun[] = recent.map(run => ({
     id: typeof run.correlation_id === 'string' && run.correlation_id !== '' ? run.correlation_id : null,
     status: statusOf(run), model: modelOrUnknown(run.model_name),
-    duration: run.latency_ms, tokensIn: run.tokens_input, tokensOut: run.tokens_output,
+    duration: runDurationOf(run), tokensIn: run.tokens_input, tokensOut: run.tokens_output,
   }));
   return (
     <>
@@ -178,7 +180,7 @@ export function RecentRunsTable({ decisions, sessions, now = Date.now(), showCha
               <td data-label="Status"><span className="local-recent-value"><OutcomePill value={statusOf(decision)} /></span></td>
               <td className="local-dashboard-cell-token" data-label="Model"><span className="local-recent-value">{modelOrUnknown(decision.model_name)}</span></td>
               <td data-label="Cost"><span className="local-recent-value">{costOf(session, decision)}</span></td>
-              <td data-label="Duration"><span className="local-recent-value">{duration(decision.latency_ms)}</span></td>
+              <td data-label="Duration"><span className="local-recent-value">{duration(runDurationOf(decision))}</span></td>
               <td data-label="Age"><span className="local-recent-value">{age(decision.written_at, now)}</span></td>
               <td data-label="Cause">{causeOf(decision) === 'none' ? <NoFailure /> : <span className="local-recent-value" data-failure-cause={causeOf(decision)} title={failureDetailOf(decision) ? failureDetailText(failureDetailOf(decision)!) : undefined}>{displayCauseOf(decision)}</span>}</td>
               <td data-label="Task type"><span className="local-recent-value">{isMissing(decision.task_type) ? recorded(decision.task_type) : taskLabel(decision.task_type)}</span></td>
@@ -188,7 +190,7 @@ export function RecentRunsTable({ decisions, sessions, now = Date.now(), showCha
               <td data-label="Tokens out" data-field-tone="tokens-out" data-field-unavailable={isMissing(decision.tokens_output)} title={tokensTitle(decision.tokens_output, 'out')}><span className="local-recent-value">{recordedTokens(decision.tokens_output)}</span></td>
               <td data-label="Basis"><span className="local-recent-value">{recorded(session?.usage_source)}</span></td>
               <td data-label="Route tier"><span className="local-recent-value">{tierOf(decision)}</span></td>
-              <td data-label="Quality score"><span className="local-recent-value">{recorded(decision.actual_score)}</span></td>
+              <td data-label="Quality score"><span className="local-recent-value">{measuredText(decision.actual_score)}</span></td>
             </tr>;
           })}</tbody>
       </DataTable>
@@ -270,8 +272,12 @@ function runDayKey(value: unknown): string | null {
  * Run table items 5 and 9 (Lakshman 2026-11-05): a routing value shown only when it is the exception. The usual value
  * (finish reason stop, no escalation) is a quiet dash that names it in its title; a value not served still says so.
  */
-function QuietUnlessUnusual({ value, usual, usualText }: { value: unknown; usual: (text: string) => boolean; usualText: string }) {
-  if (isMissing(value)) return <>{recorded(value)}</>;
+function QuietUnlessUnusual({ value, usual, usualText, figure = false }: {
+  value: unknown; usual: (text: string) => boolean; usualText: string;
+  /** A count (escalations) reads Not measured when missing; a label (finish reason) Not recorded (OMN-24616 AC6). */
+  figure?: boolean;
+}) {
+  if (isMissing(value)) return <>{figure ? measuredText(value) : recorded(value)}</>;
   const text = String(value);
   return usual(text) ? <span className="local-run-quiet" title={usualText}>—</span> : <span className="local-run-unusual">{text}</span>;
 }
@@ -410,7 +416,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
     id: typeof run.correlation_id === 'string' && run.correlation_id !== '' ? run.correlation_id : null,
     status: statusOf(run),
     model: modelOrUnknown(run.model_name),
-    duration: run.latency_ms,
+    duration: runDurationOf(run),
     tokensIn: run.tokens_input,
     tokensOut: run.tokens_output,
     cost: isMissing(bySession.get(String(run.correlation_id))?.local_cost_usd) ? run.cost_usd : bySession.get(String(run.correlation_id))?.local_cost_usd,
@@ -649,12 +655,12 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                   {showRouting && <>
                     <td data-label="Requested model" className="local-dashboard-cell-token" data-cell="requested-model">{recorded(run.requested_model)}</td>
                     <td data-label="Finish reason" data-cell="finish-reason"><QuietUnlessUnusual value={run.finish_reason} usual={text => text === 'stop'} usualText="Finished normally (stop)" /></td>
-                    <td data-label="Escalations" data-cell="escalations" data-num=""><QuietUnlessUnusual value={run.escalation_count} usual={text => Number(text) === 0} usualText="No escalation" /></td>
+                    <td data-label="Escalations" data-cell="escalations" data-num=""><QuietUnlessUnusual figure value={run.escalation_count} usual={text => Number(text) === 0} usualText="No escalation" /></td>
                   </>}
                   <td data-label="Host" className="local-dashboard-cell-token" data-extra="">{breakableHost(recorded(run.host))}</td>
                   {/* Item 4: tokens in and out in one cell; their total is the two added, so it is not a column of its own. */}
-                  <td data-label="Tokens" data-num="" title={`${tokensTitle(run.tokens_input, 'in') ?? 'Tokens in not recorded'}, ${tokensTitle(run.tokens_output, 'out') ?? 'tokens out not recorded'}`}>
-                    {isMissing(run.tokens_input) && isMissing(run.tokens_output) ? 'Not recorded'
+                  <td data-label="Tokens" data-num="" title={`${tokensTitle(run.tokens_input, 'in') ?? 'Tokens in not measured'}, ${tokensTitle(run.tokens_output, 'out') ?? 'tokens out not measured'}`}>
+                    {isMissing(run.tokens_input) && isMissing(run.tokens_output) ? NOT_MEASURED
                       : <><span data-field-tone="tokens-in" data-field-unavailable={isMissing(run.tokens_input)}>{recordedTokens(run.tokens_input)}</span><span className="local-run-quiet"> / </span><span data-field-tone="tokens-out" data-field-unavailable={isMissing(run.tokens_output)}>{recordedTokens(run.tokens_output)}</span></>}
                   </td>
                   <td data-label="Cost" data-num=""><CostCell session={session} run={run} /></td>
@@ -667,12 +673,12 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                       ? <>Not measured<span className="local-visually-hidden">{saving.slice('Not measured'.length)}</span></> : saving}{!isMissing(basis) && String(basis) !== 'measured' && !saving.startsWith('Not measured') && <span className="local-run-tag">{String(basis)}</span>}</td>
                   <td data-label="Baseline model" className="local-dashboard-cell-token" data-extra="">{recorded(baselineOf(run))}</td>
                   <td data-label="Basis" data-extra="">{recorded(basis)}</td>
-                  <td data-label="Duration" data-num="" title={exactMs(run.latency_ms)}>{duration(run.latency_ms)}</td>
+                  <td data-label="Duration" data-num="" title={exactMs(runDurationOf(run))}>{duration(runDurationOf(run))}</td>
                   <td data-label="Task type" data-extra="">{isMissing(run.task_type) ? recorded(run.task_type) : <span className="local-task-cell"><TaskIcon task={String(run.task_type)} />{taskLabel(run.task_type)}</span>}</td>
                   <td data-label="Tokens to compliance" data-extra="" data-num="" title={tokensTitle(run.tokens_to_compliance)}>{recordedTokens(run.tokens_to_compliance)}</td>
                   <td data-label="Route tier" data-extra="">{tierOf(run)}</td>
                   {/* Item 7: one form for every score, two decimals; the served value is in the title. */}
-                  <td data-label="Quality score" data-extra="" data-num="" title={recorded(run.actual_score)}>{isMissing(run.actual_score) || !Number.isFinite(score) ? recorded(run.actual_score) : fmtFixed(score, 2)}</td>
+                  <td data-label="Quality score" data-extra="" data-num="" title={measuredText(run.actual_score)}>{isMissing(run.actual_score) || !Number.isFinite(score) ? measuredText(run.actual_score) : fmtFixed(score, 2)}</td>
                 </tr>;
               })}</tbody>
           </DataTable>;
@@ -701,7 +707,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                     <Fact key="Tokens out" term={<><ConceptIcon concept="tokens-out" size={13} />Tokens out</>} data-field-tone="tokens-out" data-field-unavailable={isMissing(run.tokens_output)} valueTitle={tokensTitle(run.tokens_output, 'out')}>{recordedTokens(run.tokens_output)}</Fact>];
                   case 'cost': return [<Fact key="Cost" term={<><ConceptIcon concept="cost" size={13} />Cost</>} data-field-tone="cost">{costOf(selectedSession, run)}</Fact>];
                   case 'savings': return [<Fact key="Modelled saving" term={<><ConceptIcon concept="savings" size={13} />Modelled saving</>} data-field-tone="savings">{runModelledCell(run)}</Fact>];
-                  case 'duration': return [<Fact key="Duration" term={<><ConceptIcon concept="duration" size={13} />Duration</>} data-field-tone="duration">{duration(run.latency_ms)}</Fact>];
+                  case 'duration': return [<Fact key="Duration" term={<><ConceptIcon concept="duration" size={13} />Duration</>} data-field-tone="duration">{duration(runDurationOf(run))}</Fact>];
                   case 'backend': return [<Fact key="Backend" term={<><ConceptIcon concept="backend" size={13} />Backend</>} data-field-tone="backend">{recorded(run.backend_id)}</Fact>];
                   case 'host': return [<Fact key="Host" term={<><ConceptIcon concept="host" size={13} />Host</>} data-field-tone="host">{recorded(run.host)}</Fact>];
                   case 'baseline': return [<Fact key="Baseline model" term={<><ConceptIcon concept="baseline" size={13} />Baseline model</>} data-field-tone="baseline">{recorded(isMissing(run.savings_baseline_model) ? selectedSession?.baseline_model : run.savings_baseline_model)}</Fact>];
@@ -710,15 +716,15 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                   case 'tokens-completion': return [<Fact key="Tokens to compliance" term={<><ConceptIcon concept="tokens-completion" size={13} />Tokens to compliance</>} data-field-tone="tokens-completion">{recordedTokens(run.tokens_to_compliance)}</Fact>];
                   case 'tier': return [<Fact key="Route tier" term={<><ConceptIcon concept="tier" size={13} />Route tier</>} data-field-tone="tier">{tierOf(run)}</Fact>];
                   case 'score': return [
-                    <Fact key="Quality score" term={<><ConceptIcon concept="score" size={13} />Quality score</>} data-field-tone="score">{recorded(run.actual_score)}
+                    <Fact key="Quality score" term={<><ConceptIcon concept="score" size={13} />Quality score</>} data-field-tone="score">{measuredText(run.actual_score)}
                       <Meter kind="selected-quality" label="Quality score versus required bar" min={0} max={1} now={selectedScore}
-                        valueText={`Quality score ${recorded(run.actual_score)}; required bar ${recorded(run.required_bar)}`}
+                        valueText={`Quality score ${measuredText(run.actual_score)}; required bar ${measuredText(run.required_bar)}`}
                         share={selectedScore} mark={Number.isFinite(selectedRequiredBar) ? selectedRequiredBar : null} />
                     </Fact>,
-                    <Fact key="Required bar" term={<><ConceptIcon concept="threshold" size={13} />Required bar</>} data-field-tone="threshold">{isMissing(run.required_bar) ? 'bar not recorded' : recorded(run.required_bar)}</Fact>];
+                    <Fact key="Required bar" term={<><ConceptIcon concept="threshold" size={13} />Required bar</>} data-field-tone="threshold">{isMissing(run.required_bar) ? 'bar not measured' : measuredText(run.required_bar)}</Fact>];
                   case 'routing-model': return [<Fact key="Requested model" term={<><ConceptIcon concept="routing-model" size={13} />Requested model</>} data-field-tone="routing-model">{recorded(run.requested_model)}</Fact>];
                   case 'completion': return [<Fact key="Finish reason" term={<><ConceptIcon concept="completion" size={13} />Finish reason</>} data-field-tone="completion">{recorded(run.finish_reason)}</Fact>];
-                  case 'escalated': return [<Fact key="Escalations" term={<><ConceptIcon concept="escalated" size={13} />Escalations</>} data-field-tone="escalated">{recorded(run.escalation_count)}</Fact>];
+                  case 'escalated': return [<Fact key="Escalations" term={<><ConceptIcon concept="escalated" size={13} />Escalations</>} data-field-tone="escalated">{measuredText(run.escalation_count)}</Fact>];
                   default: return [];
                 }
               })}
@@ -841,7 +847,7 @@ function tierModelCost(model: Row): string {
 /**
  * OMN-21166 (Lakshman, live review 2026-10-25: "before Tier mix we need to add Model usage"): each model's runs, all
  * time, from delegation.model-routing.v1's served by_model (total_count and pct_of_total, over every run). Nothing is
- * counted or divided here; a model served without a count says Not recorded.
+ * counted or divided here; a model served without a count says Not measured.
  */
 /** What each Runs view switch adds to the run list, shown on hover and keyboard focus. */
 /**

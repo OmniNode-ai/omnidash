@@ -17,7 +17,7 @@ describe('RunsTable', () => {
         tokens_input: 120,
         tokens_output: 45,
         task_type: 'delegation',
-        latency_ms: 250,
+        execution_ms: 250,
         tokens_to_compliance: 165,
       }]}
       sessions={[{

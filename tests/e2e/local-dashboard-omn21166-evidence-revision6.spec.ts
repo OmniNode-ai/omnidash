@@ -54,10 +54,10 @@ test('Quality breakdown ranks served failures and distinguishes zero from an uns
     failure_categories: undefined, escalation_rate: undefined,
   }] });
   await page.getByRole('button', { name: 'Refresh', exact: true }).click();
-  await expect(quality).toContainText('Not served');
-  await expect(quality.locator('.kv > div', { hasText: 'Median tokens to comply' }).locator('.v')).toHaveText('Not served');
+  await expect(quality).toContainText('Not measured');
+  await expect(quality.locator('.kv > div', { hasText: 'Median tokens to comply' }).locator('.v')).toHaveText('Not measured');
   await expect(quality.getByRole('list', { name: 'Checks by type' })).toHaveCount(0);
-  await info.attach('evidence-quality-states', { body: JSON.stringify({ measuredZero: 0, absentSubfield: 'Not served' }), contentType: 'application/json' });
+  await info.attach('evidence-quality-states', { body: JSON.stringify({ measuredZero: 0, absentSubfield: 'Not measured' }), contentType: 'application/json' });
   await page.screenshot({ path: info.outputPath('evidence-quality-states.png'), fullPage: true });
 });
 
@@ -93,6 +93,6 @@ test('A refused decision read cannot present zero as a served export sample', as
   await expect(sample).not.toContainText('Latest 0 served decisions');
   await expect(sample.getByRole('button', { name: 'Export JSON' })).toBeDisabled();
   // OMN-24616 AC5: the refused read is named as a failed read with its reason, never an empty one.
-  await expect(page.locator('[data-panel-title="QUALITY GATE"]')).toContainText('Could not read the quality gate');
+  await expect(page.locator('[data-panel-title="QUALITY GATE"]')).toContainText('Quality data is unavailable.');
   await info.attach('evidence-refused-read', { body: JSON.stringify({ decisions: 503, qualityGate: 503, sample: 'Not measured' }), contentType: 'application/json' });
 });

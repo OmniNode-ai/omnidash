@@ -137,7 +137,7 @@ test('usage model bars do not change figures, table or other model colors', asyn
   const modelB = figure.locator('li.gdb-day[aria-label^="model-b:"]');
   await expect(modelA).toHaveAttribute('aria-label', 'model-a: 162 tokens in, 52 tokens out');
   // A count that is not recorded reads not recorded and draws no bar, never a bar of 0.
-  await expect(modelB).toHaveAttribute('aria-label', 'model-b: 90 tokens in, Not recorded tokens out');
+  await expect(modelB).toHaveAttribute('aria-label', 'model-b: 90 tokens in, Not measured tokens out');
   await expect(modelB.locator('.gdb-col[data-series="out"] .gdb-bar')).toHaveCount(0);
   // OMN-21166 part 17 AC116: the "Tokens per day by model, in detail" panel and its model highlight buttons are removed.
   await expect(page.locator('[data-component="usage-tokens-by-day"][data-slice="detail"]')).toHaveCount(0);
@@ -148,7 +148,7 @@ test('usage model bars do not change figures, table or other model colors', asyn
   await modelB.focus();
   // OMN-22168 (Lakshman 2026-11-05, "unified like overview and Runs"): as on Overview, focus reads the model's values out
   // above the plot, in full, instead of a figure squeezed over a 44px bar.
-  await expect(page.locator('.usage-insight .ins-readout')).toHaveText('model-b: 90 tokens in, Not recorded tokens out');
+  await expect(page.locator('.usage-insight .ins-readout')).toHaveText('model-b: 90 tokens in, Not measured tokens out');
   expect(await swatch.evaluate(el => getComputedStyle(el).color)).toBe(color);
   expect(await page.locator('[data-component="usage-by-model-day"] table').innerText()).toBe(before);
 });
@@ -191,7 +191,7 @@ test.describe('touch chart controls', () => {
     await expect(page.getByRole('tab', { name: 'Tokens by model', exact: true })).toHaveAttribute('aria-selected', 'true');
     const group = page.getByRole('figure', { name: 'Tokens in vs out by model', exact: true }).locator('li.gdb-day[aria-label^="model-b:"]');
     await group.tap();
-    await expect(group).toHaveAttribute('aria-label', /Not recorded tokens out/);
+    await expect(group).toHaveAttribute('aria-label', /Not measured tokens out/);
     await expect(group.locator('.gdb-col[data-series="out"] .gdb-bar')).toHaveCount(0);
     await page.screenshot({path:info.outputPath('touch-model-highlight.png')});
   });

@@ -36,7 +36,8 @@ test('matching model, duration and token fields retain the same Lucide icon and 
   await page.goto('/delegation-evidence');
   const selected = page.locator('[data-panel-title="SELECTED RUN"]');
   for (const [i,sourceLabel] of fields.entries()) {
-    const label = sourceLabel === 'Duration' ? 'Latency' : sourceLabel;
+    // OMN-24615 AC8: Evidence names its latency as the model call time, a duration field like Workflow's Duration.
+    const label = sourceLabel === 'Duration' ? 'Model call time' : sourceLabel;
     const field = selected.locator('.kv > div').filter({ has: page.getByText(label, { exact: true }) });
     await expect(field.locator('.k svg')).toHaveAttribute('class', identities[i].icon!);
     await expect(field.locator('.v')).toHaveCSS('color', identities[i].color);

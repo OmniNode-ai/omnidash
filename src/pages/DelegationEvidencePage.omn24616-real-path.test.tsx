@@ -69,13 +69,13 @@ describe('OMN-24616 AC5: Delegation Evidence on the real read path', () => {
     network.serve = () => ({ status: 500, body: { error: 'boom' } });
     await renderPage();
     expectNoEmptyNotes();
-    expect(screen.getAllByText('Could not read delegation decisions').length).toBe(2);
-    expect(screen.getByText('Could not read model routing')).toBeTruthy();
-    expect(screen.getAllByText('Could not read the quality gate').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText('Could not read token usage')).toBeTruthy();
+    expect(screen.getAllByText('Run data is unavailable.').length).toBe(2);
+    expect(screen.getByText('Routing data is unavailable.')).toBeTruthy();
+    expect(screen.getAllByText('Quality data is unavailable.').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('Usage data is unavailable.')).toBeTruthy();
     // HTTP 500 reads, in the page's plain words, as "The runtime could not answer" (plainUnservedReason).
-    expect(screen.getAllByText('Could not read: The runtime could not answer').length).toBeGreaterThanOrEqual(3);
-    expect(screen.getAllByText('Could not read the metering summary: The runtime could not answer').length).toBe(2);
+    expect(screen.getAllByText('Metering data is unavailable. The runtime could not answer').length).toBeGreaterThanOrEqual(3);
+    expect(screen.getAllByText('Cost data is unavailable. The runtime could not answer').length).toBe(2);
   });
 
   it('E2: malformed bodies and rows, and a degraded answer with no reason, are failed reads with their reason', async () => {
@@ -94,7 +94,7 @@ describe('OMN-24616 AC5: Delegation Evidence on the real read path', () => {
     expect(screen.getByText('malformed projection response: row 1 by_model is missing')).toBeTruthy();
     expect(screen.getAllByText('the runtime reported this read as degraded').length).toBeGreaterThanOrEqual(1);
     // The summary and metering reads served {"rows":[null]}: refused by the row check, named on the headline cards.
-    expect(screen.getAllByText('Could not read: malformed projection response: row 1 is null').length).toBeGreaterThanOrEqual(4);
+    expect(screen.getAllByText(/^(Metering|Summary) data is unavailable\. malformed projection response: row 1 is null$/).length).toBeGreaterThanOrEqual(4);
   });
 
   it('E3: a failed trace read after a served decision is a failed read, not "nothing was recorded"', async () => {
@@ -106,12 +106,12 @@ describe('OMN-24616 AC5: Delegation Evidence on the real read path', () => {
       return { status: 200, body: { rows: [] } };
     };
     await renderPage();
-    expect(screen.getByText('Could not read the correlation trace')).toBeTruthy();
+    expect(screen.getByText('Run steps is unavailable.')).toBeTruthy();
     expect(screen.queryByText('Nothing was recorded for this run yet.')).toBeNull();
     // E5: the same failure in a run opened from Recent delegations.
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Open run run-1' })); });
     for (let tick = 0; tick < 10; tick += 1) await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
-    expect(screen.getByText(/^Could not read the run:/)).toBeTruthy();
+    expect(screen.getByText(/^Run steps is unavailable\. \S/)).toBeTruthy();
     expect(screen.queryByText('Prompt and answer not recorded for this run')).toBeNull();
   });
 
@@ -147,7 +147,7 @@ describe('OMN-24616 AC5: Delegation Evidence on the real read path', () => {
     // The id-less run is listed under its write time and opens to say no trace can be read, never a failed read.
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^Open run run with no recorded id/ })); });
     expect(screen.getByText('This run has no recorded id, so its trace cannot be read.')).toBeTruthy();
-    expect(screen.queryByText(/^Could not read the run:/)).toBeNull();
+    expect(screen.queryByText(/^Run steps is unavailable\. \S/)).toBeNull();
     expect(screen.queryByRole('button', { name: 'Open run undefined' })).toBeNull();
   });
 });

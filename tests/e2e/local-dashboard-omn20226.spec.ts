@@ -95,7 +95,7 @@ test('OMN-20226: with metering-summary.v1 not served, the headline cards say so 
     const card = page.locator(`[data-component="${id}"]`);
     await expect(card).toBeVisible();
     await expect(card.locator('.local-dashboard-metric')).toHaveCount(0);
-    await expect(card.getByRole('status')).toContainText('Not available yet');
+    await expect(card.getByRole('status')).toContainText('Not measured:');
     await expect(card).not.toContainText(/\d/);
   }
   await page.locator('[data-component="overview-spend"]').evaluate((element) => element.scrollIntoView({ block: 'center' }));

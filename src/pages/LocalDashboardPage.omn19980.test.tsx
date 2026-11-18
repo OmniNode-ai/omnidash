@@ -167,7 +167,7 @@ describe('OMN-19980 AC2c: Overview absence and transport errors remain typed on 
     served({ [OVERVIEW]: [overviewRow({})] });
     harness.reachable.delete(METERING);
     await open('overview');
-    expect(within(panel('Savings')).getByText('Not available yet: usage summary.')).toBeInTheDocument();
+    expect(within(panel('Savings')).getByText('Not measured: usage summary.')).toBeInTheDocument();
     noFigure(panel('Savings'));
   });
   it('C3: served with no rows is unavailable, never $0', async () => {
@@ -228,7 +228,7 @@ describe('OMN-19980 headline coherence on metering-summary.v1', () => {
   });
   it('M2: an unserved source leaves every headline without a number', async () => {
     harness.reachable.delete(METERING); await open('overview');
-    for (const title of HEADLINES) { expect(panel(title).textContent).toContain('Not available yet: usage summary.'); expect(figure(title)).toBe(''); }
+    for (const title of HEADLINES) { expect(panel(title).textContent).toContain('Not measured: usage summary.'); expect(figure(title)).toBe(''); }
   });
   it('M3: missing savings cannot erase independent spend, measured calls or tokens', async () => {
     served({ [METERING]: [allRow({ savings_usd: null })] }); await open('overview');

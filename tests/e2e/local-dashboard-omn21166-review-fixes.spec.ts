@@ -14,7 +14,7 @@ test('review fixes: exact median and keyboard/touch hourly inspection', async ({
   const day = now.toISOString().slice(0, 10);
   const rows = { ...chartRows, [prefix + 'delegation.decisions.v1']: [120, 1800, null].map((latency_ms, i) => ({
     correlation_id: `review-fixture-${i}`, written_at: `${day}T08:00:00Z`,
-    quality_gate_passed: true, latency_ms, tokens_input: 0, tokens_output: null,
+    quality_gate_passed: true, execution_ms: latency_ms, latency_ms, tokens_input: 0, tokens_output: null,
     model_name: 'fixture-model', task_type: 'document',
   })) };
   await serveCharts(page, rows);

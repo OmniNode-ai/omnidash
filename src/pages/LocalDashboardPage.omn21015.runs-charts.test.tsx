@@ -40,15 +40,15 @@ function decision(id: string | null, minute: number, extra: Record<string, unkno
   const at = `2026-10-04T06:${String(minute).padStart(2, '0')}:00Z`;
   return {
     correlation_id: id, written_at: at, created_at: at, model_name: 'model-a', quality_gate_passed: true, quality_gate_detail: 'completed',
-    latency_ms: 813, tokens_input: 162, tokens_output: 52, task_type: 'summarization', cost_tier_name: 'local', actual_score: 0.92,
+    execution_ms: 813, tokens_input: 162, tokens_output: 52, task_type: 'summarization', cost_tier_name: 'local', actual_score: 0.92,
     backend_id: 'local-coder', host: 'lab-host', ...extra,
   };
 }
 // Served oldest first on purpose: the table lists newest first, and the bars have to follow the table, not the wire.
 const RUNS = [
-  decision('aaaaaaaa-0000-4000-8000-000000000001', 10, { latency_ms: 700, tokens_input: 250, tokens_output: 13 }),
-  decision('bbbbbbbb-0000-4000-8000-000000000002', 20, { latency_ms: 4925, tokens_input: 262, tokens_output: 7, quality_gate_passed: false, quality_gate_detail: 'quality_gate_failed', backend_id: 'byok' }),
-  decision('cccccccc-0000-4000-8000-000000000003', 30, { latency_ms: 1200, tokens_input: 90, tokens_output: 400 }),
+  decision('aaaaaaaa-0000-4000-8000-000000000001', 10, { execution_ms: 700, tokens_input: 250, tokens_output: 13 }),
+  decision('bbbbbbbb-0000-4000-8000-000000000002', 20, { execution_ms: 4925, tokens_input: 262, tokens_output: 7, quality_gate_passed: false, quality_gate_detail: 'quality_gate_failed', backend_id: 'byok' }),
+  decision('cccccccc-0000-4000-8000-000000000003', 30, { execution_ms: 1200, tokens_input: 90, tokens_output: 400 }),
 ];
 
 function open(decisions: unknown[], pageSize = 25) {
@@ -100,13 +100,13 @@ describe('OMN-21015: the Runs page draws the runs it lists', () => {
   });
 
   it('R3: a run whose row carries no duration or token count has no bar, not a bar of zero', () => {
-    open([RUNS[0], decision('dddddddd-0000-4000-8000-000000000004', 40, { latency_ms: null, tokens_input: undefined, tokens_output: null })]);
+    open([RUNS[0], decision('dddddddd-0000-4000-8000-000000000004', 40, { execution_ms: null, tokens_input: undefined, tokens_output: null })]);
     expect(durations()).toEqual([null, 700]);
     expect(tokens()).toEqual([['Tokens in', [null, 250]], ['Tokens out', [null, 13]]]);
   });
 
   it('R4: a served zero is a figure and keeps its place', () => {
-    open([RUNS[0], decision('dddddddd-0000-4000-8000-000000000004', 40, { latency_ms: 0, tokens_output: 0 })]);
+    open([RUNS[0], decision('dddddddd-0000-4000-8000-000000000004', 40, { execution_ms: 0, tokens_output: 0 })]);
     expect(durations()).toEqual([0, 700]);
     expect(tokens()[1]).toEqual(['Tokens out', [0, 13]]);
   });
@@ -141,7 +141,7 @@ describe('OMN-21015: the Runs page draws the runs it lists', () => {
   });
 
   it('R6: a run with no recorded id has a bar and opens nothing', () => {
-    open([RUNS[0], decision(null, 40, { latency_ms: 55 })]);
+    open([RUNS[0], decision(null, 40, { execution_ms: 55 })]);
     expect(chart('Duration per run').option.xAxis.data).toEqual(['Not recorded', 'aaaaaaaa']);
     chart('Duration per run').onEvents!.click!({ dataIndex: 0 });
     expect(`${window.location.pathname}${window.location.search}`).toBe('/runs');
@@ -171,7 +171,7 @@ describe('OMN-21015: the Runs page draws the runs it lists', () => {
   });
 
   it('R8: the tooltip names the run, its status and model, and writes the served text', () => {
-    open([decision('eeeeeeee-0000-4000-8000-000000000005', 50, { latency_ms: '0813', tokens_input: '0162', tokens_output: 52 })]);
+    open([decision('eeeeeeee-0000-4000-8000-000000000005', 50, { execution_ms: '0813', tokens_input: '0162', tokens_output: 52 })]);
     const duration = chart('Duration per run').option.tooltip.formatter([{ dataIndex: 0, seriesIndex: 0, marker: '' }]);
     // OMN-23330 AC9 supersedes the served text here: the exact figure is the whole millisecond, grouped (served "0813").
     expect(duration).toBe('eeeeeeee-0000-4000-8000-000000000005<br/>passed · model-a<br/>Duration: 813 ms');
@@ -179,9 +179,9 @@ describe('OMN-21015: the Runs page draws the runs it lists', () => {
     expect(both).toBe('eeeeeeee-0000-4000-8000-000000000005<br/>passed · model-a<br/>Tokens in: 162<br/>Tokens out: 52');
   });
 
-  it('R8: the tooltip says Not recorded for a run with no value', () => {
-    open([RUNS[0], decision('dddddddd-0000-4000-8000-000000000004', 40, { latency_ms: null })]);
-    expect(chart('Duration per run').option.tooltip.formatter([{ dataIndex: 0, seriesIndex: 0, marker: '' }])).toContain('Duration: Not recorded');
+  it('R8: the tooltip says Not measured for a run with no value', () => {
+    open([RUNS[0], decision('dddddddd-0000-4000-8000-000000000004', 40, { execution_ms: null })]);
+    expect(chart('Duration per run').option.tooltip.formatter([{ dataIndex: 0, seriesIndex: 0, marker: '' }])).toContain('Duration: Not measured');
   });
 
   it('R9: when no run matches the filters there is no chart', () => {
@@ -192,7 +192,7 @@ describe('OMN-21015: the Runs page draws the runs it lists', () => {
   });
 
   it('R9: when no listed run carries a duration, that chart is not drawn and the tokens chart is', () => {
-    open([decision('aaaaaaaa-0000-4000-8000-000000000001', 10, { latency_ms: null })]);
+    open([decision('aaaaaaaa-0000-4000-8000-000000000001', 10, { execution_ms: null })]);
     expect(screen.queryByRole('figure', { name: 'Duration per run' })).toBeNull();
     // OMN-22168: the run charts are tabs; the tokens chart is drawn once its tab is chosen.
     fireEvent.click(screen.getByRole('tab', { name: 'Tokens per run' }));
@@ -227,7 +227,7 @@ describe('OMN-21015: the Runs page draws the runs it lists', () => {
   });
 
   it('R11: a value served as a list is a gap, not the number inside it', () => {
-    open([RUNS[0], decision('dddddddd-0000-4000-8000-000000000004', 40, { latency_ms: [55], tokens_input: ['9'] })]);
+    open([RUNS[0], decision('dddddddd-0000-4000-8000-000000000004', 40, { execution_ms: [55], tokens_input: ['9'] })]);
     expect(durations()).toEqual([null, 700]);
     expect(tokens()[0]).toEqual(['Tokens in', [null, 250]]);
   });

@@ -1,6 +1,6 @@
 // OMN-21166 (Lakshman, live review 2026-10-25): an Overview headline card's hover is two or three short lines with
 // what matters. Failure modes, each with a test below:
-//   H1  a count the row does not serve is written as 0 (or dropped as if zero) instead of Not recorded;
+//   H1  a count the row does not serve is written as 0 (or dropped as if zero) instead of Not measured;
 //   H2  a zero exclusion is listed ("0 runs ...") as noise;
 //   H3  Spend or Savings stop naming the baseline and the pricing version (OMN-21304 AC4);
 //   H4  the tokens hover loses either direction.
@@ -47,10 +47,10 @@ describe('headlineHoverLines', () => {
     expect(headlineHoverLines('overview-tokens', ROW, null)).toEqual(['591,383 in · 289,572 out']);
   });
 
-  it('H1: a count or name the row does not serve reads Not recorded, never 0', () => {
+  it('H1: a count the row does not serve reads Not measured and a name Not recorded, never 0', () => {
     const bare = { runs_measured: 611 };
-    expect(headlineHoverLines('overview-measured', bare, null)).toEqual(['611 of Not recorded runs measured', 'Runs not counted: Not recorded']);
-    expect(headlineHoverLines('overview-tokens', { tokens_in: 5 }, null)).toEqual(['5 in · Not recorded out']);
+    expect(headlineHoverLines('overview-measured', bare, null)).toEqual(['611 of Not measured runs measured', 'Runs not counted: Not measured']);
+    expect(headlineHoverLines('overview-tokens', { tokens_in: 5 }, null)).toEqual(['5 in · Not measured out']);
     expect(headlineHoverLines('overview-spend', bare, null)).toContain('Baseline Not recorded · pricing Not recorded');
   });
 });
