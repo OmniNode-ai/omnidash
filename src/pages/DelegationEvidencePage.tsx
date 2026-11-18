@@ -1,5 +1,5 @@
 import { formatDashboardCount } from '@/theme/format';
-import { NOT_MEASURED } from '@/theme/format';
+import { NOT_MEASURED, NOT_RECORDED } from '@/theme/format';
 /**
  * OMN-12943 — Delegation Evidence (ported from prototype view-delegation.jsx).
  *
@@ -348,7 +348,8 @@ function QualityGate() {
 }
 
 /** A served check name in words ("score vs required bar"); the served key stays in the data attribute. */
-const checkName = (value: unknown) => (isUnavailableField(value) ? NOT_MEASURED : String(value).replace(/_+/g, ' '));
+// A check type is a label, so a missing one reads Not recorded (OMN-24616 AC6 ruling, Lakshman 2026-11-17).
+const checkName = (value: unknown) => (isUnavailableField(value) ? NOT_RECORDED : String(value).replace(/_+/g, ' '));
 const servedNumber = (value: unknown): number | null =>
   isUnavailableField(value) || !Number.isFinite(Number(value)) ? null : Number(value);
 const wholeTokens = (value: unknown) => {
