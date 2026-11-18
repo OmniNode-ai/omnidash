@@ -1,28 +1,30 @@
 schema_version: "1.0.0"
 ticket_id: "OMN-25103"
-title: "The Overview Running figure counts the served rows marked running, never 0 for an unread or empty store"
+title: "The Running card computes its figure from the served rows marked running, never 0 for an unread or empty store (not yet on the Overview page)"
 summary: >-
   omnimarket's node_projection_floor_integration serves onex.snapshot.projection.floor-integration-rows.v1, one row
   per merged change with its state, from each hourly integration pass (omnimarket#6420). runningRowsCount is the
   Running figure: the number of served rows whose state is running, computed from them alone. Served rows with none
   running are a measured 0; a failed read, an empty read or a row without its state shows Not measured with the
   reason, never 0. Binding the card on the Overview page follows once the lab serves the exposure, because the pages
-  bind only exposures the captured lab catalogue marks ok.
+  bind only exposures the captured lab catalogue marks ok. Until that follow-up lands, this contract proves the
+  card's logic only: no page shows the Running figure yet, so passing it does not meet the ticket's AC2 and AC3 for
+  the visible figure, nor AC1, AC4 and AC5 in other repositories, and OMN-25103 must not close on it.
 is_seam_ticket: false
 interface_change: false
 interfaces_touched: []
 requirements:
   - id: "req-running-figure"
-    statement: "The dashboard's Running figure is the count of served floor-integration rows marked running."
+    statement: "The Running card's figure is the count of served floor-integration rows marked running. Placing the card on the Overview page is a follow-up."
     acceptance:
       - id: "AC2"
         statement: >-
-          AC2: the dashboard's Running figure equals the count of rows the served projection marks running, with no
+          AC2 (card logic part): the Running card's figure equals the count of rows the served projection marks running, with no
           list or count of its own -- falsifier: npx vitest run -t running_figure_from_served_projection, which
           fails on dev 8c242112ca302691004579aded22417226c195bc because the count does not exist
       - id: "AC3"
         statement: >-
-          AC3: a failed or empty read shows Not measured with the reason, never 0 -- falsifier: npx vitest run -t
+          AC3 (card logic part): a failed or empty read shows Not measured with the reason, never 0 -- falsifier: npx vitest run -t
           running_figure_unavailable, which fails on dev 8c242112ca302691004579aded22417226c195bc
 evidence_requirements:
   - kind: "tests"
