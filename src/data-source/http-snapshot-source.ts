@@ -24,6 +24,39 @@ export class ProjectionReadRefusedError extends Error {
   }
 }
 
+/**
+ * OMN-24616 AC5: a 200 response that is neither a projection envelope (`rows` an array) nor a plain array of rows
+ * (file fixtures). The page shows this reason instead of reading the body as an empty, successful read.
+ */
+export class ProjectionReadMalformedError extends Error {
+  constructor(readonly topic: string, readonly detail: string) {
+    super(`Projection ${topic} answered with a malformed body: ${detail}`);
+    this.name = 'ProjectionReadMalformedError';
+  }
+}
+
+function describeBody(body: unknown): string {
+  if (body === null) return 'null';
+  if (Array.isArray(body)) return 'an array';
+  if (typeof body !== 'object') return `a ${typeof body}`;
+  if ('rows' in body) return `rows is ${Array.isArray((body as { rows: unknown }).rows) ? 'an array' : typeof (body as { rows: unknown }).rows}`;
+  const error = (body as { error?: unknown }).error;
+  return typeof error === 'string' ? `no rows (error: ${error})` : 'no rows';
+}
+
+/** The rows of a served body: an envelope's rows or a plain array; anything else is refused. */
+function rowsOf(topic: string, body: unknown): { rows: unknown[]; envelope: ProjectionEnvelope | null } {
+  const read = isProjectionEnvelope(body) ? { rows: body.rows, envelope: body }
+    : Array.isArray(body) ? { rows: body, envelope: null } : null;
+  if (read === null) throw new ProjectionReadMalformedError(topic, describeBody(body));
+  const bad = read.rows.findIndex(row => typeof row !== 'object' || row === null || Array.isArray(row));
+  if (bad >= 0) {
+    const row = read.rows[bad];
+    throw new ProjectionReadMalformedError(topic, `row ${bad + 1} is ${row === null ? 'null' : Array.isArray(row) ? 'a list' : `a ${typeof row}`}`);
+  }
+  return read;
+}
+
 async function refusalOf(topic: string, res: Response): Promise<ProjectionReadRefusedError> {
   let code: string | null = null;
   try {
@@ -59,18 +92,18 @@ export class HttpSnapshotSource implements ProtocolSnapshotSource {
   ): Promise<ProjectionSnapshot> {
     const res = await authedFetch(await this.projectionUrl(topic, params));
     if (!res.ok) throw await refusalOf(topic, res);
-    const body: unknown = await res.json();
+    const read = rowsOf(topic, await res.json());
     const readAt = new Date().toISOString();
-    if (!isProjectionEnvelope(body)) {
-      const rows = Array.isArray(body) ? body : [];
+    if (read.envelope === null) {
       return {
-        rows,
-        rowCount: rows.length,
+        rows: read.rows,
+        rowCount: read.rows.length,
         dataFreshness: 'unknown',
         latestEventAt: null,
         readAt,
       };
     }
+    const body = read.envelope;
     const freshness = body.data_freshness;
     const dataFreshness: ProjectionDataFreshness =
       freshness === 'fresh' || freshness === 'idle' || freshness === 'stale' || freshness === 'degraded'
@@ -115,10 +148,9 @@ export class HttpSnapshotSource implements ProtocolSnapshotSource {
     // forever. See fetch-with-timeout.ts.
     const res = await authedFetch(await this.projectionUrl(topic));
     if (!res.ok) throw await refusalOf(topic, res);
-    const body = await res.json();
     // Projection API returns { rows: [...], ...envelope } — unwrap if present.
-    // Plain array responses (file-based fixtures, legacy) are yielded directly.
-    const items: unknown[] = isProjectionEnvelope(body) ? body.rows : (body as unknown[]);
+    // Plain array responses (file-based fixtures, legacy) are yielded directly; anything else is refused (OMN-24616).
+    const items: unknown[] = rowsOf(topic, await res.json()).rows;
     for (const i of items) yield i;
   }
 }

@@ -29,7 +29,7 @@ describe('Routing horizontal bars', () => {
   });
   it('shows missing count explicitly without substituting zero', () => {
     render(<TierShareChart variant="bars" byTier={{ tiers: [tier('harness', null, 0.2)] }} />);
-    expect(screen.getByText('Count not recorded')).toBeInTheDocument();
+    expect(screen.getByText('Count not measured')).toBeInTheDocument();
   });
   it('does not draw invalid or overfull distributions', () => {
     render(<TierShareChart variant="bars" byTier={{ tiers: [tier('local', 10, 1.2)] }} />);

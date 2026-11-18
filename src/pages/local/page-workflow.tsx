@@ -1,10 +1,11 @@
 // OMN-23330 AC24: part of the local pages, split out of LocalDashboardPage.tsx (3,926 lines) with no change to what
 // any page draws. The Workflow page: one run, its summary, neighbours and timeline.
+import { MODEL_CALL_TIME_LABEL, RUN_DURATION, runDurationOf } from '@/contracts/run-duration';
 import { formatDashboardCount } from '@/theme/format';
 import { readableTime } from '@/theme/format';
 import { useId, useState, type CSSProperties, type ReactNode } from 'react';
-import { Link } from 'wouter';
-import { normaliseRunId, workflowHref } from '@/navigation/workflow-url-state';
+import { Link, useSearch } from 'wouter';
+import { normaliseRunId, readWorkflowFrom, workflowHref } from '@/navigation/workflow-url-state';
 import { RunTimingChart, runTimingBars } from '@/theme/design-system/charts';
 import { breakableName } from '@/theme/design-system/charts';
 import { Badge, EmptyState, Fact, FactList, StatusChip } from '@/theme/design-system/components';
@@ -12,9 +13,9 @@ import { failureCauseLabel, plainFailureMessage, taskLabel, tierLabel } from '@/
 import { ConceptIcon, FieldIcon } from '@/components/dashboard/FieldIcon';
 import { fieldTone, isUnavailableField } from '@/components/dashboard/field-identity';
 import { RunAnswer, RunTraceText, WorkflowDecisionCharts, WorkflowRecordDetails, WorkflowRoutingFlow } from '@/pages/local/workflow-analysis';
-import { rowsForLocalBinding, DELEGATION_DECISIONS_TOPIC, RUN_TRACE_TOPIC, CORRELATION_TRACE_TOPIC, type BoundProjectionSnapshot, type LocalPageDocument } from '@/layout/local-page-loader';
+import { rowsForLocalBinding, DELEGATION_DECISIONS_TOPIC, RUN_TRACE_TOPIC, CORRELATION_TRACE_TOPIC, RUN_DECISION_SNAPSHOT, type BoundProjectionSnapshot, type LocalPageDocument } from '@/layout/local-page-loader';
 import { useModelIdentityStyle } from '@/components/dashboard/model-tiers';
-import { CopyButton, type Row, asRecords, causeTextOf, duration, isMissing, modelOrUnknown, newestFirst, recorded, recordedCount, recordedTokens, statusOf, tierOf, tokensTitle } from '@/pages/local/page-shared';
+import { CopyButton, type Row, asRecords, causeTextOf, duration, isMissing, measuredText, modelOrUnknown, newestFirst, recorded, recordedCount, recordedTokens, statusOf, tierOf, tokensTitle } from '@/pages/local/page-shared';
 import { NoRunsYet } from '@/pages/local/page-runs';
 
 /** A served flag as a word. The stores serve it as 1 and 0 or as true and false; anything else is shown as served. */
@@ -36,7 +37,7 @@ export function RunSummary({ decision, showAnalysis = false }: { decision: Row |
   const status = statusOf(decision);
   const fields: Array<[string, string]> = [
     ...(status === 'failed' ? [['Cause', causeTextOf(decision)] as [string, string]] : []),
-    ['Quality score', recorded(decision.actual_score)],
+    ['Quality score', measuredText(decision.actual_score)],
     ['Task type', isMissing(decision.task_type) ? recorded(decision.task_type) : taskLabel(decision.task_type)],
     ['Model', modelOrUnknown(decision.model_name)],
     ['Backend', recorded(decision.backend_id)],
@@ -44,7 +45,7 @@ export function RunSummary({ decision, showAnalysis = false }: { decision: Row |
     ['Route tier', tierOf(decision)],
     // OMN-21015: more of what the run's own row serves, each as served. A served zero is a figure and is shown; a
     // fact the row does not carry says Not recorded.
-    ['Required bar', recorded(decision.required_bar)],
+    ['Required bar', measuredText(decision.required_bar)],
     ['Tokens in', recordedTokens(decision.tokens_input)],
     ['Tokens out', recordedTokens(decision.tokens_output)],
     ['Finish reason', recorded(decision.finish_reason)],
@@ -55,18 +56,19 @@ export function RunSummary({ decision, showAnalysis = false }: { decision: Row |
     ['Requested model', recorded(decision.requested_model)],
     // The three timings stand together and last, in the order their bars are drawn in under the tiles.
     ['Queue wait', duration(decision.queue_wait_ms)],
-    ['Execution', duration(decision.execution_ms)],
-    ['Duration', duration(decision.latency_ms)],
+    // OMN-24615 AC8: Duration is the served run duration, as on Runs; the model call is its own, named tile.
+    [RUN_DURATION.label, duration(runDurationOf(decision))],
+    [MODEL_CALL_TIME_LABEL, duration(decision.latency_ms)],
   ];
   const timings = [
     { key: 'queue_wait_ms', label: 'Queue wait', value: decision.queue_wait_ms },
-    { key: 'execution_ms', label: 'Execution', value: decision.execution_ms },
-    { key: 'latency_ms', label: 'Duration', value: decision.latency_ms },
+    { key: RUN_DURATION.column, label: RUN_DURATION.label, value: runDurationOf(decision) },
+    { key: 'latency_ms', label: MODEL_CALL_TIME_LABEL, value: decision.latency_ms },
   ];
   // OMN-21166 part 13: a chart whose one drawable bar is the total duration repeats the Duration tile, so it is left
   // out; the chart's own rule decides what is drawable, and the tiles still say Not recorded for the rest.
   const drawable = runTimingBars(timings).bars;
-  const onlyTotal = drawable.length === 1 && drawable[0]!.label === 'Duration';
+  const onlyTotal = drawable.length === 1 && drawable[0]!.label === RUN_DURATION.label;
   const timingChart = onlyTotal ? null : <RunTimingChart timings={timings} compact={showAnalysis} />;
   return (
     <section aria-label="Run summary" className="local-dashboard-run-summary">
@@ -75,7 +77,7 @@ export function RunSummary({ decision, showAnalysis = false }: { decision: Row |
           { name: 'Run outcome', concept: 'run-outcome', labels: ['Cause', 'Quality score', 'Required bar', 'Task type'], help: 'Final status and quality result from this run’s decision record.' },
           { name: 'Routing and model', concept: 'routing-model', labels: ['Model', 'Requested model', 'Backend', 'Host', 'Route tier'], help: 'The requested model and recorded answering route. Not recorded means the run supplied no value.' },
           { name: 'Tokens and completion', concept: 'tokens-completion', labels: ['Tokens in', 'Tokens out', 'Finish reason', 'Truncated', 'Escalations'], help: 'Token counts and completion details recorded for this run.' },
-          { name: 'Timing', concept: 'timing', labels: ['Queue wait', 'Execution', 'Duration'], help: 'Recorded decision timings. Duration here is the latency field; timeline steps carry separate durations.' },
+          { name: 'Timing', concept: 'timing', labels: ['Queue wait', RUN_DURATION.label, MODEL_CALL_TIME_LABEL], help: 'Recorded decision timings. Duration is the whole run (execution_ms) and Model call time the model call (latency_ms); timeline steps carry separate durations.' },
         ].map(({ name, concept, labels, help }, index) => <section key={name} className="local-run-summary-group" data-field-tone={concept} tabIndex={0} aria-labelledby={`${sectionId}-${index}`} aria-describedby={`${sectionId}-${index}-help`}>
           <h3 className="local-dashboard-caption" id={`${sectionId}-${index}`}><ConceptIcon concept={concept} label={name} size={16} />{name}</h3>
           <FactList>
@@ -94,6 +96,12 @@ export function RunSummary({ decision, showAnalysis = false }: { decision: Row |
   );
 }
 
+/** OMN-24616 AC7: opened from Runs, the run page has a back link to that same Runs view, filters included. */
+function RunsBackLink() {
+  const from = readWorkflowFrom(useSearch());
+  return from === null ? null : <Link href={from} className="local-run-back">Back to Runs</Link>;
+}
+
 /**
  * OMN-21015: from one run to the next. A run that is among the served runs links to the run before it and the run
  * after it in the list's newest-first order, so the runs are walked without going back to the list. Only a run with a
@@ -101,6 +109,8 @@ export function RunSummary({ decision, showAnalysis = false }: { decision: Row |
  * has no place between them and gets no links.
  */
 export function RunNeighbours({ decisions, runId }: { decisions: readonly unknown[]; runId: string }) {
+  // OMN-24616 AC7: stepping to a neighbouring run keeps the Runs view it was opened from (review 517 finding 11).
+  const from = readWorkflowFrom(useSearch());
   const ids = newestFirst(decisions)
     .map((run) => run.correlation_id)
     .filter((id): id is string => typeof id === 'string' && id !== '');
@@ -112,8 +122,8 @@ export function RunNeighbours({ decisions, runId }: { decisions: readonly unknow
   return (
     // It stands in the run's title line, beside the id it leads away from, so it is a span with the navigation role.
     <span className="local-run-neighbours" role="navigation" aria-label="Neighbouring runs">
-      {newer !== undefined && <Link href={workflowHref(newer)} title={newer} data-direction="newer">Newer run</Link>}
-      {older !== undefined && <Link href={workflowHref(older)} title={older} data-direction="older">Older run</Link>}
+      {newer !== undefined && <Link href={workflowHref(newer, from)} title={newer} data-direction="newer">Newer run</Link>}
+      {older !== undefined && <Link href={workflowHref(older, from)} title={older} data-direction="older">Older run</Link>}
     </span>
   );
 }
@@ -184,12 +194,20 @@ export function RunTimeline({ steps, run, stepText }: {
         // says "not recorded" once, naming every missing fact, where it said it up to six times (its duration, its start,
         // under its bar and in each routing chip).
         const routing = kind === 'routing_decision';
-        const missingFacts = [
+        // OMN-24616 AC6 (Lakshman 2026-11-17): a missing figure (duration, confidence) reads Not measured, a missing
+        // label (start, reason, candidates) Not recorded; both stay one statement per step.
+        const missingLabels = [
           ...(isMissing(row.started_at) ? ['start'] : []),
-          ...(isMissing(row.duration_ms) ? ['duration'] : []),
           ...(routing && isMissing(row.reason) ? ['reason'] : []),
           ...(routing && candidates.length === 0 ? ['candidates'] : []),
+        ];
+        const missingFigures = [
+          ...(isMissing(row.duration_ms) ? ['duration'] : []),
           ...(routing && isMissing(row.confidence) ? ['confidence'] : []),
+        ];
+        const missingFacts = [
+          ...(missingLabels.length > 0 ? [`Not recorded: ${missingLabels.join(', ')}`] : []),
+          ...(missingFigures.length > 0 ? [`Not measured: ${missingFigures.join(', ')}`] : []),
         ];
         // Each served detail under its own name; a detail the row does not carry is left out, never shown empty.
         const details: Array<[string, string]> = [
@@ -233,7 +251,7 @@ export function RunTimeline({ steps, run, stepText }: {
               </div>;
             })()}
             {missingFacts.length > 0 && <p className="local-run-step-missing local-dashboard-caption" data-not-recorded>
-              {`Not recorded: ${missingFacts.join(', ')}`}</p>}
+              {missingFacts.join(' · ')}</p>}
             {details.length > 0 && (
               <div className="local-run-chips">
                 {details.map(([name, value]) => (
@@ -341,6 +359,16 @@ export function WorkflowRun({ component, snapshots, requested, onOpen }: Workflo
   // A failed or unserved steps read with no last good rows is named by the panel's read state, never as "no steps".
   const stepsUnread = Boolean(stepsRead?.failure) && !stepsRead?.lastGoodAt;
   const foreign = rows.some((row) => row.correlation_id !== runId);
+  // OMN-23413 AC48: the run's decision is its own row, read for this run alone, else the list's row for the same id.
+  // Never another run's row. Only a successful read FOR THIS RUN can say it has no decision: a list that lacks the
+  // run proves nothing (it may be one page, or a walk that stopped), so when the run's own read failed the summary
+  // names that failure. Only where no run read exists does the list decide, as before.
+  const runDecisionRead = snapshots.find((snapshot) => snapshot.topic === RUN_DECISION_SNAPSHOT && snapshot.runId === runId);
+  const decision = asRecords(runDecisionRead?.rows ?? []).find((row) => row.correlation_id === runId)
+    ?? decisions.find((row) => row.correlation_id === runId);
+  const unread = (read: BoundProjectionSnapshot | undefined) => Boolean(read?.failure) && !read?.lastGoodAt;
+  const deciding = runDecisionRead ?? decisionsRead;
+  const decisionUnreadBy = decision === undefined && unread(deciding) ? deciding?.failure : undefined;
   return (
     <div>
       <RunPicker key={requested ?? ''} requested={requested} onOpen={onOpen} />
@@ -348,14 +376,16 @@ export function WorkflowRun({ component, snapshots, requested, onOpen }: Workflo
         Run <code>{runId}</code>
         {requested === null && <span className="local-run-tag">newest run</span>}
         <CopyButton text={runId} label="Copy the run id" />
+        <RunsBackLink />
         <RunNeighbours decisions={decisions} runId={runId} />
       </p>
       {decisionsNotServed}
-      {!foreign && rows.length === 0 && (() => {
-        const decision = decisions.find(row => row.correlation_id === runId);
-        return decision ? <WorkflowRoutingFlow decision={decision} outcome={statusOf(decision)} /> : null;
-      })()}
-      {!decisionsNotServed && <RunSummary decision={decisions.find((row) => row.correlation_id === runId)} showAnalysis />}
+      {!foreign && rows.length === 0 && decision
+        ? <WorkflowRoutingFlow decision={decision} outcome={statusOf(decision)} />
+        : null}
+      {!decisionsNotServed && (decisionUnreadBy
+        ? <EmptyState>{plainFailureMessage(decisionUnreadBy, { topic: DELEGATION_DECISIONS_TOPIC, subject: "This run's decision" })}</EmptyState>
+        : <RunSummary decision={decision} showAnalysis />)}
       {stepsUnread ? null : foreign ? (
         <p className="local-dashboard-error" role="alert">run-trace.v1 answered steps of another run; none are shown</p>
       ) : null}
@@ -370,7 +400,7 @@ export function WorkflowRun({ component, snapshots, requested, onOpen }: Workflo
           {/* A titled card as every other part of the run (Lakshman 2026-11-05). */}
           <section className="local-run-timeline workflow-analysis-card workflow-run-timeline-card" aria-label="Run timeline">
             <h3 className="local-dashboard-caption" data-page-heading tabIndex={-1}><ConceptIcon concept="stage-timing" label="Run timeline" size={16} />Run timeline</h3>
-            <RunTimeline steps={rows} run={decisions.find((row) => row.correlation_id === runId)}
+            <RunTimeline steps={rows} run={decision}
               stepText={(component.data_bindings ?? []).some((binding) => binding.projection_topic === CORRELATION_TRACE_TOPIC) ? {
                 prompt: <RunTraceText kind="prompt" read={snapshots.find((snapshot) => snapshot.topic === CORRELATION_TRACE_TOPIC)} runId={runId} />,
                 answer: <RunTraceText kind="answer" read={snapshots.find((snapshot) => snapshot.topic === CORRELATION_TRACE_TOPIC)} runId={runId} />,
@@ -387,7 +417,7 @@ export function WorkflowRun({ component, snapshots, requested, onOpen }: Workflo
           outcome fields above, and the stage chart repeated the Run timeline's step durations (their own comments said so),
           so they are gone; the recorded fields, shown nowhere else, stay. */}
       <div className="local-more local-more--open" data-section="Recorded run details">
-        <WorkflowRecordDetails decision={decisions.find((row) => row.correlation_id === runId)} steps={[]} />
+        <WorkflowRecordDetails decision={decision} steps={[]} />
       </div>
     </div>
   );

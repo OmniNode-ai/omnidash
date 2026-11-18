@@ -46,8 +46,9 @@ test('AC3 a routing step served with a null confidence reads confidence: not rec
   const steps = page.locator('ol.local-dashboard-steps > li');
   await expect(steps).toHaveCount(2);
   await expect(steps.nth(1)).toContainText('cheapest tier passes');
-  // OMN-23330 AC13: a step says "not recorded" once, naming each missing fact.
-  await expect(steps.nth(1).locator('[data-not-recorded]')).toContainText(/Not recorded: .*confidence/, MISSING);
+  // OMN-23330 AC13: a step says it once, naming each missing fact; OMN-24616 AC6 (Lakshman 2026-11-17): confidence is a
+  // figure, so it is named after "Not measured".
+  await expect(steps.nth(1).locator('[data-not-recorded]')).toContainText(/Not measured: .*confidence/, MISSING);
   await expect(steps.nth(1)).not.toContainText('0%');
 });
 

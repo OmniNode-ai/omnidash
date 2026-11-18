@@ -36,7 +36,7 @@ it('AC26 renders metered spend and savings only from the Overview metering rows'
 
 function row(at: string, extra: Record<string, unknown> = {}): Record<string, unknown> {
   return {
-    written_at: at, quality_gate_passed: 1, quality_gate_detail: 'completed', latency_ms: 500, tokens_input: 200,
+    written_at: at, quality_gate_passed: 1, quality_gate_detail: 'completed', execution_ms: 500, tokens_input: 200,
     tokens_output: 20, cost_usd: 0, cost_tier_name: 'local', task_type: 'document',
     model_name: 'Qwen3.8-27B', ...extra,
   };
@@ -46,7 +46,7 @@ const ROWS = [
   row('2026-10-18T08:00:00Z'),
   row('2026-10-18T08:05:00Z', { quality_gate_passed: 0, quality_gate_detail: 'MALFORMED: invalid syntax', task_type: 'code_generation' }),
   row('2026-10-18T08:10:00Z', { quality_gate_passed: null, task_type: null }),
-  row('2026-10-16T22:11:00Z', { latency_ms: 2400, model_name: 'gemini-3.5-flash-lite', cost_tier_name: 'cheap_cloud', cost_usd: 0.0012 }),
+  row('2026-10-16T22:11:00Z', { execution_ms: 2400, model_name: 'gemini-3.5-flash-lite', cost_tier_name: 'cheap_cloud', cost_usd: 0.0012 }),
   row('2026-10-09T12:00:00Z'),
 ];
 
@@ -82,9 +82,9 @@ describe('OMN-21166: Overview insight charts', () => {
     render(<InsightsSection decisions={[row('2026-10-18T08:00:00Z'), row('2026-10-18T08:01:00Z', { tokens_input: null, tokens_output: 5 })]} now={NOW} />);
     const figure = screen.getByRole('figure', { name: /^Tokens per day$/ });
     const bar = within(screen.getByRole('group', { name: 'Tokens per day' })).getByRole('button', { name: /^Oct 18:/ });
-    expect(bar).toHaveAccessibleName('Oct 18: 200 in (partial: 1 run not recorded), 25 out');
+    expect(bar).toHaveAccessibleName('Oct 18: 200 in (partial: 1 run not measured), 25 out');
     fireEvent.focus(bar);
-    expect(figure.querySelector('[aria-live="polite"]')).toHaveTextContent('200 in (partial: 1 run not recorded)');
+    expect(figure.querySelector('[aria-live="polite"]')).toHaveTextContent('200 in (partial: 1 run not measured)');
     expect(figure.querySelector('[aria-live="polite"]')).toHaveTextContent('25 out');
   });
 
@@ -155,7 +155,7 @@ describe('OMN-21166: Overview insight charts', () => {
   });
 
   it('AC26: 7.78 second runs are visible in the 5 to 10 second duration bucket', () => {
-    const distribution = durationDistribution(toInsightRuns([row('2026-10-18T08:00:00Z', { latency_ms: 7_780 })]));
+    const distribution = durationDistribution(toInsightRuns([row('2026-10-18T08:00:00Z', { execution_ms: 7_780 })]));
     expect(distribution.labels).toContain('5 seconds to 10 seconds');
     expect(distribution.buckets[3]).toBe(1);
     expect(distribution.unrecorded).toBe(0);

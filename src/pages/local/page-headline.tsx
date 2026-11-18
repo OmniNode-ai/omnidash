@@ -1,12 +1,13 @@
 // OMN-23330 AC24: part of the local pages, split out of LocalDashboardPage.tsx (3,926 lines) with no change to what
 // any page draws. Headline cards: the metric card, the Overview window and range, metering totals and the KPI rows.
+import { NOT_MEASURED } from '@/theme/format';
 import { formatDashboardCount, formatFullCount, wholeCount } from '@/theme/format';
 import { exactMs, formatDuration } from '@/theme/format';
 import { TokenDirections } from '@/components/dashboard/usage/TokenDirections';
 import { exactTokens } from '@/components/dashboard/usage/TokenCount';
 import { createContext, useId, useState, type CSSProperties, type ReactNode } from 'react';
 import { CalendarDays, ChevronRight } from '@/theme/design-system/icons';
-import { formatDashboardUsd as formatUsd } from '@/theme/format';
+import { formatDashboardUsd as formatUsd, formatShare } from '@/theme/format';
 import { DEFAULT_RUNS_VIEW, writeRunsSearch } from '@/navigation/runs-url-state';
 import { type ActivityWindow } from '@/pages/local/insight-charts';
 import { EmptyState, Fact, FactList, Figure, Tooltip } from '@/theme/design-system/components';
@@ -104,12 +105,12 @@ export function captionText(caption: Record<string, unknown> | null | undefined)
       ? 'Pricing manifest not recorded' : `pricing manifest ${pricingLabel(fields.pricing_manifest_version)}`);
   }
   // OMN-21304 AC4: an exposure that serves no count of unpriced runs says so, rather than standing another count in.
-  if ('unpriced_not_served' in fields) parts.push('Unpriced runs not recorded');
+  if ('unpriced_not_served' in fields) parts.push('Unpriced runs not measured');
   // OMN-21304 AC4: the runs the total leaves out, each served class under its own name; a missing count is not 0.
   if (Array.isArray(fields.excluded_runs)) {
     const classes = (fields.excluded_runs as Array<[unknown, string, string]>).map(([value, one, many]) => {
       const n = countOf(value);
-      return n === null ? `${many}: not recorded` : `${formatDashboardCount(n)} ${n === 1 ? one : many}`;
+      return n === null ? `${many}: not measured` : `${formatDashboardCount(n)} ${n === 1 ? one : many}`;
     });
     parts.push(`Not in this total: ${classes.join(', ')}`);
   }
@@ -253,11 +254,11 @@ export function QualityCard({ row, change = null }: { row: Row | null; change?: 
   if (!row || isMissing(row.overall_pass_rate) || !Number.isFinite(Number(row.overall_pass_rate))) {
     return <Figure measured={false}>Not measured</Figure>;
   }
-  const count = (value: unknown) => (isMissing(value) || !Number.isFinite(Number(value)) ? 'Not recorded' : formatFullCount(String(value)));
+  const count = (value: unknown) => (isMissing(value) || !Number.isFinite(Number(value)) ? NOT_MEASURED : formatFullCount(String(value)));
   return <>
     {/* OMN-23330 AC34: the figure is all time (no previous window), so its detail is the exact rate only. */}
     <FigureDetail lines={[`Exact: ${fmtFixed(Number(row.overall_pass_rate) * 100, 2)}%`]}>
-      <Figure measured><CountUpText text={`${fmtFixed((Number(row.overall_pass_rate) * 100), 1)}%`} /></Figure>
+      <Figure measured><CountUpText text={formatShare(Number(row.overall_pass_rate))} /></Figure>
     </FigureDetail>
     {change && <ChangeLine text={change} meaning={changeMeaning('overview-quality')} />}
     <HeadlineHover label="Delegation Quality" lines={[`${count(row.total_passed)} of ${count(row.total_checks)} runs passed the quality gate`,
@@ -385,7 +386,8 @@ export function readOverviewWindow(search: string, now: number = Date.now()): { 
   if (window === null && day === null) return { ...all, malformed: false };
   if (window !== null && day !== null) return { ...all, malformed: true };
   if (window !== null) {
-    const days = WINDOW_DAYS[window];
+    // OMN-24616 AC5: an own key only, so ?window=constructor is malformed instead of a prototype function.
+    const days = Object.hasOwn(WINDOW_DAYS, window) ? WINDOW_DAYS[window] : undefined;
     if (days === undefined) return { ...all, malformed: true };
     return { overview: days === 1 ? 'today' : meteringRangeFor(days, now), activity: { kind: 'days', days }, malformed: false };
   }
@@ -684,13 +686,13 @@ export function OverviewDayPicker({ days, value, onChange, now = Date.now() }: {
  * the card that owns that field.
  */
 export function headlineHoverLines(componentId: string, row: Row, pctLine: string | null, window: OverviewWindow = 'all'): string[] {
-  const count = (value: unknown) => (isMissing(value) || !Number.isFinite(Number(value)) ? 'Not recorded' : formatFullCount(String(value)));
+  const count = (value: unknown) => (isMissing(value) || !Number.isFinite(Number(value)) ? NOT_MEASURED : formatFullCount(String(value)));
   const unknownTokens = row.runs_unknown_tokens;
   const unknownSpend = row.runs_unknown_spend;
-  const excluded = isMissing(unknownTokens) && isMissing(unknownSpend) ? 'Runs not counted: Not recorded' : (() => {
+  const excluded = isMissing(unknownTokens) && isMissing(unknownSpend) ? `Runs not counted: ${NOT_MEASURED}` : (() => {
     const parts = [
-      isMissing(unknownTokens) ? 'runs without token counts: Not recorded' : Number(unknownTokens) > 0 ? `${count(unknownTokens)} ${Number(unknownTokens) === 1 ? 'run' : 'runs'} without token counts` : null,
-      isMissing(unknownSpend) ? 'runs without spend: Not recorded' : Number(unknownSpend) > 0 ? `${count(unknownSpend)} ${Number(unknownSpend) === 1 ? 'run' : 'runs'} without spend` : null,
+      isMissing(unknownTokens) ? 'runs without token counts: Not measured' : Number(unknownTokens) > 0 ? `${count(unknownTokens)} ${Number(unknownTokens) === 1 ? 'run' : 'runs'} without token counts` : null,
+      isMissing(unknownSpend) ? 'runs without spend: Not measured' : Number(unknownSpend) > 0 ? `${count(unknownSpend)} ${Number(unknownSpend) === 1 ? 'run' : 'runs'} without spend` : null,
     ].filter((part): part is string => part !== null);
     return parts.length === 0 ? null : `Not counted: ${parts.join(', ')}`;
   })();
@@ -803,7 +805,7 @@ export function RunsKpis({ rows, now, complete = false }: { rows: readonly unkno
   const runs = toInsightRuns(rows);
   if (runs.length === 0) return null;
   const totals = runSummary(runs);
-  const latencies = runs.map(run => run.latencyMs).filter((value): value is number => value !== null).sort((a, b) => a - b);
+  const latencies = runs.map(run => run.durationMs).filter((value): value is number => value !== null).sort((a, b) => a - b);
   const p95 = latencies.length === 0 ? null : latencies[Math.max(0, Math.ceil(latencies.length * 0.95) - 1)]!;
   const escalationServed = asRecords(rows).filter(row => !isMissing(row.escalation_count) && Number.isFinite(Number(row.escalation_count)));
   const escalated = escalationServed.filter(row => Number(row.escalation_count) > 0).length;
@@ -817,18 +819,19 @@ export function RunsKpis({ rows, now, complete = false }: { rows: readonly unkno
       // OMN-21970 AC3: a read that walked every page holds every served run, so the caption does not call them the latest.
       lines: [complete ? `All ${formatDashboardCount(totals.runs)} served runs` : `Latest ${formatDashboardCount(totals.runs)} returned runs`],
       trend: { days: dayKeys, values: days.map(day => (day.runs > 0 ? day.runs : null)), format: value => formatDashboardCount(value) } },
-    { label: 'Pass rate', value: totals.passRate === null ? 'Not recorded' : `${fmtFixed(totals.passRate, 1)}%`, unavailable: totals.passRate === null,
+    // OMN-24616 AC2: the rate and its trend are 0-1 shares, written by the one share formatter.
+    { label: 'Pass rate', value: totals.passRate === null ? NOT_MEASURED : formatShare(totals.passRate), unavailable: totals.passRate === null,
       accent: 'var(--ds-field-pass)', concept: 'pass',
       lines: [`${formatDashboardCount(totals.passed + totals.failed)} of ${formatDashboardCount(totals.runs)} runs have a verdict`],
-      trend: { days: dayKeys, values: days.map(day => day.passRate), format: value => `${fmtFixed(value, 1)}%` } },
-    { label: 'Median duration', value: totals.medianLatency === null ? 'Not recorded' : formatDuration(totals.medianLatency), unavailable: totals.medianLatency === null,
+      trend: { days: dayKeys, values: days.map(day => day.passRate), format: value => formatShare(value) } },
+    { label: 'Median duration', value: totals.medianLatency === null ? NOT_MEASURED : formatDuration(totals.medianLatency), unavailable: totals.medianLatency === null,
       title: totals.medianLatency === null ? undefined : exactMs(totals.medianLatency), accent: 'var(--ds-field-duration)', concept: 'duration',
       lines: [totals.medianLatency === null ? null : `Exactly ${exactMs(totals.medianLatency)}`, `${formatDashboardCount(runs.length - latencies.length)} without a duration`] },
-    { label: 'p95 duration', value: p95 === null ? 'Not recorded' : formatDuration(p95), unavailable: p95 === null, title: p95 === null ? undefined : exactMs(p95),
+    { label: 'p95 duration', value: p95 === null ? NOT_MEASURED : formatDuration(p95), unavailable: p95 === null, title: p95 === null ? undefined : exactMs(p95),
       accent: 'var(--ds-field-duration-p95)', concept: 'duration-p95', lines: [p95 === null ? null : `Exactly ${exactMs(p95)}`, `Over ${formatDashboardCount(latencies.length)} recorded durations`] },
     { label: 'Failed', value: formatDashboardCount(totals.failed), accent: 'var(--ds-field-fail)', concept: 'fail',
       lines: [totals.unrecorded > 0 ? `${formatDashboardCount(totals.unrecorded)} without a verdict` : 'Of the returned runs'] },
-    { label: 'Escalated', value: escalationServed.length === 0 ? 'Not recorded' : formatDashboardCount(escalated), unavailable: escalationServed.length === 0,
+    { label: 'Escalated', value: escalationServed.length === 0 ? NOT_MEASURED : formatDashboardCount(escalated), unavailable: escalationServed.length === 0,
       accent: 'var(--ds-field-escalated)', concept: 'escalated',
       lines: [escalationServed.length === 0 ? null : `Of ${formatDashboardCount(escalationServed.length)} runs recording escalations`] },
   ];

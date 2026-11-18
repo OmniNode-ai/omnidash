@@ -79,10 +79,10 @@ describe('recordedUsd', () => {
     expect(recordedUsd(0.012345)).toBe('$0.0123');
     expect(recordedUsd('1234.5')).toBe('$1,234.50');
   });
-  it('says Not recorded for a missing cost, never $0.00', () => {
-    expect(recordedUsd(null)).toBe('Not recorded');
-    expect(recordedUsd(undefined)).toBe('Not recorded');
-    expect(recordedUsd('')).toBe('Not recorded');
+  it('says Not measured for a missing cost, never $0.00', () => {
+    expect(recordedUsd(null)).toBe('Not measured');
+    expect(recordedUsd(undefined)).toBe('Not measured');
+    expect(recordedUsd('')).toBe('Not measured');
   });
   it('shows a non-numeric served value as served', () => {
     expect(recordedUsd('n/a')).toBe('n/a');

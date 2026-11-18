@@ -9,4 +9,4 @@ export { formatDashboardUsd } from './dashboard-currency';
 export { exactMs, formatDuration } from './duration';
 export { readableTime } from './readable-time';
 export { formatShare, formatShortDay } from './share-and-day';
-export { fixed, localeDate, localeString, localeTime } from './primitives';
+export { fixed, localeDate, localeString, localeTime, NOT_MEASURED, NOT_RECORDED } from './primitives';

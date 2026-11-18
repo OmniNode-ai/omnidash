@@ -1,0 +1,128 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+schema_version: "1.0.0"
+ticket_id: "OMN-24616"
+title: "The local dashboard pages compute figures from partial reads, hard-code lists and show one value several ways"
+summary: >-
+  Acceptance for OMN-24616, copied from the live ticket on 2026-11-16. This pull request is stacked on the first one
+  (AC5 and AC7) and adds AC2 (every rate on one scale, shown once as a percent) and AC6 (one formatter set: one missing-value
+  word, one precision per quantity, an Updated time on every page, and Delegation Evidence's states in the shared
+  component and words). AC2, AC5, AC6 and AC7 are declared here
+  and bound to their tests. AC1, AC3, AC4 and AC8 are in the third pull request for this ticket.
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-omn24616-one-rate-scale"
+    statement: >-
+      Every rate on the local pages is held as a 0-1 share and written once as a percent, so a chart and its table
+      read the same number.
+    acceptance:
+      - id: "AC6"
+        statement: >-
+          one formatter set serves every page: a missing value reads Not measured, durations, shares and money follow
+          one rule each, every page header shows its Updated time, and Delegation Evidence uses the same components and
+          loading and error wording as the other pages -- falsifier: npx playwright test over the six pages fails on a
+          second spelling of a missing value, a page without an Updated time, or two precisions for one quantity
+      - id: "AC2"
+        statement: >-
+          every rate is held on one scale and shown once as a percent, so Pass rate per day reads 80.6% in both chart
+          and table -- falsifier: npx vitest rendering the table view of a 0.806 daily rate fails unless the cell
+          reads 80.6%
+  - id: "req-omn24616-served-reads-refuse-malformed-answers"
+    statement: >-
+      Every served response a local page reads is parsed, and a failed, refused or malformed read shows its reason and
+      no figure.
+    acceptance:
+      - id: "AC5"
+        statement: >-
+          every served response a local page reads is parsed with a schema before use; a failed, refused or malformed
+          read shows its reason and no figure, never Loading... or an empty success, and every local page sits in an
+          error boundary that names the failure -- falsifier: npx vitest serving a malformed body and a refusal for
+          each endpoint fails unless the page shows the reason, and npx playwright test opening
+          /overview?window=constructor fails if the page goes blank
+  - id: "req-omn24616-runs-export-and-way-back"
+    statement: >-
+      Runs export writes no cell a spreadsheet would run as a formula, and a run opened from Runs leads back to the
+      same Runs view.
+    acceptance:
+      - id: "AC7"
+        statement: >-
+          Runs export neutralises cells that start with =, +, - or @, and a run opened from Runs shows a Runs
+          breadcrumb and a back link to the same Runs view -- falsifier: npx vitest exporting =HYPERLINK(x) fails
+          unless the cell is neutralised, and npx playwright test fails unless the back link returns to Runs
+evidence_requirements: []
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
+dod_evidence:
+  - id: "dod-omn24616-ac2"
+    description: >-
+      AC2 in pass-rate-scale.omn24616.test.tsx. It serves 25 passed and 6 failed runs on one day, asserts the run
+      summary holds the pass rate as a share (0.806), and opens Pass rate per day as a table: the chart label and the
+      table cell read 80.6% and no cell reads 8064.5%. Both tests fail on dev
+      d7278ead539f77122af0fcc83980e8bcd4bbac27.
+    source: "manual"
+    binds_ac: ["AC2"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm test -- --run src/pages/local/pass-rate-scale.omn24616.test.tsx"
+  - id: "dod-omn24616-ac7"
+    description: >-
+      AC7 in three test files. csv-cell.test.ts and runs-sort-export.csv.test.ts export a served =HYPERLINK(x) and
+      cells starting with +, - and @, and assert each is neutralised. runs-back-link.omn24616.test.tsx opens a run
+      from a filtered Runs view and asserts the run address carries that view, the Workflow breadcrumb links Runs
+      back to it, a crafted from parameter (another site, another page) is refused, and a run opened elsewhere shows
+      no Runs crumb. Three of its four tests fail on dev d7278ead539f77122af0fcc83980e8bcd4bbac27.
+    source: "manual"
+    binds_ac: ["AC7"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm test -- --run src/theme/format/csv-cell.test.ts src/pages/local/runs-sort-export.csv.test.ts src/navigation/runs-back-link.omn24616.test.tsx"
+  - id: "dod-omn24616-ac7-e2e"
+    description: >-
+      AC7's falsifier in a browser: tests/e2e/runs-back.omn24616.spec.ts opens a run from a filtered Runs view and fails
+      unless the Runs breadcrumb and the Back to Runs link both return to that same view, and a neighbouring run keeps
+      the way back.
+    source: "manual"
+    binds_ac: ["AC7"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx playwright test tests/e2e/runs-back.omn24616.spec.ts --project=chromium --workers=1 --retries=0"
+  - id: "dod-omn24616-ac5"
+    description: >-
+      AC5 per endpoint. http-snapshot-source.malformed.test.ts refuses a snapshot body that is neither an envelope nor
+      rows; served-responses.omn24616.test.ts refuses a projection body without a rows array, a log-entries body that
+      is not rows, and a provider row with a malformed field, each with its reason, and still reads a well-formed one;
+      DelegationEvidencePage.omn24616-failed-read.test.tsx renders the page with every read failed and finds the
+      reason on each panel and no Loading or "recorded yet"; model-keys.omn24616-malformed.test.tsx shows the provider
+      table's malformed-row reason and no provider; App.page-error-boundary.test.tsx keeps the frame up when a page
+      throws; page-headline.window-param.test.ts reads a constructor window key as no window. The malformed-body and
+      failed-read tests fail on dev.
+    source: "manual"
+    binds_ac: ["AC5"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm test -- --run src/data-source/http-snapshot-source.malformed.test.ts tests/services/served-responses.omn24616.test.ts src/pages/DelegationEvidencePage.omn24616-failed-read.test.tsx src/pages/DelegationEvidencePage.omn24616-real-path.test.tsx tests/pages/local/model-keys.omn24616-malformed.test.tsx src/App.page-error-boundary.test.tsx src/pages/local/page-headline.window-param.test.ts"
+  - id: "dod-omn24616-ac6"
+    description: >-
+      AC6: header-updated.omn24616.test.tsx (every page shows its Updated time), usage-analysis.omn24616-share and
+      -duration tests (one share and one duration rule), DelegationEvidencePage.omn24616-shared-states.test.tsx (the
+      shared empty state and the local loading and error words), and the Playwright spec
+      tests/e2e/one-formatter-set.omn24616.spec.ts over the six pages, which failed on 5 of 6 pages before the
+      fixes and passes 6 of 6 after.
+    source: "manual"
+    binds_ac: ["AC6"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm test -- --run tests/pages/local/header-updated.omn24616.test.tsx src/pages/local/usage-analysis.omn24616-share.test.tsx src/pages/local/usage-analysis.omn24616-duration.test.tsx src/pages/DelegationEvidencePage.omn24616-shared-states.test.tsx"
+  - id: "dod-omn24616-ac6-e2e"
+    description: >-
+      AC6's falsifier in a browser: tests/e2e/one-formatter-set.omn24616.spec.ts over the six local pages fails on a
+      second spelling of a missing value, a page without an Updated time, or two precisions for one quantity.
+    source: "manual"
+    binds_ac: ["AC6"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx playwright test tests/e2e/one-formatter-set.omn24616.spec.ts --project=chromium --workers=1 --retries=0"

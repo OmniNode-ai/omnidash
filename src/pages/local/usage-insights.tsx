@@ -1,4 +1,5 @@
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
+import { NOT_MEASURED } from '@/theme/format';
 import { ChartNotRecorded, RankedBars } from '@/theme/design-system/charts';
 import { UsageAnalysis } from './usage-analysis';
 import { DEFAULT_RUNS_VIEW, writeRunsSearch } from '@/navigation/runs-url-state';
@@ -27,7 +28,7 @@ function money(value: number | string | null): string {
 }
 
 function count(value: number | null): string {
-  return value === null ? 'Not recorded' : formatDashboardCount(value);
+  return value === null ? NOT_MEASURED : formatDashboardCount(value);
 }
 
 function share(value: number | null): string {
@@ -97,7 +98,7 @@ function SpendByModel({ data }: { data: UsageAggregates }) {
           // Part 29 AC193: each model opens Runs filtered to it.
           href: `/runs?${writeRunsSearch('', { ...DEFAULT_RUNS_VIEW, model: model.model })}`, opensLabel: `Opens Runs filtered to ${model.model}`,
         }))}
-        footnote={gaps.length > 0 ? gaps.map(model => `${model.model}: ${model.unmeasuredCalls === null ? 'unmeasured runs not recorded' : `${count(model.unmeasuredCalls)} unmeasured`}`).join(' · ') : undefined} />
+        footnote={gaps.length > 0 ? gaps.map(model => `${model.model}: ${model.unmeasuredCalls === null ? 'unmeasured-run count not measured' : `${count(model.unmeasuredCalls)} unmeasured`}`).join(' · ') : undefined} />
       <TierLegend label="Spend by model tier colours" models={data.models.map(model => model.model)} />
       <p className="local-dashboard-caption">Measured spend only, summed from the latest {USAGE_WINDOW_DAYS} UTC days of served usage rows.</p>
     </figure>
@@ -130,7 +131,7 @@ function CostPerRun({ data, titled }: { data: UsageAggregates; titled: boolean }
 /** Part 17 AC114: tokens in and out per model as hatched grouped bars; a count not recorded draws no bar. */
 function TokensByModel({ data, titled }: { data: UsageAggregates; titled: boolean }) {
   const modelColor = useModelColor();
-  const words = (value: number | null) => (value === null ? 'Not recorded' : formatFullCount(value));
+  const words = (value: number | null) => (value === null ? NOT_MEASURED : formatFullCount(value));
   return <figure className="local-chart usage-insight" aria-label="Tokens in vs out by model">
     {titled && <h3><ConceptIcon concept="tokens-model" size={16} />Tokens in vs out by model</h3>}
     {data.models.length === 0 ? <EmptyState>No token data available</EmptyState> : (
@@ -185,7 +186,7 @@ function CostByRoute({ routing, titled }: { routing: RouteRow[]; titled: boolean
   return (
     <section className="local-chart usage-cost-by-route" aria-label="Cost by route">
       {titled && <h3><ConceptIcon concept="cost-route" size={16} />Cost by route</h3>}
-      {routing.length === 0 ? <ChartNotRecorded role="status">Route cost is not served yet.</ChartNotRecorded> : <>
+      {routing.length === 0 ? <ChartNotRecorded role="status">Route cost is not measured.</ChartNotRecorded> : <>
         <RankedBars layout="vertical" label="Cost per route" unit="USD · measured cost per route" order="desc"
           table={{ nameHeader: 'Route', valueHeader: 'Cost (USD)', countHeader: 'Runs' }}
           items={routed.map(row => {

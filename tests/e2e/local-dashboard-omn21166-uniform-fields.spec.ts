@@ -67,7 +67,7 @@ test('Evidence keeps small recorded cost and input/output availability independe
   const selected = page.locator('.panel').filter({ has: page.getByRole('heading', { name: 'Selected run', exact: true }) });
   const value = (name: string) => selected.locator('.kv > div').filter({ has: page.getByText(name, { exact: true }) }).locator('.v');
   await expect(value('Cost')).toHaveText('$0.0012');
-  await expect(value('Tokens in')).toHaveText('Not recorded');
+  await expect(value('Tokens in')).toHaveText('Not measured');
   await expect(value('Tokens out')).toHaveText('0');
   await page.screenshot({ path: info.outputPath('uniform-precise-cost.png') });
 });
@@ -78,7 +78,7 @@ test('zero remains measured and missing metadata is neutral instead of looking l
   const input = page.locator('[data-summary-field="Tokens in"] dd');
   const output = page.locator('[data-summary-field="Tokens out"] dd');
   await expect(input).toHaveText('0');
-  await expect(output).toHaveText('Not recorded');
+  await expect(output).toHaveText('Not measured');
   expect(await color(input)).not.toBe(await color(output));
   await expect(page.locator('[data-summary-field="Quality score"] dd')).toHaveText('0.987654');
   await expect(page.locator('[data-summary-field="Required bar"] dd')).toHaveText('0.800');

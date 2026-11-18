@@ -71,9 +71,9 @@ test('C2 control: with nothing left out there is no Not counted line', async ({ 
   await expect(measured).not.toContainText('Not counted');
 });
 
-test('C3: a missing count reads Not recorded, never a number', async ({ page }) => {
+test('C3: a missing count reads Not measured, never a number', async ({ page }) => {
   const measured = await card(page, { runs_unknown_spend: null });
-  await expect(measured).toContainText('runs without spend: Not recorded', MISSING);
+  await expect(measured).toContainText('runs without spend: Not measured', MISSING);
 });
 
 test('C4: a measured 0 is a value', async ({ page }) => {

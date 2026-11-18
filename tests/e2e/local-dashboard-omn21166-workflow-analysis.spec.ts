@@ -57,7 +57,7 @@ test('Workflow charts and recorded details read the selected run without inventi
   await expect(tokens).toBeVisible();
   await expect(tokens).toContainText('Tokens in');
   await expect(tokens).toContainText('0');
-  await expect(tokens).toContainText('Not recorded');
+  await expect(tokens).toContainText('Not measured');
   const quality = page.getByRole('region', { name: 'Run outcome', exact: true });
   await expect(quality).toContainText('0.40');
   await expect(quality).toContainText('0.80');

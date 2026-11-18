@@ -46,8 +46,9 @@ export function compareWindow(rows: readonly unknown[], now: number, days: numbe
   return {
     currentPassRate: current.passRate,
     previousPassRate: previousComplete ? previous.passRate : null,
+    // OMN-24616 AC2: the rates are 0-1 shares; a change between them is written in percentage points.
     passRateDeltaPoints: previousComplete && current.passRate !== null && previous.passRate !== null
-      ? current.passRate - previous.passRate : null,
+      ? (current.passRate - previous.passRate) * 100 : null,
     previousComplete,
     currentRuns: current.runs,
     previousRuns: previous.runs,
@@ -188,7 +189,7 @@ export interface MeteringAllTime {
  */
 export function meteringAllTimeTotals(rows: readonly unknown[]): MeteringAllTime {
   const row = latestAllRow(rows);
-  if (row === 'none') return unavailableAllTime('All-time metering totals are not served yet.');
+  if (row === 'none') return unavailableAllTime('All-time metering totals are not measured.');
   if (row === 'ambiguous') return unavailableAllTime('All-time metering totals are unavailable: two all-time rows were served for the same time.');
   return { available: true, reason: null, baseline: baselineOf(row), spend: number(row.spend_usd) };
 }
@@ -340,8 +341,8 @@ export function durationDistribution(runs: readonly InsightRun[]): { labels: str
   const buckets = new Array<number>(edges.length - 1).fill(0);
   let unrecorded = 0;
   for (const run of runs) {
-    if (run.latencyMs === null) { unrecorded += 1; continue; }
-    const index = edges.findIndex((edge, i) => i < edges.length - 1 && run.latencyMs! >= edge && run.latencyMs! < edges[i + 1]!);
+    if (run.durationMs === null) { unrecorded += 1; continue; }
+    const index = edges.findIndex((edge, i) => i < edges.length - 1 && run.durationMs! >= edge && run.durationMs! < edges[i + 1]!);
     if (index >= 0) buckets[index] = buckets[index]! + 1;
   }
   return { labels: buckets.map((_, index) => durationBucketLabel(index)), buckets, unrecorded };

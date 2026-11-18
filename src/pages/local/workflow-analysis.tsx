@@ -1,4 +1,5 @@
 import { formatDashboardCount, formatFullCount } from '@/theme/format';
+import { NOT_MEASURED } from '@/theme/format';
 import { useId, useState, type CSSProperties, type ReactNode } from 'react';
 import { ComparisonTrack } from '@/theme/design-system/charts';
 import { ConceptIcon, FieldIcon } from '@/components/dashboard/FieldIcon';
@@ -16,7 +17,7 @@ const recorded = (value: unknown) => value === null || value === undefined || va
 
 /** OMN-21166: a run's recorded cost written as money like every other cost on the dashboard; a missing one is named. */
 export function recordedUsd(value: unknown): string {
-  if (value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) return 'Not recorded';
+  if (value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) return NOT_MEASURED;
   return Number.isFinite(Number(value)) ? formatUsd(value) : String(value);
 }
 function measured(value: unknown): number | null {
@@ -43,11 +44,11 @@ function Comparison({ title, kind, values }: {
           onClick={() => setSelected(index)} className="workflow-comparison-row" data-field-tone={fieldTone(item.label)} data-field-unavailable={value === null}
           style={{ '--bar-width': `${value === null ? 0 : value / maximum * 100}%` } as CSSProperties}>
           <ComparisonTrack />
-          <span>{item.label}</span><strong>{value === null ? 'Not recorded' : kind === 'tokens' ? formatFullCount(item.value) : recorded(item.value)}</strong>
+          <span>{item.label}</span><strong>{value === null ? NOT_MEASURED : kind === 'tokens' ? formatFullCount(item.value) : recorded(item.value)}</strong>
         </button>;
       })}
     </div>
-    {selected !== null && <p className="local-dashboard-caption" role="status">{values[selected]!.label}: {kind === 'tokens' ? (measured(values[selected]!.value) === null ? 'Not recorded' : formatFullCount(values[selected]!.value)) : recorded(values[selected]!.value)}</p>}
+    {selected !== null && <p className="local-dashboard-caption" role="status">{values[selected]!.label}: {kind === 'tokens' ? (measured(values[selected]!.value) === null ? NOT_MEASURED : formatFullCount(values[selected]!.value)) : measured(values[selected]!.value) === null ? NOT_MEASURED : recorded(values[selected]!.value)}</p>}
   </figure>;
 }
 
@@ -89,8 +90,10 @@ function writerOf(value: unknown): unknown {
 /** Facts a run with none of them leaves out (a run with no lineage names no retry); every other fact says Not recorded. */
 const OPTIONAL_FACTS = new Set(['Tokens to compliance', 'Routed model', 'Answering backend', 'Score source', 'Recorded by', 'Retry of', 'Lineage']);
 const RECORD_GROUPS: ReadonlyArray<{ name: string; concept: string; facts: (decision: Run) => Array<[string, unknown]> }> = [
-  // OMN-19920 AC5: the run's receipt identity. receipt.json records the correlation id as receipt_id.
-  { name: 'Identity', concept: 'identity', facts: decision => [['Receipt id', decision.correlation_id], ['Session', decision.session_id],
+  // OMN-19920 AC5, OMN-23413 AC47: the run's identity, named for what it is. receipt.json records this id as
+  // receipt_id, but the id a delegated answer calls its run (the receipt's folder, run.json's run_id) is another
+  // id, so "Receipt id" sent readers to the wrong one. The record serves only the correlation id.
+  { name: 'Identity', concept: 'identity', facts: decision => [['Correlation id', decision.correlation_id], ['Session', decision.session_id],
     // OMN-21166 AC66: a retried run names the run it retried and how; a run with no lineage leaves both out.
     ['Retry of', decision.parent_correlation_id], ['Lineage', decision.lineage_kind]] },
   { name: 'Recorded times', concept: 'age', facts: decision => [['Created at', decision.created_at], ['Written at', decision.written_at],

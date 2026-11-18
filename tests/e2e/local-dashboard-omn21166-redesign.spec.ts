@@ -22,7 +22,7 @@ test('Event Bus names configured connection without claiming a lane or invented 
 test('Workbench failed read stays unavailable instead of claiming zero pipeline events', async ({ page }, info) => {
   await page.route(/\/projection\/.*node-generation-completed\.v1(?:\?|$)/, route => route.fulfill({ status: 503, contentType: 'application/json', body: '{}' }));
   await page.goto('/agent-workbench');
-  await expect(page.getByText('Not served by this runtime yet (HTTP 503)', { exact: true })).toBeVisible();
+  await expect(page.getByText('This runtime does not provide this data yet (HTTP 503)', { exact: true })).toBeVisible();
   await expect(page.locator('.kpi').filter({ hasText: 'Pipeline events' }).locator('.k-v')).toHaveText('Not measured');
   await expect(page.locator('.kpi').filter({ hasText: 'Contract pass' })).not.toContainText('0 / 0');
   await expect(page.getByText('Data unavailable', { exact: true })).toBeVisible();

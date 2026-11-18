@@ -148,7 +148,7 @@ test('AC10 unserved topic names stay readable inside narrow cards', async ({ pag
   // OMN-22168: Overview's four charts are a row of tabs; this chart's tab is chosen first.
   await chooseChartTab(page, 'Tier mix');
   const empty = page.locator('[data-component="overview-tier-mix"] .local-dashboard-empty');
-  await expect(empty).toContainText('Not available yet');
+  await expect(empty).toContainText('Not measured:');
   expect(await empty.evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1);
 });
 

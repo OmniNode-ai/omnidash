@@ -130,7 +130,7 @@ test('Evidence savings discloses unavailable unpriced coverage without borrowing
   await page.goto('/delegation-evidence');
   const panel=page.locator('[data-panel-title="SAVINGS vs CLOUD BASELINE"]');
   await expect(panel.locator('.big')).toHaveText('$1,074.21');
-  await expect(panel).toContainText('runs with no spend recorded: not recorded');
+  await expect(panel).toContainText('runs with no spend recorded: not measured');
   await expect(panel).not.toContainText('999');
   await page.screenshot({path:info.outputPath('evidence-unpriced-coverage.png'),fullPage:true});
 });

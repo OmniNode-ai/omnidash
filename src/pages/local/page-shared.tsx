@@ -3,12 +3,13 @@
 import { formatDashboardCount } from '@/theme/format';
 import { readableTime } from '@/theme/format';
 import { formatDuration } from '@/theme/format';
+import { NOT_MEASURED, NOT_RECORDED } from '@/theme/format';
 import { exactTokens } from '@/components/dashboard/usage/TokenCount';
 import { useRef, useState } from 'react';
 import { Link } from 'wouter';
 import { Check, Copy } from '@/theme/design-system/icons';
 import { formatDashboardUsd as formatUsd } from '@/theme/format';
-import { workflowHref } from '@/navigation/workflow-url-state';
+import { useWorkflowHref } from '@/hooks/useWorkflowHref';
 import { failureCauseLabel, failureDetailText, tierLabel } from '@/pages/local/plain-text';
 import { causeLabelOf } from '@/pages/local/run-filter';
 import { typedFailureCauseOf } from '@/pages/local/insights';
@@ -150,10 +151,10 @@ export function causeTextOf(decision: Row | undefined): string {
 /**
  * OMN-21166 (Lakshman, 2026-10-18): a served fraction or long decimal written for reading (0.8095238095238095 reads
  * 81.0% as a percent, 0.85 as a decimal), with the exact served text kept as the title. A value that is not a number
- * is shown as served; a missing one reads Not recorded.
+ * is shown as served; a missing one is a figure and reads Not measured (OMN-24616 AC6).
  */
 export function Readable({ value, kind }: { value: unknown; kind: 'percent' | 'decimal' | 'count' }) {
-  if (isMissing(value)) return <>{recorded(value)}</>;
+  if (isMissing(value)) return <>{measuredText(value)}</>;
   const number = typeof value === 'number' ? value : typeof value === 'string' && value.trim() !== '' ? Number(value) : NaN;
   if (kind === 'count') return <span className="local-readable" title={String(value)}>{formatDashboardCount(value)}</span>;
   if (!Number.isFinite(number)) return <>{String(value)}</>;
@@ -164,18 +165,24 @@ export function Readable({ value, kind }: { value: unknown; kind: 'percent' | 'd
 }
 
 export function recordedCount(value: unknown): string {
-  return isMissing(value) ? 'Not recorded' : formatDashboardCount(value);
+  return isMissing(value) ? NOT_MEASURED : formatDashboardCount(value);
 }
 // OMN-22168: a token count reads short by the dashboard count rule; its exact count is the hover title.
 export function recordedTokens(value: unknown): string {
-  return isMissing(value) ? 'Not recorded' : formatDashboardCount(value);
+  return isMissing(value) ? NOT_MEASURED : formatDashboardCount(value);
 }
 export function tokensTitle(value: unknown, direction?: 'in' | 'out'): string | undefined {
   return isMissing(value) ? undefined : exactTokens(value, direction);
 }
 
+/** A label as served (backend, host, task type, a time); a missing one reads Not recorded (OMN-24616 AC6). */
 export function recorded(value: unknown): string {
-  return isMissing(value) ? 'Not recorded' : String(value);
+  return isMissing(value) ? NOT_RECORDED : String(value);
+}
+
+/** A figure as served (quality score, required bar, a count); a missing one reads Not measured (OMN-24616 AC6). */
+export function measuredText(value: unknown): string {
+  return isMissing(value) ? NOT_MEASURED : String(value);
 }
 
 /**
@@ -184,7 +191,7 @@ export function recorded(value: unknown): string {
  * preserving tiny nonzero amounts as $0.01. A cost never measured is served null and reads Not measured, never $0.00,
  * the same words as the Saving cell beside it (OMN-24224; it read "Not recorded" before).
  */
-export const COST_NOT_MEASURED = 'Not measured';
+export const COST_NOT_MEASURED = NOT_MEASURED;
 
 export function costOf(session: Row | undefined, decision: Row): string {
   const value = isMissing(session?.local_cost_usd) ? decision.cost_usd : session?.local_cost_usd;
@@ -235,19 +242,19 @@ export function runModelledCell(run: Row, withBaseline = true): string {
 
 /** The route tier as served, with its cost regime beside it when the row carries one (OMN-13649, OMN-20225). */
 export function tierOf(decision: Row): string {
-  if (isMissing(decision.cost_tier_name)) return 'Not recorded';
+  if (isMissing(decision.cost_tier_name)) return NOT_RECORDED;
   const name = tierLabel(decision.cost_tier_name);
   return isMissing(decision.cost_tier_type) ? name : `${name} (${tierLabel(decision.cost_tier_type).toLowerCase()})`;
 }
 
 /** OMN-21166 AC55: "12.2 s", one formatter for every page; the exact served milliseconds go in the title. */
 export function duration(value: unknown): string {
-  return isMissing(value) ? 'Not recorded' : formatDuration(value);
+  return isMissing(value) ? NOT_MEASURED : formatDuration(value);
 }
 
 export function age(value: unknown, now: number): string {
   const time = timeOf(value);
-  if (!Number.isFinite(time)) return 'Not recorded';
+  if (!Number.isFinite(time)) return NOT_RECORDED;
   const seconds = Math.max(0, Math.round((now - time) / 1000));
   if (seconds < 60) return `${seconds}s ago`;
   const minutes = Math.floor(seconds / 60);
@@ -271,9 +278,11 @@ export interface RunViewProps {
  * nothing to open, so it reads Not recorded and is not a link.
  */
 export function RunRef({ id, short = false }: { id: unknown; short?: boolean }) {
+  // OMN-24616 AC7: on Runs the link carries the Runs view, so the run page can lead back to it.
+  const hrefFor = useWorkflowHref();
   // `short` (OMN-21166 R-A): a run table shows a long id's head and tail; the link target and title keep the whole id.
   return typeof id === 'string' && id !== ''
-    ? <Link className="ds-run-link" href={workflowHref(id)} title={id} aria-label={short ? id : undefined}>{short ? shortId(id) : id}</Link>
+    ? <Link className="ds-run-link" href={hrefFor(id)} title={id} aria-label={short ? id : undefined}>{short ? shortId(id) : id}</Link>
     : <>{recorded(id)}</>;
 }
 
