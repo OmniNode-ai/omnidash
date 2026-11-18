@@ -166,7 +166,7 @@ export function UsageByModelDayTable({ rows, interactive = false }: { rows: read
           </tr>
         </thead>
         {/* As the run table writes its rows (Lakshman 2026-11-05): a day is named on the first row of its group only (the
-            rest keep it for assistive tech and filters), a measured zero cost is a muted "$0" with the served text as its
+            rest keep it for assistive tech and filters), a measured zero cost is a muted "$0.00" (OMN-24616 AC6) with the served text as its
             title, and no unmeasured calls is a quiet dash. */}
         <tbody>{shown.map((row, index) => (
           <tr key={`${String(row.usage_day)}-${String(row.model_id)}-${String(row.cost_tier_name)}-${index}`}
@@ -180,7 +180,7 @@ export function UsageByModelDayTable({ rows, interactive = false }: { rows: read
             <td data-label="Tokens in" data-field-tone="tokens-in" data-field-unavailable={isMissing(row.input_tokens)}>{isMissing(row.input_tokens) ? NOT_MEASURED : <TokenCount value={row.input_tokens} direction="in" />}</td>
             <td data-label="Tokens out" data-field-tone="tokens-out" data-field-unavailable={isMissing(row.output_tokens)}>{isMissing(row.output_tokens) ? NOT_MEASURED : <TokenCount value={row.output_tokens} direction="out" />}</td>
             <td data-label="Cost (measured)">{!isMissing(row.measured_cost_usd) && Number(row.measured_cost_usd) === 0
-              ? <span className="local-cost-free" title={measuredCost(row.measured_cost_usd)}>{measuredCost(row.measured_cost_usd).replace(/\.0+$/, '')}</span>
+              ? <span className="local-cost-free" title={measuredCost(row.measured_cost_usd)}>{measuredCost(row.measured_cost_usd)}</span>
               : measuredCost(row.measured_cost_usd)}</td>
             <td data-label="Unmeasured">{unmeasured(row.unmeasured_call_count) === 'none'
               ? <span className="local-run-quiet" title="No unmeasured calls">—</span> : unmeasured(row.unmeasured_call_count)}</td>
