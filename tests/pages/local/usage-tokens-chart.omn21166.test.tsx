@@ -21,11 +21,11 @@ function segment(day: string, model: string) {
 }
 
 describe('UsageTokensChart', () => {
-  it('C1: a count that is not served draws no segment and the day says it is not recorded', () => {
+  it('C1: a count that is not served draws no segment and the day says it is not measured (AC6: a missing figure)', () => {
     render(<UsageTokensChart rows={[row('2026-10-24', 'a', 100, 10), row('2026-10-24', 'b', null, 5)]} />);
     expect(segment('2026-10-24', 'b')).toBeNull();
     const day = columns()[0]!;
-    expect(day.getAttribute('aria-label')).toContain('b: not recorded');
+    expect(day.getAttribute('aria-label')).toContain('b: not measured');
     expect(day.querySelector('[data-token-missing]')).not.toBeNull();
   });
 

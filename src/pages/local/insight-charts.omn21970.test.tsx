@@ -114,7 +114,7 @@ describe('OMN-21970: the daily charts draw served per-day totals', () => {
     draw({ kind: 'all' }, [{ ...DAILY_ROW, days: gap }], true);
     const label = bars('Tokens per day').map(bar => bar.getAttribute('aria-label')).find(text => text?.startsWith(
       new Date(`${SERVED[10]!.day}T00:00:00Z`).toLocaleString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })));
-    expect(label).toMatch(/not recorded in, not recorded out/);
+    expect(label).toMatch(/not measured in, not measured out/);
     expect(label).not.toMatch(/\b0 in\b/);
   });
 

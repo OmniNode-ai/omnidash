@@ -26,8 +26,9 @@ it('AC26 compares equal-length windows and refuses a delta when the returned row
     currentPassRate: number | null; previousPassRate: number | null; passRateDeltaPoints: number | null; previousComplete: boolean;
   };
   expect(full).toMatchObject({
-    currentPassRate: 100,
-    previousPassRate: 50,
+    // OMN-24616 AC2: the rates are 0-1 shares; the delta below stays in percentage points.
+    currentPassRate: 1,
+    previousPassRate: 0.5,
     passRateDeltaPoints: 50,
     previousComplete: true,
   });
@@ -41,9 +42,9 @@ it('AC26 compares equal-length windows and refuses a delta when the returned row
 
 it('AC26 keeps unrecorded durations out of the median and spreads a 7.78 second run across the histogram', () => {
   const runs = toInsightRuns([
-    { ...row(21, true), latency_ms: 7780 },
-    { ...row(21, false), latency_ms: 1200 },
-    { ...row(21, null), latency_ms: null },
+    { ...row(21, true), execution_ms: 7780 },
+    { ...row(21, false), execution_ms: 1200 },
+    { ...row(21, null), execution_ms: null },
   ]);
   expect(summary(runs).medianLatency).toBe(4490);
   const distribution = durationBuckets(runs, [0, 1000, 2000, 5000, 10000, 20000, 30000, 60000, Infinity]);

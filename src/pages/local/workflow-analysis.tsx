@@ -1,4 +1,5 @@
 import { formatDashboardCount, formatFullCount } from '@/theme/format';
+import { NOT_MEASURED } from '@/theme/format';
 import { useId, useState, type CSSProperties, type ReactNode } from 'react';
 import { ComparisonTrack } from '@/theme/design-system/charts';
 import { ConceptIcon, FieldIcon } from '@/components/dashboard/FieldIcon';
@@ -16,7 +17,7 @@ const recorded = (value: unknown) => value === null || value === undefined || va
 
 /** OMN-21166: a run's recorded cost written as money like every other cost on the dashboard; a missing one is named. */
 export function recordedUsd(value: unknown): string {
-  if (value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) return 'Not recorded';
+  if (value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) return NOT_MEASURED;
   return Number.isFinite(Number(value)) ? formatUsd(value) : String(value);
 }
 function measured(value: unknown): number | null {
@@ -43,11 +44,11 @@ function Comparison({ title, kind, values }: {
           onClick={() => setSelected(index)} className="workflow-comparison-row" data-field-tone={fieldTone(item.label)} data-field-unavailable={value === null}
           style={{ '--bar-width': `${value === null ? 0 : value / maximum * 100}%` } as CSSProperties}>
           <ComparisonTrack />
-          <span>{item.label}</span><strong>{value === null ? 'Not recorded' : kind === 'tokens' ? formatFullCount(item.value) : recorded(item.value)}</strong>
+          <span>{item.label}</span><strong>{value === null ? NOT_MEASURED : kind === 'tokens' ? formatFullCount(item.value) : recorded(item.value)}</strong>
         </button>;
       })}
     </div>
-    {selected !== null && <p className="local-dashboard-caption" role="status">{values[selected]!.label}: {kind === 'tokens' ? (measured(values[selected]!.value) === null ? 'Not recorded' : formatFullCount(values[selected]!.value)) : recorded(values[selected]!.value)}</p>}
+    {selected !== null && <p className="local-dashboard-caption" role="status">{values[selected]!.label}: {kind === 'tokens' ? (measured(values[selected]!.value) === null ? NOT_MEASURED : formatFullCount(values[selected]!.value)) : measured(values[selected]!.value) === null ? NOT_MEASURED : recorded(values[selected]!.value)}</p>}
   </figure>;
 }
 

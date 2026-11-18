@@ -32,7 +32,7 @@ vi.mock('@/data-source', () => {
         terminal_ok: true,
         quality_gate_detail: 'completed',
         model_name: 'Qwen3.8-27B',
-        latency_ms: 813,
+        execution_ms: 813,
         tokens_input: 162,
         tokens_output: 52,
         task_type: 'summarization',

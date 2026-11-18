@@ -26,7 +26,7 @@ export function DailyMeteringTokens({ data }: { data: DailyMeteringTokenData }) 
   const maximum = data.days.reduce((max, day) => { const n = total(day.input, day.output); return n > max ? n : max; }, 0n);
   const height = (value: string | null) => maximum === 0n || value === null ? 0 : Number(BigInt(value) * 16000n / maximum) / 100;
   const stamp = active.asOf === null ? 'Update time not recorded' : `${new Date(active.asOf).toISOString().slice(0, 19).replace('T', ' ')} UTC`;
-  const direction = (value: string | null) => value === null ? 'not recorded' : formatFullCount(value);
+  const direction = (value: string | null) => value === null ? 'not measured' : formatFullCount(value);
   return <figure aria-label="Daily metering token totals" className="daily-metering-tokens">
     <figcaption><span>Daily metering totals · UTC</span><span>Model breakdown unavailable</span></figcaption>
     <div ref={bars} className="daily-metering-bars" role="group" aria-label="Daily metering tokens">
@@ -43,7 +43,7 @@ export function DailyMeteringTokens({ data }: { data: DailyMeteringTokenData }) 
     <div role="status" className="daily-metering-readout">
       <strong>{dayLabel(active.day)}</strong><TokenDirections input={active.input} output={active.output} />
       <span>{stamp}</span>
-      {active.unknownTokenRuns === null ? <span>Token coverage not recorded</span>
+      {active.unknownTokenRuns === null ? <span>Token coverage not measured</span>
         : BigInt(active.unknownTokenRuns) > 0n && <span>{formatFullCount(active.unknownTokenRuns)} runs with unrecorded tokens</span>}
     </div>
     {data.days.length > 7 && <nav className="daily-metering-pager" aria-label="Token days">

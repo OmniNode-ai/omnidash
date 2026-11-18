@@ -17,7 +17,7 @@ export const withAllTime = { ...chartRows, [METERING]: [...(chartRows[METERING] 
 const DECISIONS = prefix + 'delegation.decisions.v1';
 const decision = (id: string, at: string, model: string | null, cost: string | null, savings: string | null, passed: boolean | null, latency: number | null) => ({
   correlation_id: id, created_at: at, written_at: at, model_name: model, cost_usd: cost, modelled_savings_usd: savings,
-  quality_gate_passed: passed, latency_ms: latency, tokens_input: 100, tokens_output: 20, backend_id: model === null ? null : 'local',
+  quality_gate_passed: passed, execution_ms: latency, latency_ms: latency, tokens_input: 100, tokens_output: 20, backend_id: model === null ? null : 'local',
   task_type: 'summarization', cost_tier_name: 'local', savings_baseline_model: 'baseline-a', savings_pricing_manifest_version: '1.0.0', data_source: 'fixture',
 });
 export const analysisDecisions = [
@@ -57,12 +57,12 @@ export const withTrace = { ...withAnalysis, [RUN_TRACE]: traceSteps };
 const rev7 = (id: string, at: string, model: string | null, task: string, passed: boolean | null, extra: Record<string, unknown> = {}) => ({
   correlation_id: id, created_at: at, written_at: at, model_name: model, requested_model: model, task_type: task,
   cost_tier_name: model === null ? null : 'local', backend_id: model === null ? null : 'local', finish_reason: 'stop', escalation_count: 0,
-  quality_gate_passed: passed, latency_ms: 200, cost_usd: model === null ? null : '0.000000', tokens_input: 100, tokens_output: 20, data_source: 'fixture',
+  quality_gate_passed: passed, execution_ms: 200, latency_ms: 200, cost_usd: model === null ? null : '0.000000', tokens_input: 100, tokens_output: 20, data_source: 'fixture',
   ...extra,
 });
 export const rev7Decisions = [
   rev7('r7-1', '2026-10-15T08:00:00Z', 'model-a', 'summarization', true),
-  rev7('r7-2', '2026-10-15T09:00:00Z', 'model-a', 'summarization', false, { latency_ms: 900 }),
+  rev7('r7-2', '2026-10-15T09:00:00Z', 'model-a', 'summarization', false, { execution_ms: 900, latency_ms: 900 }),
   rev7('r7-3', '2026-10-16T08:00:00Z', 'model-a', 'summarization', true),
   rev7('r7-4', '2026-10-16T09:00:00Z', 'model-a', 'summarization', true),
   rev7('r7-5', '2026-10-17T08:00:00Z', 'model-a', 'summarization', true),

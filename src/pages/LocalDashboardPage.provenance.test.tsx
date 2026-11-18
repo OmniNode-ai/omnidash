@@ -75,7 +75,7 @@ describe('excluded counts beside measured figures', () => {
 
   it('makes unavailable excluded counts explicit, never inventing zero', () => {
     render(<MeteringTotalCard component={measured} config={config} rows={allRow({ runs_measured: 7, runs_total: 7 })} />);
-    expect(screen.getByText('Runs not counted: Not recorded')).toBeInTheDocument();
+    expect(screen.getByText('Runs not counted: Not measured')).toBeInTheDocument();
     expect(screen.queryByText(caption(/Not counted: 0/))).toBeNull();
   });
 

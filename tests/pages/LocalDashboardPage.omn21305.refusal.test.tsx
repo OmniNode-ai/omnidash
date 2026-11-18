@@ -72,7 +72,8 @@ describe('OMN-21305 AC3: a run refused before dispatch shows on Runs under statu
     const row = screen.getByRole('row', { name: new RegExp(`^${REFUSED_ID}`) });
     expect(within(row).getByRole('link', { name: REFUSED_ID })).toHaveAttribute(
       'href',
-      `/workflow?correlation_id=${REFUSED_ID}`,
+      // OMN-24616 AC7: opened from Runs, the run address carries the Runs view it came from.
+      `/workflow?correlation_id=${REFUSED_ID}&from=${encodeURIComponent('/runs?status=failed')}`,
     );
     expect(within(row).getAllByRole('cell')[headers().indexOf('Status')]!.querySelector('.local-run-pill')?.textContent).toBe('failed');
   });

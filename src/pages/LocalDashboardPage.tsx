@@ -77,13 +77,14 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
   const destination: AppPage = embedded ? 'local-settings' : `local-${pageName}` as AppPage;
   const Frame = embedded ? 'div' : 'main';
   const [snapshots, setSnapshots] = useState<BoundProjectionSnapshot[]>([]);
-  // OMN-21166 AC77: Overview and Usage tell the top bar when their rows were last read from the runtime.
-  const servedRead = pageName === 'overview' || pageName === 'usage' ? latestServedRead(snapshots) : null;
+  // OMN-21166 AC77, OMN-24616 AC6: every page tells the top bar when its rows were last read from the runtime.
+  const servedRead = latestServedRead(snapshots);
+  // Each mounted part publishes under its own source, so Settings' four sections never overwrite each other's read.
+  const readSource = useId();
   useEffect(() => {
-    if (pageName !== 'overview' && pageName !== 'usage') return undefined;
-    publishLocalPageRead(pageName, servedRead);
-    return () => publishLocalPageRead(null, null);
-  }, [pageName, servedRead]);
+    publishLocalPageRead(destination, servedRead, readSource);
+    return () => publishLocalPageRead(null, null, readSource);
+  }, [destination, servedRead, readSource]);
   const [error, setError] = useState<string | null>(null);
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -561,13 +562,13 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
                       // window is the dropdown's, so a tab shows its number alone.
                       return <DashboardTabs label="Overview charts" param="chart" tabs={[
                         { id: 'runs', label: 'Total runs', tone: 'var(--ds-field-runs-daily)', icon: <CalendarRange size={18} />,
-                          hint: Number.isFinite(runs) ? `${formatDashboardCount(runs)} runs` : 'Runs not recorded', panel: () => slice('runs', 'Runs per day', 'runs-daily') },
+                          hint: Number.isFinite(runs) ? `${formatDashboardCount(runs)} runs` : 'Runs not measured', panel: () => slice('runs', 'Runs per day', 'runs-daily') },
                         { id: 'tokens', label: 'Total tokens', tone: 'var(--ds-field-tokens-daily)', icon: <ChartArea size={18} />,
-                          hint: tokens !== null ? `${formatDashboardCount(tokens)} tokens` : 'Tokens not recorded', panel: () => slice('tokens', 'Tokens per day', 'tokens-daily') },
+                          hint: tokens !== null ? `${formatDashboardCount(tokens)} tokens` : 'Tokens not measured', panel: () => slice('tokens', 'Tokens per day', 'tokens-daily') },
                         { id: 'models', label: 'Model usage', tone: 'var(--ds-field-runs-model)', icon: <Bot size={18} />,
-                          hint: models !== null ? plural(models, 'model') : 'Models not recorded', panel: () => renderGroup(['overview-model-usage']) },
+                          hint: models !== null ? plural(models, 'model') : 'Models not measured', panel: () => renderGroup(['overview-model-usage']) },
                         { id: 'tiers', label: 'Tier mix', tone: 'var(--ds-field-tier-mix)', icon: <ChartPie size={18} />,
-                          hint: tierRows !== null ? plural(tierRows, 'tier') : 'Tiers not recorded', panel: () => renderGroup(['overview-tier-mix']) },
+                          hint: tierRows !== null ? plural(tierRows, 'tier') : 'Tiers not measured', panel: () => renderGroup(['overview-tier-mix']) },
                       ]} />;
                     })()}
                     </Panel>

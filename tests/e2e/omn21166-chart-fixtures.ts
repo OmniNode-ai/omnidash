@@ -22,7 +22,7 @@ export const chartRows: Record<string, unknown[]> = {
   [prefix + 'delegation.decisions.v1']: runIds.map((id, i) => ({
     correlation_id: id, created_at: `2026-10-17T10:0${3-i}:00Z`, written_at: `2026-10-17T10:0${3-i}:00Z`,
     model_name: i === 1 ? 'model-b' : 'model-a', quality_gate_passed: i !== 1,
-    quality_gate_detail: 'completed', latency_ms: i === 2 ? null : [813, 210][i],
+    quality_gate_detail: 'completed', execution_ms: i === 2 ? null : [813, 210][i], latency_ms: i === 2 ? null : [813, 210][i],
     tokens_input: [162, 90, 0][i], tokens_output: [52, 20, null][i],
     backend_id: 'local', task_type: 'summarization', cost_tier_name: 'local', actual_score: '1.000', data_source: 'fixture',
   })),

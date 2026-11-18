@@ -143,7 +143,7 @@ test('E5 499 or 500 runs draw with no read-limit line, even when the walk could 
   // only a walk that could not finish says so. Here every page is truncated and its next_cursor never moves, so the walk
   // stops at the 500 runs it read.
   // The daily totals topic (OMN-21970 AC2) is declared, empty, as a current runtime serves it, so the panel carries only
-  // this case's own line and not also the "Not available yet: daily run totals" notice of an older runtime.
+  // this case's own line and not also the "Not measured yet: daily run totals" notice of an older runtime.
   await open(page, { [decisionsTopic]: runs(500), [prefix + 'delegation.daily.v1']: [] });
   await expect(runsPanel(page).getByTestId('insights-total'), 'a complete read of 500 runs has no limit line').toHaveCount(0);
   const stuck = runs(500);
@@ -182,10 +182,10 @@ test('E2 huge token counts stay inside their chart', async ({ page }, info) => {
   await shot(page, info, 'e2-huge-tokens');
 });
 
-test('E4 every token count not recorded: no token bar, and the day says not recorded', async ({ page }, info) => {
+test('E4 every token count not measured: no token bar, and the day says not measured', async ({ page }, info) => {
   await open(page, { [decisionsTopic]: runs(20, () => ({ tokens_input: null, tokens_output: null })) });
   await expect((await tokensPanel(page)).locator('.gdb-bar')).toHaveCount(0);
-  await expect((await tokensPanel(page)).locator('.gdb-day').first()).toHaveAccessibleName(/not recorded in, not recorded out/);
+  await expect((await tokensPanel(page)).locator('.gdb-day').first()).toHaveAccessibleName(/not measured in, not measured out/);
   await invariants(page, 'tokens not recorded', { twoColumns: true });
   await shot(page, info, 'e4-tokens-not-recorded');
 });

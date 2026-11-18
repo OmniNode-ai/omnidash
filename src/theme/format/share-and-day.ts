@@ -1,13 +1,14 @@
 /**
  * OMN-23330 AC9, AC10, AC19: a share and a UTC day, formatted once for every page.
  */
+import { NOT_MEASURED } from './primitives';
 
 /** A served share (a fraction, 0.25 = 25%) to one decimal. A nonzero share under 0.05% reads "<0.1%", never a rounded
  * "0.0%" that hides it (live 2026-11-10: a model with 1 of 2,893 calls read 0.0% on Runs); zero stays "0.0%" and a share
- * that is not served reads "Not recorded", never 0. */
+ * that is not served reads "Not measured" (OMN-24616 AC6), never 0. */
 export function formatShare(value: unknown): string {
   const share = typeof value === 'number' ? value : typeof value === 'string' && value.trim() !== '' ? Number(value) : Number.NaN;
-  if (!Number.isFinite(share)) return 'Not recorded';
+  if (!Number.isFinite(share)) return NOT_MEASURED;
   const text = (share * 100).toFixed(1);
   if (share > 0 && Number(text) === 0) return '<0.1%';
   // A share short of the whole never reads as all of it (OMN-21166 TierMix rule, kept here for every share).

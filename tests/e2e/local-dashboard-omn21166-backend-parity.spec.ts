@@ -63,7 +63,9 @@ for (const scenario of [
     await expect(kpi.locator('.local-dashboard-metric')).toHaveText(scenario.expected === 'Not measured' ? /^Not measured/ : scenario.expected);
     const panel = page.locator('[data-panel-title="SAVINGS vs CLOUD BASELINE"]');
     await expect(panel.locator('.ev-savings-hero .big')).toHaveText(scenario.expected === 'Not measured' ? /^Not measured/ : scenario.expected);
-    await expect(panel).toContainText('Baseline model not recorded');
+    // OMN-24616 AC5: a refused headline read is named, never shown as an unrecorded baseline beside it.
+    // OMN-24616 AC6 (50a03412): Evidence names a failed read in the other pages' words, "Cost data is unavailable." and why.
+    await expect(panel).toContainText(scenario.error ? 'Cost data is unavailable. This runtime does not provide this data yet' : 'Baseline model not recorded');
     for (const divergent of ['$7.00', '$500.00', '$88.00']) {
       await expect(kpi).not.toContainText(divergent);
       await expect(panel).not.toContainText(divergent);

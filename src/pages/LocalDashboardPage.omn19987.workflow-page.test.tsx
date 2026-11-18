@@ -216,7 +216,8 @@ describe('OMN-19987 / OMN-21015 AC9: the Workflow page shows one run, asked for 
     window.history.replaceState(null, '', '/runs');
     render(<Pages />);
     const link = await screen.findByRole('link', { name: OLDER });
-    expect(link.getAttribute('href')).toBe(`/workflow?correlation_id=${OLDER}`);
+    // OMN-24616 AC7: opened from Runs, the run address carries the Runs view it came from.
+    expect(link.getAttribute('href')).toBe(`/workflow?correlation_id=${OLDER}&from=%2Fruns`);
     fireEvent.click(link);
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Run path' })).toBeInTheDocument());
     await shows(`task of ${OLDER}`);
@@ -365,7 +366,7 @@ describe('OMN-19987 / OMN-21015 AC9: the Workflow page shows one run, asked for 
   it('W8: run-trace.v1 not served is a typed state, and the run is not said to have no steps', async () => {
     lab.catalogue = [DECISIONS];
     open('/workflow');
-    await shows('Not available yet: run steps.');
+    await shows('Not measured: run steps.');
     expect(panel().textContent).toContain(`Run ${NEWEST}`);
     expect(panel().textContent).not.toContain('No steps recorded');
     expect(within(panel()).queryByRole('alert')).toBeNull();

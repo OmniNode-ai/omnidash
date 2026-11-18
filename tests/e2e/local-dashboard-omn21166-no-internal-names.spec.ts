@@ -126,7 +126,7 @@ test('positive control: the matcher catches planted internal names', () => {
   expect(offences('MALFORMED: invalid syntax')).toContain('legacy quality code: MALFORMED');
   expect(offences('CLOUD_NOT_LINKED')).toContain('ALL_CAPS code: CLOUD_NOT_LINKED');
   expect(offences('waits on metering-summary day rows')).toContain('bare exposure base: metering-summary');
-  expect(offences('Not available yet. 42% below the baseline-a baseline (modelled)')).toEqual([]);
+  expect(offences('Not measured yet. 42% below the baseline-a baseline (modelled)')).toEqual([]);
 });
 
 for (const [name, serve] of Object.entries(scenarios)) {

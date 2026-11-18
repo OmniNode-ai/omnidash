@@ -184,7 +184,7 @@ describe('OMN-20225 AC3: the quality and tier-mix panels show served fields and 
   it('the quality panel types a field the row does not carry, and an absent row is not a zero', () => {
     const { unmount } = render(<QualityPanel row={{ ...quality, avg_required_bar: null }} />);
     const term = screen.getByText('Average required bar', { selector: 'dt' });
-    expect(term.nextElementSibling?.textContent?.trim()).toBe('Not recorded');
+    expect(term.nextElementSibling?.textContent?.trim()).toBe('Not measured');
     unmount();
     render(<QualityPanel row={null} />);
     expect(screen.getByRole('status')).toHaveTextContent('No quality checks served yet');
