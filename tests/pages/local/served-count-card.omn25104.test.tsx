@@ -40,6 +40,7 @@ describe('ServedCountCard', () => {
 
   it('done_figure_from_served_projection no rows shows Not measured with caption that no done items were served, never 0', () => {
     const rows: Record<string, unknown>[] = [];
+    expect(doneItemsCount(rows)).toBeNull();
     const { container } = render(
       <ServedCountCard label="Done" rows={rows} failure={null} count={doneItemsCount(rows)}
         emptyCaption="The read returned no rows: no done items were served." />
