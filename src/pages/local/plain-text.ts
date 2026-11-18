@@ -1,3 +1,4 @@
+import { TIER_LABELS } from '@/contracts/local-display-names';
 import { isUnavailableField } from '@/components/dashboard/field-identity';
 /**
  * OMN-21166 AC39: the words a user reads when data is missing or a read failed. No exposure, topic, field or typed
@@ -100,10 +101,6 @@ export function plainFailureMessage(
  * colours, filters and URLs; only the words on the page change. A key not listed reads in sentence case, never as
  * snake_case.
  */
-const TIER_LABELS: Readonly<Record<string, string>> = {
-  local: 'Local', cheap_cloud: 'Cheap cloud', cheap_frontier: 'Cheap frontier', claude: 'Claude', cloud: 'Cloud',
-  not_tier_routed: 'Not tier-routed',
-};
 
 export function tierLabel(name: unknown): string {
   if (name === null || name === undefined) return 'Not recorded';

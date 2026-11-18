@@ -10,7 +10,7 @@ import { MeteringDaySeries, meteringDaysByBaseline } from '@/components/dashboar
 import { TenantNotConfiguredState } from '@/components/dashboard/TenantNotConfiguredState';
 import { requestLocalPageRefresh } from '@/services/local-page-refresh';
 import { SpendByDayChart, UNRESOLVED_BASELINE } from '@/theme/design-system/charts';
-import { InsightsSection, MeteringActivityInsights, type ActivityWindow } from '@/pages/local/insight-charts';
+import { InsightsSection, MeteringActivityInsights, type ActivityWindow, servedFailureCategories } from '@/pages/local/insight-charts';
 import { UsageInsights } from '@/pages/local/usage-insights';
 import { DataTable, EmptyState } from '@/theme/design-system/components';
 import { plainFailureMessage } from '@/pages/local/plain-text';
@@ -195,12 +195,17 @@ export function TableComponent({ component, snapshots, pageSize, syncUrl, column
     const metering = snapshots.find(snapshot => snapshot.topic === METERING_SUMMARY_TOPIC);
     const meteringRows = metering?.rows ?? [];
     const meteringUnavailable = metering?.failure ? 'Daily metering data is not available yet.' : null;
+    // OMN-24616 AC1: the failure list reads the quality gate's served counts, which cover every run.
+    const quality = snapshots.find(snapshot => snapshot.topic.endsWith('.quality-gate.v1') && !snapshot.failure);
+    const qualityRow = quality?.rows[0];
+    const servedFailures = qualityRow !== null && typeof qualityRow === 'object'
+      ? servedFailureCategories((qualityRow as Record<string, unknown>).failure_categories) : null;
     // OMN-21166 part 13: Overview keeps the activity summary; the window's spend line sits in "More activity" with the
     // run counts, and the detailed analysis lives on Runs (its "Explore run analysis" link stays).
-    if (slice) return rows.length === 0 ? <NoRunsYet /> : <InsightsSection decisions={rows} now={Date.now()} view={slice.key as 'runs' | 'tokens' | 'failures'} onInspectFailure={cause => navigate(causeHref(cause))}
+    if (slice) return rows.length === 0 ? <NoRunsYet /> : <InsightsSection decisions={rows} now={Date.now()} view={slice.key as 'runs' | 'tokens' | 'failures'} servedFailures={servedFailures} onInspectFailure={cause => navigate(causeHref(cause))}
       servedDays={slice.key === 'tokens' ? tokenDays : runDays} complete={decisionsComplete} />;
     return rows.length === 0 ? <NoRunsYet /> : <>
-    <InsightsSection decisions={rows} now={Date.now()} view="summary" servedDays={servedDays} complete={decisionsComplete} more={meteringRows.length > 0
+    <InsightsSection decisions={rows} now={Date.now()} view="summary" servedDays={servedDays} complete={decisionsComplete} servedFailures={servedFailures} more={meteringRows.length > 0
       ? <MeteringActivityInsights rows={meteringRows} now={Date.now()} window={activityWindow} unavailable={meteringUnavailable} display="kpis" />
       : null} />
   </>;

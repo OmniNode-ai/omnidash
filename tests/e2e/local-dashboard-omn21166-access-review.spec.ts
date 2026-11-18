@@ -23,10 +23,10 @@ test('Credentials keeps reference metadata readable on phones without exposing v
   if (await collapse.isVisible()) await collapse.click();
   // OMN-21970 AC9/AC10 (Lakshman 2026-11-02): a key whose provider GET /models does not list keeps its own provider row (an
   // article that opens to its details) instead of a table row; its key is listed there with the same fields.
-  const row = page.getByRole('article', { name: 'Fixture-provider', exact: true });
+  const row = page.getByRole('article', { name: 'fixture-provider', exact: true });
   await expect(row.locator('.local-provider-status')).toHaveText('Not listed by onex models');
   await row.locator('summary.local-provider-line').click();
-  const keys = row.getByRole('list', { name: 'Fixture-provider keys', exact: true });
+  const keys = row.getByRole('list', { name: 'fixture-provider keys', exact: true });
   // Part 18 AC128: Expires and Bound host show only when a key records one (this fixture serves neither, so one caption
   // says so), and there is no Revoked field: an active key is not revoked. OMN-19996 added Last used, which reads Never.
   await expect(keys.locator('dt')).toHaveText(['Fingerprint', 'Set', 'Last used']);

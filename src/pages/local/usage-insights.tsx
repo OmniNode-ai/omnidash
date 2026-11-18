@@ -15,7 +15,16 @@ import { EmptyState } from '@/theme/design-system/components';
 import { localeDate as fmtLocaleDate } from '@/theme/format';
 import { formatShare } from '@/theme/format';
 
-const USAGE_WINDOW_DAYS = 30;
+/** OMN-24616 AC3: the UTC days from the oldest served usage row to today, so no served row is left out; at least one. */
+function usageSpanDays(usageRows: readonly unknown[], now: number): number {
+  const days = usageRows.flatMap(row => {
+    const day = row !== null && typeof row === 'object' ? (row as Record<string, unknown>).usage_day : undefined;
+    return typeof day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(day) ? [Date.parse(`${day}T00:00:00Z`)] : [];
+  });
+  if (days.length === 0) return 1;
+  const today = Date.parse(`${new Date(now).toISOString().slice(0, 10)}T00:00:00Z`);
+  return Math.max(1, Math.round((today - Math.min(...days)) / 86_400_000) + 1);
+}
 
 type Row = Record<string, unknown>;
 
@@ -76,7 +85,7 @@ function routeSpendByTier(row: Row): RouteRow[] {
       share: typeof tier.pct_of_tier_routed === 'number' ? tier.pct_of_tier_routed : null,
       cost: routeCost(tier),
       // Part 17 AC115: runs outside the tier routing have no share of the tier-routed runs.
-      tierRouted: (tier.tier_routed === true || tier.tier_routed === 1) && name !== 'not_tier_routed',
+      tierRouted: tier.tier_routed === true || tier.tier_routed === 1,
     };
   }) : [];
 }
@@ -100,7 +109,7 @@ function SpendByModel({ data }: { data: UsageAggregates }) {
         }))}
         footnote={gaps.length > 0 ? gaps.map(model => `${model.model}: ${model.unmeasuredCalls === null ? 'unmeasured-run count not measured' : `${count(model.unmeasuredCalls)} unmeasured`}`).join(' · ') : undefined} />
       <TierLegend label="Spend by model tier colours" models={data.models.map(model => model.model)} />
-      <p className="local-dashboard-caption">Measured spend only, summed from the latest {USAGE_WINDOW_DAYS} UTC days of served usage rows.</p>
+      <p className="local-dashboard-caption">Measured spend only, summed from the latest {data.days.length} UTC days of served usage rows.</p>
     </figure>
   );
 }
@@ -157,7 +166,8 @@ export function UsageInsights({ usageRows, decisionRows, routingRows, now = Date
   /** 'spend' is Spend by model; part 17: each "More usage" chart is its own panel, so each is its own part. */
   part?: 'all' | 'spend' | 'cost-per-run' | 'tokens-by-model' | 'cost-by-route' | 'analysis';
 }) {
-  const data = aggregateUsageRows(usageRows, decisionRows, now, USAGE_WINDOW_DAYS);
+  const usageDays = usageSpanDays(usageRows, now);
+  const data = aggregateUsageRows(usageRows, decisionRows, now, usageDays);
   const routing = routeSpendByTier(records(routingRows)[0] ?? {});
   // A part sits in a panel whose title names it, so it draws no heading of its own.
   // Part 29 AC194, AC195: the analysis of the served decisions, its own full-row panel (AC89).
@@ -167,7 +177,7 @@ export function UsageInsights({ usageRows, decisionRows, routingRows, now = Date
   if (part === 'tokens-by-model') return <section className="usage-insights" aria-label="Usage insights"><TokensByModel data={data} titled={false} /></section>;
   if (part === 'cost-by-route') return <section className="usage-insights" aria-label="Usage insights"><CostByRoute routing={routing} titled={false} /></section>;
   return <section className="usage-insights" aria-label="Usage insights">
-    <h3 className="local-dashboard-caption">Latest {USAGE_WINDOW_DAYS} UTC days · counted from served usage rows</h3>
+    <h3 className="local-dashboard-caption">Latest {usageDays} UTC days · counted from served usage rows</h3>
     <div className="usage-insight-grid"><SpendByModel data={data} /></div>
     {/* OMN-21166 part 13: cost per run, tokens by model and cost by route are one click away. */}
     <div className="local-more local-more--open" data-section="More usage">

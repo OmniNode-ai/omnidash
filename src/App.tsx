@@ -101,7 +101,8 @@ export function App() {
         )}
       </FrameLayout>
       {/* Assistant deferred for MVP at composition: its hooks never mount. */}
-      {isOpen && <CommandPalette onClose={close} />}
+      {/* OMN-24616 AC4 (D3): the local pages have no palette; its route is not served there. */}
+      {isOpen && !page?.startsWith('local-') && page !== 'delegation-evidence' && <CommandPalette onClose={close} />}
     </>
   );
 }

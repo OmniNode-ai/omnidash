@@ -1,5 +1,6 @@
 import { formatDashboardCount, formatFullCount } from '@/theme/format';
 
+import { LOCAL_WINDOWS } from '@/contracts/local-windows';
 import { formatDashboardUsd, formatShare } from '@/theme/format';
 import { formatDuration } from '@/theme/format';
 import { NOT_MEASURED } from '@/theme/format';
@@ -9,7 +10,7 @@ import { passBand } from '@/pages/local/plain-text';
 import { BarTrack, ChartCard, ChartEmpty, ChartReadout, CumulativeColumns, DayAxis, DayColumns, Histogram, HourHeatmap, LinePlot, NamedByPanel, RankedBars, SeriesLegend, SeriesToggles, SpendColumns, dayTicks } from '@/theme/design-system/charts';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { causeHref, useSharedRunFilter } from './run-filter';
-import { failureCauseLabel } from './plain-text';
+import { escalationReason, failureCauseLabel } from './plain-text';
 import { Link, useLocation, useSearch } from 'wouter';
 import { DEFAULT_RUNS_VIEW, readRunsSearch, writeRunsSearch } from '@/navigation/runs-url-state';
 import {
@@ -32,13 +33,9 @@ import { fixed as fmtFixed, localeDate as fmtLocaleDate, localeString as fmtLoca
  * keyboard can focus, with the same numbers in its name and in the chart's readout.
  */
 
-const RANGES = [
-  { days: 1, label: '1 day' },
-  { days: 7, label: '7 days' },
-  { days: 15, label: '15 days' },
-  { days: 30, label: '30 days' },
-  { days: 90, label: '90 days' },
-] as const;
+// OMN-24616 AC4: the chart range buttons from the one declared window list.
+const RANGES = LOCAL_WINDOWS.filter(window => window.days > 0)
+  .map(window => ({ days: window.days, label: `${window.days} ${window.days === 1 ? 'day' : 'days'}` }));
 
 const PASS = 'var(--ds-field-pass)';
 const FAIL = 'var(--ds-field-fail)';
@@ -327,6 +324,56 @@ function FailureCauses({ runs, onInspectFailure, limit }: { runs: InsightRun[]; 
   );
 }
 
+/** A served failure category: the quality gate's failed checks of one kind (delegation.quality-gate.v1). */
+export interface ServedFailureCategory { category: string; count: number }
+
+/** The quality-gate row's failure_categories as served (an array, or its JSON text), or null when it serves none. */
+export function servedFailureCategories(value: unknown): ServedFailureCategory[] | null {
+  let parsed: unknown = value;
+  if (typeof value === 'string') {
+    try { parsed = JSON.parse(value); } catch { return null; }
+  }
+  if (!Array.isArray(parsed)) return null;
+  return parsed.flatMap((item: unknown) => {
+    if (item === null || typeof item !== 'object') return [];
+    const { category, count } = item as { category?: unknown; count?: unknown };
+    const served = typeof count === 'number' ? count : Number(count);
+    return typeof category === 'string' && Number.isFinite(served) ? [{ category, count: served }] : [];
+  });
+}
+
+/**
+ * OMN-24616 AC1: Overview's failure list from the quality gate's served counts instead of counting the newest page of
+ * rows. Those counts are failed quality CHECKS over all time (one served row), not failed runs in the Overview window,
+ * so the card says so (review of #521, Lakshman 2026-11-17: "label it honestly"). A category opens every failed run.
+ */
+function ServedFailureCategories({ categories, limit }: { categories: readonly ServedFailureCategory[]; limit?: number }) {
+  const ranked = [...categories].sort((a, b) => b.count - a.count || a.category.localeCompare(b.category));
+  const list = limit === undefined ? ranked : ranked.slice(0, limit);
+  const max = Math.max(1, ...list.map(entry => entry.count));
+  return (
+    <ChartCard title="Failed checks by category" concept="failures" note="all time" delay={360}>
+      {list.length === 0 ? <ChartEmpty>No failed quality checks served</ChartEmpty> : (
+        <ul className="ins-list" aria-label="Failure causes">
+          {list.map((entry, index) => {
+            const reason = escalationReason(entry.category);
+            const name = reason.text.charAt(0).toUpperCase() + reason.text.slice(1);
+            return (
+              <li key={entry.category} className="ins-list-row ins-list-row--plain" style={{ '--ins-swatch': [FAIL, 'var(--ds-chart-7)', 'var(--ds-chart-5)', 'var(--ds-chart-4)', 'var(--ds-chart-3)'][index % 5] } as CSSProperties}>
+                <span className="ins-list-name" data-failure-category={entry.category} title={reason.title}>{name}</span>
+                <BarTrack share={entry.count / max} delay={index * 60} />
+                <span className="ins-list-value" data-field-tone="fail">{count(entry.count)}</span>
+                <span className="ins-list-seen"><Link href="/runs?status=failed" aria-label={`View failed runs (${name})`}>View failed runs</Link></span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <p className="local-dashboard-caption">Counts failed quality checks by category from the quality gate, all time; not limited to the selected window.</p>
+    </ChartCard>
+  );
+}
+
 /** A group of charts. Part 18 AC124: no visible group label (each chart names itself); the group keeps its name for assistive tech. */
 function ChartSection({ title, children }: { title: string; concept?: string; children: ReactNode }) {
   return <section className="overview-chart-section" aria-label={title}><div className="overview-chart-row">{children}</div></section>;
@@ -388,7 +435,7 @@ export function PassRateSparkline({ part = 'all' }: { part?: 'all' | 'headline' 
   const window = windowFromContext(pageWindow, ownWindow);
   if (window.kind === 'custom' && (window.start === '' || window.end === '' || window.end < window.start)) return null;
   const currentRuns = selectedRuns(runs, context.now, window);
-  const comparisonDays = window.kind === 'days' ? window.days : MAX_ALL_TIME_DAYS;
+  const comparisonDays = window.kind === 'days' ? window.days : allTimeDays(runs, context.now);
   const comparison = window.kind === 'days' ? compareWindow(context.decisions, context.now, window.days) : null;
   const current = summary(currentRuns);
   const rate = current.passRate === null ? NOT_MEASURED : formatShare(current.passRate);
@@ -408,7 +455,6 @@ export function PassRateSparkline({ part = 'all' }: { part?: 'all' | 'headline' 
     {part === 'all' && trend}
   </section>;
 }
-const MAX_ALL_TIME_DAYS = 30;
 
 function windowFromContext(value: 'all' | 'today' | InsightsWindowValue | null, fallback: ActivityWindow): ActivityWindow {
   if (value === 'all') return { kind: 'all' };
@@ -421,9 +467,9 @@ function customRangeDays(start: string, end: string): string[] {
   const first = Date.parse(`${start}T00:00:00Z`);
   const last = Date.parse(`${end}T00:00:00Z`);
   if (!Number.isFinite(first) || !Number.isFinite(last) || last < first) return [];
+  // OMN-24616 AC3: every day of the range, with no 30-day cap.
   const count = Math.floor((last - first) / 86_400_000) + 1;
-  const plottedStart = first + Math.max(0, count - MAX_ALL_TIME_DAYS) * 86_400_000;
-  return Array.from({ length: Math.min(count, MAX_ALL_TIME_DAYS) }, (_, index) => new Date(plottedStart + index * 86_400_000).toISOString().slice(0, 10));
+  return Array.from({ length: count }, (_, index) => new Date(first + index * 86_400_000).toISOString().slice(0, 10));
 }
 
 function selectedRuns(runs: readonly InsightRun[], now: number, window: ActivityWindow): InsightRun[] {
@@ -606,13 +652,14 @@ function MoneyWindowCharts({ rows, now, days, unavailable }: { rows: readonly un
 export function MeteringActivityInsights({ rows, now, unavailable, window, display = 'all' }: {
   rows: readonly unknown[]; now: number; unavailable: string | null; window: ActivityWindow; display?: 'all' | 'kpis' | 'charts';
 }) {
-  const days = window.kind === 'days' ? window.days : MAX_ALL_TIME_DAYS;
+  // OMN-24616 AC3: All time charts every served day, from the oldest served day row to today, with no 30-day cap.
+  const days = window.kind === 'days' ? window.days : meteringSpanDays(rows, now);
   const label = windowCaption(window);
   // AC42 (Lakshman 2026-10-21 ~19:10Z, ~19:40Z): All shows the served all-time row's spend only; a custom range sums
   // its served day rows.
-  // The daily charts stay on the rolling windows.
-  const chartUnavailable = window.kind === 'days' ? unavailable
-    : 'Daily metering charts are drawn for the 1, 7, 15 and 30 day windows.';
+  // The daily charts draw the rolling windows and All time; a custom range shows its totals only.
+  const chartUnavailable = window.kind !== 'custom' ? unavailable
+    : 'Daily metering charts are drawn for the rolling windows and All time.';
   const kpis = () => {
     if (window.kind === 'all') return <MeteringAllTimeKpis rows={rows} label={label} unavailable={unavailable} />;
     if (window.kind === 'custom') {
@@ -632,7 +679,18 @@ function allTimeDays(runs: readonly InsightRun[], now: number): number {
   if (runs.length === 0) return 7;
   const oldest = Math.min(...runs.map(run => Date.parse(`${run.day}T00:00:00Z`)));
   const today = Date.parse(`${new Date(now).toISOString().slice(0, 10)}T00:00:00Z`);
-  return Math.min(MAX_ALL_TIME_DAYS, Math.max(7, Math.round((today - oldest) / 86_400_000) + 1));
+  return Math.max(7, Math.round((today - oldest) / 86_400_000) + 1);
+}
+
+/** OMN-24616 AC3: the UTC days from the oldest served metering day row to today, at least one. */
+function meteringSpanDays(rows: readonly unknown[], now: number): number {
+  const starts = rows.flatMap(row => {
+    const start = row !== null && typeof row === 'object' ? (row as Record<string, unknown>).window_start : undefined;
+    return typeof start === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(start) ? [Date.parse(`${start}T00:00:00Z`)] : [];
+  });
+  if (starts.length === 0) return 1;
+  const today = Date.parse(`${new Date(now).toISOString().slice(0, 10)}T00:00:00Z`);
+  return Math.max(1, Math.round((today - Math.min(...starts)) / 86_400_000) + 1);
 }
 
 /** OMN-21166 part 21 AC142: mirrors `limit: 500` on onex.snapshot.projection.delegation.decisions.v1 in omnimarket's
@@ -651,12 +709,14 @@ export function chartLimitLine(undatedCount: number): string | null {
   return parts.length > 0 ? parts.join(' · ') : null;
 }
 
-export function InsightsSection({ decisions, now, view = 'all', onInspectFailure, more, servedDays = null, complete = false }: {
+export function InsightsSection({ decisions, now, view = 'all', onInspectFailure, more, servedDays = null, complete = false, servedFailures = null }: {
   decisions: readonly unknown[]; now: number; view?: 'all' | 'summary' | 'analysis' | 'runs' | 'tokens' | 'failures'; onInspectFailure?: (cause: string) => void;
   /** OMN-21970 AC2: delegation.daily.v1's per-day totals; when served, the daily charts draw them instead of the rows. */
   servedDays?: readonly ServedDay[] | null;
   /** OMN-21970 AC3: true when the decisions read walked every page, so the rows are every served run. */
   complete?: boolean;
+  /** OMN-24616 AC1: the quality gate's served failure categories; when served, the failure list shows them. */
+  servedFailures?: readonly ServedFailureCategory[] | null;
   /** OMN-21166 part 13: on the summary view, further detail shown inside the section's closed "More activity". */
   more?: ReactNode;
 }) {
@@ -693,7 +753,7 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
     : customReversed ? 'End date must be on or after the start date'
       : runs.length === 0 ? window.kind === 'custom' ? 'No runs in this date range'
         : window.kind === 'all' ? 'No runs in served data'
-          : window.kind === 'days' && window.days === 1 ? 'No runs today' : `No runs in the last ${window.kind === 'days' ? window.days : MAX_ALL_TIME_DAYS} days`
+          : window.kind === 'days' && window.days === 1 ? 'No runs today' : `No runs in the last ${window.kind === 'days' ? window.days : chartDaysList.length} days`
         : null;
   // OMN-21166 Maple grid: a slice draws one piece in its own panel; the runs panel carries the window and the population.
   if (view === 'runs' || view === 'tokens' || view === 'failures') {
@@ -709,7 +769,8 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
             {/* Live review 2026-10-25: no "More activity" on Overview; part 15 AC96: no "Explore" links, the sidebar reaches Runs and Usage. */}
             </>
             : view === 'tokens' ? <TokensPerDay days={chartDays} />
-              : <FailureCauses runs={runs} limit={5} onInspectFailure={onInspectFailure} />}
+              : servedFailures !== null ? <ServedFailureCategories categories={servedFailures} limit={5} />
+                : <FailureCauses runs={runs} limit={5} onInspectFailure={onInspectFailure} />}
       </div>
       </NamedByPanel.Provider>
     );
@@ -728,12 +789,13 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
           </div>
         </div>
       )}
-      <p className="local-dashboard-caption ins-sub" data-testid="insights-total">{population}{undated}{view === 'summary' ? null : <> · Row timestamps: {servedSpan}{earlier}{window.kind === 'days' || view !== 'all' ? '' : ' · Comparisons with the previous window appear for 1, 7, 15 and 30 days'}{window.kind === 'all' || window.kind === 'custom' ? ` · Charts show at most ${MAX_ALL_TIME_DAYS} UTC days; ${count(chartRuns.length)} of ${count(runs.length)} selected runs plotted` : ''}</>}</p>
+      <p className="local-dashboard-caption ins-sub" data-testid="insights-total">{population}{undated}{view === 'summary' ? null : <> · Row timestamps: {servedSpan}{earlier}{window.kind === 'days' || view !== 'all' ? '' : ' · Comparisons with the previous window appear for 1, 7, 15 and 30 days'}</>}</p>
       {emptyMessage !== null ? <EmptyState className="ins-empty" aria-label="Insights">{emptyMessage}</EmptyState> : (
         <div className="overview-chart-sections">
-          {view === 'all' && <RunWindowKpis runs={runs} decisions={decisions} now={now} days={window.kind === 'days' ? window.days : MAX_ALL_TIME_DAYS} label={windowCaption(window)} comparisonEnabled={window.kind === 'days'} />}
+          {view === 'all' && <RunWindowKpis runs={runs} decisions={decisions} now={now} days={window.kind === 'days' ? window.days : chartDaysList.length} label={windowCaption(window)} comparisonEnabled={window.kind === 'days'} />}
           {view !== 'analysis' && <ChartSection concept="activity" title="Activity over time"><RunsPerDay days={chartDays} /><TokensPerDay days={chartDays} /></ChartSection>}
-          {view === 'summary' && <ChartSection concept="quality-outcomes" title="Why runs failed"><FailureCauses runs={runs} limit={3} /></ChartSection>}
+          {view === 'summary' && <ChartSection concept="quality-outcomes" title={servedFailures !== null ? 'Failed checks by category' : 'Why runs failed'}>{servedFailures !== null
+            ? <ServedFailureCategories categories={servedFailures} limit={3} /> : <FailureCauses runs={runs} limit={3} />}</ChartSection>}
           {/* Lakshman 2026-11-05 ("run page should be fully organised and logically ... visually attractive"): on Runs the six
               analysis charts are one full-width row of tabs, one big chart at a time, as the run charts above them; each
               hint counts what that chart draws, never a computed figure. */}
@@ -768,8 +830,8 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
       )}
       {view === 'summary' && emptyMessage === null && (
         <div className="local-more local-more--open" data-section="More activity">
-          <p className="local-dashboard-caption ins-sub">{population}{undated} · Row timestamps: {servedSpan}{earlier}{window.kind === 'days' ? '' : ' · Comparisons with the previous window appear for 1, 7, 15 and 30 days'}{window.kind === 'all' || window.kind === 'custom' ? ` · Charts show at most ${MAX_ALL_TIME_DAYS} UTC days; ${count(chartRuns.length)} of ${count(runs.length)} selected runs plotted` : ''}</p>
-          <RunWindowKpis runs={runs} decisions={decisions} now={now} days={window.kind === 'days' ? window.days : MAX_ALL_TIME_DAYS} label={windowCaption(window)} comparisonEnabled={window.kind === 'days'} />
+          <p className="local-dashboard-caption ins-sub">{population}{undated} · Row timestamps: {servedSpan}{earlier}{window.kind === 'days' ? '' : ' · Comparisons with the previous window appear for 1, 7, 15 and 30 days'}</p>
+          <RunWindowKpis runs={runs} decisions={decisions} now={now} days={window.kind === 'days' ? window.days : chartDaysList.length} label={windowCaption(window)} comparisonEnabled={window.kind === 'days'} />
           {more}
         </div>
       )}

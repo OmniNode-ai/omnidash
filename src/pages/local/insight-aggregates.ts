@@ -120,15 +120,17 @@ export function aggregateMeteringWindow(rows: readonly unknown[], now: number, d
     if (byDay.has(day)) return unavailableMetering(`Daily metering data is unavailable: duplicate rows for ${day}.`);
     byDay.set(day, row);
   }
+  // OMN-24616 AC3: the runtime writes a day row only for a day with runs, so a selected day without one adds zero
+  // (as on Overview); a served day missing a value keeps that total unknown.
   const dayRows = selectedDays.map(day => {
     const row = byDay.get(day);
     return {
       day,
       served: row !== undefined,
-      spend: row ? number(row.spend_usd) : null,
-      saved: row ? number(row.savings_usd) : null,
-      counterfactual: row ? number(row.counterfactual_usd) : null,
-      runs: row ? number(row.runs_total) : null,
+      spend: row ? number(row.spend_usd) : 0,
+      saved: row ? number(row.savings_usd) : 0,
+      counterfactual: row ? number(row.counterfactual_usd) : 0,
+      runs: row ? number(row.runs_total) : 0,
     };
   });
   return {
@@ -206,7 +208,11 @@ function cumulative(days: readonly MeteringDay[]): (number | null)[] {
   let total: number | null = null;
   let unknownContribution = false;
   return days.map(day => {
-    if (!day.served) return total;
+    if (!day.served) {
+      if (unknownContribution) return null;
+      total = total ?? 0;
+      return total;
+    }
     if (day.saved === null) {
       total = null;
       unknownContribution = true;

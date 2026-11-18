@@ -86,8 +86,8 @@ describe('OMN-21970 AC10: one card per provider, served fields only', () => {
 
   it('P6: a provider name the page does not know gets a card like the others, after the four', async () => {
     await renderCards();
-    expect(screen.getAllByRole('article').map(item => item.getAttribute('aria-label'))).toEqual(['Gemini', 'OpenRouter', 'OpenAI', 'Ollama', 'Acme_gateway']);
-    expect(within(card('Acme_gateway')).getByText('acme-1')).toBeTruthy();
+    expect(screen.getAllByRole('article').map(item => item.getAttribute('aria-label'))).toEqual(['Gemini', 'OpenRouter', 'OpenAI', 'Ollama', 'acme_gateway']);
+    expect(within(card('acme_gateway')).getByText('acme-1')).toBeTruthy();
   });
 
   it('P7: a provider not set up says so and names its set-up command', async () => {

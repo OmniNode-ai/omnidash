@@ -5,12 +5,12 @@
  * an option closes the list, as do Escape and a click outside it; focus returns to the button.
  */
 import { useEffect, useId, useRef, useState } from 'react';
-import { CalendarClock, CalendarDays, CalendarFold, CalendarRange, Check, ChevronDown, Infinity as InfinityIcon, Sun, type LucideIcon } from '@/theme/design-system/icons';
+import { LOCAL_WINDOWS } from '@/contracts/local-windows';
+import { Check, ChevronDown, type LucideIcon } from '@/theme/design-system/icons';
 
 /** OMN-22168 (Lakshman 2026-11-04, "use icons ... colourful"): each window's glyph; its colour is the window's tone. */
-const WINDOW_ICONS: Readonly<Record<string, LucideIcon>> = {
-  all: InfinityIcon, today: Sun, 'last-7': CalendarRange, 'last-15': CalendarClock, 'last-30': CalendarDays, 'last-90': CalendarFold,
-};
+// OMN-24616 AC4: from the one declared window list.
+const WINDOW_ICONS: Readonly<Record<string, LucideIcon>> = Object.fromEntries(LOCAL_WINDOWS.map(window => [window.value, window.icon]));
 function WindowIcon({ value }: { value: string | undefined }) {
   const Icon = value ? WINDOW_ICONS[value] : undefined;
   // Each window is its own concept (one icon, one tone), named for the identity census.
@@ -23,10 +23,9 @@ export interface WindowMenuOption { value: string; label: string; name: string; 
  * OMN-23330 AC36 (operator, chat 2026-11-11, from a benchmark of 20 open-source dashboards): one key per window. A key
  * never acts while the reader types in a field, or with Ctrl, Cmd or Alt held (those are the browser's own shortcuts).
  */
-const WINDOW_KEYS: readonly (readonly [key: string, value: string, name: string])[] = [
-  ['A', 'all', 'All time'], ['T', 'today', 'Today'], ['W', 'last-7', 'Last 7 days'],
-  ['F', 'last-15', 'Last 15 days'], ['M', 'last-30', 'Last 30 days'], ['Q', 'last-90', 'Last 90 days'],
-];
+// OMN-24616 AC4: from the one declared window list.
+const WINDOW_KEYS: readonly (readonly [key: string, value: string, name: string])[] =
+  LOCAL_WINDOWS.map(window => [window.key, window.value, window.label] as const);
 function typingIn(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   return target.isContentEditable || target.getAttribute('contenteditable') === 'true' || target.getAttribute('contenteditable') === ''
