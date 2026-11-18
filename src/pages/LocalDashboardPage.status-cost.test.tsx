@@ -33,8 +33,8 @@ describe('Runs status and cost from the local store (OMN-20753)', () => {
     render(<RunsTable now={NOW} decisions={[MEASURED, UNMEASURED]} sessions={[]} />);
     const measured = screen.getByRole('row', { name: /^measured-run/ });
     expect(within(measured).getByText('passed')).toBeInTheDocument();
-    // The short form (Lakshman 2026-11-05): "$0" on the row, the served "$0.00" and its route in the title.
-    expect(within(measured).getByText('$0').getAttribute('title')).toMatch(/^\$0\.00\b/);
+    // OMN-24616 AC6 (Lakshman 2026-11-18): "$0.00" on the row, muted, the served "$0.00" and its route in the title.
+    expect(within(measured).getByText('$0.00').getAttribute('title')).toMatch(/^\$0\.00\b/);
   });
 
   it('Runs shows a cost never measured as Not measured, never $0.00 (AC2; wording OMN-24224)', () => {

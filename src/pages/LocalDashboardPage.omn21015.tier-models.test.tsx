@@ -49,9 +49,9 @@ describe('OMN-21015 AC2: the Tier mix lists each model under its tier', () => {
   it('T3: a model cost is the served sum; an unpriced group says Not measured with its run count, never $0', () => {
     render(<TierMixPanel row={ROW} />);
     expect(cells('gemini')[3]).toBe('$0.009');
-    // A measured zero reads "$0", muted, with the served "$0.00" as its title (Lakshman 2026-11-05).
-    expect(cells('qwen-a')[3]).toBe('$0');
-    expect(within(screen.getByRole('row', { name: /^qwen-a/ })).getByText('$0')).toHaveAttribute('title', '$0.00');
+    // A measured zero reads "$0.00", muted, with the served "$0.00" as its title (OMN-24616 AC6, Lakshman 2026-11-18).
+    expect(cells('qwen-a')[3]).toBe('$0.00'); // OMN-24616 AC6: one money rule, zero included
+    expect(within(screen.getByRole('row', { name: /^qwen-a/ })).getByText('$0.00')).toHaveAttribute('title', '$0.00');
     expect(cells('qwen-b')[3]).toBe('Not measured (1 run)');
   });
 

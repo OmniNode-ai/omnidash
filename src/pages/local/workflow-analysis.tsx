@@ -121,10 +121,10 @@ export function WorkflowRecordDetails({ decision }: { decision: Run | undefined;
             <FactList>
               {facts.map(([label, value]) => <Fact key={String(label)} term={<><FieldIcon label={label} value={value} />{String(label)}</>} data-field-tone={fieldTone(label, value)} data-field-unavailable={isUnavailableField(value)}>{(label === 'Created at' || label === 'Written at') && typeof value === 'string' && Number.isFinite(Date.parse(value))
           // The time as every page writes it ("Nov 5, 14:58:46 UTC"), the served value its title; a measured zero cost the
-          // run table's muted "$0" (Lakshman 2026-11-05).
+          // run table's muted "$0.00" (OMN-24616 AC6, Lakshman 2026-11-18).
           ? <time dateTime={value} title={value}>{readableTime(String(value)) ?? `${new Date(value).toISOString().slice(0, 19).replace('T', ' ')} UTC`}</time>
           : label === 'Recorded cost (USD)' ? (recordedUsd(value) === formatUsd(0)
-            ? <span className="local-cost-free" title={recordedUsd(value)}>{recordedUsd(value).replace(/\.0+$/, '')}</span> : recordedUsd(value)) : label === 'Tokens to compliance' ? formatDashboardCount(value) : recorded(value)}</Fact>)}
+            ? <span className="local-cost-free" title={recordedUsd(value)}>{recordedUsd(value)}</span> : recordedUsd(value)) : label === 'Tokens to compliance' ? formatDashboardCount(value) : recorded(value)}</Fact>)}
             </FactList>
           </section>;
         })}
