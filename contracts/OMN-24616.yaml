@@ -216,7 +216,10 @@ dod_evidence:
   - id: "dod-omn24616-ac6-e2e"
     description: >-
       AC6's falsifier in a browser: tests/e2e/one-formatter-set.omn24616.spec.ts over the six local pages fails on a
-      second spelling of a missing value, a page without an Updated time, or two precisions for one quantity.
+      second spelling of a missing value, a page without an Updated time, or two precisions for one quantity, shares
+      and money both (OMN-24616 closer review 2026-11-18: money was unchecked). Every visible amount follows the one
+      money rule, and runs costing exactly $0, $0.25 and $1.50 fail it on Runs, Usage and a run's Workflow detail while
+      a measured zero reads the short "$0" instead of "$0.00" (Lakshman 2026-11-18).
     source: "manual"
     binds_ac: ["AC6"]
     checks:

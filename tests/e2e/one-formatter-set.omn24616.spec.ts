@@ -20,6 +20,22 @@ const OTHER_PRECISION = /(?<![\d.<])\d+%|\d+\.\d{2,}%/;
 // The lookbehind keeps the exemption to a whole percent: "12.34% below ..." is not stripped, so its two decimals fail.
 const BASELINE_COMPARISON = /(?<![\d.])\d+% (?:below|above) the .+? baseline \(modelled\)/g;
 
+// AC6's money rule (formatDashboardUsd, Jonah 2026-11-06): two decimals from $1 up; under $1, two to four with trailing
+// zeros trimmed to two. Lakshman 2026-11-18 ("$0.00" everywhere, reversing the 2026-11-05 short "$0"): a measured zero
+// is "$0.00" too, so one amount is never written two ways. Returns the first amount off the rule, or null.
+const MONEY = /[−-]?\$(\d{1,3}(?:,\d{3})*|\d+)(?:\.(\d+))?/g;
+function offRuleMoney(text: string): string | null {
+  for (const m of text.matchAll(MONEY)) {
+    const whole = m[1]!.replace(/,/g, '');
+    const dec = m[2];
+    const ok = dec !== undefined && (whole !== '0'
+      ? dec.length === 2
+      : dec.length >= 2 && dec.length <= 4 && !(dec.length > 2 && dec.endsWith('0')));
+    if (!ok) return m[0];
+  }
+  return null;
+}
+
 for (const path of PAGES) {
   test(`${path} writes a missing value one way, shows its Updated time, and one precision per share`, async ({ page }) => {
     await serveCharts(page);
@@ -29,6 +45,23 @@ for (const path of PAGES) {
     const text = await page.locator('main').innerText();
     expect(text.match(OTHER_SPELLINGS)?.[0] ?? null).toBeNull();
     expect(text.replace(BASELINE_COMPARISON, '').match(OTHER_PRECISION)?.[0] ?? null).toBeNull();
+    expect(offRuleMoney(text), 'one money rule').toBeNull();
+  });
+}
+
+// AC6, money (OMN-24616 closer review 2026-11-18: the check covered shares, not money): runs costing exactly $0, $0.25 and
+// $1.50. Every page that draws them writes each amount by the one rule; the measured zero reads "$0.00", not "$0".
+const priced = (chartRows[prefix + 'delegation.decisions.v1'] as Record<string, unknown>[]).map((row, i) => ({
+  ...row, cost_usd: ['0', '0.25', '1.5'][i],
+}));
+for (const path of ['/runs', '/usage', '/workflow?correlation_id=chart-run-a']) {
+  test(`${path} writes a measured zero cost as $0.00 and every amount by one money rule`, async ({ page }) => {
+    await serveCharts(page, { ...chartRows, [prefix + 'delegation.decisions.v1']: priced });
+    await page.goto(path);
+    await expect(page.getByText(/^Updated /)).toBeVisible();
+    const text = await page.locator('main').innerText();
+    expect(text, 'positive control: an amount is drawn').toMatch(new RegExp(MONEY.source));
+    expect(offRuleMoney(text), 'one money rule').toBeNull();
   });
 }
 
