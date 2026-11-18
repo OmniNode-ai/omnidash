@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 // OMN-25104 AC3: the Overview Done figure is the count of served done-items.v1 rows, never 0 for an unread or empty store.
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import { cleanup, render } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { ServedCountCard, doneItemsCount } from './served-count-card';
+import { ServedCountCard, doneItemsCount } from '@/pages/local/served-count-card';
 
 afterEach(cleanup);
 
@@ -58,5 +60,19 @@ describe('ServedCountCard', () => {
     );
     const figure = container.querySelector('.local-dashboard-metric');
     expect(figure?.textContent).toBe('Not measured');
+  });
+
+  it('done_figure_from_served_projection reads no ledger table: no source under src names work_ledger_rows', () => {
+    const files: string[] = [];
+    const walk = (dir: string) => {
+      for (const name of readdirSync(dir)) {
+        const path = join(dir, name);
+        if (statSync(path).isDirectory()) walk(path);
+        else files.push(path);
+      }
+    };
+    walk('src');
+    expect(files.length).toBeGreaterThan(100);
+    expect(files.filter(path => readFileSync(path, 'utf8').includes('work_ledger_rows'))).toEqual([]);
   });
 });
