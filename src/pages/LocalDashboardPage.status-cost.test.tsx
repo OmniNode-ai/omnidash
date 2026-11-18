@@ -33,7 +33,7 @@ describe('Runs status and cost from the local store (OMN-20753)', () => {
     render(<RunsTable now={NOW} decisions={[MEASURED, UNMEASURED]} sessions={[]} />);
     const measured = screen.getByRole('row', { name: /^measured-run/ });
     expect(within(measured).getByText('passed')).toBeInTheDocument();
-    // The short form (Lakshman 2026-11-05): "$0" on the row, the served "$0.00" and its route in the title.
+    // OMN-24616 AC6 (Lakshman 2026-11-18): "$0.00" on the row, muted, the served "$0.00" and its route in the title.
     expect(within(measured).getByText('$0.00').getAttribute('title')).toMatch(/^\$0\.00\b/);
   });
 
@@ -42,7 +42,6 @@ describe('Runs status and cost from the local store (OMN-20753)', () => {
     const unmeasured = screen.getByRole('row', { name: /unmeasured-run/ });
     expect(within(unmeasured).queryByText('$0.00')).not.toBeInTheDocument();
     expect(within(unmeasured).queryByText('$0')).not.toBeInTheDocument();
-    expect(within(unmeasured).queryByText('$0.00')).not.toBeInTheDocument();
     const cost = unmeasured.querySelector('td[data-label="Cost"]');
     expect(cost?.textContent).toBe('Not measured');
   });

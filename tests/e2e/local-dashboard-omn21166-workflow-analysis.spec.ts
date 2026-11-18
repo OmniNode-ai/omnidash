@@ -64,7 +64,7 @@ test('Workflow charts and recorded details read the selected run without inventi
   // The step durations are the Run timeline's (provider call, 120 ms served).
   await expect(page.locator('main ol')).toContainText('120 ms');
   // 3c5cb779: the recorded cost reads as money, not the raw served decimal.
-  // OMN-22168 (Lakshman 2026-11-05): a measured zero is the run table's muted "$0", the served "$0.00" its title.
+  // OMN-22168; OMN-24616 AC6 (Lakshman 2026-11-18): a measured zero is the run table's muted "$0.00", the served "$0.00" its title.
   await expect(page.getByRole('region', { name: 'Recorded run details', exact: true })).toContainText('Recorded cost (USD)$0');
   await expect(page.getByRole('region', { name: 'Recorded run details', exact: true }).getByTitle('$0.00')).toHaveText('$0.00'); // OMN-24616 AC6
   await expect(page.getByRole('region', { name: 'Recorded run details', exact: true })).toContainText('fixture');

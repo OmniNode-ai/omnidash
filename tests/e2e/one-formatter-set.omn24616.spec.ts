@@ -23,7 +23,7 @@ const BASELINE_COMPARISON = /(?<![\d.])\d+% (?:below|above) the .+? baseline \(m
 // AC6's money rule (formatDashboardUsd, Jonah 2026-11-06): two decimals from $1 up; under $1, two to four with trailing
 // zeros trimmed to two. Lakshman 2026-11-18 ("$0.00" everywhere, reversing the 2026-11-05 short "$0"): a measured zero
 // is "$0.00" too, so one amount is never written two ways. Returns the first amount off the rule, or null.
-const MONEY = /[−-]?\$(\d{1,3}(?:,\d{3})*|\d+)(?:\.(\d+))?/g;
+const MONEY = /[−-]?\$(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d+))?/g;
 function offRuleMoney(text: string): string | null {
   for (const m of text.matchAll(MONEY)) {
     const whole = m[1]!.replace(/,/g, '');
@@ -49,18 +49,20 @@ for (const path of PAGES) {
   });
 }
 
-// AC6, money (OMN-24616 closer review 2026-11-18: the check covered shares, not money): runs costing exactly $0, $0.25 and
-// $1.50. Every page that draws them writes each amount by the one rule; the measured zero reads "$0.00", not "$0".
+// AC6, money (OMN-24616 closer review 2026-11-18: the check covered shares, not money): runs costing $1.50, exactly $0 and
+// $0.25. chart-run-b is model-b's only run, so its zero reaches Runs, Usage's per-model spend and its own Workflow detail
+// (review of #528, F1: a zero summed into a priced model never reaches Usage). Each amount follows the one rule; the
+// measured zero reads "$0.00", not "$0".
 const priced = (chartRows[prefix + 'delegation.decisions.v1'] as Record<string, unknown>[]).map((row, i) => ({
-  ...row, cost_usd: ['0', '0.25', '1.5'][i],
+  ...row, cost_usd: ['1.5', '0', '0.25'][i],
 }));
-for (const path of ['/runs', '/usage', '/workflow?correlation_id=chart-run-a']) {
+for (const path of ['/runs', '/usage', '/workflow?correlation_id=chart-run-b']) {
   test(`${path} writes a measured zero cost as $0.00 and every amount by one money rule`, async ({ page }) => {
     await serveCharts(page, { ...chartRows, [prefix + 'delegation.decisions.v1']: priced });
     await page.goto(path);
     await expect(page.getByText(/^Updated /)).toBeVisible();
     const text = await page.locator('main').innerText();
-    expect(text, 'positive control: an amount is drawn').toMatch(new RegExp(MONEY.source));
+    expect(text, 'positive control: the measured zero is drawn').toContain('$0.00');
     expect(offRuleMoney(text), 'one money rule').toBeNull();
   });
 }
