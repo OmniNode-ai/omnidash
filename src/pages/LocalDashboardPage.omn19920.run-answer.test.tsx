@@ -42,6 +42,8 @@ vi.mock('@/config/generated/data-source-defaults', () => ({
   DATA_SOURCE_DEFAULT_URL: '',
   DATA_SOURCE_DEFAULT_SQLITE_DB_PATH: '',
   PROJECTION_TENANT_ID_DEFAULT: 'c94fa3c5-ea87-4dbb-a4fc-424343bac7a0',
+  REFRESH_INTERVAL_SECONDS_DEFAULT: 30,
+  DECISIONS_PAGE_LIMIT_DEFAULT: 0,
 }));
 
 import { LocalDashboardPage } from './LocalDashboardPage';

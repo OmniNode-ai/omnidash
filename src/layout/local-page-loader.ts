@@ -3,6 +3,7 @@ import { ProjectionReadRefusedError } from '../data-source/http-snapshot-source'
 import type { ModelComponentContract } from '../shared/types/generated/onex-models';
 import { COMPONENT_WIDGET_KINDS } from '@shared/types/component-manifest';
 import { isTenantNotConfiguredError } from '../data-source/projection-tenant';
+import { withDecisionsWindow } from '../contracts/local-read-budget';
 
 export type LocalPageName = 'overview' | 'runs' | 'workflow' | 'usage' | 'credentials' | 'api-keys' | 'status' | 'pricing';
 export type LocalPageEmptyState = 'NO_RUNS_YET' | 'BASELINE_UNRESOLVED';
@@ -189,7 +190,7 @@ export async function loadMoreDecisions(
 ): Promise<{ snapshot: BoundProjectionSnapshot; failure?: ProjectionReadFailure }> {
   if (held.truncated !== true || typeof held.nextCursor !== 'string') return { snapshot: held };
   const cursor = held.nextCursor;
-  const read = source.readSnapshot?.(DELEGATION_DECISIONS_TOPIC, { since: cursor });
+  const read = source.readSnapshot?.(DELEGATION_DECISIONS_TOPIC, withDecisionsWindow({ since: cursor }));
   if (!read) {
     return { snapshot: held, failure: { kind: 'error', message: `${DELEGATION_DECISIONS_TOPIC}: this source does not serve snapshots` } };
   }
@@ -349,7 +350,7 @@ export async function loadLocalPageSnapshots(
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<'timeout'>((resolve) => { timer = setTimeout(() => resolve('timeout'), LOCAL_READ_TIMEOUT_MS); });
     try {
-      const request = sharedRead(source, topic, params);
+      const request = sharedRead(source, topic, topic === DELEGATION_DECISIONS_TOPIC ? withDecisionsWindow(params) : params);
       const answer = await Promise.race([request, timeout]);
       if (answer === 'timeout') {
         // Five seconds is a UI deadline, not a cancellation of the bounded HTTP

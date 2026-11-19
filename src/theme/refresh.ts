@@ -1,10 +1,16 @@
+import { REFRESH_INTERVAL_SECONDS_DEFAULT } from '@/config/generated/data-source-defaults';
+
 /**
  * OMN-23330 AC21: the one refresh setting. Every page and widget refreshes from here, and nothing polls faster than
  * REFRESH_INTERVAL_MS unless FASTER_REFRESH below names it with the reason. Before this, about 40 reads each chose their
  * own interval, from 2 s to 60 s (the operator's 2026-11-09 code review). The pages' own declaration
  * (refresh_interval_seconds in each *.page.yaml, part of the shared dashboard schema) states the same 30 s.
+ *
+ * OMN-26056: the value is declared config, not a literal. contract.yaml's refresh.interval_seconds (30 today) is the
+ * default and a deployment overlay (contract.local.yaml) may name a larger one; `npm run generate:config` carries it into
+ * the generated defaults this file reads. The pages' own declarations still cannot go under it (pageRefreshMs).
  */
-export const REFRESH_INTERVAL_MS = 30_000;
+export const REFRESH_INTERVAL_MS = REFRESH_INTERVAL_SECONDS_DEFAULT * 1000;
 
 /** The reads that refresh faster than the setting, each with why. Nothing else may. */
 export const FASTER_REFRESH = {
@@ -25,13 +31,15 @@ export type FasterRefresh = keyof typeof FASTER_REFRESH;
  * the setting are the viewer's own opt-in, and declared: OMN-7093 holds the delegation dashboard to updating within 5 s of
  * new data when the viewer asks for it (proved by tests/e2e/delegation-live-refresh.spec.ts, OMN-10947).
  */
-export const VIEWER_REFRESH_CHOICES = [
-  { label: '5s', ms: 5_000 },
-  { label: '10s', ms: 10_000 },
-  { label: '30s', ms: REFRESH_INTERVAL_MS },
-  { label: '1m', ms: 60_000 },
-  { label: '5m', ms: 5 * 60_000 },
-] as const;
+function viewerChoiceLabel(ms: number): string {
+  return ms >= 60_000 && ms % 60_000 === 0 ? `${ms / 60_000}m` : `${ms / 1000}s`;
+}
+// OMN-26056: the setting is one of the choices, once and under its own label (30s today; 2m at a 120 s setting).
+export const VIEWER_REFRESH_CHOICES: ReadonlyArray<{ label: string; ms: number }> = [
+  ...new Set([5_000, 10_000, REFRESH_INTERVAL_MS, 60_000, 5 * 60_000]),
+]
+  .sort((a, b) => a - b)
+  .map((ms) => ({ label: viewerChoiceLabel(ms), ms }));
 export const VIEWER_REFRESH_WHY = 'OMN-7093: the delegation dashboard updates within 5 s of new data when the viewer asks for it.';
 
 /** The interval a read refreshes at: the setting, or a declared faster one by name. */

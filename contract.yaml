@@ -69,6 +69,19 @@ data_source:
   # a deployment overlay (contract.local.yaml) or VITE_PROJECTION_TENANT_ID.
   projection_tenant_id: ""
 
+refresh:
+  # OMN-26056: how often the dashboard reads, and how many runs a decisions page asks for. Read by
+  # `npm run generate:config` (contract.yaml, then contract.local.yaml over it) into the generated defaults; src/theme/refresh.ts
+  # and src/contracts/local-read-budget.ts read them from there, so a deployment overlay changes both with no code edit.
+  #
+  # interval_seconds: the one refresh interval of every page and widget (OMN-23330 AC21), whole seconds, at least 30.
+  #   Today's value is 30; a deployment that must keep one open browser light on a shared runtime names a larger one, for
+  #   example "120".
+  # decisions_page_limit: the number of runs one decisions page asks for (the newest page and each Load more page),
+  #   0 to 500. "0" sends no limit, so the projection API serves its own page of 500 runs; today's behaviour.
+  interval_seconds: "30"
+  decisions_page_limit: "0"
+
 runtime_edge:
   # Generic contract-driven runtime HTTP edge. OmniDash never owns broker
   # credentials, IAM signing, topic resolution, correlation, or consumers.
