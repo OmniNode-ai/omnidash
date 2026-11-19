@@ -8,9 +8,9 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { parseContract } from './generate-data-source-config';
+import { parseContract } from '../../scripts/generate-data-source-config';
 
-const BASE_CONTRACT = readFileSync(path.resolve(__dirname, '..', 'contract.yaml'), 'utf8');
+const BASE_CONTRACT = readFileSync(path.resolve(__dirname, '..', '..', 'contract.yaml'), 'utf8');
 
 describe('OMN-26056 refresh section of the data-source contract', () => {
   it('P1: the base contract carries 120 s and a record window of 100', () => {
