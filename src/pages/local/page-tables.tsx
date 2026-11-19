@@ -153,7 +153,7 @@ export function MeteringDayTable({ title, rows, columns }: {
  */
 export interface PanelSlice { key: string; title: string; concept: string }
 
-export function TableComponent({ component, snapshots, pageSize, syncUrl, columns, activityWindow, meteringView = 'all', slice }: {
+export function TableComponent({ component, snapshots, pageSize, syncUrl, columns, activityWindow, meteringView = 'all', slice, onLoadMore, loadingMore, loadMoreError }: {
   slice?: PanelSlice;
   component: LocalPageDocument['components'][number];
   snapshots: readonly BoundProjectionSnapshot[];
@@ -162,6 +162,10 @@ export function TableComponent({ component, snapshots, pageSize, syncUrl, column
   columns: readonly DeclaredColumn[];
   activityWindow: ActivityWindow;
   meteringView?: 'all' | 'kpis' | 'daily';
+  /** Read one page for the run list or for Usage figures that need every run. */
+  onLoadMore?: () => void;
+  loadingMore?: boolean;
+  loadMoreError?: string | null;
 }) {
   const [, navigate] = useLocation();
   const rows = rowsForLocalComponent(component, snapshots);
@@ -243,9 +247,22 @@ export function TableComponent({ component, snapshots, pageSize, syncUrl, column
   }
   if (component.component_id === 'credentials-keys') return <CredentialsTable rows={rows} />;
   // Usage analysis and the raw row table are separate declared components so the analysis does not duplicate rows.
-  if (component.component_id === 'usage-insights') return <UsageInsights usageRows={rows}
-    part={slice && ['spend', 'cost-per-run', 'tokens-by-model', 'cost-by-route', 'analysis'].includes(slice.key) ? slice.key as 'spend' | 'cost-per-run' | 'tokens-by-model' | 'cost-by-route' | 'analysis' : 'all'}
-    decisionRows={rawRowsFor(component, snapshots, 1)} routingRows={rawRowsFor(component, snapshots, 2)} complete={decisionsComplete} />;
+  if (component.component_id === 'usage-insights') {
+    if (slice?.key === 'analysis' && decisionsWalk?.truncated) {
+      return <>
+        <p className="local-dashboard-caption">Load the remaining runs to see figures for the full history.</p>
+        {typeof decisionsWalk.nextCursor === 'string' && onLoadMore && (
+          <button type="button" aria-label="Load more runs" disabled={loadingMore} onClick={onLoadMore}>
+            {loadingMore ? 'Loading…' : 'Load more runs'}
+          </button>
+        )}
+        {loadMoreError != null && <p role="alert">{loadMoreError}</p>}
+      </>;
+    }
+    return <UsageInsights usageRows={rows}
+      part={slice && ['spend', 'cost-per-run', 'tokens-by-model', 'cost-by-route', 'analysis'].includes(slice.key) ? slice.key as 'spend' | 'cost-per-run' | 'tokens-by-model' | 'cost-by-route' | 'analysis' : 'all'}
+      decisionRows={rawRowsFor(component, snapshots, 1)} routingRows={rawRowsFor(component, snapshots, 2)} complete={decisionsComplete} />;
+  }
   // US-1, US-2, US-4: served rows as served. The exposure is tenant-scoped, so the server filters, not the browser.
   if (component.component_id === 'usage-by-model-day') return <UsageByModelDayTable rows={rows} interactive />;
   // US-1 (OMN-21015 AC4): the same served rows as a stacked series, tokens in and out apart, split by model.
@@ -305,7 +322,8 @@ export function TableComponent({ component, snapshots, pageSize, syncUrl, column
   // one run of "Not recorded". A table that reads another exposure needs its own renderer named here.
   if (component.component_id === 'status-alerts') return <AlertsTable rows={rows} columns={columns} />;
   return rows.length === 0 ? <NoRunsYet /> : <RunsTable decisions={rows} sessions={lookup} pageSize={pageSize} syncUrl={syncUrl}
-    truncated={snapshots.find(snapshot => snapshot.topic === DELEGATION_DECISIONS_TOPIC)?.truncated} />;
+    truncated={snapshots.find(snapshot => snapshot.topic === DELEGATION_DECISIONS_TOPIC)?.truncated}
+    onLoadMore={onLoadMore} loadingMore={loadingMore} loadMoreError={loadMoreError} />;
 }
 
 /** Resolve a widget's bindings once per exposure; contracts can request several fields from one topic. */

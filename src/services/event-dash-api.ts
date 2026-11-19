@@ -509,9 +509,6 @@ export interface ContextExperimentScoreRow {
 
 // ── Public fetchers ──────────────────────────────────────────────────────────
 
-/** OMN-21970: a bound on the decisions walk, as in the page loader (500 runs a page, so 100,000 runs). */
-export const DECISIONS_WALK_MAX_PAGES = 200;
-
 const runKey = (row: unknown): string | null => {
   if (row === null || typeof row !== "object") return null;
   const record = row as Record<string, unknown>;
@@ -580,12 +577,11 @@ export function mergeNewestDecisionResults(
 }
 
 /**
- * OMN-21970 (ticket body: "remove the 500-run limit from every view"): the FIRST load walks every page the exposure
- * serves, merges them by run so each served run appears once, and sorts newest first. A failed page, a cursor that
- * does not move, a row with no key or the page bound ends the walk, and the read stays incomplete (complete false)
- * with the runs read so far, never presented as the whole store. OMN-24472: every later fetch — a page timer poll —
- * passes the held result and reads ONLY the newest page (one readProjection call, no since-page walk), merged into
- * what is held, so a poll never walks the run history.
+ * OMN-19998: no view may walk the run history on a first load. With nothing held this reads ONLY the newest page (one
+ * readProjection call): complete is true exactly when that page is the whole store (not truncated, not degraded).
+ * OMN-21970's first-load walk is gone; older runs are read by fetchMoreDelegationDecisions, one page per call (the
+ * viewer's Load more). OMN-24472: a fetch that holds a result — a page timer poll — also reads only the newest page,
+ * merged into what is held, so a poll never walks the run history either.
  */
 export async function fetchDelegationDecisions(
   held?: ProjectionResult<DelegationDecisionRow>,
@@ -594,9 +590,32 @@ export async function fetchDelegationDecisions(
   if (held !== undefined && held.rows.length > 0 && held.failureReason === null) {
     return mergeNewestDecisionResults(held, first);
   }
-  if (first.truncated !== true || typeof first.nextCursor !== "string") {
-    return { ...first, complete: first.truncated !== true && first.failureReason === null };
+  return { ...first, complete: first.truncated !== true && first.failureReason === null };
+}
+
+/**
+ * OMN-19998: one page of older runs, the viewer's Load more control on the event-dash views (the ProjectionResult
+ * twin of the page loader's loadMoreDecisions). Reads EXACTLY ONE page from where the held result's walk stopped
+ * (readProjection with `since=${encodeURIComponent(cursor)}`), folds its rows into held.rows by run key, newest
+ * first, and takes truncated/nextCursor from the page: a page that is not truncated ends the walk (no truncated, no
+ * nextCursor on the result), and the result keeps the rest of held's fields. A held result that is not truncated (or
+ * carries no string cursor) has nothing older to read, so nothing is sent. On failure or a stuck cursor (a page
+ * whose nextCursor is missing or unchanged) it returns held unchanged.
+ * Complete is true when the page ended the walk and neither read failed.
+ */
+export async function fetchMoreDelegationDecisions(
+  held: ProjectionResult<DelegationDecisionRow>,
+): Promise<ProjectionResult<DelegationDecisionRow>> {
+  if (held.truncated !== true || typeof held.nextCursor !== "string") return held;
+  const cursor = held.nextCursor;
+  let page: ProjectionResult<DelegationDecisionRow>;
+  try {
+    page = await readProjection<DelegationDecisionRow>(TOPICS.delegationDecisions, `since=${encodeURIComponent(cursor)}`);
+  } catch {
+    return held;
   }
+  if (page.failureReason !== null) return held;
+  if (page.truncated === true && (typeof page.nextCursor !== "string" || page.nextCursor === cursor)) return held;
   const byRun = new Map<string, DelegationDecisionRow>();
   const add = (rows: readonly DelegationDecisionRow[]) => rows.every(row => {
     const key = runKey(row);
@@ -604,19 +623,19 @@ export async function fetchDelegationDecisions(
     byRun.set(key, row);
     return true;
   });
-  if (!add(first.rows)) return { ...first, complete: false };
-  let cursor: string = first.nextCursor;
-  let complete = false;
-  for (let pages = 0; pages < DECISIONS_WALK_MAX_PAGES; pages += 1) {
-    const next = await readProjection<DelegationDecisionRow>(TOPICS.delegationDecisions, `since=${encodeURIComponent(cursor)}`);
-    if (next.failureReason !== null) break;
-    if (!add(next.rows)) break;
-    if (next.truncated !== true) { complete = true; break; }
-    if (typeof next.nextCursor !== "string" || next.nextCursor === cursor) break;
-    cursor = next.nextCursor;
-  }
+  if (!add(held.rows) || !add(page.rows)) return held;
   const rows = [...byRun.values()].sort((a, b) => writtenAt(b) - writtenAt(a) || walkCursor(b) - walkCursor(a));
-  return { ...first, rows, rowCount: rows.length, truncated: !complete, nextCursor: complete ? null : cursor, complete };
+  const { truncated: _truncated, nextCursor: _nextCursor, complete: _complete, ...rest } = held;
+  return page.truncated === true
+    ? {
+      ...rest,
+      rows,
+      rowCount: rows.length,
+      complete: false,
+      truncated: true,
+      ...(typeof page.nextCursor === "string" ? { nextCursor: page.nextCursor } : {}),
+    }
+    : { ...rest, rows, rowCount: rows.length, complete: held.failureReason === null };
 }
 
 export const fetchDelegationSummary = (): Promise<

@@ -1,0 +1,47 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+schema_version: "1.0.0"
+ticket_id: "OMN-25739"
+title: "Unblock omnidash pull request 516"
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-omn25739-unblock-pr"
+    statement: "Reconcile the pull request with dev and verify it with the existing gates."
+    acceptance:
+      - id: "AC1"
+        statement: >-
+          omnidash#516 reads a merge state other than DIRTY and every required context success at its new head, among them ONEX Schema Compatibility Check and contract-validation, read through the scm path after the push -- falsifier: `onex scm pr-view OmniNode-ai/omnidash#516` shows merge state DIRTY or a required context that is not success at the new head
+      - id: "AC2"
+        statement: >-
+          no check is widened, skipped or bypassed, so the diff from 558f65e37e8f to the new head touches no workflow file, no required-contexts list and no baseline file to loosen a gate -- falsifier: `git diff 558f65e37e8f <new head> -- .github` or a checker config shows a removed assertion, a new skip or a loosened threshold
+      - id: "AC3"
+        statement: >-
+          the new head is on the PR as a comment starting `Lab: head=<full sha>` with a red-then-green lab run behind it, or a STATUS row names cause=<one line> shared=yes with its evidence when the cause is outside the PR -- falsifier: `onex scm pr-view OmniNode-ai/omnidash#516` shows no comment with `Lab: head=` for the new head and the ledger holds no STATUS row with shared=yes for this ticket
+dod_evidence:
+  - id: "dod-omn25739-ac1-pr-state"
+    description: >-
+      Read the pushed SHA, merge state and required contexts through the SCM watcher.
+      Match the check records to the pushed SHA and require both named jobs and
+      every required context to conclude success. This read is pending until after the push.
+    source: "linear"
+    binds_ac: ["AC1"]
+    execution_scope: "local_done_gate"
+  - id: "dod-omn25739-ac2-gates-unchanged"
+    description: "Compare workflow files, required contexts, pre-commit configuration and baselines with the original head."
+    source: "linear"
+    binds_ac: ["AC2"]
+    execution_scope: "local_done_gate"
+    checks:
+      - check_type: "command"
+        check_value: >-
+          git diff --exit-code 558f65e37e8f112b549412423049e46de7f0337c HEAD -- .github .pre-commit-config.yaml ':(glob)**/*baseline*'
+  - id: "dod-omn25739-ac3-lab-proof"
+    description: >-
+      Match the Lab comment's SHA to the published head and inspect its before-and-after
+      lab results. A separate shared failure requires a STATUS row with the observed cause
+      and shared=yes. Publication evidence is collected on the launching host.
+    source: "linear"
+    binds_ac: ["AC3"]
+    execution_scope: "local_done_gate"

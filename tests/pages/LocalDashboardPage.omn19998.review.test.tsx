@@ -2,9 +2,11 @@
 // OMN-24473: the review of the page timer budget found two gaps in how a timer poll keeps the Runs page's history.
 // Failure modes, each with a test below:
 //   R1  after one failed poll the held snapshot carries failure and lastGoodAt, and decisionsWalkFor dropped previous
-//   R2  that drop made the Runs page fall from its full history to the newest 500 runs until Refresh
-//   R3  a timer tick superseded an in-flight mount walk, so a walk slower than the tick was never shown
-import { act, render, screen } from '@testing-library/react';
+//   R2  that drop made the Runs page fall from the runs it holds to the newest 500 runs until Refresh
+//   R3  a timer tick superseded an in-flight read, so a read slower than the tick was never shown
+// OMN-19998: no load walks the history any more, so the rows the page holds are the ones a Load more press read; R2 and R3
+// hold the press's rows through a failed poll and through a press slower than the tick.
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { decisionsWalkFor } from '@/contracts/local-read-budget';
 import type { BoundProjectionSnapshot } from '@/layout/local-page-loader';
@@ -91,8 +93,6 @@ async function settle() {
 const decisionsCalls = () => harness.calls.filter(call => call.topic === DECISIONS);
 const sinceCursors = () => decisionsCalls().flatMap(call => call.params?.since === undefined ? [] : [call.params.since]);
 
-const RUNS_TEXT = /^Runs 1–25 of 1\.3K$/;
-
 describe('OMN-24473: a timer poll keeps the Runs page history', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'setTimeout', 'clearTimeout', 'Date'] });
@@ -123,31 +123,40 @@ describe('OMN-24473: a timer poll keeps the Runs page history', () => {
     expect(decisionsWalkFor('runs', 'timer', held({}))?.previous?.rows).toHaveLength(3);
   });
 
-  // R2: one failed timer poll making the next poll replace the walked history with the newest 500 runs.
-  it('R2: the Runs page keeps its 1,300 runs through one failed poll and the poll after it, with no re-walk', async () => {
+  const pressLoadMore = async () => {
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Load more runs' })); await vi.advanceTimersByTimeAsync(0); });
+  };
+  // One press folds one 500-run page into the 500 the mount read: 1,000 runs, which the pager writes as 1K.
+  const PRESSED_TEXT = /^Runs 1–25 of 1K$/;
+
+  // R2: one failed timer poll making the next poll replace the runs the viewer pressed Load more for with the newest 500.
+  it('R2: the Runs page keeps the 1,000 runs a press read through one failed poll and the poll after it, with no walk', async () => {
     harness.runs = 1_300;
     render(<LocalDashboardPage pageName="runs" />);
     await settle();
-    expect(screen.getByText(RUNS_TEXT)).toBeInTheDocument();
+    await pressLoadMore();
+    expect(screen.getByText(PRESSED_TEXT)).toBeInTheDocument();
     harness.failNewest = true;
     await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
-    expect(screen.getByText(RUNS_TEXT)).toBeInTheDocument();
+    expect(screen.getByText(PRESSED_TEXT)).toBeInTheDocument();
     harness.failNewest = false;
     await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
-    expect(screen.getByText(RUNS_TEXT)).toBeInTheDocument();
-    expect(sinceCursors()).toEqual(['0', '500', '1000']);
+    expect(screen.getByText(PRESSED_TEXT)).toBeInTheDocument();
+    expect(sinceCursors()).toEqual(['0']);
   });
 
-  // R3: a timer tick superseding the in-flight mount walk, which then publishes nothing.
-  it('R3: a 5,000-run walk of ten 4 s pages, longer than the 30 s tick, is not superseded and is shown when it ends', async () => {
-    harness.runs = 5_000;
-    harness.pageDelayMs = 4_000;
+  // R3: a timer tick superseding the in-flight press, which then publishes nothing.
+  it('R3: a Load more press that takes 40 s, longer than the 30 s tick, is not lost to the tick and is shown when it ends', async () => {
+    harness.runs = 1_300;
     render(<LocalDashboardPage pageName="runs" />);
     await settle();
+    harness.pageDelayMs = 40_000;
+    await pressLoadMore();
     await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
-    // The tick found the walk open and waited: still one newest-page read, no second one from a timer load.
-    expect(decisionsCalls().filter(call => call.params?.since === undefined)).toHaveLength(1);
+    // The tick reads the newest page again and no since-page: still exactly the one since-page the press sent.
+    expect(sinceCursors()).toEqual(['0']);
+    expect(decisionsCalls().filter(call => call.params?.since === undefined)).toHaveLength(2);
     await act(async () => { await vi.advanceTimersByTimeAsync(15_000); });
-    expect(screen.getByText(/^Runs 1–25 of 5(\.0)?K$/)).toBeInTheDocument();
+    expect(screen.getByText(PRESSED_TEXT)).toBeInTheDocument();
   });
 });

@@ -3,16 +3,17 @@
 // The audit found Usage analysis computing spend, pass rate, p50 and p95 from the newest 500 runs, and Overview's
 // "Why runs failed" counting 205 failures from those rows while the store had 576.
 // Failure modes:
-//   A1  Usage reads only the newest page of decisions, so its analysis covers a partial page (decision D1: walk all)
+//   A1  Usage renders history figures before the bounded reads have returned every run
 //   A2  Overview's failure list counts the served page of rows instead of the quality gate's served counts
 //   A3  a quality row that serves no categories hides the row-counted list instead of falling back to it
 //   A4  (review of #521, finding 2) Overview's panel never reads the quality gate snapshot: the wiring in page-tables is
 //       unexercised by A2 and A3, which hand the categories to the component themselves
 //   A5  (review of #521, finding 1; Lakshman 2026-11-17 "label it honestly") the served list counts failed quality CHECKS
 //       over all time, so it must not be titled as failed runs or read as following the Overview window
-import { cleanup, render, screen, within } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { decisionsWalkFor } from '@/contracts/local-read-budget';
+import { DELEGATION_DECISIONS_TOPIC, type BoundProjectionSnapshot } from '@/layout/local-page-loader';
 import { InsightsSection, servedFailureCategories } from '@/pages/local/insight-charts';
 import { TableComponent } from '@/pages/local/page-tables';
 
@@ -27,10 +28,33 @@ const decision = (index: number, failed: boolean) => ({
 const rows = Array.from({ length: 501 }, (_, index) => decision(index, index < 205));
 
 describe('OMN-24616 AC1: window figures from served aggregates', () => {
-  it('A1: Usage walks every page of decisions on open and on Refresh, as Runs does', () => {
-    expect(decisionsWalkFor('usage', 'mount', undefined)).toBeUndefined();
-    expect(decisionsWalkFor('usage', 'manual', undefined)).toBeUndefined();
+  it('A1: Usage reads one page per trigger and retains any explicitly loaded history', () => {
+    const held = { topic: DELEGATION_DECISIONS_TOPIC, rows } as BoundProjectionSnapshot;
+    expect(decisionsWalkFor('usage', 'mount', undefined)).toEqual({ maxPages: 0 });
+    expect(decisionsWalkFor('usage', 'manual', held)).toEqual({ maxPages: 0, previous: held });
+    expect(decisionsWalkFor('usage', 'timer', held)).toEqual({ maxPages: 0, previous: held });
     expect(decisionsWalkFor('overview', 'mount', undefined)).toEqual({ maxPages: 0 });
+  });
+
+  it('A1: Usage waits for a complete history before showing aggregate figures', () => {
+    const onLoadMore = vi.fn();
+    const component = {
+      component_id: 'usage-insights', component_kind: 'table', title: 'Usage analysis',
+      data_bindings: ['usage', DELEGATION_DECISIONS_TOPIC].map((topic, index) => ({
+        binding_id: `b${index}`, projection_topic: topic,
+      })),
+    };
+    const snapshot = { topic: DELEGATION_DECISIONS_TOPIC, rows, readAt: '2026-11-16T11:59:59Z' };
+    const analysis = (read: object) => <TableComponent component={component as never} snapshots={[read] as never}
+      pageSize={25} syncUrl={false} columns={[]} activityWindow={{ kind: 'days', days: 7 }}
+      slice={{ key: 'analysis', title: 'Usage analysis', concept: 'usage-analysis' }} onLoadMore={onLoadMore} />;
+    const { rerender } = render(analysis({ ...snapshot, rows: rows.slice(0, 500), truncated: true, nextCursor: '0' }));
+    expect(screen.queryByRole('table', { name: 'Usage by model' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Load more runs' }));
+    expect(onLoadMore).toHaveBeenCalledTimes(1);
+    rerender(analysis(snapshot));
+    expect(screen.getByText(/From all 501 served runs/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Load more runs' })).toBeNull();
   });
 
   it('A2: Overview\'s failure list shows the quality gate\'s served counts, not the page of rows', () => {

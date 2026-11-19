@@ -30,7 +30,7 @@ import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { fieldTone } from '@/components/dashboard/field-identity';
 import { DestinationIcon } from '@/navigation/destination-icons';
 import type { AppPage } from '@/store/types';
-import { loadLocalPageConfig, loadLocalPageSnapshots, rowsForLocalComponent, resolveLocalPageEmptyState, withLastGood, newestRunId as newestWorkflowRunId, DELEGATION_DECISIONS_TOPIC, METERING_SUMMARY_TOPIC, RUN_TRACE_TOPIC, isPerRunTopic, LOCAL_READ_TIMEOUT_MS, type BoundProjectionSnapshot, type LocalPageDocument, type LocalPageName } from '@/layout/local-page-loader';
+import { loadLocalPageConfig, loadLocalPageSnapshots, loadMoreDecisions, mergeNewestDecisions, rowsForLocalComponent, resolveLocalPageEmptyState, withLastGood, newestRunId as newestWorkflowRunId, DELEGATION_DECISIONS_TOPIC, METERING_SUMMARY_TOPIC, RUN_TRACE_TOPIC, isPerRunTopic, LOCAL_READ_TIMEOUT_MS, type BoundProjectionSnapshot, type LocalPageDocument, type LocalPageName } from '@/layout/local-page-loader';
 import { decisionsWalkFor, type LocalLoadTrigger } from '@/contracts/local-read-budget';
 import { ModelTiersContext } from '@/components/dashboard/model-tiers';
 import { pageRefreshMs } from '@/theme/refresh';
@@ -87,6 +87,10 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
   }, [destination, servedRead, readSource]);
   const [error, setError] = useState<string | null>(null);
   const [refreshError, setRefreshError] = useState<string | null>(null);
+  // OMN-19998: Load more reads one page of older runs per press. A press in flight ignores presses, and a
+  // failed press's message stays until the next successful press or load clears it.
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   // OV-3: which fixed window the Overview's metering cards read. Kept by the page so every card moves together.
   // OMN-21166 part 19 AC136: Overview's window starts from its address and is written back to it (replace, so the back
@@ -120,6 +124,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
   }, [expandedChart]);
   const windowId = useId();
   const latest = useRef<BoundProjectionSnapshot[]>([]);
+  const activePage = useRef<LocalPageDocument | null>(null);
   // Memory only: reuse recent successful reads between local destinations, scoped
   // to the configured source/tenant and (for traces) the exact requested run.
   const ownCache = useRef<LocalDashboardCache>({ context: null, snapshots: new Map() });
@@ -146,6 +151,8 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
     setPage(null);
     setSnapshots([]);
     latest.current = [];
+    setLoadingMore(false);
+    setLoadMoreError(null);
     setError(null);
     setRefreshError(null);
     setLoading(true);
@@ -157,6 +164,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
       setLoading(false);
       return () => { active = false; };
     }
+    activePage.current = document;
     const tenant = resolveConfiguredTenant();
     const context = JSON.stringify([resolveEffectiveDataSource(), tenant]);
     if (recent.context !== context) {
@@ -228,6 +236,8 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
         if (!current()) return;
         setError(null);
         setRefreshError(null);
+        // OMN-19998: a load supersedes the Load more control's state; a stale press failure does not outlive it.
+        setLoadMoreError(null);
         const availableTopics = new Set(
           census.rows.filter((row) => row.reachability === 'reachable').map((row) => row.topic),
         );
@@ -238,7 +248,14 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
           runId: requestedRunId,
           onSnapshot: publish,
           isCurrent: current,
-          decisionsWalk: decisionsWalkFor(pageName, trigger, latest.current.find(snapshot => snapshot.topic === DELEGATION_DECISIONS_TOPIC)),
+          decisionsWalk: {
+            maxPages: 0,
+            get previous() {
+              // A Load more press may finish while this newest page is in flight.
+              const held = latest.current.find(snapshot => snapshot.topic === DELEGATION_DECISIONS_TOPIC);
+              return decisionsWalkFor(pageName, trigger, held)?.previous;
+            },
+          },
         });
         if (current()) {
           setPage(document);
@@ -247,6 +264,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
           setSnapshots(latest.current);
           setError(null);
           setRefreshError(null);
+          setLoadMoreError(null);
         }
       } catch (cause) {
         if (current()) {
@@ -276,10 +294,42 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
     const timer = setInterval(() => { if (walking > 0) return; void load('timer'); }, pageRefreshMs(document.dashboard.refresh_interval_seconds));
     return () => {
       active = false;
+      activePage.current = null;
       clearInterval(timer);
       unsubscribeRefresh();
     };
   }, [pageName, requestedRunId, recent]);
+
+  /**
+   * OMN-19998: Load more on Runs and Usage. No load walks the run history, so a truncated decisions snapshot names where
+   * its read stopped; each press reads exactly one older since-page (loadMoreDecisions) and folds it into the held rows,
+   * which are published as load() publishes them: the topic replaced in latest.current, then setSnapshots. A later
+   * timer or Refresh load passes the held snapshot as previous (decisionsWalkFor), so the rows a press added are kept.
+   * A failed press keeps the held rows and shows its message; the next successful press or load clears it.
+   */
+  const loadMore = async () => {
+    if (!page || (pageName !== 'runs' && pageName !== 'usage') || loadingMore) return;
+    const held = latest.current.find(snapshot => snapshot.topic === DELEGATION_DECISIONS_TOPIC);
+    if (!held) return;
+    setLoadingMore(true);
+    try {
+      source.current ??= createSnapshotSource();
+      const { snapshot, failure } = await loadMoreDecisions(source.current, held);
+      if (activePage.current !== page) return;
+      setLoadMoreError(failure?.message ?? null);
+      if (failure || snapshot === held) return;
+      const current = latest.current.find(candidate => candidate.topic === DELEGATION_DECISIONS_TOPIC);
+      if (!current || current.nextCursor !== held.nextCursor) return;
+      const combined = current === held ? snapshot
+        : withLastGood([snapshot], [mergeNewestDecisions(snapshot, current)])[0];
+      latest.current = [...latest.current.filter(candidate => candidate.topic !== DELEGATION_DECISIONS_TOPIC), combined];
+      setSnapshots(latest.current);
+    } catch (cause) {
+      if (activePage.current === page) setLoadMoreError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      if (activePage.current === page) setLoadingMore(false);
+    }
+  };
 
   const emptyState = page ? resolveLocalPageEmptyState(page, snapshots) : null;
   const now = Date.now();
@@ -343,6 +393,9 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
               meteringView={meteringView}
               slice={slice}
               columns={((widget?.config as { columns?: DeclaredColumn[] } | undefined)?.columns) ?? []}
+              onLoadMore={pageName === 'runs' || pageName === 'usage' ? loadMore : undefined}
+              loadingMore={loadingMore}
+              loadMoreError={loadMoreError}
             />
           ) : component.component_id === 'overview-run-locally' ? (
             <RunLocallyCard row={asRecord(rows[0])} />
