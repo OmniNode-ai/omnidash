@@ -17,6 +17,14 @@ import {
   type LocalPageDocument,
 } from '../../layout/local-page-loader';
 
+// OMN-26056: this test is written for the former 30 s refresh and unwindowed decisions read, so it pins them; the shipped
+// defaults (120 s, 100 runs) are proved in tests/theme/refresh.omn26056.test.ts and tests/layout/local-page-loader.omn26056-window.test.ts.
+vi.mock('@/config/generated/data-source-defaults', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config/generated/data-source-defaults')>()),
+  REFRESH_INTERVAL_SECONDS_DEFAULT: 30,
+  DECISIONS_PAGE_LIMIT_DEFAULT: 0,
+}));
+
 const pages = ['overview', 'runs', 'workflow', 'usage', 'credentials', 'api-keys'] as const;
 // Amendment 7 (AC1): every page names at least one served exposure.
 const servedPages = pages;

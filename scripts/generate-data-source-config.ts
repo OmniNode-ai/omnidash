@@ -18,11 +18,27 @@ const outPath = resolve(__dirname, '..', 'src', 'config', 'generated', 'data-sou
 
 type DataSourceMode = 'sqlite' | 'postgres' | 'file' | 'http';
 
-interface Defaults {
+export interface Defaults {
   mode: DataSourceMode;
   url: string;
   sqliteDbPath: string;
   projectionTenantId: string;
+  // OMN-26056: the dashboard's one refresh interval (seconds) and the decisions record window (0 = no limit sent, the server's own page).
+  refreshIntervalSeconds: number;
+  decisionsPageLimit: number;
+}
+
+/** OMN-23330 AC21: nothing refreshes faster than this unless src/theme/refresh.ts names it with a reason. */
+const REFRESH_INTERVAL_FLOOR_SECONDS = 30;
+/** The projection API's own page of decisions (omnimarket node_projection_query_api_effect), the most a window may ask. */
+const DECISIONS_PAGE_LIMIT_CEILING = 500;
+
+function wholeNumber(key: string, value: string, min: number, max: number): number {
+  const n = Number(value);
+  if (!/^\d+$/.test(value) || !Number.isInteger(n) || n < min || n > max) {
+    throw new Error(`refresh.${key} must be a whole number from ${min} to ${max}, got "${value}"`);
+  }
+  return n;
 }
 
 function defaultDataSource(): Defaults {
@@ -32,29 +48,43 @@ function defaultDataSource(): Defaults {
     sqliteDbPath: '~/.omninode/delegation/delegation.sqlite',
     // OMN-18159: no default tenant, ever. See contract.yaml.
     projectionTenantId: '',
+    // OMN-26056: the same safe values contract.yaml's refresh section declares (that file owns them, this is only the
+    // fallback for a contract that has no refresh section at all).
+    refreshIntervalSeconds: 120,
+    decisionsPageLimit: 100,
   };
 }
 
-function parseContract(raw: string, initial: Defaults = defaultDataSource()): Defaults {
+export function parseContract(raw: string, initial: Defaults = defaultDataSource()): Defaults {
   const defaults: Defaults = { ...initial };
 
-  let inDataSource = false;
+  let section: 'data_source' | 'refresh' | null = null;
   for (const rawLine of raw.split('\n')) {
     const line = rawLine.replace(/#.*$/, '').trimEnd();
     if (!line.trim()) continue;
 
     if (line === 'data_source:') {
-      inDataSource = true;
+      section = 'data_source';
       continue;
     }
-    if (inDataSource && /^\S/.test(line) && !line.startsWith(' ') && !line.startsWith('\t')) {
-      inDataSource = false;
+    // OMN-26056: the refresh section, the one declared place for the interval and the window.
+    if (line === 'refresh:') {
+      section = 'refresh';
+      continue;
     }
-    if (!inDataSource) continue;
+    if (section !== null && /^\S/.test(line) && !line.startsWith(' ') && !line.startsWith('\t')) {
+      section = null;
+    }
+    if (section === null) continue;
 
     const m = line.match(/^\s+(\w+):\s+"?([^"]*)"?\s*$/);
     if (!m) continue;
     const [, key, value] = m;
+    if (section === 'refresh') {
+      if (key === 'interval_seconds') defaults.refreshIntervalSeconds = wholeNumber(key, value, REFRESH_INTERVAL_FLOOR_SECONDS, 86_400);
+      else if (key === 'decisions_page_limit') defaults.decisionsPageLimit = wholeNumber(key, value, 0, DECISIONS_PAGE_LIMIT_CEILING);
+      continue;
+    }
     if (key === 'default') defaults.mode = value as DataSourceMode;
     else if (key === 'url') defaults.url = value;
     // OMN-12969: ws_url removed — the `/ws` invalidation path was dead
@@ -67,9 +97,10 @@ function parseContract(raw: string, initial: Defaults = defaultDataSource()): De
   return defaults;
 }
 
-let d = parseContract(readFileSync(contractPath, 'utf8'));
-if (existsSync(contractOverlayPath)) {
-  d = parseContract(readFileSync(contractOverlayPath, 'utf8'), d);
+function main(): void {
+  let d = parseContract(readFileSync(contractPath, 'utf8'));
+  if (existsSync(contractOverlayPath)) {
+    d = parseContract(readFileSync(contractOverlayPath, 'utf8'), d);
 }
 
 const generated = `// GENERATED — do not edit. Source: contract.yaml
@@ -89,8 +120,17 @@ export const DATA_SOURCE_DEFAULT_SQLITE_DB_PATH: string = ${JSON.stringify(d.sql
 // is configured, and every tenant-scoped exposure then refuses rather than
 // being read unscoped.
 export const PROJECTION_TENANT_ID_DEFAULT: string = ${JSON.stringify(d.projectionTenantId)};
+
+// OMN-26056: the one refresh interval in seconds (src/theme/refresh.ts reads it) and the decisions record window, the
+// number of runs one decisions page asks for (0 = no limit sent, the server's own page of 500). Both are declared in
+// contract.yaml's refresh section and may be named by a deployment overlay (contract.local.yaml).
+export const REFRESH_INTERVAL_SECONDS_DEFAULT: number = ${d.refreshIntervalSeconds};
+export const DECISIONS_PAGE_LIMIT_DEFAULT: number = ${d.decisionsPageLimit};
 `;
 
 mkdirSync(dirname(outPath), { recursive: true });
 writeFileSync(outPath, generated, 'utf8');
 console.log(`[generate:config] wrote ${outPath}`);
+}
+
+if (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();

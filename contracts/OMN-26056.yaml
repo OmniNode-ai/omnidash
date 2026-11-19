@@ -1,0 +1,45 @@
+schema_version: "1.0.0"
+ticket_id: "OMN-26056"
+title: "The dashboard's refresh interval and decisions record window are declared config, defaulting to 120 s and 100 runs"
+summary: >-
+  src/theme/refresh.ts held the one refresh interval as a literal (30 s) and the decisions read asked the projection API
+  for its whole page of 500 runs with no way to ask for fewer. contract.yaml now declares refresh.interval_seconds ("120")
+  and refresh.decisions_page_limit ("100"), contract.local.yaml may name others (30 s at the least, 0 to 500 runs), and
+  npm run generate:config carries them into the generated defaults the dashboard reads. A host build that writes no refresh
+  section into the build's contract.local.yaml (the omnimarket host node writes only data_source.url and
+  data_source.projection_tenant_id) therefore serves 120 s and 100 runs with no host-node change. This pull request proves
+  the dashboard side of AC4 (the request rate per page is bounded by a declared interval and a declared window); the
+  measured rate and database load on the lab are in the lane report, and AC1 to AC3 are lab facts this change does not
+  discharge.
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-config-refresh-window"
+    statement: "The dashboard's refresh interval and decisions record window come from contract.yaml's refresh section (overridable by contract.local.yaml), defaulting to 30 s and no limit."
+    acceptance:
+      - id: "AC4"
+        statement: >-
+          AC4: ten minutes after the start the dashboard sends a fixed number of projection requests per page and the dev database CPU stays under the bound OMN-24570 AC4 names, or the service is stopped through its declared stop path in the same lane -- falsifier: the reading of projection API requests per minute and dev database CPU over 10 minutes shows a since-page request or a rate above the bound while the service still runs
+evidence_requirements:
+  - kind: "tests"
+    description: "The refresh interval and decisions window config tests."
+    command: "npm test -- --run tests/scripts/generate-data-source-config.test.ts tests/theme/refresh.omn26056.test.ts tests/layout/local-page-loader.omn26056-window.test.ts"
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
+dod_evidence:
+  - id: "dod-omn26056-ac4-config"
+    description: >-
+      AC4 (dashboard side only): the three test files fail on the first commit of this branch's change (the committed
+      defaults 30 s and no window, 4 tests red) and on dev 3c179302459e172b575003a61a7d8a8314ab8eab (the refresh section,
+      the generated REFRESH_INTERVAL_SECONDS_DEFAULT and DECISIONS_PAGE_LIMIT_DEFAULT and the window helper do not exist),
+      and pass on the head: the shipped defaults are 120 s and 100 runs, an overlay with no refresh section keeps them, an
+      overlay's value reaches every page's refresh and the decisions request, and a value under the 30 s floor or over 500
+      runs is refused.
+    source: "manual"
+    binds_ac: ["AC4"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm test -- --run tests/scripts/generate-data-source-config.test.ts tests/theme/refresh.omn26056.test.ts tests/layout/local-page-loader.omn26056-window.test.ts"

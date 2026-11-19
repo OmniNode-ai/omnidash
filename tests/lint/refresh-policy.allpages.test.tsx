@@ -46,8 +46,8 @@ describe('OMN-23330 AC21: one refresh setting', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('P2: the setting is 30 s, and every faster refresh is declared with its reason', () => {
-    expect(REFRESH_INTERVAL_MS).toBe(30_000);
+  it('P2: the setting is the declared 120 s default, and every faster refresh is declared with its reason', () => {
+    expect(REFRESH_INTERVAL_MS).toBe(120_000);
     expect(refreshInterval()).toBe(REFRESH_INTERVAL_MS);
     for (const [name, entry] of Object.entries(FASTER_REFRESH)) {
       expect({ name, ok: entry.ms >= 1_000 && entry.ms < REFRESH_INTERVAL_MS }).toEqual({ name, ok: true });
@@ -59,14 +59,16 @@ describe('OMN-23330 AC21: one refresh setting', () => {
     if (VIEWER_REFRESH_CHOICES.some(choice => choice.ms < REFRESH_INTERVAL_MS)) expect(VIEWER_REFRESH_WHY.trim().length).toBeGreaterThan(20);
   });
 
-  it('P3: every page declares the setting, and a page refresh never goes under it', () => {
+  it('P3: every page declares the 30 s floor, and a page refresh never goes under the setting', () => {
     const pages = readdirSync(path.join(ROOT, 'src/pages/local')).filter((name) => name.endsWith('.page.yaml'));
     expect(pages.length).toBeGreaterThan(5);
     for (const name of pages) {
       const declared = /"refresh_interval_seconds":\s*(\d+)/.exec(readFileSync(path.join(ROOT, 'src/pages/local', name), 'utf8'))?.[1];
-      expect({ name, declared: Number(declared) }).toEqual({ name, declared: REFRESH_INTERVAL_MS / 1000 });
+      // The pages' own declaration is the 30 s floor (OMN-23330); OMN-26056 lifts it to the configured setting.
+      expect({ name, declared: Number(declared) }).toEqual({ name, declared: 30 });
+      expect({ name, effective: pageRefreshMs(Number(declared)) }).toEqual({ name, effective: REFRESH_INTERVAL_MS });
     }
-    expect(pageRefreshMs(30)).toBe(30_000);
+    expect(pageRefreshMs(30)).toBe(REFRESH_INTERVAL_MS);
     expect(pageRefreshMs(5)).toBe(REFRESH_INTERVAL_MS);
     expect(pageRefreshMs(null)).toBe(REFRESH_INTERVAL_MS);
     expect(pageRefreshMs(120)).toBe(120_000);
