@@ -38,7 +38,7 @@ export function decisionsWalkFor(
 /**
  * OMN-26056: the decisions record window, declared config (contract.yaml refresh.decisions_page_limit). With a window set,
  * the newest-page read and each Load more page ask the projection API for that many runs; the API serves at most its own
- * page of 500 whatever is asked. With none set (0, today's default) no limit is sent. One run's own row (correlation_id)
+ * page of 500 whatever is asked. With 0 no limit is sent. The default is 100. One run's own row (correlation_id)
  * is never windowed.
  */
 export function withDecisionsWindow(params: Readonly<Record<string, string>> | undefined): Readonly<Record<string, string>> | undefined {

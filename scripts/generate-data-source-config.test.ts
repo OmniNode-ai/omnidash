@@ -1,7 +1,7 @@
 // OMN-26056: the dashboard's refresh interval and decisions record window are declared config. contract.yaml owns the
-// defaults (30 s, no window: the server's own page), and a deployment overlay (contract.local.yaml) may name larger or
+// defaults (120 s and a window of 100 runs), and a deployment overlay (contract.local.yaml) may name larger or
 // smaller ones. Failure modes, each with a test below:
-//   P1  the base contract changing what a dashboard with no overlay does (the defaults must stay 30 s and no window);
+//   P1  the base contract's defaults drifting from 120 s and a window of 100 runs, the safe values for a shared dev runtime;
 //   P2  an overlay's refresh section being ignored, so the lab cannot slow the page down through config;
 //   P3  an overlay that names a refresh section clobbering the data-source values it does not name;
 //   P4  an interval under the 30 s floor, or a window that is not a whole number in 0..500, being accepted silently.
@@ -13,8 +13,20 @@ import { parseContract } from './generate-data-source-config';
 const BASE_CONTRACT = readFileSync(path.resolve(__dirname, '..', 'contract.yaml'), 'utf8');
 
 describe('OMN-26056 refresh section of the data-source contract', () => {
-  it('P1: the base contract keeps 30 s and no record window', () => {
+  it('P1: the base contract carries 120 s and a record window of 100', () => {
     const d = parseContract(BASE_CONTRACT);
+    expect(d.refreshIntervalSeconds).toBe(120);
+    expect(d.decisionsPageLimit).toBe(100);
+  });
+
+  it('P1b: an overlay that names no refresh section (the host build writes none) serves the base 120 and 100', () => {
+    const d = parseContract('data_source:\n  url: "http://example.invalid/projection-api"\n  projection_tenant_id: "t"\n', parseContract(BASE_CONTRACT));
+    expect(d.refreshIntervalSeconds).toBe(120);
+    expect(d.decisionsPageLimit).toBe(100);
+  });
+
+  it('P1c: an overlay may restore the old 30 s and no window', () => {
+    const d = parseContract('refresh:\n  interval_seconds: "30"\n  decisions_page_limit: "0"\n', parseContract(BASE_CONTRACT));
     expect(d.refreshIntervalSeconds).toBe(30);
     expect(d.decisionsPageLimit).toBe(0);
   });

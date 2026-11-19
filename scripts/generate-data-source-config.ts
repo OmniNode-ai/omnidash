@@ -23,7 +23,7 @@ export interface Defaults {
   url: string;
   sqliteDbPath: string;
   projectionTenantId: string;
-  // OMN-26056: the dashboard's one refresh interval (seconds) and the decisions record window (0 = the server's own page).
+  // OMN-26056: the dashboard's one refresh interval (seconds) and the decisions record window (0 = no limit sent, the server's own page).
   refreshIntervalSeconds: number;
   decisionsPageLimit: number;
 }
@@ -48,8 +48,10 @@ function defaultDataSource(): Defaults {
     sqliteDbPath: '~/.omninode/delegation/delegation.sqlite',
     // OMN-18159: no default tenant, ever. See contract.yaml.
     projectionTenantId: '',
-    refreshIntervalSeconds: REFRESH_INTERVAL_FLOOR_SECONDS,
-    decisionsPageLimit: 0,
+    // OMN-26056: the same safe values contract.yaml's refresh section declares (that file owns them, this is only the
+    // fallback for a contract that has no refresh section at all).
+    refreshIntervalSeconds: 120,
+    decisionsPageLimit: 100,
   };
 }
 

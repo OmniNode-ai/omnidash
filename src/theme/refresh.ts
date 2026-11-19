@@ -4,10 +4,10 @@ import { REFRESH_INTERVAL_SECONDS_DEFAULT } from '@/config/generated/data-source
  * OMN-23330 AC21: the one refresh setting. Every page and widget refreshes from here, and nothing polls faster than
  * REFRESH_INTERVAL_MS unless FASTER_REFRESH below names it with the reason. Before this, about 40 reads each chose their
  * own interval, from 2 s to 60 s (the operator's 2026-11-09 code review). The pages' own declaration
- * (refresh_interval_seconds in each *.page.yaml, part of the shared dashboard schema) states the same 30 s.
+ * (refresh_interval_seconds in each *.page.yaml, part of the shared dashboard schema) states 30 s; pageRefreshMs lifts it to the setting.
  *
- * OMN-26056: the value is declared config, not a literal. contract.yaml's refresh.interval_seconds (30 today) is the
- * default and a deployment overlay (contract.local.yaml) may name a larger one; `npm run generate:config` carries it into
+ * OMN-26056: the value is declared config, not a literal. contract.yaml's refresh.interval_seconds (120) is the
+ * default and a deployment overlay (contract.local.yaml) may name another, 30 at the least; `npm run generate:config` carries it into
  * the generated defaults this file reads. The pages' own declarations still cannot go under it (pageRefreshMs).
  */
 export const REFRESH_INTERVAL_MS = REFRESH_INTERVAL_SECONDS_DEFAULT * 1000;
@@ -34,7 +34,7 @@ export type FasterRefresh = keyof typeof FASTER_REFRESH;
 function viewerChoiceLabel(ms: number): string {
   return ms >= 60_000 && ms % 60_000 === 0 ? `${ms / 60_000}m` : `${ms / 1000}s`;
 }
-// OMN-26056: the setting is one of the choices, once and under its own label (30s today; 2m at a 120 s setting).
+// OMN-26056: the setting is one of the choices, once and under its own label (2m at the 120 s default; 30s at the 30 s floor).
 export const VIEWER_REFRESH_CHOICES: ReadonlyArray<{ label: string; ms: number }> = [
   ...new Set([5_000, 10_000, REFRESH_INTERVAL_MS, 60_000, 5 * 60_000]),
 ]

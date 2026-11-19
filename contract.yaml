@@ -73,14 +73,14 @@ refresh:
   # OMN-26056: how often the dashboard reads, and how many runs a decisions page asks for. Read by
   # `npm run generate:config` (contract.yaml, then contract.local.yaml over it) into the generated defaults; src/theme/refresh.ts
   # and src/contracts/local-read-budget.ts read them from there, so a deployment overlay changes both with no code edit.
+  # The defaults are the safe ones for a shared dev runtime: one open browser then reads well under 10 requests a minute.
   #
   # interval_seconds: the one refresh interval of every page and widget (OMN-23330 AC21), whole seconds, at least 30.
-  #   Today's value is 30; a deployment that must keep one open browser light on a shared runtime names a larger one, for
-  #   example "120".
+  #   The default is 120. An overlay that wants the former 30 s names "30".
   # decisions_page_limit: the number of runs one decisions page asks for (the newest page and each Load more page),
-  #   0 to 500. "0" sends no limit, so the projection API serves its own page of 500 runs; today's behaviour.
-  interval_seconds: "30"
-  decisions_page_limit: "0"
+  #   0 to 500. The default is 100. "0" sends no limit, so the projection API serves its own page of 500 runs.
+  interval_seconds: "120"
+  decisions_page_limit: "100"
 
 runtime_edge:
   # Generic contract-driven runtime HTTP edge. OmniDash never owns broker

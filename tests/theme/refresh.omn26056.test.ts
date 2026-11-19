@@ -1,5 +1,5 @@
 // OMN-26056: src/theme/refresh.ts takes its one interval from the declared config (the generated contract defaults),
-// so a lab overlay slows every page down without a code edit. The default stays 30 s.
+// so a lab overlay slows every page down without a code edit. The shipped default is 120 s.
 // Failure modes:
 //   P1  the generated setting being ignored: REFRESH_INTERVAL_MS stays 30 s whatever the contract says;
 //   P2  a page's own declared refresh going under the configured setting;
@@ -20,10 +20,16 @@ async function refreshWith(seconds: number | null) {
 afterEach(() => { vi.doUnmock('@/config/generated/data-source-defaults'); vi.resetModules(); });
 
 describe('OMN-26056 configured refresh interval', () => {
-  it('the generated default is 30 s and nothing else moves', async () => {
+  it('the generated default is 120 s: every read and a page declaring 30 s refresh at it', async () => {
     const refresh = await refreshWith(null);
+    expect(refresh.REFRESH_INTERVAL_MS).toBe(120_000);
+    expect(refresh.refreshInterval()).toBe(120_000);
+    expect(refresh.pageRefreshMs(30)).toBe(120_000);
+  });
+
+  it('a 30 s setting (the floor) still gives the old behaviour', async () => {
+    const refresh = await refreshWith(30);
     expect(refresh.REFRESH_INTERVAL_MS).toBe(30_000);
-    expect(refresh.refreshInterval()).toBe(30_000);
     expect(refresh.pageRefreshMs(30)).toBe(30_000);
   });
 

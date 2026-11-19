@@ -19,5 +19,5 @@ export const PROJECTION_TENANT_ID_DEFAULT: string = "";
 // OMN-26056: the one refresh interval in seconds (src/theme/refresh.ts reads it) and the decisions record window, the
 // number of runs one decisions page asks for (0 = no limit sent, the server's own page of 500). Both are declared in
 // contract.yaml's refresh section and may be named by a deployment overlay (contract.local.yaml).
-export const REFRESH_INTERVAL_SECONDS_DEFAULT: number = 30;
-export const DECISIONS_PAGE_LIMIT_DEFAULT: number = 0;
+export const REFRESH_INTERVAL_SECONDS_DEFAULT: number = 120;
+export const DECISIONS_PAGE_LIMIT_DEFAULT: number = 100;
