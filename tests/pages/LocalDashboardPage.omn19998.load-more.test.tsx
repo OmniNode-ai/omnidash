@@ -17,6 +17,13 @@ const harness = vi.hoisted(() => ({
   failSince: null as string | null,
 }));
 
+// OMN-26056: this test is written for the former 30 s refresh and unwindowed decisions read, so it pins them; the shipped
+// defaults (120 s, 100 runs) are proved in tests/theme/refresh.omn26056.test.ts and tests/layout/local-page-loader.omn26056-window.test.ts.
+vi.mock('@/config/generated/data-source-defaults', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config/generated/data-source-defaults')>()),
+  REFRESH_INTERVAL_SECONDS_DEFAULT: 30,
+  DECISIONS_PAGE_LIMIT_DEFAULT: 0,
+}));
 vi.mock('@/data-source', () => {
   // The read node's decisions.v1, as tests/layout/local-page-loader.omn19998-walk-budget.test.ts serves it: a request
   // with no `since` answers the newest 500 runs (truncated with next_cursor '0' when more exist); a `since` request
