@@ -13,9 +13,7 @@ summary: >-
   test, so it is not declared here.
 is_seam_ticket: true
 interface_change: false
-interfaces_touched:
-  - "topics"
-  - "public_api"
+interfaces_touched: []
 requirements:
   - id: "req-omn24570-bounded-first-load"
     statement: >-
