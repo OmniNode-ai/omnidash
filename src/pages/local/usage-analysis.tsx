@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Link } from 'wouter';
 
-import { formatDashboardUsd } from '@/theme/format';
+import { formatDashboardUsd, formatDuration, formatShare, NOT_MEASURED } from '@/theme/format';
 import { ColumnTip, DashboardTabs, DashboardToggle, DataTable, EmptyState, InfoTip, Panel, PanelTitle } from '@/theme/design-system/components';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { tierLabel } from '@/pages/local/plain-text';
@@ -14,7 +14,7 @@ import {
 import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
 import { BarSparkline, CostQualityScatter, DayAxis, breakableName } from '@/theme/design-system/charts';
 import { ChartLine, Gauge, Layers, LayoutGrid } from '@/theme/design-system/icons';
-import { fixed as fmtFixed, localeDate as fmtLocaleDate } from '@/theme/format';
+import { localeDate as fmtLocaleDate } from '@/theme/format';
 
 /**
  * OMN-21166 part 29 (revision 6) AC194 and AC195: Usage analysis, read from the latest N served decisions (Langfuse's
@@ -55,10 +55,10 @@ type SortKey = 'name' | 'runs' | 'spend' | 'pass' | 'p50' | 'p95' | 'last';
 const dayLabel = (day: string) => fmtLocaleDate(new Date(`${day}T00:00:00Z`), 'en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 // OMN-22168 (Jonah 2026-11-06): every dollar figure follows the display rule (two decimals, up to four under $1, cut).
 const usd = (value: number) => formatDashboardUsd(value);
-const latency = (value: number | null) => (value === null ? 'Not recorded' : value >= 1000 ? `${fmtFixed((value / 1000), 1)} s` : `${Math.round(value)} ms`);
-const passText = (totals: Totals) => (totals.verdicts === 0 ? 'No verdicts' : `${fmtFixed(((totals.passed / totals.verdicts) * 100), 1)}% (${totals.passed} of ${totals.verdicts})`);
+const latency = (value: number | null) => (value === null ? NOT_MEASURED : formatDuration(value));
+const passText = (totals: Totals) => (totals.verdicts === 0 ? 'No verdicts' : `${formatShare(totals.passed / totals.verdicts)} (${totals.passed} of ${totals.verdicts})`);
 const money = (value: number | null, measured: number, runs: number) => (value === null ? 'Not measured' : `${formatDashboardUsd(value)} (${measured} of ${runs} measured)`);
-const lastText = (value: string | null) => (value === null ? 'Not recorded'
+const lastText = (value: string | null) => (value === null ? NOT_MEASURED
   : `${dayLabel(value.slice(0, 10))}, ${new Date(value).toISOString().slice(11, 16)} UTC`);
 
 function sortValue(group: Group, key: SortKey): number | string {
@@ -115,7 +115,7 @@ function GroupsView({ decisionRows }: { decisionRows: readonly unknown[] }) {
     <DashboardToggle label="Group by" options={GROUPS.map(group => toned(group.by, group.label, group.concept))} value={by} onChange={setBy} />
     <DataTable data-analysis-table aria-label={`Usage by ${label.toLowerCase()}`}>
         <thead><tr>{header('name', label)}{header('runs', 'Runs')}{header('spend', 'Spend')}
-          {header('pass', 'Pass rate')}{header('p50', 'p50 latency')}{header('p95', 'p95 latency')}
+          {header('pass', 'Pass rate')}{header('p50', 'p50 duration')}{header('p95', 'p95 duration')}
           {header('last', 'Last run')}<th scope="col" data-col="spark"><ColumnTip tone="runs-daily" tip={`Runs per UTC day over the latest ${SPARK_DAYS} days. A dashed slot is a day before the sample.`}><span className="local-table-head" data-field-tone="runs-daily" tabIndex={0}><ConceptIcon concept="runs-daily" label="Runs per day" size={13} />Runs per day<span className="local-visually-hidden">{` (${SPARK_DAYS} days)`}</span></span></ColumnTip></th></tr></thead>
         <tbody>{sorted.map(group => <tr key={group.name}>
           <th scope="row" data-model-name={by === 'model' && group.name !== NOT_RECORDED ? '' : undefined}
@@ -125,19 +125,19 @@ function GroupsView({ decisionRows }: { decisionRows: readonly unknown[] }) {
               : by === 'tier' ? tierLabel(group.name) : breakableName(group.name)}</th>
           {/* data-label names each value when a phone stacks the rows as cards (Codex MSG 753d170c). */}
           <td data-cell="runs" data-label="Runs">{group.runs}</td>
-          {/* A measured zero spend is the run table's muted "$0" with the served text as its title (Lakshman 2026-11-05). */}
+          {/* A measured zero spend is the run table's muted "$0.00" with the served text as its title (OMN-24616 AC6). */}
           {/* The figure first, its count muted beside it (Lakshman 2026-11-05, "table needs fixing - make it modern"); the
               cell's text is unchanged. */}
           <td data-cell="spend" data-label="Spend">{group.spend === null ? money(group.spend, group.spendMeasured, group.runs) : <>
             {group.spend === 0
-              ? <span className="local-cost-free" title={formatDashboardUsd(group.spend)}>{formatDashboardUsd(group.spend).replace(/\.0+$/, '')}</span>
+              ? <span className="local-cost-free" title={formatDashboardUsd(group.spend)}>{formatDashboardUsd(group.spend)}</span>
               : <span className="local-cell-figure">{formatDashboardUsd(group.spend)}</span>}
             <span className="local-cell-sub local-cell-sub--line">{` (${group.spendMeasured} of ${group.runs} measured)`}</span></>}</td>
           <td data-cell="pass" data-label="Pass rate" data-pass-band={passBand(group.passed, group.verdicts)}>{group.verdicts === 0
             ? <span className="local-pass-pill">{passText(group)}</span>
             : <><span className="local-pass-pill">{passText(group).split(' (')[0]}</span><span className="local-cell-sub local-cell-sub--line">{` (${passText(group).split(' (')[1]}`}</span></>}</td>
-          <td data-cell="p50" data-label="p50 latency">{latency(group.p50)}</td>
-          <td data-cell="p95" data-label="p95 latency">{latency(group.p95)}</td>
+          <td data-cell="p50" data-label="p50 duration">{latency(group.p50)}</td>
+          <td data-cell="p95" data-label="p95 duration">{latency(group.p95)}</td>
           <td data-cell="last" data-label="Last run">{lastText(group.last)}</td>
           <td data-cell="spark" data-label={`Runs per day (${SPARK_DAYS} days)`}><Sparkline group={group} /></td>
         </tr>)}</tbody>
@@ -157,7 +157,7 @@ const runsHref = (filters: ReadonlyArray<Partial<RunsViewState> | null>, extra: 
 const runCount = (runs: number) => `${runs} ${runs === 1 ? 'run' : 'runs'}`;
 type MatrixMetric = 'pass' | 'p95' | 'cost' | 'runs';
 const MATRIX_METRICS: ReadonlyArray<{ value: MatrixMetric; label: string; concept: string }> = [
-  { value: 'pass', label: 'Pass rate', concept: 'pass' }, { value: 'p95', label: 'p95 latency', concept: 'duration-p95' },
+  { value: 'pass', label: 'Pass rate', concept: 'pass' }, { value: 'p95', label: 'p95 duration', concept: 'duration-p95' },
   { value: 'cost', label: 'Cost per measured run', concept: 'cost' }, { value: 'runs', label: 'Runs', concept: 'delegations' },
 ];
 const MATRIX_COLUMNS: ReadonlyArray<{ value: Extract<GroupBy, 'task' | 'tier'>; label: string; concept: string }> = [
@@ -167,7 +167,7 @@ const MATRIX_COLUMNS: ReadonlyArray<{ value: Extract<GroupBy, 'task' | 'tier'>; 
 function matrixFigure(totals: Totals, metric: MatrixMetric): [string, string] {
   switch (metric) {
     case 'pass': return totals.verdicts === 0 ? ['No verdicts', runCount(totals.runs)]
-      : [`${fmtFixed(((totals.passed / totals.verdicts) * 100), 1)}%`, `${totals.passed} of ${totals.verdicts}`];
+      : [`${formatShare(totals.passed / totals.verdicts)}`, `${totals.passed} of ${totals.verdicts}`];
     case 'p95': return [latency(totals.p95), `${totals.latencies} recorded`];
     case 'cost': return totals.spend === null ? ['Not measured', runCount(totals.runs)] : [usd(totals.spend / totals.spendMeasured), `${totals.spendMeasured} measured`];
     case 'runs': return [String(totals.runs), totals.verdicts === 0 ? 'no verdicts' : `${totals.passed} of ${totals.verdicts} passed`];
@@ -233,8 +233,8 @@ function trendLabel(day: TrendDay, metric: TrendMetric): string {
   if (day.state === 'not-covered') return `${date}: not covered by the sample`;
   if (day.state === 'no-runs') return `${date}: no runs`;
   const runs = `${day.runs} ${day.runs === 1 ? 'run' : 'runs'}`;
-  if (metric === 'p95') return day.p95 === null ? `${date}: latency not recorded, ${runs}` : `${date}: p95 ${latency(day.p95)}, ${runs}`;
-  return day.state === 'no-verdicts' ? `${date}: no verdicts, ${runs}` : `${date}: ${fmtFixed(((day.passed / day.verdicts) * 100), 1)}% passed (${day.passed} of ${day.verdicts}), ${runs}`;
+  if (metric === 'p95') return day.p95 === null ? `${date}: p95 not measured, ${runs}` : `${date}: p95 ${latency(day.p95)}, ${runs}`;
+  return day.state === 'no-verdicts' ? `${date}: no verdicts, ${runs}` : `${date}: ${formatShare(day.passed / day.verdicts)} passed (${day.passed} of ${day.verdicts}), ${runs}`;
 }
 
 /**
@@ -255,19 +255,19 @@ function QualityTrend({ decisionRows }: { decisionRows: readonly unknown[] }) {
   const firstRow = useRef<HTMLOListElement>(null);
   return <figure className="local-chart usage-trend" data-quality-trend data-metric={metric} aria-label="Quality over time">
     <div className="local-dashboard-toggles">
-      <DashboardToggle label="Trend metric" options={[toned('pass' as const, 'Pass rate', 'pass'), toned('p95' as const, 'p95 latency', 'duration-p95')]} value={metric} onChange={setMetric} />
+      <DashboardToggle label="Trend metric" options={[toned('pass' as const, 'Pass rate', 'pass'), toned('p95' as const, 'p95 duration', 'duration-p95')]} value={metric} onChange={setMetric} />
       <DashboardToggle label="Trend series" options={TREND_SERIES.map(option => toned(option.value, option.label, TREND_CONCEPT[option.value]))} value={by} onChange={setBy} />
     </div>
     <figcaption className="local-dashboard-caption">{metric === 'pass'
       ? 'Pass rate per UTC day over runs with a verdict; an outlined day is before the sample, a dashed one has runs but no verdicts.'
-      : `p95 latency per UTC day from recorded latencies; the tallest bar is ${latency(peak)}.`}</figcaption>
+      : `p95 run duration per UTC day from recorded run durations; the tallest bar is ${latency(peak)}.`}</figcaption>
     <div className="usage-trend-rows">
       {series.map((line, lineIndex) => <div key={line.name} className="usage-trend-row" data-series={line.name}
         style={by === 'model' && line.filter && line.name !== NOT_RECORDED ? { '--model-color': modelColor(line.name) } as CSSProperties : undefined}>
         <span className="usage-trend-name" data-model-name={by === 'model' && line.filter && line.name !== NOT_RECORDED ? '' : undefined}
           data-semantic-concept={by === 'model' && line.filter && line.name !== NOT_RECORDED ? `model:${line.name}` : undefined}
           style={by === 'model' && line.filter && line.name !== NOT_RECORDED ? { '--model-color': modelColor(line.name) } as CSSProperties : undefined}>{line.name}</span>
-        <ol ref={lineIndex === 0 ? firstRow : undefined} className="usage-trend-days" aria-label={`${line.name}, ${metric === 'pass' ? 'pass rate' : 'p95 latency'} per day`}>
+        <ol ref={lineIndex === 0 ? firstRow : undefined} className="usage-trend-days" aria-label={`${line.name}, ${metric === 'pass' ? 'pass rate' : 'p95 duration'} per day`}>
           {line.days.map(day => {
             const label = trendLabel(day, metric);
             const value = height(day);
@@ -307,12 +307,12 @@ export function UsageAnalysis({ decisionRows, complete = false }: { decisionRows
     <p className="local-dashboard-caption">
       {/* OMN-21970 AC3: a read that walked every page holds every served run, so it is not called the latest. */}
       {`From ${complete ? 'all' : 'the latest'} ${sample} served runs${coverage ? `, covering ${dayLabel(coverage.first)} to ${dayLabel(coverage.last)}` : ''}. `}
-      <InfoTip side="bottom" label="How these views count" text="Spend counts measured runs, pass rate counts runs with a verdict, latency counts recorded latencies (nearest rank). Savings are on the charts above (metering)." />
+      <InfoTip side="bottom" label="How these views count" text="Spend counts measured runs, pass rate counts runs with a verdict, duration counts recorded run durations (nearest rank). Savings are on the charts above (metering)." />
     </p>
     {/* OMN-22168 (Lakshman 2026-11-05, "fix all pages and make it uniform"): Overview's stat tabs, one per view; each hint
         says what the view shows, and the one count is the served sample's model groups. */}
     <DashboardTabs label="Usage analysis views" param="analysis" tabs={[
-      { id: 'groups', label: 'Groups', tone: 'var(--ds-field-usage-analysis)', icon: <Layers size={18} />, hint: 'Spend, pass rate, latency',
+      { id: 'groups', label: 'Groups', tone: 'var(--ds-field-usage-analysis)', icon: <Layers size={18} />, hint: 'Spend, pass rate, duration',
         panel: () => <GroupsView decisionRows={decisionRows} /> },
       { id: 'matrix', label: 'Model by task', tone: 'var(--ds-field-routing-model)', icon: <LayoutGrid size={18} />,
         hint: `${models.length} ${models.length === 1 ? 'model' : 'models'} by task`, panel: () => <DecisionMatrix decisionRows={decisionRows} /> },
@@ -333,8 +333,8 @@ export function RunsTotals({ rows, sample, complete = false }: { rows: readonly 
   return <p className="local-dashboard-caption local-runs-totals" data-runs-totals aria-live="polite">
     <span data-total="runs">{`${totals.runs} ${totals.runs === 1 ? 'run' : 'runs'}`}</span>{' · '}
     <span data-total="spend">{totals.spend === null ? 'spend not measured' : `${formatDashboardUsd(totals.spend)} spend (${totals.spendMeasured} with a recorded cost)`}</span>{' · '}
-    <span data-total="pass">{totals.verdicts === 0 ? 'no verdicts' : `${fmtFixed(((totals.passed / totals.verdicts) * 100), 1)}% passed (${totals.passed} of ${totals.verdicts})`}</span>{' · '}
-    <span data-total="p95">{totals.p95 === null ? 'p95 not recorded' : `p95 ${latency(totals.p95)}`}</span>{' · '}
+    <span data-total="pass">{totals.verdicts === 0 ? 'no verdicts' : `${formatShare(totals.passed / totals.verdicts)} passed (${totals.passed} of ${totals.verdicts})`}</span>{' · '}
+    <span data-total="p95">{totals.p95 === null ? 'p95 not measured' : `p95 ${latency(totals.p95)}`}</span>{' · '}
     {/* "Measured" is Overview's word for runs with token counts and a cost; this counts runs with a recorded cost. */}
     <span className="local-runs-totals-scope">{`current filter · ${complete ? 'all' : 'latest'} ${sample} served runs`}</span>
   </p>;

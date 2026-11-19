@@ -78,13 +78,13 @@ describe('OMN-23330 AC37 follow-up: a chart table reads like the Runs table', ()
   });
 
   it('I3 I4 I5 I7: values are written as the pages write them and wear their column tone', () => {
-    // Newest day first (I23): Sep 30, not recorded, then Sep 29.
+    // Newest day first (I23): Sep 30, not measured, then Sep 29.
     const [second, first] = within(dailyTrendTable()).getAllByRole('row').slice(1);
     expect([...first!.querySelectorAll('th, td')].map(cell => cell.textContent)).toEqual(['Sep 29', '2', '254', '12', '$0.00', '$0.0006']);
     expect([...first!.querySelectorAll('td')].map(cell => cell.getAttribute('data-field-tone'))).toEqual(['calls', 'tokens-in', 'tokens-out', 'cost', 'savings']);
     for (const cell of first!.querySelectorAll('td')) expect(cell.getAttribute('data-field-unavailable')).toBe('false');
     for (const cell of second!.querySelectorAll('td')) {
-      expect(cell.textContent).toBe('Not recorded');
+      expect(cell.textContent).toBe('Not measured');
       expect(cell.getAttribute('data-field-unavailable')).toBe('true');
     }
   });
@@ -170,13 +170,13 @@ describe('OMN-23330 AC37 follow-up: a chart table reads like the Runs table', ()
   it('I12: a ranked-bar table can name its rows and gives the exact count and the share their own columns', () => {
     render(<RankedBars label="Runs by model" unit="" table={{ nameHeader: 'Model', countHeader: 'Runs' }} items={[
       { key: 'a', name: 'Qwen3.8-27B', value: 2920, count: 2920, share: 0.94, display: '2.92K · 94.0%', basis: 'measured', color: 'c' },
-      { key: 'b', name: 'gemini', value: null, count: null, share: null, display: 'Not recorded', basis: 'measured', color: 'd' }]} />);
+      { key: 'b', name: 'gemini', value: null, count: null, share: null, display: 'Not measured', basis: 'measured', color: 'd' }]} />);
     fireEvent.click(screen.getByRole('button', { name: 'Show as table: Runs by model' }));
     const table = screen.getByRole('table', { name: 'Runs by model as a table' });
     expect(within(table).getAllByRole('columnheader').map(head => [head.textContent, head.getAttribute('data-field-tone')]))
       .toEqual([['Model', 'model'], ['Runs', 'calls'], ['Share', 'share']]);
     expect(within(table).getAllByRole('row').slice(1).map(row => [...row.querySelectorAll('th, td')].map(cell => cell.textContent)))
-      .toEqual([['Qwen3.8-27B', '2,920', '94.0%'], ['gemini', 'Not recorded', 'Not recorded']]);
+      .toEqual([['Qwen3.8-27B', '2,920', '94.0%'], ['gemini', 'Not measured', 'Not measured']]);
   });
 
   it('I13: each named row and its share value wear the row\'s own colour, the one its bar wears', () => {

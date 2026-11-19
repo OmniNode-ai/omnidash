@@ -174,7 +174,7 @@ test('AC162 empty Access and System status cards name what fills them', async ({
   const access = sectionNamed(page, 'Access').locator('article[data-component]').filter({ has: page.getByRole('heading', { name: 'Dashboard access', exact: true }) });
   await expect(access.getByRole('status')).toContainText('Access details not reported yet');
   await expect(access.getByRole('status')).toContainText('each time onex dashboard starts on this machine');
-  await expect(access).not.toContainText('Not available yet');
+  await expect(access).not.toContainText('Not measured yet');
   await showSettingsSection(page, 'System status');
   const status = sectionNamed(page, 'System status').getByRole('status').filter({ hasText: 'Service health is not available yet' });
   await expect(status).toBeVisible();

@@ -1,5 +1,6 @@
 import { formatDashboardCount } from '@/theme/format';
-import { formatDuration } from '@/theme/format';
+import { EmptyState } from '@/theme/design-system/components';
+import { formatDuration, NOT_MEASURED } from '@/theme/format';
 /**
  * OMN-12943 — shared UI primitives for the ported event-dash views.
  *
@@ -46,7 +47,7 @@ export const fmtTokens = (n: number | null | undefined): string => {
   return String(n);
 };
 // OMN-21166 AC55: the one duration formatter, so Evidence reads "23.5 s" as every local page does.
-export const fmtLatency = (ms: number | null | undefined): string => (ms == null ? '—' : formatDuration(ms));
+export const fmtLatency = (ms: number | null | undefined): string => (ms == null ? NOT_MEASURED : formatDuration(ms));
 // OMN-21166 AC6: delegation.decisions.v1 serves `id` as an integer, so an id
 // may arrive as a number; it is shown as its digits, and only null, undefined
 // or an empty string read as missing.
@@ -372,13 +373,13 @@ export function DataTable<T>({
 
 /**
  * OMN-21166 (Chrome walk, 2026-10-18): a bare HTTP status reads as a sentence, the status kept beside it
- * ("HTTP 503" → "Not served by this runtime yet (HTTP 503)"). Any other reason is shown as given.
+ * ("HTTP 503" → "This runtime does not provide this data yet (HTTP 503)"). Any other reason is shown as given.
  */
 export function readableReason(reason: string): string {
   const status = /^HTTP (\d{3})(?: .*)?$/.exec(reason.trim());
   if (!status) return reason;
   const code = Number(status[1]);
-  if (code === 404 || code === 503) return `Not served by this runtime yet (${reason.trim()})`;
+  if (code === 404 || code === 503) return `This runtime does not provide this data yet (${reason.trim()})`;
   if (code >= 500) return `The runtime could not answer (${reason.trim()})`;
   return reason;
 }
@@ -401,12 +402,13 @@ export function EvEmpty({
       </div>
     );
   }
+  // OMN-24616 AC6: the other pages' empty state component, announced as a status as theirs is.
   return (
-    <div className="ev-empty">
+    <EmptyState as="div" className="ev-empty">
       <div className="ev-empty-title">{title}</div>
       {reason ? <div className="ev-empty-reason">{readableReason(reason)}</div> : null}
       {note ? <div className="ev-empty-note">{note}</div> : null}
-    </div>
+    </EmptyState>
   );
 }
 

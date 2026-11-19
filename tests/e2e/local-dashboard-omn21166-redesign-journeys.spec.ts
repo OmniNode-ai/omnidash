@@ -126,9 +126,9 @@ test('AC194 AC195 Usage analysis groups the served sample with its own denominat
   await expect(row('model-a').locator('[data-cell="pass"]')).toHaveText('66.7% (2 of 3)');
   await expect(row('model-a').locator('[data-cell="p50"]')).toHaveText('300 ms');
   await expect(row('model-a').locator('[data-cell="p95"]')).toHaveText('500 ms');
-  // A measured zero is the short "$0", muted, with the served "$0.00" as its title (Lakshman 2026-11-05).
-  await expect(row('model-b').locator('[data-cell="spend"]')).toHaveText('$0 (2 of 2 measured)');
-  await expect(row('model-b').locator('[data-cell="spend"] [title="$0.00"]')).toHaveText('$0');
+  // A measured zero is "$0.00", muted, with the served "$0.00" as its title (OMN-24616 AC6, Lakshman 2026-11-18).
+  await expect(row('model-b').locator('[data-cell="spend"]')).toHaveText('$0.00 (2 of 2 measured)'); // OMN-24616 AC6
+  await expect(row('model-b').locator('[data-cell="spend"] [title="$0.00"]')).toHaveText('$0.00'); // OMN-24616 AC6
   await expect(row('model-b').locator('[data-cell="pass"]')).toHaveText('100.0% (1 of 1)');
   await expect(row('model-b').locator('[data-cell="p95"]')).toHaveText('200 ms');
   await expect(row('Not recorded').locator('[data-cell="spend"]')).toHaveText('Not measured');
@@ -187,8 +187,9 @@ test('AC197 Workflow draws the run as a waterfall: bars only for steps with a st
   expect(read[3]!.left!).toBeCloseTo(430 / 730, 2);
   expect(read[3]!.width!).toBeCloseTo(300 / 730, 2);
   for (const row of read.slice(4)) {
-    // OMN-23330 AC13: the step says "Not recorded" once, naming its missing start or duration.
-    expect(row.text).toMatch(/Not recorded: .*(start|duration)/);
+    // OMN-23330 AC13: the step names its missing start (a label, "Not recorded") or duration (a figure, "Not measured",
+    // OMN-24616 AC6).
+    expect(row.text).toMatch(/Not recorded: .*start|Not measured: .*duration/);
     expect(row.width, 'no bar without both times').toBeNull();
   }
   // Attempts are the served attempt steps, each its own row; with them present no escalation-count sentence stands in.

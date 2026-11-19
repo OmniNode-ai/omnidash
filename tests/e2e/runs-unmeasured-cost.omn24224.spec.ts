@@ -8,7 +8,7 @@ import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
 // 0, a savings session whose local_cost_usd is null too.
 // Failure modes:
 //   F1  an unmeasured run shows "$0" (or any money) in the table or in its detail dialog;
-//   F2  a measured cost of exactly 0 stops reading as the muted "$0";
+//   F2  a measured cost of exactly 0 stops reading as the muted "$0.00" (OMN-24616 AC6, was "$0" until 2026-11-18);
 //   F3  a priced run loses its figure;
 //   F4  the check is blind: the rows it reads are not drawn.
 const runs = [
@@ -30,7 +30,7 @@ const rows: Record<string, unknown[]> = {
   }],
 };
 
-test('unmeasured_run_cost: a run with no recorded cost reads Not measured, a measured zero stays the muted $0', async ({ page }, info) => {
+test('unmeasured_run_cost: a run with no recorded cost reads Not measured, a measured zero stays the muted $0.00', async ({ page }, info) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await serveCharts(page, rows);
   await page.goto('/runs');
@@ -45,7 +45,7 @@ test('unmeasured_run_cost: a run with no recorded cost reads Not measured, a mea
   // F1: the unmeasured run says so and shows no money.
   await expect(cost(0)).toHaveText('Not measured');
   // F2: the measured free run keeps the short, muted zero.
-  await expect(cost(1)).toHaveText('$0');
+  await expect(cost(1)).toHaveText('$0.00');
   await expect(cost(1).locator('.local-cost-free')).toHaveCount(1);
   // F3: the priced run keeps its figure.
   await expect(cost(2)).toHaveText('$0.25');

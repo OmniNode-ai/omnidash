@@ -43,7 +43,7 @@ describe('latestServedRead', () => {
 
 describe('Header', () => {
   it('U1: Overview shows the published served read time beside Refresh, not the clock', () => {
-    act(() => publishLocalPageRead('overview', '2026-10-25T10:04:00Z'));
+    act(() => publishLocalPageRead('local-overview', '2026-10-25T10:04:00Z'));
     header('/overview');
     const line = screen.getByText('Updated 10:04 UTC');
     expect(line.nextElementSibling).toBe(screen.getByRole('button', { name: 'Refresh' }));
@@ -51,7 +51,7 @@ describe('Header', () => {
   });
 
   it('U2: a read published for Overview is not shown on Runs', () => {
-    act(() => publishLocalPageRead('overview', '2026-10-25T10:04:00Z'));
+    act(() => publishLocalPageRead('local-overview', '2026-10-25T10:04:00Z'));
     header('/runs');
     expect(screen.queryByText(/^Updated/)).toBeNull();
   });

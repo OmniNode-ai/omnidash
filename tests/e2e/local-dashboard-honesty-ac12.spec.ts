@@ -137,10 +137,10 @@ test('AC2 a late answer for a run the user has left is dropped', async ({ page }
     await expect(page.getByText('answer-alpha')).toHaveCount(0);
   }).toPass({ timeout: 3000 });
 
-  // Unrecorded phases read Not recorded; a measured 0 stays a value.
-  await expect(summary.locator('[data-summary-field="Queue wait"] dd')).toHaveText('Not recorded');
-  await expect(summary.locator('[data-summary-field="Execution"] dd')).toHaveText('Not recorded');
-  await expect(summary.locator('[data-summary-field="Duration"] dd')).toHaveText('0 ms');
+  // Unrecorded phases read Not measured (OMN-24616 AC6); a measured 0 stays a value.
+  await expect(summary.locator('[data-summary-field="Queue wait"] dd')).toHaveText('Not measured');
+  await expect(summary.locator('[data-summary-field="Duration"] dd')).toHaveText('Not measured');
+  await expect(summary.locator('[data-summary-field="Model call time"] dd')).toHaveText('0 ms');
 
   // Going back to run A shows its own steps, answer and model: the late answer was dropped, not the run.
   await page.locator('.local-run-neighbours a[title="chart-run-a"]').click();

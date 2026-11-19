@@ -1,6 +1,6 @@
 import { writeFileSync } from 'node:fs';
 import { expect, test, type Page } from 'playwright/test';
-import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
+import { FIXTURE_NOW, chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
 import { chooseChartTab } from './chart-tabs';
 
 // OMN-21166 part 21 (Lakshman 2026-10-26: "overview page is very bad why?"): a grid of shorter charts and plain cards.
@@ -122,7 +122,9 @@ test('AC143 AC139: thirty days of runs keep wide bars and labels inside the pane
   });
   await serveCharts(page, { ...chartRows, [prefix + 'delegation.decisions.v1']: month });
   await page.goto('/overview');
-  await expect(chartPanels(page).first().locator('.gdb-day')).toHaveCount(30);
+  // OMN-24616 AC3: All time spans the oldest served day (Sep 27) to the fixture's today, quiet days included.
+  const allTimeDays = (Date.parse(FIXTURE_NOW.slice(0, 10)) - Date.UTC(2026, 8, 27)) / 86_400_000 + 1;
+  await expect(chartPanels(page).first().locator('.gdb-day')).toHaveCount(allTimeDays);
   for (const title of ['Runs per day', 'Tokens per day']) {
     expect(Math.min(...await daySpans(page, title)), `${title}: bars span at least 60% of a day`).toBeGreaterThanOrEqual(0.6);
   }

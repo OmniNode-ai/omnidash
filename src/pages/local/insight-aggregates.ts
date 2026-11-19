@@ -46,8 +46,9 @@ export function compareWindow(rows: readonly unknown[], now: number, days: numbe
   return {
     currentPassRate: current.passRate,
     previousPassRate: previousComplete ? previous.passRate : null,
+    // OMN-24616 AC2: the rates are 0-1 shares; a change between them is written in percentage points.
     passRateDeltaPoints: previousComplete && current.passRate !== null && previous.passRate !== null
-      ? current.passRate - previous.passRate : null,
+      ? (current.passRate - previous.passRate) * 100 : null,
     previousComplete,
     currentRuns: current.runs,
     previousRuns: previous.runs,
@@ -119,15 +120,17 @@ export function aggregateMeteringWindow(rows: readonly unknown[], now: number, d
     if (byDay.has(day)) return unavailableMetering(`Daily metering data is unavailable: duplicate rows for ${day}.`);
     byDay.set(day, row);
   }
+  // OMN-24616 AC3: the runtime writes a day row only for a day with runs, so a selected day without one adds zero
+  // (as on Overview); a served day missing a value keeps that total unknown.
   const dayRows = selectedDays.map(day => {
     const row = byDay.get(day);
     return {
       day,
       served: row !== undefined,
-      spend: row ? number(row.spend_usd) : null,
-      saved: row ? number(row.savings_usd) : null,
-      counterfactual: row ? number(row.counterfactual_usd) : null,
-      runs: row ? number(row.runs_total) : null,
+      spend: row ? number(row.spend_usd) : 0,
+      saved: row ? number(row.savings_usd) : 0,
+      counterfactual: row ? number(row.counterfactual_usd) : 0,
+      runs: row ? number(row.runs_total) : 0,
     };
   });
   return {
@@ -188,7 +191,7 @@ export interface MeteringAllTime {
  */
 export function meteringAllTimeTotals(rows: readonly unknown[]): MeteringAllTime {
   const row = latestAllRow(rows);
-  if (row === 'none') return unavailableAllTime('All-time metering totals are not served yet.');
+  if (row === 'none') return unavailableAllTime('All-time metering totals are not measured.');
   if (row === 'ambiguous') return unavailableAllTime('All-time metering totals are unavailable: two all-time rows were served for the same time.');
   return { available: true, reason: null, baseline: baselineOf(row), spend: number(row.spend_usd) };
 }
@@ -205,7 +208,11 @@ function cumulative(days: readonly MeteringDay[]): (number | null)[] {
   let total: number | null = null;
   let unknownContribution = false;
   return days.map(day => {
-    if (!day.served) return total;
+    if (!day.served) {
+      if (unknownContribution) return null;
+      total = total ?? 0;
+      return total;
+    }
     if (day.saved === null) {
       total = null;
       unknownContribution = true;
@@ -340,8 +347,8 @@ export function durationDistribution(runs: readonly InsightRun[]): { labels: str
   const buckets = new Array<number>(edges.length - 1).fill(0);
   let unrecorded = 0;
   for (const run of runs) {
-    if (run.latencyMs === null) { unrecorded += 1; continue; }
-    const index = edges.findIndex((edge, i) => i < edges.length - 1 && run.latencyMs! >= edge && run.latencyMs! < edges[i + 1]!);
+    if (run.durationMs === null) { unrecorded += 1; continue; }
+    const index = edges.findIndex((edge, i) => i < edges.length - 1 && run.durationMs! >= edge && run.durationMs! < edges[i + 1]!);
     if (index >= 0) buckets[index] = buckets[index]! + 1;
   }
   return { labels: buckets.map((_, index) => durationBucketLabel(index)), buckets, unrecorded };

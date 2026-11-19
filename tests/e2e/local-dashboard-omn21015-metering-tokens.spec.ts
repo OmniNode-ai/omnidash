@@ -53,12 +53,12 @@ test('daily totals retain measured zero and an independently unrecorded directio
   await page.goto('/usage');
   // OMN-21166 Maple grid: the page's own token panel (the detail under "More usage" repeats it).
   const panel = page.locator('[data-component="usage-tokens-by-day"]:not([data-slice])');
-  const bar = panel.getByRole('button', { name: /Oct 22: 0 in, not recorded out/ });
+  const bar = panel.getByRole('button', { name: /Oct 22: 0 in, not measured out/ });
   await expect(bar).toBeVisible();
   expect(await bar.locator('[data-field-tone="tokens-in"]').evaluate(el => el.getBoundingClientRect().height)).toBe(0);
   await expect(bar.locator('[data-field-tone="tokens-out"]')).toHaveCount(0);
   await bar.focus();
-  await expect(panel.getByRole('status')).toContainText('Token coverage not recorded');
+  await expect(panel.getByRole('status')).toContainText('Token coverage not measured');
   await expect(panel.getByRole('status')).not.toContainText('0 out');
 });
 

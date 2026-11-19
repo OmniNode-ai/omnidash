@@ -16,7 +16,7 @@ function decision(id: string, writtenAt: string, extra: Record<string, unknown> 
     model_name: 'Qwen3.8-27B',
     quality_gate_passed: true,
     quality_gate_detail: 'completed',
-    latency_ms: 813,
+    execution_ms: 813,
     tokens_input: 162,
     tokens_output: 52,
     task_type: 'summarization',
@@ -41,7 +41,7 @@ function session(id: string, createdAt: string, extra: Record<string, unknown> =
     savings_usd: 0.844000,
     usage_source: 'measured',
     task_type: 'summarization',
-    latency_ms: 813,
+    execution_ms: 813,
     tokens_to_compliance: 214,
     ...extra,
   };
@@ -180,7 +180,7 @@ describe('RunsTable rows, status, cause and filters (RU-1, F18, F28)', () => {
     const row = screen.getByRole('row', { name: /run-d/ });
     expect(within(row).getByText('failed')).toBeInTheDocument();
     expect(within(row).getByText('provider timeout after 30s')).toBeInTheDocument();
-    expect(within(row).getAllByText('Not recorded').length).toBeGreaterThan(0);
+    expect(within(row).getAllByText('Not measured').length).toBeGreaterThan(0);
     expect(screen.getAllByRole('row').slice(1)).toHaveLength(4);
   });
 
@@ -277,7 +277,7 @@ describe('NO_RUNS_YET (RU-4, F19)', () => {
 });
 
 describe('Baseline model label (F20, OMN-19980 AC2b)', () => {
-  it('reads Not recorded for a null baseline model, with no session baseline price or saving beside it', () => {
+  it('reads Not measured for a null baseline model, with no session baseline price or saving beside it', () => {
     render(<RunsTable
       now={NOW}
       decisions={[decision('no-baseline-name', '2026-10-02T10:07:00Z')]}

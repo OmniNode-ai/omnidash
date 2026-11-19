@@ -107,7 +107,8 @@ async function mountAndPollOnce(pageName: (typeof PAGE_NAMES)[number], runs: num
   await settle();
   const counted = {
     total: harness.calls.length,
-    decisions: decisionsCalls().length,
+    // The workflow page also reads one run's own row (correlation_id): one request per read, the same for any store.
+    decisions: decisionsCalls().filter(call => call.params?.correlation_id === undefined).length,
     sinces: sinceCursors(),
   };
   view.unmount();

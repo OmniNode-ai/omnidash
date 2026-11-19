@@ -91,7 +91,7 @@ test('metering keeps measured zero and independent missing token or spend values
 test('a refused aggregate changes nothing: the cards keep their metering figures', async ({ page }) => {
   await serve(page, 'not_yet_bus_backed', [all, day], 'producer_not_deployed');
   await totals(page, ['$12.30', '$2.99', '23', '6.13K']);
-  for (const id of ids) await expect(card(page, id)).not.toContainText('Not available yet');
+  for (const id of ids) await expect(card(page, id)).not.toContainText('Not measured yet');
 });
 test('a metering read error is named on every card and never replaced by the aggregate', async ({ page }) => {
   await page.route('**/projection/**', route => route.continue());

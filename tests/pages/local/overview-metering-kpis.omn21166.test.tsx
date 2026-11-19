@@ -29,7 +29,7 @@ describe('AC42: metering KPIs for the All and custom windows', () => {
     const summary = kpis({ kind: 'all' });
     expect(within(summary).getByText('You paid')).toBeInTheDocument();
     expect(summary).toHaveTextContent('$9.99');
-    expect(summary).not.toHaveTextContent('Unavailable');
+    expect(summary).not.toHaveTextContent('Not measured');
     expect(summary).not.toHaveTextContent('$1.00');
     expect(within(summary).queryByText('Saved')).toBeNull();
     expect(summary).not.toHaveTextContent('$8.88');
@@ -37,7 +37,7 @@ describe('AC42: metering KPIs for the All and custom windows', () => {
 
   it('All with no served all-time row stays unavailable and shows no figure', () => {
     const summary = kpis({ kind: 'all' }, METERING_ROWS.slice(1));
-    expect(within(summary).getAllByText('Unavailable')).toHaveLength(1);
+    expect(within(summary).getAllByText('Not measured')).toHaveLength(1);
     expect(summary).not.toHaveTextContent('$');
   });
 
@@ -45,28 +45,28 @@ describe('AC42: metering KPIs for the All and custom windows', () => {
     const summary = kpis({ kind: 'custom', start: '2026-10-10', end: '2026-10-11' });
     expect(summary).toHaveTextContent('$0.30');
     expect(summary).toHaveTextContent('$0.20');
-    expect(summary).not.toHaveTextContent('Unavailable');
+    expect(summary).not.toHaveTextContent('Not measured');
   });
 
-  it('a custom range partly outside the served day rows, or with an unserved day, stays unavailable with a reason', () => {
+  it('a custom range partly outside the served day rows stays unavailable with a reason; a day inside it with no runs adds zero', () => {
     const outside = kpis({ kind: 'custom', start: '2026-10-12', end: '2026-10-16' });
-    expect(within(outside).getAllByText('Unavailable')).toHaveLength(2);
+    expect(within(outside).getAllByText('Not measured')).toHaveLength(2);
     expect(outside).toHaveTextContent(/outside the dates with served daily rows/);
     expect(outside).not.toHaveTextContent('$');
     outside.unmount();
+    // OMN-24616 AC3: the runtime writes no row for a day with no runs, so that day adds zero and the range has values.
     const gap = kpis({ kind: 'custom', start: '2026-10-12', end: '2026-10-14' });
-    expect(within(gap).getAllByText('Unavailable')).toHaveLength(2);
-    expect(gap).toHaveTextContent('2 of 3 daily rows served');
-    expect(gap).not.toHaveTextContent('$');
+    expect(within(gap).queryAllByText('Not measured')).toHaveLength(0);
+    expect(gap).toHaveTextContent('$');
   });
 
   it('a custom range with no served day rows never shows $0.00, and an end before the start stays typed', () => {
     const none = kpis({ kind: 'custom', start: '2026-09-01', end: '2026-09-02' });
-    expect(within(none).getAllByText('Unavailable')).toHaveLength(2);
+    expect(within(none).getAllByText('Not measured')).toHaveLength(2);
     expect(none).not.toHaveTextContent('$');
     none.unmount();
     const reversed = kpis({ kind: 'custom', start: '2026-10-12', end: '2026-10-10' });
-    expect(within(reversed).getAllByText('Unavailable')).toHaveLength(2);
+    expect(within(reversed).getAllByText('Not measured')).toHaveLength(2);
     expect(reversed).toHaveTextContent('End date must be on or after the start date');
     expect(reversed).not.toHaveTextContent('$');
   });

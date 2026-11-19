@@ -21,7 +21,7 @@ afterEach(cleanup);
 const NOW = Date.parse('2026-10-24T06:00:00Z');
 const run: Record<string, unknown> = {
   correlation_id: 'ab728126-ec55-473c-b544-cd206379fa32', task_type: 'document', model_name: 'Qwen3.8-27B',
-  requested_model: 'qwen-coder', backend_id: 'local-coder', host: 'lab-201', cost_tier_name: 'local', latency_ms: 1800,
+  requested_model: 'qwen-coder', backend_id: 'local-coder', host: 'lab-201', cost_tier_name: 'local', execution_ms: 1800,
   quality_gate_passed: 1, quality_gate_detail: 'completed', terminal_ok: 1, terminal_failure_cause: null, actual_score: '1.000',
   required_bar: '0.8', tokens_input: 604, tokens_output: 102, data_source: 'real',
   created_at: '2026-10-24T05:10:00Z', written_at: '2026-10-24T05:10:00Z',

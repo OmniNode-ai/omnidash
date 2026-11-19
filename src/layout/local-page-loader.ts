@@ -241,6 +241,15 @@ export const CORRELATION_TRACE_TOPIC = 'onex.snapshot.projection.delegation.corr
  * The exposures read for exactly one run, with ?correlation_id=, and never unfiltered. Their snapshots carry the run
  * they were asked for (runId), and their last good rows are never kept for another run.
  */
+/**
+ * OMN-23413 AC48: the snapshot of ONE run's own decision, read from decisions.v1 with ?correlation_id= beside that
+ * run's steps. The decisions list (newest page plus its walk) can fail as a whole while the run's own row is served;
+ * the Workflow page reads the run's summary from this snapshot, so a failed list never reads as "no decision". It is
+ * a snapshot key, not an exposure: never bound, never read unfiltered, and not in PER_RUN_TOPICS (its availability is
+ * decisions.v1's). Every snapshot under it carries the run it was read for (runId), and the page uses only the one
+ * whose runId is the run shown; withLastGood never keeps its rows for another run.
+ */
+export const RUN_DECISION_SNAPSHOT = `${DELEGATION_DECISIONS_TOPIC}#run`;
 export const PER_RUN_TOPICS: ReadonlySet<string> = new Set([RUN_TRACE_TOPIC, CORRELATION_TRACE_TOPIC]);
 export const isPerRunTopic = (topic: string): boolean => PER_RUN_TOPICS.has(topic);
 /**
@@ -432,7 +441,26 @@ export async function loadLocalPageSnapshots(
     publish(snapshot);
     return snapshot;
   };
-  const readRun = (runId: string | null) => Promise.all(perRun.map((topic) => readPerRun(topic, runId)));
+  // OMN-23413 AC48: beside its steps, the run's own decision row, read for that run alone. Read directly (not through
+  // readTopic) so it never replaces or walks the decisions list; a late answer is published under the run's key.
+  const readRunDecision = async (runId: string | null): Promise<BoundProjectionSnapshot> => {
+    const snapshot = runId === null
+      ? { ...unreadSnapshot(RUN_DECISION_SNAPSHOT), runId }
+      : {
+        ...(await readTopicResult(DELEGATION_DECISIONS_TOPIC, { correlation_id: runId }, (late) => {
+          publish({ ...late, topic: RUN_DECISION_SNAPSHOT, runId });
+        })),
+        topic: RUN_DECISION_SNAPSHOT,
+        runId,
+      };
+    publish(snapshot);
+    return snapshot;
+  };
+  const readsRunDecision = topics.has(DELEGATION_DECISIONS_TOPIC);
+  const readRun = (runId: string | null) => Promise.all([
+    ...perRun.map((topic) => readPerRun(topic, runId)),
+    ...(readsRunDecision ? [readRunDecision(runId)] : []),
+  ]);
   const asked = options.runId ?? null;
   if (asked !== null) {
     const [run, rest] = await Promise.all([readRun(asked), Promise.all(others.map((topic) => readTopic(topic)))]);

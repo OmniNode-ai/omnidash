@@ -1,14 +1,16 @@
 import { formatDashboardCount, formatFullCount } from '@/theme/format';
 
-import { formatDashboardUsd } from '@/theme/format';
+import { LOCAL_WINDOWS } from '@/contracts/local-windows';
+import { formatDashboardUsd, formatShare } from '@/theme/format';
 import { formatDuration } from '@/theme/format';
+import { NOT_MEASURED } from '@/theme/format';
 import { createContext, useContext, useId, useState, type CSSProperties, type ReactNode } from 'react';
 import { millisecondsAxisLabel } from '@/theme/design-system/charts/bar-charts';
 import { passBand } from '@/pages/local/plain-text';
 import { BarTrack, ChartCard, ChartEmpty, ChartReadout, CumulativeColumns, DayAxis, DayColumns, Histogram, HourHeatmap, LinePlot, NamedByPanel, RankedBars, SeriesLegend, SeriesToggles, SpendColumns, dayTicks } from '@/theme/design-system/charts';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { causeHref, useSharedRunFilter } from './run-filter';
-import { failureCauseLabel } from './plain-text';
+import { escalationReason, failureCauseLabel } from './plain-text';
 import { Link, useLocation, useSearch } from 'wouter';
 import { DEFAULT_RUNS_VIEW, readRunsSearch, writeRunsSearch } from '@/navigation/runs-url-state';
 import {
@@ -31,13 +33,9 @@ import { fixed as fmtFixed, localeDate as fmtLocaleDate, localeString as fmtLoca
  * keyboard can focus, with the same numbers in its name and in the chart's readout.
  */
 
-const RANGES = [
-  { days: 1, label: '1 day' },
-  { days: 7, label: '7 days' },
-  { days: 15, label: '15 days' },
-  { days: 30, label: '30 days' },
-  { days: 90, label: '90 days' },
-] as const;
+// OMN-24616 AC4: the chart range buttons from the one declared window list.
+const RANGES = LOCAL_WINDOWS.filter(window => window.days > 0)
+  .map(window => ({ days: window.days, label: `${window.days} ${window.days === 1 ? 'day' : 'days'}` }));
 
 const PASS = 'var(--ds-field-pass)';
 const FAIL = 'var(--ds-field-fail)';
@@ -170,13 +168,14 @@ function PassRateTrend({ days }: { days: InsightDay[] }) {
   const [hover, setHover] = useState<number | null>(null);
   const rates = days.map(day => day.passRate);
   const known = rates.filter((rate): rate is number => rate !== null);
-  const min = known.length ? Math.max(0, Math.floor(Math.min(...known) / 10) * 10 - 10) : 0;
-  const labels = days.map(day => `${dayLabel(day.day)}: ${day.passRate === null ? 'no verdicts' : `${fmtFixed(day.passRate, 1)}% passed`} (${verdictCoverage(day.passed + day.failed, day.runs)})`);
+  // OMN-24616 AC2: rates are 0-1 shares; the scale floor is the lowest share rounded down to a tenth, less one tenth.
+  const min = known.length ? Math.max(0, Math.floor(Math.min(...known) * 10) / 10 - 0.1) : 0;
+  const labels = days.map(day => `${dayLabel(day.day)}: ${day.passRate === null ? 'no verdicts' : `${formatShare(day.passRate)} passed`} (${verdictCoverage(day.passed + day.failed, day.runs)})`);
   const active = hover === null ? null : days[hover]!;
   return (
     <ChartCard title="Pass rate per day" concept="pass-rate-daily" delay={60}>
-      <ChartReadout active={active !== null} day={active?.day} text={active ? <>{dayLabel(active.day)} · <span data-field-tone="pass" data-field-unavailable={active.passRate === null}>{active.passRate === null ? 'no verdicts' : `${fmtFixed(active.passRate, 1)}% passed`}</span> · <span data-field-tone="basis">{verdictCoverage(active.passed + active.failed, active.runs)}</span></> : `Scale from ${min}% to 100%`} />
-      <LinePlot label="Pass rate per day" values={rates} keys={days.map(day => day.day)} labels={labels} min={min} max={100}
+      <ChartReadout active={active !== null} day={active?.day} text={active ? <>{dayLabel(active.day)} · <span data-field-tone="pass" data-field-unavailable={active.passRate === null}>{active.passRate === null ? 'no verdicts' : `${formatShare(active.passRate)} passed`}</span> · <span data-field-tone="basis">{verdictCoverage(active.passed + active.failed, active.runs)}</span></> : `Scale from ${Math.round(min * 100)}% to 100%`} />
+      <LinePlot label="Pass rate per day" values={rates} keys={days.map(day => day.day)} labels={labels} min={min} max={1}
         hover={hover} onHover={setHover} color={PASS} />
       {/* OMN-23330 AC31: the kit's one DayAxis, first and last day on the line's end points. */}
       <DayAxis days={days.map(day => day.day)} ticks={new Set([0, days.length - 1])} place="point" format={dayLabel} />
@@ -222,7 +221,7 @@ function TaskMix({ runs }: { runs: InsightRun[] }) {
           const look = taskLook(group.key);
           const judged = group.passed + group.failed;
           const name = group.key === NOT_RECORDED ? NOT_RECORDED : readable(group.key);
-          const pass = judged ? `${Math.round((group.passed / judged) * 100)}%` : 'No verdicts';
+          const pass = judged ? formatShare(group.passed / judged) : 'No verdicts';
           return (
             <li key={group.key} className="ins-list-row ins-task-row" style={{ '--ins-swatch': look.color } as CSSProperties}
               aria-label={`${name}: ${count(group.runs)} runs, pass rate ${pass}, ${verdictCoverage(judged, group.runs)}`}>
@@ -248,7 +247,7 @@ function DurationHistogram({ runs }: { runs: InsightRun[] }) {
   const name = (index: number) => durationBucketLabel(index);
   const median = summary(runs).medianLatency;
   return (
-    <ChartCard title="How long runs take" concept="duration" note={`${count(unrecorded)} not recorded`} delay={240}>
+    <ChartCard title="How long runs take" concept="duration" note={`${count(unrecorded)} not measured`} delay={240}>
       <ChartReadout active={hover !== null} text={hover === null ? (median === null ? 'No durations recorded' : <>Median <span data-field-tone="duration">{duration(median)}</span></>) : <><span data-field-tone="duration">{name(hover)}</span> · <span data-field-tone="count">{count(buckets[hover]!)} runs</span></>} />
       <Histogram label="Duration buckets" hover={hover} onHover={setHover} color="var(--ds-field-duration)"
         buckets={buckets.map((runsInBucket, index) => ({ key: String(index), ariaLabel: `${name(index)}: ${runsWord(runsInBucket)}`, value: runsInBucket }))} />
@@ -271,7 +270,7 @@ function ModelScoreboard({ runs }: { runs: InsightRun[] }) {
           const judged = group.passed + group.failed;
           const rate = judged ? (group.passed / judged) * 100 : null;
           return { key: group.key, name: group.key, model: group.key, value: rate, basis: 'measured' as const, color: modelColor(group.key),
-            display: rate === null ? 'No verdicts' : `${Math.round(rate)}%`, title: `${count(group.runs)} runs · ${verdictCoverage(judged, group.runs)}` };
+            display: rate === null ? 'No verdicts' : formatShare(group.passed / judged), title: `${count(group.runs)} runs · ${verdictCoverage(judged, group.runs)}` };
         })}
         // Each model's verdict coverage in plain text under the bars, so keyboard and touch readers have it too.
         footnote={groups.map(group => `${group.key}: ${verdictCoverage(group.passed + group.failed, group.runs)}`).join(' · ')} />
@@ -325,6 +324,56 @@ function FailureCauses({ runs, onInspectFailure, limit }: { runs: InsightRun[]; 
   );
 }
 
+/** A served failure category: the quality gate's failed checks of one kind (delegation.quality-gate.v1). */
+export interface ServedFailureCategory { category: string; count: number }
+
+/** The quality-gate row's failure_categories as served (an array, or its JSON text), or null when it serves none. */
+export function servedFailureCategories(value: unknown): ServedFailureCategory[] | null {
+  let parsed: unknown = value;
+  if (typeof value === 'string') {
+    try { parsed = JSON.parse(value); } catch { return null; }
+  }
+  if (!Array.isArray(parsed)) return null;
+  return parsed.flatMap((item: unknown) => {
+    if (item === null || typeof item !== 'object') return [];
+    const { category, count } = item as { category?: unknown; count?: unknown };
+    const served = typeof count === 'number' ? count : Number(count);
+    return typeof category === 'string' && Number.isFinite(served) ? [{ category, count: served }] : [];
+  });
+}
+
+/**
+ * OMN-24616 AC1: Overview's failure list from the quality gate's served counts instead of counting the newest page of
+ * rows. Those counts are failed quality CHECKS over all time (one served row), not failed runs in the Overview window,
+ * so the card says so (review of #521, Lakshman 2026-11-17: "label it honestly"). A category opens every failed run.
+ */
+function ServedFailureCategories({ categories, limit }: { categories: readonly ServedFailureCategory[]; limit?: number }) {
+  const ranked = [...categories].sort((a, b) => b.count - a.count || a.category.localeCompare(b.category));
+  const list = limit === undefined ? ranked : ranked.slice(0, limit);
+  const max = Math.max(1, ...list.map(entry => entry.count));
+  return (
+    <ChartCard title="Failed checks by category" concept="failures" note="all time" delay={360}>
+      {list.length === 0 ? <ChartEmpty>No failed quality checks served</ChartEmpty> : (
+        <ul className="ins-list" aria-label="Failure causes">
+          {list.map((entry, index) => {
+            const reason = escalationReason(entry.category);
+            const name = reason.text.charAt(0).toUpperCase() + reason.text.slice(1);
+            return (
+              <li key={entry.category} className="ins-list-row ins-list-row--plain" style={{ '--ins-swatch': [FAIL, 'var(--ds-chart-7)', 'var(--ds-chart-5)', 'var(--ds-chart-4)', 'var(--ds-chart-3)'][index % 5] } as CSSProperties}>
+                <span className="ins-list-name" data-failure-category={entry.category} title={reason.title}>{name}</span>
+                <BarTrack share={entry.count / max} delay={index * 60} />
+                <span className="ins-list-value" data-field-tone="fail">{count(entry.count)}</span>
+                <span className="ins-list-seen"><Link href="/runs?status=failed" aria-label={`View failed runs (${name})`}>View failed runs</Link></span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <p className="local-dashboard-caption">Counts failed quality checks by category from the quality gate, all time; not limited to the selected window.</p>
+    </ChartCard>
+  );
+}
+
 /** A group of charts. Part 18 AC124: no visible group label (each chart names itself); the group keeps its name for assistive tech. */
 function ChartSection({ title, children }: { title: string; concept?: string; children: ReactNode }) {
   return <section className="overview-chart-section" aria-label={title}><div className="overview-chart-row">{children}</div></section>;
@@ -334,7 +383,7 @@ export function TokensPerDay({ days }: { days: InsightDay[] }) {
   const [hover, setHover] = useState<number | null>(null);
   // The scale comes from the days that recorded tokens; a day without a count draws no bar.
   const max = Math.max(1, ...days.flatMap(day => [day.tokensIn, day.tokensOut]).filter((value): value is number => value !== null));
-  const side = (value: number | null, missing: number, direction: 'in' | 'out') => `${value === null ? 'not recorded' : formatFullCount(value)} ${direction}${value !== null && missing > 0 ? ` (partial: ${count(missing)} ${missing === 1 ? 'run' : 'runs'} not recorded)` : ''}`;
+  const side = (value: number | null, missing: number, direction: 'in' | 'out') => `${value === null ? 'not measured' : formatFullCount(value)} ${direction}${value !== null && missing > 0 ? ` (partial: ${count(missing)} ${missing === 1 ? 'run' : 'runs'} not measured)` : ''}`;
   const label = (day: InsightDay) => `${dayLabel(day.day)}: ${side(day.tokensIn, day.tokensInUnmeasured, 'in')}, ${side(day.tokensOut, day.tokensOutUnmeasured, 'out')}`;
   const active = hover === null ? latestServed(days, day => day.tokensIn !== null || day.tokensOut !== null) : days[hover]!;
   const [location] = useLocation();
@@ -386,10 +435,10 @@ export function PassRateSparkline({ part = 'all' }: { part?: 'all' | 'headline' 
   const window = windowFromContext(pageWindow, ownWindow);
   if (window.kind === 'custom' && (window.start === '' || window.end === '' || window.end < window.start)) return null;
   const currentRuns = selectedRuns(runs, context.now, window);
-  const comparisonDays = window.kind === 'days' ? window.days : MAX_ALL_TIME_DAYS;
+  const comparisonDays = window.kind === 'days' ? window.days : allTimeDays(runs, context.now);
   const comparison = window.kind === 'days' ? compareWindow(context.decisions, context.now, window.days) : null;
   const current = summary(currentRuns);
-  const rate = current.passRate === null ? 'Not recorded' : `${fmtFixed(current.passRate, 1)}%`;
+  const rate = current.passRate === null ? NOT_MEASURED : formatShare(current.passRate);
   const deltaText = comparison === null ? null
     : comparison.passRateDeltaPoints === null
       ? comparison.previousComplete
@@ -406,7 +455,6 @@ export function PassRateSparkline({ part = 'all' }: { part?: 'all' | 'headline' 
     {part === 'all' && trend}
   </section>;
 }
-const MAX_ALL_TIME_DAYS = 30;
 
 function windowFromContext(value: 'all' | 'today' | InsightsWindowValue | null, fallback: ActivityWindow): ActivityWindow {
   if (value === 'all') return { kind: 'all' };
@@ -419,9 +467,9 @@ function customRangeDays(start: string, end: string): string[] {
   const first = Date.parse(`${start}T00:00:00Z`);
   const last = Date.parse(`${end}T00:00:00Z`);
   if (!Number.isFinite(first) || !Number.isFinite(last) || last < first) return [];
+  // OMN-24616 AC3: every day of the range, with no 30-day cap.
   const count = Math.floor((last - first) / 86_400_000) + 1;
-  const plottedStart = first + Math.max(0, count - MAX_ALL_TIME_DAYS) * 86_400_000;
-  return Array.from({ length: Math.min(count, MAX_ALL_TIME_DAYS) }, (_, index) => new Date(plottedStart + index * 86_400_000).toISOString().slice(0, 10));
+  return Array.from({ length: count }, (_, index) => new Date(first + index * 86_400_000).toISOString().slice(0, 10));
 }
 
 function selectedRuns(runs: readonly InsightRun[], now: number, window: ActivityWindow): InsightRun[] {
@@ -462,7 +510,8 @@ function withServedTotals(days: readonly InsightDay[], servedDays: readonly Serv
     return {
       ...day,
       runs: served.runs, passed: served.passed, failed: served.failed, unrecorded: served.unrecorded,
-      passRate: served.passed + served.failed > 0 ? (served.passed / (served.passed + served.failed)) * 100 : null,
+      // OMN-24616 AC2: a 0-1 share, as summary() holds it.
+      passRate: served.passed + served.failed > 0 ? served.passed / (served.passed + served.failed) : null,
       tokensIn: served.tokensIn, tokensOut: served.tokensOut,
       tokensInUnmeasured: served.tokensInUnmeasured, tokensOutUnmeasured: served.tokensOutUnmeasured,
     };
@@ -486,7 +535,7 @@ function ChartHeading({ title, concept, detail }: { title: string; concept: stri
 }
 
 function usd(value: number | null): string {
-  return value === null ? 'Not served' : formatDashboardUsd(value);
+  return value === null ? NOT_MEASURED : formatDashboardUsd(value);
 }
 
 function delta(value: number | null, format: (value: number) => string): string {
@@ -499,19 +548,19 @@ function RunWindowKpis({ runs, decisions, label, comparisonEnabled, now, days }:
 }) {
   const comparison = comparisonEnabled ? compareWindow(decisions, now, days) : null;
   const selectedLabel = label;
-  const durationMissing = runs.filter(run => run.latencyMs === null).length;
+  const durationMissing = runs.filter(run => run.durationMs === null).length;
   const summaryNow = summary(runs);
   const runDelta = !comparisonEnabled ? null
     : comparison?.previousComplete && comparison.runsDelta !== null
       ? delta(comparison.runsDelta, value => `${value} runs`) : 'Previous window not fully returned';
   const medianDelta = !comparisonEnabled ? null
     : comparison?.previousComplete && comparison.medianLatencyDelta !== null
-      ? delta(comparison.medianLatencyDelta, value => `${fmtFixed((value / 1000), 2)} s`) : 'Previous window not fully returned';
-  const median = summaryNow.medianLatency === null ? 'Not recorded' : duration(summaryNow.medianLatency);
+      ? delta(comparison.medianLatencyDelta, value => `${value < 0 ? '-' : ''}${duration(Math.abs(value))}`) : 'Previous window not fully returned';
+  const median = summaryNow.medianLatency === null ? NOT_MEASURED : duration(summaryNow.medianLatency);
   return (
     <section className="ins-window-kpis ins-window-kpis--runs" aria-label={`Runs in ${selectedLabel}`}>
       <KpiTile tone="count" label="Runs" value={count(summaryNow.runs)}><small>{selectedLabel} · counted from the returned decision rows</small>{runDelta !== null && <small>{runDelta}</small>}</KpiTile>
-      <KpiTile tone="duration" label="Median duration" value={median} unavailable={summaryNow.medianLatency === null}><small>{count(durationMissing)} duration values not recorded</small>{medianDelta !== null && <small>{medianDelta}</small>}</KpiTile>
+      <KpiTile tone="duration" label="Median duration" value={median} unavailable={summaryNow.medianLatency === null}><small>{count(durationMissing)} duration values not measured</small>{medianDelta !== null && <small>{medianDelta}</small>}</KpiTile>
     </section>
   );
 }
@@ -525,14 +574,14 @@ function MeteringWindowKpis({ current, previous, days, label, comparisonEnabled,
   const savedReady = unavailable === null && current.available && current.saved !== null;
   const servedDayCount = current.days.filter(day => day.served).length;
   const savedPct = current.saved !== null && current.counterfactual !== null && current.counterfactual > 0
-    ? `${fmtFixed((current.saved / current.counterfactual * 100), 1)}% below ${current.baseline ?? 'the served baseline'}` : 'Baseline comparison not recorded';
+    ? `${fmtFixed((current.saved / current.counterfactual * 100), 1)}% below ${current.baseline ?? 'the served baseline'}` : 'Baseline comparison not measured';
   const paidNote = unavailable ?? current.reason ?? (!current.windowComplete
     ? `${servedDayCount} of ${days} daily rows served; the selected window is incomplete.`
-    : current.spend === null ? 'One or more daily spend values are not recorded; paid total unavailable.'
+    : current.spend === null ? 'One or more daily spend values are not measured; paid total unavailable.'
       : `${servedDayCount} served day rows.`);
   const savedNote = unavailable ?? current.reason ?? (!current.windowComplete
     ? `${servedDayCount} of ${days} daily rows served; the selected window is incomplete.`
-    : current.saved === null ? 'One or more daily savings values are not recorded; saved total unavailable.'
+    : current.saved === null ? 'One or more daily savings values are not measured; saved total unavailable.'
       : `${servedDayCount} served day rows · ${savedPct}`);
   const previousComplete = comparisonEnabled && unavailable === null && current.available && current.windowComplete
     && previous !== null && previous.available && previous.windowComplete;
@@ -543,8 +592,8 @@ function MeteringWindowKpis({ current, previous, days, label, comparisonEnabled,
     : previousComplete && current.saved !== null && previous.saved !== null
       ? delta(current.saved - previous.saved, value => usd(value)) : 'Previous window not fully returned';
   return <section className="ins-window-kpis ins-window-kpis--metering" aria-label={`Metered spend summary for ${label}`}>
-    <KpiTile tone="cost" label="You paid" value={paidReady ? usd(current.spend) : 'Unavailable'} unavailable={!paidReady}><small>{paidNote}</small>{paidDelta !== null && <small>{paidDelta}</small>}</KpiTile>
-    <KpiTile tone="savings" label="Saved" value={savedReady ? usd(current.saved) : 'Unavailable'} unavailable={!savedReady}><small>{savedNote}</small>{savedDelta !== null && <small>{savedDelta}</small>}</KpiTile>
+    <KpiTile tone="cost" label="You paid" value={paidReady ? usd(current.spend) : NOT_MEASURED} unavailable={!paidReady}><small>{paidNote}</small>{paidDelta !== null && <small>{paidDelta}</small>}</KpiTile>
+    <KpiTile tone="savings" label="Saved" value={savedReady ? usd(current.saved) : NOT_MEASURED} unavailable={!savedReady}><small>{savedNote}</small>{savedDelta !== null && <small>{savedDelta}</small>}</KpiTile>
   </section>;
 }
 
@@ -556,9 +605,9 @@ function MeteringAllTimeKpis({ rows, label, unavailable }: { rows: readonly unkn
   const total = meteringAllTimeTotals(rows);
   const reason = unavailable ?? total.reason;
   const paidReady = reason === null && total.spend !== null;
-  const paidNote = reason ?? (total.spend === null ? 'The all-time spend total is not recorded.' : 'All-time total, as served.');
+  const paidNote = reason ?? (total.spend === null ? 'The all-time spend total is not measured.' : 'All-time total, as served.');
   return <section className="ins-window-kpis ins-window-kpis--metering" aria-label={`Metered spend summary for ${label}`}>
-    <KpiTile tone="cost" label="You paid" value={paidReady ? usd(total.spend) : 'Unavailable'} unavailable={!paidReady}><small>{paidNote}</small></KpiTile>
+    <KpiTile tone="cost" label="You paid" value={paidReady ? usd(total.spend) : NOT_MEASURED} unavailable={!paidReady}><small>{paidNote}</small></KpiTile>
   </section>;
 }
 
@@ -584,15 +633,15 @@ function MoneyWindowCharts({ rows, now, days, unavailable }: { rows: readonly un
         {selected && <p className="ins-readout" role="status">{detail(selected)}</p>}
         <SpendColumns label="Spend vs all-cloud by UTC day" max={max} onHover={setActiveSpend} days={data.days.map(day => ({
           key: day.day, ariaLabel: detail(day), dayText: dateLabel(day.day), spend: day.spend, saved: day.saved, baseline: day.counterfactual,
-          valuesText: `${day.spend === null ? 'Paid not recorded' : usd(day.spend)} · ${day.saved === null ? 'saved not recorded' : `${usd(day.saved)} saved`}` }))} />
+          valuesText: `${day.spend === null ? 'Paid not measured' : usd(day.spend)} · ${day.saved === null ? 'saved not measured' : `${usd(day.saved)} saved`}` }))} />
         <figcaption>Saved uses the served daily savings value. {data.windowComplete ? 'Returned rows cover the selected window.' : 'The returned rows do not cover the full selected window.'}{data.days.some(day => day.served && day.saved === null) ? ' At least one served day has no recorded savings value.' : ''}</figcaption>
       </figure>
       <figure className="local-chart ins-cumulative-chart" aria-label="Cumulative savings">
         <ChartHeading concept="savings" title="Cumulative savings" detail={`${days === 1 ? 'Today (UTC)' : `Last ${days} UTC days`} · ${data.baseline ?? 'baseline not recorded'}`} />
-        <p className="ins-readout" role="status">{activeCumulative === null ? `${data.windowComplete && data.saved !== null ? 'Window total' : 'Served rows only · cumulative incomplete'}: ${usd(data.cumulativeSaved[data.cumulativeSaved.length - 1] ?? null)}` : `${dateLabel(data.days[activeCumulative]!.day)} · cumulative ${usd(data.cumulativeSaved[activeCumulative] ?? null)}${!data.days[activeCumulative]!.served ? ' · no served day row; total carried forward' : data.days[activeCumulative]!.saved === null ? ' · savings value not recorded; cumulative unavailable' : ''}`}</p>
+        <p className="ins-readout" role="status">{activeCumulative === null ? `${data.windowComplete && data.saved !== null ? 'Window total' : 'Served rows only · cumulative incomplete'}: ${usd(data.cumulativeSaved[data.cumulativeSaved.length - 1] ?? null)}` : `${dateLabel(data.days[activeCumulative]!.day)} · cumulative ${usd(data.cumulativeSaved[activeCumulative] ?? null)}${!data.days[activeCumulative]!.served ? ' · no served day row; total carried forward' : data.days[activeCumulative]!.saved === null ? ' · savings value not measured; cumulative unavailable' : ''}`}</p>
         <CumulativeColumns label="Cumulative savings by UTC day" max={cumulativeMax} onHover={setActiveCumulative}
           days={data.cumulativeSaved.map((value, index) => ({ key: data.days[index]!.day, value,
-            ariaLabel: `${dateLabel(data.days[index]!.day)}: cumulative ${usd(value)}${!data.days[index]!.served ? ', no served day row; prior total carried forward' : data.days[index]!.saved === null ? ', savings value not recorded' : ''}` }))} />
+            ariaLabel: `${dateLabel(data.days[index]!.day)}: cumulative ${usd(value)}${!data.days[index]!.served ? ', no served day row; prior total carried forward' : data.days[index]!.saved === null ? ', savings value not measured' : ''}` }))} />
         <figcaption>Missing rows carry the prior total forward. A served row without a savings value makes the cumulative total unavailable from that day onward.</figcaption>
       </figure>
     </ChartSection>
@@ -603,13 +652,14 @@ function MoneyWindowCharts({ rows, now, days, unavailable }: { rows: readonly un
 export function MeteringActivityInsights({ rows, now, unavailable, window, display = 'all' }: {
   rows: readonly unknown[]; now: number; unavailable: string | null; window: ActivityWindow; display?: 'all' | 'kpis' | 'charts';
 }) {
-  const days = window.kind === 'days' ? window.days : MAX_ALL_TIME_DAYS;
+  // OMN-24616 AC3: All time charts every served day, from the oldest served day row to today, with no 30-day cap.
+  const days = window.kind === 'days' ? window.days : meteringSpanDays(rows, now);
   const label = windowCaption(window);
   // AC42 (Lakshman 2026-10-21 ~19:10Z, ~19:40Z): All shows the served all-time row's spend only; a custom range sums
   // its served day rows.
-  // The daily charts stay on the rolling windows.
-  const chartUnavailable = window.kind === 'days' ? unavailable
-    : 'Daily metering charts are drawn for the 1, 7, 15 and 30 day windows.';
+  // The daily charts draw the rolling windows and All time; a custom range shows its totals only.
+  const chartUnavailable = window.kind !== 'custom' ? unavailable
+    : 'Daily metering charts are drawn for the rolling windows and All time.';
   const kpis = () => {
     if (window.kind === 'all') return <MeteringAllTimeKpis rows={rows} label={label} unavailable={unavailable} />;
     if (window.kind === 'custom') {
@@ -629,7 +679,18 @@ function allTimeDays(runs: readonly InsightRun[], now: number): number {
   if (runs.length === 0) return 7;
   const oldest = Math.min(...runs.map(run => Date.parse(`${run.day}T00:00:00Z`)));
   const today = Date.parse(`${new Date(now).toISOString().slice(0, 10)}T00:00:00Z`);
-  return Math.min(MAX_ALL_TIME_DAYS, Math.max(7, Math.round((today - oldest) / 86_400_000) + 1));
+  return Math.max(7, Math.round((today - oldest) / 86_400_000) + 1);
+}
+
+/** OMN-24616 AC3: the UTC days from the oldest served metering day row to today, at least one. */
+function meteringSpanDays(rows: readonly unknown[], now: number): number {
+  const starts = rows.flatMap(row => {
+    const start = row !== null && typeof row === 'object' ? (row as Record<string, unknown>).window_start : undefined;
+    return typeof start === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(start) ? [Date.parse(`${start}T00:00:00Z`)] : [];
+  });
+  if (starts.length === 0) return 1;
+  const today = Date.parse(`${new Date(now).toISOString().slice(0, 10)}T00:00:00Z`);
+  return Math.max(1, Math.round((today - Math.min(...starts)) / 86_400_000) + 1);
 }
 
 /** OMN-21166 part 21 AC142: mirrors `limit: 500` on onex.snapshot.projection.delegation.decisions.v1 in omnimarket's
@@ -648,12 +709,14 @@ export function chartLimitLine(undatedCount: number): string | null {
   return parts.length > 0 ? parts.join(' · ') : null;
 }
 
-export function InsightsSection({ decisions, now, view = 'all', onInspectFailure, more, servedDays = null, complete = false }: {
+export function InsightsSection({ decisions, now, view = 'all', onInspectFailure, more, servedDays = null, complete = false, servedFailures = null }: {
   decisions: readonly unknown[]; now: number; view?: 'all' | 'summary' | 'analysis' | 'runs' | 'tokens' | 'failures'; onInspectFailure?: (cause: string) => void;
   /** OMN-21970 AC2: delegation.daily.v1's per-day totals; when served, the daily charts draw them instead of the rows. */
   servedDays?: readonly ServedDay[] | null;
   /** OMN-21970 AC3: true when the decisions read walked every page, so the rows are every served run. */
   complete?: boolean;
+  /** OMN-24616 AC1: the quality gate's served failure categories; when served, the failure list shows them. */
+  servedFailures?: readonly ServedFailureCategory[] | null;
   /** OMN-21166 part 13: on the summary view, further detail shown inside the section's closed "More activity". */
   more?: ReactNode;
 }) {
@@ -690,7 +753,7 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
     : customReversed ? 'End date must be on or after the start date'
       : runs.length === 0 ? window.kind === 'custom' ? 'No runs in this date range'
         : window.kind === 'all' ? 'No runs in served data'
-          : window.kind === 'days' && window.days === 1 ? 'No runs today' : `No runs in the last ${window.kind === 'days' ? window.days : MAX_ALL_TIME_DAYS} days`
+          : window.kind === 'days' && window.days === 1 ? 'No runs today' : `No runs in the last ${window.kind === 'days' ? window.days : chartDaysList.length} days`
         : null;
   // OMN-21166 Maple grid: a slice draws one piece in its own panel; the runs panel carries the window and the population.
   if (view === 'runs' || view === 'tokens' || view === 'failures') {
@@ -706,7 +769,8 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
             {/* Live review 2026-10-25: no "More activity" on Overview; part 15 AC96: no "Explore" links, the sidebar reaches Runs and Usage. */}
             </>
             : view === 'tokens' ? <TokensPerDay days={chartDays} />
-              : <FailureCauses runs={runs} limit={5} onInspectFailure={onInspectFailure} />}
+              : servedFailures !== null ? <ServedFailureCategories categories={servedFailures} limit={5} />
+                : <FailureCauses runs={runs} limit={5} onInspectFailure={onInspectFailure} />}
       </div>
       </NamedByPanel.Provider>
     );
@@ -725,12 +789,13 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
           </div>
         </div>
       )}
-      <p className="local-dashboard-caption ins-sub" data-testid="insights-total">{population}{undated}{view === 'summary' ? null : <> · Row timestamps: {servedSpan}{earlier}{window.kind === 'days' || view !== 'all' ? '' : ' · Comparisons with the previous window appear for 1, 7, 15 and 30 days'}{window.kind === 'all' || window.kind === 'custom' ? ` · Charts show at most ${MAX_ALL_TIME_DAYS} UTC days; ${count(chartRuns.length)} of ${count(runs.length)} selected runs plotted` : ''}</>}</p>
+      <p className="local-dashboard-caption ins-sub" data-testid="insights-total">{population}{undated}{view === 'summary' ? null : <> · Row timestamps: {servedSpan}{earlier}{window.kind === 'days' || view !== 'all' ? '' : ' · Comparisons with the previous window appear for 1, 7, 15 and 30 days'}</>}</p>
       {emptyMessage !== null ? <EmptyState className="ins-empty" aria-label="Insights">{emptyMessage}</EmptyState> : (
         <div className="overview-chart-sections">
-          {view === 'all' && <RunWindowKpis runs={runs} decisions={decisions} now={now} days={window.kind === 'days' ? window.days : MAX_ALL_TIME_DAYS} label={windowCaption(window)} comparisonEnabled={window.kind === 'days'} />}
+          {view === 'all' && <RunWindowKpis runs={runs} decisions={decisions} now={now} days={window.kind === 'days' ? window.days : chartDaysList.length} label={windowCaption(window)} comparisonEnabled={window.kind === 'days'} />}
           {view !== 'analysis' && <ChartSection concept="activity" title="Activity over time"><RunsPerDay days={chartDays} /><TokensPerDay days={chartDays} /></ChartSection>}
-          {view === 'summary' && <ChartSection concept="quality-outcomes" title="Why runs failed"><FailureCauses runs={runs} limit={3} /></ChartSection>}
+          {view === 'summary' && <ChartSection concept="quality-outcomes" title={servedFailures !== null ? 'Failed checks by category' : 'Why runs failed'}>{servedFailures !== null
+            ? <ServedFailureCategories categories={servedFailures} limit={3} /> : <FailureCauses runs={runs} limit={3} />}</ChartSection>}
           {/* Lakshman 2026-11-05 ("run page should be fully organised and logically ... visually attractive"): on Runs the six
               analysis charts are one full-width row of tabs, one big chart at a time, as the run charts above them; each
               hint counts what that chart draws, never a computed figure. */}
@@ -746,7 +811,7 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
                 hint: plural(runs.filter(run => run.status === 'failed').length, 'failed run'),
                 panel: () => <FailureCauses runs={runs} onInspectFailure={onInspectFailure} /> },
               { id: 'duration', label: 'How long runs take', tone: 'var(--ds-field-duration)', icon: <Timer size={18} />,
-                hint: `${formatDashboardCount(runs.filter(run => run.latencyMs !== null).length)} timed`, panel: () => <DurationHistogram runs={runs} /> },
+                hint: `${formatDashboardCount(runs.filter(run => run.durationMs !== null).length)} timed`, panel: () => <DurationHistogram runs={runs} /> },
               { id: 'models', label: 'Model scoreboard', tone: 'var(--ds-field-quality-model)', icon: <Bot size={18} />,
                 hint: plural(distinct(run => run.model), 'model'), panel: () => <ModelScoreboard runs={runs} /> },
               { id: 'hours', label: 'When runs happen', tone: 'var(--ds-field-activity-hourly)', icon: <Clock3 size={18} />,
@@ -765,8 +830,8 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
       )}
       {view === 'summary' && emptyMessage === null && (
         <div className="local-more local-more--open" data-section="More activity">
-          <p className="local-dashboard-caption ins-sub">{population}{undated} · Row timestamps: {servedSpan}{earlier}{window.kind === 'days' ? '' : ' · Comparisons with the previous window appear for 1, 7, 15 and 30 days'}{window.kind === 'all' || window.kind === 'custom' ? ` · Charts show at most ${MAX_ALL_TIME_DAYS} UTC days; ${count(chartRuns.length)} of ${count(runs.length)} selected runs plotted` : ''}</p>
-          <RunWindowKpis runs={runs} decisions={decisions} now={now} days={window.kind === 'days' ? window.days : MAX_ALL_TIME_DAYS} label={windowCaption(window)} comparisonEnabled={window.kind === 'days'} />
+          <p className="local-dashboard-caption ins-sub">{population}{undated} · Row timestamps: {servedSpan}{earlier}{window.kind === 'days' ? '' : ' · Comparisons with the previous window appear for 1, 7, 15 and 30 days'}</p>
+          <RunWindowKpis runs={runs} decisions={decisions} now={now} days={window.kind === 'days' ? window.days : chartDaysList.length} label={windowCaption(window)} comparisonEnabled={window.kind === 'days'} />
           {more}
         </div>
       )}

@@ -1,6 +1,7 @@
 // OMN-23330 AC24: part of the local pages, split out of LocalDashboardPage.tsx (3,926 lines) with no change to what
 // any page draws. Overview panels: model usage, the status strip, the Daily trend and the tier mix.
-import { formatDashboardCount, formatFullCount } from '@/theme/format';
+import { NOT_MEASURED } from '@/theme/format';
+import { formatDashboardCount, formatDuration, formatFullCount } from '@/theme/format';
 import { useId, useState, type CSSProperties } from 'react';
 import { tierColor, tierConcept } from '@/lib/dashboard-colors';
 import { Link } from 'wouter';
@@ -14,7 +15,7 @@ import { toInsightRuns } from '@/pages/local/insights';
 import { ChartReadout, DayAxis, MultiLinePlot, RankedBars, SeriesToggles, useSeriesToggles } from '@/theme/design-system/charts';
 import { ConceptIcon, FieldIcon } from '@/components/dashboard/FieldIcon';
 import { TierLegend, useModelColor, useModelIdentityStyle } from '@/components/dashboard/model-tiers';
-import { fixed as fmtFixed, localeDate as fmtLocaleDate } from '@/theme/format';
+import { localeDate as fmtLocaleDate } from '@/theme/format';
 import { formatShare } from '@/theme/format';
 import { type Row, asRecords, isMissing, recorded, recordedCount, utcDay } from '@/pages/local/page-shared';
 import { type OverviewWindow, pickMeteringRow } from '@/pages/local/page-headline';
@@ -39,7 +40,7 @@ export function ModelUsagePanel({ row }: { row: Row | null }) {
           // Part 19 AC135: a named model opens Runs filtered to it; a model the rows do not name opens nothing.
           const href = isMissing(model.model_name) ? undefined : `/runs?${writeRunsSearch('', { ...DEFAULT_RUNS_VIEW, model: name })}`;
           return { key: `${name}-${index}`, name, model: isMissing(model.model_name) ? undefined : name, value: runs, count: runs, share: pct, basis: 'measured' as const, color: modelColor(name), href, opensLabel: `Opens Runs filtered to ${name}`,
-            display: runs === null ? 'Not recorded'
+            display: runs === null ? NOT_MEASURED
               : `${recordedCount(model.total_count)}${pct === null ? '' : ` · ${formatShare(pct)}`}` };
         })} />
       <TierLegend label="Model usage tier colours" models={models.map(model => (isMissing(model.model_name) ? '' : String(model.model_name)))} />
@@ -76,7 +77,7 @@ export function OverviewStatusStrip({ env, decisions, routing, now, window = 'al
   const windowRuns = picked && 'row' in picked && !isMissing(picked.row.runs_total) ? Number(picked.row.runs_total) : NaN;
   const served = Number.isFinite(windowRuns) ? windowRuns
     : window === 'all' && routing && !isMissing(routing.total_delegations) ? Number(routing.total_delegations) : NaN;
-  const total = Number.isFinite(served) ? `${formatFullCount(String(served))} runs` : 'Runs not recorded';
+  const total = Number.isFinite(served) ? `${formatFullCount(String(served))} runs` : 'Runs not measured';
   // The median run time is the window's runs only, and it is shown only when the runs read cover the whole window (the
   // read's oldest run is on or before the window's first day, or the read holds every run): otherwise it would be the
   // median of the latest runs, not of the window (Lakshman 2026-11-04, "make sure all information written is correct").
@@ -86,10 +87,10 @@ export function OverviewStatusStrip({ env, decisions, routing, now, window = 'al
   const oldestRead = runs.reduce<string | null>((oldest, run) => (oldest === null || run.day < oldest ? run.day : oldest), null);
   const covered = complete || (oldestRead !== null && from !== '' && oldestRead < from);
   const inWindow = covered ? runs.filter(run => run.day >= from && run.day <= to) : [];
-  const latencies = inWindow.map(run => run.latencyMs).filter((value): value is number => value !== null).sort((a, b) => a - b);
+  const latencies = inWindow.map(run => run.durationMs).filter((value): value is number => value !== null).sort((a, b) => a - b);
   const median = latencies.length === 0 ? null : latencies[Math.floor((latencies.length - 1) / 2)]!;
   // Lakshman 2026-11-04 ("colourful and remove 500 latest runs text"): the median reads plainly, without the read's size.
-  const speed = median === null ? null : `Median run ${fmtFixed((median / 1000), 1)} s`;
+  const speed = median === null ? null : `Median run ${formatDuration(median)}`;
   const reason = state === 'attention' && env && !isMissing(env.reason) ? String(env.reason) : null;
   return (
     <div className="local-overview-status" role="status" aria-label="Runtime status" data-state={state}>
@@ -167,15 +168,15 @@ export function OverviewTrendPanel({ rows, columns, window, now }: {
     const noun = column.header.toLowerCase();
     return column.format !== 'currency' && value === 1 && noun.endsWith('s') ? noun.slice(0, -1) : noun;
   };
-  const say = (value: number | null, column: DeclaredColumn, compact: boolean) => (value === null ? 'not recorded'
+  const say = (value: number | null, column: DeclaredColumn, compact: boolean) => (value === null ? 'not measured'
     : `${column.format === 'currency' ? formatUsd(value) : compact ? formatDashboardCount(value) : formatFullCount(String(value))} ${unit(value, column)}`);
   const visible = columns.filter(column => shown[slug(column.header)]);
   const lines = visible.map(column => {
     const values = days.map(day => valueOf(day, column));
     return { key: slug(column.header), color: TREND_TONES[column.header] ?? 'var(--ds-ink-2)', values };
   });
-  const dayText = (day: string, compact: boolean) => (byDay.has(day) ? twice(day) ? 'not recorded (two rows for this day)'
-    : visible.map(column => say(valueOf(day, column), column, compact)).join(', ') : 'not recorded');
+  const dayText = (day: string, compact: boolean) => (byDay.has(day) ? twice(day) ? 'not measured (two rows for this day)'
+    : visible.map(column => say(valueOf(day, column), column, compact)).join(', ') : 'not measured');
   // OMN-23330 AC8: with nothing pointed at, the readout shows the newest served day, so no blank row sits above the chart.
   const active = hover === null ? [...days].reverse().find(day => byDay.has(day)) : days[hover];
   // Lakshman 2026-11-05 ("this look congested and bad"): one line is in front (the legend chip under the pointer, else
@@ -244,14 +245,14 @@ export function TierMixPanel({ row, compact = false }: { row: Row | null; compac
       <section aria-label="Tier mix">
         {/* OMN-23330 AC6: each tier's runs and share are printed, not left to hover. */}
         <RankedBars label="Runs by tier" unit="" table={{ nameHeader: 'Tier', countHeader: 'Runs' }} order="desc" layout="vertical" values="always"
-          items={tiers.filter(tier => tier.cost_tier_name !== 'not_tier_routed').map((tier, index) => {
+          items={tiers.filter(tier => tier.tier_routed !== false && tier.tier_routed !== 0).map((tier, index) => {
             const name = String(tier.cost_tier_name);
             const pct = share(tier.pct_of_tier_routed);
             // Part 19 AC135 with part 23 AC145: a served tier opens Runs filtered to it (?tier=<served name>).
             const href = isMissing(tier.cost_tier_name) ? undefined : `/runs?${writeRunsSearch('', { ...DEFAULT_RUNS_VIEW, tier: name })}`;
             return { key: `${name}-${index}`, name: tierLabel(name), value: pct === null ? null : pct * 100, count: share(tier.count), share: pct, basis: 'measured' as const, color: tierColor(name), href, opensLabel: `Opens Runs filtered to ${tierLabel(name)}`,
               // A served share above zero but under 0.1% reads "<0.1%", never a rounded 0.0% that hides a real tier.
-              display: pct === null ? 'Not recorded' : `${recordedCount(tier.count)} · ${formatShare(pct)}` };
+              display: pct === null ? NOT_MEASURED : `${recordedCount(tier.count)} · ${formatShare(pct)}` };
           })} />
         <p className="local-dashboard-caption">{`${recordedCount(byTier.tier_routed_total)} tier-routed · ${recordedCount(byTier.not_tier_routed_count)} not tier-routed · ${recordedCount(byTier.total_tasks)} runs`}</p>
       </section>
@@ -270,7 +271,7 @@ export function TierMixPanel({ row, compact = false }: { row: Row | null; compac
             const concept = tierConcept(name) ?? 'tier-other';
             const tone = TIER_TONES[name] ?? 'other';
             // Part 18 AC120: a share is of the tier-routed runs, so runs outside the tier routing have none.
-            const routed = name !== 'not_tier_routed' && (tier.tier_routed === true || tier.tier_routed === 1);
+            const routed = tier.tier_routed === true || tier.tier_routed === 1;
             return [
             <tr className="local-routing-tier-row" data-tone={tone} style={{ '--tier-color': tierColor(name) } as CSSProperties} key={`${name}-${index}`}>
               {/* A served share is a long decimal and a name has no break opportunity: each may break inside itself, as

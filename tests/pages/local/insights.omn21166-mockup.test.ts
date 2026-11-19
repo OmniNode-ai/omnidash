@@ -26,8 +26,9 @@ it('AC26 compares equal-length windows and refuses a delta when the returned row
     currentPassRate: number | null; previousPassRate: number | null; passRateDeltaPoints: number | null; previousComplete: boolean;
   };
   expect(full).toMatchObject({
-    currentPassRate: 100,
-    previousPassRate: 50,
+    // OMN-24616 AC2: the rates are 0-1 shares; the delta below stays in percentage points.
+    currentPassRate: 1,
+    previousPassRate: 0.5,
     passRateDeltaPoints: 50,
     previousComplete: true,
   });
@@ -41,9 +42,9 @@ it('AC26 compares equal-length windows and refuses a delta when the returned row
 
 it('AC26 keeps unrecorded durations out of the median and spreads a 7.78 second run across the histogram', () => {
   const runs = toInsightRuns([
-    { ...row(21, true), latency_ms: 7780 },
-    { ...row(21, false), latency_ms: 1200 },
-    { ...row(21, null), latency_ms: null },
+    { ...row(21, true), execution_ms: 7780 },
+    { ...row(21, false), execution_ms: 1200 },
+    { ...row(21, null), execution_ms: null },
   ]);
   expect(summary(runs).medianLatency).toBe(4490);
   const distribution = durationBuckets(runs, [0, 1000, 2000, 5000, 10000, 20000, 30000, 60000, Infinity]);
@@ -70,9 +71,10 @@ it('AC26 uses one served baseline and refuses totals for a partially returned wi
   expect(window.available).toBe(true);
   expect(window.windowComplete).toBe(false);
   expect(window.days.filter(day => day.served)).toHaveLength(1);
-  expect(window.spend).toBeNull();
-  expect(window.saved).toBeNull();
-  expect(window.cumulativeSaved).toEqual([null, null, null, null, null, 0.4, 0.4]);
+  // OMN-24616 AC3: a day with no row is a day with no runs and adds zero.
+  expect(window.spend).toBeCloseTo(0.25);
+  expect(window.saved).toBeCloseTo(0.4);
+  expect(window.cumulativeSaved).toEqual([0, 0, 0, 0, 0, 0.4, 0.4]);
   const unavailable = aggregate([], NOW, 7) as { available: boolean; spend: number | null; reason: string | null };
   expect(unavailable).toMatchObject({ available: false, spend: null });
   expect(unavailable.reason).toContain('unavailable');
@@ -192,10 +194,9 @@ it('AC42 refuses a custom UTC range whose date does not exist on the calendar', 
   expect(real.spend).toBeCloseTo(0.1);
 });
 
-// The Overview's "You paid" and "Saved" cards show a figure when the window total is not null. They do not also test
-// windowComplete, because no served input gives a non-null total for an incomplete window. This walks every
-// subset of served days crossed with a null spend, null savings or duplicate day, and fails if that stops being true.
-it('AC26 a window total is never non-null when a selected day has no served row, so a total alone proves completeness', async () => {
+// OMN-24616 AC3 (replacing OMN-21166 AC26's rule): a selected day with no served row adds zero, and a served day with a
+// null figure makes that total unknown. This walks every subset of served days crossed with a null spend or savings.
+it('AC3 a window total sums the served days, a missing day adds zero, and a served null makes it unknown', async () => {
   const modulePath: string = '../../../src/pages/local/insight-aggregates';
   const loaded = await import(/* @vite-ignore */ modulePath) as Record<string, unknown>;
   const aggregate = loaded.aggregateMeteringWindow as (rows: unknown[], now: number, days: number) => {
@@ -217,14 +218,21 @@ it('AC26 a window total is never non-null when a selected day has no served row,
       })];
       const window = aggregate(rows, NOW, days);
       if (!window.available) continue;
+      const servedCount = dates.filter((_, index) => (served >> index) & 1).length;
+      const servedNull = dates.some((_, index) => (served >> index) & 1 && (nulls >> index) & 1);
       if (served !== 2 ** days - 1) {
         incompleteChecked += 1;
         expect(window.windowComplete).toBe(false);
-        expect(window.spend).toBeNull();
-        expect(window.saved).toBeNull();
       } else if (window.spend !== null) {
         completeWithTotal += 1;
         expect(window.windowComplete).toBe(true);
+      }
+      if (servedNull) {
+        expect(window.spend).toBeNull();
+        expect(window.saved).toBeNull();
+      } else {
+        expect(window.spend).toBeCloseTo(0.1 * servedCount);
+        expect(window.saved).toBeCloseTo(0.2 * servedCount);
       }
     }
   }

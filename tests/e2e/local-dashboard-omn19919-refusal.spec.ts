@@ -21,9 +21,10 @@ const keylessRefusalDecision: Record<string, unknown> = {
 };
 
 async function assertRunLink(page: Page, timeout = 5000) {
+  // OMN-24616 AC7: opened from Runs, the run address also carries the Runs view it came from.
   await expect(runLink(page)).toHaveAttribute(
     'href',
-    '/workflow?correlation_id=' + CORRELATION_ID,
+    new RegExp(`^/workflow\\?correlation_id=${CORRELATION_ID}&from=%2Fruns(%3F|$)`),
     { timeout },
   );
 }

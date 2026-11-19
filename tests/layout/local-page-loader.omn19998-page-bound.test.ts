@@ -37,7 +37,8 @@ function store(runs: number, options: { failSince?: string; stuck?: boolean } = 
     readSnapshot: async (topic, params) => {
       requests += 1;
       if (topic !== DELEGATION_DECISIONS_TOPIC) return answer([], {});
-      decisionsRequests += 1;
+      // The workflow page also reads one run's own row (correlation_id), a single-run read of the same size for any store.
+      if (params?.correlation_id === undefined) decisionsRequests += 1;
       const since = params?.since;
       if (since === undefined) {
         const newest = [...rows].reverse().slice(0, 500);

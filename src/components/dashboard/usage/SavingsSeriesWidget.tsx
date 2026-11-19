@@ -1,4 +1,5 @@
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
+import { NOT_MEASURED } from '@/theme/format';
 import { formatDashboardCount, formatShortDay } from '@/theme/format';
 // OMN-20006 Amendment 1 (US-3): savings per UTC day against the one baseline, from metering-summary.v1.
 //
@@ -114,7 +115,7 @@ function SavingsDays({ baseline, days: servedDays }: { baseline: string; days: M
                   {amount !== null && most > 0 && <span className="local-savings-meter" aria-hidden="true">
                     <i style={{ width: `${Math.round((Math.max(amount, 0) / most) * 1000) / 10}%` }} /></span>}
                 </span></td>
-                <td data-label="Runs">{isMissing(row.runs_total) ? 'Not recorded' : formatDashboardCount(row.runs_total)}</td>
+                <td data-label="Runs">{isMissing(row.runs_total) ? NOT_MEASURED : formatDashboardCount(row.runs_total)}</td>
               </tr>
               );
             })}</tbody>

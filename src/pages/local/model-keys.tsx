@@ -13,7 +13,9 @@ import { ChevronRight } from '@/theme/design-system/icons';
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
 import { SettingsEmptyState } from '@/components/dashboard/SettingsEmptyState';
 import { readableTime } from '@/theme/format';
-import { ModelKeysError, listModelKeys, type ModelProviderId, type ModelProviderRow } from '@/services/models-api';
+import { ModelKeysError, listModelKeys, type ModelProviderRow } from '@/services/models-api';
+import { PROVIDER_LABELS, PROVIDER_ORDER, PROVIDER_SETUP_NOTES } from '@/contracts/local-display-names';
+import { subscribeLocalPageRefresh } from '@/services/local-page-refresh';
 import { Badge, ColumnTip, DataTable, EmptyState, Fact, FactList } from '@/theme/design-system/components';
 import { KEY_HEADERS } from '@/pages/local/page-runs';
 
@@ -58,15 +60,12 @@ function listOnce(client: ModelKeysClient): Promise<ModelProviderRow[]> {
   return read;
 }
 
-const LABELS: Record<ModelProviderId, string> = { gemini: 'Gemini', openrouter: 'OpenRouter', openai: 'OpenAI', ollama: 'Ollama' };
-const ORDER: readonly ModelProviderId[] = ['gemini', 'openrouter', 'openai', 'ollama'];
-const OLLAMA_HOW = 'Set up by onboarding (run it again with --provider ollama)';
 
-/** A provider's name in one case everywhere: its label, else the served id with a capital first letter. */
+/** A provider's declared label, else its served name unchanged (OMN-24616 AC4). */
 export function providerName(provider: unknown): string {
-  const id = String(provider ?? '').toLowerCase();
-  if (id === '') return 'Not recorded';
-  return (LABELS as Record<string, string>)[id] ?? `${id.charAt(0).toUpperCase()}${id.slice(1)}`;
+  const served = String(provider ?? '').trim();
+  if (served === '') return 'Not recorded';
+  return Object.hasOwn(PROVIDER_LABELS, served.toLowerCase()) ? PROVIDER_LABELS[served.toLowerCase()]! : served;
 }
 
 type StatusTone = 'pass' | 'fail' | 'idle' | 'off';
@@ -148,8 +147,8 @@ function ProviderCard({ row, keys, listed = true }: { row: ModelProviderRow; key
   if (tested && !missing(last.backend_id)) facts.push(['Backend', String(last.backend_id), true]);
   if (tested && !missing(last.endpoint)) facts.push(['Endpoint', String(last.endpoint), true]);
   const reason = last?.status === 'failed' && !missing(last.reason) ? String(last.reason) : null;
-  const command = row.provider === 'ollama' ? null : `onex models add ${row.provider}`;
-  const setup = command === null ? <>{OLLAMA_HOW}</> : <>Set up with <code className="mono">{command}</code></>;
+  const note = Object.hasOwn(PROVIDER_SETUP_NOTES, String(row.provider)) ? PROVIDER_SETUP_NOTES[String(row.provider)] : null;
+  const setup = note !== null ? <>{note}</> : <>Set up with <code className="mono">{`onex models add ${row.provider}`}</code></>;
   const testedOn = tested ? shortDate(last.tested_at) : null;
   const firstKey = keys.find(key => !missing(key.fingerprint));
   return <article className="local-provider-row" aria-label={name} data-tone={status.tone}>
@@ -211,9 +210,17 @@ function message(error: unknown): string {
  * key whose provider GET /models does not list keeps its own row; Expires and Bound host appear only when a key records
  * one. Revoked keys are the page's key history, not this table.
  */
-export function ModelKeys({ client = LIVE_CLIENT, keys = [], empty }: { client?: ModelKeysClient; keys?: readonly CredentialKeyRow[]; empty?: ReactNode }) {
+export function ModelKeys({ client = LIVE_CLIENT, keys = [], empty, refreshMs = 30_000 }: { client?: ModelKeysClient; keys?: readonly CredentialKeyRow[]; empty?: ReactNode; refreshMs?: number }) {
   const [rows, setRows] = useState<ModelProviderRow[] | null>(null);
   const [listError, setListError] = useState<string | null>(null);
+  // OMN-24616 AC8: provider status is re-read by Refresh and the poll, as the keys table beside it is.
+  const [reads, setReads] = useState(0);
+  useEffect(() => {
+    const reread = () => setReads(count => count + 1);
+    const unsubscribe = subscribeLocalPageRefresh(reread);
+    const timer = setInterval(reread, refreshMs);
+    return () => { unsubscribe(); clearInterval(timer); };
+  }, [refreshMs]);
 
   useEffect(() => {
     let live = true;
@@ -221,8 +228,8 @@ export function ModelKeys({ client = LIVE_CLIENT, keys = [], empty }: { client?:
       (served) => {
         if (!live) return;
         // The four in their fixed order, then any name the page does not know in the served order (OMN-21970 AC10).
-        const known = ORDER.flatMap((provider) => served.filter((row) => row.provider === provider));
-        setRows([...known, ...served.filter((row) => !(ORDER as readonly string[]).includes(String(row.provider)))]);
+        const known = PROVIDER_ORDER.flatMap((provider) => served.filter((row) => row.provider === provider));
+        setRows([...known, ...served.filter((row) => !PROVIDER_ORDER.includes(String(row.provider)))]);
         setListError(null);
       },
       (error: unknown) => {
@@ -232,7 +239,7 @@ export function ModelKeys({ client = LIVE_CLIENT, keys = [], empty }: { client?:
       },
     );
     return () => { live = false; };
-  }, [client]);
+  }, [client, reads]);
 
   // Part 18 AC128: the served keys never depend on GET /models. While it loads, or when it cannot be read, they are listed
   // on their own beside the reason.

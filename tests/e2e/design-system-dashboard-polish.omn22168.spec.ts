@@ -34,7 +34,7 @@ const template = chartRows[prefix + 'delegation.decisions.v1'][0] as Record<stri
 const runs = [3, 2, 1, 0].flatMap((ago, d) => Array.from({ length: 6 }, (_, r) => {
   const at = `${recentDay(ago)}T0${r}:1${d}:00Z`;
   return { ...template, correlation_id: `polish-${d}-${r}`, created_at: at, written_at: at,
-    model_name: r % 2 ? LONG : 'model-a', quality_gate_passed: r < 5 - d, latency_ms: 4_000 + r * 5_000 + d * 1_000,
+    model_name: r % 2 ? LONG : 'model-a', quality_gate_passed: r < 5 - d, execution_ms: 4_000 + r * 5_000 + d * 1_000, latency_ms: 4_000 + r * 5_000 + d * 1_000,
     tokens_input: 400 + r * 100, tokens_output: 90 + r * 10,
     // L13: the newest day's first run has no measured saving.
     ...(ago === 0 && r === 5 ? { savings_measurement: 'unknown_tokens', modelled_savings_usd: null } : {}) };

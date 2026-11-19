@@ -13,8 +13,9 @@
 //     nothing.
 
 import { useState, useSyncExternalStore } from 'react';
-import { useLocation } from 'wouter';
+import { Link, useLocation, useSearch } from 'wouter';
 import { PAGE_LABELS, pageForPath } from '@/navigation/page-routes';
+import { readWorkflowFrom } from '@/navigation/workflow-url-state';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '@/theme';
 import { Moon, RefreshCw, Sun } from '@/theme/design-system/icons';
@@ -28,14 +29,16 @@ const SPIN_DURATION_MS = 700;
 
 export function Header() {
   const [location] = useLocation();
+  const search = useSearch();
   const page = pageForPath(location);
   const pageLabel = page ? PAGE_LABELS[page] : 'Page not found';
+  const runsView = page === 'local-workflow' ? readWorkflowFrom(search) : null;
   const { theme, setTheme, availableThemes } = useTheme();
   const queryClient = useQueryClient();
   const [isRefreshing, setIsRefreshing] = useState(false);
   // OMN-21166 AC77: the page's latest served read, shown only on the page that published it.
   const read = useSyncExternalStore(subscribeLocalPageRead, currentLocalPageRead);
-  const readAt = read.page !== null && page === `local-${read.page}` ? read.readAt : null;
+  const readAt = read.page !== null && page === read.page ? read.readAt : null;
 
   const nextThemeName = availableThemes[(availableThemes.indexOf(theme) + 1) % availableThemes.length];
   const nextTheme = () => setTheme(nextThemeName);
@@ -57,6 +60,8 @@ export function Header() {
       <nav className="breadcrumbs" aria-label="Breadcrumb">
         <span>Home</span>
         <span className="sep">/</span>
+        {/* OMN-24616 AC7: a run opened from Runs leads back to the same Runs view, filters included. */}
+        {runsView !== null && <><Link href={runsView}>{PAGE_LABELS['local-runs']}</Link><span className="sep">/</span></>}
         <span className="cur" aria-current="page">{pageLabel}</span>
       </nav>
 

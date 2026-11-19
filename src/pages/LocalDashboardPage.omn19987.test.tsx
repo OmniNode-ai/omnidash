@@ -60,10 +60,11 @@ describe('OMN-19987 run timeline', () => {
     expect(call.textContent).toContain('succeeded');
   });
 
-  it('T2: a duration that was not measured reads Not recorded, never 0 ms', () => {
+  // OMN-24616 AC6 (Lakshman 2026-11-17): a duration is a figure, so a missing one reads Not measured.
+  it('T2: a duration that was not measured reads Not measured, never 0 ms', () => {
     render(<RunTimeline steps={recorded} />);
     const request = items()[0];
-    expect(request.textContent).toContain('Not recorded');
+    expect(request.textContent).toContain('Not measured');
     expect(request.textContent).not.toContain('0 ms');
   });
 

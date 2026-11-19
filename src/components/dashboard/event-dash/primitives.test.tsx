@@ -116,8 +116,8 @@ describe('FreshnessChip', () => {
 // that is not a bare status is rewritten, a client error is called a runtime failure.
 describe('readableReason', () => {
   it.each([
-    ['HTTP 503', 'Not served by this runtime yet (HTTP 503)'],
-    ['HTTP 404 Not Found', 'Not served by this runtime yet (HTTP 404 Not Found)'],
+    ['HTTP 503', 'This runtime does not provide this data yet (HTTP 503)'],
+    ['HTTP 404 Not Found', 'This runtime does not provide this data yet (HTTP 404 Not Found)'],
     ['HTTP 500', 'The runtime could not answer (HTTP 500)'],
     ['HTTP 400', 'HTTP 400'],
     ['tenant not configured', 'tenant not configured'],

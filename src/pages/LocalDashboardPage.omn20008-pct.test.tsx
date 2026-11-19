@@ -75,7 +75,7 @@ const BEFORE = [
   // OMN-21166 part 29 AC191: the short drawn caption first (the model name kept whole), then the full sentence.
   'Modelled vs claude\u2011sonnet\u20115\u20115',
   'Modelled at claude-sonnet-5-5 prices. The baseline never ran.',
-  'Runs not counted: Not recorded',
+  'Runs not counted: Not measured',
   'Baseline claude-sonnet-5-5 · pricing v1.0.0',
 ];
 

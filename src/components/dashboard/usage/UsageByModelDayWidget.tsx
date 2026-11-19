@@ -1,4 +1,5 @@
 import { ConceptIcon } from '@/components/dashboard/FieldIcon';
+import { formatShare, NOT_MEASURED } from '@/theme/format';
 import { passBand, tierLabel } from '@/pages/local/plain-text';
 import { formatDashboardCount, formatFullCount } from '@/theme/format';
 
@@ -44,7 +45,7 @@ import { formatDashboardUsd as formatUsd, formatShortDay } from '@/theme/format'
 import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
 import { ColumnTip, DataTable, Dropdown, EmptyState, TokenCount } from '@/theme/design-system/components';
 import { ChartReadout } from '@/theme/design-system/charts/frame';
-import { localeDate as fmtLocaleDate, localeString as fmtLocaleString } from '@/theme/format';
+import { localeDate as fmtLocaleDate } from '@/theme/format';
 import { refreshInterval } from '@/theme/refresh';
 
 export const NO_USAGE_ROWS = 'No usage rows yet';
@@ -69,7 +70,7 @@ function measuredCost(value: unknown): string {
 }
 
 function unmeasured(value: unknown): string {
-  if (isMissing(value)) return 'Not recorded';
+  if (isMissing(value)) return NOT_MEASURED;
   return Number(value) === 0 ? 'none' : `${formatDashboardCount(value)} unmeasured`;
 }
 
@@ -89,7 +90,7 @@ const USAGE_TIPS: Record<string, string> = {
   'Tokens in': 'Tokens sent to the model that day, in this tier.',
   'Tokens out': 'Tokens the model returned that day, in this tier.',
   'Cost (measured)': 'The measured cost of the calls. A grey $0 is a free call.',
-  Unmeasured: 'Calls whose cost was not recorded. A dash means none.',
+  Unmeasured: 'Calls whose cost was not measured. A dash means none.',
   Tier: 'The cost tier the calls were routed to.',
   Calls: 'Calls to the model that day, in this tier.',
   'Share of calls': 'This row\'s calls out of all calls that UTC day.',
@@ -104,10 +105,11 @@ function shortDay(value: unknown): string {
   return isMissing(value) ? recorded(value) : formatShortDay(String(value));
 }
 
+// OMN-24616 AC6: the one share rule (formatShare) and the one missing-value word.
 function callShare(value: unknown): string {
   const share = Number(value);
-  if (isMissing(value) || !Number.isFinite(share)) return 'Not recorded';
-  return fmtLocaleString(share, 'en-US', { style: 'percent', maximumFractionDigits: 2 });
+  if (isMissing(value) || !Number.isFinite(share)) return NOT_MEASURED;
+  return formatShare(share);
 }
 
 function asRows(rows: readonly unknown[]): UsageByModelDayRow[] {
@@ -164,7 +166,7 @@ export function UsageByModelDayTable({ rows, interactive = false }: { rows: read
           </tr>
         </thead>
         {/* As the run table writes its rows (Lakshman 2026-11-05): a day is named on the first row of its group only (the
-            rest keep it for assistive tech and filters), a measured zero cost is a muted "$0" with the served text as its
+            rest keep it for assistive tech and filters), a measured zero cost is a muted "$0.00" (OMN-24616 AC6) with the served text as its
             title, and no unmeasured calls is a quiet dash. */}
         <tbody>{shown.map((row, index) => (
           <tr key={`${String(row.usage_day)}-${String(row.model_id)}-${String(row.cost_tier_name)}-${index}`}
@@ -175,15 +177,15 @@ export function UsageByModelDayTable({ rows, interactive = false }: { rows: read
             {/* The model's swatch beside its name, as Usage analysis and the decision matrix draw a model (Lakshman 2026-11-05). */}
             <td data-label="Model"><span className="usage-model-name">{!isMissing(row.model_id) && <span className="gdb-swatch" aria-hidden="true"
               data-model-id={model(row.model_id)} style={{ background: modelColor(model(row.model_id)) }} />}{model(row.model_id)}</span></td>
-            <td data-label="Tokens in" data-field-tone="tokens-in" data-field-unavailable={isMissing(row.input_tokens)}>{isMissing(row.input_tokens) ? recorded(row.input_tokens) : <TokenCount value={row.input_tokens} direction="in" />}</td>
-            <td data-label="Tokens out" data-field-tone="tokens-out" data-field-unavailable={isMissing(row.output_tokens)}>{isMissing(row.output_tokens) ? recorded(row.output_tokens) : <TokenCount value={row.output_tokens} direction="out" />}</td>
+            <td data-label="Tokens in" data-field-tone="tokens-in" data-field-unavailable={isMissing(row.input_tokens)}>{isMissing(row.input_tokens) ? NOT_MEASURED : <TokenCount value={row.input_tokens} direction="in" />}</td>
+            <td data-label="Tokens out" data-field-tone="tokens-out" data-field-unavailable={isMissing(row.output_tokens)}>{isMissing(row.output_tokens) ? NOT_MEASURED : <TokenCount value={row.output_tokens} direction="out" />}</td>
             <td data-label="Cost (measured)">{!isMissing(row.measured_cost_usd) && Number(row.measured_cost_usd) === 0
-              ? <span className="local-cost-free" title={measuredCost(row.measured_cost_usd)}>{measuredCost(row.measured_cost_usd).replace(/\.0+$/, '')}</span>
+              ? <span className="local-cost-free" title={measuredCost(row.measured_cost_usd)}>{measuredCost(row.measured_cost_usd)}</span>
               : measuredCost(row.measured_cost_usd)}</td>
             <td data-label="Unmeasured">{unmeasured(row.unmeasured_call_count) === 'none'
               ? <span className="local-run-quiet" title="No unmeasured calls">—</span> : unmeasured(row.unmeasured_call_count)}</td>
             <td data-label="Tier">{tier(row.cost_tier_name)}</td>
-            <td data-label="Calls">{isMissing(row.call_count) ? 'Not recorded' : formatDashboardCount(row.call_count)}</td>
+            <td data-label="Calls">{isMissing(row.call_count) ? NOT_MEASURED : formatDashboardCount(row.call_count)}</td>
             <td data-label="Share of calls"><span className="local-share-cell">{!isMissing(row.call_share) && Number.isFinite(Number(row.call_share))
               && <span className="local-share-meter" aria-hidden="true" data-identity-decoration="share-bar"><i
                 data-share-band={passBand(Math.min(Math.max(Number(row.call_share), 0), 1) * 100, 100)}
@@ -273,24 +275,24 @@ export function UsageTokensChart({ rows, days = 14 }: { rows: readonly unknown[]
         const models = [...day.entries()];
         const allMissing = models.length > 0 && models.every(([, cell]) => cell.missing && cell.value === 0);
         return <ChartReadout active day={hover} text={<>{short(hover)}<span className="ins-readout-sep">{' · '}</span>
-          <span data-field-tone={`tokens-${direction}`}>{allMissing ? `tokens ${direction} not recorded`
+          <span data-field-tone={`tokens-${direction}`}>{allMissing ? `tokens ${direction} not measured`
             : `${formatFullCount(total(hover))} tokens ${direction}${models.some(([, cell]) => cell.missing) ? ' (partial)' : ''}`}</span>
           {models.map(([name, cell]) => <span key={name}><span className="ins-readout-sep">{' · '}</span>
             <i className="utc-readout-swatch" aria-hidden="true" style={{ background: modelColor(name) }} />
-            {`${name} ${cell.missing && cell.value === 0 ? 'not recorded' : formatFullCount(cell.value)}`}</span>)}</>} />;
+            {`${name} ${cell.missing && cell.value === 0 ? 'not measured' : formatFullCount(cell.value)}`}</span>)}</>} />;
       })()}
       <ol className="utc-plot" style={{ '--utc-count': shown.length } as CSSProperties} onMouseLeave={() => setHover(null)}
         onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setHover(null); }}>
         {shown.map(day => {
           const models = [...byDay.get(day)!.entries()];
-          const label = `${day}: ${models.map(([name, cell]) => `${name}: ${cell.missing && cell.value === 0 ? 'not recorded' : `${formatFullCount(cell.value)}${cell.missing ? ' (some rows not recorded)' : ''}`}`).join('; ')}`;
+          const label = `${day}: ${models.map(([name, cell]) => `${name}: ${cell.missing && cell.value === 0 ? 'not measured' : `${formatFullCount(cell.value)}${cell.missing ? ' (some rows not measured)' : ''}`}`).join('; ')}`;
           const dayTotal = total(day);
           return (
             // Focusable, so a keyboard reader reveals the day's total as a pointer does on hover (live review 2026-10-26).
             <li key={day} data-token-day={day} aria-label={label} tabIndex={0} data-dim={hover !== null && hover !== day}
               onMouseEnter={() => setHover(day)} onFocus={() => setHover(day)}>
               {/* A day whose every count is not recorded has no total; a day with some not recorded totals only the rest. */}
-              <span className="utc-value">{models.length > 0 && models.every(([, cell]) => cell.missing && cell.value === 0) ? 'Not recorded'
+              <span className="utc-value">{models.length > 0 && models.every(([, cell]) => cell.missing && cell.value === 0) ? NOT_MEASURED
                 : `${formatDashboardCount(dayTotal)}${models.some(([, cell]) => cell.missing) ? ' (partial)' : ''}`}</span>
               <span className="utc-track">
                 <span className="utc-stack" style={{ height: `${max > 0 ? Math.round((dayTotal / max) * 1000) / 10 : 0}%` }}>
@@ -299,7 +301,7 @@ export function UsageTokensChart({ rows, days = 14 }: { rows: readonly unknown[]
                   ))}
                 </span>
               </span>
-              {models.some(([, cell]) => cell.missing) && <span className="utc-missing" data-token-missing aria-hidden="true">n/r</span>}
+              {models.some(([, cell]) => cell.missing) && <span className="utc-missing" data-token-missing aria-hidden="true">n/m</span>}
               <span className="utc-day">{short(day)}</span>
             </li>
           );
@@ -312,7 +314,7 @@ export function UsageTokensChart({ rows, days = 14 }: { rows: readonly unknown[]
         </ul>
         <TierLegend label="Tokens per day tier colours" models={names} />
       </div>
-      <figcaption className="local-dashboard-caption">{`Tokens ${direction} per UTC day, latest ${shown.length} served ${shown.length === 1 ? 'day' : 'days'}; n/r marks a day with a count not recorded.`}</figcaption>
+      <figcaption className="local-dashboard-caption">{`Tokens ${direction} per UTC day, latest ${shown.length} served ${shown.length === 1 ? 'day' : 'days'}; n/m marks a day with a count not measured.`}</figcaption>
     </figure>
   );
 }

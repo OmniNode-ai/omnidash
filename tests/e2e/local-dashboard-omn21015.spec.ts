@@ -229,11 +229,11 @@ const DECISIONS = 'onex.snapshot.projection.delegation.decisions.v1';
 const firstScreenRuns = [
   { correlation_id: '9791105f-82da-4044-b6d1-b50d298ff650', written_at: '2026-10-12T10:07:00+00:00', created_at: '2026-10-12T10:07:00+00:00',
     model_name: 'gemini-3.5-flash-lite', backend_id: 'byok-gemini', host: 'generativelanguage.googleapis.com', quality_gate_passed: 0,
-    quality_gate_detail: 'quality_gate_failed', terminal_ok: 0, latency_ms: 4925, tokens_input: 262, tokens_output: 7,
+    quality_gate_detail: 'quality_gate_failed', terminal_ok: 0, execution_ms: 4925, latency_ms: 4925, tokens_input: 262, tokens_output: 7,
     task_type: 'document', cost_tier_name: 'cheap_frontier', actual_score: 0.4, required_bar: 0.8, data_source: 'real' },
   { correlation_id: 'a66aca8a-dd42-4ffa-9f68-89c1dba7e400', written_at: '2026-10-11T02:00:26+00:00', created_at: '2026-10-11T02:00:26+00:00',
     model_name: 'qwen3-coder', backend_id: 'local-coder', host: 'lab-host', quality_gate_passed: 1, quality_gate_detail: 'completed',
-    terminal_ok: 1, latency_ms: 700, tokens_input: 250, tokens_output: 13, task_type: 'document', cost_tier_name: 'local',
+    terminal_ok: 1, execution_ms: 700, latency_ms: 700, tokens_input: 250, tokens_output: 13, task_type: 'document', cost_tier_name: 'local',
     actual_score: 1, required_bar: 0.8, data_source: 'real' },
 ];
 
@@ -338,7 +338,7 @@ test('OMN-21015: on Workflow a run\'s timings are drawn as bars of their served 
   await expect(figure).toBeVisible();
   // The served value is written at each bar's end and on its row. OMN-21166 AC55: as a readable duration (4788 ms
   // reads "4.8 s").
-  for (const text of ['Queue wait', 'Execution', 'Duration', '12 ms', '4.8 s', '743 ms']) {
+  for (const text of ['Queue wait', 'Duration', 'Model call time', '12 ms', '4.8 s', '743 ms']) {
     await expect(figure.locator('.local-chart-canvas svg').getByText(text, { exact: true })).toBeVisible();
   }
   // The three bars: the drawn paths that carry one of the three series colours, top row first. The chart grows its
@@ -371,7 +371,7 @@ test('OMN-21015: on Workflow a run\'s timings are drawn as bars of their served 
   // The tiles carry the same three as text, and the requested model beside the answering one.
   const summary = page.getByRole('region', { name: 'Run summary' });
   // OMN-21166 AC55: the tiles read durations the same way.
-  for (const [label, value] of [['Queue wait', '12 ms'], ['Execution', '4.8 s'], ['Duration', '743 ms'], ['Requested model', 'asked-model'], ['Model', 'qwen3-coder']]) {
+  for (const [label, value] of [['Queue wait', '12 ms'], ['Duration', '4.8 s'], ['Model call time', '743 ms'], ['Requested model', 'asked-model'], ['Model', 'qwen3-coder']]) {
     await expect(summary.locator('dt', { hasText: new RegExp(`^${label}$`) }).locator('xpath=following-sibling::dd[1]')).toHaveText(value!);
   }
 
@@ -396,10 +396,10 @@ test('OMN-21015: on Workflow a timing the run does not carry has no bar, and a s
   const figure = page.getByRole('figure', { name: 'Run timing' });
   await expect(figure).toBeVisible();
   await expect(figure.locator('.local-chart-canvas svg').getByText('0 ms', { exact: true })).toBeVisible();
-  await expect(figure.locator('.local-chart-canvas svg').getByText('Execution', { exact: true })).toHaveCount(0);
-  await expect(figure).toContainText('No measured value to draw for: Execution');
+  await expect(figure.locator('.local-chart-canvas svg').getByText('Duration', { exact: true })).toHaveCount(0);
+  await expect(figure).toContainText('No measured value to draw for: Duration');
   const summary = page.getByRole('region', { name: 'Run summary' });
-  await expect(summary.locator('dt', { hasText: /^Execution$/ }).locator('xpath=following-sibling::dd[1]')).toHaveText('Not recorded');
+  await expect(summary.locator('dt', { hasText: /^Duration$/ }).locator('xpath=following-sibling::dd[1]')).toHaveText('Not measured');
   await expect(summary.locator('dt', { hasText: /^Queue wait$/ }).locator('xpath=following-sibling::dd[1]')).toHaveText('0 ms');
 });
 
@@ -407,10 +407,10 @@ test('OMN-21015: on Workflow a timing the run does not carry has no bar, and a s
 // list, a bar is as tall as its run's served duration against the others, a failed run's bar is another colour than
 // a passed run's, and a click on a bar opens that run on Workflow.
 const listedRuns = [
-  { ...timedRun, correlation_id: 'cccccccc-0000-4000-8000-000000000003', written_at: '2026-10-11T02:30:00+00:00', created_at: '2026-10-11T02:30:00+00:00', latency_ms: 1200, tokens_input: 90, tokens_output: 400 },
-  { ...timedRun, correlation_id: 'bbbbbbbb-0000-4000-8000-000000000002', written_at: '2026-10-11T02:20:00+00:00', created_at: '2026-10-11T02:20:00+00:00', latency_ms: 4800, tokens_input: 262, tokens_output: 7,
+  { ...timedRun, correlation_id: 'cccccccc-0000-4000-8000-000000000003', written_at: '2026-10-11T02:30:00+00:00', created_at: '2026-10-11T02:30:00+00:00', execution_ms: 1200, latency_ms: 1200, tokens_input: 90, tokens_output: 400 },
+  { ...timedRun, correlation_id: 'bbbbbbbb-0000-4000-8000-000000000002', written_at: '2026-10-11T02:20:00+00:00', created_at: '2026-10-11T02:20:00+00:00', execution_ms: 4800, latency_ms: 4800, tokens_input: 262, tokens_output: 7,
     quality_gate_passed: 0, quality_gate_detail: 'quality_gate_failed', terminal_ok: 0 },
-  { ...timedRun, correlation_id: 'aaaaaaaa-0000-4000-8000-000000000001', written_at: '2026-10-11T02:10:00+00:00', created_at: '2026-10-11T02:10:00+00:00', latency_ms: 600, tokens_input: 250, tokens_output: 13 },
+  { ...timedRun, correlation_id: 'aaaaaaaa-0000-4000-8000-000000000001', written_at: '2026-10-11T02:10:00+00:00', created_at: '2026-10-11T02:10:00+00:00', execution_ms: 600, latency_ms: 600, tokens_input: 250, tokens_output: 13 },
 ];
 
 /** The bars of one figure, left to right, once two reads in a row agree (the chart grows its bars in). */

@@ -3,6 +3,7 @@ import '@/theme/design-system/page-sheets';
 import { formatDashboardCount } from '@/theme/format';
 import { PricingFacts } from '@/pages/local/pricing';
 import { WindowMenu } from '@/pages/local/window-menu';
+import { LOCAL_WINDOWS } from '@/contracts/local-windows';
 import { readableTime } from '@/theme/format';
 import { dailyMeteringTokens } from '@/lib/daily-metering-tokens';
 import { DailyMeteringTokens } from '@/components/dashboard/usage/DailyMeteringTokens';
@@ -76,13 +77,14 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
   const destination: AppPage = embedded ? 'local-settings' : `local-${pageName}` as AppPage;
   const Frame = embedded ? 'div' : 'main';
   const [snapshots, setSnapshots] = useState<BoundProjectionSnapshot[]>([]);
-  // OMN-21166 AC77: Overview and Usage tell the top bar when their rows were last read from the runtime.
-  const servedRead = pageName === 'overview' || pageName === 'usage' ? latestServedRead(snapshots) : null;
+  // OMN-21166 AC77, OMN-24616 AC6: every page tells the top bar when its rows were last read from the runtime.
+  const servedRead = latestServedRead(snapshots);
+  // Each mounted part publishes under its own source, so Settings' four sections never overwrite each other's read.
+  const readSource = useId();
   useEffect(() => {
-    if (pageName !== 'overview' && pageName !== 'usage') return undefined;
-    publishLocalPageRead(pageName, servedRead);
-    return () => publishLocalPageRead(null, null);
-  }, [pageName, servedRead]);
+    publishLocalPageRead(destination, servedRead, readSource);
+    return () => publishLocalPageRead(null, null, readSource);
+  }, [destination, servedRead, readSource]);
   const [error, setError] = useState<string | null>(null);
   const [refreshError, setRefreshError] = useState<string | null>(null);
   // OMN-19998: the Runs page's Load more — one page of older runs per press. A press in flight ignores presses, and a
@@ -466,9 +468,8 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
                 days={servedMeteringDays(snapshots.find(snapshot => snapshot.topic === METERING_SUMMARY_TOPIC)?.rows ?? [])} />
               {(() => {
                 // OMN-21970 AC9 (Lakshman 2026-11-02): one button opens the list of windows, the chosen one ticked.
-                const options = ([['all', 'All time', 'All time', 0], ['today', 'Today', 'Today (UTC)', 1], ['last-7', 'Last 7 days', 'Last 7 days (UTC)', 7],
-                  ['last-15', 'Last 15 days', 'Last 15 days (UTC)', 15], ['last-30', 'Last 30 days', 'Last 30 days (UTC)', 30],
-                  ['last-90', 'Last 90 days', 'Last 90 days (UTC)', 90]] as const).map(([value, label, name, days]) => {
+                // OMN-24616 AC4: the windows from the one declared list.
+                const options = LOCAL_WINDOWS.map(({ value, label, name, days }) => {
                   const target: OverviewWindow = days === 0 ? 'all' : days === 1 ? 'today' : meteringRangeFor(days, now);
                   const checked = days === 0 ? overviewWindow === 'all' : days === 1 ? overviewWindow === 'today'
                     : overviewWindow.startsWith('range:') && activityWindow.kind === 'days' && activityWindow.days === days;
@@ -597,13 +598,13 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
                       // window is the dropdown's, so a tab shows its number alone.
                       return <DashboardTabs label="Overview charts" param="chart" tabs={[
                         { id: 'runs', label: 'Total runs', tone: 'var(--ds-field-runs-daily)', icon: <CalendarRange size={18} />,
-                          hint: Number.isFinite(runs) ? `${formatDashboardCount(runs)} runs` : 'Runs not recorded', panel: () => slice('runs', 'Runs per day', 'runs-daily') },
+                          hint: Number.isFinite(runs) ? `${formatDashboardCount(runs)} runs` : 'Runs not measured', panel: () => slice('runs', 'Runs per day', 'runs-daily') },
                         { id: 'tokens', label: 'Total tokens', tone: 'var(--ds-field-tokens-daily)', icon: <ChartArea size={18} />,
-                          hint: tokens !== null ? `${formatDashboardCount(tokens)} tokens` : 'Tokens not recorded', panel: () => slice('tokens', 'Tokens per day', 'tokens-daily') },
+                          hint: tokens !== null ? `${formatDashboardCount(tokens)} tokens` : 'Tokens not measured', panel: () => slice('tokens', 'Tokens per day', 'tokens-daily') },
                         { id: 'models', label: 'Model usage', tone: 'var(--ds-field-runs-model)', icon: <Bot size={18} />,
-                          hint: models !== null ? plural(models, 'model') : 'Models not recorded', panel: () => renderGroup(['overview-model-usage']) },
+                          hint: models !== null ? plural(models, 'model') : 'Models not measured', panel: () => renderGroup(['overview-model-usage']) },
                         { id: 'tiers', label: 'Tier mix', tone: 'var(--ds-field-tier-mix)', icon: <ChartPie size={18} />,
-                          hint: tierRows !== null ? plural(tierRows, 'tier') : 'Tiers not recorded', panel: () => renderGroup(['overview-tier-mix']) },
+                          hint: tierRows !== null ? plural(tierRows, 'tier') : 'Tiers not measured', panel: () => renderGroup(['overview-tier-mix']) },
                       ]} />;
                     })()}
                     </Panel>

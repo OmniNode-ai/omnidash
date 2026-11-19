@@ -1,7 +1,8 @@
 import { lazy, Suspense, useEffect, useRef } from 'react';
-import { Link, useLocation } from 'wouter';
+import { Link, useLocation, useSearch } from 'wouter';
 import { FrameLayout } from './components/frame/FrameLayout';
 import { Header } from './components/frame/Header';
+import { PageErrorBoundary } from './components/frame/PageErrorBoundary';
 import { useFrameStore } from './store/store';
 import { CommandPalette, useCommandPalette } from './components/dashboard/command-dispatch/CommandPalette';
 import type { AppPage } from './store/types';
@@ -66,6 +67,7 @@ function PageContent({ page, navigationCache }: { page: AppPage; navigationCache
 
 export function App() {
   const [location, navigate] = useLocation();
+  const search = useSearch();
   const page = pageForPath(location);
   const { isOpen, close } = useCommandPalette();
   const navigationCache = useRef<LocalDashboardCache>({ context: null, snapshots: new Map() });
@@ -91,10 +93,16 @@ export function App() {
             <p>This URL does not match a dashboard page.</p>
             <Link href="/overview">Go to Overview</Link>
           </main>
-        ) : <PageContent key={page} page={page} navigationCache={navigationCache.current} />}
+        ) : (
+          // OMN-24616 AC5: a page that throws while rendering shows its failure here; the frame stays.
+          <PageErrorBoundary key={page} resetKey={`${location}?${search}`} title={PAGE_LABELS[page]}>
+            <PageContent page={page} navigationCache={navigationCache.current} />
+          </PageErrorBoundary>
+        )}
       </FrameLayout>
       {/* Assistant deferred for MVP at composition: its hooks never mount. */}
-      {isOpen && <CommandPalette onClose={close} />}
+      {/* OMN-24616 AC4 (D3): the local pages have no palette; its route is not served there. */}
+      {isOpen && !page?.startsWith('local-') && page !== 'delegation-evidence' && <CommandPalette onClose={close} />}
     </>
   );
 }

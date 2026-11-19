@@ -57,8 +57,8 @@ describe('Credentials as one table', () => {
   it('C2: a key whose provider GET /models does not list keeps its own row', async () => {
     render(<ModelKeys client={client()} keys={[key('anthropic')]} />);
     await screen.findByRole('article', { name: 'Gemini' });
-    // In one case with the listed providers (review fix): the served id with a capital first letter.
-    expect(within(row('Anthropic')).getByText('llm.anthropic.api_key')).toBeTruthy();
+    // OMN-24616 AC4: a provider the declared source does not know keeps its served name.
+    expect(within(row('anthropic')).getByText('llm.anthropic.api_key')).toBeTruthy();
   });
 
   it('C3: no secret and no full key reference id reaches the page', async () => {

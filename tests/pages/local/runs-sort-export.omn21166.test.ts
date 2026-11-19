@@ -17,7 +17,7 @@ const noSession = () => undefined;
 
 describe('sortRuns', () => {
   it('S2: duration and cost compare as numbers, in both directions', () => {
-    const rows = [run('a', { latency_ms: 10000, cost_usd: '10.2' }), run('b', { latency_ms: 900, cost_usd: '9.5' }), run('c', { latency_ms: 45000, cost_usd: '0.07' })];
+    const rows = [run('a', { execution_ms: 10000, cost_usd: '10.2' }), run('b', { execution_ms: 900, cost_usd: '9.5' }), run('c', { execution_ms: 45000, cost_usd: '0.07' })];
     expect(ids(sortRuns(rows, 'duration', 'asc', noSession))).toEqual(['b', 'a', 'c']);
     expect(ids(sortRuns(rows, 'duration', 'desc', noSession))).toEqual(['c', 'a', 'b']);
     expect(ids(sortRuns(rows, 'cost', 'asc', noSession))).toEqual(['c', 'b', 'a']);
@@ -25,7 +25,7 @@ describe('sortRuns', () => {
   });
 
   it('S1: a run with no recorded value is last whichever way the column sorts', () => {
-    const rows = [run('none', { latency_ms: null }), run('fast', { latency_ms: 5 }), run('text', { latency_ms: 'n/a' }), run('slow', { latency_ms: 50 })];
+    const rows = [run('none', { execution_ms: null }), run('fast', { execution_ms: 5 }), run('text', { execution_ms: 'n/a' }), run('slow', { execution_ms: 50 })];
     expect(ids(sortRuns(rows, 'duration', 'asc', noSession))).toEqual(['fast', 'slow', 'none', 'text']);
     expect(ids(sortRuns(rows, 'duration', 'desc', noSession))).toEqual(['slow', 'fast', 'none', 'text']);
   });
@@ -43,13 +43,13 @@ describe('sortRuns', () => {
   });
 
   it('S3: ties keep the order the rows came in', () => {
-    const rows = [run('first', { latency_ms: 7 }), run('second', { latency_ms: 7 }), run('third', { latency_ms: 7 })];
+    const rows = [run('first', { execution_ms: 7 }), run('second', { execution_ms: 7 }), run('third', { execution_ms: 7 })];
     expect(ids(sortRuns(rows, 'duration', 'asc', noSession))).toEqual(['first', 'second', 'third']);
     expect(ids(sortRuns(rows, 'duration', 'desc', noSession))).toEqual(['first', 'second', 'third']);
   });
 
   it('does not change the rows it is given', () => {
-    const rows = [run('b', { latency_ms: 2 }), run('a', { latency_ms: 1 })];
+    const rows = [run('b', { execution_ms: 2 }), run('a', { execution_ms: 1 })];
     sortRuns(rows, 'duration', 'asc', noSession);
     expect(ids(rows)).toEqual(['b', 'a']);
   });
@@ -57,7 +57,7 @@ describe('sortRuns', () => {
 
 describe('runsToJson / runsToCsv', () => {
   const shown = [
-    run('r1', { model_name: 'local-a', latency_ms: 700, cost_usd: null }),
+    run('r1', { model_name: 'local-a', execution_ms: 700, cost_usd: null }),
     run('r2', { model_name: 'cloud-b', quality_gate_detail: 'failed, "timeout"\nretry' }),
   ];
 
@@ -67,7 +67,7 @@ describe('runsToJson / runsToCsv', () => {
 
   it('E3: the CSV header is the served fields, in first-seen order, and no other', () => {
     const header = runsToCsv(shown).split('\r\n')[0];
-    expect(header).toBe('correlation_id,created_at,model_name,latency_ms,cost_usd,quality_gate_detail');
+    expect(header).toBe('correlation_id,created_at,model_name,execution_ms,cost_usd,quality_gate_detail');
   });
 
   it('E2: a missing value is an empty cell, never 0', () => {

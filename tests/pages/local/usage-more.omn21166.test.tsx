@@ -57,10 +57,10 @@ describe('Tokens by model', () => {
     expect(a.querySelectorAll('.gdb-bar.ins-seg')).toHaveLength(2);
   });
 
-  it('U2: a count the rows do not record draws no bar and reads not recorded, never 0', () => {
+  it('U2: a count the rows do not record draws no bar and reads not measured, never 0', () => {
     part('tokens-by-model');
     const b = within(screen.getByRole('figure', { name: 'Tokens in vs out by model' })).getByRole('listitem', { name: /^model-b:/ });
-    expect(b).toHaveAccessibleName('model-b: Not recorded tokens in, 40 tokens out');
+    expect(b).toHaveAccessibleName('model-b: Not measured tokens in, 40 tokens out');
     expect(b.querySelectorAll('.gdb-bar.ins-seg')).toHaveLength(1);
     expect(b).not.toHaveTextContent(/\b0 tokens in/);
   });

@@ -59,7 +59,7 @@ describe('OMN-20816 read-only model providers on the Credentials page', () => {
     expect(within(row('OpenAI')).getByText('Last test failed · 401 invalid api key')).toBeTruthy();
     expect(within(row('OpenAI')).getByText('401 invalid api key', { selector: 'pre' }).closest('details')?.open).toBe(false);
     expect(within(row('Ollama')).getByText('Not set up')).toBeTruthy();
-    expect(screen.queryByText('Anthropic')).toBeNull();
+    expect(screen.queryByText('anthropic')).toBeNull();
   });
 
   // OMN-21970 AC10 (Lakshman 2026-11-02, keeping OMN-20816 decision b): the server still lists only the four, but a name
@@ -68,8 +68,8 @@ describe('OMN-20816 read-only model providers on the Credentials page', () => {
     const served = [...rows(), { provider: 'anthropic', set_up: true, last_test: null, models: ['claude-x'] }] as unknown as ModelProviderRow[];
     render(<ModelKeys client={client(served)} />);
     await screen.findByRole('article', { name: 'Gemini' });
-    expect(screen.getAllByRole('article').map((card) => card.getAttribute('aria-label'))).toEqual(['Gemini', 'OpenRouter', 'OpenAI', 'Ollama', 'Anthropic']);
-    expect(within(row('Anthropic')).getByText('claude-x')).toBeTruthy();
+    expect(screen.getAllByRole('article').map((card) => card.getAttribute('aria-label'))).toEqual(['Gemini', 'OpenRouter', 'OpenAI', 'Ollama', 'anthropic']);
+    expect(within(row('anthropic')).getByText('claude-x')).toBeTruthy();
   });
 
   it('R2: there is no button, form, input or key field anywhere, whatever the states', async () => {

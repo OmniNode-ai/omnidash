@@ -53,20 +53,21 @@ describe('UsageByModelDayTable', () => {
   it('renders Not measured for a day and model with no measured run, never 0 (AC4)', () => {
     render(<UsageByModelDayTable rows={[row({ cost_usd: 4, measured_cost_usd: null, unmeasured_call_count: 1, call_count: 1 })]} />);
     const cells = within(screen.getAllByRole('row')[1]!);
-    expect(cells.getByText('Not measured')).toBeInTheDocument();
+    expect(cells.getAllByText('Not measured').length).toBeGreaterThan(0);
     expect(cells.getByText('1 unmeasured')).toBeInTheDocument();
     expect(screen.queryByText(/^\$?0(?:\.0+)?$/)).not.toBeInTheDocument();
     expect(screen.queryByText(/\$4.00/)).not.toBeInTheDocument();
   });
 
-  // OMN-22168 (Lakshman 2026-11-05): as the run table writes them, a measured zero is the muted "$0" with the served
-  // "$0.00" as its title, and no unmeasured run is a quiet dash titled so.
-  it('renders a measured zero as a zero ($0, served $0.00) and no unmeasured run as a dash', () => {
+  // OMN-22168; OMN-24616 AC6 (Lakshman 2026-11-18, "$0.00" everywhere): as the run table writes them, a measured zero is
+  // the muted "$0.00" with the served "$0.00" as its title, and no unmeasured run is a quiet dash titled so.
+  it('renders a measured zero as a muted $0.00 and no unmeasured run as a dash', () => {
     render(<UsageByModelDayTable rows={[row({ cost_usd: 0, measured_cost_usd: 0, unmeasured_call_count: 0 })]} />);
     const cells = within(screen.getAllByRole('row')[1]!);
-    expect(cells.getByText('$0')).toHaveAttribute('title', '$0.00');
+    expect(cells.getByText('$0.00')).toHaveAttribute('title', '$0.00');
     expect(cells.getByTitle('No unmeasured calls')).toHaveTextContent('—');
-    expect(screen.queryByText('Not measured')).not.toBeInTheDocument();
+    // OMN-24616 AC6: this fixture serves no share, so only the share cell reads Not measured; the measured zero does not.
+    expect(screen.queryAllByText('Not measured').every(node => node.closest('td')?.getAttribute('data-label') === 'Share of calls')).toBe(true);
   });
 
   it('formats a Postgres NUMERIC as served money, up to four decimals under $1 (Jonah 2026-11-06), trailing zeros trimmed', () => {
@@ -76,12 +77,12 @@ describe('UsageByModelDayTable', () => {
     expect(screen.queryByText(/0\.25000000/)).not.toBeInTheDocument();
   });
 
-  it('renders Not recorded when the server serves no unmeasured count, never 0', () => {
+  it('renders Not measured when the server serves no unmeasured count, never 0', () => {
     const { unmeasured_call_count: _omitted, ...served } = row({});
     render(<UsageByModelDayTable rows={[served]} />);
     // Read by column: since OMN-21015 the tier and share cells of this fixture, which serves neither, also say Not recorded.
     const column = screen.getAllByRole('columnheader').map((h) => h.textContent).indexOf('Unmeasured');
-    expect(within(screen.getAllByRole('row')[1]!).getAllByRole('cell')[column]).toHaveTextContent('Not recorded');
+    expect(within(screen.getAllByRole('row')[1]!).getAllByRole('cell')[column]).toHaveTextContent('Not measured');
   });
 
   it('renders every served row: the server scopes the read, the browser filters nothing (AC-T)', () => {

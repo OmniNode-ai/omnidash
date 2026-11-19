@@ -1,0 +1,259 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+schema_version: "1.0.0"
+ticket_id: "OMN-24616"
+title: "The local dashboard pages compute figures from partial reads, hard-code lists and show one value several ways"
+summary: >-
+  Acceptance for OMN-24616, copied from the live ticket on 2026-11-16, for all eight criteria across three pull
+  requests: the first (#517) delivers AC5 and AC7, the second (#518) AC2 and AC6, and this one AC1, AC3, AC4 and
+  AC8. AC1: Usage reads every page of runs (decision D1) and Overview's failure list reads the quality gate's served
+  counts. AC3: a day with no runs adds zero to a window total, and All time, custom-range and Usage charts span the
+  served data with no 30-day cap. AC4: provider, tier and window lists come from one declared source outside the
+  pages, an unknown key renders by its served name, and the local pages have no command palette (decision D3). AC8:
+  Settings shows the baseline price itself, and the model provider status is re-read by Refresh and the poll. Each
+  criterion is declared here and bound to its tests.
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+context:
+  ac_binding_provenance:
+    dod-omn24616-ac1-accepted-20261118t0545z:
+      - label: "AC1"
+        criterion_hash: "b084dcce3a69a890e69593ce0a3698b9a6b60e09505f0dc10947aab54f1d23e0"
+        proposed_by: "lane=dod-closeout-bind-2026-11-18T0545Z-c1"
+        accepted_by: "lane=dod-closeout-accept-2026-11-18T0545Z-c1"
+    dod-omn24616-ac3-accepted-20261118t0545z:
+      - label: "AC3"
+        criterion_hash: "b2a822e0ce78d8a14848167b17faff57437b00f411732856be8dd0b3485254c0"
+        proposed_by: "lane=dod-closeout-bind-2026-11-18T0545Z-c1"
+        accepted_by: "lane=dod-closeout-accept-2026-11-18T0545Z-c1"
+    dod-omn24616-ac4-accepted-20261118t0545z:
+      - label: "AC4"
+        criterion_hash: "a3a42921615be27059fd2db8906481d40426451d41629dff0e980a56dbd28c9f"
+        proposed_by: "lane=dod-closeout-bind-2026-11-18T0545Z-c1"
+        accepted_by: "lane=dod-closeout-accept-2026-11-18T0545Z-c1"
+    dod-omn24616-ac8-accepted-20261118t0545z:
+      - label: "AC8"
+        criterion_hash: "e0820228f780813d02fa0192321df76dde08622ed4289cb9b73d8808e3fe86cb"
+        proposed_by: "lane=dod-closeout-bind-2026-11-18T0545Z-c1"
+        accepted_by: "lane=dod-closeout-accept-2026-11-18T0545Z-c1"
+requirements:
+  - id: "req-omn24616-windows-and-served-lists"
+    statement: >-
+      Window totals count a day with no runs as zero, charts follow the served data with no fixed cap, and the pages
+      keep no provider, tier, window or node-id list of their own.
+    acceptance:
+      - id: "AC1"
+        statement: >-
+          no local page computes a window figure from a partial page of rows; each comes from a served aggregate, or the
+          page states how many runs it covers -- falsifier: npx vitest with 501 served decisions and a served aggregate
+          fails unless Usage analysis and Overview's failure list show the served values
+      - id: "AC3"
+        statement: >-
+          a window with days that have no runs shows zero for those days, not Unavailable, and every chart honours the
+          selected window with no fixed 30-day cap -- falsifier: npx vitest with a 7-day window holding 2 days of runs
+          fails unless the spend and savings tiles show values, and a 90-day window fails unless 90 days are plotted
+      - id: "AC4"
+        statement: >-
+          the local pages hold no provider, tier, task-type, window or node-id list of their own; each comes from GET
+          /models, the served rows or one contract-declared source -- falsifier: npx vitest serving a provider, a tier
+          and a task type the code has never seen fails unless each renders by its served name, and a grep test fails
+          on a provider-id or tier-id literal under src/pages/local
+  - id: "req-omn24616-settings-price-and-status"
+    statement: >-
+      Settings shows the baseline price per million tokens, and provider status follows Refresh and the poll.
+    acceptance:
+      - id: "AC8"
+        statement: >-
+          Settings shows the baseline price itself, and provider status is re-read by Refresh and the poll like the
+          keys table beside it -- falsifier: npx playwright test fails unless the price per million tokens is shown
+          and a provider status change appears after Refresh
+  - id: "req-omn24616-one-rate-scale"
+    statement: >-
+      Every rate on the local pages is held as a 0-1 share and written once as a percent, so a chart and its table
+      read the same number.
+    acceptance:
+      - id: "AC6"
+        statement: >-
+          one formatter set serves every page: a missing value reads Not measured, durations, shares and money follow
+          one rule each, every page header shows its Updated time, and Delegation Evidence uses the same components and
+          loading and error wording as the other pages -- falsifier: npx playwright test over the six pages fails on a
+          second spelling of a missing value, a page without an Updated time, or two precisions for one quantity
+      - id: "AC2"
+        statement: >-
+          every rate is held on one scale and shown once as a percent, so Pass rate per day reads 80.6% in both chart
+          and table -- falsifier: npx vitest rendering the table view of a 0.806 daily rate fails unless the cell
+          reads 80.6%
+  - id: "req-omn24616-served-reads-refuse-malformed-answers"
+    statement: >-
+      Every served response a local page reads is parsed, and a failed, refused or malformed read shows its reason and
+      no figure.
+    acceptance:
+      - id: "AC5"
+        statement: >-
+          every served response a local page reads is parsed with a schema before use; a failed, refused or malformed
+          read shows its reason and no figure, never Loading... or an empty success, and every local page sits in an
+          error boundary that names the failure -- falsifier: npx vitest serving a malformed body and a refusal for
+          each endpoint fails unless the page shows the reason, and npx playwright test opening
+          /overview?window=constructor fails if the page goes blank
+  - id: "req-omn24616-runs-export-and-way-back"
+    statement: >-
+      Runs export writes no cell a spreadsheet would run as a formula, and a run opened from Runs leads back to the
+      same Runs view.
+    acceptance:
+      - id: "AC7"
+        statement: >-
+          Runs export neutralises cells that start with =, +, - or @, and a run opened from Runs shows a Runs
+          breadcrumb and a back link to the same Runs view -- falsifier: npx vitest exporting =HYPERLINK(x) fails
+          unless the cell is neutralised, and npx playwright test fails unless the back link returns to Runs
+evidence_requirements: []
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
+dod_evidence:
+  - id: "dod-omn24616-ac8"
+    description: >-
+      AC8 in settings-price-and-status.omn24616.test.tsx: the served baseline price per 1k reads as the price per
+      million tokens, a row with no price reads Not measured, and a provider status change appears after Refresh and
+      after the poll. All four tests fail on dev 37470cfeaafb0175c8f4b6fdf577b116bfde3e3b.
+    source: "manual"
+    binds_ac: ["AC8"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm test -- --run tests/pages/local/settings-price-and-status.omn24616.test.tsx"
+  - id: "dod-omn24616-ac3"
+    description: >-
+      AC3: insights.omn21166-mockup.test.ts sums a 7-day window holding one served day as a value (a missing day adds
+      zero) and walks every subset of served days and nulls; overview-metering-kpis.omn21166.test.tsx shows values for
+      a custom range with a quiet day inside it; insight-charts.omn21166.test.tsx C13 plots every served day for All
+      time. C13 fails against the 30-day cap.
+    source: "manual"
+    binds_ac: ["AC3"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm test -- --run tests/pages/local/insights.omn21166-mockup.test.ts tests/pages/local/overview-metering-kpis.omn21166.test.tsx src/pages/local/insight-charts.omn21166.test.tsx"
+  - id: "dod-omn24616-ac4"
+    description: >-
+      AC4: served-lists.omn24616.test.tsx scans src/pages/local for provider-id, tier-id and window-list literals and
+      renders an unseen provider, tier and task type by their served names; command-palette-local.omn24616.test.tsx
+      opens no palette on Overview and keeps it on the canvas dashboard. Both fail before the change.
+    source: "manual"
+    binds_ac: ["AC4"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm test -- --run tests/pages/local/served-lists.omn24616.test.tsx tests/app/command-palette-local.omn24616.test.tsx"
+  - id: "dod-omn24616-ac1"
+    description: >-
+      AC1 in served-figures.omn24616.test.tsx: Usage walks every page of decisions, and with 501 decisions and a served
+      failure category of 576 Overview's failure list shows 576, not the rows' 205. All three tests fail before the
+      change.
+    source: "manual"
+    binds_ac: ["AC1"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm test -- --run tests/pages/local/served-figures.omn24616.test.tsx"
+  - id: "dod-omn24616-ac2"
+    description: >-
+      AC2 in pass-rate-scale.omn24616.test.tsx. It serves 25 passed and 6 failed runs on one day, asserts the run
+      summary holds the pass rate as a share (0.806), and opens Pass rate per day as a table: the chart label and the
+      table cell read 80.6% and no cell reads 8064.5%. Both tests fail on dev
+      d7278ead539f77122af0fcc83980e8bcd4bbac27.
+    source: "manual"
+    binds_ac: ["AC2"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm test -- --run src/pages/local/pass-rate-scale.omn24616.test.tsx"
+  - id: "dod-omn24616-ac7"
+    description: >-
+      AC7 in three test files. csv-cell.test.ts and runs-sort-export.csv.test.ts export a served =HYPERLINK(x) and
+      cells starting with +, - and @, and assert each is neutralised. runs-back-link.omn24616.test.tsx opens a run
+      from a filtered Runs view and asserts the run address carries that view, the Workflow breadcrumb links Runs
+      back to it, a crafted from parameter (another site, another page) is refused, and a run opened elsewhere shows
+      no Runs crumb. Three of its four tests fail on dev d7278ead539f77122af0fcc83980e8bcd4bbac27.
+    source: "manual"
+    binds_ac: ["AC7"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm test -- --run src/theme/format/csv-cell.test.ts src/pages/local/runs-sort-export.csv.test.ts src/navigation/runs-back-link.omn24616.test.tsx"
+  - id: "dod-omn24616-ac7-e2e"
+    description: >-
+      AC7's falsifier in a browser: tests/e2e/runs-back.omn24616.spec.ts opens a run from a filtered Runs view and fails
+      unless the Runs breadcrumb and the Back to Runs link both return to that same view, and a neighbouring run keeps
+      the way back.
+    source: "manual"
+    binds_ac: ["AC7"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx playwright test tests/e2e/runs-back.omn24616.spec.ts --project=chromium --workers=1 --retries=0"
+  - id: "dod-omn24616-ac5"
+    description: >-
+      AC5 per endpoint. http-snapshot-source.malformed.test.ts refuses a snapshot body that is neither an envelope nor
+      rows; served-responses.omn24616.test.ts refuses a projection body without a rows array, a log-entries body that
+      is not rows, and a provider row with a malformed field, each with its reason, and still reads a well-formed one;
+      DelegationEvidencePage.omn24616-failed-read.test.tsx renders the page with every read failed and finds the
+      reason on each panel and no Loading or "recorded yet"; model-keys.omn24616-malformed.test.tsx shows the provider
+      table's malformed-row reason and no provider; App.page-error-boundary.test.tsx keeps the frame up when a page
+      throws; page-headline.window-param.test.ts reads a constructor window key as no window. The malformed-body and
+      failed-read tests fail on dev.
+    source: "manual"
+    binds_ac: ["AC5"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm test -- --run src/data-source/http-snapshot-source.malformed.test.ts tests/services/served-responses.omn24616.test.ts src/pages/DelegationEvidencePage.omn24616-failed-read.test.tsx src/pages/DelegationEvidencePage.omn24616-real-path.test.tsx tests/pages/local/model-keys.omn24616-malformed.test.tsx src/App.page-error-boundary.test.tsx src/pages/local/page-headline.window-param.test.ts"
+  - id: "dod-omn24616-ac6"
+    description: >-
+      AC6: header-updated.omn24616.test.tsx (every page shows its Updated time), usage-analysis.omn24616-share and
+      -duration tests (one share and one duration rule), DelegationEvidencePage.omn24616-shared-states.test.tsx (the
+      shared empty state and the local loading and error words), and the Playwright spec
+      tests/e2e/one-formatter-set.omn24616.spec.ts over the six pages, which failed on 5 of 6 pages before the
+      fixes and passes 6 of 6 after.
+    source: "manual"
+    binds_ac: ["AC6"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm test -- --run tests/pages/local/header-updated.omn24616.test.tsx src/pages/local/usage-analysis.omn24616-share.test.tsx src/pages/local/usage-analysis.omn24616-duration.test.tsx src/pages/DelegationEvidencePage.omn24616-shared-states.test.tsx"
+  - id: "dod-omn24616-ac6-e2e"
+    description: >-
+      AC6's falsifier in a browser: tests/e2e/one-formatter-set.omn24616.spec.ts over the six local pages fails on a
+      second spelling of a missing value, a page without an Updated time, or two precisions for one quantity, shares
+      and money both (OMN-24616 closer review 2026-11-18: money was unchecked). Every visible amount follows the one
+      money rule, and runs costing exactly $0, $0.25 and $1.50 fail it on Runs, Usage and a run's Workflow detail while
+      a measured zero reads the short "$0" instead of "$0.00" (Lakshman 2026-11-18).
+    source: "manual"
+    binds_ac: ["AC6"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx playwright test tests/e2e/one-formatter-set.omn24616.spec.ts --project=chromium --workers=1 --retries=0"
+  - id: "dod-omn24616-ac1-accepted-20261118t0545z"
+    description: "AC1 accepted binding (lane=dod-closeout-accept-2026-11-18T0545Z-c1): proposed by lane=dod-closeout-bind-2026-11-18T0545Z-c1, re-run green on omnidash origin/dev 8c242112 in a clean worktree on 2026-11-18 (7 passed); with the product changes of omnidash#521 (8c242112) reverted at dev, 5 of 7 fail."
+    source: "manual"
+    binds_ac: ["AC1"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm test -- --run tests/pages/local/served-figures.omn24616.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn24616-ac3-accepted-20261118t0545z"
+    description: "AC3 accepted binding (lane=dod-closeout-accept-2026-11-18T0545Z-c1): proposed by lane=dod-closeout-bind-2026-11-18T0545Z-c1, re-run green on omnidash origin/dev 8c242112 in a clean worktree on 2026-11-18 (31 passed); with the product changes of omnidash#521 (8c242112) reverted at dev, 4 of 31 fail."
+    source: "manual"
+    binds_ac: ["AC3"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm test -- --run tests/pages/local/insights.omn21166-mockup.test.ts tests/pages/local/overview-metering-kpis.omn21166.test.tsx src/pages/local/insight-charts.omn21166.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn24616-ac4-accepted-20261118t0545z"
+    description: "AC4 accepted binding (lane=dod-closeout-accept-2026-11-18T0545Z-c1): proposed by lane=dod-closeout-bind-2026-11-18T0545Z-c1, re-run green on omnidash origin/dev 8c242112 in a clean worktree on 2026-11-18 (6 passed); with the product changes of omnidash#521 (8c242112) reverted at dev, both files fail."
+    source: "manual"
+    binds_ac: ["AC4"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm test -- --run tests/pages/local/served-lists.omn24616.test.tsx tests/app/command-palette-local.omn24616.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn24616-ac8-accepted-20261118t0545z"
+    description: "AC8 accepted binding (lane=dod-closeout-accept-2026-11-18T0545Z-c1): proposed by lane=dod-closeout-bind-2026-11-18T0545Z-c1, re-run green on omnidash origin/dev 8c242112 in a clean worktree on 2026-11-18 (4 passed); with the product changes of omnidash#521 (8c242112) reverted at dev, 4 of 4 fail."
+    source: "manual"
+    binds_ac: ["AC8"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm test -- --run tests/pages/local/settings-price-and-status.omn24616.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"

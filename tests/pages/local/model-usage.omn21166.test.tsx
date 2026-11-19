@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // OMN-21166 (Lakshman, live review 2026-10-25: "before Tier mix we need to add Model usage"): each model's runs from
 // delegation.model-routing.v1's served by_model. Failure modes, each with a test below:
-//   M1  a model served without a count is drawn as 0 (or dropped) instead of Not recorded;
+//   M1  a model served without a count is drawn as 0 (or dropped) instead of Not measured;
 //   M2  a real share under 0.1% rounds to 0.0% and reads as no runs;
 //   M3  the shares are recomputed in the browser instead of read from pct_of_total;
 //   M4  with no by_model served the panel draws empty bars instead of saying so.
@@ -21,10 +21,10 @@ describe('ModelUsagePanel', () => {
     expect(screen.getByText('4 runs · 2 models')).toBeInTheDocument();
   });
 
-  it('M1: a model with no served count reads Not recorded', () => {
+  it('M1: a model with no served count reads Not measured', () => {
     render(<ModelUsagePanel row={{ total_delegations: 3, by_model: [
       { model_name: 'local-a', total_count: 3, pct_of_total: 1 }, { model_name: 'cloud-b', total_count: null, pct_of_total: null }] }} />);
-    expect(values()).toContain('Not recorded');
+    expect(values()).toContain('Not measured');
     expect(values()).not.toContain('0');
   });
 

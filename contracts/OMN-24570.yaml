@@ -16,7 +16,6 @@ interface_change: false
 interfaces_touched:
   - "topics"
   - "public_api"
-  - "database"
 requirements:
   - id: "req-omn24570-bounded-first-load"
     statement: >-
