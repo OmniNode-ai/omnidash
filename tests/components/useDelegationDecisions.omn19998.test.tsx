@@ -63,7 +63,7 @@ describe('OMN-24472 AC3: the decisions timer poll reads the newest page, never t
   });
 
   // AC3: the interval tick re-walking the run history — every poll after the first must be one newest-page read.
-  it('AC3: the first fetch walks a 1,200-run store, then two interval ticks add exactly two requests, none with since, and the new runs show', async () => {
+  it('AC3: the first fetch reads one newest page of a 1,200-run store, then two interval ticks add exactly two requests, none with since, and the new runs show', async () => {
     const { rows, urls } = serve(1200);
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
@@ -74,9 +74,10 @@ describe('OMN-24472 AC3: the decisions timer poll reads the newest page, never t
 
     await act(async () => { await vi.advanceTimersByTimeAsync(50); });
     const loaded = urls.length;
-    expect(loaded).toBe(4);
-    expect(urls.slice(0, loaded).filter(url => url.includes('since=')).length).toBe(3);
-    expect(screen.getByTestId('row-count').textContent).toBe('1200');
+    // OMN-19998: the first load reads the newest page only (it used to walk: 4 requests, 3 of them since-pages).
+    expect(loaded).toBe(1);
+    expect(urls.slice(0, loaded).filter(url => url.includes('since=')).length).toBe(0);
+    expect(screen.getByTestId('row-count').textContent).toBe('500');
     expect(screen.getByTestId('newest-id').textContent).toBe('id-1200');
 
     rows.push(...Array.from({ length: 20 }, (_, index) => runRow(1201 + index)));
@@ -84,7 +85,8 @@ describe('OMN-24472 AC3: the decisions timer poll reads the newest page, never t
     await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
     expect(urls.length).toBe(loaded + 2);
     expect(urls.slice(loaded).some(url => url.includes('since='))).toBe(false);
-    expect(screen.getByTestId('row-count').textContent).toBe('1220');
+    // The held 500 (runs 701-1200) and the newest 500 (721-1220) overlap: 520 distinct runs.
+    expect(screen.getByTestId('row-count').textContent).toBe('520');
     expect(screen.getByTestId('newest-id').textContent).toBe('id-1220');
   });
 });

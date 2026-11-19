@@ -1,8 +1,9 @@
 // OMN-24472: a page timer poll never walks the run history.
 //
-// fetchDelegationDecisions walks every served page on the FIRST load; every later fetch passes the result the caller
-// already holds and reads only the newest page, merged into what is held. Failure modes, each with a test below:
-//   T1  the unbounded walk itself: the measured 'before' first load, 201 requests for a 120,896-run store
+// fetchDelegationDecisions reads only the newest page, on the first load (OMN-19998: the first-load walk is gone) and on
+// every later fetch, which passes the result the caller already holds and merges the newest page into it. Older runs
+// are read by fetchMoreDelegationDecisions, one page per call. Failure modes, each with a test below:
+//   T1  the unbounded walk itself: the measured 'before' first load, 201 requests for a 120,896-run store; now one
 //   T2  a poll with a complete held result walking the run history again instead of reading one newest page
 //   T3  a newest page behind a gap of unread runs reading as continuous with the held snapshot
 //   T4  a failed newest page dropping the held history instead of surfacing it as stale
@@ -11,6 +12,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   fetchDelegationDecisions,
+  fetchMoreDelegationDecisions,
   mergeNewestDecisionResults,
   type DelegationDecisionRow,
   type ProjectionResult,
@@ -56,6 +58,13 @@ function serve(runs: number, options: { failNewest?: boolean } = {}) {
   return { rows, urls, sinces };
 }
 
+/** The runs a viewer holds after pressing Load more until the walk ends (the held result the poll tests start from). */
+async function heldAfterWalk(): Promise<ProjectionResult<DelegationDecisionRow>> {
+  let held = await fetchDelegationDecisions();
+  while (held.truncated === true) held = await fetchMoreDelegationDecisions(held);
+  return held;
+}
+
 const cursors = (rows: readonly { projection_cursor?: unknown }[]) => rows.map(row => row.projection_cursor);
 const resultOf = (
   rows: unknown[],
@@ -74,19 +83,22 @@ describe('OMN-24472: a page timer poll never walks the run history', () => {
   beforeEach(() => { vi.restoreAllMocks(); });
   afterEach(() => { vi.unstubAllGlobals(); });
 
-  // T1, the measured 'before': with nothing held the first load walks every page the exposure serves.
-  it('T1: a first read of a 120,896-run store with no held data makes exactly 201 requests (1 newest + 200 since-pages)', async () => {
+  // T1, the measured 'before': with nothing held the first load walked every page the exposure serves (201 requests for
+  // this store). OMN-19998: it reads the newest page only.
+  it('T1: a first read of a 120,896-run store with no held data makes exactly 1 request and no since-page', async () => {
     const { urls, sinces } = serve(120_896);
     const result = await fetchDelegationDecisions();
-    expect(urls).toHaveLength(201);
-    expect(sinces).toHaveLength(200);
+    expect(urls).toHaveLength(1);
+    expect(sinces).toHaveLength(0);
+    expect(result.rows).toHaveLength(500);
+    expect(result.truncated).toBe(true);
     expect(result.complete).toBe(false);
   });
 
   // T2: a poll with a complete held result walking the run history again instead of reading one newest page.
   it('T2: held 1,200 complete runs, 20 new arrive — the poll makes one request with no since and returns 1,220 distinct rows, newest first, complete', async () => {
     const { rows, urls } = serve(1200);
-    const held = await fetchDelegationDecisions();
+    const held = await heldAfterWalk();
     expect(held.complete).toBe(true);
     const before = urls.length;
     rows.push(...Array.from({ length: 20 }, (_, index) => runRow(1201 + index)));
@@ -102,7 +114,7 @@ describe('OMN-24472: a page timer poll never walks the run history', () => {
   // T3: a newest page behind a gap of unread runs reading as continuous with the held snapshot.
   it('T3: held 1,200 complete runs, 700 new arrive — the newest 500 share no run with held, so one request returns complete false and truncated true', async () => {
     const { rows, urls } = serve(1200);
-    const held = await fetchDelegationDecisions();
+    const held = await heldAfterWalk();
     const before = urls.length;
     rows.push(...Array.from({ length: 700 }, (_, index) => runRow(1201 + index)));
     const result = await fetchDelegationDecisions(held);
@@ -118,7 +130,7 @@ describe('OMN-24472: a page timer poll never walks the run history', () => {
   it('T4: a 503 on the newest page keeps all 1,200 held rows, reads stale, leaves complete unchanged, one request', async () => {
     const options: { failNewest?: boolean } = {};
     const { urls } = serve(1200, options);
-    const held = await fetchDelegationDecisions();
+    const held = await heldAfterWalk();
     expect(held.complete).toBe(true);
     const before = urls.length;
     options.failNewest = true;
@@ -130,22 +142,23 @@ describe('OMN-24472: a page timer poll never walks the run history', () => {
     expect(result.complete).toBe(true);
   });
 
-  // T5: a held result that cannot anchor a poll — zero rows, or a degradedReason — polling as if history were held.
-  it('T5: a held result with zero rows, or with degradedReason set, falls back to the full walk', async () => {
+  // T5: a held result that cannot anchor a poll — zero rows, or a degradedReason — polling as if history were held. It
+  // falls back to the newest page alone (OMN-19998: no fetch walks the history), never to a walk.
+  it('T5: a held result with zero rows, or with degradedReason set, reads the newest page alone (one request, no walk)', async () => {
     const emptyHeld: ProjectionResult<DelegationDecisionRow> = {
       rows: [], rowCount: 0, freshness: 'fresh', latestEventAt: null, isDegraded: false, degradedReason: null,
     };
     const { urls } = serve(1200);
     const before = urls.length;
     await fetchDelegationDecisions(emptyHeld);
-    expect(urls.length - before).toBeGreaterThan(1);
+    expect(urls.length - before).toBe(1);
 
     const degraded = serve(1200);
-    const full = await fetchDelegationDecisions();
+    const full = await heldAfterWalk();
     const beforeDegraded = degraded.urls.length;
-    // OMN-24616 AC5: a failed read carries its failureReason, as readProjection's failure path writes it.
-    await fetchDelegationDecisions({ ...full, degradedReason: 'HTTP 503', failureReason: 'HTTP 503', isDegraded: true });
-    expect(degraded.urls.length - beforeDegraded).toBeGreaterThan(1);
+    const read = await fetchDelegationDecisions({ ...full, degradedReason: 'HTTP 503', failureReason: 'HTTP 503', isDegraded: true });
+    expect(degraded.urls.length - beforeDegraded).toBe(1);
+    expect(read.rows).toHaveLength(500);
   });
 
   // OMN-24616 AC6: a refused newest page keeps the held rows and says the poll failed, so no page reads it as a new read.

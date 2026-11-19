@@ -4,34 +4,31 @@ import type { BoundProjectionSnapshot, LocalPageLoadOptions, LocalPageName } fro
 export type LocalLoadTrigger = 'mount' | 'manual' | 'timer';
 
 /**
- * OMN-19998: how far one page load may walk the decisions history (the exposure's since-pages).
+ * OMN-19998: how far one page load may walk the decisions history (the exposure's since-pages): it may not walk it at
+ * all. Every page and every trigger — mount, Refresh, timer poll — gets { maxPages: 0 }, one newest-page read.
  *
- * Only the Runs page ('runs') lists every run, so only it may walk the history, and only when the viewer opens it
- * (trigger 'mount') or presses Refresh ('manual'): it returns undefined, the loader's full walk. Every other case
- * reads only the newest page (maxPages 0):
- *   - the Runs page on a 'timer' trigger passes previous = held when held exists and has no failure; OMN-24473: also
- *     when a failed poll left the last good rows on it (lastGoodAt, set by the loader's withLastGood), passing held
- *     without its failure and lastGoodAt so mergeNewestDecisions merges into the history the page already walked;
- *   - every other page, a missing held snapshot, and a failed one with no last good rows read the newest page alone
- *     ({ maxPages: 0 }).
+ * The Runs page keeps its previous rules for all triggers, so a load merges the newest page into the runs the page
+ * already holds instead of replacing them:
+ *   - held without a failure passes previous = held;
+ *   - OMN-24473: when a failed poll left the last good rows on it (lastGoodAt, set by the loader's withLastGood), it
+ *     passes held without its failure and lastGoodAt, so mergeNewestDecisions merges into the rows the page keeps;
+ *   - every other page, a missing held snapshot, and a failed one with no last good rows read the newest page alone.
  *
- * Why: a page's timer poll must never walk the whole run history. The decisions exposure's since-pages used to be
- * read every poll, and the dev runtime was loaded by ~180 requests a minute from the Overview page doing exactly
- * that every 30 s (a 120,896-run store costs 201 decisions requests per poll; a poll now costs one).
+ * Why: no dashboard page may walk the run history on a first load, a Refresh or a timer poll. A 120,896-run store
+ * costs 201 decisions requests walked end to end and loaded the dev Postgres to 110% CPU; a page load now costs one.
+ * Older runs are read only by the viewer's Load more control (the loader's loadMoreDecisions), one page per press.
  */
 export function decisionsWalkFor(
   pageName: LocalPageName,
-  trigger: LocalLoadTrigger,
+  _trigger: LocalLoadTrigger,
   held: BoundProjectionSnapshot | undefined,
 ): LocalPageLoadOptions['decisionsWalk'] {
-  // OMN-24616 AC1 (decision D1): Usage's analysis is a window figure too, so it walks every page as Runs does.
-  if (pageName !== 'runs' && pageName !== 'usage') return { maxPages: 0 };
-  if (trigger !== 'timer') return undefined;
+  if (pageName !== 'runs') return { maxPages: 0 };
   if (held === undefined) return { maxPages: 0 };
   if (!held.failure) return { maxPages: 0, previous: held };
-  // One failed poll must not cost the page its full history (OMN-24473): rows a good read left behind stay on the
-  // snapshot, so the next poll merges the newest page into them. mergeNewestDecisions returns the newest page alone
-  // when previous.failure is set, so both marks are stripped; a failure without them means nothing good was kept.
+  // One failed poll must not cost the page its rows (OMN-24473): rows a good read left behind stay on the snapshot,
+  // so the next load merges the newest page into them. mergeNewestDecisions returns the newest page alone when
+  // previous.failure is set, so both marks are stripped; a failure without them means nothing good was kept.
   if (typeof held.lastGoodAt !== 'string') return { maxPages: 0 };
   const { failure: _failure, lastGoodAt: _lastGoodAt, ...previous } = held;
   return { maxPages: 0, previous };

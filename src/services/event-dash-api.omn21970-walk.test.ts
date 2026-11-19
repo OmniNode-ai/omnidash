@@ -5,8 +5,10 @@
 //   E2  the ranked first page and the walk overlap, so runs are counted twice
 //   E3  a walk page that fails is presented as complete
 //   E4  a store of 500 runs or fewer sends walk requests it does not need
+// OMN-19998: the first load no longer walks (it reads the newest page only); the viewer's Load more reads one since-page
+// per press through fetchMoreDelegationDecisions, and E1 to E3 hold that press-by-press walk to the same four modes.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fetchDelegationDecisions } from './event-dash-api';
+import { fetchDelegationDecisions, fetchMoreDelegationDecisions } from './event-dash-api';
 
 vi.mock('@/data-source/projection-base-url', () => ({
   resolveProjectionBaseUrl: () => '',
@@ -51,9 +53,13 @@ describe('OMN-21970: Delegation Evidence reads every served run', () => {
   beforeEach(() => { vi.restoreAllMocks(); });
   afterEach(() => { vi.unstubAllGlobals(); });
 
-  it('E1, E2: 1,200 served runs read as 1,200 distinct runs, newest first, and the read is complete', async () => {
+  it('E1, E2: 1,200 served runs: the first load reads the newest 500 in one request; Load more presses read all 1,200 distinct runs, newest first, complete', async () => {
     const { sinces } = serve(1200);
-    const result = await fetchDelegationDecisions();
+    let result = await fetchDelegationDecisions();
+    expect(result.rows).toHaveLength(500);
+    expect(result.complete).toBe(false);
+    expect(sinces).toEqual([]);
+    while (result.truncated === true) result = await fetchMoreDelegationDecisions(result);
     expect(result.rows).toHaveLength(1200);
     expect(new Set(cursors(result.rows as never)).size).toBe(1200);
     expect(cursors(result.rows as never)[0]).toBe(1200);
@@ -61,13 +67,16 @@ describe('OMN-21970: Delegation Evidence reads every served run', () => {
     expect(sinces).toEqual(['0', '500', '1000']);
   });
 
-  it('E3: a failed walk page keeps the runs read so far and marks the read incomplete', async () => {
+  it('E3: a failed Load more page keeps the runs read so far and leaves the read incomplete', async () => {
     serve(1200, '500');
-    const result = await fetchDelegationDecisions();
-    expect(result.complete).toBe(false);
-    expect(result.rows.length).toBeGreaterThanOrEqual(500);
-    expect(result.rows.length).toBeLessThan(1200);
-    expect(new Set(cursors(result.rows as never)).size).toBe(result.rows.length);
+    const first = await fetchDelegationDecisions();
+    const pressed = await fetchMoreDelegationDecisions(first);
+    expect(pressed.rows.length).toBeGreaterThanOrEqual(500);
+    const failed = await fetchMoreDelegationDecisions(pressed);
+    expect(failed).toBe(pressed);
+    expect(failed.complete).toBe(false);
+    expect(failed.rows.length).toBeLessThan(1200);
+    expect(new Set(cursors(failed.rows as never)).size).toBe(failed.rows.length);
   });
 
   it('E4: 500 runs or fewer is one read, complete, with no walk', async () => {

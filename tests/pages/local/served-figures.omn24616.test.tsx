@@ -27,9 +27,9 @@ const decision = (index: number, failed: boolean) => ({
 const rows = Array.from({ length: 501 }, (_, index) => decision(index, index < 205));
 
 describe('OMN-24616 AC1: window figures from served aggregates', () => {
-  it('A1: Usage walks every page of decisions on open and on Refresh, as Runs does', () => {
-    expect(decisionsWalkFor('usage', 'mount', undefined)).toBeUndefined();
-    expect(decisionsWalkFor('usage', 'manual', undefined)).toBeUndefined();
+  it('A1: Usage reads the newest page of decisions on open and on Refresh (OMN-19998 bounds every page)', () => {
+    expect(decisionsWalkFor('usage', 'mount', undefined)).toEqual({ maxPages: 0 });
+    expect(decisionsWalkFor('usage', 'manual', undefined)).toEqual({ maxPages: 0 });
     expect(decisionsWalkFor('overview', 'mount', undefined)).toEqual({ maxPages: 0 });
   });
 

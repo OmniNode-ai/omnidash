@@ -219,6 +219,13 @@ interface RunsTableProps {
   pageSize?: number;
   syncUrl?: boolean;
   truncated?: boolean;
+  /**
+   * OMN-19998: the viewer's Load more control for the run history. No load walks the history, so a truncated list
+   * names where its read stopped; each press reads exactly one more page of older runs. Absent outside the Runs page.
+   */
+  onLoadMore?: () => void;
+  loadingMore?: boolean;
+  loadMoreError?: string | null;
 }
 
 /**
@@ -309,7 +316,7 @@ function FailedStatus({ run }: { run: Row }) {
  * paged. The backend is the served backend_id; a run served without one is filtered as Not recorded. No
  * per-run saving or baseline price: savings are window totals from metering-summary.v1 only (OMN-19980 AC2).
  */
-export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25, syncUrl = false, truncated = false }: RunsTableProps) {
+export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25, syncUrl = false, truncated = false, onLoadMore, loadingMore = false, loadMoreError = null }: RunsTableProps) {
   const chartsSlot = useContext(RunChartsSlot);
   const routingSlot = useContext(RunRoutingSlot);
   const id = useId();
@@ -738,6 +745,15 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
             <span>{`Runs ${current * pageSize + 1}–${current * pageSize + page.length} of ${formatDashboardCount(shown.length)}`}</span>
             <button type="button" aria-label="Previous page" disabled={current === 0} onClick={() => updateView({ page: current })}>Previous</button>
             <button type="button" aria-label="Next page" disabled={current >= pages - 1} onClick={() => updateView({ page: current + 2 })}>Next</button>
+            {/* OMN-19998: no load walks the run history, so a truncated list offers the viewer the rest, one page per
+                press. The next cursor starts an ASCENDING walk from the OLDEST run, so a press adds the earliest unread
+                page of history — the copy names that and claims no contiguity with the rows above. No button when the
+                read is complete (not truncated). */}
+            {truncated && onLoadMore && <>
+              <button type="button" aria-label="Load more runs" disabled={loadingMore} onClick={onLoadMore}>{loadingMore ? 'Loading…' : 'Load more runs'}</button>
+              <span>Showing the runs read so far; each press reads one more page of runs from the oldest end.</span>
+            </>}
+            {loadMoreError != null && <span role="alert">{loadMoreError}</span>}
           </div>
           {/* OMN-21166 part 18 AC118: the run charts sit in the page's one "More analysis" (RunChartsSlot). */}
           {/* Outside the Runs page (no slot provided) the list draws its charts after itself. */}
