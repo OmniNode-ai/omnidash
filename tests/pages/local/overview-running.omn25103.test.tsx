@@ -92,6 +92,8 @@ describe('running_figure_from_served_projection', () => {
   it.each([
     [['running', 'running', 'integrated', 'running'], '3'],
     [['integrated', 'running'], '1'],
+    // States other than running and integrated, so only an exact 'running' match gives 2.
+    [['queued', 'running', 'failed', 'settled', 'running'], '2'],
   ])('the Running figure is the number of served rows marked running (%j)', async (states, figure) => {
     served.rows = states.map((state, index) => passRow(`k${index}`, state));
     const card = await renderOverview();
