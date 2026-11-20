@@ -105,14 +105,27 @@ describe('done_figure_from_served_projection', () => {
     expect(within(card!).getByText('Not measured')).toBeInTheDocument();
     // The reason the read gave, not only that it failed.
     expect(within(card!).getByText(/The read failed: .*503/)).toBeInTheDocument();
-    expect(within(card!).queryByText('0')).toBeNull();
+    expect(within(card!).queryByText(/^\s*0\b/)).toBeNull();
   });
 
-  it('an empty read shows Not measured, never 0', async () => {
+  it('an empty read shows Not measured with its reason, never 0', async () => {
     const card = await renderOverview();
     expect(card).not.toBeNull();
     expect(within(card!).getByText('Not measured')).toBeInTheDocument();
-    expect(within(card!).queryByText('0')).toBeNull();
+    expect(within(card!).getByText('The read returned no rows.')).toBeInTheDocument();
+    expect(within(card!).queryByText(/^\s*0\b/)).toBeNull();
+  });
+
+  // A row without its ticket is not a done item the figure can count, so the card says why instead of counting it.
+  it('a served row missing its ticket shows Not measured with the reason, not a count', async () => {
+    const unkeyed: Record<string, unknown> = { ...doneRow('OMN-2') };
+    delete unkeyed.ticket;
+    served.doneRows = [doneRow('OMN-1'), unkeyed];
+    const card = await renderOverview();
+    expect(card).not.toBeNull();
+    expect(within(card!).getByText('Not measured')).toBeInTheDocument();
+    expect(within(card!).getByText('A served row is missing the field the count needs.')).toBeInTheDocument();
+    expect(within(card!).queryByText(/^\s*[12]\b/)).toBeNull();
   });
 
   it('an exposure not served yet says so once, beside one Not measured, never 0', async () => {
@@ -121,6 +134,6 @@ describe('done_figure_from_served_projection', () => {
     expect(card).not.toBeNull();
     expect(within(card!).getAllByText(/Not measured/)).toHaveLength(1);
     expect(within(card!).getByText('Done items are not served yet.')).toBeInTheDocument();
-    expect(within(card!).queryByText('0')).toBeNull();
+    expect(within(card!).queryByText(/^\s*0\b/)).toBeNull();
   });
 });
