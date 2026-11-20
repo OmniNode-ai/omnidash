@@ -1,14 +1,14 @@
 schema_version: "1.0.0"
 ticket_id: "OMN-25104"
-title: "The Done card computes its figure from the served done items, never 0 for an unread or empty store (not yet on the Overview page)"
+title: "The Overview page shows the Done figure from the served done items, never 0 for an unread, empty or unserved store"
 summary: >-
   omnimarket's node_projection_done_items serves onex.snapshot.projection.done-items.v1, one row per done ticket
   (omnimarket#6418). ServedCountCard is the Done figure: the count of the served rows, computed from them alone,
   with Not measured and the reason when the read fails, serves no rows, or serves a row without its ticket, never 0.
-  No omnidash code reads work_ledger_rows. Binding the card on the Overview page follows once the lab serves the
-  exposure, because the pages bind only exposures the captured lab catalogue marks ok. Until that follow-up lands,
-  this contract proves the card's logic only: no page shows the Done figure yet, so passing it does not meet the
-  ticket's AC3 for the visible figure, and OMN-25104 must not close on it.
+  No omnidash code reads work_ledger_rows. The Overview page binds the card (overview-done) to done-items.v1 in a
+  row under the headline cards; until the lab serves that exposure the card reads "Done items are not served yet."
+  This contract proves the card's logic and its placement in the page; the live page read after the lab serves the
+  exposure, and AC1 and AC2 in omnimarket, are outside it, so OMN-25104 must not close on it alone.
 is_seam_ticket: false
 interface_change: false
 interfaces_touched: []
@@ -41,3 +41,16 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: "npm test -- --run tests/pages/local/served-count-card.omn25104.test.tsx"
+  - id: "dod-omn25104-ac3-overview"
+    description: >-
+      AC3 on the Overview page, in overview-done.omn25104.test.tsx: the Overview contract binds a metric_card
+      overview-done to done-items.v1; the rendered page reads 3 for three served rows and 1 for one; a failed read
+      shows Not measured with the read's reason (503); an empty read shows Not measured with "The read returned no
+      rows."; a served row without its ticket shows Not measured with the missing-field reason, not a count; an
+      exposure not served yet shows one Not measured and "Done items are not served yet."; none shows 0. The file
+      fails on dev 3c179302459e172b575003a61a7d8a8314ab8eab, where the Overview page has no Done card.
+    source: "manual"
+    binds_ac: ["AC3"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm test -- --run tests/pages/local/overview-done.omn25104.test.tsx"
