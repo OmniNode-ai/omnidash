@@ -1,3 +1,4 @@
+import { DECISIONS_PAGE_LIMIT_DEFAULT } from '@/config/generated/data-source-defaults';
 import type { BoundProjectionSnapshot, LocalPageLoadOptions, LocalPageName } from '@/layout/local-page-loader';
 
 /** Why a local page started a load: the viewer opened it, pressed Refresh, or the page's timer fired. */
@@ -32,4 +33,15 @@ export function decisionsWalkFor(
   if (typeof held.lastGoodAt !== 'string') return { maxPages: 0 };
   const { failure: _failure, lastGoodAt: _lastGoodAt, ...previous } = held;
   return { maxPages: 0, previous };
+}
+
+/**
+ * OMN-26056: the decisions record window, declared config (contract.yaml refresh.decisions_page_limit). With a window set,
+ * the newest-page read and each Load more page ask the projection API for that many runs; the API serves at most its own
+ * page of 500 whatever is asked. With 0 no limit is sent. The default is 100. One run's own row (correlation_id)
+ * is never windowed.
+ */
+export function withDecisionsWindow(params: Readonly<Record<string, string>> | undefined): Readonly<Record<string, string>> | undefined {
+  if (DECISIONS_PAGE_LIMIT_DEFAULT <= 0 || params?.correlation_id !== undefined || params?.limit !== undefined) return params;
+  return { ...params, limit: String(DECISIONS_PAGE_LIMIT_DEFAULT) };
 }

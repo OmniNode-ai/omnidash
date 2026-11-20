@@ -21,6 +21,9 @@ vi.mock('@/data-source/data-source-override', async (importOriginal) => ({
 vi.mock('@/config/generated/data-source-defaults', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/config/generated/data-source-defaults')>()),
   PROJECTION_TENANT_ID_DEFAULT: '',
+  // OMN-26056: written for the former 30 s refresh and unwindowed decisions read, so it pins them.
+  REFRESH_INTERVAL_SECONDS_DEFAULT: 30,
+  DECISIONS_PAGE_LIMIT_DEFAULT: 0,
 }));
 
 import { LocalDashboardPage } from './LocalDashboardPage';
