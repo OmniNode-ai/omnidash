@@ -88,7 +88,7 @@
       "title": "Done",
       "row": 2,
       "col": 0,
-      "width": 12,
+      "width": 6,
       "height": 2,
       "data_source": "overview-done",
       "config": {
@@ -96,6 +96,23 @@
         "widget_type": "metric_card",
         "metric_key": "ticket",
         "label": "Done",
+        "format": "number",
+        "precision": 0
+      }
+    },
+    {
+      "widget_id": "5c2b7d0e-25a3-4f1c-9b03-25103a0f0c11",
+      "title": "Running",
+      "row": 2,
+      "col": 6,
+      "width": 6,
+      "height": 2,
+      "data_source": "overview-running",
+      "config": {
+        "config_kind": "metric_card",
+        "widget_type": "metric_card",
+        "metric_key": "state",
+        "label": "Running",
         "format": "number",
         "precision": 0
       }

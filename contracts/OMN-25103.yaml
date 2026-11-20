@@ -1,15 +1,15 @@
 schema_version: "1.0.0"
 ticket_id: "OMN-25103"
-title: "The Running card computes its figure from the served rows marked running, never 0 for an unread or empty store (not yet on the Overview page)"
+title: "The Overview page shows the Running figure from the served rows marked running, never 0 for an unread, empty or unserved store"
 summary: >-
   omnimarket's node_projection_floor_integration serves onex.snapshot.projection.floor-integration-rows.v1, one row
   per merged change with its state, from each hourly integration pass (omnimarket#6420). runningRowsCount is the
   Running figure: the number of served rows whose state is running, computed from them alone. Served rows with none
   running are a measured 0; a failed read, an empty read or a row without its state shows Not measured with the
-  reason, never 0. Binding the card on the Overview page follows once the lab serves the exposure, because the pages
-  bind only exposures the captured lab catalogue marks ok. Until that follow-up lands, this contract proves the
-  card's logic only: no page shows the Running figure yet, so passing it does not meet the ticket's AC2 and AC3 for
-  the visible figure, nor AC1, AC4 and AC5 in other repositories, and OMN-25103 must not close on it.
+  reason, never 0. The Overview page binds the card (overview-running) to floor-integration-rows.v1 beside the Done
+  card, under the headline cards; until the lab serves that exposure the card reads "Running changes are not served
+  yet." This contract proves the card's logic and its placement in the page; the live page read after the lab serves
+  the exposure, and AC1, AC4 and AC5 in other repositories, are outside it, so OMN-25103 must not close on it alone.
 is_seam_ticket: false
 interface_change: false
 interfaces_touched: []
@@ -53,3 +53,25 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: "npm test -- --run tests/pages/local/served-count-card.omn25103.test.tsx -t running_figure_unavailable"
+  - id: "dod-omn25103-ac2-overview"
+    description: >-
+      AC2 on the Overview page, in overview-running.omn25103.test.tsx: the Overview contract binds a metric_card
+      overview-running to floor-integration-rows.v1; the rendered page reads 3 for four served rows with three running
+      and 1 for two rows with one running; served rows with none running read a measured 0. The file fails on omnidash
+      dev 505e5758f7222fa696cdf5011a2d6bce68515b42, where the Overview page has no Running card.
+    source: "manual"
+    binds_ac: ["AC2"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm test -- --run tests/pages/local/overview-running.omn25103.test.tsx -t running_figure_from_served_projection"
+  - id: "dod-omn25103-ac3-overview"
+    description: >-
+      AC3 on the Overview page, in the same file: a failed read shows Not measured with the read's reason (503); an
+      empty read shows Not measured with "The read returned no rows."; a served row without its state shows Not
+      measured with the missing-field reason, not a partial count; an exposure not served yet shows one Not measured
+      and "Running changes are not served yet."; none shows 0.
+    source: "manual"
+    binds_ac: ["AC3"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm test -- --run tests/pages/local/overview-running.omn25103.test.tsx -t running_figure_unavailable"

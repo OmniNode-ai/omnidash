@@ -461,6 +461,8 @@ export const PANEL_CONCEPTS: Readonly<Record<string, string>> = {
   'overview-tokens': 'tokens', 'overview-last-run': 'last', 'overview-recent-runs': 'recent',
   // OMN-25104 AC3: the Done figure; no other Overview panel uses this concept, so it keeps its own icon and accent.
   'overview-done': 'completion',
+  // OMN-25103: the Running figure; execution is unused on Overview, so it too keeps its own icon and accent.
+  'overview-running': 'execution',
   'overview-insights': 'analysis', 'usage-insights': 'usage-analysis', 'runs-insights': 'analysis',
   'runs-tier-mix': 'tier-mix', 'overview-run-locally': 'local-run',
   'overview-avg-saving-per-call': 'saving-average', 'overview-baseline-spend': 'baseline',
