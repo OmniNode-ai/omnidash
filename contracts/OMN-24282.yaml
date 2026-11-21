@@ -6,7 +6,10 @@ title: "The Overview Activity breakdown tabs name the time window their numbers 
 summary: >-
   Acceptance for OMN-24282, copied from the live ticket on 2026-11-14. The Runs and Tokens tabs show the total for the
   window chosen in the time dropdown; they are now headed "Total runs" and "Total tokens", show their number alone
-  (the dropdown names the window) and none reads "per day" (Amendment 1, approved 2026-11-14). All three criteria are bound to tests/e2e/activity-breakdown-window-label.omn24282.spec.ts.
+  (the dropdown names the window) and none reads "per day" (Amendment 1, approved 2026-11-14). All three criteria are bound to tests/e2e/activity-breakdown-window-label.omn24282.spec.ts,
+  which holds one test per criterion (activity_breakdown_window_label_ac1, _ac2 and _ac3, added 2026-11-22); each
+  criterion's own item runs only its own test. The earlier items still run all three: the first runs the whole file,
+  and the three accepted on 2026-11-14 select activity_breakdown_window_label, which every title starts with.
 is_seam_ticket: false
 interface_change: false
 interfaces_touched: []
@@ -57,11 +60,13 @@ emergency_bypass:
 dod_evidence:
   - id: "dod-omn24282-activity-tab-window"
     description: >-
-      AC1-AC3 in one Playwright test. It serves metering rows for every Overview window (all time 900 runs, today 5,
-      last 7 days 25, last 15 days 65, last 30 days 145, last 90 days 305, tokens four per run) and, for each dropdown
-      choice, checks that the Total runs and Total tokens tabs show exactly that window's total, and that no tab reads
-      per day or carries a window suffix. It fails on dev ba7933b5778923c51aab50054ed1f878a21e3e69 (the runs tab reads
-      "Runs per day900 runs" with All time chosen) and passes with the fix.
+      AC1-AC3 in the whole spec file, which since 2026-11-22 holds one test per criterion. It serves metering rows for
+      every Overview window, with a row on each rolling window's first day, on the day before it and on the day after today (all time 900 runs,
+      today 1, last 7 days 3, last 15 days 15, last 30 days 63, last 90 days 255, tokens four per run), three models and
+      two tier-routed tiers, and for each window choice and two days picked in the calendar checks the four tabs'
+      headings, numbers and that none reads per day or carries a window suffix. The single test it held on 2026-11-14
+      failed on dev ba7933b5778923c51aab50054ed1f878a21e3e69 (the runs tab read "Runs per day900 runs" with All time
+      chosen) and passed with the fix.
     source: "manual"
     binds_ac: ["AC1", "AC2", "AC3"]
     checks:
@@ -91,4 +96,43 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: "npm ci --prefer-offline --no-audit --no-fund && npx playwright test tests/e2e/activity-breakdown-window-label.omn24282.spec.ts -g activity_breakdown_window_label --project=chromium --workers=1 --retries=0"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn24282-ac1-own-test"
+    description: >-
+      AC1 alone: activity_breakdown_window_label_ac1. It first requires the window menu to offer exactly the six listed
+      windows and the Activity breakdown to hold exactly the four tabs (runs, tokens, models, tiers); then, for each
+      window and for two days picked in the calendar (one past, and today), the tabs read "Total runs<n> runs", "Total tokens<n> tokens",
+      "Model usage<n> models" and "Tier mix<n> tiers" with nothing else, none contains "·", and none shows CSS
+      generated content or a title or aria label beyond its text. The served routing row
+      carries three models, so Model usage shows a number to judge.
+    source: "manual"
+    binds_ac: ["AC1"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx playwright test tests/e2e/activity-breakdown-window-label.omn24282.spec.ts -g activity_breakdown_window_label_ac1 --project=chromium --workers=1 --retries=0"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn24282-ac2-own-test"
+    description: >-
+      AC2 alone: activity_breakdown_window_label_ac2. For each listed window and two picked days, each of the four tabs
+      reads exactly its total heading and its total ("Total runs<n> runs", "Total tokens<n> tokens", "Model usage<n>
+      models", "Tier mix<n> tiers"), so no daily wording can stand beside a total, and no tab reads "per day" in any
+      case or spacing (per day, Per-day, per  day) in its text, CSS generated content, title or aria label.
+    source: "manual"
+    binds_ac: ["AC2"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx playwright test tests/e2e/activity-breakdown-window-label.omn24282.spec.ts -g activity_breakdown_window_label_ac2 --project=chromium --workers=1 --retries=0"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn24282-ac3-own-test"
+    description: >-
+      AC3 alone: activity_breakdown_window_label_ac3. For each listed window and two picked days, every tab's number is
+      the served total: runs 900, 1, 3, 15, 63 and 255, and 4 and 1 on the two picked days, tokens four per run, and the
+      served model and tier counts (3 models, and 2 tiers: a third served tier is not tier-routed and is not counted),
+      which are all time and the same in every window. With no all-time metering row, and once that load's metering read
+      has landed, All time's runs are the routing view's served total.
+    source: "manual"
+    binds_ac: ["AC3"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx playwright test tests/e2e/activity-breakdown-window-label.omn24282.spec.ts -g activity_breakdown_window_label_ac3 --project=chromium --workers=1 --retries=0"
         cwd: "${OMNI_HOME}/omnidash"
