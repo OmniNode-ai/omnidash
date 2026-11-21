@@ -20,7 +20,7 @@ type Contracts = {
 const CONTRACTS = JSON.parse(readFileSync('src/pages/local/overview.contracts.yaml', 'utf8')) as Contracts;
 const TOPICS = CONTRACTS.components.flatMap(component => (component.data_bindings ?? []).map(binding => binding.projection_topic));
 
-const served = vi.hoisted(() => ({ doneRows: [] as Record<string, unknown>[], doneFails: false, doneServed: true }));
+const served = vi.hoisted(() => ({ doneRows: [] as Record<string, unknown>[], doneFails: false, doneServed: true, doneTruncated: false }));
 
 vi.mock('echarts-for-react/lib/core', () => ({ default: () => <div /> }));
 vi.mock('@/theme', () => ({ useTheme: () => ({ theme: 'light', setTheme: () => {}, availableThemes: ['light', 'dark'] }) }));
@@ -30,7 +30,10 @@ vi.mock('@/data-source', () => ({
     readSnapshot: async (topic: string) => {
       if (topic === 'onex.snapshot.projection.done-items.v1') {
         if (served.doneFails) throw new Error('done-items read refused: 503');
-        return { rows: served.doneRows, rowCount: served.doneRows.length, dataFreshness: 'fresh', latestEventAt: null, readAt: '2026-11-19T17:00:00Z' };
+        return {
+          rows: served.doneRows, rowCount: served.doneRows.length, dataFreshness: 'fresh', latestEventAt: null, readAt: '2026-11-19T17:00:00Z',
+          ...(served.doneTruncated ? { truncated: true } : {}),
+        };
       }
       return { rows: [], rowCount: 0, dataFreshness: 'fresh', latestEventAt: null, readAt: '2026-11-19T17:00:00Z' };
     },
@@ -63,6 +66,7 @@ beforeEach(() => {
   served.doneRows = [];
   served.doneFails = false;
   served.doneServed = true;
+  served.doneTruncated = false;
 });
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 
@@ -126,6 +130,17 @@ describe('done_figure_from_served_projection', () => {
     expect(within(card!).getByText('Not measured')).toBeInTheDocument();
     expect(within(card!).getByText('A served row is missing the field the count needs.')).toBeInTheDocument();
     expect(within(card!).queryByText(/^\s*[12]\b/)).toBeNull();
+  });
+
+  // A truncated read is one page of a longer list: counting its rows would show a short figure as if it were measured.
+  it('a truncated read shows Not measured with the reason, not the page\'s row count', async () => {
+    served.doneRows = ['OMN-1', 'OMN-2', 'OMN-3'].map(doneRow);
+    served.doneTruncated = true;
+    const card = await renderOverview();
+    expect(card).not.toBeNull();
+    expect(within(card!).getByText('Not measured')).toBeInTheDocument();
+    expect(within(card!).getByText('The read returned one page of a longer list, so a count of it would be short.')).toBeInTheDocument();
+    expect(within(card!).queryByText('3')).toBeNull();
   });
 
   it('an exposure not served yet says so once, beside one Not measured, never 0', async () => {

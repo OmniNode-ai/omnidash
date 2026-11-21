@@ -362,6 +362,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
             const failure = !notServed && read?.failure ? { reason: read.failure.message } : null;
             const served = notServed ? [] : rows as ServedRows;
             return <ServedCountCard label="Done" rows={served} failure={failure} count={doneItemsCount(served)}
+              truncated={!notServed && read?.truncated === true}
               emptyCaption={notServed ? 'Done items are not served yet.' : undefined} />;
           })()
           // OMN-25103 AC2/AC3: the Running figure is the number of rows floor-integration-rows.v1 serves marked running;
