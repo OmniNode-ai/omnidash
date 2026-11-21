@@ -459,6 +459,8 @@ export const PANEL_CONCEPTS: Readonly<Record<string, string>> = {
   'status-environment': 'host',
   'overview-spend': 'cost', 'overview-savings': 'savings', 'overview-measured': 'calls',
   'overview-tokens': 'tokens', 'overview-last-run': 'last', 'overview-recent-runs': 'recent',
+  // OMN-25104 AC3: the Done figure; no other Overview panel uses this concept, so it keeps its own icon and accent.
+  'overview-done': 'completion',
   'overview-insights': 'analysis', 'usage-insights': 'usage-analysis', 'runs-insights': 'analysis',
   'runs-tier-mix': 'tier-mix', 'overview-run-locally': 'local-run',
   'overview-avg-saving-per-call': 'saving-average', 'overview-baseline-spend': 'baseline',
