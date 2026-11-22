@@ -597,7 +597,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
                       // OMN-24282 (Lakshman 2026-11-14): the tabs say they hold a total, never "per day"; the
                       // window is the dropdown's, so a tab shows its number alone.
                       return <DashboardTabs label="Overview charts" param="chart" tabs={[
-                        { id: 'runs', label: 'Total runs', tone: 'var(--ds-field-runs-daily)', icon: <CalendarRange size={18} />,
+                        { id: 'runs', label: 'Runs per day', tone: 'var(--ds-field-runs-daily)', icon: <CalendarRange size={18} />,
                           hint: Number.isFinite(runs) ? `${formatDashboardCount(runs)} runs` : 'Runs not measured', panel: () => slice('runs', 'Runs per day', 'runs-daily') },
                         { id: 'tokens', label: 'Total tokens', tone: 'var(--ds-field-tokens-daily)', icon: <ChartArea size={18} />,
                           hint: tokens !== null ? `${formatDashboardCount(tokens)} tokens` : 'Tokens not measured', panel: () => slice('tokens', 'Tokens per day', 'tokens-daily') },
