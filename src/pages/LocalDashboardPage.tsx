@@ -577,7 +577,8 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
                         : 'Runs and tokens for the chosen window; models and tiers are all time. Pick a chart.'}</p>
                       {/* Lakshman 2026-11-04 ("not happy ... use best design and impress user"): stat tabs. Each tab is a small
                         card with its glyph tile, the chart's name and a served headline (the routing view's run total and
-                        its model and tier counts; the window's token total, as the Tokens processed card reads it). */}
+                        its model and tier counts; the window's token total, as the Tokens processed card reads it, except that
+                        any row counting zero runs reads 0 here, where the card does so only for a summed range: OMN-26439). */}
                     {(() => {
                       const usage = page.components.find(candidate => candidate.component_id === 'overview-model-usage');
                       const routingValue = usage ? rawRowsFor(usage, snapshots, 0)[0] : undefined;

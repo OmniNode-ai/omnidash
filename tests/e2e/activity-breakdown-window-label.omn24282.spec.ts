@@ -214,9 +214,15 @@ test('activity_breakdown_window_label_ac3: every tab shows the served total for 
 // OMN-26439 (Lakshman 2026-11-21, decision D1 A on OMN-24282): a window with no runs used no tokens, so its tokens tab
 // reads 0 tokens, while a window whose runs all lack token counts still reads "Tokens not measured". Three picked days,
 // none in dayRuns: one with no served row (the page sums it into a row counting zero runs), one with a served row
-// counting zero runs, and one whose three runs all have unknown token counts. The title does not start
-// activity_breakdown_window_label, so the OMN-24282 criteria's commands still run only their own tests; the standing
-// CI job runs this whole file, so this case is part of that alarm.
+// counting zero runs, and one whose three runs all have unknown token counts. Its rows also drop the 2026-10-24 and
+// 2026-10-30 day rows, so Today and the last 7 days are run-less too: the rule holds for every kind of window, not only a
+// picked day. The title does not start activity_breakdown_window_label, so the three per-criterion OMN-24282 commands
+// (-g activity_breakdown_window_label_ac1/_ac2/_ac3) do not run it; OMN-24282's whole-file item and the standing CI job
+// run this whole file, so this case is part of that alarm.
+const runLessWindows: { name: WindowName; runs: string; tokens: string }[] = [
+  { name: 'Today (UTC)', runs: 'Total runs0 runs', tokens: 'Total tokens0 tokens' },
+  { name: 'Last 7 days (UTC)', runs: 'Total runs0 runs', tokens: 'Total tokens0 tokens' },
+];
 const emptyDays: { day: number; iso: string; runs: string; tokens: string }[] = [
   { day: 20, iso: '2026-10-20', runs: 'Total runs0 runs', tokens: 'Total tokens0 tokens' }, // no served row
   { day: 21, iso: '2026-10-21', runs: 'Total runs0 runs', tokens: 'Total tokens0 tokens' }, // a served row of zero runs
@@ -224,10 +230,27 @@ const emptyDays: { day: number; iso: string; runs: string; tokens: string }[] = 
 ];
 if (dayRuns.some(([day]) => emptyDays.some(empty => empty.iso === day))) throw new Error('an empty_window day has runs in dayRuns');
 const unknownTokens = { ...row('day', '2026-10-22', 3), runs_measured: 0, runs_unknown_tokens: 3, tokens_in: 0, tokens_out: 0 };
-const emptyRows = { ...rows, [meteringTopic]: [...rows[meteringTopic], row('day', '2026-10-21', 0), unknownTokens] };
+const lastSevenDays = new Set(['2026-10-24', '2026-10-30']);
+if (dayRuns.filter(([day]) => day >= '2026-10-24' && day <= '2026-10-30').some(([day]) => !lastSevenDays.has(day))) {
+  throw new Error('a dayRuns row inside the last 7 days is not dropped for empty_window');
+}
+const emptyRows = {
+  ...rows,
+  [meteringTopic]: [
+    row('all', '', 900),
+    ...dayRuns.filter(([day]) => !lastSevenDays.has(day)).map(([day, runs]) => row('day', day, runs)),
+    row('day', '2026-10-21', 0),
+    unknownTokens,
+  ],
+};
 
 test('empty_window: a window with no runs reads 0 tokens, and one whose runs all lack token counts reads Tokens not measured', async ({ page }) => {
   await openOverview(page, emptyRows);
+  for (const choice of runLessWindows) {
+    await chooseWindow(page, choice.name);
+    await expect(tab(page, 'runs'), `${choice.name}: runs tab`).toHaveText(choice.runs);
+    await expect(tab(page, 'tokens'), `${choice.name}: tokens tab`).toHaveText(choice.tokens);
+  }
   for (const choice of emptyDays) {
     await page.getByRole('button', { name: /^Pick a UTC day/ }).click();
     const calendar = page.getByRole('dialog');
