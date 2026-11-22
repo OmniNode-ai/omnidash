@@ -1,0 +1,52 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+schema_version: "1.0.0"
+ticket_id: "OMN-26439"
+title: "A window with no runs reads 0 tokens on the Overview's Total tokens tab"
+summary: >-
+  Acceptance for OMN-26439, copied from the live ticket on 2026-11-22. A window with no runs used no tokens, so the
+  Overview's Total tokens tab reads "0 tokens" there, while a window whose runs all lack token counts still reads
+  "Tokens not measured" (Lakshman 2026-11-21, decision D1 A on OMN-24282). AC1 is bound to the empty_window case in
+  tests/e2e/activity-breakdown-window-label.omn24282.spec.ts. AC2 is read on a lab host once a release carries the
+  change (kept as written, Lakshman 2026-11-22), so no check here binds it.
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-omn26439-empty-window-tokens"
+    statement: >-
+      The Total tokens tab shows a measured 0 for a window with no runs, and "Tokens not measured" only for a window
+      whose runs all lack token counts.
+    acceptance:
+      - id: "AC1"
+        statement: >-
+          a window with no runs shows "Total tokens0 tokens", not "Total tokensTokens not measured", while a window whose
+          runs all have unknown token counts still reads "Tokens not measured" -- falsifier: a Playwright case in
+          tests/e2e/activity-breakdown-window-label.omn24282.spec.ts (empty_window) serves no metering row for one
+          window, a row counting zero runs for a second, and a row of only unknown-token runs for a third, and fails
+          unless the first two read "Total tokens0 tokens" and the third "Total tokensTokens not measured"
+      - id: "AC2"
+        statement: >-
+          integrated: on a lab host running an install that carries the change, the served Overview shows "Total
+          tokens0 tokens" for a window with no runs -- falsifier: on the lab host, onex dashboard start, then in a
+          browser at <its URL>/overview pick a calendar day whose runs tab reads "Total runs0 runs", read back with the
+          URL, time, installed omnimarket version and the omnidash bundle version it serves, fails unless the bundle
+          carries the change and the tokens tab reads "Total tokens0 tokens"
+evidence_requirements: []
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
+dod_evidence:
+  - id: "dod-omn26439-ac1-empty-window"
+    description: >-
+      AC1: empty_window. It picks three October days in the calendar: 2026-10-20 with no served metering row,
+      2026-10-21 with a served row counting zero runs, and 2026-10-22 with a served row of three runs that all have
+      unknown token counts. It fails unless the first two read "Total runs0 runs" and "Total tokens0 tokens" and the
+      third reads "Total runs3 runs" and "Total tokensTokens not measured".
+    source: "manual"
+    binds_ac: ["AC1"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx playwright test tests/e2e/activity-breakdown-window-label.omn24282.spec.ts -g empty_window --project=chromium --workers=1 --retries=0"
+        cwd: "${OMNI_HOME}/omnidash"
