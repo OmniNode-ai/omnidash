@@ -195,7 +195,9 @@ jobs:
   # "Total runs" back to "Runs per day" would merge green. ci-summary needs it.
   activity-breakdown-labels:
     name: Activity breakdown labels (OMN-24282)
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest is ubuntu-26.04, where `playwright install` refuses
+    # ("Playwright does not support chromium on ubuntu26.04-x64").
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
 
     steps:
