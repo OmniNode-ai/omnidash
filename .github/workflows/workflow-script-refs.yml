@@ -119,6 +119,14 @@ jobs:
           python -m pytest tests/ci/test_public_runner_placement_omn19998.py
           -q --noconftest -p no:cacheprovider -c /dev/null
 
+      # OMN-24282 (VF-23): the Activity breakdown label alarm in ci.yml stays a
+      # standing check: it runs on every pull request to dev, unskipped, and CI
+      # Summary fails unless it succeeds. Here because this job is unconditional.
+      - name: Assert the OMN-24282 Activity breakdown label alarm stays wired
+        run: >-
+          python -m pytest tests/ci/test_activity_breakdown_alarm_omn24282.py
+          -q --noconftest -p no:cacheprovider -c /dev/null
+
       # OMN-9050: check-handshake.yml is the only omnibase_core pin; the bot
       # bumps it and every other workflow reads it, so none can fall behind.
       - name: Assert no workflow but the handshake carries an omnibase_core ref

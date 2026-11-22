@@ -142,9 +142,11 @@ dod_evidence:
       none. The standing alarm: ci.yml's job "Activity breakdown labels (OMN-24282)" runs on every pull request to dev,
       on ubuntu-24.04, installs Chromium and runs the three label tests, and CI Summary, a required check on pull
       requests to dev, fails unless that job succeeds. tests/ci/test_activity_breakdown_alarm_omn24282.py pins all of
-      that. It fails on dev's ci.yml (no such job) and on each of five deliberate breaks: the job dropped from CI
-      Summary's needs, the command's retries changed, an `if:` on the job, CI Summary's result check removed, and a
-      paths filter on pull_request.
+      that in ci.yml (that CI Summary is required lives in branch protection, not in the repository), and the Workflow
+      Script Reference Gate runs it on every pull request. It fails on dev's ci.yml (no such job) and on each of eight
+      deliberate breaks: the job dropped from CI Summary's needs, the command's retries changed, an `if:` on the job,
+      CI Summary's result check removed, a paths filter on pull_request, an `if:` on the test step,
+      continue-on-error on the job, and the guard's exit 1 moved to a later guard.
     source: "manual"
     checks:
       - check_type: "test_passes"

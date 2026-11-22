@@ -92,6 +92,10 @@ def test_alarm_job_installs_chromium_and_runs_the_three_label_tests():
             assert s.get("continue-on-error") is not True, (
                 "no step in the alarm job may set continue-on-error: true"
             )
+    assert "continue-on-error" not in job, "the alarm job must not set continue-on-error"
+    # A step-level if could skip the install or the tests while the job stays green.
+    assert "if" not in install_steps[0], "the Chromium install step must not have an 'if'"
+    assert "if" not in cmd_step, "the test step must not have an 'if'"
 
 
 def test_ci_summary_fails_unless_the_alarm_job_succeeds():
@@ -115,5 +119,10 @@ def test_ci_summary_fails_unless_the_alarm_job_succeeds():
     joined = "\n".join(scripts)
     marker = 'if [ "${{ needs.activity-breakdown-labels.result }}" != "success" ]; then'
     assert marker in joined, "ci-summary steps must contain the alarm-failure guard line"
-    idx = joined.index(marker)
-    assert "exit 1" in joined[idx:], "the guard must be followed by exit 1"
+    # Only the guard's own body counts: an exit 1 in a later guard must not satisfy this one.
+    after = joined[joined.index(marker) + len(marker):].splitlines()
+    closing = next((i for i, line in enumerate(after) if line.strip() == "fi"), None)
+    assert closing is not None, "the alarm-failure guard has no closing fi"
+    assert "exit 1" in [line.strip() for line in after[:closing]], (
+        "the alarm-failure guard must exit 1 inside its own if ... fi"
+    )
