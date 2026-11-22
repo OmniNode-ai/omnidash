@@ -584,7 +584,15 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
                       const routing = routingValue && typeof routingValue === 'object' && !Array.isArray(routingValue) ? routingValue as Row : null;
                       const metering = snapshots.find(snapshot => snapshot.topic === METERING_SUMMARY_TOPIC);
                       const picked = metering && !metering.failure ? pickMeteringRow(metering.rows, overviewWindow, now) : null;
-                      const tokens = picked && 'row' in picked ? meteringTokens(picked.row).total : null;
+                      // OMN-26439 (Lakshman 2026-11-21, decision D1 A on OMN-24282): a window with no runs used no tokens,
+                      // a measured 0 (the served or summed zeros, read, not typed), unlike a row whose every run lacks token
+                      // counts, which meteringTokens reads as not measured.
+                      const pickedRow = picked && 'row' in picked ? picked.row : null;
+                      const noRuns = pickedRow !== null && !isMissing(pickedRow.runs_total) && Number(pickedRow.runs_total) === 0
+                        && !isMissing(pickedRow.tokens_in) && !isMissing(pickedRow.tokens_out)
+                        && Number.isFinite(Number(pickedRow.tokens_in)) && Number.isFinite(Number(pickedRow.tokens_out));
+                      const tokens = pickedRow === null ? null
+                        : noRuns ? String(Number(pickedRow.tokens_in) + Number(pickedRow.tokens_out)) : meteringTokens(pickedRow).total;
                       // The runs headline follows the window, as the cards do; all time falls back to the routing total.
                       const windowRuns = picked && 'row' in picked && !isMissing(picked.row.runs_total) ? Number(picked.row.runs_total) : NaN;
                       const runs = Number.isFinite(windowRuns) ? windowRuns
