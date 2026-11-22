@@ -188,6 +188,58 @@ jobs:
           uv run --no-project --python 3.12 --with "$RUNNER_PLACEMENT_CORE" \
             python -m omnibase_core.handlers.handler_public_runner_placement_cli "${args[@]}"
 
+  # OMN-24282 Amendments 2 and 3 (Lakshman, approved 2026-11-22; VF-23): the
+  # standing alarm for the Overview's Activity breakdown tab labels, run on every
+  # pull request this workflow runs on. Before this job nothing outside the
+  # repo-evidence gate ran these Playwright tests, so a change relabelling
+  # "Total runs" back to "Runs per day" would merge green. ci-summary needs it.
+  activity-breakdown-labels:
+    name: Activity breakdown labels (OMN-24282)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Run the OMN-24282 Activity breakdown label tests
+        env:
+          CI: true
+        run: |
+          set -euo pipefail
+          # playwright.config.ts prefers /usr/bin/chromium when present, so
+          # this points it at the Chromium the step above installed.
+          PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH="$(node -e "console.log(require('playwright').chromium.executablePath())")"
+          export PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
+          if [ ! -x "$PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH" ]; then
+            echo "::error::Chromium executable not found at $PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"
+            exit 1
+          fi
+          npx playwright test tests/e2e/activity-breakdown-window-label.omn24282.spec.ts --project=chromium --workers=1 --retries=0
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-omn24282
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
   ci-summary:
     name: CI Summary
     runs-on: ubuntu-latest
@@ -195,6 +247,7 @@ jobs:
       - test
       - tenant-rls
       - public-runner-placement
+      - activity-breakdown-labels
     if: always()
 
     steps:
@@ -203,6 +256,7 @@ jobs:
           echo "Typecheck & Tests: ${{ needs.test.result }}"
           echo "Tenant RLS Isolation: ${{ needs.tenant-rls.result }}"
           echo "Public Runner Placement (OMN-19998): ${{ needs.public-runner-placement.result }}"
+          echo "Activity breakdown labels (OMN-24282): ${{ needs.activity-breakdown-labels.result }}"
 
           if [ "${{ needs.test.result }}" != "success" ]; then
             echo "::error::Typecheck & Tests did not pass."
@@ -216,6 +270,11 @@ jobs:
 
           if [ "${{ needs.public-runner-placement.result }}" != "success" ]; then
             echo "::error::Public Runner Placement (OMN-19998) did not pass."
+            exit 1
+          fi
+
+          if [ "${{ needs.activity-breakdown-labels.result }}" != "success" ]; then
+            echo "::error::Activity breakdown labels (OMN-24282) did not pass."
             exit 1
           fi
 
