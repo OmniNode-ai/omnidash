@@ -577,14 +577,23 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
                         : 'Runs and tokens for the chosen window; models and tiers are all time. Pick a chart.'}</p>
                       {/* Lakshman 2026-11-04 ("not happy ... use best design and impress user"): stat tabs. Each tab is a small
                         card with its glyph tile, the chart's name and a served headline (the routing view's run total and
-                        its model and tier counts; the window's token total, as the Tokens processed card reads it). */}
+                        its model and tier counts; the window's token total, as the Tokens processed card reads it, except that
+                        any row counting zero runs reads 0 here, where the card does so only for a summed range: OMN-26439). */}
                     {(() => {
                       const usage = page.components.find(candidate => candidate.component_id === 'overview-model-usage');
                       const routingValue = usage ? rawRowsFor(usage, snapshots, 0)[0] : undefined;
                       const routing = routingValue && typeof routingValue === 'object' && !Array.isArray(routingValue) ? routingValue as Row : null;
                       const metering = snapshots.find(snapshot => snapshot.topic === METERING_SUMMARY_TOPIC);
                       const picked = metering && !metering.failure ? pickMeteringRow(metering.rows, overviewWindow, now) : null;
-                      const tokens = picked && 'row' in picked ? meteringTokens(picked.row).total : null;
+                      // OMN-26439 (Lakshman 2026-11-21, decision D1 A on OMN-24282): a window with no runs used no tokens,
+                      // a measured 0 (the served or summed zeros, read, not typed), unlike a row whose every run lacks token
+                      // counts, which meteringTokens reads as not measured.
+                      const pickedRow = picked && 'row' in picked ? picked.row : null;
+                      const noRuns = pickedRow !== null && !isMissing(pickedRow.runs_total) && Number(pickedRow.runs_total) === 0
+                        && !isMissing(pickedRow.tokens_in) && !isMissing(pickedRow.tokens_out)
+                        && Number.isFinite(Number(pickedRow.tokens_in)) && Number.isFinite(Number(pickedRow.tokens_out));
+                      const tokens = pickedRow === null ? null
+                        : noRuns ? String(Number(pickedRow.tokens_in) + Number(pickedRow.tokens_out)) : meteringTokens(pickedRow).total;
                       // The runs headline follows the window, as the cards do; all time falls back to the routing total.
                       const windowRuns = picked && 'row' in picked && !isMissing(picked.row.runs_total) ? Number(picked.row.runs_total) : NaN;
                       const runs = Number.isFinite(windowRuns) ? windowRuns
