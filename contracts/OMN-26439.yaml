@@ -12,6 +12,13 @@ summary: >-
 is_seam_ticket: false
 interface_change: false
 interfaces_touched: []
+context:
+  ac_binding_provenance:
+    dod-omn26439-ac1-accepted-20261123t0345z:
+      - label: AC1
+        criterion_hash: ae80fbc329c6dcaa48b4dff993b7c3f9d75cfac893de8d40f8e6c976b05e4d50
+        proposed_by: lane=dod-closeout-bind-2026-11-23T0345Z-c0
+        accepted_by: lane=dod-closeout-accept-2026-11-23T0345Z-c0
 requirements:
   - id: "req-omn26439-empty-window-tokens"
     statement: >-
@@ -44,6 +51,18 @@ dod_evidence:
       2026-10-21 with a served row counting zero runs, and 2026-10-22 with a served row of three runs that all have
       unknown token counts. It fails unless the first two read "Total runs0 runs" and "Total tokens0 tokens" and the
       third reads "Total runs3 runs" and "Total tokensTokens not measured".
+    source: "manual"
+    binds_ac: ["AC1"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx playwright test tests/e2e/activity-breakdown-window-label.omn24282.spec.ts -g empty_window --project=chromium --workers=1 --retries=0"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn26439-ac1-accepted-20261123t0345z"
+    description: >-
+      AC1, accepted by a second lane: the empty_window Playwright case serves no metering row for one day, a row
+      counting zero runs for a second and a row of only unknown-token runs for a third, and fails unless the first two
+      read "Total tokens0 tokens" and the third "Total tokensTokens not measured". With the product change of
+      omnidash#537 (5870118c45) reverted, it fails on the tokens tab ("Total tokensTokens not measured").
     source: "manual"
     binds_ac: ["AC1"]
     checks:
