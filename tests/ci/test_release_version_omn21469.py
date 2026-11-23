@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2025 OmniNode.ai Inc.
 # SPDX-License-Identifier: MIT
-"""Pin the release version the v1.1.14 dashboard bundle is cut from (OMN-21469, AC1; moved by OMN-23212).
+"""Pin the release version the v1.1.15 dashboard bundle is cut from (OMN-21469, AC1; moved by OMN-26457).
 
 `onex dashboard` serves the bundle omnimarket pins, and publish-dashboard-bundle.yml
 builds that bundle from the commit a `vX.Y.Z` tag names. The tag is cut on the
@@ -26,7 +26,7 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-RELEASE = "1.1.14"
+RELEASE = "1.1.15"
 
 
 def _json(name: str) -> dict:

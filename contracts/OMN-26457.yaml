@@ -1,0 +1,38 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+schema_version: "1.0.0"
+ticket_id: "OMN-26457"
+title: "OmniDash 1.1.15 ships the OMN-26439 fix"
+summary: >-
+  Acceptance for OMN-26457, copied from the live ticket on 2026-11-22. omnidash dev moves to 1.1.15 so the v1.1.15 tag
+  carries 5870118c (OMN-26439). AC1 is bound to tests/ci/test_release_version_omn21469.py. AC2 (the tag and its
+  release) and AC3 (the omnimarket pin) are proved after merge by readbacks and the omnimarket pin test, so this contract lists only AC1 (Lakshman, YES BATCH-1073 BUMP-CONTRACT-26457-B).
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-omn26457-omnidash-1115"
+    statement: >-
+      omnidash releases 1.1.15 so the bundle an install serves carries 5870118c.
+    acceptance:
+      - id: "AC1"
+        statement: >-
+          omnidash dev declares 1.1.15 in package.json version, package-lock.json version and package-lock.json
+          packages[""].version -- falsifier: tests/ci/test_release_version_omn21469.py with RELEASE = "1.1.15" fails
+          on dev before the bump and passes after it
+evidence_requirements: []
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
+dod_evidence:
+  - id: "dod-omn26457-ac1-release-version"
+    description: >-
+      AC1: tests/ci/test_release_version_omn21469.py pins package.json version, package-lock.json version and
+      package-lock.json packages[""].version to 1.1.15; it fails on dev's 1.1.14.
+    source: "manual"
+    binds_ac: ["AC1"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "uv run --no-project --python 3.12 --with pytest python -m pytest tests/ci/test_release_version_omn21469.py -q --noconftest -p no:cacheprovider -c /dev/null"
+        cwd: "${OMNI_HOME}/omnidash"
