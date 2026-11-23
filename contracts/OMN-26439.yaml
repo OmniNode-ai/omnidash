@@ -12,6 +12,13 @@ summary: >-
 is_seam_ticket: false
 interface_change: false
 interfaces_touched: []
+context:
+  ac_binding_provenance:
+    dod-omn26439-ac1-empty-window:
+      - label: "AC1"
+        criterion_hash: "ae80fbc329c6dcaa48b4dff993b7c3f9d75cfac893de8d40f8e6c976b05e4d50"
+        proposed_by: "lane=dod-closeout-bind-2026-11-23T0545Z-c0"
+        accepted_by: "lane=dod-closeout-accept-2026-11-23T0545Z-c0"
 requirements:
   - id: "req-omn26439-empty-window-tokens"
     statement: >-
