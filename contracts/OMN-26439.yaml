@@ -50,3 +50,22 @@ dod_evidence:
       - check_type: "test_passes"
         check_value: "npm ci --prefer-offline --no-audit --no-fund && npx playwright test tests/e2e/activity-breakdown-window-label.omn24282.spec.ts -g empty_window --project=chromium --workers=1 --retries=0"
         cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn26439-ac1-accepted-20261122t2345z"
+    description: >-
+      AC1: empty_window, as proposed by the binder lane and accepted by a second lane. The case serves no metering row
+      for 2026-10-20, a row counting zero runs for 2026-10-21 and a row of three unknown-token runs for 2026-10-22, and
+      fails unless the first two read "Total tokens0 tokens" and the third "Total tokensTokens not measured". With the
+      LocalDashboardPage.tsx change of omnidash#537 reverted it fails, reading "Total tokensTokens not measured".
+    source: "manual"
+    binds_ac: ["AC1"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx playwright test tests/e2e/activity-breakdown-window-label.omn24282.spec.ts -g empty_window --project=chromium --workers=1 --retries=0"
+        cwd: "${OMNI_HOME}/omnidash"
+context:
+  ac_binding_provenance:
+    dod-omn26439-ac1-accepted-20261122t2345z:
+      - label: "AC1"
+        criterion_hash: "ae80fbc329c6dcaa48b4dff993b7c3f9d75cfac893de8d40f8e6c976b05e4d50"
+        proposed_by: "lane=dod-closeout-bind-2026-11-22T2345Z-c0"
+        accepted_by: "lane=dod-closeout-accept-2026-11-22T2345Z-c0"
