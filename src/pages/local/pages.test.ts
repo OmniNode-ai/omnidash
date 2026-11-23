@@ -154,7 +154,8 @@ describe('local dashboard page contracts', () => {
     // OMN-19980 Amendment 2: the headline cards read metering-summary.v1, whose rows never decide the page state
     // (each card says why its own figure is missing), so the page state is read off the first other binding.
     const overviewBinding = page.components.map((c) => c.data_bindings?.[0])
-      .find((b) => b !== undefined && b.projection_topic !== 'onex.snapshot.projection.metering-summary.v1');
+      .find((b) => b !== undefined && b.projection_topic !== 'onex.snapshot.projection.metering-summary.v1'
+        && b.projection_topic !== 'onex.snapshot.projection.done-items.v1');
     expect(overviewBinding).toBeDefined();
     const snapshots = [{
       topic: overviewBinding?.projection_topic ?? '',
