@@ -42,8 +42,10 @@ dod_evidence:
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn26515-ac2-unreadable-store"
     description: >-
-      AC2: the metering and routing projections answer 503, and the check fails unless the Total runs tab and the
-      status strip read "Runs not measured" and never "0 runs" in every window. The unreadable half is preserved
+      AC2: two cases. The metering and routing projections both answer 503; and only the routing projection answers
+      503 beside an empty metering read (OMN-26515 review finding). The check fails unless the Total runs tab and the
+      status strip read "Runs not measured" and never "0 runs" in every window. The routing-only case fails at the
+      merge base 0e0d3a43, where the status strip read "0 runs" (measured 2026-11-24). The both-unreadable case is preserved
       behaviour, so it passes at the merge base by design; its can-fail proof is the recorded control that drops the
       read-failure guard from windowRunCount (an empty-only check), under which the cannot-be-read case fails reading
       "0 runs" (measured 2026-11-24 at c337d788, 1 failed). The command also runs the S6 strip case
