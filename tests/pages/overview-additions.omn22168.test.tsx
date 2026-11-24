@@ -5,7 +5,8 @@
  *   S1 no runtime row reads "Runtime status not recorded", never running;  S2 a stopped or degraded runtime shows its own
  *   state and reason, not the running tone;  S3 no served run time never reads "0 min ago";  S4 the run total is the
  *   routing view's served total_delegations, never a count of the rows read;  S5 a read that did not cover the window
- *   shows no median (Lakshman 2026-11-04: no "(latest N runs)", the line follows the chosen window);
+ *   shows no median (Lakshman 2026-11-04: no "(latest N runs)", the line follows the chosen window);  S6 (OMN-26515)
+ *   an empty store reads "0 runs", never "Runs not measured", and a store that could not be read stays not measured;
  * Overview may not bind delegation.summary.v1 (the reader answers it by hand-written SQL) and a headline card reads one
  * source (OMN-19980), so the run time lives on the status line, not on Agent calls.
  *   C1 Savings keeps its short caption with the percentage in its hover;  C3 Agent calls keeps its one-source line.
@@ -74,6 +75,17 @@ describe('status strip', () => {
     const strip = screen.getByRole('status', { name: 'Runtime status' });
     expect(strip.textContent).not.toMatch(/Median run|latest/);
     expect(strip.textContent).toContain('Last run 3 min ago');
+  });
+
+  it('S6 (OMN-26515): an empty store reads "0 runs", an unreadable one stays "Runs not measured"', () => {
+    render(<OverviewStatusStrip env={ENV} decisions={[]} routing={null} metering={[]} now={NOW} complete />);
+    const empty = screen.getByRole('status', { name: 'Runtime status' });
+    expect(empty.textContent).toContain('0 runs');
+    expect(empty.textContent).not.toContain('Runs not measured');
+    render(<OverviewStatusStrip env={ENV} decisions={[]} routing={null} metering={null} now={NOW} complete />);
+    const unreadable = screen.getAllByRole('status', { name: 'Runtime status' })[1]!;
+    expect(unreadable.textContent).toContain('Runs not measured');
+    expect(unreadable.textContent).not.toContain('0 runs');
   });
 });
 
