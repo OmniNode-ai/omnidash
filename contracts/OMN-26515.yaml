@@ -42,11 +42,17 @@ dod_evidence:
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn26515-ac2-unreadable-store"
     description: >-
-      AC2: the metering and routing projections answer 503. It fails unless the Total runs tab and the status strip read
-      "Runs not measured" and never "0 runs" in every window.
+      AC2: the metering and routing projections answer 503, and the check fails unless the Total runs tab and the
+      status strip read "Runs not measured" and never "0 runs" in every window. The unreadable half is preserved
+      behaviour, so it passes at the merge base by design; its can-fail proof is the recorded control that drops the
+      read-failure guard from windowRunCount (an empty-only check), under which the cannot-be-read case fails reading
+      "0 runs" (measured 2026-11-24 at c337d788, 1 failed). The command also runs the S6 strip case
+      (tests/pages/overview-additions.omn22168.test.tsx), whose empty-store assertion is red at the merge base
+      (measured 2026-11-24 at bca36b98, 1 failed, 8 passed) and green on the branch (9 passed), so the whole command
+      fails there and the base control holds.
     source: "manual"
     binds_ac: ["AC2"]
     checks:
       - check_type: "test_passes"
-        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx playwright test tests/e2e/overview-runs-empty-store.omn26515.spec.ts -g \"cannot be read\" --project=chromium --workers=1 --retries=0"
+        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx playwright test tests/e2e/overview-runs-empty-store.omn26515.spec.ts -g \"cannot be read\" --project=chromium --workers=1 --retries=0 && npx vitest run tests/pages/overview-additions.omn22168.test.tsx"
         cwd: "${OMNI_HOME}/omnidash"
