@@ -48,6 +48,13 @@ export interface LocalPageLoadOptions {
    * page is merged into it.
    */
   decisionsWalk?: { maxPages: number; previous?: BoundProjectionSnapshot };
+  /**
+   * OMN-24458: the window the decisions list read names, in the route's own form (`7d`, `24h`; see
+   * decisionsRouteWindowFor). The route then reads only that window's rows (one page, newest first, not cursor-paged)
+   * instead of the newest page of the whole history. Absent sends none. Only the decisions list read carries it, never
+   * one run's own row or another exposure.
+   */
+  decisionsRouteWindow?: string;
 }
 
 /**
@@ -418,7 +425,11 @@ export async function loadLocalPageSnapshots(
     return complete ? { ...rest, rows, rowCount: rows.length } : { ...rest, rows, rowCount: rows.length, truncated: true, nextCursor: cursor };
   };
   const readTopic = async (topic: string, params?: Readonly<Record<string, string>>) => {
-    const read = await readTopicResult(topic, params, async late => {
+    // OMN-24458: the decisions list names its window; a windowed page has no cursor, so it is never walked.
+    const readParams = topic === DELEGATION_DECISIONS_TOPIC && params === undefined && options.decisionsRouteWindow !== undefined
+      ? { window: options.decisionsRouteWindow }
+      : params;
+    const read = await readTopicResult(topic, readParams, async late => {
       publish(isPerRunTopic(topic) ? { ...late, runId: params?.correlation_id ?? null } : late);
       // A delayed decisions response may be the first time the newest run is
       // known. Fetch only its per-run reads, with the same caller/current-state guard.

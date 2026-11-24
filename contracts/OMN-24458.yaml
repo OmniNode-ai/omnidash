@@ -7,8 +7,10 @@ summary: >-
   Acceptance for OMN-24458. The local dashboard pages read the decisions exposure's newest page on every load and walk
   its since-pages only when the viewer opens the Runs page or presses Refresh there; a timer poll of any page never
   walks. AC1 to AC3 are declared here, bound to two vitest files; the ticket text names them under src/, and they sit under tests/ because the evidence gate lays only tests/ paths over the merge base. AC4 (the integrated reading of the h053 dashboard
-  service's requests in the dev runtime after the restart) is a runtime reading taken after install and is not a test,
-  so it is not declared here.
+  service's requests in the dev runtime after the restart) is a runtime reading taken after install and is not a test;
+  it is declared here with no dod_evidence item, because the hosted gate cannot take that reading; it stays unproven
+  until the reading is taken in a runtime that serves the windowed read. The window= parameter change this branch
+  carries was the ticket's former AC5, which the ticket no longer lists; its tests stay in the branch.
 is_seam_ticket: false
 interface_change: false
 interfaces_touched: []
@@ -31,6 +33,17 @@ requirements:
         statement: >-
           a run-history read that stopped at the newest page draws no complete-history figure and the page says so --
           falsifier: npx vitest run src/pages/LocalDashboardPage.omn19998.poll.test.tsx
+  - id: "req-omn24458-request-budget"
+    statement: >-
+      With the overview open on the 7-day window for one minute on the h053 dashboard service after its restart from
+      this change, the dev runtime serves the run-history route at no more than 6 requests.
+    acceptance:
+      - id: "AC4"
+        statement: >-
+          integrated: with the overview open on the 7-day window for one minute on the h053 dashboard service after its
+          restart from this change, the dev runtime access log shows the run-history route at no more than 6 requests,
+          read in the running runtime -- falsifier: count the run-history requests from the h053 address in the dev
+          runtime access log over one minute, more than 6 fails
 evidence_requirements: []
 emergency_bypass:
   enabled: false
@@ -51,4 +64,13 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: "npm ci --prefer-offline --no-audit --no-fund && npx vitest run tests/layout/local-page-loader.omn19998-walk-budget.test.ts tests/pages/LocalDashboardPage.omn19998.poll.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn24458-window-param"
+    description: >-
+      Carries the former AC5 work, which the ticket no longer lists, so it binds no criterion. The loader sends window=<days>d only on the decisions list read, and the Overview page reloads on a window change with its figures kept
+      on screen. Four loader tests and six page tests; V1, V4, W1, W2 and W3 fail without the change.
+    source: "manual"
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx vitest run tests/layout/local-page-loader.omn24458-window.test.ts tests/pages/LocalDashboardPage.omn24458.window.test.tsx src/pages/LocalDashboardPage.omn21015.overview-window.test.tsx"
         cwd: "${OMNI_HOME}/omnidash"
