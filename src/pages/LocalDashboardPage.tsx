@@ -31,7 +31,7 @@ import { fieldTone } from '@/components/dashboard/field-identity';
 import { DestinationIcon } from '@/navigation/destination-icons';
 import type { AppPage } from '@/store/types';
 import { loadLocalPageConfig, loadLocalPageSnapshots, loadMoreDecisions, rowsForLocalComponent, resolveLocalPageEmptyState, withLastGood, newestRunId as newestWorkflowRunId, DELEGATION_DECISIONS_TOPIC, METERING_SUMMARY_TOPIC, RUN_TRACE_TOPIC, isPerRunTopic, LOCAL_READ_TIMEOUT_MS, type BoundProjectionSnapshot, type LocalPageDocument, type LocalPageName } from '@/layout/local-page-loader';
-import { decisionsWalkFor, type LocalLoadTrigger } from '@/contracts/local-read-budget';
+import { decisionsRouteWindowFor, decisionsWalkFor, type LocalLoadTrigger } from '@/contracts/local-read-budget';
 import { ModelTiersContext } from '@/components/dashboard/model-tiers';
 import { pageRefreshMs } from '@/theme/refresh';
 import { CARD_LINKS, MAPLE_WIDTHS, MeteringTotalCard, MetricCard, OUTSIDE_WINDOW_NOTE, OverviewDayPicker, type OverviewWindow, PendingState, RUNS_SECONDARY, RunChartsSlot, RunLocallyCard, RunRoutingSlot, RunsKpis, UsageKpis, captionRowFor, meteringRangeFor, meteringTokens, pickMeteringRow, readOverviewWindow, servedMeteringDays, writeOverviewWindow } from '@/pages/local/page-headline';
@@ -105,6 +105,8 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
     const next = writeOverviewWindow(windowSearch, activityWindow);
     if (next !== new URLSearchParams(windowSearch).toString()) navigateWindow(`/overview${next ? `?${next}` : ''}`, { replace: true });
   }, [pageName, activityWindow, windowSearch, navigateWindow]);
+  // OMN-24458: the window the decisions read names (`7d`), from the Overview's rolling window; none on every other page.
+  const decisionsRouteWindow = decisionsRouteWindowFor(pageName, activityWindow);
   const [runChartsSlot, setRunChartsSlot] = useState<HTMLElement | null>(null);
   const [runRoutingSlot, setRunRoutingSlot] = useState<HTMLElement | null>(null);
   // Part 30 AC201: a link to one of Runs' analysis tabs opens "More analysis" on it.
@@ -170,12 +172,14 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
     }
     const topics = [...new Set(document.components.flatMap(component =>
       (component.data_bindings ?? []).map(binding => binding.projection_topic)))];
-    const snapshotKey = (snapshot: BoundProjectionSnapshot) => `${snapshot.topic}\0${snapshot.runId ?? ''}`;
+    // OMN-24458: the decisions rows of one window are not the rows of another, so a read kept for navigation is kept per window.
+    const windowKey = (topic: string) => topic === DELEGATION_DECISIONS_TOPIC && decisionsRouteWindow !== undefined ? `\0${decisionsRouteWindow}` : '';
+    const snapshotKey = (snapshot: BoundProjectionSnapshot) => `${snapshot.topic}\0${snapshot.runId ?? ''}${windowKey(snapshot.topic)}`;
     // An implicit server tenant is not safe to cache across navigation: the same
     // origin can begin serving another install without a client config change.
     const cached = tenant === null ? [] : topics.flatMap(topic => {
       if (isPerRunTopic(topic) && requestedRunId === null) return [];
-      const key = `${topic}\0${isPerRunTopic(topic) ? requestedRunId ?? '' : ''}`;
+      const key = `${topic}\0${isPerRunTopic(topic) ? requestedRunId ?? '' : ''}${windowKey(topic)}`;
       const snapshot = recent.snapshots.get(key);
       return snapshot && Date.now() - timeOf(snapshot.readAt) < 60_000 ? [snapshot] : [];
     });
@@ -245,6 +249,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
           onSnapshot: publish,
           isCurrent: current,
           decisionsWalk: decisionsWalkFor(pageName, trigger, latest.current.find(snapshot => snapshot.topic === DELEGATION_DECISIONS_TOPIC)),
+          ...(decisionsRouteWindow === undefined ? {} : { decisionsRouteWindow }),
         });
         if (current()) {
           setPage(document);
@@ -286,7 +291,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
       clearInterval(timer);
       unsubscribeRefresh();
     };
-  }, [pageName, requestedRunId, recent]);
+  }, [pageName, requestedRunId, recent, decisionsRouteWindow]);
 
   /**
    * OMN-19998: the Runs page's Load more. No load walks the run history, so a truncated decisions snapshot names where
