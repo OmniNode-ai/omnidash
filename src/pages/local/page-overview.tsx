@@ -18,7 +18,7 @@ import { TierLegend, useModelColor, useModelIdentityStyle } from '@/components/d
 import { localeDate as fmtLocaleDate } from '@/theme/format';
 import { formatShare } from '@/theme/format';
 import { type Row, asRecords, isMissing, recorded, recordedCount, utcDay } from '@/pages/local/page-shared';
-import { type OverviewWindow, pickMeteringRow } from '@/pages/local/page-headline';
+import { type OverviewWindow, windowRunCount } from '@/pages/local/page-headline';
 import { type DeclaredColumn } from '@/pages/local/page-tables';
 import { ShareMeter, TierModelCostCell } from '@/pages/local/page-runs';
 
@@ -73,10 +73,7 @@ export function OverviewStatusStrip({ env, decisions, routing, now, window = 'al
         : ago < 172_800_000 ? `Last run ${Math.floor(ago / 3_600_000)} h ago` : `Last run ${Math.floor(ago / 86_400_000)} days ago`;
   // The run count follows the window: the window's metering row (as the cards read it); all time falls back to the
   // routing view's served total when no metering row is read.
-  const picked = metering ? pickMeteringRow(metering, window, now) : null;
-  const windowRuns = picked && 'row' in picked && !isMissing(picked.row.runs_total) ? Number(picked.row.runs_total) : NaN;
-  const served = Number.isFinite(windowRuns) ? windowRuns
-    : window === 'all' && routing && !isMissing(routing.total_delegations) ? Number(routing.total_delegations) : NaN;
+  const served = windowRunCount(metering, routing, window, now);
   const total = Number.isFinite(served) ? `${formatFullCount(String(served))} runs` : 'Runs not measured';
   // The median run time is the window's runs only, and it is shown only when the runs read cover the whole window (the
   // read's oldest run is on or before the window's first day, or the read holds every run): otherwise it would be the

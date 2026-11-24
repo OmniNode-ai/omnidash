@@ -34,7 +34,7 @@ import { loadLocalPageConfig, loadLocalPageSnapshots, loadMoreDecisions, rowsFor
 import { decisionsWalkFor, type LocalLoadTrigger } from '@/contracts/local-read-budget';
 import { ModelTiersContext } from '@/components/dashboard/model-tiers';
 import { pageRefreshMs } from '@/theme/refresh';
-import { CARD_LINKS, MAPLE_WIDTHS, MeteringTotalCard, MetricCard, OUTSIDE_WINDOW_NOTE, OverviewDayPicker, type OverviewWindow, PendingState, RUNS_SECONDARY, RunChartsSlot, RunLocallyCard, RunRoutingSlot, RunsKpis, UsageKpis, captionRowFor, meteringRangeFor, meteringTokens, pickMeteringRow, readOverviewWindow, servedMeteringDays, writeOverviewWindow } from '@/pages/local/page-headline';
+import { CARD_LINKS, MAPLE_WIDTHS, MeteringTotalCard, MetricCard, OUTSIDE_WINDOW_NOTE, OverviewDayPicker, type OverviewWindow, PendingState, RUNS_SECONDARY, RunChartsSlot, RunLocallyCard, RunRoutingSlot, RunsKpis, UsageKpis, captionRowFor, meteringRangeFor, meteringTokens, pickMeteringRow, readOverviewWindow, servedMeteringDays, windowRunCount, writeOverviewWindow } from '@/pages/local/page-headline';
 import { type DeclaredColumn, PAGE_TITLES, PANEL_CONCEPTS, type PanelSlice, ReadFailureNotice, TableComponent, WidgetReadState, bindingFailedEmpty, notServedTopic, rawRowsFor } from '@/pages/local/page-tables';
 import { type Row, asRecord, asRecords, isMissing, metricConfigFor, timeOf } from '@/pages/local/page-shared';
 import { WorkflowRun } from '@/pages/local/page-workflow';
@@ -595,9 +595,8 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
                       const tokens = pickedRow === null ? null
                         : noRuns ? String(Number(pickedRow.tokens_in) + Number(pickedRow.tokens_out)) : meteringTokens(pickedRow).total;
                       // The runs headline follows the window, as the cards do; all time falls back to the routing total.
-                      const windowRuns = picked && 'row' in picked && !isMissing(picked.row.runs_total) ? Number(picked.row.runs_total) : NaN;
-                      const runs = Number.isFinite(windowRuns) ? windowRuns
-                        : overviewWindow === 'all' && routing && !isMissing(routing.total_delegations) ? Number(routing.total_delegations) : NaN;
+                      const runs = windowRunCount(metering && !metering.failure ? metering.rows : null, routing, overviewWindow, now,
+                        Boolean(usage && snapshots.find(snapshot => snapshot.topic === usage.data_bindings?.[0]?.projection_topic)?.failure));
                       const models = routing && Array.isArray(routing.by_model) ? routing.by_model.length : null;
                       // Only the tier-routed tiers count, as Tier mix draws them (the served not-tier-routed row is not a tier).
                       const tierRows = routing && routing.by_tier && typeof routing.by_tier === 'object' && Array.isArray((routing.by_tier as Row).tiers)
