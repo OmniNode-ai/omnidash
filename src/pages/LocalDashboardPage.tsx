@@ -16,7 +16,7 @@ import { fetchExposureCensus } from '@/data-source/exposure-census';
 import { resolveEffectiveDataSource } from '@/data-source/data-source-override';
 import { resolveConfiguredTenant } from '@/data-source/projection-tenant';
 import { latestServedRead, publishLocalPageRead, requestLocalPageRefresh, subscribeLocalPageRefresh } from '@/services/local-page-refresh';
-import { PAGE_PATHS } from '@/navigation/page-routes';
+import { PAGE_PATHS, rememberOverviewWindow } from '@/navigation/page-routes';
 import { readWorkflowRunId, writeWorkflowRunId } from '@/navigation/workflow-url-state';
 import { InsightsWindowContext, OverviewRunsContext, type ActivityWindow } from '@/pages/local/insight-charts';
 import { DashboardTabs, EmptyState, Panel, PanelTitle } from '@/theme/design-system/components';
@@ -103,6 +103,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
   useEffect(() => {
     if (pageName !== 'overview') return;
     const next = writeOverviewWindow(windowSearch, activityWindow);
+    rememberOverviewWindow(next);
     if (next !== new URLSearchParams(windowSearch).toString()) navigateWindow(`/overview${next ? `?${next}` : ''}`, { replace: true });
   }, [pageName, activityWindow, windowSearch, navigateWindow]);
   // OMN-24458: the window the decisions read names (`7d`), from the Overview's rolling window; none on every other page.
