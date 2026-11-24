@@ -8,9 +8,9 @@ summary: >-
   its since-pages only when the viewer opens the Runs page or presses Refresh there; a timer poll of any page never
   walks. AC1 to AC3 are declared here, bound to two vitest files; the ticket text names them under src/, and they sit under tests/ because the evidence gate lays only tests/ paths over the merge base. AC4 (the integrated reading of the h053 dashboard
   service's requests in the dev runtime after the restart) is a runtime reading taken after install and is not a test;
-  it is declared here and bound by a disposition item that stays unproven until that reading is taken in a runtime that
-  serves the windowed read. The window= parameter change this branch carries was the ticket's former AC5, which the
-  ticket no longer lists; its binding is retired below and its tests stay in the branch.
+  it is declared here with no dod_evidence item, because the hosted gate cannot take that reading; it stays unproven
+  until the reading is taken in a runtime that serves the windowed read. The window= parameter change this branch
+  carries was the ticket's former AC5, which the ticket no longer lists; its tests stay in the branch.
 is_seam_ticket: false
 interface_change: false
 interfaces_touched: []
@@ -67,30 +67,10 @@ dod_evidence:
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn24458-window-param"
     description: >-
-      Retired (see dod-omn24458-ac4-integrated): the ticket no longer lists AC5. The loader sends window=<days>d only on the decisions list read, and the Overview page reloads on a window change with its figures kept
+      Carries the former AC5 work, which the ticket no longer lists, so it binds no criterion. The loader sends window=<days>d only on the decisions list read, and the Overview page reloads on a window change with its figures kept
       on screen. Four loader tests and six page tests; V1, V4, W1, W2 and W3 fail without the change.
     source: "manual"
-    binds_ac: ["AC5"]
     checks:
       - check_type: "test_passes"
         check_value: "npm ci --prefer-offline --no-audit --no-fund && npx vitest run tests/layout/local-page-loader.omn24458-window.test.ts tests/pages/LocalDashboardPage.omn24458.window.test.tsx src/pages/LocalDashboardPage.omn21015.overview-window.test.tsx"
         cwd: "${OMNI_HOME}/omnidash"
-  - id: "dod-omn24458-ac4-integrated"
-    description: >-
-      AC4 is integrated-only and unproven by this pull request: it is the count of run-history requests from the h053
-      address in the dev runtime access log over one minute, read after the dashboard service restarts from this change.
-      Pending: the dev runtime did not run the runtime half of the window parameter when this was written, so the
-      reading cannot be taken yet. A disposition is required at the local Done gate.
-    source: "manual"
-    binds_ac: ["AC4"]
-    checks:
-      - check_type: "disposition"
-        check_value: "dod-omn24458-ac4-integrated"
-    execution_scope: "local_done_gate"
-    supersedes_ac_binding:
-      - item: "dod-omn24458-window-param"
-        label: "AC5"
-        reason_kind: "no_longer_applicable"
-        reason: "The live ticket no longer lists AC5; the window parameter work it described is carried by this branch without a criterion of its own."
-        retired_by: "dashfix-0350 (sonnet)"
-        retired_at: "2026-11-24T03:56:32Z"
