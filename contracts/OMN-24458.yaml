@@ -31,6 +31,15 @@ requirements:
         statement: >-
           a run-history read that stopped at the newest page draws no complete-history figure and the page says so --
           falsifier: npx vitest run src/pages/LocalDashboardPage.omn19998.poll.test.tsx
+  - id: "req-omn24458-window-param"
+    statement: >-
+      The Overview decisions read names its rolling window (window=7d) so the route reads that window's page.
+    acceptance:
+      - id: "AC5"
+        statement: >-
+          the Overview decisions list read sends window=<days>d beside limit, none for all time, a picked day, one run's row or any other
+          exposure, and changing the window keeps the figures on screen -- falsifier: npx vitest run
+          tests/layout/local-page-loader.omn24458-window.test.ts tests/pages/LocalDashboardPage.omn24458.window.test.tsx
 evidence_requirements: []
 emergency_bypass:
   enabled: false
@@ -51,4 +60,14 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: "npm ci --prefer-offline --no-audit --no-fund && npx vitest run tests/layout/local-page-loader.omn19998-walk-budget.test.ts tests/pages/LocalDashboardPage.omn19998.poll.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn24458-window-param"
+    description: >-
+      AC5: the loader sends window=<days>d only on the decisions list read, and the Overview page reloads on a window change with its figures kept
+      on screen. Four loader tests and six page tests; V1, V4, W1, W2 and W3 fail without the change.
+    source: "manual"
+    binds_ac: ["AC5"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx vitest run tests/layout/local-page-loader.omn24458-window.test.ts tests/pages/LocalDashboardPage.omn24458.window.test.tsx src/pages/LocalDashboardPage.omn21015.overview-window.test.tsx"
         cwd: "${OMNI_HOME}/omnidash"

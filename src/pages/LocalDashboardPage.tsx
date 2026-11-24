@@ -146,15 +146,22 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
     navigate(`${PAGE_PATHS['local-workflow']}${query ? `?${query}` : ''}`);
   };
 
+  // OMN-24458: the page and run the last load was for; a load that differs only in the window keeps what is on screen.
+  const loadedScope = useRef<string | null>(null);
   useEffect(() => {
     let active = true;
+    const scope = `${pageName}\0${requestedRunId ?? ''}`;
+    const windowOnly = loadedScope.current === scope && latest.current.length > 0;
+    loadedScope.current = scope;
     // A page switch must never show another page's document or another run's steps.
-    setPage(null);
-    setSnapshots([]);
-    latest.current = [];
+    if (!windowOnly) {
+      setPage(null);
+      setSnapshots([]);
+      latest.current = [];
+      setLoading(true);
+    }
     setError(null);
     setRefreshError(null);
-    setLoading(true);
     let document: LocalPageDocument;
     try {
       document = loadLocalPageConfig(pageName);
@@ -183,10 +190,12 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
       const snapshot = recent.snapshots.get(key);
       return snapshot && Date.now() - timeOf(snapshot.readAt) < 60_000 ? [snapshot] : [];
     });
-    latest.current = cached;
-    setSnapshots(cached);
-    setPage(document);
-    setLoading(false);
+    if (!windowOnly) {
+      latest.current = cached;
+      setSnapshots(cached);
+      setPage(document);
+      setLoading(false);
+    }
     // Reads of one page can overlap: the interval and the refresh button each start one while an earlier one is still
     // unanswered. Only the read started last may write. A read that was overtaken answers a question the page has
     // already asked again (the newest run may have changed since), so its rows, its failure and its end of loading
