@@ -527,7 +527,8 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
           return <OverviewStatusStrip env={record(rawRowsFor(status, snapshots, 0)[0])} now={now} window={overviewWindow}
             metering={meteringRead && !meteringRead.failure ? meteringRead.rows : null}
             complete={walk !== undefined && !walk.failure && walk.truncated !== true} decisions={walk?.rows ?? []}
-            routing={usage ? record(rawRowsFor(usage, snapshots, 0)[0]) : null} />;
+            routing={usage ? record(rawRowsFor(usage, snapshots, 0)[0]) : null}
+            routingFailed={Boolean(usage && snapshots.find(snapshot => snapshot.topic === usage.data_bindings?.[0]?.projection_topic)?.failure)} />;
         })()}
       </header>}
       {loading && <p role="status">Loading runtime exposures…</p>}

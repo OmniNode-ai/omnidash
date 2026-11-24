@@ -56,3 +56,10 @@ test('overview_runs_empty_store: a store that cannot be read reads Runs not meas
     await expect(strip(page), name).toContainText('Runs not measured');
   }
 });
+
+test('overview_runs_empty_store: a routing store that cannot be read beside an empty metering read reads Runs not measured, not 0 runs', async ({ page }) => {
+  await serveCharts(page, { ...chartRows, [meteringTopic]: [], [routingTopic]: [], [decisionsTopic]: [] });
+  await page.route(`**/projection/${encodeURIComponent(routingTopic)}`, route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'unavailable' }) }));
+  await openOverview(page);
+  await expectRuns(page, 'Runs not measured', '0 runs');
+});

@@ -87,6 +87,13 @@ describe('status strip', () => {
     expect(unreadable.textContent).toContain('Runs not measured');
     expect(unreadable.textContent).not.toContain('0 runs');
   });
+
+  it('S7 (OMN-26515): an unreadable routing read beside an empty metering read stays "Runs not measured"', () => {
+    render(<OverviewStatusStrip env={ENV} decisions={[]} routing={null} metering={[]} routingFailed now={NOW} complete />);
+    const strip = screen.getByRole('status', { name: 'Runtime status' });
+    expect(strip.textContent).toContain('Runs not measured');
+    expect(strip.textContent).not.toContain('0 runs');
+  });
 });
 
 describe('card lines', () => {
