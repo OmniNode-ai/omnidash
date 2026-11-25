@@ -579,6 +579,30 @@ export function pickMeteringRow(
 }
 
 /**
+ * OMN-26515: the run count an Overview runs headline shows for the chosen window, or NaN when it is not measured. The
+ * window's metering row first; all time falls back to the routing view's served total. A store that was read and holds
+ * no rows (metering-summary.v1 served empty, the routing view served empty or at total_delegations 0) has recorded no
+ * run, so it reads 0; a store that could not be read (`meteringRows` null, or `routingFailed`) is not a measurement and
+ * stays NaN. Shared by the Total runs tab and the status strip so the two cannot disagree.
+ */
+export function windowRunCount(
+  meteringRows: readonly unknown[] | null | undefined,
+  routing: Row | null,
+  window: OverviewWindow,
+  now: number,
+  routingFailed = false,
+): number {
+  const picked = meteringRows ? pickMeteringRow(meteringRows, window, now) : null;
+  const windowRuns = picked && 'row' in picked && !isMissing(picked.row.runs_total) ? Number(picked.row.runs_total) : NaN;
+  if (Number.isFinite(windowRuns)) return windowRuns;
+  const routed = routing && !isMissing(routing.total_delegations) ? Number(routing.total_delegations) : NaN;
+  if (window === 'all' && Number.isFinite(routed)) return routed;
+  const storeEmpty = meteringRows !== null && meteringRows !== undefined && meteringRows.length === 0 && !routingFailed
+    && !(Number.isFinite(routed) && routed > 0);
+  return storeEmpty ? 0 : NaN;
+}
+
+/**
  * OMN-19980 Step B: an Overview headline figure (Spend, Savings, Measured runs, Tokens in and out) from
  * metering-summary.v1's row for the chosen window (OV-3; all time by default, the row `onex metering` renders). Every
  * card picks the same row, so the four figures cannot disagree (Amendment 2). The fold keys rows by baseline model and keeps an older baseline's rows, so

@@ -45,3 +45,19 @@ export function withDecisionsWindow(params: Readonly<Record<string, string>> | u
   if (DECISIONS_PAGE_LIMIT_DEFAULT <= 0 || params?.correlation_id !== undefined || params?.limit !== undefined) return params;
   return { ...params, limit: String(DECISIONS_PAGE_LIMIT_DEFAULT) };
 }
+
+/**
+ * OMN-24458: the window the Overview's decisions read names, in the projection route's own form (`7d`). The route
+ * (omnimarket read_projection_page, parse_window_seconds) reads only the rows of the last N hours or days, newest first,
+ * at most one page, and serves a repeated read from its page cache keyed by that window; with no window it reads the
+ * newest page of the whole history. Only the Overview has a figure window, and only a rolling one of whole days (Today
+ * is 1d) is a window the route can read: all time, a picked day and every other page send none.
+ */
+export function decisionsRouteWindowFor(
+  pageName: LocalPageName,
+  activity: Readonly<{ kind: string; days?: number }>,
+): string | undefined {
+  if (pageName !== 'overview' || activity.kind !== 'days') return undefined;
+  const days = activity.days;
+  return typeof days === 'number' && Number.isInteger(days) && days >= 1 ? `${days}d` : undefined;
+}

@@ -18,7 +18,7 @@ import { TierLegend, useModelColor, useModelIdentityStyle } from '@/components/d
 import { localeDate as fmtLocaleDate } from '@/theme/format';
 import { formatShare } from '@/theme/format';
 import { type Row, asRecords, isMissing, recorded, recordedCount, utcDay } from '@/pages/local/page-shared';
-import { type OverviewWindow, pickMeteringRow } from '@/pages/local/page-headline';
+import { type OverviewWindow, windowRunCount } from '@/pages/local/page-headline';
 import { type DeclaredColumn } from '@/pages/local/page-tables';
 import { ShareMeter, TierModelCostCell } from '@/pages/local/page-runs';
 
@@ -55,11 +55,13 @@ export function ModelUsagePanel({ row }: { row: Row | null }) {
  * reason. The last run is the newest served decision's time, the run total delegation.model-routing.v1's served
  * total_delegations, and the median run time the served decisions' durations, as the Runs page reads them.
  */
-export function OverviewStatusStrip({ env, decisions, routing, now, window = 'all', metering = null, complete = false }: {
+export function OverviewStatusStrip({ env, decisions, routing, now, window = 'all', metering = null, routingFailed = false, complete = false }: {
   env: Row | null; decisions: readonly unknown[]; routing: Row | null; now: number; complete?: boolean;
   /** Lakshman 2026-11-04 ("based on time selected ... make everything dynamic"): the Overview window, and the served
    * metering rows its run count is read from (the row the cards read for that window). */
   window?: OverviewWindow; metering?: readonly unknown[] | null;
+  /** OMN-26515: the routing read could not be read, so an empty metering read is not a measured zero. */
+  routingFailed?: boolean;
 }) {
   const observed = env && !isMissing(env.observed_state) ? String(env.observed_state) : null;
   const state = observed === null ? 'unknown' : observed === 'running' ? 'running' : 'attention';
@@ -73,10 +75,7 @@ export function OverviewStatusStrip({ env, decisions, routing, now, window = 'al
         : ago < 172_800_000 ? `Last run ${Math.floor(ago / 3_600_000)} h ago` : `Last run ${Math.floor(ago / 86_400_000)} days ago`;
   // The run count follows the window: the window's metering row (as the cards read it); all time falls back to the
   // routing view's served total when no metering row is read.
-  const picked = metering ? pickMeteringRow(metering, window, now) : null;
-  const windowRuns = picked && 'row' in picked && !isMissing(picked.row.runs_total) ? Number(picked.row.runs_total) : NaN;
-  const served = Number.isFinite(windowRuns) ? windowRuns
-    : window === 'all' && routing && !isMissing(routing.total_delegations) ? Number(routing.total_delegations) : NaN;
+  const served = windowRunCount(metering, routing, window, now, routingFailed);
   const total = Number.isFinite(served) ? `${formatFullCount(String(served))} runs` : 'Runs not measured';
   // The median run time is the window's runs only, and it is shown only when the runs read cover the whole window (the
   // read's oldest run is on or before the window's first day, or the read holds every run): otherwise it would be the

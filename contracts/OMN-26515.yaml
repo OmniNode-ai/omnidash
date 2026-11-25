@@ -1,0 +1,60 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+schema_version: "1.0.0"
+ticket_id: "OMN-26515"
+title: "On an install that has never recorded a run, the Overview's runs tab reads \"0 runs\" instead of \"Runs not measured\""
+summary: >-
+  Acceptance for OMN-26515, copied from the live ticket. An empty delegation store has recorded no run, so the
+  Overview's Total runs tab reads "0 runs" for the chosen window; a store that cannot be read still reads "Runs not
+  measured". Both are proved in tests/e2e/overview-runs-empty-store.omn26515.spec.ts.
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-omn26515-empty-store-runs"
+    statement: >-
+      The Total runs tab reads "0 runs" for an empty delegation store and "Runs not measured" for one that cannot be read.
+    acceptance:
+      - id: "AC1"
+        statement: >-
+          with an empty delegation store the runs tab reads "0 runs" for the selected window -- falsifier: a playwright
+          test in omnidash that serves an empty store and asserts the runs tab text
+      - id: "AC2"
+        statement: >-
+          a store that cannot be read still reads "Runs not measured", so empty and unreadable stay distinct -- falsifier:
+          a playwright test that serves an unreadable store and asserts "Runs not measured"
+evidence_requirements: []
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
+dod_evidence:
+  - id: "dod-omn26515-ac1-empty-store"
+    description: >-
+      AC1: two cases, a store serving no rows and a routing row with total_delegations 0 beside no metering rows. Each
+      fails unless the Total runs tab and the status strip read "0 runs" for All time, Today, the last 7 days and the
+      last 30 days.
+    source: "manual"
+    binds_ac: ["AC1"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx playwright test tests/e2e/overview-runs-empty-store.omn26515.spec.ts -g \"serves no rows|total_delegations 0\" --project=chromium --workers=1 --retries=0"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn26515-ac2-unreadable-store"
+    description: >-
+      AC2: two cases. The metering and routing projections both answer 503; and only the routing projection answers
+      503 beside an empty metering read (OMN-26515 review finding). The check fails unless the Total runs tab and the
+      status strip read "Runs not measured" and never "0 runs" in every window. The routing-only case fails at the
+      merge base 0e0d3a43, where the status strip read "0 runs" (measured 2026-11-24). The both-unreadable case is preserved
+      behaviour, so it passes at the merge base by design; its can-fail proof is the recorded control that drops the
+      read-failure guard from windowRunCount (an empty-only check), under which the cannot-be-read case fails reading
+      "0 runs" (measured 2026-11-24 at c337d788, 1 failed). The command also runs the S6 strip case
+      (tests/pages/overview-additions.omn22168.test.tsx), whose empty-store assertion is red at the merge base
+      (measured 2026-11-24 at bca36b98, 1 failed, 8 passed) and green on the branch (9 passed), so the whole command
+      fails there and the base control holds.
+    source: "manual"
+    binds_ac: ["AC2"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx playwright test tests/e2e/overview-runs-empty-store.omn26515.spec.ts -g \"cannot be read\" --project=chromium --workers=1 --retries=0 && npx vitest run tests/pages/overview-additions.omn22168.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
