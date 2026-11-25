@@ -78,6 +78,15 @@ export interface BoundProjectionSnapshot extends ProjectionSnapshot {
 
 /** A read with no answer in this long is a typed timeout (requirements: loading turns into an error after 5 s). */
 export const LOCAL_READ_TIMEOUT_MS = 5000;
+/**
+ * OMN-26665 AC4: the spend source (metering-summary) sums every run's cost server-side and is the slowest read the
+ * Overview makes, so it has its own deadline; every other source keeps the 5 s default. A source past its own deadline
+ * is a typed timeout for that source alone, and until then its panels say they are loading.
+ */
+export const SPEND_READ_TIMEOUT_MS = 10_000;
+export function readDeadlineMs(topic: string): number {
+  return topic === METERING_SUMMARY_TOPIC ? SPEND_READ_TIMEOUT_MS : LOCAL_READ_TIMEOUT_MS;
+}
 
 /**
  * Reads still in flight, by source and exposure. A page that loads twice at once (React's development mode mounts
@@ -355,7 +364,7 @@ export async function loadLocalPageSnapshots(
       return failedSnapshot(topic, { kind: 'not-served', message: `Not served: ${topic}` });
     }
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const timeout = new Promise<'timeout'>((resolve) => { timer = setTimeout(() => resolve('timeout'), LOCAL_READ_TIMEOUT_MS); });
+    const timeout = new Promise<'timeout'>((resolve) => { timer = setTimeout(() => resolve('timeout'), readDeadlineMs(topic)); });
     try {
       const request = sharedRead(source, topic, topic === DELEGATION_DECISIONS_TOPIC ? withDecisionsWindow(params) : params);
       const answer = await Promise.race([request, timeout]);
@@ -368,7 +377,7 @@ export async function loadLocalPageSnapshots(
             return onLate({ topic, ...result });
           }).catch(() => { /* The typed timeout remains; the next refresh can retry. */ });
         }
-        return failedSnapshot(topic, { kind: 'timeout', message: `${topic}: no answer in 5 s` });
+        return failedSnapshot(topic, { kind: 'timeout', message: `${topic}: no answer in ${readDeadlineMs(topic) / 1000} s` });
       }
       return { topic, ...answer };
     } catch (cause) {

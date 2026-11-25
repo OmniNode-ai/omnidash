@@ -56,8 +56,11 @@ export function ModelUsagePanel({ row }: { row: Row | null }) {
  * reason. The last run is the newest served decision's time, the run total delegation.model-routing.v1's served
  * total_delegations, and the median run time the served decisions' durations, as the Runs page reads them.
  */
-export function OverviewStatusStrip({ env, decisions, routing, now, window = 'all', metering = null, routingFailed = false, complete = false }: {
+export function OverviewStatusStrip({ env, decisions, routing, now, window = 'all', metering = null, routingFailed = false, complete = false, decisionsRead = 'served' }: {
   env: Row | null; decisions: readonly unknown[]; routing: Row | null; now: number; complete?: boolean;
+  /** OMN-26665 AC4: how the decisions read stands. An empty list means an empty store only when it was served; a read
+   * still out is loading, and one that failed or timed out was not read. */
+  decisionsRead?: 'served' | 'loading' | 'failed';
   /** Lakshman 2026-11-04 ("based on time selected ... make everything dynamic"): the Overview window, and the served
    * metering rows its run count is read from (the row the cards read for that window). */
   window?: OverviewWindow; metering?: readonly unknown[] | null;
@@ -70,7 +73,7 @@ export function OverviewStatusStrip({ env, decisions, routing, now, window = 'al
   let newest: number | null = null;
   for (const run of runs) if (Number.isFinite(run.at) && (newest === null || run.at > newest)) newest = run.at;
   const ago = newest !== null && newest <= now ? now - newest : null;
-  const lastRun = ago === null ? 'Last run not recorded'
+  const lastRun = ago === null ? (decisionsRead === 'loading' ? 'Last run loading…' : decisionsRead === 'failed' ? 'Last run not read' : 'Last run not recorded')
     : ago < 60_000 ? 'Last run under a minute ago'
       : ago < 3_600_000 ? `Last run ${Math.floor(ago / 60_000)} min ago`
         : ago < 172_800_000 ? `Last run ${Math.floor(ago / 3_600_000)} h ago` : `Last run ${Math.floor(ago / 86_400_000)} days ago`;

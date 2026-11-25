@@ -87,7 +87,8 @@ export function plainFailureMessage(
 ): string {
   switch (failure.kind) {
     case 'not-served': return `${notAvailableYet(plainDataName(topic))}.`;
-    case 'timeout': return 'No answer within 5 seconds.';
+    // OMN-26665 AC4: the loader's message names the deadline that source had ("no answer in 10 s"); 5 s is the default.
+    case 'timeout': return `No answer within ${/no answer in (\d+) s/.exec(failure.message)?.[1] ?? '5'} seconds.`;
     case 'tenant-not-configured': return 'No tenant is configured for this dashboard.';
     default: {
       const status = /HTTP \d{3}.*$/.exec(failure.message)?.[0];
