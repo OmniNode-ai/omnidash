@@ -117,3 +117,51 @@ dod_evidence:
       - check_type: "test_passes"
         check_value: "npm ci --prefer-offline --no-audit --no-fund && npx vitest run src/pages/local/insight-charts.omn26665.coverage.test.tsx"
         cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn26665-ac6-integrated-reading"
+    description: >-
+      AC6, read on a build that carries this change: it takes the 7-day decisions read once and prints the row count
+      and the oldest and newest row time (it fails on an empty read or a row with no time), then watches the readiness
+      probe for OMNIDASH_WATCH_SECONDS while a dev rollout runs and prints the longest stretch the probe was not ready
+      (it fails if the probe answers anything but 200 or 503 with the pod still reachable, or never returns to 200).
+      A connection that cannot be made during the rollout counts as not ready, which is what the page reads as
+      reconnecting. OMNIDASH_URL is the dashboard's own address. Hosted CI cannot reach a dev host, so only the local
+      Done gate runs this item; the on-screen reconnecting text during that rollout is recorded in the pull request.
+    source: "manual"
+    binds_ac: ["AC6"]
+    execution_scope: "local_done_gate"
+    checks:
+      - check_type: "command"
+        check_value: |-
+          python3 -c '
+          import os, json, time, urllib.request as u, urllib.error as e
+          base = os.environ["OMNIDASH_URL"].rstrip("/")
+          topic = "onex.snapshot.projection.delegation.decisions.v1"
+          body = json.load(u.urlopen(base + "/projection/" + topic + "?window=7d", timeout=30))
+          rows = body if isinstance(body, list) else (body.get("rows") or body.get("data") or [])
+          at = sorted(r.get("written_at") or r.get("created_at") for r in rows if isinstance(r, dict) and (r.get("written_at") or r.get("created_at")))
+          assert rows and at, "the 7-day read returned no rows with a time"
+          print("7d read: rows", len(rows), "oldest", at[0], "newest", at[-1])
+          watch = float(os.environ.get("OMNIDASH_WATCH_SECONDS", "120"))
+          end = time.time() + watch
+          longest = 0.0
+          since = None
+          last = None
+          while time.time() < end:
+              try:
+                  last = u.urlopen(base + "/api/health-probe", timeout=5).status
+              except e.HTTPError as err:
+                  last = err.code
+              except Exception:
+                  last = None
+              assert last in (200, 503, None), "unexpected probe status %s" % last
+              now = time.time()
+              if last == 200:
+                  since = None
+              else:
+                  since = since or now
+                  longest = max(longest, now - since)
+              time.sleep(0.5)
+          assert last == 200, "the probe did not return to 200"
+          print("rollout: longest not-ready stretch %.1f s over %.0f s" % (longest, watch))
+          '
+        cwd: "."
