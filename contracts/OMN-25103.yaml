@@ -44,7 +44,6 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: "npm test -- --run tests/pages/local/served-count-card.omn25103.test.tsx -t running_figure_from_served_projection"
-        cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn25103-ac3"
     description: >-
       AC3 in served-count-card.omn25103.test.tsx: a failed read and an empty read read Not measured, the failed one
@@ -54,7 +53,6 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: "npm test -- --run tests/pages/local/served-count-card.omn25103.test.tsx -t running_figure_unavailable"
-        cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn25103-ac2-overview"
     description: >-
       AC2 on the Overview page, in overview-running.omn25103.test.tsx: the Overview contract binds a metric_card
