@@ -2,7 +2,7 @@
 // OMN-26665 AC2: SIGTERM stops new requests, finishes the reads already running, then exits;
 // readiness fails until the built bundle and the projection API both answer.
 //
-// Failure modes this file pins (written before server/lifecycle.ts existed):
+// Failure modes this file pins (written before createLifecycle existed in server/routes.ts):
 //   S1 a read in flight when SIGTERM lands must finish with its 200, and exit must wait for it
 //   S2 a request that arrives after SIGTERM must be refused, not served
 //   S3 a second SIGTERM must not exit early or run the shutdown twice
@@ -20,7 +20,7 @@ import path from 'node:path';
 import express from 'express';
 import request from 'supertest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createLifecycle } from '../lifecycle.js';
+import { createLifecycle } from '../routes.js';
 
 const cleanups: Array<() => Promise<void> | void> = [];
 afterEach(async () => {
