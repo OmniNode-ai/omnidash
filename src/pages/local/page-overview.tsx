@@ -12,6 +12,7 @@ import { ColumnTip, DataTable, EmptyState, Fact, FactList } from '@/theme/design
 import { Clock3, Rows3, Timer } from '@/theme/design-system/icons';
 import { tierLabel } from '@/pages/local/plain-text';
 import { toInsightRuns } from '@/pages/local/insights';
+import { oldestRunDay, rowsReachBefore } from '@/pages/local/insight-aggregates';
 import { ChartReadout, DayAxis, MultiLinePlot, RankedBars, SeriesToggles, useSeriesToggles } from '@/theme/design-system/charts';
 import { ConceptIcon, FieldIcon } from '@/components/dashboard/FieldIcon';
 import { TierLegend, useModelColor, useModelIdentityStyle } from '@/components/dashboard/model-tiers';
@@ -83,8 +84,8 @@ export function OverviewStatusStrip({ env, decisions, routing, now, window = 'al
   const today = utcDay(now);
   const [from, to] = window === 'all' ? ['', '9999-12-31'] : window === 'today' ? [today, today]
     : window.startsWith('day:') ? [window.slice(4), window.slice(4)] : (window.slice(6).split('..') as [string, string]);
-  const oldestRead = runs.reduce<string | null>((oldest, run) => (oldest === null || run.day < oldest ? run.day : oldest), null);
-  const covered = complete || (oldestRead !== null && from !== '' && oldestRead < from);
+  // OMN-26665 AC5: the same coverage test as the Insights figures (insight-aggregates), all time covered only when complete.
+  const covered = complete || (from !== '' && rowsReachBefore(oldestRunDay(runs), from));
   const inWindow = covered ? runs.filter(run => run.day >= from && run.day <= to) : [];
   const latencies = inWindow.map(run => run.durationMs).filter((value): value is number => value !== null).sort((a, b) => a - b);
   const median = latencies.length === 0 ? null : latencies[Math.floor((latencies.length - 1) / 2)]!;

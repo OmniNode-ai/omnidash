@@ -19,6 +19,7 @@ import {
 } from './insights';
 import {
   aggregateMeteringRange, aggregateMeteringWindow, compareWindow, durationBucketLabel, durationEdges, meteringAllTimeTotals,
+  NOT_MEASURED_FULL_WINDOW, windowCoverage,
   type MeteringWindow,
 } from './insight-aggregates';
 import { TierLegend, useModelColor } from '@/components/dashboard/model-tiers';
@@ -543,8 +544,10 @@ function delta(value: number | null, format: (value: number) => string): string 
   return `${value > 0 ? '+' : ''}${format(value)} vs previous window`;
 }
 
-function RunWindowKpis({ runs, decisions, label, comparisonEnabled, now, days }: {
+function RunWindowKpis({ runs, decisions, label, comparisonEnabled, now, days, uncovered = false }: {
   runs: InsightRun[]; decisions: readonly unknown[]; label: string; comparisonEnabled: boolean; now: number; days: number;
+  /** OMN-26665 AC5: the rows read do not reach the window's first day, so neither figure is the window's. */
+  uncovered?: boolean;
 }) {
   const comparison = comparisonEnabled ? compareWindow(decisions, now, days) : null;
   const selectedLabel = label;
@@ -556,11 +559,11 @@ function RunWindowKpis({ runs, decisions, label, comparisonEnabled, now, days }:
   const medianDelta = !comparisonEnabled ? null
     : comparison?.previousComplete && comparison.medianLatencyDelta !== null
       ? delta(comparison.medianLatencyDelta, value => `${value < 0 ? '-' : ''}${duration(Math.abs(value))}`) : 'Previous window not fully returned';
-  const median = summaryNow.medianLatency === null ? NOT_MEASURED : duration(summaryNow.medianLatency);
+  const median = uncovered || summaryNow.medianLatency === null ? NOT_MEASURED : duration(summaryNow.medianLatency);
   return (
     <section className="ins-window-kpis ins-window-kpis--runs" aria-label={`Runs in ${selectedLabel}`}>
-      <KpiTile tone="count" label="Runs" value={count(summaryNow.runs)}><small>{selectedLabel} · counted from the returned decision rows</small>{runDelta !== null && <small>{runDelta}</small>}</KpiTile>
-      <KpiTile tone="duration" label="Median duration" value={median} unavailable={summaryNow.medianLatency === null}><small>{count(durationMissing)} duration values not measured</small>{medianDelta !== null && <small>{medianDelta}</small>}</KpiTile>
+      <KpiTile tone="count" label="Runs" value={uncovered ? NOT_MEASURED : count(summaryNow.runs)} unavailable={uncovered}><small>{uncovered ? NOT_MEASURED_FULL_WINDOW : `${selectedLabel} · counted from the returned decision rows`}</small>{!uncovered && runDelta !== null && <small>{runDelta}</small>}</KpiTile>
+      <KpiTile tone="duration" label="Median duration" value={median} unavailable={uncovered || summaryNow.medianLatency === null}><small>{uncovered ? NOT_MEASURED_FULL_WINDOW : `${count(durationMissing)} duration values not measured`}</small>{!uncovered && medianDelta !== null && <small>{medianDelta}</small>}</KpiTile>
     </section>
   );
 }
@@ -727,6 +730,12 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
   const all = toInsightRuns(decisions);
   const runs = selectedRuns(all, now, window);
   const chartDaysList = plottedDays(all, now, window, servedDays);
+  // OMN-26665 AC5: a figure drawn from the rows is the window's only when the rows reach its first day; served per-day
+  // totals and served failure categories do not depend on the rows, so they are drawn whatever the rows reach.
+  const rowsUncovered = !windowCoverage(all, window, now, complete).covered;
+  const rowChartsUncovered = rowsUncovered && servedDays === null;
+  const rowFailuresUncovered = rowsUncovered && servedFailures === null;
+  const notFullWindow = <EmptyState className="ins-empty">{NOT_MEASURED_FULL_WINDOW}</EmptyState>;
   const chartRuns = all.filter(run => chartDaysList.includes(run.day));
   const chartDays = withServedTotals(seriesForDays(chartRuns, chartDaysList), servedDays);
   // The exposure returns only its latest rows. A calendar axis is not proof
@@ -765,12 +774,12 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
           <p className="local-dashboard-caption ins-sub" data-testid="insights-total">{limitLine}</p>
         </div>}
         {emptyMessage !== null ? <EmptyState className="ins-empty">{emptyMessage}</EmptyState>
-          : view === 'runs' ? <><RunsPerDay days={chartDays} />
+          : view === 'runs' ? rowChartsUncovered ? notFullWindow : <><RunsPerDay days={chartDays} />
             {/* Live review 2026-10-25: no "More activity" on Overview; part 15 AC96: no "Explore" links, the sidebar reaches Runs and Usage. */}
             </>
-            : view === 'tokens' ? <TokensPerDay days={chartDays} />
+            : view === 'tokens' ? rowChartsUncovered ? notFullWindow : <TokensPerDay days={chartDays} />
               : servedFailures !== null ? <ServedFailureCategories categories={servedFailures} limit={5} />
-                : <FailureCauses runs={runs} limit={5} onInspectFailure={onInspectFailure} />}
+                : rowFailuresUncovered ? notFullWindow : <FailureCauses runs={runs} limit={5} onInspectFailure={onInspectFailure} />}
       </div>
       </NamedByPanel.Provider>
     );
@@ -792,10 +801,10 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
       <p className="local-dashboard-caption ins-sub" data-testid="insights-total">{population}{undated}{view === 'summary' ? null : <> · Row timestamps: {servedSpan}{earlier}{window.kind === 'days' || view !== 'all' ? '' : ' · Comparisons with the previous window appear for 1, 7, 15 and 30 days'}</>}</p>
       {emptyMessage !== null ? <EmptyState className="ins-empty" aria-label="Insights">{emptyMessage}</EmptyState> : (
         <div className="overview-chart-sections">
-          {view === 'all' && <RunWindowKpis runs={runs} decisions={decisions} now={now} days={window.kind === 'days' ? window.days : chartDaysList.length} label={windowCaption(window)} comparisonEnabled={window.kind === 'days'} />}
-          {view !== 'analysis' && <ChartSection concept="activity" title="Activity over time"><RunsPerDay days={chartDays} /><TokensPerDay days={chartDays} /></ChartSection>}
+          {view === 'all' && <RunWindowKpis runs={runs} decisions={decisions} now={now} days={window.kind === 'days' ? window.days : chartDaysList.length} label={windowCaption(window)} comparisonEnabled={window.kind === 'days'} uncovered={rowsUncovered} />}
+          {view !== 'analysis' && <ChartSection concept="activity" title="Activity over time">{rowChartsUncovered ? notFullWindow : <><RunsPerDay days={chartDays} /><TokensPerDay days={chartDays} /></>}</ChartSection>}
           {view === 'summary' && <ChartSection concept="quality-outcomes" title={servedFailures !== null ? 'Failed checks by category' : 'Why runs failed'}>{servedFailures !== null
-            ? <ServedFailureCategories categories={servedFailures} limit={3} /> : <FailureCauses runs={runs} limit={3} />}</ChartSection>}
+            ? <ServedFailureCategories categories={servedFailures} limit={3} /> : rowFailuresUncovered ? notFullWindow : <FailureCauses runs={runs} limit={3} />}</ChartSection>}
           {/* Lakshman 2026-11-05 ("run page should be fully organised and logically ... visually attractive"): on Runs the six
               analysis charts are one full-width row of tabs, one big chart at a time, as the run charts above them; each
               hint counts what that chart draws, never a computed figure. */}
