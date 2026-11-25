@@ -31,10 +31,10 @@ import { fieldTone } from '@/components/dashboard/field-identity';
 import { DestinationIcon } from '@/navigation/destination-icons';
 import type { AppPage } from '@/store/types';
 import { loadLocalPageConfig, loadLocalPageSnapshots, loadMoreDecisions, rowsForLocalComponent, resolveLocalPageEmptyState, withLastGood, newestRunId as newestWorkflowRunId, DELEGATION_DECISIONS_TOPIC, METERING_SUMMARY_TOPIC, RUN_TRACE_TOPIC, isPerRunTopic, LOCAL_READ_TIMEOUT_MS, type BoundProjectionSnapshot, type LocalPageDocument, type LocalPageName } from '@/layout/local-page-loader';
-import { decisionsWalkFor, type LocalLoadTrigger } from '@/contracts/local-read-budget';
+import { decisionsRouteWindowFor, decisionsWalkFor, type LocalLoadTrigger } from '@/contracts/local-read-budget';
 import { ModelTiersContext } from '@/components/dashboard/model-tiers';
 import { pageRefreshMs } from '@/theme/refresh';
-import { CARD_LINKS, MAPLE_WIDTHS, MeteringTotalCard, MetricCard, OUTSIDE_WINDOW_NOTE, OverviewDayPicker, type OverviewWindow, PendingState, RUNS_SECONDARY, RunChartsSlot, RunLocallyCard, RunRoutingSlot, RunsKpis, UsageKpis, captionRowFor, meteringRangeFor, meteringTokens, pickMeteringRow, readOverviewWindow, servedMeteringDays, writeOverviewWindow } from '@/pages/local/page-headline';
+import { CARD_LINKS, MAPLE_WIDTHS, MeteringTotalCard, MetricCard, OUTSIDE_WINDOW_NOTE, OverviewDayPicker, type OverviewWindow, PendingState, RUNS_SECONDARY, RunChartsSlot, RunLocallyCard, RunRoutingSlot, RunsKpis, UsageKpis, captionRowFor, meteringRangeFor, meteringTokens, pickMeteringRow, readOverviewWindow, servedMeteringDays, windowRunCount, writeOverviewWindow } from '@/pages/local/page-headline';
 import { type DeclaredColumn, PAGE_TITLES, PANEL_CONCEPTS, type PanelSlice, ReadFailureNotice, TableComponent, WidgetReadState, bindingFailedEmpty, notServedTopic, rawRowsFor } from '@/pages/local/page-tables';
 import { type Row, asRecord, asRecords, isMissing, metricConfigFor, timeOf } from '@/pages/local/page-shared';
 import { WorkflowRun } from '@/pages/local/page-workflow';
@@ -106,6 +106,8 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
     const next = writeOverviewWindow(windowSearch, activityWindow);
     if (next !== new URLSearchParams(windowSearch).toString()) navigateWindow(`/overview${next ? `?${next}` : ''}`, { replace: true });
   }, [pageName, activityWindow, windowSearch, navigateWindow]);
+  // OMN-24458: the window the decisions read names (`7d`), from the Overview's rolling window; none on every other page.
+  const decisionsRouteWindow = decisionsRouteWindowFor(pageName, activityWindow);
   const [runChartsSlot, setRunChartsSlot] = useState<HTMLElement | null>(null);
   const [runRoutingSlot, setRunRoutingSlot] = useState<HTMLElement | null>(null);
   // Part 30 AC201: a link to one of Runs' analysis tabs opens "More analysis" on it.
@@ -145,15 +147,22 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
     navigate(`${PAGE_PATHS['local-workflow']}${query ? `?${query}` : ''}`);
   };
 
+  // OMN-24458: the page and run the last load was for; a load that differs only in the window keeps what is on screen.
+  const loadedScope = useRef<string | null>(null);
   useEffect(() => {
     let active = true;
+    const scope = `${pageName}\0${requestedRunId ?? ''}`;
+    const windowOnly = loadedScope.current === scope && latest.current.length > 0;
+    loadedScope.current = scope;
     // A page switch must never show another page's document or another run's steps.
-    setPage(null);
-    setSnapshots([]);
-    latest.current = [];
+    if (!windowOnly) {
+      setPage(null);
+      setSnapshots([]);
+      latest.current = [];
+      setLoading(true);
+    }
     setError(null);
     setRefreshError(null);
-    setLoading(true);
     let document: LocalPageDocument;
     try {
       document = loadLocalPageConfig(pageName);
@@ -171,19 +180,23 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
     }
     const topics = [...new Set(document.components.flatMap(component =>
       (component.data_bindings ?? []).map(binding => binding.projection_topic)))];
-    const snapshotKey = (snapshot: BoundProjectionSnapshot) => `${snapshot.topic}\0${snapshot.runId ?? ''}`;
+    // OMN-24458: the decisions rows of one window are not the rows of another, so a read kept for navigation is kept per window.
+    const windowKey = (topic: string) => topic === DELEGATION_DECISIONS_TOPIC && decisionsRouteWindow !== undefined ? `\0${decisionsRouteWindow}` : '';
+    const snapshotKey = (snapshot: BoundProjectionSnapshot) => `${snapshot.topic}\0${snapshot.runId ?? ''}${windowKey(snapshot.topic)}`;
     // An implicit server tenant is not safe to cache across navigation: the same
     // origin can begin serving another install without a client config change.
     const cached = tenant === null ? [] : topics.flatMap(topic => {
       if (isPerRunTopic(topic) && requestedRunId === null) return [];
-      const key = `${topic}\0${isPerRunTopic(topic) ? requestedRunId ?? '' : ''}`;
+      const key = `${topic}\0${isPerRunTopic(topic) ? requestedRunId ?? '' : ''}${windowKey(topic)}`;
       const snapshot = recent.snapshots.get(key);
       return snapshot && Date.now() - timeOf(snapshot.readAt) < 60_000 ? [snapshot] : [];
     });
-    latest.current = cached;
-    setSnapshots(cached);
-    setPage(document);
-    setLoading(false);
+    if (!windowOnly) {
+      latest.current = cached;
+      setSnapshots(cached);
+      setPage(document);
+      setLoading(false);
+    }
     // Reads of one page can overlap: the interval and the refresh button each start one while an earlier one is still
     // unanswered. Only the read started last may write. A read that was overtaken answers a question the page has
     // already asked again (the newest run may have changed since), so its rows, its failure and its end of loading
@@ -246,6 +259,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
           onSnapshot: publish,
           isCurrent: current,
           decisionsWalk: decisionsWalkFor(pageName, trigger, latest.current.find(snapshot => snapshot.topic === DELEGATION_DECISIONS_TOPIC)),
+          ...(decisionsRouteWindow === undefined ? {} : { decisionsRouteWindow }),
         });
         if (current()) {
           setPage(document);
@@ -287,7 +301,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
       clearInterval(timer);
       unsubscribeRefresh();
     };
-  }, [pageName, requestedRunId, recent]);
+  }, [pageName, requestedRunId, recent, decisionsRouteWindow]);
 
   /**
    * OMN-19998: the Runs page's Load more. No load walks the run history, so a truncated decisions snapshot names where
@@ -539,7 +553,8 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
           return <OverviewStatusStrip env={record(rawRowsFor(status, snapshots, 0)[0])} now={now} window={overviewWindow}
             metering={meteringRead && !meteringRead.failure ? meteringRead.rows : null}
             complete={walk !== undefined && !walk.failure && walk.truncated !== true} decisions={walk?.rows ?? []}
-            routing={usage ? record(rawRowsFor(usage, snapshots, 0)[0]) : null} />;
+            routing={usage ? record(rawRowsFor(usage, snapshots, 0)[0]) : null}
+            routingFailed={Boolean(usage && snapshots.find(snapshot => snapshot.topic === usage.data_bindings?.[0]?.projection_topic)?.failure)} />;
         })()}
       </header>}
       {loading && <p role="status">Loading runtime exposures…</p>}
@@ -607,18 +622,26 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
                         : 'Runs and tokens for the chosen window; models and tiers are all time. Pick a chart.'}</p>
                       {/* Lakshman 2026-11-04 ("not happy ... use best design and impress user"): stat tabs. Each tab is a small
                         card with its glyph tile, the chart's name and a served headline (the routing view's run total and
-                        its model and tier counts; the window's token total, as the Tokens processed card reads it). */}
+                        its model and tier counts; the window's token total, as the Tokens processed card reads it, except that
+                        any row counting zero runs reads 0 here, where the card does so only for a summed range: OMN-26439). */}
                     {(() => {
                       const usage = page.components.find(candidate => candidate.component_id === 'overview-model-usage');
                       const routingValue = usage ? rawRowsFor(usage, snapshots, 0)[0] : undefined;
                       const routing = routingValue && typeof routingValue === 'object' && !Array.isArray(routingValue) ? routingValue as Row : null;
                       const metering = snapshots.find(snapshot => snapshot.topic === METERING_SUMMARY_TOPIC);
                       const picked = metering && !metering.failure ? pickMeteringRow(metering.rows, overviewWindow, now) : null;
-                      const tokens = picked && 'row' in picked ? meteringTokens(picked.row).total : null;
+                      // OMN-26439 (Lakshman 2026-11-21, decision D1 A on OMN-24282): a window with no runs used no tokens,
+                      // a measured 0 (the served or summed zeros, read, not typed), unlike a row whose every run lacks token
+                      // counts, which meteringTokens reads as not measured.
+                      const pickedRow = picked && 'row' in picked ? picked.row : null;
+                      const noRuns = pickedRow !== null && !isMissing(pickedRow.runs_total) && Number(pickedRow.runs_total) === 0
+                        && !isMissing(pickedRow.tokens_in) && !isMissing(pickedRow.tokens_out)
+                        && Number.isFinite(Number(pickedRow.tokens_in)) && Number.isFinite(Number(pickedRow.tokens_out));
+                      const tokens = pickedRow === null ? null
+                        : noRuns ? String(Number(pickedRow.tokens_in) + Number(pickedRow.tokens_out)) : meteringTokens(pickedRow).total;
                       // The runs headline follows the window, as the cards do; all time falls back to the routing total.
-                      const windowRuns = picked && 'row' in picked && !isMissing(picked.row.runs_total) ? Number(picked.row.runs_total) : NaN;
-                      const runs = Number.isFinite(windowRuns) ? windowRuns
-                        : overviewWindow === 'all' && routing && !isMissing(routing.total_delegations) ? Number(routing.total_delegations) : NaN;
+                      const runs = windowRunCount(metering && !metering.failure ? metering.rows : null, routing, overviewWindow, now,
+                        Boolean(usage && snapshots.find(snapshot => snapshot.topic === usage.data_bindings?.[0]?.projection_topic)?.failure));
                       const models = routing && Array.isArray(routing.by_model) ? routing.by_model.length : null;
                       // Only the tier-routed tiers count, as Tier mix draws them (the served not-tier-routed row is not a tier).
                       const tierRows = routing && routing.by_tier && typeof routing.by_tier === 'object' && Array.isArray((routing.by_tier as Row).tiers)

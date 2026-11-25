@@ -70,8 +70,8 @@ const rows = {
 };
 
 type Choice = { name: string; runs: string; tokens: string };
-// Every choice the window menu lists, then two days picked in its calendar (the menu's title names "a picked day"):
-// one in the past, and today, which is a different window from the Today radio.
+// Every choice the window menu lists, then three days picked in its calendar (the menu's title names "a picked day"):
+// one in the past, today, which is a different window from the Today radio, and one in the month before.
 const listed: (Choice & { name: WindowName })[] = [
   { name: 'All time', runs: '900 runs', tokens: '3.6K tokens' },
   { name: 'Today (UTC)', runs: '1 runs', tokens: '4 tokens' },
@@ -80,9 +80,12 @@ const listed: (Choice & { name: WindowName })[] = [
   { name: 'Last 30 days (UTC)', runs: '63 runs', tokens: '252 tokens' },
   { name: 'Last 90 days (UTC)', runs: '255 runs', tokens: '1.02K tokens' },
 ];
-const picked: (Choice & { day: number; iso: string })[] = [
+// OMN-24282 Amendment 4: a third day in the month before, reached with the calendar's "Previous month" button. It stays
+// last because the calendar opens on the chosen day's month.
+const picked: (Choice & { day: number; iso: string; monthsBack?: number })[] = [
   { name: 'Picked day 2026-10-23', day: 23, iso: '2026-10-23', runs: '4 runs', tokens: '16 tokens' },
   { name: 'Picked day 2026-10-30', day: 30, iso: '2026-10-30', runs: '1 runs', tokens: '4 tokens' },
+  { name: 'Picked day 2026-09-30', day: 30, iso: '2026-09-30', monthsBack: 1, runs: '64 runs', tokens: '256 tokens' },
 ];
 const TAB_IDS = ['runs', 'tokens', 'models', 'tiers'];
 const HEADINGS: Record<string, string> = { runs: 'Total runs', tokens: 'Total tokens', models: 'Model usage', tiers: 'Tier mix' };
@@ -147,6 +150,9 @@ async function everyChoice(page: Page, check: (choice: Choice) => Promise<void>)
   for (const choice of picked) {
     await page.getByRole('button', { name: /^Pick a UTC day/ }).click();
     const calendar = page.getByRole('dialog');
+    for (let back = 0; back < (choice.monthsBack ?? 0); back += 1) {
+      await calendar.getByRole('button', { name: 'Previous month' }).click();
+    }
     await calendar.locator('button.local-calendar-day', { hasText: new RegExp(`^${choice.day}$`) }).click();
     await expect(calendar).toHaveCount(0);
     await expect(page.getByRole('button', { name: `Pick a UTC day, ${choice.iso} chosen` })).toBeVisible();
@@ -203,4 +209,56 @@ test('activity_breakdown_window_label_ac3: every tab shows the served total for 
   await expect(tab(page, 'runs'), 'no all-time row, Today: runs').toHaveText(endsWith('1 runs'));
   await chooseWindow(page, 'All time');
   await expect(tab(page, 'runs'), 'All time with no all-time row: runs').toHaveText(endsWith(`${String(sharedRouting.total_delegations)} runs`));
+});
+
+// OMN-26439 (Lakshman 2026-11-21, decision D1 A on OMN-24282): a window with no runs used no tokens, so its tokens tab
+// reads 0 tokens, while a window whose runs all lack token counts still reads "Tokens not measured". Three picked days,
+// none in dayRuns: one with no served row (the page sums it into a row counting zero runs), one with a served row
+// counting zero runs, and one whose three runs all have unknown token counts. Its rows also drop the 2026-10-24 and
+// 2026-10-30 day rows, so Today and the last 7 days are run-less too: the rule holds for every kind of window, not only a
+// picked day. The title does not start activity_breakdown_window_label, so the three per-criterion OMN-24282 commands
+// (-g activity_breakdown_window_label_ac1/_ac2/_ac3) do not run it; OMN-24282's whole-file item and the standing CI job
+// run this whole file, so this case is part of that alarm.
+const runLessWindows: { name: WindowName; runs: string; tokens: string }[] = [
+  { name: 'Today (UTC)', runs: 'Total runs0 runs', tokens: 'Total tokens0 tokens' },
+  { name: 'Last 7 days (UTC)', runs: 'Total runs0 runs', tokens: 'Total tokens0 tokens' },
+];
+const emptyDays: { day: number; iso: string; runs: string; tokens: string }[] = [
+  { day: 20, iso: '2026-10-20', runs: 'Total runs0 runs', tokens: 'Total tokens0 tokens' }, // no served row
+  { day: 21, iso: '2026-10-21', runs: 'Total runs0 runs', tokens: 'Total tokens0 tokens' }, // a served row of zero runs
+  { day: 22, iso: '2026-10-22', runs: 'Total runs3 runs', tokens: 'Total tokensTokens not measured' }, // unknown tokens
+];
+if (dayRuns.some(([day]) => emptyDays.some(empty => empty.iso === day))) throw new Error('an empty_window day has runs in dayRuns');
+const unknownTokens = { ...row('day', '2026-10-22', 3), runs_measured: 0, runs_unknown_tokens: 3, tokens_in: 0, tokens_out: 0 };
+const lastSevenDays = new Set(['2026-10-24', '2026-10-30']);
+if (dayRuns.filter(([day]) => day >= '2026-10-24' && day <= '2026-10-30').some(([day]) => !lastSevenDays.has(day))) {
+  throw new Error('a dayRuns row inside the last 7 days is not dropped for empty_window');
+}
+const emptyRows = {
+  ...rows,
+  [meteringTopic]: [
+    row('all', '', 900),
+    ...dayRuns.filter(([day]) => !lastSevenDays.has(day)).map(([day, runs]) => row('day', day, runs)),
+    row('day', '2026-10-21', 0),
+    unknownTokens,
+  ],
+};
+
+test('empty_window: a window with no runs reads 0 tokens, and one whose runs all lack token counts reads Tokens not measured', async ({ page }) => {
+  await openOverview(page, emptyRows);
+  for (const choice of runLessWindows) {
+    await chooseWindow(page, choice.name);
+    await expect(tab(page, 'runs'), `${choice.name}: runs tab`).toHaveText(choice.runs);
+    await expect(tab(page, 'tokens'), `${choice.name}: tokens tab`).toHaveText(choice.tokens);
+  }
+  for (const choice of emptyDays) {
+    await page.getByRole('button', { name: /^Pick a UTC day/ }).click();
+    const calendar = page.getByRole('dialog');
+    await calendar.locator('button.local-calendar-day', { hasText: new RegExp(`^${choice.day}$`) }).click();
+    await expect(calendar).toHaveCount(0);
+    await expect(page.getByRole('button', { name: `Pick a UTC day, ${choice.iso} chosen` })).toBeVisible();
+    // The runs tab proves this day's served rows were read before the tokens tab is judged.
+    await expect(tab(page, 'runs'), `${choice.iso}: runs tab`).toHaveText(choice.runs);
+    await expect(tab(page, 'tokens'), `${choice.iso}: tokens tab`).toHaveText(choice.tokens);
+  }
 });

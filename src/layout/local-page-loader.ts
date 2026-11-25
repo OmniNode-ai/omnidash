@@ -48,6 +48,13 @@ export interface LocalPageLoadOptions {
    * page is merged into it.
    */
   decisionsWalk?: { maxPages: number; previous?: BoundProjectionSnapshot };
+  /**
+   * OMN-24458: the window the decisions list read names, in the route's own form (`7d`, `24h`; see
+   * decisionsRouteWindowFor). The route then reads only that window's rows (one page, newest first, not cursor-paged)
+   * instead of the newest page of the whole history. Absent sends none. Only the decisions list read carries it, never
+   * one run's own row or another exposure.
+   */
+  decisionsRouteWindow?: string;
 }
 
 /**
@@ -259,6 +266,8 @@ export const isPerRunTopic = (topic: string): boolean => PER_RUN_TOPICS.has(topi
  */
 export const METERING_SUMMARY_TOPIC = 'onex.snapshot.projection.metering-summary.v1';
 export const LOCAL_ENVIRONMENT_TOPIC = 'onex.snapshot.projection.local-environment.v1';
+/** done-items.v1 feeds the Overview Done count card (OMN-25104); its rows are tickets, not delegation runs. */
+export const DONE_TOPIC = 'onex.snapshot.projection.done-items.v1';
 
 const pageFiles = import.meta.glob('../pages/local/*.page.yaml', {
   eager: true,
@@ -418,7 +427,11 @@ export async function loadLocalPageSnapshots(
     return complete ? { ...rest, rows, rowCount: rows.length } : { ...rest, rows, rowCount: rows.length, truncated: true, nextCursor: cursor };
   };
   const readTopic = async (topic: string, params?: Readonly<Record<string, string>>) => {
-    const read = await readTopicResult(topic, params, async late => {
+    // OMN-24458: the decisions list names its window; a windowed page has no cursor, so it is never walked.
+    const readParams = topic === DELEGATION_DECISIONS_TOPIC && params === undefined && options.decisionsRouteWindow !== undefined
+      ? { window: options.decisionsRouteWindow }
+      : params;
+    const read = await readTopicResult(topic, readParams, async late => {
       publish(isPerRunTopic(topic) ? { ...late, runId: params?.correlation_id ?? null } : late);
       // A delayed decisions response may be the first time the newest run is
       // known. Fetch only its per-run reads, with the same caller/current-state guard.
@@ -566,9 +579,9 @@ export function resolveLocalPageEmptyState(
 ): LocalPageEmptyState | null {
   // A metering-summary card says why its own figure is missing (a day with no measured run has a null saving), so
   // its rows never switch the whole page to Baseline unresolved or hide a NO_RUNS_YET page (OMN-20009 C3).
-  // Environment health is independent of runs too: a running service is not a recorded delegation.
+  // Environment health is independent of runs too: a running service is not a recorded delegation. So are done tickets.
   const rows = page.components
-    .filter((component) => ![METERING_SUMMARY_TOPIC, LOCAL_ENVIRONMENT_TOPIC].includes(component.data_bindings?.[0]?.projection_topic ?? ''))
+    .filter((component) => ![METERING_SUMMARY_TOPIC, LOCAL_ENVIRONMENT_TOPIC, DONE_TOPIC].includes(component.data_bindings?.[0]?.projection_topic ?? ''))
     .flatMap((component) => rowsForLocalComponent(component, snapshots));
   // Only a component's first binding supplies its rows; a second binding is a caption (the savings card's baseline
   // line), so it must not switch a page into the Runs session-row rules.
@@ -589,7 +602,7 @@ export function resolveLocalPageEmptyState(
     && snapshot.failure.kind !== 'not-served')) return null;
   const rowTopics = new Set(page.components
     .map((component) => component.data_bindings?.[0]?.projection_topic ?? '')
-    .filter((topic) => topic !== '' && ![METERING_SUMMARY_TOPIC, LOCAL_ENVIRONMENT_TOPIC].includes(topic)));
+    .filter((topic) => topic !== '' && ![METERING_SUMMARY_TOPIC, LOCAL_ENVIRONMENT_TOPIC, DONE_TOPIC].includes(topic)));
   const readARowSource = snapshots.some((snapshot) => rowTopics.has(snapshot.topic) && !snapshot.failure);
   if (rows.length === 0 && readARowSource && page.empty_state_reasons.includes('NO_RUNS_YET')) {
     return 'NO_RUNS_YET';
