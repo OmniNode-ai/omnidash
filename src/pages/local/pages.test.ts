@@ -154,7 +154,8 @@ describe('local dashboard page contracts', () => {
     // OMN-19980 Amendment 2: the headline cards read metering-summary.v1, whose rows never decide the page state
     // (each card says why its own figure is missing), so the page state is read off the first other binding.
     const overviewBinding = page.components.map((c) => c.data_bindings?.[0])
-      .find((b) => b !== undefined && b.projection_topic !== 'onex.snapshot.projection.metering-summary.v1');
+      .find((b) => b !== undefined && b.projection_topic !== 'onex.snapshot.projection.metering-summary.v1'
+        && b.projection_topic !== 'onex.snapshot.projection.done-items.v1');
     expect(overviewBinding).toBeDefined();
     const snapshots = [{
       topic: overviewBinding?.projection_topic ?? '',
@@ -316,8 +317,10 @@ describe('local pages against the captured lab catalogue', () => {
       const config = page.dashboard.widgets.find(w=>w.data_source===id)?.config as {metric_key:string};
       expect(config.metric_key).toBe(metric);
     }
+    // OMN-25104 AC3 (Lakshman 2026-11-19): the Done card follows the four totals; it counts done-items.v1's rows, keyed
+    // by ticket, and is not a metering total.
     expect(page.dashboard.widgets.filter(w => (w.config as Record<string, unknown>).config_kind === 'metric_card').map(w => (w.config as Record<string, unknown>).metric_key)).toEqual([
-      'spend_usd', 'savings_usd', 'runs_measured', 'tokens_in_and_out',
+      'spend_usd', 'savings_usd', 'runs_measured', 'tokens_in_and_out', 'ticket',
     ]);
     // OMN-21166 live review 2026-10-25: Lakshman deleted the secondary metrics, Spend per day, Last run, Recent runs and
     // Environment from Overview (Environment is Settings' System status section, part 26 revision 2). Overview declares
@@ -330,6 +333,8 @@ describe('local pages against the captured lab catalogue', () => {
       'onex.snapshot.projection.delegation.quality-gate.v1', 'onex.snapshot.projection.delegation.model-routing.v1',
       'onex.snapshot.projection.delegation.daily.v1',
       'onex.snapshot.projection.local-environment.v1', 'onex.snapshot.projection.metering-summary.v1',
+      // OMN-25104 AC3: the Done card counts done-items.v1's rows; the catalogue checks below hold this until the lab serves it.
+      'onex.snapshot.projection.done-items.v1',
     ]));
   });
 

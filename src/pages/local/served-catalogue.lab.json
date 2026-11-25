@@ -1,6 +1,6 @@
 {
   "source": "GET /projections on the .201 dev-lane projection API, read-only",
-  "captured_at": "2026-11-10T03:42:45.286114+00:00",
+  "captured_at": "2026-11-23T10:08:21.587102+00:00",
   "exposures": [
     {
       "topic": "delegation",
@@ -435,6 +435,20 @@
         "context_pack_hash",
         "factor_subset_hash",
         "routing_source",
+        "check_verdict",
+        "unscorable_source",
+        "row_kind",
+        "try_end",
+        "suite_digest",
+        "size_band",
+        "sequence_id",
+        "try_ordinal",
+        "diff_hash",
+        "max_turns",
+        "try_timeout_s",
+        "generation_s",
+        "env_sync_s",
+        "check_s",
         "attempt_count",
         "first_pass_success",
         "final_success",
@@ -1752,6 +1766,57 @@
         "unreadable",
         "examples",
         "read_at"
+      ]
+    },
+    {
+      "topic": "onex.snapshot.projection.done-items.v1",
+      "status": "ok",
+      "degraded_reason": null,
+      "columns": [
+        "ticket",
+        "done_at",
+        "done_row_id",
+        "lane",
+        "pr",
+        "closes",
+        "projected_at"
+      ]
+    },
+    {
+      "topic": "onex.snapshot.projection.floor-integration-rows.v1",
+      "status": "ok",
+      "degraded_reason": null,
+      "columns": [
+        "key",
+        "repository",
+        "number",
+        "title",
+        "merged_at",
+        "target",
+        "state",
+        "gap_class",
+        "step",
+        "running_path",
+        "running_line",
+        "merged",
+        "seen_running",
+        "settled_elsewhere",
+        "reading_owed",
+        "unintegrated",
+        "as_of",
+        "projected_at"
+      ]
+    },
+    {
+      "topic": "onex.snapshot.projection.local-identity.v1",
+      "status": "ok",
+      "degraded_reason": null,
+      "columns": [
+        "tenant_id",
+        "minted_at",
+        "event_id",
+        "updated_at",
+        "projection_cursor"
       ]
     }
   ]

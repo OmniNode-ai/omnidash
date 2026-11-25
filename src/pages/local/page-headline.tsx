@@ -191,7 +191,7 @@ export function MetricCard({ component, config, row, caption, figureLine, figure
 export const MAPLE_WIDTHS: Readonly<Record<string, number>> = {
   'overview:overview-insights:runs': 12, 'overview:overview-model-usage': 12, 'overview:overview-tier-mix': 12,
   'overview:overview-insights:tokens': 12,
-  'overview:overview-quality:card': 3, 'overview:overview-recent-runs': 8, 'overview:overview-last-run': 12,
+  'overview:overview-quality:card': 3, 'overview:overview-done': 3, 'overview:overview-recent-runs': 8, 'overview:overview-last-run': 12,
   'usage:usage-savings-series': 12, 'usage:usage-savings-series:by-model': 12,
   'usage:usage-insights:spend': 12, 'usage:usage-tokens-by-day': 12,
   'usage:usage-insights:analysis': 12, 'usage:usage-insights:cost-per-run': 12, 'usage:usage-insights:tokens-by-model': 12, 'usage:usage-insights:cost-by-route': 12,
