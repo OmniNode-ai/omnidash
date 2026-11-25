@@ -46,7 +46,8 @@ const ORDER: Record<PageName, Array<[title: string, width: number]>> = {
   overview: [
     ['Actual spend', 3], ['Savings', 3], ['Agent calls', 3], ['Tokens processed', 3],
     // OMN-25104 AC3 (Lakshman 2026-11-19): the Done figure, a row of its own under the cards.
-    ['Done', 12],
+    // OMN-25103: Running beside it; the row is split between the two.
+    ['Done', 6], ['Running', 6],
     ['Quality', 12],
     ['Trends and breakdowns', 12],
     ['Model usage', 12],
@@ -69,7 +70,7 @@ const RENDERED_ORDER: Record<PageName, Array<[title: string, width: number]>> = 
   overview: [
     ['Actual spend', 3], ['Savings', 3], ['Agent calls', 3], ['Tokens processed', 3], ['Delegation Quality', 3],
     // OMN-25104 AC3: the work strip under it, the same five cells, Done first.
-    ['Done', 3],
+    ['Done', 3], ['Running', 3],
     // OMN-22168 (Lakshman 2026-11-04): the daily trend, every metric one line, the full row under the cards; then the four
     // charts as one titled row of tabs ("these 4 into one ... with tab"), which draws the chosen chart only (Runs per day
     // first).
@@ -86,7 +87,7 @@ const RENDERED_ORDER: Record<PageName, Array<[title: string, width: number]>> = 
     ['Usage by model and day', 12],
   ],
 };
-const HEADLINE_STRIP = new Set(['Actual spend', 'Savings', 'Agent calls', 'Tokens processed', 'Delegation Quality', 'Done']);
+const HEADLINE_STRIP = new Set(['Actual spend', 'Savings', 'Agent calls', 'Tokens processed', 'Delegation Quality', 'Done', 'Running']);
 /** The preserved panel set, plus the approved OMN-19988 Environment addition; each appears once. */
 // D2 (Lakshman2026-10-20): all secondary metrics remain on Overview in its native disclosure.
 const BEFORE: Record<PageName, string[]> = {
@@ -96,7 +97,7 @@ const BEFORE: Record<PageName, string[]> = {
   // OMN-22168 (Lakshman 2026-11-04): the daily trend joins it.
   // The four charts are tabs since OMN-22168, so on load the page draws the titled tab row and its first chart.
   // OMN-25104 AC3: the Done figure joins it.
-  overview: ['Actual spend', 'Savings', 'Agent calls', 'Tokens processed', 'Delegation Quality', 'Done', 'Daily trend', 'Activity breakdown',
+  overview: ['Actual spend', 'Savings', 'Agent calls', 'Tokens processed', 'Delegation Quality', 'Done', 'Running', 'Daily trend', 'Activity breakdown',
     'Runs per day'].sort(),
   // OMN-21166 Maple grid: Usage insights is drawn as Spend by model and, under "More usage", one panel per chart (part 17:
   // Cost per run, Tokens by model, Cost by route); the day-by-day token list is gone (the table holds its rows).
