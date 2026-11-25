@@ -6,10 +6,10 @@ title: "The Overview keeps its window, rollouts drain, reconnects keep rows, and
 summary: >-
   Acceptance for OMN-26665, from the approved spec. AC1 to AC5 are each bound to the vitest file that carries that
   criterion's falsifier; every one of those files is new on this branch, so each check fails at the merge base (no test
-  file found) and passes at the head. AC6 is integrated on a merged build (one 7-day read measured once, every 7-day
-  figure covered or not measured, one dev rollout timed showing reconnecting and not a blank page), so it is kept as
-  written and no check here binds it; its recorded read and rollout timing go in the pull request once the build is
-  merged.
+  file found) and passes at the head. AC6 is bound to hosted tests of its two mechanisms (amended
+  2026-11-25), which run in CI before merge and fail at the merge base; the reading on a real merged build (one 7-day read
+  measured once, one dev rollout timed) is kept as a separate local Done gate item that binds no criterion and does not
+  stand in for the hosted tests, and its recorded read and timing go in the pull request after deploy.
 is_seam_ticket: false
 interface_change: false
 interfaces_touched: []
@@ -53,10 +53,15 @@ requirements:
           spanning past the window start
       - id: "AC6"
         statement: >-
-          integrated, on a merged build: the 7-day read is measured once (row count and oldest time), every 7-day figure
-          is covered or reads not measured, and one dev rollout is timed and shows the reconnecting text instead of a
-          blank page -- falsifier, evidence: the recorded read and the rollout timing in the pull request, taken after
-          the build is merged
+          the two mechanisms behind the merged-build reading are proved by hosted tests before merge: (a) the 7-day read
+          reports its row count and the oldest row day through the shared coverage helper, and a figure drawn from rows
+          that do not reach the window start reads "Not measured for the full window"; (b) the readiness probe answers 503
+          while the server drains and 200 once the bundle and projection answer, and the page keeps its last rows with the
+          reconnecting text while reads fail -- falsifier: tests M1 to M3 in
+          tests/pages/LocalDashboardPage.omn26665.ac6-mechanisms.test.tsx, the case named AC6 in
+          server/__tests__/lifecycle.omn26665.test.ts, and the case named AC6 in
+          tests/pages/LocalDashboardPage.omn26665.reconnecting.test.tsx; the hosted tests prove the mechanisms, not the live
+          figures, which stay a note in the pull request
 evidence_requirements: []
 emergency_bypass:
   enabled: false
@@ -117,6 +122,21 @@ dod_evidence:
       - check_type: "test_passes"
         check_value: "npm ci --prefer-offline --no-audit --no-fund && npx vitest run src/pages/local/insight-charts.omn26665.coverage.test.tsx"
         cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn26665-ac6-mechanisms"
+    description: >-
+      AC6, hosted: the coverage helper reports the rows it judged and the oldest day (M1), a 7-day Overview with 500 rows
+      from the last 24 hours reads Not measured for the full window and draws no daily chart while rows that reach back
+      past the window start draw it (M2, M3), one pod's probe is 503 with no bundle and with the projection down, 200 when
+      both answer and 503 while draining with the read in flight still finishing, and the page keeps its rows and says it is
+      reconnecting while reads fail and clears when they succeed. Mutation controls run on this branch: coverage always true
+      fails M2; dropping the bundle, the projection or the draining term from readiness fails the probe case; hiding the
+      reconnecting notice fails the page case.
+    source: "manual"
+    binds_ac: ["AC6"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx vitest run tests/pages/LocalDashboardPage.omn26665.ac6-mechanisms.test.tsx && npx vitest run server/__tests__/lifecycle.omn26665.test.ts -t \"AC6\" && npx vitest run tests/pages/LocalDashboardPage.omn26665.reconnecting.test.tsx -t \"AC6\""
+        cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn26665-ac6-integrated-reading"
     description: >-
       AC6, read on a build that carries this change: it takes the 7-day decisions read once and prints the row count
@@ -125,9 +145,9 @@ dod_evidence:
       (it fails if the probe answers anything but 200 or 503 with the pod still reachable, or never returns to 200).
       A connection that cannot be made during the rollout counts as not ready, which is what the page reads as
       reconnecting. OMNIDASH_URL is the dashboard's own address. Hosted CI cannot reach a dev host, so only the local
-      Done gate runs this item; the on-screen reconnecting text during that rollout is recorded in the pull request.
+      Done gate runs this item. It binds no criterion and does not stand in for the hosted tests; the on-screen reconnecting
+      text during that rollout is recorded in the pull request.
     source: "manual"
-    binds_ac: ["AC6"]
     execution_scope: "local_done_gate"
     checks:
       - check_type: "command"

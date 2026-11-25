@@ -24,17 +24,18 @@ export const NOT_MEASURED_FULL_WINDOW = 'Not measured for the full window';
  * runs, so a busy day can fill it and leave a "7 days" figure counting one day. Rows cover the window when the read is
  * complete (every page walked), or when a run older than the window's first day was read: the first day itself may be
  * cut part-way through, so only an older day proves nothing of the window is missing. All time has no start to reach.
- * Every windowed figure drawn from rows asks this one function; the status strip's median (page-overview) is the same rule.
+ * It also reports how many rows it judged (rows) and the UTC day of the oldest (oldestRead), so a reading of the read is
+ * those two numbers and not a guess. Every windowed figure drawn from rows asks this one function; the status strip's median (page-overview) is the same rule.
  */
 export function windowCoverage(
   runs: readonly InsightRun[], window: CoverageWindow, now: number, complete: boolean,
-): { covered: boolean; firstDay: string | null; oldestRead: string | null } {
+): { covered: boolean; firstDay: string | null; oldestRead: string | null; rows: number } {
   const firstDay = window.kind === 'all' ? null
     : window.kind === 'days' ? windowDays(now, window.days)[0] ?? null
       : window.start === '' ? null : window.start;
   const oldestRead = oldestRunDay(runs);
-  if (firstDay === null || complete) return { covered: true, firstDay, oldestRead };
-  return { covered: rowsReachBefore(oldestRead, firstDay), firstDay, oldestRead };
+  if (firstDay === null || complete) return { covered: true, firstDay, oldestRead, rows: runs.length };
+  return { covered: rowsReachBefore(oldestRead, firstDay), firstDay, oldestRead, rows: runs.length };
 }
 
 /** The UTC day of the oldest run in a read, or null for an empty read. */

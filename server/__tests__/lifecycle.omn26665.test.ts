@@ -223,3 +223,56 @@ describe('AC2 readiness: the probe fails until the bundle and the projection ans
     await shutdown;
   });
 });
+
+// AC6 (hosted proof, mechanism b, server half): one pod's rollout as the probe sees it. The merged-build timing of a real
+// rollout is a note in the pull request; this is what hosted CI can run before merge.
+//   A1 the probe must not say ok while the bundle is missing or the projection is down, and must say ok once both answer
+//   A2 the same pod, once told to stop, must say not ready (draining) while the read in flight is still finishing
+describe('AC6 rollout: the probe follows one pod from start to drain', () => {
+  it('AC6 A1+A2: 503 with no bundle (projection down, then up), 503 with the projection down, 200 when both answer, 503 while draining', async () => {
+    let projectionUp = false;
+    const dir = bundleDir(false);
+    const exit = vi.fn();
+    const slow = deferred();
+    let slowStarted!: () => void;
+    const started = new Promise<void>((r) => { slowStarted = r; });
+    const lifecycle = createLifecycle({ distDir: dir, checkProjection: async () => projectionUp, graceMs: 5_000, stopHeartbeat: () => {}, exit });
+    const app = express();
+    app.use(lifecycle.middleware);
+    app.get('/api/health-probe', lifecycle.readinessHandler);
+    app.get('/slow', async (_req, res) => { slowStarted(); await slow.promise; res.json({ done: true }); });
+    const { server, port } = await listen(app);
+    lifecycle.attach(server);
+    const probe = async () => JSON.parse((await get(port, '/api/health-probe')).body) as { status: string; checks: Record<string, boolean> };
+    const status = async () => (await get(port, '/api/health-probe')).status;
+
+    expect(await status()).toBe(503);
+    expect((await probe()).checks).toMatchObject({ bundle: false, projection: false });
+
+    projectionUp = true;
+    expect(await status()).toBe(503);
+    expect((await probe()).checks).toMatchObject({ bundle: false, projection: true });
+
+    projectionUp = false;
+    writeFileSync(path.join(dir, 'index.html'), '<!doctype html>');
+    expect(await status()).toBe(503);
+    expect((await probe()).checks).toMatchObject({ bundle: true, projection: false });
+
+    projectionUp = true;
+    expect(await status()).toBe(200);
+    expect(await probe()).toEqual({ status: 'ok', checks: { bundle: true, projection: true, draining: false } });
+
+    const inflight = get(port, '/slow');
+    await started;
+    const shutdown = lifecycle.shutdown();
+    const draining = await request(app).get('/api/health-probe');
+    expect(draining.status).toBe(503);
+    expect(draining.body.checks).toMatchObject({ bundle: true, projection: true, draining: true });
+    expect(exit).not.toHaveBeenCalled();
+
+    slow.resolve();
+    expect((await inflight).status).toBe(200);
+    await shutdown;
+    expect(exit).toHaveBeenCalledWith(0);
+  });
+});

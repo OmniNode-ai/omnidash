@@ -107,4 +107,23 @@ describe('OMN-26665 AC3: an unreachable server keeps the last rows and says it i
     await settle();
     expect(reconnecting()).toBeNull();
   });
+
+  // AC6 (hosted proof, mechanism b, page half): what a viewer sees while a pod rolls out. Reads fail while the server is
+  // away; the last rows stay and the page says it is reconnecting; when the server is back the notice goes and the rows stay.
+  it('AC6 rollout: the page keeps its rows and reads Reconnecting while reads fail, then clears', async () => {
+    render(<LocalDashboardPage pageName="runs" />);
+    await settle();
+    expect(reconnecting()).toBeNull();
+
+    harness.serverDown = true;
+    await nextPoll();
+    expect(screen.getByRole('link', { name: 'run-1' })).toBeInTheDocument();
+    expect(screen.getByTestId('reconnecting')).toHaveTextContent(/^Reconnecting to the runtime/);
+    expect(screen.getByRole('link', { name: 'run-1' })).toBeVisible();
+
+    harness.serverDown = false;
+    await nextPoll();
+    expect(screen.queryByTestId('reconnecting')).toBeNull();
+    expect(screen.getByRole('link', { name: 'run-1' })).toBeInTheDocument();
+  });
 });
