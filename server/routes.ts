@@ -137,6 +137,20 @@ async function readViaHttp(path: string, query?: Record<string, unknown>): Promi
   return res.json();
 }
 
+/**
+ * OMN-26665 AC2: does the projection API answer? http mode asks its exposure catalogue; the other
+ * modes hold their own reader in this process, so there is no remote to wait for.
+ */
+export async function checkProjectionReachable(): Promise<boolean> {
+  if (dsConfig.mode !== 'http') return true;
+  try {
+    const res = await fetch(`${projectionApiBase()}/projections`, { signal: AbortSignal.timeout(2_500) });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 async function readProjectionViaHttp(topic: string): Promise<unknown> {
   return readViaHttp(`/projection/${encodeURIComponent(topic)}`);
 }

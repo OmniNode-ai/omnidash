@@ -4,7 +4,8 @@ import rateLimit from 'express-rate-limit';
 import http from 'http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import routes from './routes.js';
+import routes, { checkProjectionReachable } from './routes.js';
+import { createLifecycle } from './lifecycle.js';
 import { authMiddleware } from './auth-middleware.js';
 import { getSessionMiddleware, getStore } from './session.js';
 import { getKeycloak } from './keycloak.js';
@@ -71,9 +72,19 @@ app.use((req, res, next) => {
 });
 
 // Health probe — registered before auth so k8s liveness/readiness checks never require a token.
-app.get('/api/health-probe', (_req, res) => {
-  res.json({ status: 'ok' });
+// OMN-26665 AC2: the probe is real. 503 until the built bundle exists and the projection API answers,
+// and again while the pod drains on SIGTERM.
+const SHUTDOWN_GRACE_MS = parseInt(process.env.OMNIDASH_SHUTDOWN_GRACE_MS ?? '25000', 10);
+let capabilityHeartbeat: CapabilityHeartbeatHandle | null = null;
+const lifecycle = createLifecycle({
+  distDir: path.resolve(__dirname, '..', 'dist'),
+  checkProjection: checkProjectionReachable,
+  graceMs: SHUTDOWN_GRACE_MS,
+  stopHeartbeat: () => capabilityHeartbeat?.stop(),
+  exit: (code) => process.exit(code),
 });
+app.use(lifecycle.middleware);
+app.get('/api/health-probe', lifecycle.readinessHandler);
 
 // OMN-17188 (CodeQL #8 js/missing-rate-limiting): broad flood control for every
 // handler below, including the static `dist/` middleware and the SPA
@@ -231,8 +242,6 @@ httpServer.timeout = 0;
 // a test or another module must not bind to a port. ESM equivalent of the
 // `require.main === module` idiom.
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  let capabilityHeartbeat: CapabilityHeartbeatHandle | null = null;
-
   // OMN-14974: capability declarations use the generic runtime edge. The
   // runtime resolves the contract topic and owns the broker/IAM lifecycle.
   const heartbeatConfig = loadCapabilityHeartbeatConfig();
@@ -257,12 +266,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     );
   }
 
-  const shutdown = () => {
-    capabilityHeartbeat?.stop();
-    process.exit(0);
-  };
-  process.once('SIGTERM', shutdown);
-  process.once('SIGINT', shutdown);
+  lifecycle.attach(httpServer);
+  const shutdown = () => { void lifecycle.shutdown(); };
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
 
   httpServer.listen(PORT, () => {
     console.log(`[omnidash server] Listening on port ${PORT}`);
