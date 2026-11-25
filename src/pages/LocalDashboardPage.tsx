@@ -533,6 +533,11 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
         })()}
       </header>}
       {loading && <p role="status">Loading runtime exposures…</p>}
+      {/* OMN-26665 AC3: the server cannot be reached, so what is on screen is the last data read. Said once for the page,
+          and only when there is something kept to show: a first read that never succeeded has nothing to keep. */}
+      {!loading && !error && snapshots.some(snapshot => !snapshot.failure || snapshot.lastGoodAt !== undefined)
+        && (refreshError !== null || (snapshots.length > 0 && snapshots.every(snapshot => snapshot.failure)))
+        && <p role="status" data-testid="reconnecting">Reconnecting to the runtime… showing the last data read.</p>}
       {error && <ReadFailureNotice title="Dashboard" now={now}
         snapshot={{ topic: 'page', failure: { kind: error.includes('no answer') ? 'timeout' : 'error', message: error } }}
         onRetry={page ? requestLocalPageRefresh : () => window.location.reload()} />}
