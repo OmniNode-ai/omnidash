@@ -10,7 +10,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { formatDashboardCount, formatShare } from '@/theme/format';
-import recorded from './omn26623.quality-weekly.recorded.json';
+// the fixture lives under tests/ because recorded model ids are not page code
+import recorded from '../../../tests/fixtures/omn26623/quality-weekly.recorded.json';
 import copy from './delegation-quality.config.json';
 import { DelegationQualitySection, isoWeekOf, type QualityCell } from './delegation-quality';
 
