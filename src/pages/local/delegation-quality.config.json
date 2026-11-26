@@ -1,0 +1,13 @@
+{
+  "weeks": 8,
+  "title": "Delegation quality",
+  "task_type_label": "Task type",
+  "model_label": "Model",
+  "all_option": "All",
+  "week_header": "Week",
+  "runs_header": "Runs",
+  "first_try_header": "First-try pass rate",
+  "moved_header": "Moved down the chain",
+  "no_runs": "no runs",
+  "table_label": "Delegation quality by week"
+}
