@@ -161,6 +161,33 @@
       "supported_empty_state_reasons": [
         "no-data"
       ]
+    },
+    {
+      "component_id": "usage-delegation-quality",
+      "component_kind": "table",
+      "title": "Delegation quality",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "usage-delegation-quality-weekly",
+          "projection_topic": "onex.snapshot.projection.delegation.quality-weekly.v1",
+          "ordering_authority_field": "latest_projection_updated_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "tenant_id",
+            "cells",
+            "total_runs",
+            "latest_projection_updated_at"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "no-data"
+      ]
     }
   ],
   "page_empty_state_reasons": []

@@ -551,6 +551,8 @@ figure.local-chart.usage-insight { min-width: 0; margin: 0; padding: 14px; }
 [data-theme="dark"] .local-dashboard-panel[data-component="usage-by-model-day"] { --panel-accent: var(--ds-accent-panel-usage-by-model-day); }
 .local-dashboard-panel[data-component="usage-insights"] { --panel-accent: var(--ds-accent-panel-usage-insights); }
 [data-theme="dark"] .local-dashboard-panel[data-component="usage-insights"] { --panel-accent: var(--ds-accent-panel-usage-insights); }
+.local-dashboard-panel[data-component="usage-delegation-quality"] { --panel-accent: var(--ds-accent-panel-usage-delegation-quality); }
+[data-theme="dark"] .local-dashboard-panel[data-component="usage-delegation-quality"] { --panel-accent: var(--ds-accent-panel-usage-delegation-quality); }
 .local-dashboard-panel[data-component="credentials-keys"] { --panel-accent: var(--ds-accent-panel-credentials-keys); }
 [data-theme="dark"] .local-dashboard-panel[data-component="credentials-keys"] { --panel-accent: var(--ds-accent-panel-credentials-keys); }
 .local-dashboard-panel[data-component="api-keys-local-identity"] { --panel-accent: var(--ds-accent-panel-api-keys-local-identity); }

@@ -42,6 +42,7 @@ import { NoRunsYet } from '@/pages/local/page-runs';
 import { NoProviderKeys } from '@/pages/local/page-settings';
 import { OverviewStatusStrip } from '@/pages/local/page-overview';
 import { ServedCountCard, type ServedRows, doneItemsCount, runningRowsCount } from '@/pages/local/served-count-card';
+import { DelegationQualitySection } from '@/pages/local/delegation-quality';
 
 // OMN-23330 AC24: the page's parts live in src/pages/local/page-*.tsx; every name this module exported is still exported
 // from here, so no import elsewhere changes.
@@ -399,6 +400,8 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
                 complete={!bindings.some(binding => snapshots.some(snapshot => snapshot.topic === binding.projection_topic && snapshot.failure))} />)
           : notServed ? <EmptyState>{notServed}</EmptyState>
           : bindingFailedEmpty(component, snapshots) ? null
+          // OMN-26623: the weekly delegation-quality section reads the cells delegation.quality-weekly.v1 serves.
+          : component.component_id === 'usage-delegation-quality' ? <DelegationQualitySection rows={rows} />
           : pricing ? <PricingFacts rows={rows as Record<string, unknown>[]} />
           : emptyState === 'NO_RUNS_YET' ? <NoRunsYet />
           : emptyState ? <EmptyState>Baseline unresolved</EmptyState>
@@ -677,6 +680,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
             const tokens = find('usage-tokens-by-day');
             const insights = find('usage-insights');
             const byDay = find('usage-by-model-day');
+            const quality = find('usage-delegation-quality');
             return <>
               <div className="maple-grid">
                 {/* Live review 2026-10-25: the model charts sit side by side as vertical dotted bars between the day charts. */}
@@ -719,6 +723,8 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
                 {/* Part 29 AC194, AC195: one Usage analysis panel (group-by table and cost versus quality), full row (AC89). */}
                 {insights && <div className="maple-cell maple-cell--full">{renderComponent(insights, 'all', { key: 'analysis', title: 'Usage analysis', concept: 'usage-analysis' })}</div>}
                 {byDay && <div className="maple-cell maple-cell--full">{renderComponent(byDay)}</div>}
+                {/* OMN-26623: the weekly delegation quality, last eight weeks, filterable by task type and model. */}
+                {quality && <div className="maple-cell maple-cell--full">{renderComponent(quality)}</div>}
               </div>
             </>;
           })() : pageName === 'runs' ? (

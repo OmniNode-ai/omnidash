@@ -353,6 +353,7 @@
      field palette leaves free (tokens 305, tokens out 355), 4.5:1 or more on both themes' surfaces. */
   --ds-field-share: oklch(47% 0.16 330);
   --ds-field-usage-analysis: oklch(46% 0.11 300);
+  --ds-field-delegation-quality: oklch(46% 0.11 130);
   --ds-field-runs-analysis: oklch(46% 0.11 214.40213);
   --ds-field-run-routes: oklch(46% 0.11 200);
   --ds-field-load-slow: var(--ds-field-threshold);
@@ -491,6 +492,7 @@
   --ds-field-tier-mix: oklch(79% 0.11 50);
   --ds-field-share: oklch(80% 0.12 330);
   --ds-field-usage-analysis: oklch(79% 0.11 300);
+  --ds-field-delegation-quality: oklch(79% 0.11 130);
   --ds-field-runs-analysis: oklch(79% 0.11 214.40213);
   --ds-field-run-routes: oklch(79% 0.11 200);
 }
@@ -650,6 +652,7 @@
   --ds-accent-panel-usage-tokens-by-day: #854D0E;
   --ds-accent-panel-usage-by-model-day: #1E40AF;
   --ds-accent-panel-usage-insights: #6B21A8;
+  --ds-accent-panel-usage-delegation-quality: #047857;
   --ds-accent-panel-credentials-keys: #9F1239;
   --ds-accent-panel-api-keys-local-identity: #9A3412;
   --ds-accent-page-overview: #8B5CF6;
@@ -695,6 +698,7 @@
   --ds-accent-panel-usage-tokens-by-day: #FDE047;
   --ds-accent-panel-usage-by-model-day: #93C5FD;
   --ds-accent-panel-usage-insights: #D8B4FE;
+  --ds-accent-panel-usage-delegation-quality: #6EE7B7;
   --ds-accent-panel-credentials-keys: #FDA4AF;
   --ds-accent-panel-api-keys-local-identity: #FDBA74;
   --ds-accent-fact-run-summary-group: #34D399;

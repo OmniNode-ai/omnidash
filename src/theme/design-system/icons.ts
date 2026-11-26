@@ -10,7 +10,7 @@
  */
 import {
   Antenna, ArrowDown, ArrowLeftRight, ArrowUp, Award, BadgeInfo, Banknote, Bot, Boxes, Brain, BrainCircuit,
-  Building2, CalendarClock, CalendarDays, CalendarRange, ChartArea, ChartBar, ChartBarStacked, ChartColumnStacked,
+  Building2, CalendarCheck, CalendarClock, CalendarDays, CalendarRange, ChartArea, ChartBar, ChartBarStacked, ChartColumnStacked,
   ChartGantt, ChartLine, ChartPie, ChartSpline, CheckCheck, ChevronsUp, CircleCheck, CircleDollarSign, CircleDot,
   CircleEllipsis, CircleHelp, CircleX, ClipboardCheck, Clock3, Cloud, Cloudy, CodeXml, Cpu, DatabaseZap, Divide,
   Feather, FileClock, FileText, Files, Fingerprint, Flag, FlagTriangleRight, Footprints, Gauge, GitBranch, GitFork,
@@ -88,4 +88,6 @@ export const CONCEPT_ICONS: Readonly<Record<string, LucideIcon>> = {
   'runs-analysis': PanelsTopLeft, 'run-routes': GitFork,
   // OMN-21970 AC8: the Runs cards' p95 duration and escalated runs have their own concepts, colours and glyphs.
   'duration-p95': Gauge, escalated: ChevronsUp,
+  // OMN-26623: the weekly delegation-quality panel on Usage has its own concept, glyph and colour.
+  'delegation-quality': CalendarCheck,
 };
