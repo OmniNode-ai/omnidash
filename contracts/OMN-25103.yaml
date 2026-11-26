@@ -77,3 +77,14 @@ dod_evidence:
       - check_type: "test_passes"
         check_value: "npm test -- --run tests/pages/local/overview-running.omn25103.test.tsx -t running_figure_unavailable"
         cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn25103-release-1116"
+    description: >-
+      Running check (VF-23), bound to no acceptance criterion: omnidash dev declares 1.1.16 in package.json version,
+      package-lock.json version and package-lock.json packages[""].version, so the v1.1.16 tag and the bundle omnimarket
+      pins carry the Overview Done figure (omnidash#531) and the Running figure (omnidash#532).
+      tests/ci/test_release_version_omn21469.py with RELEASE = "1.1.16" fails on dev's 1.1.15.
+    source: "manual"
+    checks:
+      - check_type: "test_passes"
+        check_value: "uv run --no-project --python 3.12 --with pytest python -m pytest tests/ci/test_release_version_omn21469.py -q --noconftest -p no:cacheprovider -c /dev/null"
+        cwd: "${OMNI_HOME}/omnidash"
