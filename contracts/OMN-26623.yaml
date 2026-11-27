@@ -36,10 +36,10 @@ dod_evidence:
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn26623-ac4-literals"
     description: >-
-      AC4 for the new section: the word and colour scan of src/pages/local/delegation-quality.tsx finds none, with planted word, read-attribute, string and colour controls that it must find, and the existing figure scan of every page file reads the new file too.
+      AC4 for the new section: the word and colour scan of src/pages/local/delegation-quality.tsx finds none, with planted word, read-attribute, string and colour controls that it must find, and the existing figure scan of every page file reads the new file too. The existing figure scan of every page file passes at the merge base, so it is not bound here and still runs in the test suite.
     source: "manual"
     binds_ac: ["AC4"]
     checks:
       - check_type: "test_passes"
-        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx vitest run src/pages/local/delegation-quality.literals.omn26623.test.ts src/pages/local/omn21015.no-sample-figures.test.ts"
+        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx vitest run src/pages/local/delegation-quality.literals.omn26623.test.ts"
         cwd: "${OMNI_HOME}/omnidash"
