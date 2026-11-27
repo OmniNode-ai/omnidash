@@ -16,7 +16,7 @@ import { fetchExposureCensus } from '@/data-source/exposure-census';
 import { resolveEffectiveDataSource } from '@/data-source/data-source-override';
 import { resolveConfiguredTenant } from '@/data-source/projection-tenant';
 import { latestServedRead, publishLocalPageRead, requestLocalPageRefresh, subscribeLocalPageRefresh } from '@/services/local-page-refresh';
-import { PAGE_PATHS } from '@/navigation/page-routes';
+import { PAGE_PATHS, rememberOverviewWindow } from '@/navigation/page-routes';
 import { readWorkflowRunId, writeWorkflowRunId } from '@/navigation/workflow-url-state';
 import { InsightsWindowContext, OverviewRunsContext, type ActivityWindow } from '@/pages/local/insight-charts';
 import { DashboardTabs, EmptyState, Panel, PanelTitle } from '@/theme/design-system/components';
@@ -104,6 +104,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
   useEffect(() => {
     if (pageName !== 'overview') return;
     const next = writeOverviewWindow(windowSearch, activityWindow);
+    rememberOverviewWindow(next);
     if (next !== new URLSearchParams(windowSearch).toString()) navigateWindow(`/overview${next ? `?${next}` : ''}`, { replace: true });
   }, [pageName, activityWindow, windowSearch, navigateWindow]);
   // OMN-24458: the window the decisions read names (`7d`), from the Overview's rolling window; none on every other page.
@@ -553,11 +554,18 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
           return <OverviewStatusStrip env={record(rawRowsFor(status, snapshots, 0)[0])} now={now} window={overviewWindow}
             metering={meteringRead && !meteringRead.failure ? meteringRead.rows : null}
             complete={walk !== undefined && !walk.failure && walk.truncated !== true} decisions={walk?.rows ?? []}
+            statusFailed={bindingFailedEmpty(status, snapshots)}
+            decisionsRead={walk === undefined ? 'loading' : walk.failure ? 'failed' : 'served'}
             routing={usage ? record(rawRowsFor(usage, snapshots, 0)[0]) : null}
             routingFailed={Boolean(usage && snapshots.find(snapshot => snapshot.topic === usage.data_bindings?.[0]?.projection_topic)?.failure)} />;
         })()}
       </header>}
       {loading && <p role="status">Loading runtime exposures…</p>}
+      {/* OMN-26665 AC3: the server cannot be reached, so what is on screen is the last data read. Said once for the page,
+          and only when there is something kept to show: a first read that never succeeded has nothing to keep. */}
+      {!loading && !error && snapshots.some(snapshot => !snapshot.failure || snapshot.lastGoodAt !== undefined)
+        && (refreshError !== null || (snapshots.length > 0 && snapshots.every(snapshot => snapshot.failure)))
+        && <p role="status" data-testid="reconnecting">Reconnecting to the runtime… showing the last data read.</p>}
       {error && <ReadFailureNotice title="Dashboard" now={now}
         snapshot={{ topic: 'page', failure: { kind: error.includes('no answer') ? 'timeout' : 'error', message: error } }}
         onRetry={page ? requestLocalPageRefresh : () => window.location.reload()} />}

@@ -25,7 +25,7 @@ import {
 import { Text } from '@/components/ui/typography';
 import { useFrameStore } from '@/store/store';
 import { DeleteDashboardDialog } from './DeleteDashboardDialog';
-import { PAGE_PATHS, pageForPath } from '@/navigation/page-routes';
+import { pageForPath, pagePath } from '@/navigation/page-routes';
 import { DestinationIcon } from '@/navigation/destination-icons';
 
 /** The local pages in the required order; Settings holds API Keys and Credentials (OMN-21166 part 26). */
@@ -205,7 +205,7 @@ export function Sidebar() {
   }) => (
     <a
       key={page}
-      href={PAGE_PATHS[page]}
+      href={pagePath(page)}
       data-testid={`nav-${page}`}
       data-nav-page={page}
       data-destination={page}

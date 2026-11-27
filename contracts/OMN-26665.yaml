@@ -1,0 +1,200 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+schema_version: "1.0.0"
+ticket_id: "OMN-26665"
+title: "The Overview keeps its window, rollouts drain, reconnects keep rows, and 7-day figures need rows that reach 7 days"
+summary: >-
+  Acceptance for OMN-26665, from the approved spec. AC1 to AC5 are each bound to the vitest file that carries that
+  criterion's falsifier; every one of those files is new on this branch, so each check fails at the merge base (no test
+  file found) and passes at the head. AC6 is bound to hosted tests of its two mechanisms (amended
+  2026-11-25), which run in CI before merge and fail at the merge base; the reading on a real merged build (one 7-day read
+  measured once, one dev rollout timed) is kept as a separate local Done gate item that binds no criterion and does not
+  stand in for the hosted tests, and its recorded read and timing go in the pull request after deploy.
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-omn26665-dashboard-window-rollout-reads"
+    statement: >-
+      The Overview keeps its time window across navigation, a rollout drains instead of cutting reads, a server that
+      cannot be reached keeps the last rows on screen, the header tells an empty read from a failed one, and no 7-day
+      figure is drawn from rows that do not reach the start of the window.
+    acceptance:
+      - id: "AC1"
+        statement: >-
+          the window persists in the URL and the UI after leaving the Overview and coming back, an explicit query
+          parameter overrides the remembered window, and a fresh tab opens on all time -- falsifier: tests R1 to R6 in
+          tests/pages/LocalDashboardPage.omn26665.window-return.test.tsx; R1 goes from /overview?window=7d to Runs and
+          back and fails unless the address is /overview?window=7d again, R2 is the 30d control
+      - id: "AC2"
+        statement: >-
+          SIGTERM stops new requests, lets the reads already running finish, then exits; readiness fails until the
+          built bundle and the projection API both answer -- falsifier: tests S1 to S5 and R1 to R4 in
+          server/__tests__/lifecycle.omn26665.test.ts; S1 sends SIGTERM during a slow read and fails unless that read
+          ends with its 200 before exit, R1 serves no bundle and fails unless readiness answers 503 naming the bundle
+      - id: "AC3"
+        statement: >-
+          an unreachable server keeps the last rows visible with a reconnecting indicator, and the indicator clears when
+          reads succeed again -- falsifier: tests C1 to C5 in tests/pages/LocalDashboardPage.omn26665.reconnecting.test.tsx;
+          C1 fails every read and fails unless the earlier row stays on screen and the reconnecting text shows
+      - id: "AC4"
+        statement: >-
+          the header tells a served empty status read ("Runtime status not recorded") from a failed or
+          timed-out one ("Runtime status unavailable"), and spend panels use a read deadline set per data
+          source that shows loading, not failure, until it is reached -- falsifier: tests T1 to T4 in
+          tests/pages/LocalDashboardPage.omn26665.status-read.test.tsx (T1 times out the status read at 5 s
+          and fails unless the header says Runtime status unavailable; T2 is the served-empty control that
+          still says Runtime status not recorded; T3 and T4 test the strip prop directly) and tests P1 to P5
+          in tests/pages/LocalDashboardPage.omn26665.deadlines.test.tsx (P1 and P2 hold a 7 s spend read open
+          and assert loading, not failure, until its own deadline; P3 times out a decisions read (Last run not
+          read); P4 is the served-empty control (Last run not recorded); P5 a decisions read in flight (Last
+          run loading))
+      - id: "AC5"
+        statement: >-
+          no 7-day figure on the Overview or Runs is drawn from rows that do not reach the window start; one
+          shared coverage helper decides, and a figure that fails it reads "Not measured for the full window"
+          -- falsifier: tests V1 to V6 and H1 in src/pages/local/insight-charts.omn26665.coverage.test.tsx
+          (V1 gives 500 rows from the last 24 hours under a 7-day window and fails unless the figure reads Not
+          measured, V2 is the control with rows spanning past the window start) and tests A1 to A5 in
+          src/pages/local/insight-charts.omn26665.analysis-coverage.test.tsx (A1 to A5 prove the summary More
+          activity tiles, every Runs analysis tab and the view-all routing, quality, performance and hour
+          sections read "Not measured for the full window" for 500 rows from the last 24 hours under a 7-day
+          window, each with a spanning-rows control)
+      - id: "AC6"
+        statement: >-
+          the two mechanisms behind the merged-build reading are proved by hosted tests before merge: (a) the 7-day read
+          reports its row count and the oldest row day through the shared coverage helper, and a figure drawn from rows
+          that do not reach the window start reads "Not measured for the full window"; (b) the readiness probe answers 503
+          while the server drains and 200 once the bundle and projection answer, and the page keeps its last rows with the
+          reconnecting text while reads fail -- falsifier: tests M1 to M3 in
+          tests/pages/LocalDashboardPage.omn26665.ac6-mechanisms.test.tsx, the case named AC6 in
+          server/__tests__/lifecycle.omn26665.test.ts, and the case named AC6 in
+          tests/pages/LocalDashboardPage.omn26665.reconnecting.test.tsx; the hosted tests prove the mechanisms, not the live
+          figures, which stay a note in the pull request
+evidence_requirements: []
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
+dod_evidence:
+  - id: "dod-omn26665-ac1-window-return"
+    description: >-
+      AC1: the six window-return cases. The test file does not exist at the merge base, so the check fails there
+      (no test found).
+    source: "manual"
+    binds_ac: ["AC1"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx vitest run tests/pages/LocalDashboardPage.omn26665.window-return.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn26665-ac2-drain-and-readiness"
+    description: >-
+      AC2: five shutdown cases (read in flight finishes, new request refused, second SIGTERM, read that never ends is
+      cut at the grace period, idle keep-alive socket) and four readiness cases (no bundle, projection down or hanging,
+      both answering, draining).
+    source: "manual"
+    binds_ac: ["AC2"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx vitest run server/__tests__/lifecycle.omn26665.test.ts"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn26665-ac3-reconnecting"
+    description: >-
+      AC3: every read failing keeps the earlier row and shows the reconnecting text, the notice clears on success, one
+      exposure failing while the server answers is not a reconnect, and a page whose first read failed has nothing to
+      keep and does not claim to reconnect.
+    source: "manual"
+    binds_ac: ["AC3"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx vitest run tests/pages/LocalDashboardPage.omn26665.reconnecting.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn26665-ac4-deadlines"
+    description: >-
+      AC4: a timed-out status read reading Runtime status unavailable with the served-empty control still
+      reading Runtime status not recorded; a 7 s spend read in flight and landing inside its own deadline;
+      and the Last run chip telling a timed-out decisions read (Last run not read) from a served-empty one
+      (Last run not recorded) and from one still in flight.
+    source: "manual"
+    binds_ac: ["AC4"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx vitest run tests/pages/LocalDashboardPage.omn26665.status-read.test.tsx tests/pages/LocalDashboardPage.omn26665.deadlines.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn26665-ac5-window-coverage"
+    description: >-
+      AC5: 500 truncated rows from the last 24 hours read Not measured under a 7-day window, rows spanning the
+      window start still draw, a complete read is drawn, served per-day totals stay drawn, the all-time window
+      never says it, the shared windowCoverage helper, and the analysis coverage tests A1 to A5 proving the
+      summary More activity tiles, every Runs analysis tab and the view-all routing, quality, performance and
+      hour sections read "Not measured for the full window" for 500 rows from the last 24 hours under a 7-day
+      window, each with a spanning-rows control.
+    source: "manual"
+    binds_ac: ["AC5"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx vitest run src/pages/local/insight-charts.omn26665.analysis-coverage.test.tsx src/pages/local/insight-charts.omn26665.coverage.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn26665-ac6-mechanisms"
+    description: >-
+      AC6, hosted: the coverage helper reports the rows it judged and the oldest day (M1), a 7-day Overview with 500 rows
+      from the last 24 hours reads Not measured for the full window and draws no daily chart while rows that reach back
+      past the window start draw it (M2, M3), one pod's probe is 503 with no bundle and with the projection down, 200 when
+      both answer and 503 while draining with the read in flight still finishing, and the page keeps its rows and says it is
+      reconnecting while reads fail and clears when they succeed. Mutation controls run on this branch: coverage always true
+      fails M2; dropping the bundle, the projection or the draining term from readiness fails the probe case; hiding the
+      reconnecting notice fails the page case.
+    source: "manual"
+    binds_ac: ["AC6"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx vitest run tests/pages/LocalDashboardPage.omn26665.ac6-mechanisms.test.tsx && npx vitest run server/__tests__/lifecycle.omn26665.test.ts -t \"AC6\" && npx vitest run tests/pages/LocalDashboardPage.omn26665.reconnecting.test.tsx -t \"AC6\""
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn26665-ac6-integrated-reading"
+    description: >-
+      AC6, read on a build that carries this change: it takes the 7-day decisions read once and prints the row count
+      and the oldest and newest row time (it fails on an empty read or a row with no time), then watches the readiness
+      probe for OMNIDASH_WATCH_SECONDS while a dev rollout runs and prints the longest stretch the probe was not ready
+      (it fails if the probe answers anything but 200 or 503 with the pod still reachable, or never returns to 200).
+      A connection that cannot be made during the rollout counts as not ready, which is what the page reads as
+      reconnecting. OMNIDASH_URL is the dashboard's own address. Hosted CI cannot reach a dev host, so only the local
+      Done gate runs this item. It binds no criterion and does not stand in for the hosted tests; the on-screen reconnecting
+      text during that rollout is recorded in the pull request.
+    source: "manual"
+    execution_scope: "local_done_gate"
+    checks:
+      - check_type: "command"
+        check_value: |-
+          python3 -c '
+          import os, json, time, urllib.request as u, urllib.error as e
+          base = os.environ["OMNIDASH_URL"].rstrip("/")
+          topic = "onex.snapshot.projection.delegation.decisions.v1"
+          body = json.load(u.urlopen(base + "/projection/" + topic + "?window=7d", timeout=30))
+          rows = body if isinstance(body, list) else (body.get("rows") or body.get("data") or [])
+          at = sorted(r.get("written_at") or r.get("created_at") for r in rows if isinstance(r, dict) and (r.get("written_at") or r.get("created_at")))
+          assert rows and at, "the 7-day read returned no rows with a time"
+          print("7d read: rows", len(rows), "oldest", at[0], "newest", at[-1])
+          watch = float(os.environ.get("OMNIDASH_WATCH_SECONDS", "120"))
+          end = time.time() + watch
+          longest = 0.0
+          since = None
+          last = None
+          while time.time() < end:
+              try:
+                  last = u.urlopen(base + "/api/health-probe", timeout=5).status
+              except e.HTTPError as err:
+                  last = err.code
+              except Exception:
+                  last = None
+              assert last in (200, 503, None), "unexpected probe status %s" % last
+              now = time.time()
+              if last == 200:
+                  since = None
+              else:
+                  since = since or now
+                  longest = max(longest, now - since)
+              time.sleep(0.5)
+          assert last == 200, "the probe did not return to 200"
+          print("rollout: longest not-ready stretch %.1f s over %.0f s" % (longest, watch))
+          '
+        cwd: "."

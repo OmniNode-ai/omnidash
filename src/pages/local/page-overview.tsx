@@ -12,6 +12,7 @@ import { ColumnTip, DataTable, EmptyState, Fact, FactList } from '@/theme/design
 import { Clock3, Rows3, Timer } from '@/theme/design-system/icons';
 import { tierLabel } from '@/pages/local/plain-text';
 import { toInsightRuns } from '@/pages/local/insights';
+import { oldestRunDay, rowsReachBefore } from '@/pages/local/insight-aggregates';
 import { ChartReadout, DayAxis, MultiLinePlot, RankedBars, SeriesToggles, useSeriesToggles } from '@/theme/design-system/charts';
 import { ConceptIcon, FieldIcon } from '@/components/dashboard/FieldIcon';
 import { TierLegend, useModelColor, useModelIdentityStyle } from '@/components/dashboard/model-tiers';
@@ -55,8 +56,13 @@ export function ModelUsagePanel({ row }: { row: Row | null }) {
  * reason. The last run is the newest served decision's time, the run total delegation.model-routing.v1's served
  * total_delegations, and the median run time the served decisions' durations, as the Runs page reads them.
  */
-export function OverviewStatusStrip({ env, decisions, routing, now, window = 'all', metering = null, routingFailed = false, complete = false }: {
+export function OverviewStatusStrip({ env, decisions, routing, now, window = 'all', metering = null, routingFailed = false, complete = false, decisionsRead = 'served', statusFailed = false }: {
   env: Row | null; decisions: readonly unknown[]; routing: Row | null; now: number; complete?: boolean;
+  /** OMN-26665 AC4: how the decisions read stands. An empty list means an empty store only when it was served; a read
+   * still out is loading, and one that failed or timed out was not read. */
+  decisionsRead?: 'served' | 'loading' | 'failed';
+  /** OMN-26665 AC4: the status read failed or timed out with nothing read before, which is not the same as an empty store. */
+  statusFailed?: boolean;
   /** Lakshman 2026-11-04 ("based on time selected ... make everything dynamic"): the Overview window, and the served
    * metering rows its run count is read from (the row the cards read for that window). */
   window?: OverviewWindow; metering?: readonly unknown[] | null;
@@ -69,7 +75,7 @@ export function OverviewStatusStrip({ env, decisions, routing, now, window = 'al
   let newest: number | null = null;
   for (const run of runs) if (Number.isFinite(run.at) && (newest === null || run.at > newest)) newest = run.at;
   const ago = newest !== null && newest <= now ? now - newest : null;
-  const lastRun = ago === null ? 'Last run not recorded'
+  const lastRun = ago === null ? (decisionsRead === 'loading' ? 'Last run loading…' : decisionsRead === 'failed' ? 'Last run not read' : 'Last run not recorded')
     : ago < 60_000 ? 'Last run under a minute ago'
       : ago < 3_600_000 ? `Last run ${Math.floor(ago / 60_000)} min ago`
         : ago < 172_800_000 ? `Last run ${Math.floor(ago / 3_600_000)} h ago` : `Last run ${Math.floor(ago / 86_400_000)} days ago`;
@@ -83,8 +89,8 @@ export function OverviewStatusStrip({ env, decisions, routing, now, window = 'al
   const today = utcDay(now);
   const [from, to] = window === 'all' ? ['', '9999-12-31'] : window === 'today' ? [today, today]
     : window.startsWith('day:') ? [window.slice(4), window.slice(4)] : (window.slice(6).split('..') as [string, string]);
-  const oldestRead = runs.reduce<string | null>((oldest, run) => (oldest === null || run.day < oldest ? run.day : oldest), null);
-  const covered = complete || (oldestRead !== null && from !== '' && oldestRead < from);
+  // OMN-26665 AC5: the same coverage test as the Insights figures (insight-aggregates), all time covered only when complete.
+  const covered = complete || (from !== '' && rowsReachBefore(oldestRunDay(runs), from));
   const inWindow = covered ? runs.filter(run => run.day >= from && run.day <= to) : [];
   const latencies = inWindow.map(run => run.durationMs).filter((value): value is number => value !== null).sort((a, b) => a - b);
   const median = latencies.length === 0 ? null : latencies[Math.floor((latencies.length - 1) / 2)]!;
@@ -95,7 +101,7 @@ export function OverviewStatusStrip({ env, decisions, routing, now, window = 'al
     <div className="local-overview-status" role="status" aria-label="Runtime status" data-state={state}>
       <span className="local-overview-status-dot" aria-hidden="true" />
       {/* OMN-22168 ("do all", item 3): the state opens Settings' System status, where the runtime's details are. */}
-      <strong><Link href="/settings#system" className="local-overview-status-link">{observed === null ? 'Runtime status not recorded' : `Runtime ${observed}`}</Link></strong>
+      <strong><Link href="/settings#system" className="local-overview-status-link">{observed === null ? (statusFailed ? 'Runtime status unavailable' : 'Runtime status not recorded') : `Runtime ${observed}`}</Link></strong>
       {reason && <span className="local-overview-status-reason">{reason}</span>}
       {/* Lakshman 2026-11-04 ("colourful"): each fact is a chip with its own glyph and tone. */}
       <span className="local-status-chip" data-tone="blue"><Clock3 size={14} aria-hidden="true" data-semantic-concept="status:last-run" />{lastRun}</span>
