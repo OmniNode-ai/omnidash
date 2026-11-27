@@ -1578,3 +1578,32 @@ html body .local-dashboard-page section.workflow-record-group[data-field-tone] >
 }
 /* A toned name in a caption (the baseline model) may wrap there too; it kept to one line and ran past a 136 px card. */
 :is(.local-dashboard-page, .ev-root) .local-overview-summary .local-dashboard-caption .local-caption-tone { white-space: normal; }
+
+/* OMN-26646: a run's answer and prompt as markdown. Every colour is a design token; the Rendered / Raw switch sits above
+   the fold, never inside it. */
+.local-dashboard-page .workflow-answer-view { display: grid; gap: 8px; }
+.local-dashboard-page .workflow-answer-switch { display: inline-flex; justify-self: start; border: 1px solid var(--ds-line); border-radius: 8px; overflow: hidden; }
+.local-dashboard-page .workflow-answer-switch button { padding: 3px 10px; font-size: 12px; background: transparent; color: var(--ds-ink-3); border: 0; cursor: pointer; }
+.local-dashboard-page .workflow-answer-switch button[aria-pressed="true"] { background: var(--ds-surface-2); color: var(--ds-ink); font-weight: 600; }
+.local-dashboard-page .workflow-answer-switch button:focus-visible { outline: 2px solid var(--ds-focus); outline-offset: -2px; }
+.local-dashboard-page .workflow-answer-markdown { max-height: 480px; overflow: auto; overflow-wrap: anywhere; font-size: 13px; line-height: 1.6; color: var(--ds-ink); }
+.local-dashboard-page .workflow-answer-markdown > :first-child { margin-top: 0; }
+.local-dashboard-page .workflow-answer-markdown > :last-child { margin-bottom: 0; }
+.local-dashboard-page .workflow-answer-markdown :is(h1, h2, h3, h4) { margin: 14px 0 6px; font-size: 14px; font-weight: 600; line-height: 1.35; }
+.local-dashboard-page .workflow-answer-markdown :is(ul, ol) { margin: 6px 0; padding-left: 22px; }
+.local-dashboard-page .workflow-answer-markdown p { margin: 6px 0; }
+.local-dashboard-page .workflow-answer-markdown a { color: var(--ds-link); text-decoration: underline; }
+.local-dashboard-page .workflow-answer-markdown :not(pre) > code { padding: 1px 5px; border-radius: 4px; background: var(--ds-surface-2); font-family: var(--ds-font-mono); font-size: 12px; }
+.local-dashboard-page .workflow-answer-table { overflow-x: auto; margin: 8px 0; }
+.local-dashboard-page .workflow-answer-markdown table { border-collapse: collapse; font-size: 12.5px; }
+.local-dashboard-page .workflow-answer-markdown :is(th, td) { padding: 4px 10px; border: 1px solid var(--ds-line); text-align: left; }
+.local-dashboard-page .workflow-answer-markdown th { background: var(--ds-surface-2); }
+.local-dashboard-page .workflow-answer-codeblock { margin: 8px 0; border: 1px solid var(--ds-line); border-radius: 8px; background: var(--ds-inset); overflow: hidden; }
+.local-dashboard-page .workflow-answer-codebar { display: flex; align-items: center; justify-content: space-between; padding: 3px 8px 3px 12px;
+  border-bottom: 1px solid var(--ds-line); background: var(--ds-surface-2); font-family: var(--ds-font-mono); font-size: 11.5px; color: var(--ds-ink-3); }
+.local-dashboard-page .workflow-answer-copy { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; font-size: 12px; background: transparent; color: var(--ds-ink-2); border: 1px solid var(--ds-line); border-radius: 6px; cursor: pointer; }
+.local-dashboard-page .workflow-answer-copy:focus-visible { outline: 2px solid var(--ds-focus); outline-offset: 2px; }
+.local-dashboard-page .workflow-answer-code { margin: 0; padding: 10px 12px; overflow: auto; font-family: var(--ds-font-mono); font-size: 12.5px; line-height: 1.55; white-space: pre; }
+.local-dashboard-page .workflow-answer-diagram { margin: 8px 0; overflow: auto; }
+.local-dashboard-page .workflow-answer-diagram svg { max-width: 100%; height: auto; }
+.local-dashboard-page .workflow-answer-diagram-failed { margin: 8px 0; }

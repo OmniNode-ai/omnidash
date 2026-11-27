@@ -1,0 +1,133 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+schema_version: "1.0.0"
+ticket_id: "OMN-26646"
+title: "A run's answer and prompt render as safe markdown, with highlighted copyable code and token-coloured diagrams"
+summary: >-
+  Acceptance for OMN-26646. On the run page a model's answer and prompt render as formatted markdown with raw HTML
+  switched off, fenced code is highlighted and copyable, and mermaid diagrams are drawn at strict security in the design
+  tokens' colours. The seven criteria below follow the order of the approved spec's failure-mode list (AC1 markdown shown
+  raw, AC2 injected markup, AC3 copy text, AC4 Raw and fold, AC5 prompt, AC6 colours, theme and a bad diagram, AC7 a
+  mermaid label carrying a link or script); compared with the ticket text on 2026-11-25; the falsifier commands name
+  this branch tests (F1 to F7) where the ticket names -t patterns.
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-omn26646-safe-markdown"
+    statement: >-
+      A run's answer and prompt render as markdown with raw HTML switched off, with highlighted copyable code blocks and
+      mermaid diagrams drawn in the design tokens' colours.
+    acceptance:
+      - id: "AC1"
+        statement: >-
+          an answer's markdown (bold, an ordered list, a heading, a table) renders as elements with no markdown
+          characters left -- falsifier: tests F1 in src/pages/local/answer-markdown.test.tsx and the playwright test
+          "renders markdown"
+      - id: "AC2"
+        statement: >-
+          script, img, iframe and javascript: link payloads in an answer create no element and stay visible as text;
+          a link keeps an href only for http, https and mailto; an image is not rendered -- falsifier: tests F2 in
+          src/pages/local/answer-markdown.test.tsx
+      - id: "AC3"
+        statement: >-
+          a fenced code block shows its language and a copy button that copies exactly the code between the fences,
+          highlighted without changing the text -- falsifier: tests F3 and the playwright test "code block shows its
+          language, highlights, and copies only the code"
+      - id: "AC4"
+        statement: >-
+          Raw shows the stored text character for character, Rendered is the default, and the fold sits outside the
+          switch and works in both views -- falsifier: tests F4 in src/pages/local/answer-markdown.test.tsx
+      - id: "AC5"
+        statement: >-
+          the prompt renders as markdown with the same protection and the same Rendered / Raw switch as the answer --
+          falsifier: tests F5 in src/pages/local/answer-markdown.test.tsx
+      - id: "AC6"
+        statement: >-
+          a mermaid diagram takes its colours from the design tokens read at draw time, is redrawn on a theme change,
+          shows its source when a token cannot be read or the diagram does not parse, and never takes the page down;
+          no colour value is written in the component source -- falsifier: tests F6 and the playwright tests
+          "mermaid diagram is drawn in the design-token colours in both themes" and "mermaid diagram that fails to
+          parse shows its source with a one-line note and leaves the page up"
+      - id: "AC7"
+        statement: >-
+          mermaid is initialised at the strict security level with plain-text labels, loaded only for an answer that
+          holds a diagram, and a label carrying a link, script or HTML adds none when drawn by real mermaid --
+          falsifier: tests F7 and the playwright test "mermaid labels cannot add links, scripts or HTML when drawn
+          with real mermaid"
+evidence_requirements: []
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
+dod_evidence:
+  - id: "dod-omn26646-ac1-markdown-renders"
+    description: >-
+      AC1: the F1 vitest case and the playwright "renders markdown" test. At origin/dev the test files do not exist,
+      so both fail there (no test found).
+    source: "manual"
+    binds_ac: ["AC1"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx vitest run src/pages/local/answer-markdown.test.tsx -t \"F1:\" && npx playwright test tests/e2e/run-answer-markdown.spec.ts -g \"renders markdown\" --project=chromium --workers=1 --retries=0"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn26646-ac2-injected-markup"
+    description: >-
+      AC2: every F2 case: eight dangerous-link forms, the three element payloads, the allow-list positive control and
+      the image case. Mutation controls recorded in records/evidence/OMN-26646/mutation-checks.txt (allow every url: 10
+      fail; render image: 1 fails).
+    source: "manual"
+    binds_ac: ["AC2"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx vitest run src/pages/local/answer-markdown.test.tsx -t \"F2:\""
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn26646-ac3-code-copy"
+    description: >-
+      AC3: the F3 vitest cases and the playwright copy test. Mutation control (keep trailing newline in copy: 3 fail)
+      in records/evidence/OMN-26646/mutation-checks.txt.
+    source: "manual"
+    binds_ac: ["AC3"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx vitest run src/pages/local/answer-markdown.test.tsx -t \"F3:\" && npx playwright test tests/e2e/run-answer-markdown.spec.ts -g \"code block shows its language\" --project=chromium --workers=1 --retries=0"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn26646-ac4-raw-and-fold"
+    description: "AC4: the F4 vitest cases: Raw character for character, Rendered default, switch outside the fold, short answer not folded."
+    source: "manual"
+    binds_ac: ["AC4"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx vitest run src/pages/local/answer-markdown.test.tsx -t \"F4:\""
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn26646-ac5-prompt"
+    description: "AC5: the F5 vitest cases: the prompt renders markdown with the same protection and switch, and folds in both views."
+    source: "manual"
+    binds_ac: ["AC5"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx vitest run src/pages/local/answer-markdown.test.tsx -t \"F5:\""
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn26646-ac6-token-colours"
+    description: >-
+      AC6: the F6 vitest cases (theme variables read from tokens, redraw on theme change, unreadable token shows the
+      source, parse failure shows source with a note, no colour written in the source) and the two playwright tests
+      that draw real mermaid in both themes and with a bad diagram. Mutation control (hard-coded colour: 2 fail) in
+      records/evidence/OMN-26646/mutation-checks.txt.
+    source: "manual"
+    binds_ac: ["AC6"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx vitest run src/pages/local/answer-markdown.test.tsx -t \"F6:\" && npx playwright test tests/e2e/run-answer-markdown.spec.ts -g \"design-token colours|fails to parse\" --project=chromium --workers=1 --retries=0"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn26646-ac7-mermaid-strict"
+    description: >-
+      AC7: the F7 vitest cases (strict level, plain-text labels, no library load without a diagram) and the playwright
+      test that draws a label carrying a link, script and HTML with real mermaid. Mutation control (securityLevel
+      loose: 2 fail) in records/evidence/OMN-26646/mutation-checks.txt.
+    source: "manual"
+    binds_ac: ["AC7"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx vitest run src/pages/local/answer-markdown.test.tsx -t \"F7:\" && npx playwright test tests/e2e/run-answer-markdown.spec.ts -g \"labels cannot add links\" --project=chromium --workers=1 --retries=0"
+        cwd: "${OMNI_HOME}/omnidash"
