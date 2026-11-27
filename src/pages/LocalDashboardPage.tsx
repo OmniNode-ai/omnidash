@@ -41,6 +41,7 @@ import { WorkflowRun } from '@/pages/local/page-workflow';
 import { NoRunsYet } from '@/pages/local/page-runs';
 import { NoProviderKeys } from '@/pages/local/page-settings';
 import { OverviewStatusStrip } from '@/pages/local/page-overview';
+import { ServedCountCard, type ServedRows, doneItemsCount, runningRowsCount } from '@/pages/local/served-count-card';
 
 // OMN-23330 AC24: the page's parts live in src/pages/local/page-*.tsx; every name this module exported is still exported
 // from here, so no import elsewhere changes.
@@ -367,6 +368,28 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
     const readContent = <>
         {pending ? <p className="local-dashboard-caption" role="status">Loading data…</p>
           : unbound && component.component_kind !== 'metric_card' ? <PendingState componentId={component.component_id} />
+          // OMN-25104 AC3: the Done figure is the count of rows done-items.v1 serves; a read that is not served, failed
+          // or returned no rows shows Not measured with its reason, never 0.
+          : component.component_id === 'overview-done' ? (() => {
+            const read = snapshots.find(snapshot => snapshot.topic === component.data_bindings?.[0]?.projection_topic);
+            // An exposure the catalogue does not serve yet has not failed: it says so once, beside the one Not measured.
+            const failure = !notServed && read?.failure ? { reason: read.failure.message } : null;
+            const served = notServed ? [] : rows as ServedRows;
+            return <ServedCountCard label="Done" rows={served} failure={failure} count={doneItemsCount(served)}
+              truncated={!notServed && read?.truncated === true}
+              emptyCaption={notServed ? 'Done items are not served yet.' : undefined} />;
+          })()
+          // OMN-25103 AC2/AC3: the Running figure is the number of rows floor-integration-rows.v1 serves marked running;
+          // served rows with none running are a measured 0, and a read that is not served, failed or returned no rows
+          // shows Not measured with its reason, never 0.
+          : component.component_id === 'overview-running' ? (() => {
+            const read = snapshots.find(snapshot => snapshot.topic === component.data_bindings?.[0]?.projection_topic);
+            const failure = !notServed && read?.failure ? { reason: read.failure.message } : null;
+            const served = notServed ? [] : rows as ServedRows;
+            return <ServedCountCard label="Running" rows={served} failure={failure} count={runningRowsCount(served)}
+              truncated={!notServed && read?.truncated === true}
+              emptyCaption={notServed ? 'Running changes are not served yet.' : undefined} />;
+          })()
           : component.component_id === 'workflow-run-path' ? (
             <WorkflowRun component={component} snapshots={snapshots} requested={requestedRunId} onOpen={openRun} />
           ) : tokenFallback ? <DailyMeteringTokens data={tokenFallback} />
@@ -447,6 +470,9 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
   };
   const overviewGroups = {
     summary: ['overview-spend', 'overview-savings', 'overview-measured', 'overview-tokens'],
+    // OMN-25104 AC3 (Lakshman 2026-11-19: a new row under the top cards): the work figures, Done first, then Running
+    // (OMN-25103).
+    work: ['overview-done', 'overview-running'],
   };
   const renderGroup = (ids: string[], meteringView: 'all' | 'kpis' | 'daily' = 'all') => ids.map(id => {
     const component = page?.components.find(candidate => candidate.component_id === id);
@@ -558,6 +584,10 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache,
                   const quality = page.components.find(candidate => candidate.component_id === 'overview-quality');
                   return quality ? renderComponent(quality, 'all', { key: 'card', title: 'Delegation Quality', concept: 'quality' }) : null;
                 })()}
+              </section>
+              {/* Same five columns as the row above, so each work figure sits under a headline card at its width. */}
+              <section className="local-overview-summary" aria-label="Work summary" style={{ '--kpi-count': 5 } as CSSProperties}>
+                {renderGroup(overviewGroups.work)}
               </section>
             </div>
             <div className="maple-grid">

@@ -22,16 +22,20 @@ export function runningRowsCount(rows: ServedRows): number | null {
   return rows.length > 0 && rows.every(row => hasText(row.state)) ? rows.filter(row => row.state === 'running').length : null;
 }
 
-export function ServedCountCard({ label, rows, failure, count, emptyCaption = 'The read returned no rows.' }: {
+export function ServedCountCard({ label, rows, failure, count, emptyCaption = 'The read returned no rows.', truncated = false }: {
   label: string;
   rows: ServedRows;
   failure: { reason: string } | null;
   count: number | null;
   emptyCaption?: string;
+  /** The exposure said this read is one page of a longer list: a count of its rows would be short, so none is shown. */
+  truncated?: boolean;
 }) {
   const reason = failure
     ? `The read failed: ${failure.reason.replace(/\.+$/, '')}.`
-    : rows.length === 0
+    : truncated
+      ? 'The read returned one page of a longer list, so a count of it would be short.'
+      : rows.length === 0
       ? emptyCaption
       : count === null
         ? 'A served row is missing the field the count needs.'

@@ -3,6 +3,7 @@ import { loadLocalPageConfig, resolveLocalPageEmptyState, DELEGATION_DECISIONS_T
 
 // Separate integration correction: Environment service rows/read failures are
 // not run evidence and must not suppress the page's existing empty-run state.
+const DONE_ITEMS = 'onex.snapshot.projection.done-items.v1';
 const ENVIRONMENT = 'onex.snapshot.projection.local-environment.v1';
 const page = loadLocalPageConfig('overview');
 // OMN-21166 live review 2026-10-25: Overview no longer binds Environment (it moved to API Keys); an Environment read is
@@ -28,5 +29,14 @@ describe('Environment cannot masquerade as run evidence', () => {
     expect(runs).toBeDefined();
     runs.rows = [{ correlation_id: '11111111-1111-4111-8111-111111111111', terminal_ok: 1 }]; runs.rowCount = 1;
     expect(resolveLocalPageEmptyState(page, rows)).toBeNull();
+  });
+
+  // OMN-25104: done-items.v1 rows are a count card's rows, not delegation runs; they must not hide No runs yet.
+  it('keeps No runs yet when only done-items.v1 serves rows', () => {
+    const rows = snapshots();
+    const done = rows.find(snapshot => snapshot.topic === DONE_ITEMS)!;
+    expect(done).toBeDefined();
+    done.rows = [{ ticket: 'OMN-1' }, { ticket: 'OMN-2' }]; done.rowCount = 2;
+    expect(resolveLocalPageEmptyState(page, rows)).toBe('NO_RUNS_YET');
   });
 });

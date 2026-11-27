@@ -266,6 +266,8 @@ export const isPerRunTopic = (topic: string): boolean => PER_RUN_TOPICS.has(topi
  */
 export const METERING_SUMMARY_TOPIC = 'onex.snapshot.projection.metering-summary.v1';
 export const LOCAL_ENVIRONMENT_TOPIC = 'onex.snapshot.projection.local-environment.v1';
+/** done-items.v1 feeds the Overview Done count card (OMN-25104); its rows are tickets, not delegation runs. */
+export const DONE_TOPIC = 'onex.snapshot.projection.done-items.v1';
 
 const pageFiles = import.meta.glob('../pages/local/*.page.yaml', {
   eager: true,
@@ -577,9 +579,9 @@ export function resolveLocalPageEmptyState(
 ): LocalPageEmptyState | null {
   // A metering-summary card says why its own figure is missing (a day with no measured run has a null saving), so
   // its rows never switch the whole page to Baseline unresolved or hide a NO_RUNS_YET page (OMN-20009 C3).
-  // Environment health is independent of runs too: a running service is not a recorded delegation.
+  // Environment health is independent of runs too: a running service is not a recorded delegation. So are done tickets.
   const rows = page.components
-    .filter((component) => ![METERING_SUMMARY_TOPIC, LOCAL_ENVIRONMENT_TOPIC].includes(component.data_bindings?.[0]?.projection_topic ?? ''))
+    .filter((component) => ![METERING_SUMMARY_TOPIC, LOCAL_ENVIRONMENT_TOPIC, DONE_TOPIC].includes(component.data_bindings?.[0]?.projection_topic ?? ''))
     .flatMap((component) => rowsForLocalComponent(component, snapshots));
   // Only a component's first binding supplies its rows; a second binding is a caption (the savings card's baseline
   // line), so it must not switch a page into the Runs session-row rules.
@@ -600,7 +602,7 @@ export function resolveLocalPageEmptyState(
     && snapshot.failure.kind !== 'not-served')) return null;
   const rowTopics = new Set(page.components
     .map((component) => component.data_bindings?.[0]?.projection_topic ?? '')
-    .filter((topic) => topic !== '' && ![METERING_SUMMARY_TOPIC, LOCAL_ENVIRONMENT_TOPIC].includes(topic)));
+    .filter((topic) => topic !== '' && ![METERING_SUMMARY_TOPIC, LOCAL_ENVIRONMENT_TOPIC, DONE_TOPIC].includes(topic)));
   const readARowSource = snapshots.some((snapshot) => rowTopics.has(snapshot.topic) && !snapshot.failure);
   if (rows.length === 0 && readARowSource && page.empty_state_reasons.includes('NO_RUNS_YET')) {
     return 'NO_RUNS_YET';

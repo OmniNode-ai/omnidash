@@ -119,6 +119,56 @@
       ]
     },
     {
+      "component_id": "overview-done",
+      "component_kind": "metric_card",
+      "title": "Done",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-done-items",
+          "projection_topic": "onex.snapshot.projection.done-items.v1",
+          "ordering_authority_field": "projected_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "ticket"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "overview-running",
+      "component_kind": "metric_card",
+      "title": "Running",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-running-floor-integration",
+          "projection_topic": "onex.snapshot.projection.floor-integration-rows.v1",
+          "ordering_authority_field": "projected_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "state"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
       "component_id": "overview-quality",
       "component_kind": "table",
       "title": "Quality",
