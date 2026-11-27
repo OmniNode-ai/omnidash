@@ -282,9 +282,10 @@ describe('OMN-19920: one run whole on the Workflow page', () => {
     expect(fieldsShown()['Receipt id']).toBeUndefined();
   });
 
+  // OMN-26646 replaced "never a markdown renderer" with "markdown with raw HTML switched off": markup still creates no
+  // element, and markdown now shows formatted (src/pages/local/answer-markdown.test.tsx holds its tests).
   it.each([
     ['HTML', '<img src=x onerror=alert(1)><b>x</b>'],
-    ['markdown', '**bold** and `code`\n# heading\n[link](http://example.invalid)'],
   ])('R5: %s in the answer is shown as text and creates no element', async (_name, text) => {
     lab.answer = (id) => served([answerRow(String(id), text)]);
     open(`/workflow?correlation_id=${OLDER}`);
@@ -301,6 +302,7 @@ describe('OMN-19920: one run whole on the Workflow page', () => {
     await waitFor(() => expect(answerCard().querySelector('details')).not.toBeNull());
     const fold = answerCard().querySelector('details')!;
     expect(fold.open).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Raw' }));
     expect(fold.textContent).toContain(long);
   });
 
