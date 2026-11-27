@@ -738,6 +738,13 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
   const notFullWindow = <EmptyState className="ins-empty">{NOT_MEASURED_FULL_WINDOW}</EmptyState>;
   const chartRuns = all.filter(run => chartDaysList.includes(run.day));
   const chartDays = withServedTotals(seriesForDays(chartRuns, chartDaysList), servedDays);
+  // Each row-drawn chart below is gated by the one coverage test above; served totals and categories are drawn whatever the rows reach.
+  const taskMix = rowsUncovered ? notFullWindow : <TaskMix runs={runs} />;
+  const passRate = rowChartsUncovered ? notFullWindow : <PassRateTrend days={chartDays} />;
+  const failures = servedFailures !== null ? <ServedFailureCategories categories={servedFailures} /> : rowFailuresUncovered ? notFullWindow : <FailureCauses runs={runs} onInspectFailure={onInspectFailure} />;
+  const duration = rowsUncovered ? notFullWindow : <DurationHistogram runs={runs} />;
+  const models = rowsUncovered ? notFullWindow : <ModelScoreboard runs={runs} />;
+  const hours = rowsUncovered ? notFullWindow : <ActivityHeatmap runs={runs} days={chartDaysList} window={window} />;
   // The exposure returns only its latest rows. A calendar axis is not proof
   // that earlier days contain no runs; disclose the actual received span.
   const times = all.map(run => run.at);
@@ -813,34 +820,33 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
             const distinct = (pick: (run: InsightRun) => string | null) => new Set(runs.map(pick).filter((value): value is string => value !== null)).size;
             return <DashboardTabs label="Run analysis" param="insight" tabs={[
               { id: 'tasks', label: 'Tasks', tone: 'var(--ds-field-task)', icon: <ListChecks size={18} />,
-                hint: plural(distinct(run => run.task), 'task type'), panel: () => <TaskMix runs={runs} /> },
+                hint: rowsUncovered ? NOT_MEASURED : plural(distinct(run => run.task), 'task type'), panel: () => taskMix },
               { id: 'pass-rate', label: 'Pass rate per day', tone: 'var(--ds-field-pass-rate-daily)', icon: <CircleCheck size={18} />,
-                hint: plural(chartDays.length, 'day'), panel: () => <PassRateTrend days={chartDays} /> },
+                hint: rowChartsUncovered ? NOT_MEASURED : plural(chartDays.length, 'day'), panel: () => passRate },
               { id: 'failures', label: 'Why runs failed', tone: 'var(--ds-field-failures)', icon: <TriangleAlert size={18} />,
-                hint: plural(runs.filter(run => run.status === 'failed').length, 'failed run'),
-                panel: () => <FailureCauses runs={runs} onInspectFailure={onInspectFailure} /> },
+                hint: rowsUncovered ? NOT_MEASURED : plural(runs.filter(run => run.status === 'failed').length, 'failed run'), panel: () => failures },
               { id: 'duration', label: 'How long runs take', tone: 'var(--ds-field-duration)', icon: <Timer size={18} />,
-                hint: `${formatDashboardCount(runs.filter(run => run.durationMs !== null).length)} timed`, panel: () => <DurationHistogram runs={runs} /> },
+                hint: rowsUncovered ? NOT_MEASURED : `${formatDashboardCount(runs.filter(run => run.durationMs !== null).length)} timed`, panel: () => duration },
               { id: 'models', label: 'Model scoreboard', tone: 'var(--ds-field-quality-model)', icon: <Bot size={18} />,
-                hint: plural(distinct(run => run.model), 'model'), panel: () => <ModelScoreboard runs={runs} /> },
+                hint: rowsUncovered ? NOT_MEASURED : plural(distinct(run => run.model), 'model'), panel: () => models },
               { id: 'hours', label: 'When runs happen', tone: 'var(--ds-field-activity-hourly)', icon: <Clock3 size={18} />,
-                hint: 'By UTC hour', panel: () => <ActivityHeatmap runs={runs} days={chartDaysList} window={window} /> },
+                hint: 'By UTC hour', panel: () => hours },
             ]} />;
           })()}
           {view === 'all' && <>
           {/* Part 18 AC119, AC121: runs by model and by tier are Overview's Model usage and Tier mix, and the outcome donut
               repeats the Runs headline cards, so none is drawn here. */}
-          <ChartSection concept="routing-workload" title="Routing and workload"><TaskMix runs={runs} /></ChartSection>
-          <ChartSection concept="quality-outcomes" title="Quality and outcomes"><PassRateTrend days={chartDays} /><FailureCauses runs={runs} onInspectFailure={onInspectFailure} /></ChartSection>
-          <ChartSection concept="performance-model" title="Performance by model"><DurationHistogram runs={runs} /><ModelScoreboard runs={runs} /></ChartSection>
-          <ChartSection concept="activity-hourly" title="Activity by UTC hour"><ActivityHeatmap runs={runs} days={chartDaysList} window={window} /></ChartSection>
+          <ChartSection concept="routing-workload" title="Routing and workload">{taskMix}</ChartSection>
+          <ChartSection concept="quality-outcomes" title="Quality and outcomes">{passRate}{failures}</ChartSection>
+          <ChartSection concept="performance-model" title="Performance by model">{duration}{models}</ChartSection>
+          <ChartSection concept="activity-hourly" title="Activity by UTC hour">{hours}</ChartSection>
           </>}
         </div>
       )}
       {view === 'summary' && emptyMessage === null && (
         <div className="local-more local-more--open" data-section="More activity">
           <p className="local-dashboard-caption ins-sub">{population}{undated} · Row timestamps: {servedSpan}{earlier}{window.kind === 'days' ? '' : ' · Comparisons with the previous window appear for 1, 7, 15 and 30 days'}</p>
-          <RunWindowKpis runs={runs} decisions={decisions} now={now} days={window.kind === 'days' ? window.days : chartDaysList.length} label={windowCaption(window)} comparisonEnabled={window.kind === 'days'} />
+          <RunWindowKpis runs={runs} decisions={decisions} now={now} days={window.kind === 'days' ? window.days : chartDaysList.length} label={windowCaption(window)} comparisonEnabled={window.kind === 'days'} uncovered={rowsUncovered} />
           {more}
         </div>
       )}

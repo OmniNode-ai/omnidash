@@ -56,11 +56,13 @@ export function ModelUsagePanel({ row }: { row: Row | null }) {
  * reason. The last run is the newest served decision's time, the run total delegation.model-routing.v1's served
  * total_delegations, and the median run time the served decisions' durations, as the Runs page reads them.
  */
-export function OverviewStatusStrip({ env, decisions, routing, now, window = 'all', metering = null, routingFailed = false, complete = false, decisionsRead = 'served' }: {
+export function OverviewStatusStrip({ env, decisions, routing, now, window = 'all', metering = null, routingFailed = false, complete = false, decisionsRead = 'served', statusFailed = false }: {
   env: Row | null; decisions: readonly unknown[]; routing: Row | null; now: number; complete?: boolean;
   /** OMN-26665 AC4: how the decisions read stands. An empty list means an empty store only when it was served; a read
    * still out is loading, and one that failed or timed out was not read. */
   decisionsRead?: 'served' | 'loading' | 'failed';
+  /** OMN-26665 AC4: the status read failed or timed out with nothing read before, which is not the same as an empty store. */
+  statusFailed?: boolean;
   /** Lakshman 2026-11-04 ("based on time selected ... make everything dynamic"): the Overview window, and the served
    * metering rows its run count is read from (the row the cards read for that window). */
   window?: OverviewWindow; metering?: readonly unknown[] | null;
@@ -99,7 +101,7 @@ export function OverviewStatusStrip({ env, decisions, routing, now, window = 'al
     <div className="local-overview-status" role="status" aria-label="Runtime status" data-state={state}>
       <span className="local-overview-status-dot" aria-hidden="true" />
       {/* OMN-22168 ("do all", item 3): the state opens Settings' System status, where the runtime's details are. */}
-      <strong><Link href="/settings#system" className="local-overview-status-link">{observed === null ? 'Runtime status not recorded' : `Runtime ${observed}`}</Link></strong>
+      <strong><Link href="/settings#system" className="local-overview-status-link">{observed === null ? (statusFailed ? 'Runtime status unavailable' : 'Runtime status not recorded') : `Runtime ${observed}`}</Link></strong>
       {reason && <span className="local-overview-status-reason">{reason}</span>}
       {/* Lakshman 2026-11-04 ("colourful"): each fact is a chip with its own glyph and tone. */}
       <span className="local-status-chip" data-tone="blue"><Clock3 size={14} aria-hidden="true" data-semantic-concept="status:last-run" />{lastRun}</span>

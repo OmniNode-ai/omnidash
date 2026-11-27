@@ -77,8 +77,9 @@ describe('OMN-26665 AC5: a 7-day figure needs rows that reach the window start',
   it('V5: charts built from served per-day totals stay drawn whatever the rows reach', () => {
     draw(SEVEN, LAST_DAY, { view: 'summary', daily: true });
     expect(screen.getByRole('group', { name: 'Runs per day' })).toBeInTheDocument();
-    // The failure causes still come from the rows (no served categories here), so only that panel says so.
-    expect(screen.getAllByText(NOT_COVERED)).toHaveLength(1);
+    // The row-drawn pieces (failure causes, and the More activity Runs and Median tiles) say so; the served daily chart does not.
+    expect(screen.getByRole('group', { name: 'Runs per day' }).textContent).not.toMatch(NOT_COVERED);
+    expect(screen.getAllByText(NOT_COVERED)).toHaveLength(3);
   });
 
   it('V6: the all-time window never says it', () => {
