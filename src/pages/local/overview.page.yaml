@@ -84,9 +84,43 @@
       }
     },
     {
+      "widget_id": "080ff067-8556-4bbb-9afc-f231e7727198",
+      "title": "Done",
+      "row": 2,
+      "col": 0,
+      "width": 6,
+      "height": 2,
+      "data_source": "overview-done",
+      "config": {
+        "config_kind": "metric_card",
+        "widget_type": "metric_card",
+        "metric_key": "ticket",
+        "label": "Done",
+        "format": "number",
+        "precision": 0
+      }
+    },
+    {
+      "widget_id": "5c2b7d0e-25a3-4f1c-9b03-25103a0f0c11",
+      "title": "Running",
+      "row": 2,
+      "col": 6,
+      "width": 6,
+      "height": 2,
+      "data_source": "overview-running",
+      "config": {
+        "config_kind": "metric_card",
+        "widget_type": "metric_card",
+        "metric_key": "state",
+        "label": "Running",
+        "format": "number",
+        "precision": 0
+      }
+    },
+    {
       "widget_id": "6408a8d2-29a3-4526-aa67-4141a0802380",
       "title": "Model usage",
-      "row": 12,
+      "row": 14,
       "col": 0,
       "width": 12,
       "height": 5,
@@ -115,7 +149,7 @@
     {
       "widget_id": "92d0d8ce-8d52-447e-8511-8cb1269c0112",
       "title": "Tier mix",
-      "row": 17,
+      "row": 19,
       "col": 0,
       "width": 12,
       "height": 5,
@@ -144,7 +178,7 @@
     {
       "widget_id": "d4da9a48-f797-4b1d-b622-41f028a67e04",
       "title": "Quality",
-      "row": 2,
+      "row": 4,
       "col": 0,
       "width": 12,
       "height": 4,
@@ -185,7 +219,7 @@
     {
       "widget_id": "21166a0e-5c3b-4e1f-9d2a-0f7c1b8e2a61",
       "title": "Trends and breakdowns",
-      "row": 6,
+      "row": 8,
       "col": 0,
       "width": 12,
       "height": 6,
@@ -222,7 +256,7 @@
     {
       "widget_id": "c8842fde-f13c-5f8d-aaf7-be043addca23",
       "title": "Environment",
-      "row": 22,
+      "row": 24,
       "col": 0,
       "width": 12,
       "height": 2,
@@ -238,7 +272,7 @@
     {
       "widget_id": "3eed69cb-9958-517d-8c4c-c84cf2e90f90",
       "title": "Daily trend",
-      "row": 24,
+      "row": 26,
       "col": 0,
       "width": 12,
       "height": 4,

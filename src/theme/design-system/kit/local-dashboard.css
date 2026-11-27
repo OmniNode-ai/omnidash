@@ -437,6 +437,8 @@ figure.local-chart.ins-card { margin: 0; padding: 20px 22px; border-radius: 16px
 .local-overview-summary .local-dashboard-panel[data-component="overview-spend"] { --kpi: var(--panel-accent); }
 .local-overview-summary .local-dashboard-panel[data-component="overview-savings"] { --kpi: var(--panel-accent); }
 .local-overview-summary .local-dashboard-panel[data-component="overview-measured"] { --kpi: var(--panel-accent); }
+.local-overview-summary .local-dashboard-panel[data-component="overview-done"] { --kpi: var(--panel-accent); }
+.local-overview-summary .local-dashboard-panel[data-component="overview-running"] { --kpi: var(--panel-accent); }
 .local-overview-summary .local-dashboard-panel[data-component="overview-tokens"] { --kpi: var(--panel-accent); }
 /* The card's heading icon in its --kpi colour, beside the rules that set --kpi (it styles the kit card's icon). */
 .local-overview-summary .local-dashboard-panel > h2 svg { color: var(--kpi); background: color-mix(in oklch, var(--kpi) 18%, transparent); }
@@ -482,6 +484,8 @@ figure.local-chart.usage-insight { min-width: 0; margin: 0; padding: 14px; }
 :root:not([data-theme="dark"]) .local-overview-summary .local-dashboard-panel[data-component="overview-spend"] { --kpi: var(--panel-accent); }
 :root:not([data-theme="dark"]) .local-overview-summary .local-dashboard-panel[data-component="overview-savings"] { --kpi: var(--panel-accent); }
 :root:not([data-theme="dark"]) .local-overview-summary .local-dashboard-panel[data-component="overview-measured"] { --kpi: var(--panel-accent); }
+:root:not([data-theme="dark"]) .local-overview-summary .local-dashboard-panel[data-component="overview-done"] { --kpi: var(--panel-accent); }
+:root:not([data-theme="dark"]) .local-overview-summary .local-dashboard-panel[data-component="overview-running"] { --kpi: var(--panel-accent); }
 :root:not([data-theme="dark"]) .local-overview-summary .local-dashboard-panel[data-component="overview-tokens"] { --kpi: var(--panel-accent); }
 :root:not([data-theme="dark"]) .local-overview-focus [data-component="overview-quality"] .local-meter-value { color: var(--ds-hue-teal); }
 :root:not([data-theme="dark"]) .ins-card { --ins-accent-text: color-mix(in oklch, var(--ins-accent) 55%, var(--ds-shadow-ink)); }
@@ -493,10 +497,14 @@ figure.local-chart.usage-insight { min-width: 0; margin: 0; padding: 14px; }
 .local-dashboard-panel[data-component="overview-spend"] { --panel-accent: var(--ds-field-cost); }
 .local-dashboard-panel[data-component="overview-savings"] { --panel-accent: var(--ds-field-savings); }
 .local-dashboard-panel[data-component="overview-measured"] { --panel-accent: var(--ds-field-calls); }
+.local-dashboard-panel[data-component="overview-done"] { --panel-accent: var(--ds-field-completion); }
+.local-dashboard-panel[data-component="overview-running"] { --panel-accent: var(--ds-field-execution); }
 .local-dashboard-panel[data-component="overview-tokens"] { --panel-accent: var(--ds-field-tokens); }
 [data-theme="dark"] .local-dashboard-panel[data-component="overview-spend"] { --panel-accent: var(--ds-field-cost); }
 [data-theme="dark"] .local-dashboard-panel[data-component="overview-savings"] { --panel-accent: var(--ds-field-savings); }
 [data-theme="dark"] .local-dashboard-panel[data-component="overview-measured"] { --panel-accent: var(--ds-field-calls); }
+[data-theme="dark"] .local-dashboard-panel[data-component="overview-done"] { --panel-accent: var(--ds-field-completion); }
+[data-theme="dark"] .local-dashboard-panel[data-component="overview-running"] { --panel-accent: var(--ds-field-execution); }
 [data-theme="dark"] .local-dashboard-panel[data-component="overview-tokens"] { --panel-accent: var(--ds-field-tokens); }
 .local-dashboard-panel[data-component="status-environment"] { --panel-accent: var(--ds-field-host); }
 [data-theme="dark"] .local-dashboard-panel[data-component="status-environment"] { --panel-accent: var(--ds-field-host); }
