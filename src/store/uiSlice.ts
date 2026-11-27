@@ -9,7 +9,7 @@
 import type { StateCreator } from 'zustand';
 import type { FrameStore, UISlice } from './types';
 import { navigate } from 'wouter/use-browser-location';
-import { PAGE_PATHS } from '@/navigation/page-routes';
+import { PAGE_PATHS, pagePath } from '@/navigation/page-routes';
 
 export const createUISlice: StateCreator<FrameStore, [], [], UISlice> = (set) => ({
   // OMN-12833 (WS5): collapse the sidebar by default on mobile so the icon
@@ -27,7 +27,7 @@ export const createUISlice: StateCreator<FrameStore, [], [], UISlice> = (set) =>
   setActivePage: (page) => {
     set({ activePage: page });
     if (typeof window !== 'undefined' && window.location.pathname !== PAGE_PATHS[page]) {
-      navigate(PAGE_PATHS[page]);
+      navigate(pagePath(page));
     }
   },
   traceFilter: null,

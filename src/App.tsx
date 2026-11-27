@@ -12,7 +12,7 @@ import type { LocalDashboardCache } from './pages/LocalDashboardPage';
 import '@/styles/frame/seven-page-design.css';
 import '@/styles/frame/editorial.css';
 import { DestinationIcon } from './navigation/destination-icons';
-import { PAGE_LABELS, PAGE_PATHS, pageForPath } from './navigation/page-routes';
+import { PAGE_LABELS, PAGE_PATHS, pageForPath, pagePath } from './navigation/page-routes';
 
 // Deferred destinations must not delay the six local pages at startup.
 // OMN-23330 AC22: the local pages and Settings load with their own bundle too, so the entry carries none of their code
@@ -91,7 +91,7 @@ export function App() {
           <main className="local-dashboard-page">
             <h1>Page not found</h1>
             <p>This URL does not match a dashboard page.</p>
-            <Link href="/overview">Go to Overview</Link>
+            <Link href={pagePath('local-overview')}>Go to Overview</Link>
           </main>
         ) : (
           // OMN-24616 AC5: a page that throws while rendering shows its failure here; the frame stays.
