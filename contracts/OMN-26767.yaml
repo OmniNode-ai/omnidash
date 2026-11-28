@@ -39,9 +39,9 @@ dod_evidence:
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn26767-tag-and-release-1117"
     description: >-
-      AC2: tests/ci/test_release_tag_omn26767.py checks that the signed tag v1.1.17 points at 46cec44f, that
-      the merges of omnidash#542 (ab6b116d) and #543 (23687cd7) are ancestors of it, and that gh release view
-      v1.1.17 lists both omnidash-bundle-v1.1.17.tar.gz and its .sha256. It fails when the tag does not exist.
+      AC2: tests/ci/test_release_tag_omn26767.py checks that v1.1.17 is an annotated signed tag pointing at
+      46cec44f, that the merges of omnidash#542 and #543 are ancestors of it, and that gh release view v1.1.17
+      lists both omnidash-bundle-v1.1.17.tar.gz and its .sha256. It fails on a lightweight or unsigned tag.
     source: "manual"
     binds_ac: ["AC2"]
     checks:
