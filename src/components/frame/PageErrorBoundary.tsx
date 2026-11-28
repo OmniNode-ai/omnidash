@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { Link } from 'wouter';
+import { pagePath } from '@/navigation/page-routes';
 
 /**
  * OMN-24616 AC5: one boundary around each page. A render error on a page shows that page's failure with its reason,
@@ -43,7 +44,7 @@ export class PageErrorBoundary extends Component<Props, State> {
         <header className="local-dashboard-header"><div className="local-dashboard-title"><div><h1>{this.props.title}</h1></div></div></header>
         <div role="alert" className="local-page-error">
           <p>{this.props.title} could not be shown: {this.state.message}</p>
-          <p><Link href="/overview">Go to Overview</Link></p>
+          <p><Link href={pagePath('local-overview')}>Go to Overview</Link></p>
         </div>
       </main>
     );

@@ -1,6 +1,6 @@
 import { formatDashboardCount, formatFullCount } from '@/theme/format';
 import { NOT_MEASURED } from '@/theme/format';
-import { useId, useState, type CSSProperties, type ReactNode } from 'react';
+import { lazy, Suspense, useId, useState, type CSSProperties, type ReactNode } from 'react';
 import { ComparisonTrack } from '@/theme/design-system/charts';
 import { ConceptIcon, FieldIcon } from '@/components/dashboard/FieldIcon';
 import { fieldTone, isUnavailableField } from '@/components/dashboard/field-identity';
@@ -10,6 +10,8 @@ import { plainFailureMessage } from './plain-text';
 import { useModelIdentityStyle } from '@/components/dashboard/model-tiers';
 import { readableTime } from '@/theme/format';
 import { ChevronRight } from '@/theme/design-system/icons';
+// The markdown libraries load when an answer or prompt is first shown, not with the page.
+const SafeMarkdown = lazy(() => import('./safe-markdown').then((module) => ({ default: module.SafeMarkdown })));
 import { EmptyState, Fact, FactList } from '@/theme/design-system/components';
 
 type Run = Record<string, unknown>;
@@ -138,16 +140,26 @@ const ANSWER_FOLD_LINES = 12;
 const ANSWER_FOLD_CHARS = 1200;
 
 function AnswerText({ text, noun = 'answer' }: { text: string; noun?: 'answer' | 'prompt' }) {
-  // Text only: React escapes it, so markup in an answer is shown as the characters it is and creates no element
-  // (AC6). Never dangerouslySetInnerHTML, never a markdown renderer.
+  // OMN-26646 (replaces OMN-21166 AC6's "never a markdown renderer"): Rendered is markdown with raw HTML switched off,
+  // so markup in an answer still creates no element (SafeMarkdown). Raw is the stored text in its <pre>, character for
+  // character. The fold sits outside the switch, so folding behaves the same in both views.
+  const [raw, setRaw] = useState(false);
   const lines = text.split('\n').length;
-  const block = <pre className="workflow-run-answer-text">{text}</pre>;
-  if (lines <= ANSWER_FOLD_LINES && text.length <= ANSWER_FOLD_CHARS) return block;
-  return <details className="workflow-run-answer-fold">
-    {/* A styled disclosure instead of the browser's triangle: a chevron that turns when the answer is open. */}
-    <summary><ChevronRight size={14} aria-hidden="true" className="workflow-run-answer-chevron" />{`Show the ${noun} (${formatDashboardCount(lines)} lines, ${formatDashboardCount(text.length)} characters)`}</summary>
-    {block}
-  </details>;
+  const rawText = <pre className="workflow-run-answer-text">{text}</pre>;
+  // While the renderer loads the text shows as it is stored, so an answer is never blank.
+  const body = raw ? rawText : <Suspense fallback={rawText}><SafeMarkdown text={text} /></Suspense>;
+  const folded = lines > ANSWER_FOLD_LINES || text.length > ANSWER_FOLD_CHARS;
+  return <div className="workflow-answer-view">
+    <div className="workflow-answer-switch" role="group" aria-label={`${noun === 'answer' ? 'Answer' : 'Prompt'} view`}>
+      <button type="button" aria-pressed={!raw} onClick={() => setRaw(false)}>Rendered</button>
+      <button type="button" aria-pressed={raw} onClick={() => setRaw(true)}>Raw</button>
+    </div>
+    {folded ? <details className="workflow-run-answer-fold">
+      {/* A styled disclosure instead of the browser's triangle: a chevron that turns when the answer is open. */}
+      <summary><ChevronRight size={14} aria-hidden="true" className="workflow-run-answer-chevron" />{`Show the ${noun} (${formatDashboardCount(lines)} lines, ${formatDashboardCount(text.length)} characters)`}</summary>
+      {body}
+    </details> : body}
+  </div>;
 }
 
 /**

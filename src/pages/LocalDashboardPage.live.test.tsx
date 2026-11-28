@@ -201,13 +201,16 @@ describe('LocalDashboardPage widget states (F26, F27)', () => {
     expect(within(spend).getByRole('alert')).toHaveTextContent('The data could not be read (HTTP 503');
   });
 
-  it('a read that never answers becomes a typed timeout after 5 s', async () => {
+  // OMN-26665 AC4: the spend source (HEADLINE) has its own 10 s deadline; the other sources keep 5 s (omn19920.run-answer).
+  it('a spend read that never answers becomes a typed timeout after its own 10 s', async () => {
     harness.reachable = new Set([DECISIONS, SAVINGS, HEADLINE]);
     harness.answer = (topic) => topic === HEADLINE ? new Promise(() => {}) : Promise.resolve(topic === DECISIONS ? [decisionRow('run-1')] : [{ sessions: [] }]);
     render(<LocalDashboardPage pageName="overview" />);
     await act(async () => { await vi.advanceTimersByTimeAsync(5_000); });
+    expect(within(screen.getByRole('heading', { name: 'Actual spend' }).closest('article')!).queryByRole('alert')).toBeNull();
+    await act(async () => { await vi.advanceTimersByTimeAsync(5_000); });
     const spend = screen.getByRole('heading', { name: 'Actual spend' }).closest('article')!;
-    expect(within(spend).getByRole('alert')).toHaveTextContent('No answer within 5 seconds.');
+    expect(within(spend).getByRole('alert')).toHaveTextContent('No answer within 10 seconds.');
   });
 
   it('keeps the last good figure after a later read fails, and says when it was good', async () => {
