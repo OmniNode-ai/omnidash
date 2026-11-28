@@ -1664,6 +1664,17 @@
       ]
     },
     {
+      "topic": "onex.snapshot.projection.delegation.quality-weekly.v1",
+      "status": "ok",
+      "degraded_reason": null,
+      "columns": [
+        "tenant_id",
+        "cells",
+        "total_runs",
+        "latest_projection_updated_at"
+      ]
+    },
+    {
       "topic": "onex.snapshot.projection.local-alerts.v1",
       "status": "ok",
       "degraded_reason": null,
