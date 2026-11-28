@@ -6,8 +6,8 @@ title: "OmniDash 1.1.17 ships the dashboard window, rollout and failed-read fixe
 summary: >-
   Acceptance for OMN-26767, copied from the live ticket on 2026-11-28. omnidash dev moves to 1.1.17 so the v1.1.17 tag
   carries 23687cd7 (omnidash#543, OMN-26665) and the OMN-26646 safe markdown run page (omnidash#542). AC1 is bound to
-  tests/ci/test_release_version_omn21469.py. AC2 (the tag and its release) and AC3 (the omnimarket pin) are proved after
-  merge by readbacks and the omnimarket pin test, so this contract lists only AC1.
+  tests/ci/test_release_version_omn21469.py. AC2 is bound to tests/ci/test_release_tag_omn26767.py. AC3 (the omnimarket
+  pin) is proved in omnimarket's contract.
 is_seam_ticket: false
 interface_change: false
 interfaces_touched: []
@@ -36,4 +36,15 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: "uv run --no-project --python 3.12 --with pytest python -m pytest tests/ci/test_release_version_omn21469.py -q --noconftest -p no:cacheprovider -c /dev/null"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn26767-tag-and-release-1117"
+    description: >-
+      AC2: tests/ci/test_release_tag_omn26767.py checks that the signed tag v1.1.17 points at 46cec44f, that
+      the merges of omnidash#542 (ab6b116d) and #543 (23687cd7) are ancestors of it, and that gh release view
+      v1.1.17 lists both omnidash-bundle-v1.1.17.tar.gz and its .sha256. It fails when the tag does not exist.
+    source: "manual"
+    binds_ac: ["AC2"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "uv run --no-project --python 3.12 --with pytest python -m pytest tests/ci/test_release_tag_omn26767.py -q --noconftest -p no:cacheprovider -c /dev/null"
         cwd: "${OMNI_HOME}/omnidash"
