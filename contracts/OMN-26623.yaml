@@ -1,0 +1,45 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+schema_version: "1.0.0"
+ticket_id: "OMN-26623"
+title: "The local onex dashboard shows delegation quality each week by task type and model"
+summary: >-
+  Acceptance for OMN-26623 in omnidash: the Delegation quality section on the Usage page, last eight ISO weeks, task type and model filters, read from delegation.quality-weekly.v1. It shows first-try pass rate and moves down the chain (figures 1 and 2); the third figure, ended with Claude, is not built, so AC3 is bound to what is built and is not met in full. AC1 and AC2 are proved in omnimarket and are not listed here. The checks serve the recorded row through route-mocked projection responses, not a running dashboard process.
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-omn26623-delegation-quality-page"
+    statement: >-
+      The Usage page shows the weekly delegation-quality figures for the last eight weeks, filterable by task type and model, with every word, figure and colour from configuration and design tokens.
+    acceptance:
+      - id: "AC3"
+        statement: >-
+          AC3: the local dashboard shows the three figures for the last eight weeks, filterable by task type and model -- falsifier: an automated Chrome check of the page fails if a figure differs from the exposure or a filter changes nothing
+      - id: "AC4"
+        statement: >-
+          AC4: no figure, word or colour is written in page code -- falsifier: the dashboard's literal scan with a planted-word positive control finds one
+evidence_requirements: []
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
+dod_evidence:
+  - id: "dod-omn26623-ac3-chrome"
+    description: >-
+      AC3 for figures 1 and 2: tests/e2e/delegation-quality-weekly.omn26623.spec.ts serves the row omnimarket's exposure produced for 58 recorded runs and fails if a figure on the Usage page differs from that row's cells for the week and filter, if a week with no runs reads other than no runs, or if a task type or model filter changes nothing; 4 passed on the branch, 4 failed on a build without the panel; figure 3 is not built.
+    source: "manual"
+    binds_ac: ["AC3"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx playwright test tests/e2e/delegation-quality-weekly.omn26623.spec.ts -g delegation_quality_weekly --project=chromium --workers=1 --retries=0"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn26623-ac4-literals"
+    description: >-
+      AC4 for the new section: the word and colour scan of src/pages/local/delegation-quality.tsx finds none, with planted word, read-attribute, string and colour controls that it must find, and the existing figure scan of every page file reads the new file too. The existing figure scan of every page file passes at the merge base, so it is not bound here and still runs in the test suite.
+    source: "manual"
+    binds_ac: ["AC4"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm ci --prefer-offline --no-audit --no-fund && npx vitest run src/pages/local/delegation-quality.literals.omn26623.test.ts"
+        cwd: "${OMNI_HOME}/omnidash"

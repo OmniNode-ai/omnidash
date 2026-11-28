@@ -42,6 +42,7 @@ export const CONCEPT_LABELS: Readonly<Record<string, string>> = {
   selected: 'Selected run', 'recorded-rows': 'Recorded rows',
   'runs-analysis': 'Analysis views', 'run-routes': 'Routing',
   'duration-p95': 'p95 duration', escalated: 'Escalated runs',
+  'delegation-quality': 'Delegation quality',
 };
 
 export function ConceptIcon({ concept, label, value, size = 12 }: { concept: string; label?: string; value?: unknown; size?: number }) {

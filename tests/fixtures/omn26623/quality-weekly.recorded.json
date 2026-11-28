@@ -1,0 +1,255 @@
+{
+ "source": "omnimarket worktree OMN-26623, GET onex.snapshot.projection.delegation.quality-weekly.v1 served by the real read node over tests/projection/fixtures/omn26623_recorded_delegation_rows.json (58 rows recorded from a local store, 2026-11-26)",
+ "topic": "onex.snapshot.projection.delegation.quality-weekly.v1",
+ "rows": [
+  {
+   "tenant_id": "0af28cd0-0654-42e0-a050-358ee8240940",
+   "cells": [
+    {
+     "iso_week": "2026-W48",
+     "week_start": "2026-11-23",
+     "task_type": "code_generation",
+     "model_id": "Beam-1.0-501B-A23B",
+     "runs": 4,
+     "first_try_passes": 0,
+     "moved_down_chain": 2,
+     "first_try_pass_rate": 0.0,
+     "moved_down_chain_rate": 0.5
+    },
+    {
+     "iso_week": "2026-W48",
+     "week_start": "2026-11-23",
+     "task_type": "code_generation",
+     "model_id": "Qwen3.8-27B",
+     "runs": 1,
+     "first_try_passes": 0,
+     "moved_down_chain": 1,
+     "first_try_pass_rate": 0.0,
+     "moved_down_chain_rate": 1.0
+    },
+    {
+     "iso_week": "2026-W48",
+     "week_start": "2026-11-23",
+     "task_type": "document",
+     "model_id": "Qwen3.8-27B",
+     "runs": 2,
+     "first_try_passes": 2,
+     "moved_down_chain": 0,
+     "first_try_pass_rate": 1.0,
+     "moved_down_chain_rate": 0.0
+    },
+    {
+     "iso_week": "2026-W48",
+     "week_start": "2026-11-23",
+     "task_type": "documentation",
+     "model_id": "Beam-1.0-501B-A23B",
+     "runs": 1,
+     "first_try_passes": 0,
+     "moved_down_chain": 0,
+     "first_try_pass_rate": 0.0,
+     "moved_down_chain_rate": 0.0
+    },
+    {
+     "iso_week": "2026-W48",
+     "week_start": "2026-11-23",
+     "task_type": "evidence_comment",
+     "model_id": "Qwen3.8-27B",
+     "runs": 0,
+     "first_try_passes": 0,
+     "moved_down_chain": 0,
+     "first_try_pass_rate": null,
+     "moved_down_chain_rate": null
+    },
+    {
+     "iso_week": "2026-W48",
+     "week_start": "2026-11-23",
+     "task_type": "planning",
+     "model_id": "Qwen3.8-27B",
+     "runs": 0,
+     "first_try_passes": 0,
+     "moved_down_chain": 0,
+     "first_try_pass_rate": null,
+     "moved_down_chain_rate": null
+    },
+    {
+     "iso_week": "2026-W48",
+     "week_start": "2026-11-23",
+     "task_type": "refactor",
+     "model_id": "Qwen3.8-27B",
+     "runs": 0,
+     "first_try_passes": 0,
+     "moved_down_chain": 0,
+     "first_try_pass_rate": null,
+     "moved_down_chain_rate": null
+    },
+    {
+     "iso_week": "2026-W48",
+     "week_start": "2026-11-23",
+     "task_type": "review",
+     "model_id": "Qwen3.8-27B",
+     "runs": 0,
+     "first_try_passes": 0,
+     "moved_down_chain": 0,
+     "first_try_pass_rate": null,
+     "moved_down_chain_rate": null
+    },
+    {
+     "iso_week": "2026-W48",
+     "week_start": "2026-11-23",
+     "task_type": "summarization",
+     "model_id": "Beam-1.0-501B-A23B",
+     "runs": 6,
+     "first_try_passes": 0,
+     "moved_down_chain": 0,
+     "first_try_pass_rate": 0.0,
+     "moved_down_chain_rate": 0.0
+    },
+    {
+     "iso_week": "2026-W48",
+     "week_start": "2026-11-23",
+     "task_type": "summarization",
+     "model_id": "Qwen3.8-27B",
+     "runs": 1,
+     "first_try_passes": 1,
+     "moved_down_chain": 0,
+     "first_try_pass_rate": 1.0,
+     "moved_down_chain_rate": 0.0
+    },
+    {
+     "iso_week": "2026-W48",
+     "week_start": "2026-11-23",
+     "task_type": "test",
+     "model_id": "Qwen3.8-27B",
+     "runs": 0,
+     "first_try_passes": 0,
+     "moved_down_chain": 0,
+     "first_try_pass_rate": null,
+     "moved_down_chain_rate": null
+    },
+    {
+     "iso_week": "2026-W47",
+     "week_start": "2026-11-16",
+     "task_type": "code_generation",
+     "model_id": "Beam-1.0-501B-A23B",
+     "runs": 0,
+     "first_try_passes": 0,
+     "moved_down_chain": 0,
+     "first_try_pass_rate": null,
+     "moved_down_chain_rate": null
+    },
+    {
+     "iso_week": "2026-W47",
+     "week_start": "2026-11-16",
+     "task_type": "code_generation",
+     "model_id": "Qwen3.8-27B",
+     "runs": 6,
+     "first_try_passes": 3,
+     "moved_down_chain": 0,
+     "first_try_pass_rate": 0.5,
+     "moved_down_chain_rate": 0.0
+    },
+    {
+     "iso_week": "2026-W47",
+     "week_start": "2026-11-16",
+     "task_type": "document",
+     "model_id": "Qwen3.8-27B",
+     "runs": 11,
+     "first_try_passes": 11,
+     "moved_down_chain": 0,
+     "first_try_pass_rate": 1.0,
+     "moved_down_chain_rate": 0.0
+    },
+    {
+     "iso_week": "2026-W47",
+     "week_start": "2026-11-16",
+     "task_type": "documentation",
+     "model_id": "Beam-1.0-501B-A23B",
+     "runs": 0,
+     "first_try_passes": 0,
+     "moved_down_chain": 0,
+     "first_try_pass_rate": null,
+     "moved_down_chain_rate": null
+    },
+    {
+     "iso_week": "2026-W47",
+     "week_start": "2026-11-16",
+     "task_type": "evidence_comment",
+     "model_id": "Qwen3.8-27B",
+     "runs": 1,
+     "first_try_passes": 1,
+     "moved_down_chain": 0,
+     "first_try_pass_rate": 1.0,
+     "moved_down_chain_rate": 0.0
+    },
+    {
+     "iso_week": "2026-W47",
+     "week_start": "2026-11-16",
+     "task_type": "planning",
+     "model_id": "Qwen3.8-27B",
+     "runs": 5,
+     "first_try_passes": 1,
+     "moved_down_chain": 0,
+     "first_try_pass_rate": 0.2,
+     "moved_down_chain_rate": 0.0
+    },
+    {
+     "iso_week": "2026-W47",
+     "week_start": "2026-11-16",
+     "task_type": "refactor",
+     "model_id": "Qwen3.8-27B",
+     "runs": 1,
+     "first_try_passes": 0,
+     "moved_down_chain": 0,
+     "first_try_pass_rate": 0.0,
+     "moved_down_chain_rate": 0.0
+    },
+    {
+     "iso_week": "2026-W47",
+     "week_start": "2026-11-16",
+     "task_type": "review",
+     "model_id": "Qwen3.8-27B",
+     "runs": 6,
+     "first_try_passes": 5,
+     "moved_down_chain": 0,
+     "first_try_pass_rate": 0.833333333333333,
+     "moved_down_chain_rate": 0.0
+    },
+    {
+     "iso_week": "2026-W47",
+     "week_start": "2026-11-16",
+     "task_type": "summarization",
+     "model_id": "Beam-1.0-501B-A23B",
+     "runs": 0,
+     "first_try_passes": 0,
+     "moved_down_chain": 0,
+     "first_try_pass_rate": null,
+     "moved_down_chain_rate": null
+    },
+    {
+     "iso_week": "2026-W47",
+     "week_start": "2026-11-16",
+     "task_type": "summarization",
+     "model_id": "Qwen3.8-27B",
+     "runs": 9,
+     "first_try_passes": 6,
+     "moved_down_chain": 0,
+     "first_try_pass_rate": 0.666666666666667,
+     "moved_down_chain_rate": 0.0
+    },
+    {
+     "iso_week": "2026-W47",
+     "week_start": "2026-11-16",
+     "task_type": "test",
+     "model_id": "Qwen3.8-27B",
+     "runs": 3,
+     "first_try_passes": 0,
+     "moved_down_chain": 0,
+     "first_try_pass_rate": 0.0,
+     "moved_down_chain_rate": 0.0
+    }
+   ],
+   "total_runs": 57,
+   "latest_projection_updated_at": "2026-11-26T04:20:29.338524+00:00"
+  }
+ ]
+}

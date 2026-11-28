@@ -464,6 +464,7 @@ export const PANEL_CONCEPTS: Readonly<Record<string, string>> = {
   // OMN-25103: the Running figure; execution is unused on Overview, so it too keeps its own icon and accent.
   'overview-running': 'execution',
   'overview-insights': 'analysis', 'usage-insights': 'usage-analysis', 'runs-insights': 'analysis',
+  'usage-delegation-quality': 'delegation-quality',
   'runs-tier-mix': 'tier-mix', 'overview-run-locally': 'local-run',
   'overview-avg-saving-per-call': 'saving-average', 'overview-baseline-spend': 'baseline',
   'overview-quality': 'quality', 'overview-model-usage': 'runs-model', 'overview-tier-mix': 'tier-mix',

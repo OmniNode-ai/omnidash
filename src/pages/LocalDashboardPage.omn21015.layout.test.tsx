@@ -61,6 +61,7 @@ const ORDER: Record<PageName, Array<[title: string, width: number]>> = {
     ['Savings per day', 12], ['Tokens per day', 12],
     ['Usage insights', 12],
     ['Usage by model and day', 12],
+    ['Delegation quality', 12],
   ],
 };
 const RENDERED_ORDER: Record<PageName, Array<[title: string, width: number]>> = {
@@ -85,6 +86,7 @@ const RENDERED_ORDER: Record<PageName, Array<[title: string, width: number]>> = 
   usage: [
     ['Savings and spend', 12], ['Savings per day', 12], ['Tokens', 12], ['Tokens per day', 12], ['Usage analysis', 12],
     ['Usage by model and day', 12],
+    ['Delegation quality', 12],
   ],
 };
 const HEADLINE_STRIP = new Set(['Actual spend', 'Savings', 'Agent calls', 'Tokens processed', 'Delegation Quality', 'Done', 'Running']);
@@ -102,7 +104,7 @@ const BEFORE: Record<PageName, string[]> = {
   // OMN-21166 Maple grid: Usage insights is drawn as Spend by model and, under "More usage", one panel per chart (part 17:
   // Cost per run, Tokens by model, Cost by route); the day-by-day token list is gone (the table holds its rows).
   // OMN-22168: on load the two tab rows draw their first charts; the other five are drawn when their tab is chosen.
-  usage: ['Savings and spend', 'Savings per day', 'Tokens', 'Tokens per day', 'Usage analysis', 'Usage by model and day'].sort(),
+  usage: ['Savings and spend', 'Savings per day', 'Tokens', 'Tokens per day', 'Usage analysis', 'Usage by model and day', 'Delegation quality'].sort(),
 };
 
 async function panels(pageName: PageName): Promise<Array<[string, number]>> {

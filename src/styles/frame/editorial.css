@@ -163,6 +163,7 @@ html body .app svg.field-icon.field-icon[data-field-icon="transport"]:not([data-
 html body .app svg.field-icon.field-icon[data-field-icon="unavailable"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-unavailable); }
 html body .app svg.field-icon.field-icon[data-field-icon="unrouted"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-unrouted); }
 html body .app svg.field-icon.field-icon[data-field-icon="usage-analysis"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-usage-analysis); }
+html body .app svg.field-icon.field-icon[data-field-icon="delegation-quality"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-delegation-quality); }
 html body .app svg.field-icon.field-icon[data-field-icon="usage-day"]:not([data-semantic-concept^="model:"]):not(#ds-important) { color: var(--ds-field-usage-day); }
 
 /* OMN-22168 (Lakshman 2026-11-04, chosen over the 10-27 one grey for these icons): each sidebar page's icon and its page
